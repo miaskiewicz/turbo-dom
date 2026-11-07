@@ -55,6 +55,14 @@ export class Storage {
 // is overridden — still stable for a given viewport. Unknown/feature-less queries
 // stay honestly `false`.
 const MQ_FEATURE = /\(\s*(min-width|max-width|min-height|max-height|orientation)\s*:\s*([^)]+?)\s*\)/g;
+function evalMediaFeature(feat, val, W, H) {
+  if (feat === 'min-width') return W >= parseFloat(val);
+  if (feat === 'max-width') return W <= parseFloat(val);
+  if (feat === 'min-height') return H >= parseFloat(val);
+  if (feat === 'max-height') return H <= parseFloat(val);
+  // orientation: portrait iff height >= width (turbo-dom#138)
+  return val === (H >= W ? 'portrait' : 'landscape');
+}
 function evalMediaQuery(query, win) {
   const W = (win && win.innerWidth) || 1024;
   const H = (win && win.innerHeight) || 768;
@@ -63,12 +71,7 @@ function evalMediaQuery(query, win) {
   MQ_FEATURE.lastIndex = 0;
   while ((m = MQ_FEATURE.exec(q))) {
     any = true;
-    const feat = m[1], val = m[2].trim();
-    if (feat === 'min-width') matched = matched && W >= parseFloat(val);
-    else if (feat === 'max-width') matched = matched && W <= parseFloat(val);
-    else if (feat === 'min-height') matched = matched && H >= parseFloat(val);
-    else if (feat === 'max-height') matched = matched && H <= parseFloat(val);
-    else matched = matched && val === (H >= W ? 'portrait' : 'landscape'); // orientation: portrait iff height >= width (turbo-dom#138)
+    matched = matched && evalMediaFeature(m[1], m[2].trim(), W, H);
   }
   return any && matched;
 }

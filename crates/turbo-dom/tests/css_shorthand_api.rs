@@ -233,3 +233,24 @@ fn an_overflowing_number_is_clamped_to_the_largest_float() {
         assert_eq!(values, ["3.40282e+38px"; 4], "{value}");
     }
 }
+
+#[test]
+fn a_background_layer_takes_at_most_two_boxes() {
+    // `<bg-layer> = ... || <visual-box> || <visual-box> || <'background-color'>`: the
+    // first box is the origin, the second the clip; a component after both is matched
+    // against the remaining parts (the colour), and a third box fits none, so the
+    // declaration is invalid.
+    let expand = turbo_dom::rtdom::css_shorthand::expand;
+    let value = |longhands: &[turbo_dom::rtdom::css_shorthand::Longhand], name: &str| {
+        longhands
+            .iter()
+            .find(|l| l.name == name)
+            .map(|l| l.value.clone())
+            .unwrap()
+    };
+    let layer = expand("background", "padding-box content-box red").unwrap();
+    assert_eq!(value(&layer, "background-origin"), "padding-box");
+    assert_eq!(value(&layer, "background-clip"), "content-box");
+    assert_eq!(value(&layer, "background-color"), "red");
+    assert!(expand("background", "padding-box content-box border-box").is_none());
+}

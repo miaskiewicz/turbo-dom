@@ -1,10 +1,12 @@
 # turbo-dom
 
-Release **0.7.1**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.0**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
 - **[turbo-surf](https://github.com/miaskiewicz/turbo-surf)**, a headless browser that uses the DOM, the V8 binding, the layout engine and the screenshot painter.
+
+> Agents: start at [docs/AGENTS.md](docs/AGENTS.md) for the one-command workflows in `scripts/agent/`.
 
 turbo-dom is also a standalone npm package: a fast, spec-correct DOM environment for
 **vitest** and **jest**, usable in place of jsdom or happy-dom.
@@ -24,7 +26,7 @@ and the publish order.
 | [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.7.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
 | [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.7.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
 | [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.7.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
-| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.0 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
+| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.1 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
 
@@ -134,6 +136,7 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 |---|---|---|---|
 | `turbo-dom-layout` | `bundled-fonts` | on | embeds OFL faces (Inter/Roboto, Liberation Serif/PT Serif, Fira Code/IBM Plex Mono) so a document lays out with no caller fonts |
 | | `hyphenation` | on | `hyphens: auto` for English (`en` / `en-*`, not en-GB) with the embedded en-US TeX patterns (~90 KB); off, `auto` acts as `manual` |
+| | `hyphenation-languages` | on | `hyphens: auto` in every other language Chrome 156 on macOS hyphenates (en-GB, ca, cs, da, de, el, es, fi, fr, hr, hu, it, nb / no, nl, pl, pt, ro, ru, sk, sv, uk) with the TeX patterns (~3 MB, all of the `hyphenation` crate's); implies `hyphenation` |
 | | `svg` | off | routes `image/svg+xml` through the SVG rasterizer in the image pipeline (implies `svg-rasterize`) |
 | | `svg-rasterize` | off | the shared resvg rasterizer only (`svg::rasterize`) |
 | | `serde` | off | `Serialize` for the CSSOM-View metrics records |
@@ -170,8 +173,10 @@ upstream rusty_v8's features (for example `simdutf`).
 - **Open gaps (tracked as issues):**
   - glyph stems in raster screenshots lack Chrome's stem darkening, so glyph edges are
     up to ~0.5px thinner per side (#266).
-  - Known difference, not tracked: `hyphens: auto` covers English only, and Chrome on
-    macOS hyphenates with the system dictionary, whose points differ for some words.
+  - Known difference, not tracked: `hyphens: auto` breaks at the TeX patterns' points
+    (what Chrome uses on Linux, Windows and Android); Chrome on macOS hyphenates with the
+    system dictionary, whose points differ for a few words (en `international`, pl
+    `szczególnie`; `tests/fixtures/hyphens/words-chrome156.json` lists them).
 - **The npm runtime has no layout.** Geometry is synthetic: `getBoundingClientRect()`,
   `offsetWidth/Height`, `clientWidth/Height` and `scrollWidth/Height` return a non-zero
   size that is stable for a given DOM state (blocks fill the parent's width, the root

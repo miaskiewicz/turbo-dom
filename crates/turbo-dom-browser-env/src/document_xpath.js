@@ -27,23 +27,37 @@
   const types=['ANY_TYPE','NUMBER_TYPE','STRING_TYPE','BOOLEAN_TYPE','UNORDERED_NODE_ITERATOR_TYPE','ORDERED_NODE_ITERATOR_TYPE','UNORDERED_NODE_SNAPSHOT_TYPE','ORDERED_NODE_SNAPSHOT_TYPE','ANY_UNORDERED_NODE_TYPE','FIRST_ORDERED_NODE_TYPE'];
   types.forEach((name,index)=>{for(const target of [Result,Result.prototype])define(target,name,{value:index,enumerable:true,configurable:true});});
   const functions=new Set('last position count local-name namespace-uri name string concat starts-with contains substring-before substring-after substring string-length normalize-space translate boolean not true false lang number sum floor ceiling round id node text comment processing-instruction'.split(' '));
-  function compile(source,resolver,interfaces){
-    source=text(source);
-    if(source.length>4096)throw failure('NotSupportedError','XPath expression exceeds its UTF-16 length budget');
-    const masked=source.replace(/'[^']*'|"[^"]*"/g,"''");
+  // The token-count and nesting budgets over the string-masked source.
+  function checkBudgets(masked){
     const tokens=masked.match(/[A-Za-z_][\w.-]*|[^\s]/g)||[];
     if(tokens.length>256)throw failure('NotSupportedError','XPath expression exceeds its token budget');
     let depth=0;for(const token of tokens){if(token==='('||token==='['){if(++depth>32)throw failure('NotSupportedError','XPath expression exceeds its nesting budget');}else if(token===')'||token===']')depth--;}
-    if(masked.includes('$'))throw failure('SyntaxError','DOM XPath expressions do not support variables');
-    for(const found of masked.matchAll(/([A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?)\s*\(/g))if(!functions.has(found[1]))throw failure('SyntaxError','Unknown XPath function');
-    let callback=null;
-    if(resolver!=null){if(typeof resolver==='function')callback=resolver;else{const lookup=resolver.lookupNamespaceURI;if(typeof lookup!=='function')throw new NativeTypeError('XPath resolver must provide lookupNamespaceURI');callback=prefix=>apply(lookup,resolver,[prefix]);}}
+  }
+  // An XPathNSResolver: a function, or an object's lookupNamespaceURI (null when absent).
+  function resolverCallback(resolver){
+    if(resolver==null)return null;
+    if(typeof resolver==='function')return resolver;
+    const lookup=resolver.lookupNamespaceURI;if(typeof lookup!=='function')throw new NativeTypeError('XPath resolver must provide lookupNamespaceURI');
+    return prefix=>apply(lookup,resolver,[prefix]);
+  }
+  function resolveNamespaces(masked,callback){
     const namespaces=new Map([['xml','http://www.w3.org/XML/1998/namespace']]);
     for(const found of masked.matchAll(/([A-Za-z_][\w.-]*)\s*:(?!:)\s*(?:[A-Za-z_*])/g)){
       const prefix=found[1];if(namespaces.has(prefix))continue;
       const value=callback&&callback(prefix);if(value==null)throw failure('NamespaceError','Unresolved XPath namespace prefix');
       namespaces.set(prefix,text(value));
     }
+    return namespaces;
+  }
+  function compile(source,resolver,interfaces){
+    source=text(source);
+    if(source.length>4096)throw failure('NotSupportedError','XPath expression exceeds its UTF-16 length budget');
+    const masked=source.replace(/'[^']*'|"[^"]*"/g,"''");
+    checkBudgets(masked);
+    if(masked.includes('$'))throw failure('SyntaxError','DOM XPath expressions do not support variables');
+    for(const found of masked.matchAll(/([A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?)\s*\(/g))if(!functions.has(found[1]))throw failure('SyntaxError','Unknown XPath function');
+    const callback=resolverCallback(resolver);
+    const namespaces=resolveNamespaces(masked,callback);
     let expression;try{expression=new provider.XPathParser().parse(source);}catch(error){throw failure('SyntaxError','Invalid XPath expression');}
     return {expression,namespaces,provider,interfaces};
   }
@@ -62,6 +76,10 @@
     // A name test on self / ancestor-or-self selects elements only (the axis' principal node type), never the Attr context.
     if(step.axis===provider.Step.SELF||step.axis===provider.Step.ANCESTORORSELF){const nodes=applyStep(step,context,node);return step.nodeTest===provider.NodeTest.nodeTest?nodes:nodes.filter(item=>item.nodeType!==2);}
     if(step.axis!==provider.Step.FOLLOWING&&step.axis!==provider.Step.PRECEDING)return applyStep(step,context,node);
+    return documentOrderAxis(step,context,node);
+  };
+  // following / preceding in document order from the context's topmost ancestor.
+  function documentOrderAxis(step,context,node){
     context.contextNode=node;
     const attribute=node.nodeType===2,anchor=attribute?node.ownerElement:node;
     let root=anchor;while(root.parentNode)root=root.parentNode;
@@ -75,7 +93,7 @@
       for(let child=current.lastChild;child;child=child.previousSibling)stack.push(child);
     }
     return nodes;
-  };
+  }
   function adapter(data){
     let remaining=200000;
     const spend=()=>{if(--remaining<0)throw failure('NotSupportedError','XPath evaluation exceeds its operation budget');};
@@ -92,17 +110,9 @@
     const list=indices=>new ProxyValue(indices.map(index=>proxies[index]),{get(target,key){spend();return key==='item'?index=>{spend();return target[index]||null;}:Reflect.get(target,key);}});
     const attribute=(index,namespace,name)=>{spend();return rows[index][7].find(id=>{spend();return (namespace===undefined?rows[id][1]===name:(rows[id][3]||null)===(namespace||null)&&rows[id][2]===name);});};
     rows.forEach((row,index)=>{
-      const target={};proxies.push(new ProxyValue(target,{get(_target,key){
-        spend();
-        const siblings=row[6]==null?[]:children[row[6]],position=siblings.indexOf(index);
+      // The proxy's members, split by kind: node fields, tree links, siblings, then methods.
+      const methodMember=key=>{
         switch(key){
-          case 'nodeType':return row[0];case 'nodeName':return row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
-          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
-          case 'parentNode':return row[6]==null?null:proxies[row[6]];case 'ownerElement':return row[8]==null?null:proxies[row[8]];
-          case 'ownerDocument':return row[0]===9?null:proxies[scope(index)];case 'childNodes':return list(children[index]);case 'attributes':return row[0]===1?list(row[7]):null;
-          case 'firstChild':return proxies[children[index][0]]||null;case 'lastChild':return proxies[children[index].at(-1)]||null;
-          case 'previousSibling':return position>0?proxies[siblings[position-1]]:null;case 'nextSibling':return position>=0?proxies[siblings[position+1]]||null:null;
-          case 'documentElement':return proxies[children[index].find(id=>rows[id][0]===1)]||null;
           case 'getAttribute':return name=>{const id=attribute(index,undefined,name);return id==null?null:rows[id][5];};
           case 'getAttributeNS':return (namespace,name)=>{const id=attribute(index,namespace,name);return id==null?null:rows[id][5];};
           case 'getAttributeNode':return name=>{const id=attribute(index,undefined,name);return id==null?null:proxies[id];};
@@ -111,6 +121,30 @@
           case 'contains':return other=>{const id=proxies.indexOf(other);return id===index||id>=0&&ancestor(index,id);};
           case 'compareDocumentPosition':return other=>{spend();const id=proxies.indexOf(other);if(id===index)return 0;if(id<0)return 1;if(ancestor(index,id))return 20;if(ancestor(id,index))return 10;return id>index?4:2;};
           default:return undefined;
+        }
+      };
+      const siblingMember=(key,siblings,position)=>{
+        switch(key){
+          case 'firstChild':return proxies[children[index][0]]||null;case 'lastChild':return proxies[children[index].at(-1)]||null;
+          case 'previousSibling':return position>0?proxies[siblings[position-1]]:null;case 'nextSibling':return position>=0?proxies[siblings[position+1]]||null:null;
+          case 'documentElement':return proxies[children[index].find(id=>rows[id][0]===1)]||null;
+          default:return methodMember(key);
+        }
+      };
+      const treeMember=(key,siblings,position)=>{
+        switch(key){
+          case 'parentNode':return row[6]==null?null:proxies[row[6]];case 'ownerElement':return row[8]==null?null:proxies[row[8]];
+          case 'ownerDocument':return row[0]===9?null:proxies[scope(index)];case 'childNodes':return list(children[index]);case 'attributes':return row[0]===1?list(row[7]):null;
+          default:return siblingMember(key,siblings,position);
+        }
+      };
+      const target={};proxies.push(new ProxyValue(target,{get(_target,key){
+        spend();
+        const siblings=row[6]==null?[]:children[row[6]],position=siblings.indexOf(index);
+        switch(key){
+          case 'nodeType':return row[0];case 'nodeName':return row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
+          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
+          default:return treeMember(key,siblings,position);
         }
       }}));
     });

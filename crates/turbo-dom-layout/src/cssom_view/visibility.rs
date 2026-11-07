@@ -60,7 +60,16 @@ pub fn check(
     if flags & OPACITY != 0 && transparent(&own.style)? {
         return Ok(false);
     }
-    let mut parent = own.parent;
+    walk_ancestors_visible(styles, own.parent, flags, &mut relevant)
+}
+
+fn walk_ancestors_visible(
+    styles: &SourceStyles,
+    start: Option<SourceId>,
+    flags: u32,
+    relevant: &mut dyn FnMut(SourceId) -> Result<bool, String>,
+) -> Result<bool, String> {
+    let mut parent = start;
     let mut depth = 0usize;
     while let Some(ancestor) = parent {
         depth += 1;
@@ -70,20 +79,32 @@ pub fn check(
         let entry = styles
             .get(&ancestor)
             .ok_or("native visibility ancestor style missing")?;
-        let content = keyword(&entry.style, "content-visibility");
-        if content.is_some_and(|value| value.eq_ignore_ascii_case("hidden")) {
-            return Ok(false);
-        }
-        if flags & OPACITY != 0 && transparent(&entry.style)? {
-            return Ok(false);
-        }
-        if flags & CONTENT_VISIBILITY_AUTO != 0
-            && content.is_some_and(|value| value.eq_ignore_ascii_case("auto"))
-            && !relevant(ancestor)?
-        {
+        if !ancestor_visible(flags, entry, ancestor, relevant)? {
             return Ok(false);
         }
         parent = entry.parent;
+    }
+    Ok(true)
+}
+
+fn ancestor_visible(
+    flags: u32,
+    entry: &crate::cssom_view::scroll::SourceStyle,
+    ancestor: SourceId,
+    relevant: &mut dyn FnMut(SourceId) -> Result<bool, String>,
+) -> Result<bool, String> {
+    let content = keyword(&entry.style, "content-visibility");
+    if content.is_some_and(|value| value.eq_ignore_ascii_case("hidden")) {
+        return Ok(false);
+    }
+    if flags & OPACITY != 0 && transparent(&entry.style)? {
+        return Ok(false);
+    }
+    if flags & CONTENT_VISIBILITY_AUTO != 0
+        && content.is_some_and(|value| value.eq_ignore_ascii_case("auto"))
+        && !relevant(ancestor)?
+    {
+        return Ok(false);
     }
     Ok(true)
 }

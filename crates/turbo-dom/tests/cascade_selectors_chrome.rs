@@ -170,68 +170,8 @@ fn selectors_match_chrome156() {
             "{id}: parsed element list differs from Chrome's"
         );
         for row in case["selectors"].as_array().unwrap() {
-            let sel = row["selector"].as_str().unwrap();
-            let units: Vec<u16> = sel.encode_utf16().collect();
-            let valid = row["valid"].as_bool().unwrap();
-            let sheet_valid = row["sheet_valid"].as_bool().unwrap();
-            let want = bits(&row["matches"]);
-            let mut fail = |what: String| failures.push(format!("{id} `{sel}`: {what}"));
             checked += 1;
-            // validity
-            if tree.query_selector_all_checked(sel).is_ok() != valid {
-                fail(format!(
-                    "query_selector_all_checked validity, Chrome valid={valid}"
-                ));
-            }
-            for (i, &h) in els.iter().enumerate() {
-                let w = want[i];
-                match tree.matches_checked(h, sel) {
-                    Ok(got) if valid && got != w => {
-                        fail(format!(
-                            "matches_checked el#{i} <{}> = {got}, Chrome {w}",
-                            tags[i]
-                        ));
-                    }
-                    Ok(_) if !valid => fail("matches_checked accepted an invalid selector".into()),
-                    Err(e) if valid => fail(format!("matches_checked rejected it: {e}")),
-                    _ => {}
-                }
-                // the lenient APIs are Chrome-defined for valid selectors only (Chrome
-                // throws on the rest; lenient callers get a best-effort reading)
-                if valid && tree.matches(h, sel) != w {
-                    fail(format!("matches el#{i} <{}>, Chrome {w}", tags[i]));
-                }
-                if valid && tree.matches_units(h, &units) != w {
-                    fail(format!("matches_units el#{i} <{}>, Chrome {w}", tags[i]));
-                }
-            }
-            if valid {
-                check_queries(&tree, &els, sel, row, &mut fail);
-            }
-            // the stylesheet engine: validity and matching (on the case document; the
-            // sentinel-sheet document is checked through `winner` below)
-            match parse_for_cascade(sel) {
-                Ok(list) if sheet_valid => {
-                    let nav = LiveNavigator(&tree);
-                    for (i, &h) in els.iter().enumerate() {
-                        let got = list
-                            .selectors()
-                            .iter()
-                            .any(|s| match_for_cascade(&nav, h, s));
-                        if got != want[i] {
-                            fail(format!(
-                                "match_for_cascade el#{i} <{}> = {got}, Chrome {}",
-                                tags[i], want[i]
-                            ));
-                        }
-                    }
-                }
-                Ok(_) => fail("parse_for_cascade accepted an invalid selector".into()),
-                Err(e) if sheet_valid => fail(format!("parse_for_cascade rejected it: {e}")),
-                Err(_) => {}
-            }
-            // cascade: the sentinel rule as the last <head> child
-            check_rtdom_cascade(html, sel, row, &tags, &mut fail);
+            check_selector_row(id, html, &tree, &els, &tags, row, &mut failures);
         }
     }
     let cascade_cases = fixture["cascade_cases"].as_array().unwrap();
@@ -258,6 +198,101 @@ fn selectors_match_chrome156() {
         failures.len(),
         failures.join("\n")
     );
+}
+
+/// One `(case, selector row)` pair: validity, `matches_*`, lenient APIs, lenient and
+/// strict cascade checks, and the sentinel rule check.
+#[allow(clippy::too_many_arguments)]
+fn check_selector_row(
+    id: &str,
+    html: &str,
+    tree: &Tree,
+    els: &[Handle],
+    tags: &[String],
+    row: &Value,
+    failures: &mut Vec<String>,
+) {
+    let sel = row["selector"].as_str().unwrap();
+    let units: Vec<u16> = sel.encode_utf16().collect();
+    let valid = row["valid"].as_bool().unwrap();
+    let sheet_valid = row["sheet_valid"].as_bool().unwrap();
+    let want = bits(&row["matches"]);
+    let mut fail = |what: String| failures.push(format!("{id} `{sel}`: {what}"));
+    if tree.query_selector_all_checked(sel).is_ok() != valid {
+        fail(format!(
+            "query_selector_all_checked validity, Chrome valid={valid}"
+        ));
+    }
+    check_per_element_matches(tree, els, tags, sel, &units, valid, &want, &mut fail);
+    if valid {
+        check_queries(tree, els, sel, row, &mut fail);
+    }
+    check_cascade_parse(tree, els, tags, sel, sheet_valid, &want, &mut fail);
+    check_rtdom_cascade(html, sel, row, tags, &mut fail);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn check_per_element_matches(
+    tree: &Tree,
+    els: &[Handle],
+    tags: &[String],
+    sel: &str,
+    units: &[u16],
+    valid: bool,
+    want: &[bool],
+    fail: &mut dyn FnMut(String),
+) {
+    for (i, &h) in els.iter().enumerate() {
+        let w = want[i];
+        match tree.matches_checked(h, sel) {
+            Ok(got) if valid && got != w => {
+                fail(format!(
+                    "matches_checked el#{i} <{}> = {got}, Chrome {w}",
+                    tags[i]
+                ));
+            }
+            Ok(_) if !valid => fail("matches_checked accepted an invalid selector".into()),
+            Err(e) if valid => fail(format!("matches_checked rejected it: {e}")),
+            _ => {}
+        }
+        if valid && tree.matches(h, sel) != w {
+            fail(format!("matches el#{i} <{}>, Chrome {w}", tags[i]));
+        }
+        if valid && tree.matches_units(h, units) != w {
+            fail(format!("matches_units el#{i} <{}>, Chrome {w}", tags[i]));
+        }
+    }
+}
+
+fn check_cascade_parse(
+    tree: &Tree,
+    els: &[Handle],
+    tags: &[String],
+    sel: &str,
+    sheet_valid: bool,
+    want: &[bool],
+    fail: &mut dyn FnMut(String),
+) {
+    match parse_for_cascade(sel) {
+        Ok(list) if sheet_valid => {
+            let nav = LiveNavigator(tree);
+            for (i, &h) in els.iter().enumerate() {
+                let got = list
+                    .selectors()
+                    .iter()
+                    .any(|s| match_for_cascade(&nav, h, s));
+                if got != want[i] {
+                    fail(format!(
+                        "match_for_cascade el#{i} <{}> = {got}, Chrome {}",
+                        tags[i], want[i]
+                    ));
+                }
+            }
+        }
+        Ok(_) => fail("parse_for_cascade accepted an invalid selector".into()),
+        Err(e) if sheet_valid => fail(format!("parse_for_cascade rejected it: {e}")),
+        Err(_) => {}
+    }
 }
 
 /// A minimal cascade over the case's sheet: each `SELECTORS { order: N }` rule in source

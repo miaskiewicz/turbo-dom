@@ -153,58 +153,38 @@ fn transform(units: &[u16], upper: bool) -> Vec<u16> {
     }
     out
 }
-fn collect(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput) {
-    let style = computed_style_with_policy(tree, node, policy);
-    let kind = tree.node_type_id(node);
-    if closed_details_child(tree, node) {
-        return;
-    }
-    if kind == 3 {
-        // collect only visits children, so a text node always has its parent.
-        let owner = tree.parent(node).expect("collected text has a parent");
-        let style = computed_style_with_policy(tree, owner, policy);
-        if matches!(
-            style.get("visibility").map(String::as_str),
-            Some("hidden" | "collapse")
-        ) {
-            return;
-        }
-        let mut text = tree.node_value_utf16(node).unwrap_or_default();
-        match style.get("text-transform").map(String::as_str) {
-            Some("uppercase") => text = transform(&text, true),
-            Some("lowercase") => text = transform(&text, false),
-            _ => {}
-        }
-        match whitespace(tree, owner, &style).as_str() {
-            "pre" | "pre-wrap" | "break-spaces" => out.preserved(&text),
-            "pre-line" => out.normal(&text, true),
-            _ => out.normal(&text, false),
-        }
-        return;
-    }
-    if kind != 1 {
-        return;
-    }
-    let display = display(tree, node, &style);
-    if display == "none" || closed_details_child(tree, node) {
-        return;
-    }
-    let visible = !matches!(
+fn collect_text_node(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput) {
+    let owner = tree.parent(node).expect("collected text has a parent");
+    let style = computed_style_with_policy(tree, owner, policy);
+    if matches!(
         style.get("visibility").map(String::as_str),
         Some("hidden" | "collapse")
-    );
-    let name = tag(tree, node);
-    if matches!(name, "input" | "textarea") {
+    ) {
         return;
     }
-    if name == "br" {
-        if visible {
-            out.forced('\n');
-        }
-        return;
+    let mut text = tree.node_value_utf16(node).unwrap_or_default();
+    match style.get("text-transform").map(String::as_str) {
+        Some("uppercase") => text = transform(&text, true),
+        Some("lowercase") => text = transform(&text, false),
+        _ => {}
     }
+    match whitespace(tree, owner, &style).as_str() {
+        "pre" | "pre-wrap" | "break-spaces" => out.preserved(&text),
+        "pre-line" => out.normal(&text, true),
+        _ => out.normal(&text, false),
+    }
+}
+
+fn collect_element_children(
+    tree: &Tree,
+    node: Handle,
+    policy: &StylePolicy,
+    display: &str,
+    name: &str,
+    out: &mut TextOutput,
+) {
     let block = matches!(
-        display.as_str(),
+        display,
         "block"
             | "flow-root"
             | "flex"
@@ -232,6 +212,40 @@ fn collect(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput
     if block {
         out.separate(count);
     }
+}
+
+fn collect(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput) {
+    let style = computed_style_with_policy(tree, node, policy);
+    let kind = tree.node_type_id(node);
+    if closed_details_child(tree, node) {
+        return;
+    }
+    if kind == 3 {
+        collect_text_node(tree, node, policy, out);
+        return;
+    }
+    if kind != 1 {
+        return;
+    }
+    let display = display(tree, node, &style);
+    if display == "none" || closed_details_child(tree, node) {
+        return;
+    }
+    let visible = !matches!(
+        style.get("visibility").map(String::as_str),
+        Some("hidden" | "collapse")
+    );
+    let name = tag(tree, node);
+    if matches!(name, "input" | "textarea") {
+        return;
+    }
+    if name == "br" {
+        if visible {
+            out.forced('\n');
+        }
+        return;
+    }
+    collect_element_children(tree, node, policy, &display, name, out);
 }
 fn display_for_cell(tree: &Tree, node: Handle, style: &HashMap<String, String>) -> bool {
     display(tree, node, style) == "table-cell"

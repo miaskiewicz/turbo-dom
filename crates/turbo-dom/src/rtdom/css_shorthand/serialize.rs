@@ -102,6 +102,524 @@ fn omit(value: &str, initial: &str) -> bool {
     value == INITIAL || value == initial
 }
 
+fn ser_margin(v: &Values<'_>) -> String {
+    box_text(v.many(["margin-top", "margin-right", "margin-bottom", "margin-left"]))
+}
+
+fn ser_border_radius(v: &Values<'_>) -> String {
+    let corners = v.many([
+        "border-top-left-radius",
+        "border-top-right-radius",
+        "border-bottom-right-radius",
+        "border-bottom-left-radius",
+    ]);
+    let mut horizontal = [""; 4];
+    let mut vertical = [""; 4];
+    for (index, corner) in corners.iter().enumerate() {
+        let mut parts = corner.splitn(2, ' ');
+        let h = parts.next().unwrap_or("");
+        horizontal[index] = h;
+        vertical[index] = parts.next().unwrap_or(h);
+    }
+    let h = box_text(horizontal);
+    let vertical_text = box_text(vertical);
+    if horizontal == vertical {
+        h
+    } else {
+        format!("{h} / {vertical_text}")
+    }
+}
+
+fn ser_column_rule_inset(v: &Values<'_>, grammar: &str) -> String {
+    let kind = if grammar == "column-rule-inset" {
+        "column"
+    } else {
+        "row"
+    };
+    rule_inset(v, kind)
+}
+
+fn ser_rule_inset(v: &Values<'_>) -> String {
+    let column = rule_inset(v, "column");
+    if column == rule_inset(v, "row") {
+        column
+    } else {
+        String::new()
+    }
+}
+
+fn ser_rule_inset_cap(v: &Values<'_>, grammar: &str) -> String {
+    let part = if grammar == "rule-inset-cap" {
+        "cap"
+    } else {
+        "junction"
+    };
+    let get = |kind: &str, side: &str| v.get(&format!("{kind}-rule-inset-{part}-{side}"));
+    let row = pair_text(get("row", "start"), get("row", "end"));
+    if row == pair_text(get("column", "start"), get("column", "end")) {
+        row
+    } else {
+        String::new()
+    }
+}
+
+fn ser_background_position(texts: &[&str]) -> String {
+    let (x, y) = (texts[0], texts[1]);
+    let (xs, ys) = (layers(x), layers(y));
+    if xs.len() != ys.len() {
+        // Uneven lists: each layer's set parts; layers with none drop out.
+        let count = xs.len().max(ys.len());
+        return (0..count)
+            .map(|index| joined(&[list_part(&xs, index), list_part(&ys, index)]))
+            .filter(|layer| !layer.is_empty())
+            .collect::<Vec<_>>()
+            .join(", ");
+    }
+    if xs.iter().chain(&ys).any(|item| *item == INITIAL) {
+        return String::new();
+    }
+    xs.iter()
+        .zip(ys)
+        .map(|(x, y)| format!("{x} {y}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn ser_border_top(v: &Values<'_>, grammar: &str) -> String {
+    let [width, style, color] =
+        v.many(["width", "style", "color"].map(|part| leak_part(grammar, part)));
+    line(width, style, color)
+}
+
+fn ser_border_block_start(v: &Values<'_>, grammar: &str) -> String {
+    let parts = v.many(["width", "style", "color"].map(|part| leak_part(grammar, part)));
+    joined(&parts.map(|value| if value == INITIAL { "" } else { value }))
+}
+
+fn ser_border_block(v: &Values<'_>, grammar: &str) -> String {
+    let (start, end) = match grammar {
+        "border-block" => ("border-block-start", "border-block-end"),
+        "border-inline" => ("border-inline-start", "border-inline-end"),
+        _ => ("column-rule", "row-rule"),
+    };
+    let a = ["width", "style", "color"].map(|part| v.get(leak_part(start, part)));
+    let b = ["width", "style", "color"].map(|part| v.get(leak_part(end, part)));
+    if a == b {
+        line(a[0], a[1], a[2])
+    } else {
+        String::new()
+    }
+}
+
+fn ser_border(v: &Values<'_>) -> String {
+    let image = v.many([
+        "border-image-source",
+        "border-image-slice",
+        "border-image-width",
+        "border-image-outset",
+        "border-image-repeat",
+    ]);
+    if image != ["none", "100%", "1", "0", "stretch"] {
+        return String::new();
+    }
+    let mut parts = [""; 3];
+    for (index, part) in ["width", "style", "color"].iter().enumerate() {
+        let sides = ["top", "right", "bottom", "left"]
+            .map(|side| v.get(leak_part(&format!("border-{side}"), part)));
+        if sides.iter().any(|value| *value != sides[0]) {
+            return String::new();
+        }
+        parts[index] = sides[0];
+    }
+    line(parts[0], parts[1], parts[2])
+}
+
+fn ser_text_decoration(v: &Values<'_>) -> String {
+    let [line, thickness, style, color] = v.many([
+        "text-decoration-line",
+        "text-decoration-thickness",
+        "text-decoration-style",
+        "text-decoration-color",
+    ]);
+    let text = joined(&[
+        if omit(line, "none") { "" } else { line },
+        if omit(thickness, "auto") {
+            ""
+        } else {
+            thickness
+        },
+        if omit(style, "solid") { "" } else { style },
+        if omit(color, "currentcolor") {
+            ""
+        } else {
+            color
+        },
+    ]);
+    if text.is_empty() {
+        if line == INITIAL {
+            "none".into()
+        } else {
+            line.to_string()
+        }
+    } else {
+        text
+    }
+}
+
+fn ser_text_emphasis(v: &Values<'_>) -> String {
+    let [style, color] = v.many(["text-emphasis-style", "text-emphasis-color"]);
+    let text = joined(&[
+        if omit(style, "none") { "" } else { style },
+        if omit(color, "currentcolor") {
+            ""
+        } else {
+            color
+        },
+    ]);
+    if text.is_empty() {
+        "none".into()
+    } else {
+        text
+    }
+}
+
+fn ser_flex_flow(v: &Values<'_>) -> String {
+    let [direction, wrap] = v.many(["flex-direction", "flex-wrap"]);
+    if wrap == "nowrap" {
+        direction.to_string()
+    } else if direction == "row" {
+        wrap.to_string()
+    } else {
+        format!("{direction} {wrap}")
+    }
+}
+
+fn ser_columns(v: &Values<'_>) -> String {
+    // Chrome 156 leaves `column-wrap` out of the spelling, whatever its value.
+    let [width, count, height] = v.many(["column-width", "column-count", "column-height"]);
+    let main = match (width, count) {
+        ("auto", "auto") => "auto".to_string(),
+        ("auto", count) => count.to_string(),
+        (width, "auto") => width.to_string(),
+        (width, count) => format!("{width} {count}"),
+    };
+    if height == "auto" {
+        main
+    } else {
+        format!("{main} / {height}")
+    }
+}
+
+fn ser_container(v: &Values<'_>) -> String {
+    let [name, kind] = v.many(["container-name", "container-type"]);
+    if kind == "normal" {
+        name.to_string()
+    } else {
+        format!("{name} / {kind}")
+    }
+}
+
+fn ser_text_wrap(v: &Values<'_>) -> String {
+    let [mode, style] = v.many(["text-wrap-mode", "text-wrap-style"]);
+    let mode = if mode == INITIAL { "wrap" } else { mode };
+    let style = if style == INITIAL { "auto" } else { style };
+    if style == "auto" {
+        mode.to_string()
+    } else if mode == "wrap" {
+        style.to_string()
+    } else {
+        format!("{mode} {style}")
+    }
+}
+
+fn ser_white_space(v: &Values<'_>) -> String {
+    let [collapse, mode] = v.many(["white-space-collapse", "text-wrap-mode"]);
+    let collapse = if collapse == INITIAL {
+        "collapse"
+    } else {
+        collapse
+    };
+    let mode = if mode == INITIAL { "wrap" } else { mode };
+    match (collapse, mode) {
+        ("collapse", "wrap") => "normal".into(),
+        ("preserve", "nowrap") => "pre".into(),
+        ("collapse", "nowrap") => "nowrap".into(),
+        ("preserve", "wrap") => "pre-wrap".into(),
+        ("preserve-breaks", "wrap") => "pre-line".into(),
+        ("break-spaces", "wrap") => "break-spaces".into(),
+        (collapse, mode) => format!("{collapse} {mode}"),
+    }
+}
+
+fn ser_font_synthesis(v: &Values<'_>) -> String {
+    let values = v.many([
+        "font-synthesis-weight",
+        "font-synthesis-style",
+        "font-synthesis-small-caps",
+    ]);
+    let mut parts = Vec::new();
+    for (value, name) in values.iter().zip(["weight", "style", "small-caps"]) {
+        match *value {
+            "auto" => parts.push(name),
+            "none" => {}
+            _ => return String::new(),
+        }
+    }
+    if parts.is_empty() {
+        "none".into()
+    } else {
+        parts.join(" ")
+    }
+}
+
+fn ser_text_box(v: &Values<'_>) -> String {
+    let [trim, edge] = v.many(["text-box-trim", "text-box-edge"]);
+    match (trim, edge) {
+        ("none", "auto") => "normal".into(),
+        ("trim-both", "auto") => "trim-both".into(),
+        ("trim-both", edge) => edge.to_string(),
+        (trim, "auto") => trim.to_string(),
+        (trim, edge) => format!("{trim} {edge}"),
+    }
+}
+
+fn ser_position_try(v: &Values<'_>) -> String {
+    let [order, fallbacks] = v.many(["position-try-order", "position-try-fallbacks"]);
+    if order == "normal" {
+        fallbacks.to_string()
+    } else {
+        format!("{order} {fallbacks}")
+    }
+}
+
+fn ser_scroll_timeline(v: &Values<'_>) -> String {
+    let [names, axes] = v.many(["scroll-timeline-name", "scroll-timeline-axis"]);
+    let (names, axes) = (layers(names), layers(axes));
+    if names.len() != axes.len() {
+        return String::new();
+    }
+    names
+        .iter()
+        .zip(axes)
+        .map(|(name, axis)| {
+            if axis == "block" {
+                (*name).to_string()
+            } else {
+                format!("{name} {axis}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn ser_view_timeline(v: &Values<'_>) -> String {
+    let [names, axes, insets] = v.many([
+        "view-timeline-name",
+        "view-timeline-axis",
+        "view-timeline-inset",
+    ]);
+    let (names, axes, insets) = (layers(names), layers(axes), layers(insets));
+    if names.len() != axes.len() || names.len() != insets.len() {
+        return String::new();
+    }
+    (0..names.len())
+        .map(|index| {
+            joined(&[
+                names[index],
+                if axes[index] == "block" {
+                    ""
+                } else {
+                    axes[index]
+                },
+                if insets[index] == "auto" {
+                    ""
+                } else {
+                    insets[index]
+                },
+            ])
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn ser_font_variant(v: &Values<'_>) -> String {
+    let values = v.many([
+        "font-variant-ligatures",
+        "font-variant-caps",
+        "font-variant-alternates",
+        "font-variant-numeric",
+        "font-variant-east-asian",
+        "font-variant-position",
+        "font-variant-emoji",
+    ]);
+    if values.iter().all(|value| *value == "normal") {
+        return "normal".into();
+    }
+    if values[0] == "none" {
+        return if values[1..].iter().all(|value| *value == "normal") {
+            "none".into()
+        } else {
+            String::new()
+        };
+    }
+    joined(&values.map(|value| if value == "normal" { "" } else { value }))
+}
+
+fn ser_flex(v: &Values<'_>) -> String {
+    let [grow, shrink, basis] = v.many(["flex-grow", "flex-shrink", "flex-basis"]);
+    format!("{grow} {shrink} {basis}")
+}
+
+fn ser_grid_area(v: &Values<'_>) -> String {
+    let [row_start, column_start, row_end, column_end] = v.many([
+        "grid-row-start",
+        "grid-column-start",
+        "grid-row-end",
+        "grid-column-end",
+    ]);
+    let mut parts = vec![row_start, column_start, row_end, column_end];
+    if column_end == line_default(column_start) {
+        parts.pop();
+        if row_end == line_default(row_start) {
+            parts.pop();
+            if column_start == line_default(row_start) {
+                parts.pop();
+            }
+        }
+    }
+    parts.join(" / ")
+}
+
+fn ser_grid_row(texts: &[&str]) -> String {
+    let (start, end) = (texts[0], texts[1]);
+    if end == line_default(start) {
+        start.to_string()
+    } else {
+        format!("{start} / {end}")
+    }
+}
+
+fn ser_grid_template(v: &Values<'_>) -> String {
+    let [rows, columns, areas] = v.many([
+        "grid-template-rows",
+        "grid-template-columns",
+        "grid-template-areas",
+    ]);
+    grid_template(rows, columns, areas)
+}
+
+fn ser_grid(v: &Values<'_>) -> String {
+    let [rows, columns, areas, flow, auto_columns, auto_rows] = v.many([
+        "grid-template-rows",
+        "grid-template-columns",
+        "grid-template-areas",
+        "grid-auto-flow",
+        "grid-auto-columns",
+        "grid-auto-rows",
+    ]);
+    if flow == "row" && auto_rows == "auto" && auto_columns == "auto" {
+        return grid_template(rows, columns, areas);
+    }
+    if areas != "none" {
+        return String::new();
+    }
+    grid_auto_flow_text(rows, columns, flow, auto_columns, auto_rows)
+}
+
+/// `grid` with an `auto-flow` side: `auto-flow [dense] [<auto-rows>] / <columns>` or
+/// `<rows> / auto-flow [dense] [<auto-columns>]`; `""` when neither form fits.
+fn grid_auto_flow_text(
+    rows: &str,
+    columns: &str,
+    flow: &str,
+    auto_columns: &str,
+    auto_rows: &str,
+) -> String {
+    let dense = if flow.ends_with("dense") { "dense" } else { "" };
+    let unless_auto = |value: &str| {
+        if value == "auto" {
+            String::new()
+        } else {
+            value.to_string()
+        }
+    };
+    if (flow.starts_with("row") || flow == "dense") && rows == "none" && auto_columns == "auto" {
+        let head = joined(&["auto-flow", dense, &unless_auto(auto_rows)]);
+        return format!("{head} / {columns}");
+    }
+    if flow.starts_with("column") && columns == "none" && auto_rows == "auto" {
+        let tail = joined(&["auto-flow", dense, &unless_auto(auto_columns)]);
+        return format!("{rows} / {tail}");
+    }
+    String::new()
+}
+
+fn ser_border_image(v: &Values<'_>) -> String {
+    let [source, slice, width, outset, repeat] = v.many([
+        "border-image-source",
+        "border-image-slice",
+        "border-image-width",
+        "border-image-outset",
+        "border-image-repeat",
+    ]);
+    if [slice, width, outset, repeat] == ["100%", "1", "0", "stretch"] {
+        return source.to_string();
+    }
+    format!("{source} {slice} / {width} / {outset} {repeat}")
+}
+
+fn ser_offset(v: &Values<'_>) -> String {
+    let [position, path, distance, rotate, anchor] = v.many([
+        "offset-position",
+        "offset-path",
+        "offset-distance",
+        "offset-rotate",
+        "offset-anchor",
+    ]);
+    let moved = distance != "0px" || rotate != "auto";
+    let main = joined(&[
+        if position == "normal" { "" } else { position },
+        if path == "none" && !moved { "" } else { path },
+        if distance == "0px" { "" } else { distance },
+        if rotate == "auto" { "" } else { rotate },
+    ]);
+    let main = if main.is_empty() {
+        "normal".to_string()
+    } else {
+        main
+    };
+    if anchor == "auto" {
+        main
+    } else {
+        format!("{main} / {anchor}")
+    }
+}
+
+fn ser_timeline_trigger(v: &Values<'_>) -> String {
+    let columns = [
+        "timeline-trigger-name",
+        "timeline-trigger-source",
+        "timeline-trigger-activation-range-start",
+        "timeline-trigger-activation-range-end",
+        "timeline-trigger-active-range-start",
+        "timeline-trigger-active-range-end",
+    ]
+    .map(|name| layers(v.get(name)));
+    // Lists of different lengths have no shorthand spelling.
+    let count = columns[0].len();
+    if columns.iter().any(|column| column.len() != count) {
+        return String::new();
+    }
+    (0..count)
+        .map(|index| {
+            let [name, source, a_start, a_end, b_start, b_end] =
+                [0, 1, 2, 3, 4, 5].map(|column| columns[column][index]);
+            trigger(name, source, [a_start, a_end], [b_start, b_end])
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
     let Some(entry) = table::entry(grammar) else {
         unreachable!("every table entry's grammar names a table entry (table::tests)");
@@ -111,9 +629,7 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
         texts,
     };
     match grammar {
-        "margin" => {
-            box_text(v.many(["margin-top", "margin-right", "margin-bottom", "margin-left"]))
-        }
+        "margin" => ser_margin(&v),
         "padding" => box_text(v.many([
             "padding-top",
             "padding-right",
@@ -157,59 +673,10 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
             "corner-bottom-right-shape",
             "corner-bottom-left-shape",
         ])),
-        "border-radius" | "-webkit-border-radius" => {
-            let corners = v.many([
-                "border-top-left-radius",
-                "border-top-right-radius",
-                "border-bottom-right-radius",
-                "border-bottom-left-radius",
-            ]);
-            let mut horizontal = [""; 4];
-            let mut vertical = [""; 4];
-            for (index, corner) in corners.iter().enumerate() {
-                let mut parts = corner.splitn(2, ' ');
-                let h = parts.next().unwrap_or("");
-                horizontal[index] = h;
-                vertical[index] = parts.next().unwrap_or(h);
-            }
-            let h = box_text(horizontal);
-            let vertical_text = box_text(vertical);
-            if horizontal == vertical {
-                h
-            } else {
-                format!("{h} / {vertical_text}")
-            }
-        }
-        "column-rule-inset" | "row-rule-inset" => {
-            let kind = if grammar == "column-rule-inset" {
-                "column"
-            } else {
-                "row"
-            };
-            rule_inset(&v, kind)
-        }
-        "rule-inset" => {
-            let column = rule_inset(&v, "column");
-            if column == rule_inset(&v, "row") {
-                column
-            } else {
-                String::new()
-            }
-        }
-        "rule-inset-cap" | "rule-inset-junction" => {
-            let part = if grammar == "rule-inset-cap" {
-                "cap"
-            } else {
-                "junction"
-            };
-            let get = |kind: &str, side: &str| v.get(&format!("{kind}-rule-inset-{part}-{side}"));
-            let row = pair_text(get("row", "start"), get("row", "end"));
-            if row == pair_text(get("column", "start"), get("column", "end")) {
-                row
-            } else {
-                String::new()
-            }
-        }
+        "border-radius" | "-webkit-border-radius" => ser_border_radius(&v),
+        "column-rule-inset" | "row-rule-inset" => ser_column_rule_inset(&v, grammar),
+        "rule-inset" => ser_rule_inset(&v),
+        "rule-inset-cap" | "rule-inset-junction" => ser_rule_inset_cap(&v, grammar),
         "contain-intrinsic-size"
         | "margin-block"
         | "margin-inline"
@@ -248,25 +715,7 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
         "place-self" => pair_text(v.get("align-self"), v.get("justify-self")),
         "place-content" => pair_text(v.get("align-content"), v.get("justify-content")),
         "background-position" | "mask-position" | "-webkit-mask-position" => {
-            let (x, y) = (texts[0], texts[1]);
-            let (xs, ys) = (layers(x), layers(y));
-            if xs.len() != ys.len() {
-                // Uneven lists: each layer's set parts; layers with none drop out.
-                let count = xs.len().max(ys.len());
-                return (0..count)
-                    .map(|index| joined(&[list_part(&xs, index), list_part(&ys, index)]))
-                    .filter(|layer| !layer.is_empty())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-            }
-            if xs.iter().chain(&ys).any(|item| *item == INITIAL) {
-                return String::new();
-            }
-            xs.iter()
-                .zip(ys)
-                .map(|(x, y)| format!("{x} {y}"))
-                .collect::<Vec<_>>()
-                .join(", ")
+            ser_background_position(texts)
         }
         "marker"
         | "rule-break"
@@ -296,52 +745,13 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
             "auto",
         ),
         "border-top" | "border-right" | "border-bottom" | "border-left" | "column-rule"
-        | "row-rule" => {
-            let [width, style, color] =
-                v.many(["width", "style", "color"].map(|part| leak_part(grammar, part)));
-            line(width, style, color)
-        }
+        | "row-rule" => ser_border_top(&v, grammar),
         // The logical sides leave omitted parts `initial` and keep every other value.
         "border-block-start" | "border-block-end" | "border-inline-start" | "border-inline-end" => {
-            let parts = v.many(["width", "style", "color"].map(|part| leak_part(grammar, part)));
-            joined(&parts.map(|value| if value == INITIAL { "" } else { value }))
+            ser_border_block_start(&v, grammar)
         }
-        "border-block" | "border-inline" | "rule" => {
-            let (start, end) = match grammar {
-                "border-block" => ("border-block-start", "border-block-end"),
-                "border-inline" => ("border-inline-start", "border-inline-end"),
-                _ => ("column-rule", "row-rule"),
-            };
-            let a = ["width", "style", "color"].map(|part| v.get(leak_part(start, part)));
-            let b = ["width", "style", "color"].map(|part| v.get(leak_part(end, part)));
-            if a == b {
-                line(a[0], a[1], a[2])
-            } else {
-                String::new()
-            }
-        }
-        "border" => {
-            let image = v.many([
-                "border-image-source",
-                "border-image-slice",
-                "border-image-width",
-                "border-image-outset",
-                "border-image-repeat",
-            ]);
-            if image != ["none", "100%", "1", "0", "stretch"] {
-                return String::new();
-            }
-            let mut parts = [""; 3];
-            for (index, part) in ["width", "style", "color"].iter().enumerate() {
-                let sides = ["top", "right", "bottom", "left"]
-                    .map(|side| v.get(leak_part(&format!("border-{side}"), part)));
-                if sides.iter().any(|value| *value != sides[0]) {
-                    return String::new();
-                }
-                parts[index] = sides[0];
-            }
-            line(parts[0], parts[1], parts[2])
-        }
+        "border-block" | "border-inline" | "rule" => ser_border_block(&v, grammar),
+        "border" => ser_border(&v),
         "outline" => joined(
             &v.many(["outline-color", "outline-style", "outline-width"])
                 .map(|value| if value == INITIAL { "" } else { value }),
@@ -350,376 +760,36 @@ pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
             &v.many(["-webkit-text-stroke-width", "-webkit-text-stroke-color"])
                 .map(|value| if value == INITIAL { "" } else { value }),
         ),
-        "text-decoration" => {
-            let [line, thickness, style, color] = v.many([
-                "text-decoration-line",
-                "text-decoration-thickness",
-                "text-decoration-style",
-                "text-decoration-color",
-            ]);
-            let text = joined(&[
-                if omit(line, "none") { "" } else { line },
-                if omit(thickness, "auto") {
-                    ""
-                } else {
-                    thickness
-                },
-                if omit(style, "solid") { "" } else { style },
-                if omit(color, "currentcolor") {
-                    ""
-                } else {
-                    color
-                },
-            ]);
-            if text.is_empty() {
-                if line == INITIAL {
-                    "none".into()
-                } else {
-                    line.to_string()
-                }
-            } else {
-                text
-            }
-        }
-        "text-emphasis" | "-webkit-text-emphasis" => {
-            let [style, color] = v.many(["text-emphasis-style", "text-emphasis-color"]);
-            let text = joined(&[
-                if omit(style, "none") { "" } else { style },
-                if omit(color, "currentcolor") {
-                    ""
-                } else {
-                    color
-                },
-            ]);
-            if text.is_empty() {
-                "none".into()
-            } else {
-                text
-            }
-        }
-        "flex-flow" | "-webkit-flex-flow" => {
-            let [direction, wrap] = v.many(["flex-direction", "flex-wrap"]);
-            if wrap == "nowrap" {
-                direction.to_string()
-            } else if direction == "row" {
-                wrap.to_string()
-            } else {
-                format!("{direction} {wrap}")
-            }
-        }
+        "text-decoration" => ser_text_decoration(&v),
+        "text-emphasis" | "-webkit-text-emphasis" => ser_text_emphasis(&v),
+        "flex-flow" | "-webkit-flex-flow" => ser_flex_flow(&v),
         "list-style" => joined(
             &v.many(["list-style-position", "list-style-image", "list-style-type"])
                 .map(|value| if value == INITIAL { "" } else { value }),
         ),
-        "columns" | "-webkit-columns" => {
-            // Chrome 156 leaves `column-wrap` out of the spelling, whatever its value.
-            let [width, count, height] = v.many(["column-width", "column-count", "column-height"]);
-            let main = match (width, count) {
-                ("auto", "auto") => "auto".to_string(),
-                ("auto", count) => count.to_string(),
-                (width, "auto") => width.to_string(),
-                (width, count) => format!("{width} {count}"),
-            };
-            if height == "auto" {
-                main
-            } else {
-                format!("{main} / {height}")
-            }
-        }
-        "container" => {
-            let [name, kind] = v.many(["container-name", "container-type"]);
-            if kind == "normal" {
-                name.to_string()
-            } else {
-                format!("{name} / {kind}")
-            }
-        }
-        "text-wrap" => {
-            let [mode, style] = v.many(["text-wrap-mode", "text-wrap-style"]);
-            let mode = if mode == INITIAL { "wrap" } else { mode };
-            let style = if style == INITIAL { "auto" } else { style };
-            if style == "auto" {
-                mode.to_string()
-            } else if mode == "wrap" {
-                style.to_string()
-            } else {
-                format!("{mode} {style}")
-            }
-        }
-        "white-space" => {
-            let [collapse, mode] = v.many(["white-space-collapse", "text-wrap-mode"]);
-            let collapse = if collapse == INITIAL {
-                "collapse"
-            } else {
-                collapse
-            };
-            let mode = if mode == INITIAL { "wrap" } else { mode };
-            match (collapse, mode) {
-                ("collapse", "wrap") => "normal".into(),
-                ("preserve", "nowrap") => "pre".into(),
-                ("collapse", "nowrap") => "nowrap".into(),
-                ("preserve", "wrap") => "pre-wrap".into(),
-                ("preserve-breaks", "wrap") => "pre-line".into(),
-                ("break-spaces", "wrap") => "break-spaces".into(),
-                (collapse, mode) => format!("{collapse} {mode}"),
-            }
-        }
-        "font-synthesis" => {
-            let values = v.many([
-                "font-synthesis-weight",
-                "font-synthesis-style",
-                "font-synthesis-small-caps",
-            ]);
-            let mut parts = Vec::new();
-            for (value, name) in values.iter().zip(["weight", "style", "small-caps"]) {
-                match *value {
-                    "auto" => parts.push(name),
-                    "none" => {}
-                    _ => return String::new(),
-                }
-            }
-            if parts.is_empty() {
-                "none".into()
-            } else {
-                parts.join(" ")
-            }
-        }
-        "text-box" => {
-            let [trim, edge] = v.many(["text-box-trim", "text-box-edge"]);
-            match (trim, edge) {
-                ("none", "auto") => "normal".into(),
-                ("trim-both", "auto") => "trim-both".into(),
-                ("trim-both", edge) => edge.to_string(),
-                (trim, "auto") => trim.to_string(),
-                (trim, edge) => format!("{trim} {edge}"),
-            }
-        }
-        "position-try" => {
-            let [order, fallbacks] = v.many(["position-try-order", "position-try-fallbacks"]);
-            if order == "normal" {
-                fallbacks.to_string()
-            } else {
-                format!("{order} {fallbacks}")
-            }
-        }
-        "scroll-timeline" => {
-            let [names, axes] = v.many(["scroll-timeline-name", "scroll-timeline-axis"]);
-            let (names, axes) = (layers(names), layers(axes));
-            if names.len() != axes.len() {
-                return String::new();
-            }
-            names
-                .iter()
-                .zip(axes)
-                .map(|(name, axis)| {
-                    if axis == "block" {
-                        (*name).to_string()
-                    } else {
-                        format!("{name} {axis}")
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        }
-        "view-timeline" => {
-            let [names, axes, insets] = v.many([
-                "view-timeline-name",
-                "view-timeline-axis",
-                "view-timeline-inset",
-            ]);
-            let (names, axes, insets) = (layers(names), layers(axes), layers(insets));
-            if names.len() != axes.len() || names.len() != insets.len() {
-                return String::new();
-            }
-            (0..names.len())
-                .map(|index| {
-                    joined(&[
-                        names[index],
-                        if axes[index] == "block" {
-                            ""
-                        } else {
-                            axes[index]
-                        },
-                        if insets[index] == "auto" {
-                            ""
-                        } else {
-                            insets[index]
-                        },
-                    ])
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        }
-        "font-variant" => {
-            let values = v.many([
-                "font-variant-ligatures",
-                "font-variant-caps",
-                "font-variant-alternates",
-                "font-variant-numeric",
-                "font-variant-east-asian",
-                "font-variant-position",
-                "font-variant-emoji",
-            ]);
-            if values.iter().all(|value| *value == "normal") {
-                return "normal".into();
-            }
-            if values[0] == "none" {
-                return if values[1..].iter().all(|value| *value == "normal") {
-                    "none".into()
-                } else {
-                    String::new()
-                };
-            }
-            joined(&values.map(|value| if value == "normal" { "" } else { value }))
-        }
-        "flex" | "-webkit-flex" => {
-            let [grow, shrink, basis] = v.many(["flex-grow", "flex-shrink", "flex-basis"]);
-            format!("{grow} {shrink} {basis}")
-        }
+        "columns" | "-webkit-columns" => ser_columns(&v),
+        "container" => ser_container(&v),
+        "text-wrap" => ser_text_wrap(&v),
+        "white-space" => ser_white_space(&v),
+        "font-synthesis" => ser_font_synthesis(&v),
+        "text-box" => ser_text_box(&v),
+        "position-try" => ser_position_try(&v),
+        "scroll-timeline" => ser_scroll_timeline(&v),
+        "view-timeline" => ser_view_timeline(&v),
+        "font-variant" => ser_font_variant(&v),
+        "flex" | "-webkit-flex" => ser_flex(&v),
         "font" => font(&v),
-        "grid-area" => {
-            let [row_start, column_start, row_end, column_end] = v.many([
-                "grid-row-start",
-                "grid-column-start",
-                "grid-row-end",
-                "grid-column-end",
-            ]);
-            let mut parts = vec![row_start, column_start, row_end, column_end];
-            if column_end == line_default(column_start) {
-                parts.pop();
-                if row_end == line_default(row_start) {
-                    parts.pop();
-                    if column_start == line_default(row_start) {
-                        parts.pop();
-                    }
-                }
-            }
-            parts.join(" / ")
-        }
-        "grid-row" | "grid-column" => {
-            let (start, end) = (texts[0], texts[1]);
-            if end == line_default(start) {
-                start.to_string()
-            } else {
-                format!("{start} / {end}")
-            }
-        }
-        "grid-template" => {
-            let [rows, columns, areas] = v.many([
-                "grid-template-rows",
-                "grid-template-columns",
-                "grid-template-areas",
-            ]);
-            grid_template(rows, columns, areas)
-        }
-        "grid" => {
-            let [rows, columns, areas, flow, auto_columns, auto_rows] = v.many([
-                "grid-template-rows",
-                "grid-template-columns",
-                "grid-template-areas",
-                "grid-auto-flow",
-                "grid-auto-columns",
-                "grid-auto-rows",
-            ]);
-            if flow == "row" && auto_rows == "auto" && auto_columns == "auto" {
-                return grid_template(rows, columns, areas);
-            }
-            if areas != "none" {
-                return String::new();
-            }
-            let dense = flow.ends_with("dense");
-            if (flow.starts_with("row") || flow == "dense")
-                && rows == "none"
-                && auto_columns == "auto"
-            {
-                let head = joined(&[
-                    "auto-flow",
-                    if dense { "dense" } else { "" },
-                    if auto_rows == "auto" { "" } else { auto_rows },
-                ]);
-                return format!("{head} / {columns}");
-            }
-            if flow.starts_with("column") && columns == "none" && auto_rows == "auto" {
-                let tail = joined(&[
-                    "auto-flow",
-                    if dense { "dense" } else { "" },
-                    if auto_columns == "auto" {
-                        ""
-                    } else {
-                        auto_columns
-                    },
-                ]);
-                return format!("{rows} / {tail}");
-            }
-            String::new()
-        }
-        "border-image" => {
-            let [source, slice, width, outset, repeat] = v.many([
-                "border-image-source",
-                "border-image-slice",
-                "border-image-width",
-                "border-image-outset",
-                "border-image-repeat",
-            ]);
-            if [slice, width, outset, repeat] == ["100%", "1", "0", "stretch"] {
-                return source.to_string();
-            }
-            format!("{source} {slice} / {width} / {outset} {repeat}")
-        }
-        "offset" => {
-            let [position, path, distance, rotate, anchor] = v.many([
-                "offset-position",
-                "offset-path",
-                "offset-distance",
-                "offset-rotate",
-                "offset-anchor",
-            ]);
-            let moved = distance != "0px" || rotate != "auto";
-            let main = joined(&[
-                if position == "normal" { "" } else { position },
-                if path == "none" && !moved { "" } else { path },
-                if distance == "0px" { "" } else { distance },
-                if rotate == "auto" { "" } else { rotate },
-            ]);
-            let main = if main.is_empty() {
-                "normal".to_string()
-            } else {
-                main
-            };
-            if anchor == "auto" {
-                main
-            } else {
-                format!("{main} / {anchor}")
-            }
-        }
+        "grid-area" => ser_grid_area(&v),
+        "grid-row" | "grid-column" => ser_grid_row(texts),
+        "grid-template" => ser_grid_template(&v),
+        "grid" => ser_grid(&v),
+        "border-image" => ser_border_image(&v),
+        "offset" => ser_offset(&v),
         "background" => background(&v),
         "mask" | "-webkit-mask" => mask(&v),
         "transition" | "-webkit-transition" => transition(&v),
         "animation" | "-webkit-animation" => animation(&v),
-        "timeline-trigger" => {
-            let columns = [
-                "timeline-trigger-name",
-                "timeline-trigger-source",
-                "timeline-trigger-activation-range-start",
-                "timeline-trigger-activation-range-end",
-                "timeline-trigger-active-range-start",
-                "timeline-trigger-active-range-end",
-            ]
-            .map(|name| layers(v.get(name)));
-            // Lists of different lengths have no shorthand spelling.
-            let count = columns[0].len();
-            if columns.iter().any(|column| column.len() != count) {
-                return String::new();
-            }
-            (0..count)
-                .map(|index| {
-                    let [name, source, a_start, a_end, b_start, b_end] =
-                        [0, 1, 2, 3, 4, 5].map(|column| columns[column][index]);
-                    trigger(name, source, [a_start, a_end], [b_start, b_end])
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        }
+        "timeline-trigger" => ser_timeline_trigger(&v),
         _ => String::new(),
     }
 }

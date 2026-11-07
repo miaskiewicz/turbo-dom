@@ -137,6 +137,9 @@ pub struct FontFace {
     descent: i16,
     line_gap: i16,
     mac_ascent_adjustment: bool,
+    /// Set for an `@font-face` face ([`FontFace::from_web_font_bytes`]): Chrome's metrics
+    /// for it. `None` for an installed (or otherwise caller-supplied) face.
+    web: Option<WebMetrics>,
     /// Memoizes shaping by run text. Shaping is real per-run work, and layout
     /// shapes each run at least twice (measuring its width, then emitting its
     /// glyphs) plus once more for every repeated string (table cells, labels);
@@ -152,6 +155,53 @@ impl std::fmt::Debug for FontFace {
             .field("weight", &self.weight)
             .field("italic", &self.italic)
             .finish()
+    }
+}
+
+/// Chrome 156's vertical metrics for an `@font-face` face (miaskiewicz/turbo-dom#304,
+/// `tests/fixtures/web-font-metrics/chrome156.json`): the `hhea` ascender, descender and
+/// line gap (the OS/2 `USE_TYPO_METRICS` flag is not consulted), each as a fraction of the
+/// em `numerator / denominator` -- for a TrueType (`glyf`) font rounded to 16.16 fixed point
+/// first, for any other the exact `units / units_per_em` -- scaled to the font size and
+/// rounded half up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct WebMetrics {
+    ascent: i64,
+    descent: i64,
+    line_gap: i64,
+    denominator: i64,
+}
+
+impl WebMetrics {
+    fn new(face: &TtfFace) -> WebMetrics {
+        let hhea = face.tables().hhea;
+        let units_per_em = i64::from(face.units_per_em());
+        let fixed = face.tables().glyf.is_some();
+        let fraction = |units: i64| {
+            if fixed {
+                (2 * units * 65536 + units_per_em).div_euclid(2 * units_per_em)
+            } else {
+                units
+            }
+        };
+        WebMetrics {
+            ascent: fraction(i64::from(hhea.ascender)),
+            descent: fraction(-i64::from(hhea.descender)),
+            line_gap: fraction(i64::from(hhea.line_gap)),
+            denominator: if fixed { 65536 } else { units_per_em },
+        }
+    }
+
+    /// `(ascent, descent, line_gap)` in whole pixels at `size`.
+    fn px(self, size: f32) -> (f32, f32, f32) {
+        let scale = |numerator: i64| {
+            (numerator as f64 * f64::from(size) / self.denominator as f64 + 0.5).floor() as f32
+        };
+        (
+            scale(self.ascent),
+            scale(self.descent),
+            scale(self.line_gap),
+        )
     }
 }
 
@@ -206,6 +256,11 @@ impl FontFace {
     /// ignored; `tests/fixtures/web-font-kern/chrome156.json`, turbo-dom#240). An ignored
     /// table is hidden from the shaper; installed fonts (`from_bytes`) keep theirs, as the
     /// macOS system Times' version 1.0 table is applied.
+    ///
+    /// The face also takes Chrome's web-font vertical metrics in
+    /// [`html_metrics`](Self::html_metrics), and in a [`FontRegistry`](super::FontRegistry)
+    /// it shadows installed faces of the same family ([`is_web_font`](Self::is_web_font);
+    /// miaskiewicz/turbo-dom#304).
     pub fn from_web_font_bytes(
         mut data: Vec<u8>,
         family: impl Into<String>,
@@ -213,7 +268,15 @@ impl FontFace {
         italic: bool,
     ) -> Option<FontFace> {
         hide_ignored_web_kern(&mut data);
-        FontFace::from_bytes(data, family, weight, italic)
+        let mut face = FontFace::from_bytes(data, family, weight, italic)?;
+        face.web = Some(WebMetrics::new(face.ttf()));
+        Some(face)
+    }
+
+    /// Whether this is an `@font-face` face ([`FontFace::from_web_font_bytes`]).
+    #[must_use]
+    pub fn is_web_font(&self) -> bool {
+        self.web.is_some()
     }
 
     /// Like [`FontFace::from_bytes`] but selects face `index` of a `.ttc`
@@ -252,6 +315,7 @@ impl FontFace {
             descent,
             line_gap,
             mac_ascent_adjustment,
+            web: None,
             shape_cache: Arc::new(Mutex::new(ShapeCache::default())),
         })
     }
@@ -261,10 +325,17 @@ impl FontFace {
     /// independently; macOS's three named legacy families also adjust ascent.
     /// Attribution/source pins are in html-font-metrics-provenance.json and
     /// Blink-font-metrics.LICENSE. Existing PDF/tiny-font canvas metrics stay intact.
+    /// An `@font-face` face reads Chrome's web-font metrics instead (`WebMetrics`).
     #[must_use]
     pub fn html_metrics(&self, size: f32) -> HtmlFontMetrics {
-        let ascent = self.ascent_px(size).round();
-        let descent = self.descent_px(size).round();
+        let (ascent, descent, line_gap) = match self.web {
+            Some(web) => web.px(size),
+            None => (
+                self.ascent_px(size).round(),
+                self.descent_px(size).round(),
+                (f32::from(self.line_gap) * self.scale(size)).round(),
+            ),
+        };
         let ascent = html_legacy_ascent(
             ascent,
             descent,
@@ -273,7 +344,7 @@ impl FontFace {
         HtmlFontMetrics {
             ascent,
             descent,
-            line_gap: (f32::from(self.line_gap) * self.scale(size)).round(),
+            line_gap,
         }
     }
 

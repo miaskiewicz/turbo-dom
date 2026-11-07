@@ -12,7 +12,9 @@ mod components;
 pub use components::LENGTH_UNITS;
 mod grammar;
 mod longhand;
+mod math;
 mod serialize;
+mod shape;
 mod table;
 
 pub use block::{
@@ -130,6 +132,31 @@ pub fn expand(name: &str, value: &str) -> Option<Vec<Longhand>> {
     })
 }
 
+/// The shorthand text when every longhand holds the same CSS-wide keyword or the same
+/// pending (unexpanded) shorthand value; `None` to serialize the longhands instead.
+fn uniform_shorthand_value(values: &[Declaration<'_>], entry: &table::Entry) -> Option<String> {
+    let first = values[0];
+    if !(first.pending.is_some() || CSS_WIDE.contains(&first.value))
+        || !values
+            .iter()
+            .all(|value| value.value == first.value && value.pending == first.pending)
+    {
+        return None;
+    }
+    if let Some((shorthand, text)) = first.pending {
+        if shorthand == "font" && entry.canonical == "font-variant" && grammar::is_system_font(text)
+        {
+            return Some("normal".into());
+        }
+        return Some(if shorthand == entry.canonical {
+            text.to_string()
+        } else {
+            String::new()
+        });
+    }
+    Some(first.value.to_string())
+}
+
 /// `getPropertyValue(shorthand)`: the shorthand serialized from the block's longhands, or `""`
 /// when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
 #[must_use]
@@ -153,27 +180,8 @@ pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
     if values.iter().any(|value| value.important) && values.iter().any(|value| !value.important) {
         return String::new();
     }
-    let first = values[0];
-    if (first.pending.is_some() || CSS_WIDE.contains(&first.value))
-        && values
-            .iter()
-            .all(|value| value.value == first.value && value.pending == first.pending)
-    {
-        if let Some((shorthand, text)) = first.pending {
-            // A system font keyword leaves the font-variant longhands at `normal`.
-            if shorthand == "font"
-                && entry.canonical == "font-variant"
-                && grammar::is_system_font(text)
-            {
-                return "normal".into();
-            }
-            return if shorthand == entry.canonical {
-                text.to_string()
-            } else {
-                String::new()
-            };
-        }
-        return first.value.to_string();
+    if let Some(text) = uniform_shorthand_value(&values, entry) {
+        return text;
     }
     for value in &values {
         if value.pending.is_some()

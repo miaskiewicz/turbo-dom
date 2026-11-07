@@ -186,36 +186,13 @@ export class EventTarget {
     // Single ancestor walk: build the path AND note whether any node on it has a
     // listener for this type. React fires thousands of events with zero matching
     // listeners on the path — those skip the capture/target/bubble invoke loops.
-    const type = event.type;
     const path = [];
-    let hasListener = false;
     // Pay-for-what-you-use: the shadow-aware walk + per-invoke retargeting only
     // runs when a shadow root exists in this document. Otherwise the original
-    // flat walk runs byte-for-byte (one boolean read, predicted false).
+    // flat walk runs (one boolean read, predicted false).
     const doc = this.ownerDocument || this;
     const useShadow = !!(doc && doc.__hasShadow);
-    if (!useShadow) {
-      let node = this;
-      while (node) {
-        path.push(node);
-        if (!hasListener) { const l = node.__listeners && node.__listeners.get(type); if (l && l.length) hasListener = true; }
-        node = node.parentNode || node.__owner || null;
-      }
-    } else {
-      const targetRoot = treeRootOf(target);
-      let node = this;
-      while (node) {
-        path.push(node);
-        if (!hasListener) { const l = node.__listeners && node.__listeners.get(type); if (l && l.length) hasListener = true; }
-        if (node.__isShadowRoot) {
-          // a non-composed event stops at the shadow boundary enclosing its
-          // target; a composed event continues up through the host.
-          node = (!event.composed && node === targetRoot) ? null : (node.host || null);
-        } else {
-          node = node.parentNode || node.__owner || null;
-        }
-      }
-    }
+    const hasListener = useShadow ? shadowPath(this, event, path) : flatPath(this, event.type, path);
     event._path = path;
 
     // pre-click activation (WHATWG): checkbox/radio toggle BEFORE click listeners
@@ -228,58 +205,8 @@ export class EventTarget {
     // relatedTarget (focus/mouseenter/mouseleave) is retargeted per listener
     // exactly like target. Only relevant under shadow with a non-null value.
     const relatedTarget = useShadow ? event.relatedTarget : null;
-    const invoke = (node, phase) => {
-      const list = node.__listeners && node.__listeners.get(event.type);
-      if (!list || list.length === 0) return;
-      event.currentTarget = node;
-      event.eventPhase = phase;
-      // present `target`/`relatedTarget` retargeted to the listener's tree
-      if (useShadow) {
-        event.target = retarget(target, node);
-        if (relatedTarget != null) event.relatedTarget = retarget(relatedTarget, node);
-      }
-      // snapshot — listeners added during dispatch don't fire this round. Skip the
-      // slice alloc for the single-listener case (common React-delegated one): a
-      // 1-element, length-captured iteration can't be disturbed by an add/remove in
-      // that one call. Multi-listener keeps the slice (concurrent-mutation guard).
-      const snap = list.length === 1 ? list : list.slice();
-      for (let k = 0, len = snap.length; k < len; k++) {
-        const l = snap[k];
-        if (phase === PHASE_CAPTURING && !l.capture) continue;
-        if (phase === PHASE_BUBBLING && l.capture) continue;
-        if (l.once) {
-          const cur = node.__listeners.get(event.type);
-          const idx = cur ? cur.indexOf(l) : -1;
-          if (idx !== -1) cur.splice(idx, 1);
-        }
-        event._passiveListener = l.passive;
-        const handler = typeof l.callback === 'function' ? l.callback : l.callback.handleEvent;
-        try {
-          handler.call(node, event);
-        } finally {
-          event._passiveListener = false;
-        }
-        if (event._stopImmediate) return;
-      }
-    };
-
     // no listener anywhere on the path → skip all three propagation phases
-    if (hasListener) {
-      // capturing: root -> just before target
-      for (let i = path.length - 1; i >= 1; i--) {
-        if (event._stopPropagation) break;
-        invoke(path[i], PHASE_CAPTURING);
-      }
-      // at target
-      if (!event._stopPropagation) invoke(path[0], PHASE_AT_TARGET);
-      // bubbling: target's parent -> root
-      if (event.bubbles) {
-        for (let i = 1; i < path.length; i++) {
-          if (event._stopPropagation) break;
-          invoke(path[i], PHASE_BUBBLING);
-        }
-      }
-    }
+    if (hasListener) propagate(event, path, useShadow ? target : null, relatedTarget);
 
     event.eventPhase = PHASE_NONE;
     event.currentTarget = null;
@@ -287,21 +214,115 @@ export class EventTarget {
       event.target = target;
       if (relatedTarget != null) event.relatedTarget = relatedTarget;
     }
-
-    // canceled activation: undo the pre-click toggle if default was prevented.
-    // Otherwise a checkbox/radio toggle fires input then change (activation
-    // default action) — user-event/React rely on these to see the new value.
-    if (activation && event.defaultPrevented) activation.undo();
-    else if (activation && activation.fireChange) {
-      this.dispatchEvent(new Event('input', { bubbles: true }));
-      this.dispatchEvent(new Event('change', { bubbles: true }));
-    }
+    if (activation) finishActivation(this, event, activation);
 
     // remaining default actions (label→control, form submit) unless prevented
     if (!event.defaultPrevented && typeof this.__runDefaultAction === 'function') {
       this.__runDefaultAction(event);
     }
     return !event.defaultPrevented;
+  }
+}
+
+// dispatchEvent helpers (plain functions: no per-dispatch closure).
+function hasListenerFor(node, type) {
+  const l = node.__listeners && node.__listeners.get(type);
+  return !!(l && l.length);
+}
+// The flat (shadow-free) event path from `start` into `path`; whether a node on it has a
+// `type` listener.
+function flatPath(start, type, path) {
+  let hasListener = false;
+  let node = start;
+  while (node) {
+    path.push(node);
+    if (!hasListener) hasListener = hasListenerFor(node, type);
+    node = node.parentNode || node.__owner || null;
+  }
+  return hasListener;
+}
+// The shadow-aware event path: a non-composed event stops at the shadow boundary enclosing
+// its target; a composed event continues up through the host.
+function shadowPath(start, event, path) {
+  const type = event.type;
+  const targetRoot = treeRootOf(start);
+  let hasListener = false;
+  let node = start;
+  while (node) {
+    path.push(node);
+    if (!hasListener) hasListener = hasListenerFor(node, type);
+    if (node.__isShadowRoot) node = (!event.composed && node === targetRoot) ? null : (node.host || null);
+    else node = node.parentNode || node.__owner || null;
+  }
+  return hasListener;
+}
+// The capture, target and bubble phases over `path`. `shadowTarget`: the original target
+// when listeners see a retargeted `target` / `relatedTarget` (shadow), else null.
+function propagate(event, path, shadowTarget, relatedTarget) {
+  // capturing: root -> just before target
+  for (let i = path.length - 1; i >= 1; i--) {
+    if (event._stopPropagation) break;
+    invoke(event, path[i], PHASE_CAPTURING, shadowTarget, relatedTarget);
+  }
+  // at target
+  if (!event._stopPropagation) invoke(event, path[0], PHASE_AT_TARGET, shadowTarget, relatedTarget);
+  // bubbling: target's parent -> root
+  if (!event.bubbles) return;
+  for (let i = 1; i < path.length; i++) {
+    if (event._stopPropagation) break;
+    invoke(event, path[i], PHASE_BUBBLING, shadowTarget, relatedTarget);
+  }
+}
+// Does listener `l` skip `phase` (capture listeners skip bubbling and vice versa)?
+function skipsPhase(l, phase) {
+  return phase === PHASE_CAPTURING ? !l.capture : phase === PHASE_BUBBLING && l.capture;
+}
+function removeListener(node, type, l) {
+  const cur = node.__listeners.get(type);
+  const idx = cur ? cur.indexOf(l) : -1;
+  if (idx !== -1) cur.splice(idx, 1);
+}
+function callListener(node, event, l) {
+  event._passiveListener = l.passive;
+  const handler = typeof l.callback === 'function' ? l.callback : l.callback.handleEvent;
+  try {
+    handler.call(node, event);
+  } finally {
+    event._passiveListener = false;
+  }
+}
+// Run `node`'s listeners for `event` in `phase`.
+function invoke(event, node, phase, shadowTarget, relatedTarget) {
+  const list = node.__listeners && node.__listeners.get(event.type);
+  if (!list || list.length === 0) return;
+  event.currentTarget = node;
+  event.eventPhase = phase;
+  // present `target`/`relatedTarget` retargeted to the listener's tree
+  if (shadowTarget !== null) {
+    event.target = retarget(shadowTarget, node);
+    if (relatedTarget != null) event.relatedTarget = retarget(relatedTarget, node);
+  }
+  // snapshot — listeners added during dispatch don't fire this round. Skip the
+  // slice alloc for the single-listener case (common React-delegated one): a
+  // 1-element, length-captured iteration can't be disturbed by an add/remove in
+  // that one call. Multi-listener keeps the slice (concurrent-mutation guard).
+  const snap = list.length === 1 ? list : list.slice();
+  for (let k = 0, len = snap.length; k < len; k++) {
+    const l = snap[k];
+    if (skipsPhase(l, phase)) continue;
+    if (l.once) removeListener(node, event.type, l);
+    callListener(node, event, l);
+    if (event._stopImmediate) return;
+  }
+}
+// canceled activation: undo the pre-click toggle if default was prevented.
+// Otherwise a checkbox/radio toggle fires input then change (activation
+// default action) — user-event/React rely on these to see the new value.
+function finishActivation(target, event, activation) {
+  if (event.defaultPrevented) activation.undo();
+  else if (activation.fireChange) {
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
 

@@ -253,46 +253,58 @@ impl DocumentGraph {
         let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
         let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
         for (id, target, wrapper) in moves {
-            #[cfg(test)]
-            super::WORK.with(|work| work.placements.set(work.placements.get() + 1));
-            if let Some(old) = self.placed.insert(id, target).filter(|old| *old != target) {
-                self.leave(scope, old, id)?;
-            }
-            let component = self
-                .components
-                .get(&target)
-                .and_then(|weak| weak.to_local(scope))
-                .unwrap_or_else(|| {
-                    let component = v8::Object::new(scope);
-                    let null = v8::null(scope);
-                    component.set_prototype(scope, null.into());
-                    self.components
-                        .insert(target, v8::Weak::new(scope, component));
-                    component
-                });
-            let refs = match component
-                .get_private(scope, refs_key)
-                .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
-            {
-                Some(refs) => refs,
-                None => {
-                    let refs = v8::Map::new(scope);
-                    if component.set_private(scope, refs_key, refs.into()) != Some(true) {
-                        return None;
-                    }
-                    refs
+            self.apply_move(scope, document, id, target, wrapper, owner_key, refs_key)?;
+        }
+        Some(())
+    }
+
+    fn apply_move<'s>(
+        &mut self,
+        scope: &mut v8::PinScope<'s, '_>,
+        document: v8::Local<'s, v8::Object>,
+        id: u32,
+        target: u32,
+        wrapper: v8::Local<'s, v8::Object>,
+        owner_key: v8::Local<'s, v8::Private>,
+        refs_key: v8::Local<'s, v8::Private>,
+    ) -> Option<()> {
+        #[cfg(test)]
+        super::WORK.with(|work| work.placements.set(work.placements.get() + 1));
+        if let Some(old) = self.placed.insert(id, target).filter(|old| *old != target) {
+            self.leave(scope, old, id)?;
+        }
+        let component = self
+            .components
+            .get(&target)
+            .and_then(|weak| weak.to_local(scope))
+            .unwrap_or_else(|| {
+                let component = v8::Object::new(scope);
+                let null = v8::null(scope);
+                component.set_prototype(scope, null.into());
+                self.components
+                    .insert(target, v8::Weak::new(scope, component));
+                component
+            });
+        let refs = match component
+            .get_private(scope, refs_key)
+            .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
+        {
+            Some(refs) => refs,
+            None => {
+                let refs = v8::Map::new(scope);
+                if component.set_private(scope, refs_key, refs.into()) != Some(true) {
+                    return None;
                 }
-            };
-            let index = v8::Integer::new_from_unsigned(scope, id);
-            refs.set(scope, index.into(), wrapper.into())?;
-            if wrapper.set_private(scope, owner_key, component.into()) != Some(true) {
-                return None;
+                refs
             }
-            // Connected roots remain directly owned by the document. Disconnected
-            // component anchors are reachable only through their member wrappers.
-            if self.connected.contains(&id) {
-                retain(scope, document, id, wrapper.into())?;
-            }
+        };
+        let index = v8::Integer::new_from_unsigned(scope, id);
+        refs.set(scope, index.into(), wrapper.into())?;
+        if wrapper.set_private(scope, owner_key, component.into()) != Some(true) {
+            return None;
+        }
+        if self.connected.contains(&id) {
+            retain(scope, document, id, wrapper.into())?;
         }
         Some(())
     }

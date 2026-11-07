@@ -35,134 +35,155 @@ export function cssNumber(value) {
 // hash, string, url, delim, comma, (, ), [, ], whitespace. `null` for bad strings / urls.
 const isNameStart = (c) => /[A-Za-z_\u0080-￿]/.test(c);
 const isName = (c) => /[A-Za-z0-9_\-\u0080-￿]/.test(c);
+// CSS Syntax "consume an escaped code point": zero, a surrogate or past U+10FFFF is U+FFFD.
+const escapedCodePoint = (hex) => {
+  const code = parseInt(hex, 16);
+  return String.fromCodePoint(code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? 0xfffd : code);
+};
+const tokStartsNumber = (text, at) => {
+  const c = text[at], d = text[at + 1], e = text[at + 2];
+  if (c === '+' || c === '-') return /[0-9]/.test(d || '') || (d === '.' && /[0-9]/.test(e || ''));
+  if (c === '.') return /[0-9]/.test(d || '');
+  return /[0-9]/.test(c || '');
+};
+const tokStartsIdent = (text, at) => {
+  const c = text[at], d = text[at + 1];
+  const escape = (index) => text[index] === '\\' && text[index + 1] !== '\n';
+  if (c === '-') return isNameStart(d || '') || d === '-' || escape(at + 1);
+  if (c === '\\') return escape(at);
+  return isNameStart(c || '');
+};
+function tokReadName(text, state) {
+  const n = text.length;
+  let name = '';
+  while (state.i < n) {
+    const c = text[state.i];
+    if (isName(c)) { name += c; state.i++; }
+    else if (c === '\\' && state.i + 1 >= n) { name += '\ufffd'; state.i++; }
+    else if (c === '\\' && text[state.i + 1] !== '\n') {
+      state.i++;
+      const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(state.i));
+      if (hex) { name += escapedCodePoint(hex[0]); state.i += hex[0].length; if (/\s/.test(text[state.i] || '')) state.i++; }
+      else { name += text[state.i]; state.i++; }
+    } else break;
+  }
+  return name;
+}
+function tokReadString(text, state, quote) {
+  const n = text.length;
+  let value = ''; state.i++;
+  while (state.i < n) {
+    const d = text[state.i];
+    if (d === quote) { state.i++; return { type: 'string', value }; }
+    if (d === '\n') return null;
+    if (d === '\\') {
+      if (state.i + 1 >= n) { state.i++; continue; }
+      const e = text[state.i + 1];
+      if (e === '\n') { state.i += 2; continue; }
+      state.i++;
+      const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(state.i));
+      if (hex) { value += escapedCodePoint(hex[0]); state.i += hex[0].length; if (/\s/.test(text[state.i] || '')) state.i++; }
+      else { value += e; state.i++; }
+      continue;
+    }
+    value += d; state.i++;
+  }
+  return { type: 'string', value };
+}
+function tokReadNumeric(text, state) {
+  const m = /^[+-]?(\d*\.\d+|\d+)([eE][+-]?\d+)?/.exec(text.slice(state.i));
+  const raw = m[0];
+  state.i += raw.length;
+  const value = Number(raw);
+  const integer = !/[.eE]/.test(raw);
+  if (text[state.i] === '%') { state.i++; return { type: 'percentage', value, raw }; }
+  if (tokStartsIdent(text, state.i)) return { type: 'dimension', value, unit: tokReadName(text, state) };
+  return { type: 'number', value, integer };
+}
+function tokReadUrlEscape(text, state) {
+  const n = text.length;
+  if (text[state.i + 1] === '\n') return null;
+  state.i++;
+  const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(state.i));
+  if (hex) { const value = escapedCodePoint(hex[0]); state.i += hex[0].length; if (/\s/.test(text[state.i] || '')) state.i++; return value; }
+  if (state.i < n) { const value = text[state.i]; state.i++; return value; }
+  return '\ufffd';
+}
+function tokReadUrlBody(text, state) {
+  const n = text.length;
+  let value = '';
+  while (state.i < n && text[state.i] !== ')') {
+    const d = text[state.i];
+    if (/\s/.test(d)) { while (state.i < n && /\s/.test(text[state.i])) state.i++; if (state.i < n && text[state.i] !== ')') return null; break; }
+    if (d === '"' || d === "'" || d === '(') return null;
+    if (d === '\\') { const escaped = tokReadUrlEscape(text, state); if (escaped === null) return null; value += escaped; continue; }
+    value += d; state.i++;
+  }
+  if (state.i < n) state.i++;
+  return { type: 'url', value };
+}
+function tokReadIdentOrFunc(text, state) {
+  const n = text.length;
+  const name = tokReadName(text, state);
+  if (text[state.i] !== '(') return { type: 'ident', value: name };
+  state.i++;
+  if (name.toLowerCase() === 'url') {
+    let j = state.i;
+    while (j < n && /\s/.test(text[j])) j++;
+    if (text[j] !== '"' && text[j] !== "'") {
+      state.i = j;
+      return tokReadUrlBody(text, state);
+    }
+  }
+  return { type: 'function', name };
+}
+const PUNCT_TOKENS = { ',': { type: 'comma' }, '(': { type: 'open', value: '(' }, '[': { type: 'open', value: '[' }, '{': { type: 'open', value: '{' }, ')': { type: 'close', value: ')' }, ']': { type: 'close', value: ']' }, '}': { type: 'close', value: '}' }, ';': { type: 'semicolon' } };
+function tokPunctuation(c) {
+  return PUNCT_TOKENS[c] ?? { type: 'delim', value: c };
+}
+function tokenizeComment(text, state, n) {
+  if (text[state.i] !== '/' || text[state.i + 1] !== '*') return false;
+  const end = text.indexOf('*/', state.i + 2);
+  state.i = end < 0 ? n : end + 2;
+  return true;
+}
+function tokenizeWhitespace(text, state, n, out) {
+  if (!/\s/.test(text[state.i])) return false;
+  while (state.i < n && /\s/.test(text[state.i])) state.i++;
+  out.push({ type: 'ws' });
+  return true;
+}
+function tokenizeHash(text, state, n, out) {
+  if (text[state.i] !== '#' || state.i + 1 >= n || !(isName(text[state.i + 1]) || text[state.i + 1] === '\\')) return false;
+  state.i++;
+  out.push({ type: 'hash', value: tokReadName(text, state) });
+  return true;
+}
+function tokenizeStep(text, state, n, out) {
+  if (tokenizeComment(text, state, n)) return true;
+  if (tokenizeWhitespace(text, state, n, out)) return true;
+  const c = text[state.i];
+  if (c === '"' || c === "'") { const token = tokReadString(text, state, c); if (!token) return false; out.push(token); return true; }
+  if (tokStartsNumber(text, state.i)) { out.push(tokReadNumeric(text, state)); return true; }
+  if (tokStartsIdent(text, state.i)) { const token = tokReadIdentOrFunc(text, state); if (!token) return false; out.push(token); return true; }
+  if (tokenizeHash(text, state, n, out)) return true;
+  state.i++;
+  out.push(tokPunctuation(c));
+  return true;
+}
 function tokenize(text) {
   const out = [];
-  let i = 0;
+  const state = { i: 0 };
   const n = text.length;
-  // CSS Syntax "consume an escaped code point": zero, a surrogate or past U+10FFFF is U+FFFD.
-  const escaped = (hex) => {
-    const code = parseInt(hex, 16);
-    return String.fromCodePoint(code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? 0xfffd : code);
-  };
-  const startsNumber = (at) => {
-    const c = text[at], d = text[at + 1], e = text[at + 2];
-    if (c === '+' || c === '-') return /[0-9]/.test(d || '') || (d === '.' && /[0-9]/.test(e || ''));
-    if (c === '.') return /[0-9]/.test(d || '');
-    return /[0-9]/.test(c || '');
-  };
-  const startsIdent = (at) => {
-    const c = text[at], d = text[at + 1];
-    // A backslash starts an escape unless a newline follows it.
-    const escape = (index) => text[index] === '\\' && text[index + 1] !== '\n';
-    if (c === '-') return isNameStart(d || '') || d === '-' || escape(at + 1);
-    if (c === '\\') return escape(at);
-    return isNameStart(c || '');
-  };
-  const readName = () => {
-    let name = '';
-    while (i < n) {
-      const c = text[i];
-      if (isName(c)) { name += c; i++; }
-      else if (c === '\\' && i + 1 >= n) { name += '\ufffd'; i++; }
-      else if (c === '\\' && text[i + 1] !== '\n') {
-        i++;
-        const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
-        if (hex) { name += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
-        else { name += text[i]; i++; }
-      } else break;
-    }
-    return name;
-  };
-  while (i < n) {
-    const c = text[i];
-    if (c === '/' && text[i + 1] === '*') { const end = text.indexOf('*/', i + 2); i = end < 0 ? n : end + 2; continue; }
-    if (/\s/.test(c)) { while (i < n && /\s/.test(text[i])) i++; out.push({ type: 'ws' }); continue; }
-    if (c === '"' || c === "'") {
-      let value = ''; i++;
-      let closed = false;
-      while (i < n) {
-        const d = text[i];
-        if (d === c) { i++; closed = true; break; }
-        if (d === '\n') return null;
-        if (d === '\\') {
-          if (i + 1 >= n) { i++; continue; }
-          const e = text[i + 1];
-          if (e === '\n') { i += 2; continue; }
-          i++;
-          const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
-          if (hex) { value += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
-          else { value += e; i++; }
-          continue;
-        }
-        value += d; i++;
-      }
-      void closed;
-      out.push({ type: 'string', value });
-      continue;
-    }
-    if (startsNumber(i)) {
-      const m = /^[+-]?(\d*\.\d+|\d+)([eE][+-]?\d+)?/.exec(text.slice(i));
-      const raw = m[0];
-      i += raw.length;
-      const value = Number(raw);
-      const integer = !/[.eE]/.test(raw);
-      if (text[i] === '%') { i++; out.push({ type: 'percentage', value, raw }); continue; }
-      if (startsIdent(i)) { out.push({ type: 'dimension', value, unit: readName() }); continue; }
-      out.push({ type: 'number', value, integer });
-      continue;
-    }
-    if (startsIdent(i)) {
-      const name = readName();
-      if (text[i] === '(') {
-        i++;
-        if (name.toLowerCase() === 'url') {
-          let j = i;
-          while (j < n && /\s/.test(text[j])) j++;
-          if (text[j] !== '"' && text[j] !== "'") {
-            let value = '';
-            i = j;
-            while (i < n && text[i] !== ')') {
-              const d = text[i];
-              if (/\s/.test(d)) { while (i < n && /\s/.test(text[i])) i++; if (i < n && text[i] !== ')') return null; break; }
-              if (d === '"' || d === "'" || d === '(') return null;
-              if (d === '\\') {
-                // An escaped newline makes a bad url.
-                if (text[i + 1] === '\n') return null;
-                i++;
-                const hex = /^[0-9a-fA-F]{1,6}/.exec(text.slice(i));
-                if (hex) { value += escaped(hex[0]); i += hex[0].length; if (/\s/.test(text[i] || '')) i++; }
-                else if (i < n) { value += text[i]; i++; }
-                else value += '\ufffd';
-                continue;
-              }
-              value += d; i++;
-            }
-            // The end of the input closes the url.
-            if (i < n) i++;
-            out.push({ type: 'url', value });
-            continue;
-          }
-        }
-        out.push({ type: 'function', name });
-        continue;
-      }
-      out.push({ type: 'ident', value: name });
-      continue;
-    }
-    if (c === '#' && i + 1 < n && (isName(text[i + 1]) || text[i + 1] === '\\')) { i++; out.push({ type: 'hash', value: readName() }); continue; }
-    i++;
-    if (c === ',') out.push({ type: 'comma' });
-    else if (c === '(' || c === '[' || c === '{') out.push({ type: 'open', value: c });
-    else if (c === ')' || c === ']' || c === '}') out.push({ type: 'close', value: c });
-    else if (c === ';') out.push({ type: 'semicolon' });
-    else out.push({ type: 'delim', value: c });
+  while (state.i < n) {
+    if (!tokenizeStep(text, state, n, out)) return null;
   }
   return out;
 }
 
 // ------------------------------------------------------------- components ----
 const LENGTH_UNITS = new Set(['px', 'em', 'rem', 'ex', 'rex', 'ch', 'rch', 'ic', 'ric', 'cap', 'rcap', 'lh', 'rlh', 'vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax', 'cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax', 'cm', 'mm', 'q', 'in', 'pt', 'pc']);
-const MATH_FUNCTIONS = new Set(['calc', 'min', 'max', 'clamp', 'round', 'mod', 'rem', 'abs', 'sign', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'pow', 'sqrt', 'hypot', 'log', 'exp', 'calc-size']);
+const MATH_FUNCTIONS = new Set(['calc', 'min', 'max', 'clamp', 'round', 'mod', 'rem', 'abs', 'sign', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'pow', 'sqrt', 'hypot', 'log', 'exp', 'calc-size', 'sibling-index', 'sibling-count']);
 const IMAGE_FUNCTIONS = new Set(['linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient', 'repeating-conic-gradient', '-webkit-linear-gradient', '-webkit-radial-gradient', '-webkit-repeating-linear-gradient', '-webkit-repeating-radial-gradient', '-webkit-gradient', 'image-set', '-webkit-image-set', 'cross-fade', '-webkit-cross-fade', 'paint', 'image']);
 const COLOR_FUNCTIONS = new Set(['rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'color', 'color-mix', 'light-dark', 'contrast-color', '-webkit-device-cmyk']);
 const SYSTEM_COLORS = new Set(['currentcolor', 'transparent', 'accentcolor', 'accentcolortext', 'activetext', 'buttonborder', 'buttonface', 'buttontext', 'canvas', 'canvastext', 'field', 'fieldtext', 'graytext', 'highlight', 'highlighttext', 'linktext', 'mark', 'marktext', 'selecteditem', 'selecteditemtext', 'visitedtext', 'activeborder', 'activecaption', 'appworkspace', 'background', 'buttonhighlight', 'buttonshadow', 'captiontext', 'inactiveborder', 'inactivecaption', 'inactivecaptiontext', 'infobackground', 'infotext', 'menu', 'menutext', 'scrollbar', 'threeddarkshadow', 'threedface', 'threedhighlight', 'threedlightshadow', 'threedshadow', 'window', 'windowframe', 'windowtext', '-webkit-link', '-webkit-focus-ring-color', '-internal-quirk-inherit']);
@@ -190,51 +211,65 @@ function join(comps) {
  * parentheses / `calc()`, one-unit `min()` / `max()` / `clamp()` already simplified to
  * `calc(...)`), absolute lengths combined in px; `null` when Chrome keeps it unsimplified.
  */
+function sumOperand(comp) {
+  const terms = literalTerms(comp);
+  if (terms) return terms;
+  if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && sumTerms(nested); }
+  // A nested math function Chrome simplified already spells `calc(...)`.
+  if (isMath(comp) && comp.text.startsWith('calc(')) {
+    const nested = components(comp.text.slice(5, -1));
+    return nested && sumTerms(nested);
+  }
+  return null;
+}
+const sumScalar = (terms) => (terms.length === 1 && terms[0][0] === '' ? terms[0][1] : null);
+const sumScale = (terms, factor) => terms.map(([unit, value]) => [unit, value * factor]);
+function sumApplyOperator(op, current, next) {
+  if (op.kind === 'delim' && op.value === '*') {
+    const b = sumScalar(next);
+    return { current: b !== null ? sumScale(current, b) : sumScale(next, sumScalar(current)) };
+  }
+  if (op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) {
+    const b = sumScalar(next);
+    return b === null ? null : { current: sumScale(current, 1 / b) };
+  }
+  // The remaining case is +/- by precondition: every caller of sumTerms (the only caller of
+  // sumApplyOperator) runs after functionValid / checkedSum, which rejects any other operator
+  // at an odd position. Chrome 156 fixture-exercised in test/css-shorthand-chrome.test.mjs.
+  return { current: next, flush: op.value === '+' ? 1 : -1 };
+}
 function sumTerms(inner) {
   // Operands alternate with operators; products bind first.
   if (inner.length % 2 === 0) return null;
-  const CONSTANTS = { e: Math.E, pi: Math.PI, infinity: Infinity, '-infinity': -Infinity, nan: NaN };
-  const operand = (comp) => {
-    if (comp.kind === 'number') return [['', comp.value]];
-    if (comp.kind === 'percentage') return [['%', comp.value]];
-    if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
-    if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
-    if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && sumTerms(nested); }
-    // A nested math function Chrome simplified already spells `calc(...)`.
-    if (isMath(comp) && comp.text.startsWith('calc(')) {
-      const nested = components(comp.text.slice(5, -1));
-      return nested && sumTerms(nested);
-    }
-    return null;
-  };
-  const scalar = (terms) => (terms.length === 1 && terms[0][0] === '' ? terms[0][1] : null);
-  const scale = (terms, factor) => terms.map(([unit, value]) => [unit, value * factor]);
   const terms = [];
   const push = (product, sign) => {
     for (const [unit, value] of product) { const existing = terms.find((t) => t[0] === unit); if (existing) existing[1] += sign * value; else terms.push([unit, sign * value]); }
   };
   let sign = 1;
-  let current = operand(inner[0]);
+  let current = sumOperand(inner[0]);
   if (!current) return null;
   for (let index = 1; index < inner.length; index += 2) {
-    const next = operand(inner[index + 1]);
+    const next = sumOperand(inner[index + 1]);
     if (!next) return null;
-    const op = inner[index];
-    if (op.kind === 'delim' && op.value === '*') {
-      // calcType admitted at most one dimension: when the right side is not the scalar, the left is.
-      const b = scalar(next);
-      current = b !== null ? scale(current, b) : scale(next, scalar(current));
-    } else if (op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) {
-      const b = scalar(next);
-      if (b === null) return null;
-      current = scale(current, 1 / b);
-    } else if (op.kind === 'delim' && (op.value === '+' || op.value === '-')) {
-      push(current, sign);
-      sign = op.value === '+' ? 1 : -1;
-      current = next;
-    } else return null;
+    const applied = sumApplyOperator(inner[index], current, next);
+    if (!applied) return null;
+    if (applied.flush !== undefined) { push(current, sign); sign = applied.flush; }
+    current = applied.current;
   }
   push(current, sign);
+  return canonicalTerms(terms);
+}
+const CONSTANTS = { e: Math.E, pi: Math.PI, infinity: Infinity, '-infinity': -Infinity, nan: NaN };
+/** A literal `calc()` operand's one term (a number, a percentage, a dimension, a constant), else null. */
+function literalTerms(comp) {
+  if (comp.kind === 'number') return [['', comp.value]];
+  if (comp.kind === 'percentage') return [['%', comp.value]];
+  if (comp.kind === 'dimension') return [[comp.unit, comp.value]];
+  if (comp.kind === 'ident') { const name = comp.value.toLowerCase(); return name in CONSTANTS ? [['', CONSTANTS[name]]] : null; }
+  return null;
+}
+/** Like-unit terms with absolute lengths in px and times, angles and frequencies in their canonical unit. */
+function canonicalTerms(terms) {
   // Absolute lengths combine in px.
   const ABSOLUTE = { in: 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, pt: 96 / 72, pc: 16 };
   if (terms.some(([unit]) => unit in ABSOLUTE)) {
@@ -259,6 +294,7 @@ function sumTerms(inner) {
   return terms;
 }
 function calcSum(inner) {
+  if (hasTreeCounting(inner)) return treeCalcText(inner);
   const terms = sumTerms(inner);
   return terms && calcText(terms);
 }
@@ -268,36 +304,42 @@ const unitCategory = (unit) => (LENGTH_UNITS.has(unit) ? 0 : unit === 's' || uni
  * math function), `null` when Chrome rejects it: a sum mixes numbers and dimensions or two
  * dimension categories, a product multiplies two dimensions, or a divisor has a unit.
  */
+function calcTypeOperand(comp) {
+  if (comp.kind === 'number') return 'number';
+  if (comp.kind === 'percentage') return 'percent';
+  if (comp.kind === 'dimension') { const category = unitCategory(comp.unit); return category === null ? null : `unit${category}`; }
+  if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && calcType(nested); }
+  if (isMath(comp)) return mathType(comp);
+  if (comp.kind === 'ident' && ['e', 'pi', 'infinity', '-infinity', 'nan'].includes(comp.value.toLowerCase())) return 'number';
+  return null;
+}
+function calcTypeMultiply(product, next, total) {
+  if (unitType(product) && unitType(next)) return null;
+  return { product: (product === 'number' || product === 'unknown') ? next : product, total };
+}
+function calcTypeAdd(product, next, total) {
+  const newTotal = total === null ? product : sumType(total, product);
+  return newTotal === null ? null : { product: next, total: newTotal };
+}
+function calcTypeStep(op, product, next, total) {
+  if (op.kind === 'delim' && op.value === '*') return calcTypeMultiply(product, next, total);
+  if (op.kind === 'slash' || (op.kind === 'delim' && op.value === '/')) return unitType(next) ? null : { product, total };
+  if (op.kind === 'delim' && (op.value === '+' || op.value === '-')) return calcTypeAdd(product, next, total);
+  return null;
+}
 function calcType(inner) {
-  const operand = (comp) => {
-    if (comp.kind === 'number') return 'number';
-    if (comp.kind === 'percentage') return 'percent';
-    if (comp.kind === 'dimension') { const category = unitCategory(comp.unit); return category === null ? null : `unit${category}`; }
-    if (comp.kind === 'function' && comp.name === '(') { const nested = components(comp.text.slice(1, -1)); return nested && calcType(nested); }
-    if (isMath(comp)) return mathType(comp);
-    if (comp.kind === 'ident' && ['e', 'pi', 'infinity', '-infinity', 'nan'].includes(comp.value.toLowerCase())) return 'number';
-    return null;
-  };
-  const unit = unitType, sum = sumType;
   if (!inner.length) return null;
   let total = null;
-  let product = operand(inner[0]);
+  let product = calcTypeOperand(inner[0]);
   if (product === null) return null;
   for (let index = 1; index < inner.length; index += 2) {
-    const operator = inner[index], next = inner[index + 1] && operand(inner[index + 1]);
+    const next = inner[index + 1] && calcTypeOperand(inner[index + 1]);
     if (!next) return null;
-    if (operator.kind === 'delim' && operator.value === '*') {
-      if (unit(product) && unit(next)) return null;
-      if (product === 'number' || product === 'unknown') product = next;
-    } else if (operator.kind === 'slash' || (operator.kind === 'delim' && operator.value === '/')) {
-      if (unit(next)) return null;
-    } else if (operator.kind === 'delim' && (operator.value === '+' || operator.value === '-')) {
-      total = total === null ? product : sum(total, product);
-      if (total === null) return null;
-      product = next;
-    } else return null;
+    const stepped = calcTypeStep(inner[index], product, next, total);
+    if (!stepped) return null;
+    product = stepped.product; total = stepped.total;
   }
-  return total === null ? product : sum(total, product);
+  return total === null ? product : sumType(total, product);
 }
 const unitType = (type) => type === 'percent' || type.startsWith('unit');
 /** The type of a sum of two types (`null`: Chrome rejects adding them). */
@@ -317,7 +359,7 @@ const isMath = (c) => c.kind === 'function' && MATH_FUNCTIONS.has(c.name);
 function mathType(comp) {
   const inner = innerOf(comp);
   if (comp.text.startsWith('calc(')) return calcType(inner);
-  if (comp.name === 'sign') return 'number';
+  if (comp.name === 'sign' || comp.name === 'sibling-index' || comp.name === 'sibling-count') return 'number';
   return ['min', 'max', 'clamp', 'abs'].includes(comp.name) ? argumentsType(inner) : 'unknown';
 }
 /** A function's comma-separated arguments. */
@@ -355,50 +397,52 @@ function argumentsType(inner) {
   }
   return total;
 }
+function rgbHslValid(name, inner) {
+  const commasCount = inner.filter((c) => c.kind === 'comma').length;
+  // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
+  if (inner.length && isIdent(inner[0], ['from'])) return commasCount === 0 && (inner.length === 5 || (inner.length === 7 && inner[5].kind === 'slash'));
+  // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
+  const hue = (c) => c.kind === 'number' || (c.kind === 'dimension' && unitCategory(c.unit) === 2) || (commasCount === 0 && isIdent(c, ['none'])) || (isMath(c) && ['number', 'unit2', 'unknown'].includes(mathType(c)));
+  if (name.startsWith('hsl') && inner.length && !hue(inner[0])) return false;
+  if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
+  const slash = inner.findIndex((c) => c.kind === 'slash');
+  return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
+}
+function linearValid(inner) {
+  // Each stop: a number output and at most two percentage positions.
+  return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3 && stop[0].kind === 'number' && stop.slice(1).every((c) => c.kind === 'percentage'));
+}
+function stepsValid(inner) {
+  const count = (c, minimum) => (c.kind === 'number' ? c.integer && c.value >= minimum : c.kind === 'function' && MATH_FUNCTIONS.has(c.name));
+  if (inner.length === 1) return count(inner[0], 1);
+  if (inner.length === 3 && inner[1].kind === 'comma') {
+    const position = keyword(inner[2], ['start', 'end', 'jump-start', 'jump-end', 'jump-none', 'jump-both']);
+    return position !== null && count(inner[0], position === 'jump-none' ? 2 : 1);
+  }
+  return false;
+}
+function cubicBezierValid(inner) {
+  const args = argumentsOf(inner);
+  return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
+}
+const COLOR_FN_NAMES = new Set(['rgb', 'rgba', 'hsl', 'hsla']);
 /**
- * Structural checks Chrome makes before keeping a function: a `calc()` sum alternates operands
- * and operators and type-checks, `min()` / `max()` / `clamp()` have their arguments, `rgb()` /
- * `hsl()` have three channels (and an alpha) in one syntax, `linear()` stops have at most two
- * positions, `steps()` counts and `cubic-bezier()` x coordinates are in range.
+ * Structural checks Chrome makes before keeping a function.
  */
 function functionValid(name, inner) {
   if (name === 'calc') return checkedSum(inner) !== null;
   if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
   if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
   if (name === 'abs' || name === 'sign') return !inner.some(isComma) && checkedSum(inner) !== null;
-  if (['rgb', 'rgba', 'hsl', 'hsla'].includes(name)) {
-    const commasCount = inner.filter((c) => c.kind === 'comma').length;
-    // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
-    if (inner.length && isIdent(inner[0], ['from'])) return commasCount === 0 && (inner.length === 5 || (inner.length === 7 && inner[5].kind === 'slash'));
-    // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
-    const hue = (c) => c.kind === 'number' || (c.kind === 'dimension' && unitCategory(c.unit) === 2) || (commasCount === 0 && isIdent(c, ['none'])) || (isMath(c) && ['number', 'unit2', 'unknown'].includes(mathType(c)));
-    if (name.startsWith('hsl') && inner.length && !hue(inner[0])) return false;
-    if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
-    const slash = inner.findIndex((c) => c.kind === 'slash');
-    return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
-  }
-  if (name === 'linear') {
-    // Each stop: a number output and at most two percentage positions (literals once `read`
-    // resolved the math functions).
-    return inner.some((c) => c.kind === 'comma') && argumentsOf(inner).every((stop) => stop.length >= 1 && stop.length <= 3 && stop[0].kind === 'number' && stop.slice(1).every((c) => c.kind === 'percentage'));
-  }
-  if (name === 'steps') {
-    // The step count: an integer literal, or a math function Chrome checks later.
-    const count = (c, minimum) => (c.kind === 'number' ? c.integer && c.value >= minimum : c.kind === 'function' && MATH_FUNCTIONS.has(c.name));
-    if (inner.length === 1) return count(inner[0], 1);
-    if (inner.length === 3 && inner[1].kind === 'comma') {
-      const position = keyword(inner[2], ['start', 'end', 'jump-start', 'jump-end', 'jump-none', 'jump-both']);
-      return position !== null && count(inner[0], position === 'jump-none' ? 2 : 1);
-    }
-    return false;
-  }
-  if (name === 'cubic-bezier') {
-    // Four numbers (literals once `read` resolved the math functions); the x coordinates are in [0, 1].
-    const args = argumentsOf(inner);
-    return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
-  }
-  return true;
+  if (COLOR_FN_NAMES.has(name)) return rgbHslValid(name, inner);
+  if (name === 'linear') return linearValid(inner);
+  if (name === 'steps') return stepsValid(inner);
+  if (name === 'cubic-bezier') return cubicBezierValid(inner);
+  return treeArgumentsValid(name, inner);
 }
+/** The tree-counting functions take no arguments. */
+const treeArgumentsValid = (name, inner) => !TREE_COUNTING.has(name) || inner.length === 0;
+const TREE_COUNTING = new Set(['sibling-index', 'sibling-count']);
 /** `calc()` of simplified terms: numbers, then percentages, then units in ASCII order. */
 function calcText(terms) {
   if (terms.length === 1 && !Number.isFinite(terms[0][1])) {
@@ -457,6 +501,227 @@ function absSign(name, inner) {
   // `sign()` keeps a (signed) zero and NaN.
   return name === 'abs' ? calcText([[term[0], Math.abs(term[1])]]) : calcText([['', term[1] === 0 || Number.isNaN(term[1]) ? term[1] : Math.sign(term[1])]]);
 }
+// ------------------------------------------------------ shape() (#338) ----
+// Lockstep port of rtdom/css_shorthand/shape.rs: `shape(<fill-rule>? from <position>,
+// <shape-command>#)` with Chrome 156's spelling (the default `nonzero` rule, `from origin` /
+// `from start` anchors, `ccw` / `small` / `rotate 0deg` arc flags left out).
+function shapePositionText(comps) {
+  if (comps.length === 3) return null;
+  const point = position(comps);
+  return point && `${point[0]} ${point[1]}`;
+}
+function coordinatePair(comps) {
+  if (comps.length !== 2) return null;
+  const [x, y] = comps.map((c) => lengthPercentage(c, true));
+  return x === null || y === null ? null : `${x} ${y}`;
+}
+/** A control point: a position (`to` commands) or a pair anchored `from start | end | origin`. */
+function controlPoint(comps, absolute) {
+  if (comps.length === 4) {
+    const anchor = isIdent(comps[2], ['from']) ? keyword(comps[3], ['start', 'end', 'origin']) : null;
+    const pair = anchor && coordinatePair(comps.slice(0, 2));
+    if (!pair) return null;
+    return anchor === (absolute ? 'origin' : 'start') ? pair : `${pair} from ${anchor}`;
+  }
+  return absolute ? shapePositionText(comps) : coordinatePair(comps);
+}
+/** `to <position>` or `by <coordinate-pair>`: [text, absolute], or null. */
+function endPoint(comps) {
+  const way = comps.length ? keyword(comps[0], ['to', 'by']) : null;
+  const text = way === 'to' ? shapePositionText(comps.slice(1)) : way === 'by' ? coordinatePair(comps.slice(1)) : null;
+  return text === null ? null : [`${way} ${text}`, way === 'to'];
+}
+/** `with <control-point> [/ <control-point>]?`. */
+function shapeControls(comps, absolute, two) {
+  // splitEnd cut the end point at the `with`.
+  if (!comps.length) return null;
+  const points = split(comps.slice(1), isSlash);
+  if (points.length > (two ? 2 : 1)) return null;
+  const texts = points.map((point) => controlPoint(point, absolute));
+  return texts.includes(null) ? null : `with ${texts.join(' / ')}`;
+}
+/** The end point at the front of `comps` (up to a `stop` keyword) and the rest: [text, absolute, rest]. */
+function splitEnd(comps, stop) {
+  const at = comps.findIndex((comp, index) => index > 0 && isIdent(comp, stop));
+  const end = endPoint(at < 0 ? comps : comps.slice(0, at));
+  return end && [...end, at < 0 ? [] : comps.slice(at)];
+}
+function axisLine(comps, sides) {
+  if (comps.length !== 2) return null;
+  const way = keyword(comps[0], ['to', 'by']);
+  const value = way === 'to' ? keyword(comps[1], sides) ?? lengthPercentage(comps[1], true) : way === 'by' ? lengthPercentage(comps[1], true) : null;
+  return value === null ? null : `${way} ${value}`;
+}
+/** `of <length-percentage>{1,2}` at the front of `rest`: the components it used, or 0. */
+function arcRadii(rest, parts) {
+  const values = [];
+  for (const comp of rest.slice(1, 3)) { const value = lengthPercentage(comp, true); if (value === null) break; values.push(value); }
+  parts.radii = values.join(' ');
+  return values.length && values.length + 1;
+}
+/** One arc part at the front of `rest` into `parts`: the components it used, or 0. */
+function arcPart(rest, parts) {
+  const word = ident(rest[0]);
+  if (word === 'of' && parts.radii === undefined) return arcRadii(rest, parts);
+  const flag = (word === 'cw' || word === 'ccw') ? 'sweep' : (word === 'large' || word === 'small') ? 'size' : null;
+  if (flag && parts[flag] === undefined) { parts[flag] = word; return 1; }
+  if (word === 'rotate' && parts.rotate === undefined && rest[1] && angleStrict(rest[1]) !== null) { parts.rotate = rest[1]; return 2; }
+  return 0;
+}
+/** `arc <end> [of <lp>{1,2}] && [cw | ccw]? && [large | small]? && [rotate <angle>]?`. */
+function arcCommand(comps) {
+  const end = splitEnd(comps, ['of', 'cw', 'ccw', 'large', 'small', 'rotate']);
+  if (!end) return null;
+  const parts = {};
+  for (let rest = end[2]; rest.length;) { const used = arcPart(rest, parts); if (!used) return null; rest = rest.slice(used); }
+  if (!parts.radii) return null;
+  let out = `${end[0]} of ${parts.radii}`;
+  if (parts.sweep === 'cw') out += ' cw';
+  if (parts.size === 'large') out += ' large';
+  const rotate = parts.rotate;
+  return rotate && !(rotate.kind === 'dimension' && rotate.value === 0) ? `${out} rotate ${rotate.text}` : out;
+}
+/** `curve` / `smooth`: the end point, then the control point(s) (`smooth`'s optional). */
+function curveCommand(rest, curve) {
+  const end = splitEnd(rest, ['with']);
+  if (!end) return null;
+  if (!curve && !end[2].length) return end[0];
+  const controls = shapeControls(end[2], end[1], curve);
+  return controls === null ? null : `${end[0]} ${controls}`;
+}
+const SHAPE_COMMANDS = {
+  close: (rest) => (rest.length ? null : ''),
+  move: (rest) => { const end = endPoint(rest); return end && end[0]; },
+  hline: (rest) => axisLine(rest, ['left', 'center', 'right', 'x-start', 'x-end']),
+  vline: (rest) => axisLine(rest, ['top', 'center', 'bottom', 'y-start', 'y-end']),
+  curve: (rest) => curveCommand(rest, true),
+  smooth: (rest) => curveCommand(rest, false),
+  arc: arcCommand,
+};
+SHAPE_COMMANDS.line = SHAPE_COMMANDS.move;
+/** One `<shape-command>`. */
+function shapeCommand(comps) {
+  const name = comps.length ? ident(comps[0]) : null;
+  const parse = name !== null && Object.hasOwn(SHAPE_COMMANDS, name) ? SHAPE_COMMANDS[name] : null;
+  const text = parse && parse(comps.slice(1));
+  if (text === null || text === undefined) return null;
+  return text ? `${name} ${text}` : name;
+}
+/** A `shape()` function in Chrome's spelling, or null when Chrome rejects it. */
+function shapeText(comp) {
+  const items = split(innerOf(comp), isComma);
+  // One trailing comma is dropped.
+  if (items.length > 2 && !items[items.length - 1].length) items.pop();
+  let head = items[0];
+  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
+  if (rule) head = head.slice(1);
+  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
+  if (from === null || items.length < 2) return null;
+  const parts = [`from ${from}`];
+  for (const item of items.slice(1)) { const command = shapeCommand(item); if (command === null) return null; parts.push(command); }
+  return `shape(${rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
+}
+/** `shape() || <box>` (`fallback` left out), or null when `comps` hold no valid shape(). */
+function shapeWithBox(comps, boxes, fallback) {
+  const isShape = (c) => functionNamed(c, ['shape']) !== null;
+  let shape = null, box = null;
+  if (comps.length === 1) [shape] = comps;
+  else if (comps.length === 2) [shape, box] = isShape(comps[0]) ? comps : [comps[1], comps[0]];
+  if (!shape || !isShape(shape)) return null;
+  const text = shapeText(shape);
+  const name = box && keyword(box, boxes);
+  if (text === null || (box && name === null)) return null;
+  return name && name !== fallback ? `${text} ${name}` : text;
+}
+// ----------------------------------------------- tree-counting math (#338) ----
+// Math expressions Chrome keeps unresolved at parse time because an operand is only known at
+// computed-value time: the tree-counting functions `sibling-index()` / `sibling-count()`.
+// Lockstep port of rtdom/css_shorthand/math.rs: literal factors of a product multiply into one
+// leading coefficient, literal terms of a sum add up in front, nested sums and products
+// flatten, a product in a sum (or a sum in a product) is parenthesized.
+/** Whether `comps` hold a tree-counting function, nested ones included. */
+const hasTreeCounting = (comps) => comps.some((comp) => comp.kind === 'function' && (comp.text.includes('sibling-index()') || comp.text.includes('sibling-count()')));
+/** Add like-unit `terms` into `into`, negated when `negative`. */
+function addTerms(into, terms, negative) {
+  for (const [unit, value] of terms) {
+    const existing = into.find((term) => term[0] === unit);
+    if (existing) existing[1] += negative ? -value : value;
+    else into.push([unit, negative ? -value : value]);
+  }
+}
+function treeOperand(comp) {
+  const terms = literalTerms(comp);
+  if (terms) return { kind: 'literal', terms: canonicalTerms(terms) };
+  if (comp.kind === 'function' && comp.name === '(') return treeSum(components(comp.text.slice(1, -1)));
+  // A nested math function Chrome simplified already spells `calc(...)`.
+  if (comp.text.startsWith('calc(')) return treeSum(components(comp.text.slice(5, -1)));
+  return { kind: 'function', text: comp.text };
+}
+/** A checked `calc()` sum: operands at even positions, operators between them. */
+function treeSum(comps) {
+  const literals = [], rest = [];
+  let start = 0, negative = false;
+  for (let index = 1; index <= comps.length; index += 2) {
+    const next = comps[index];
+    if (next && !(next.kind === 'delim' && (next.value === '+' || next.value === '-'))) continue;
+    const expr = treeProduct(comps.slice(start, index));
+    if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
+    else if (expr.kind === 'sum') { addTerms(literals, expr.literals, negative); for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]); }
+    else rest.push([negative, expr]);
+    negative = !!next && next.value === '-';
+    start = index + 1;
+  }
+  if (!rest.length) return { kind: 'literal', terms: literals };
+  if (!literals.length && rest.length === 1 && !rest[0][0]) return rest[0][1];
+  return { kind: 'sum', literals, rest };
+}
+/** Fold one product operand into the coefficient and factors. */
+function treeFactor(coefficient, factors, expr, divisor) {
+  if (expr.kind === 'literal' && expr.terms.length === 1) {
+    const [unit, value] = expr.terms[0];
+    if (divisor) coefficient[1] /= value;
+    else { coefficient[1] *= value; if (unit) coefficient[0] = unit; }
+  } else if (expr.kind === 'product' && !divisor) {
+    coefficient[1] *= expr.coefficient[1];
+    if (expr.coefficient[0]) coefficient[0] = expr.coefficient[0];
+    factors.push(...expr.factors);
+  } else factors.push([divisor, expr]);
+}
+/** A checked product: operands at even positions, `*` / `/` between them. */
+function treeProduct(comps) {
+  const coefficient = ['', 1], factors = [];
+  for (let index = 0; index < comps.length; index += 2) {
+    const divisor = index > 0 && (comps[index - 1].kind === 'slash' || comps[index - 1].value === '/');
+    treeFactor(coefficient, factors, treeOperand(comps[index]), divisor);
+  }
+  if (!factors.length) return { kind: 'literal', terms: [coefficient] };
+  if (coefficient[0] === '' && coefficient[1] === 1 && factors.length === 1 && !factors[0][0]) return factors[0][1];
+  return { kind: 'product', coefficient, factors };
+}
+const literalText = (terms) => calcText(terms.map((term) => [...term])).slice(5, -1);
+/** `calc()`'s text without the wrapper; `(...)` around a nested sum or product. */
+function treeText(expr, grouped) {
+  if (expr.kind === 'function') return expr.text;
+  let body;
+  if (expr.kind === 'literal') body = literalText(expr.terms);
+  else if (expr.kind === 'sum') {
+    body = expr.literals.length ? literalText(expr.literals) : '';
+    // The first term is never subtracted.
+    for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
+  } else {
+    const [unit, value] = expr.coefficient;
+    // A unitless 1 is left out before a multiplied factor.
+    body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
+    for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
+  }
+  return grouped ? `(${body})` : body;
+}
+/** `calc(<sum>)` holding a tree-counting function: a lone function without the wrapper. */
+function treeCalcText(inner) {
+  const expr = treeSum(inner);
+  return expr.kind === 'function' ? expr.text : `calc(${treeText(expr, false)})`;
+}
+const treeArgumentText = (argument) => treeText(treeSum(argument), false);
 /**
  * The arguments of a math function Chrome keeps: each a simplified sum without the `calc()`
  * wrapper (`min(1px, calc(1px + 1em))` is `min(1px, 1em + 1px)`), or as written.
@@ -464,6 +729,7 @@ function absSign(name, inner) {
 function sumArguments(inner) {
   return argumentsOf(inner).map((argument) => {
     const terms = isNone(argument) ? null : sumTerms(argument);
+    if (!terms && hasTreeCounting(argument)) return treeArgumentText(argument);
     return terms ? calcText(terms).slice(5, -1) : join(argument);
   }).join(', ');
 }
@@ -571,74 +837,106 @@ function mathValue(comp) {
   const terms = sumTerms(components(comp.text.slice(5, -1)));
   return terms && terms.length === 1 ? terms[0] : null;
 }
+function readSimpleComponent(token) {
+  switch (token.type) {
+    case 'ident': return { kind: 'ident', value: token.value, text: token.value };
+    case 'number': return { kind: 'number', value: f32(token.value), integer: token.integer, text: cssNumber(token.value) };
+    case 'percentage': { const value = f32(Number(token.raw)); return { kind: 'percentage', value, text: `${cssNumber(Number(token.raw))}%` }; }
+    case 'dimension': {
+      // A length past f32's range (`1e39px`) is the largest float, as Chrome clamps it
+      // (`3.40282e+38px`), never infinite (#262; the Rust port's tokenizer likewise).
+      const number = Math.max(-F32_MAX, Math.min(F32_MAX, token.value));
+      const unit = token.unit.toLowerCase();
+      return { kind: 'dimension', value: f32(number), unit, text: `${cssNumber(number)}${unit}` };
+    }
+    case 'hash': return { kind: 'hash', value: token.value, text: `#${token.value}` };
+    case 'string': return { kind: 'string', value: token.value, text: quoted(token.value) };
+    case 'url': return { kind: 'url', value: token.value, text: `url(${quoted(token.value)})` };
+    case 'comma': return { kind: 'comma', text: ',' };
+    default: return null;
+  }
+}
+function readDelim(token) {
+  if (token.value === '!') return null;
+  return token.value === '/' ? { kind: 'slash', text: '/' } : { kind: 'delim', value: token.value, text: token.value };
+}
+function simplifyMathLiterals(name, inner) {
+  // Keyword arguments are case-insensitive: Chrome writes them lowercase.
+  if (!NAMING_ARGUMENTS.has(name)) for (const comp of inner) if (comp.kind === 'ident' && !comp.value.startsWith('--')) comp.text = comp.value.toLowerCase();
+  if (name !== 'cubic-bezier' && name !== 'linear') return;
+  inner.forEach((comp, index) => {
+    const term = mathValue(comp);
+    if (term && term[0] === '') inner[index] = { kind: 'number', value: f32(term[1]), integer: false, text: cssNumber(term[1]) };
+    else if (term && term[0] === '%' && name === 'linear') inner[index] = { kind: 'percentage', value: f32(term[1]), text: `${cssNumber(term[1])}%` };
+  });
+}
+// Null prototype: a function named after an Object.prototype member (`constructor(…)`,
+// `__proto__(…)`) is an ordinary unknown function, never a handler.
+const SPECIAL_FUNCTION_HANDLERS = {
+  __proto__: null,
+  calc: (name, inner) => calcSum(inner),
+  min: (name, inner) => minMax(name, inner),
+  max: (name, inner) => minMax(name, inner),
+  clamp: (name, inner) => minMax(name, inner),
+  abs: (name, inner) => absSign(name, inner),
+  sign: (name, inner) => absSign(name, inner),
+  rgb: colorFunction,
+  rgba: colorFunction,
+  hsl: colorFunction,
+  hsla: colorFunction,
+  lab: labFunction,
+  lch: labFunction,
+  oklab: labFunction,
+  oklch: labFunction,
+  steps: (_n, inner) => stepsText(inner),
+  linear: (_n, inner) => linearText(inner),
+};
+function specialFunctionText(name, inner) {
+  const handler = SPECIAL_FUNCTION_HANDLERS[name];
+  return handler ? handler(name, inner) : null;
+}
+function readFunctionComponent(name, inner) {
+  if (name === 'url') {
+    if (inner.length !== 1 || inner[0].kind !== 'string') return null;
+    return { kind: 'url', value: inner[0].value, text: `url(${quoted(inner[0].value)})` };
+  }
+  simplifyMathLiterals(name, inner);
+  if (!functionValid(name, inner)) return null;
+  const special = specialFunctionText(name, inner);
+  const text = special ?? `${name}(${SUM_FUNCTIONS.includes(name) ? sumArguments(inner) : join(inner)})`;
+  return { kind: 'function', name, text };
+}
+
 /** Tokens -> components (a function / block is one component); `null` on bad input. */
 function read(tokens, state, close) {
   const out = [];
   while (state.at < tokens.length) {
     const token = tokens[state.at++];
-    switch (token.type) {
-      case 'ws': break;
-      case 'ident': out.push({ kind: 'ident', value: token.value, text: token.value }); break;
-      case 'number': out.push({ kind: 'number', value: f32(token.value), integer: token.integer, text: cssNumber(token.value) }); break;
-      case 'percentage': {
-        const value = f32(Number(token.raw));
-        out.push({ kind: 'percentage', value, text: `${cssNumber(Number(token.raw))}%` });
-        break;
-      }
-      case 'dimension': {
-        // A length past f32's range (`1e39px`) is the largest float, as Chrome clamps it
-        // (`3.40282e+38px`), never infinite (#262; the Rust port's tokenizer likewise).
-        const number = Math.max(-F32_MAX, Math.min(F32_MAX, token.value));
-        const unit = token.unit.toLowerCase();
-        out.push({ kind: 'dimension', value: f32(number), unit, text: `${cssNumber(number)}${unit}` });
-        break;
-      }
-      case 'hash': out.push({ kind: 'hash', value: token.value, text: `#${token.value}` }); break;
-      case 'string': out.push({ kind: 'string', value: token.value, text: quoted(token.value) }); break;
-      case 'url': out.push({ kind: 'url', value: token.value, text: `url(${quoted(token.value)})` }); break;
-      case 'comma': out.push({ kind: 'comma', text: ',' }); break;
-      case 'delim':
-        if (token.value === '!') return null;
-        out.push(token.value === '/' ? { kind: 'slash', text: '/' } : { kind: 'delim', value: token.value, text: token.value });
-        break;
-      case 'function': {
-        const name = token.name.toLowerCase();
-        const inner = read(tokens, state, ')');
-        if (inner === null) return null;
-        if (name === 'url') {
-          if (inner.length !== 1 || inner[0].kind !== 'string') return null;
-          out.push({ kind: 'url', value: inner[0].value, text: `url(${quoted(inner[0].value)})` });
-        } else {
-          // Keyword arguments are case-insensitive: Chrome writes them lowercase.
-          if (!NAMING_ARGUMENTS.has(name)) for (const comp of inner) if (comp.kind === 'ident' && !comp.value.startsWith('--')) comp.text = comp.value.toLowerCase();
-          // A math argument Chrome resolves to a number (or, in linear(), a percentage) is that literal.
-          if (name === 'cubic-bezier' || name === 'linear') inner.forEach((comp, index) => {
-            const term = mathValue(comp);
-            if (term && term[0] === '') inner[index] = { kind: 'number', value: f32(term[1]), integer: false, text: cssNumber(term[1]) };
-            else if (term && term[0] === '%' && name === 'linear') inner[index] = { kind: 'percentage', value: f32(term[1]), text: `${cssNumber(term[1])}%` };
-          });
-          if (!functionValid(name, inner)) return null;
-          const special = name === 'calc' ? calcSum(inner) : name === 'min' || name === 'max' || name === 'clamp' ? minMax(name, inner) : name === 'abs' || name === 'sign' ? absSign(name, inner) : name === 'rgb' || name === 'rgba' || name === 'hsl' || name === 'hsla' ? colorFunction(name, inner) : name === 'lab' || name === 'lch' || name === 'oklab' || name === 'oklch' ? labFunction(name, inner) : name === 'steps' ? stepsText(inner) : name === 'linear' ? linearText(inner) : null;
-          const text = special ?? `${name}(${SUM_FUNCTIONS.includes(name) ? sumArguments(inner) : join(inner)})`;
-          out.push({ kind: 'function', name, text });
-        }
-        break;
-      }
-      case 'open': {
-        if (token.value === '{') return null;
-        const closer = token.value === '(' ? ')' : ']';
-        const inner = read(tokens, state, closer);
-        if (inner === null) return null;
-        out.push({ kind: 'function', name: token.value, text: `${token.value}${join(inner)}${closer}` });
-        break;
-      }
-      case 'close':
-        if (token.value === close) return out;
-        return null;
-      default: return null;
+    if (token.type === 'ws') continue;
+    if (token.type === 'delim') { const comp = readDelim(token); if (!comp) return null; out.push(comp); continue; }
+    if (token.type === 'function') {
+      const name = token.name.toLowerCase();
+      const inner = read(tokens, state, ')');
+      if (inner === null) return null;
+      const comp = readFunctionComponent(name, inner);
+      if (!comp) return null;
+      out.push(comp);
+      continue;
     }
+    if (token.type === 'open') {
+      if (token.value === '{') return null;
+      const closer = token.value === '(' ? ')' : ']';
+      const inner = read(tokens, state, closer);
+      if (inner === null) return null;
+      out.push({ kind: 'function', name: token.value, text: `${token.value}${join(inner)}${closer}` });
+      continue;
+    }
+    if (token.type === 'close') return token.value === close ? out : null;
+    const simple = readSimpleComponent(token);
+    if (!simple) return null;
+    out.push(simple);
   }
-  return close ? out : out;
+  return out;
 }
 
 /** Tokenize a declaration value into components; `null` for unbalanced or bad input. */
@@ -924,46 +1222,57 @@ function placeSelf(comps) {
   return [['align-self', a[1]], ['justify-self', justify]];
 }
 
+const POS_LP = (c) => lengthPercentage(c, true);
+const POS_HORIZ = (c) => keyword(c, ['left', 'right']);
+const POS_VERT = (c) => keyword(c, ['top', 'bottom']);
+const POS_CENTER = (c) => keyword(c, ['center']);
+function positionOne(a) {
+  const v = POS_VERT(a);
+  if (v !== null) return ['center', v];
+  const x = POS_HORIZ(a) ?? POS_CENTER(a) ?? POS_LP(a);
+  return x === null ? null : [x, 'center'];
+}
+function positionTwo(a, b) {
+  const ax = POS_HORIZ(a) ?? POS_CENTER(a) ?? POS_LP(a), by = POS_VERT(b) ?? POS_CENTER(b) ?? POS_LP(b);
+  if (ax !== null && by !== null) return [ax, by];
+  const ay = POS_VERT(a) ?? POS_CENTER(a), bx = POS_HORIZ(b) ?? POS_CENTER(b);
+  return ay !== null && bx !== null ? [bx, ay] : null;
+}
+function positionManyAssign(slots, kw, text) {
+  if (kw === 'left' || kw === 'right') { if (slots.x !== null) return false; slots.x = text; return true; }
+  if (kw === 'top' || kw === 'bottom') { if (slots.y !== null) return false; slots.y = text; return true; }
+  if (slots.middle !== null) return false;
+  slots.middle = text;
+  return true;
+}
+function positionManyResolve(slots) {
+  const { x, y, middle } = slots;
+  if (x !== null && y !== null && middle === null) return [x, y];
+  if (x !== null && y === null && middle !== null) return [x, middle];
+  if (x === null && y !== null && middle !== null) return [middle, y];
+  return null;
+}
+function positionMany(comps) {
+  // Keyword + offset pairs; a lone keyword takes no offset; `center` takes the axis the
+  // other keyword leaves.
+  const slots = { x: null, y: null, middle: null };
+  let at = 0;
+  while (at < comps.length) {
+    const kw = keyword(comps[at], ['left', 'right', 'top', 'bottom', 'center']);
+    if (kw === null) return null;
+    const offset = comps[at + 1] ? POS_LP(comps[at + 1]) : null;
+    const used = offset !== null && kw !== 'center' ? 2 : 1;
+    const text = used === 2 ? `${kw} ${offset}` : kw;
+    if (!positionManyAssign(slots, kw, text)) return null;
+    at += used;
+  }
+  return positionManyResolve(slots);
+}
 /** One `<bg-position>`: its x and y specified values. */
 function position(comps) {
-  const lp = (c) => lengthPercentage(c, true);
-  const horizontal = (c) => keyword(c, ['left', 'right']);
-  const vertical = (c) => keyword(c, ['top', 'bottom']);
-  const center = (c) => keyword(c, ['center']);
-  if (comps.length === 1) {
-    const [a] = comps;
-    const v = vertical(a);
-    if (v !== null) return ['center', v];
-    const x = horizontal(a) ?? center(a) ?? lp(a);
-    return x === null ? null : [x, 'center'];
-  }
-  if (comps.length === 2) {
-    const [a, b] = comps;
-    const ax = horizontal(a) ?? center(a) ?? lp(a), by = vertical(b) ?? center(b) ?? lp(b);
-    if (ax !== null && by !== null) return [ax, by];
-    const ay = vertical(a) ?? center(a), bx = horizontal(b) ?? center(b);
-    return ay !== null && bx !== null ? [bx, ay] : null;
-  }
-  if (comps.length === 3 || comps.length === 4) {
-    // Keyword + offset pairs; a lone keyword takes no offset; `center` takes the axis the
-    // other keyword leaves.
-    let at = 0, x = null, y = null, middle = null;
-    while (at < comps.length) {
-      const kw = keyword(comps[at], ['left', 'right', 'top', 'bottom', 'center']);
-      if (kw === null) return null;
-      const offset = comps[at + 1] ? lp(comps[at + 1]) : null;
-      const used = offset !== null && kw !== 'center' ? 2 : 1;
-      const text = used === 2 ? `${kw} ${offset}` : kw;
-      if (kw === 'left' || kw === 'right') { if (x !== null) return null; x = text; }
-      else if (kw === 'top' || kw === 'bottom') { if (y !== null) return null; y = text; }
-      else { if (middle !== null) return null; middle = text; }
-      at += used;
-    }
-    if (x !== null && y !== null && middle === null) return [x, y];
-    if (x !== null && y === null && middle !== null) return [x, middle];
-    if (x === null && y !== null && middle !== null) return [middle, y];
-    return null;
-  }
+  if (comps.length === 1) return positionOne(comps[0]);
+  if (comps.length === 2) return positionTwo(comps[0], comps[1]);
+  if (comps.length === 3 || comps.length === 4) return positionMany(comps);
   return null;
 }
 /** A comma list of positions; `three`: three-value positions too (background only). */
@@ -1053,15 +1362,7 @@ function listStyle(comps) {
   return namesOrInitial(['list-style-position', 'list-style-image', 'list-style-type'], parsed);
 }
 
-function columns(comps) {
-  const parts = slashes(comps);
-  let main, height = null;
-  if (parts.length === 1) main = parts[0];
-  else if (parts.length === 2 && parts[1].length === 1) {
-    main = parts[0];
-    height = length(parts[1][0], false) ?? keyword(parts[1][0], ['auto']);
-    if (height === null) return null;
-  } else return null;
+function columnsMain(main) {
   if (!main.length || main.length > 2) return null;
   let width = null, count = null;
   for (const comp of main) {
@@ -1072,7 +1373,20 @@ function columns(comps) {
     if (n !== null) { count = n; continue; }
     return null;
   }
-  return [['column-width', width ?? 'auto'], ['column-count', count ?? 'auto'], ['column-height', height ?? 'auto'], ['column-wrap', 'auto']];
+  return { width, count };
+}
+function columns(comps) {
+  const parts = slashes(comps);
+  let main, height = null;
+  if (parts.length === 1) main = parts[0];
+  else if (parts.length === 2 && parts[1].length === 1) {
+    main = parts[0];
+    height = length(parts[1][0], false) ?? keyword(parts[1][0], ['auto']);
+    if (height === null) return null;
+  } else return null;
+  const parsed = columnsMain(main);
+  if (!parsed) return null;
+  return [['column-width', parsed.width ?? 'auto'], ['column-count', parsed.count ?? 'auto'], ['column-height', height ?? 'auto'], ['column-wrap', 'auto']];
 }
 
 function container(comps) {
@@ -1252,32 +1566,37 @@ function fontVariant(comps) {
   return names.map((name, index) => [name, parsed[index] ?? 'normal']);
 }
 
+const FLEX_BASIS = (c) => keyword(c, ['auto', 'content', 'min-content', 'max-content', 'fit-content']) ?? lengthPercentage(c, false);
+function flexStep(state, comps, at) {
+  const comp = comps[at];
+  if (state.grow === null) {
+    const n = number(comp, false);
+    if (n !== null) {
+      state.grow = n;
+      const next = comps[at + 1] ? number(comps[at + 1], false) : null;
+      if (next !== null) { state.shrink = next; return at + 2; }
+      return at + 1;
+    }
+  }
+  if (state.basisValue === null) {
+    const b = FLEX_BASIS(comp);
+    if (b !== null) { state.basisValue = b; return at + 1; }
+  }
+  return -1;
+}
 function flex(comps) {
   const names = ['flex-grow', 'flex-shrink', 'flex-basis'];
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return named(names, ['0', '0', 'auto']);
   if (comps.length === 1 && isIdent(comps[0], ['auto'])) return named(names, ['1', '1', 'auto']);
-  const basis = (c) => keyword(c, ['auto', 'content', 'min-content', 'max-content', 'fit-content']) ?? lengthPercentage(c, false);
-  let grow = null, shrink = null, basisValue = null, at = 0;
+  const state = { grow: null, shrink: null, basisValue: null };
+  let at = 0;
   while (at < comps.length) {
-    const comp = comps[at];
-    if (grow === null) {
-      const n = number(comp, false);
-      if (n !== null) {
-        grow = n;
-        const next = comps[at + 1] ? number(comps[at + 1], false) : null;
-        if (next !== null) { shrink = next; at++; }
-        at++;
-        continue;
-      }
-    }
-    if (basisValue === null) {
-      const b = basis(comp);
-      if (b !== null) { basisValue = b; at++; continue; }
-    }
-    return null;
+    const next = flexStep(state, comps, at);
+    if (next === -1) return null;
+    at = next;
   }
-  if (grow === null && basisValue === null) return null;
-  return named(names, [grow ?? '1', shrink ?? '1', basisValue ?? '0%']);
+  if (state.grow === null && state.basisValue === null) return null;
+  return named(names, [state.grow ?? '1', state.shrink ?? '1', state.basisValue ?? '0%']);
 }
 
 const SYSTEM_FONTS = ['caption', 'icon', 'menu', 'message-box', 'small-caption', 'status-bar'];
@@ -1335,32 +1654,41 @@ function oblique(c) {
   if ((c.kind === 'dimension' || c.kind === 'number') && c.value === 0) return 'normal';
   return `oblique ${text}`;
 }
-function font(comps) {
-  if (comps.length === 1) { const name = keyword(comps[0], SYSTEM_FONTS); if (name !== null) return { pending: name }; }
+function fontStyleSlot(comps, at) {
+  const comp = comps[at];
+  const value = keyword(comp, ['italic', 'oblique']);
+  if (value === null) return null;
+  if (value === 'oblique' && comps[at + 1] && comps[at + 1].kind === 'dimension' && angle(comps[at + 1]) !== null) {
+    const o = oblique(comps[at + 1]);
+    return o === null ? 'bad' : { value: o, used: 2 };
+  }
+  return { value, used: 1 };
+}
+function fontWeightSlot(comp) {
+  const value = keyword(comp, ['bold', 'bolder', 'lighter']) ?? (comp.kind === 'number' && comp.value >= 1 && comp.value <= 1000 ? number(comp, false) : null);
+  return value === null ? null : { value, used: 1 };
+}
+function fontLeading(comps) {
   let style = null, caps = null, weight = null, stretch = null, at = 0;
   while (at < comps.length && at < 4) {
     const comp = comps[at];
     if (isIdent(comp, ['normal'])) { at++; continue; }
     if (style === null) {
-      const value = keyword(comp, ['italic', 'oblique']);
-      if (value !== null) {
-        if (value === 'oblique' && comps[at + 1] && comps[at + 1].kind === 'dimension' && angle(comps[at + 1]) !== null) {
-          style = oblique(comps[at + 1]);
-          if (style === null) return null;
-          at += 2;
-          continue;
-        }
-        style = value; at++; continue;
-      }
+      const s = fontStyleSlot(comps, at);
+      if (s === 'bad') return null;
+      if (s) { style = s.value; at += s.used; continue; }
     }
     if (caps === null) { const value = keyword(comp, ['small-caps']); if (value !== null) { caps = value; at++; continue; } }
     if (weight === null) {
-      const value = keyword(comp, ['bold', 'bolder', 'lighter']) ?? (comp.kind === 'number' && comp.value >= 1 && comp.value <= 1000 ? number(comp, false) : null);
-      if (value !== null) { weight = value; at++; continue; }
+      const w = fontWeightSlot(comp);
+      if (w) { weight = w.value; at++; continue; }
     }
     if (stretch === null) { const value = keyword(comp, STRETCHES); if (value !== null) { stretch = value; at++; continue; } }
     break;
   }
+  return { style, caps, weight, stretch, at };
+}
+function fontSizeAndLineHeight(comps, at) {
   const sizeComp = comps[at];
   if (!sizeComp) return null;
   const size = keyword(sizeComp, FONT_SIZES) ?? lengthPercentage(sizeComp, false);
@@ -1374,29 +1702,38 @@ function font(comps) {
     if (lineHeight === null) return null;
     at += 2;
   }
-  const rest = comps.slice(at);
+  return { size, lineHeight, at };
+}
+function font(comps) {
+  if (comps.length === 1) { const name = keyword(comps[0], SYSTEM_FONTS); if (name !== null) return { pending: name }; }
+  const leading = fontLeading(comps);
+  if (!leading) return null;
+  const sized = fontSizeAndLineHeight(comps, leading.at);
+  if (!sized) return null;
+  const rest = comps.slice(sized.at);
   if (!rest.length) return null;
   const family = fontFamily(rest);
   if (family === null) return null;
-  return [['font-style', style ?? 'normal'], ['font-variant-caps', caps ?? 'normal'], ['font-variant-ligatures', 'normal'], ['font-variant-numeric', 'normal'], ['font-variant-east-asian', 'normal'], ['font-variant-alternates', 'normal'], ['font-size-adjust', 'none'], ['font-language-override', 'normal'], ['font-kerning', 'auto'], ['font-optical-sizing', 'auto'], ['font-feature-settings', 'normal'], ['font-variation-settings', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-weight', weight ?? 'normal'], ['font-stretch', stretch ?? 'normal'], ['font-size', size], ['line-height', lineHeight], ['font-family', family]];
+  return [['font-style', leading.style ?? 'normal'], ['font-variant-caps', leading.caps ?? 'normal'], ['font-variant-ligatures', 'normal'], ['font-variant-numeric', 'normal'], ['font-variant-east-asian', 'normal'], ['font-variant-alternates', 'normal'], ['font-size-adjust', 'none'], ['font-language-override', 'normal'], ['font-kerning', 'auto'], ['font-optical-sizing', 'auto'], ['font-feature-settings', 'normal'], ['font-variation-settings', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-weight', leading.weight ?? 'normal'], ['font-stretch', leading.stretch ?? 'normal'], ['font-size', sized.size], ['line-height', sized.lineHeight], ['font-family', family]];
 }
 
 /** `<grid-line>` with Chrome's canonical part order (`span`, integer, name). */
+function gridLinePart(state, comp) {
+  if (isIdent(comp, ['span']) && !state.span) { state.span = true; return true; }
+  const n = state.int === null ? integer(comp, -Infinity) : null;
+  if (n !== null) { if (n === '0') return false; state.int = n; return true; }
+  const c = state.name === null ? customIdent(comp, ['auto', 'span']) : null;
+  if (c !== null) { state.name = c; return true; }
+  return false;
+}
 function gridLine(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['auto'])) return 'auto';
   if (!comps.length) return null;
-  let span = false, int = null, name = null;
-  for (const comp of comps) {
-    if (isIdent(comp, ['span']) && !span) { span = true; continue; }
-    const n = int === null ? integer(comp, -Infinity) : null;
-    if (n !== null) { if (n === '0') return null; int = n; continue; }
-    const c = name === null ? customIdent(comp, ['auto', 'span']) : null;
-    if (c !== null) { name = c; continue; }
-    return null;
-  }
-  if (int === null && name === null) return null;
-  if (span && int !== null && int.startsWith('-')) return null;
-  return [span ? 'span' : null, int, name].filter((v) => v !== null).join(' ');
+  const state = { span: false, int: null, name: null };
+  for (const comp of comps) if (!gridLinePart(state, comp)) return null;
+  if (state.int === null && state.name === null) return null;
+  if (state.span && state.int !== null && state.int.startsWith('-')) return null;
+  return [state.span ? 'span' : null, state.int, state.name].filter((v) => v !== null).join(' ');
 }
 /** A line's default end / omitted value: a lone custom ident repeats, else `auto`. */
 function lineDefault(start) {
@@ -1454,21 +1791,22 @@ function trackText(c, repeatCount) {
   return c.text;
 }
 /** One track-list component: line names, a track size, or (at the top level) `repeat()`. */
+function trackOkRepeat(inner, repeatAllowed) {
+  if (!repeatAllowed || !inner) return false;
+  const comma = inner.findIndex(isComma);
+  if (comma < 0) return false;
+  const head = inner.slice(0, comma), tracks = inner.slice(comma + 1);
+  const auto = head.length === 1 && isIdent(head[0], ['auto-fill', 'auto-fit']);
+  const count = head.length === 1 && (head[0].kind === 'number' ? head[0].integer && head[0].value >= 1 : auto);
+  return count && tracksValid(tracks) && tracks.every((track) => trackOk(track, false) && (!auto || trackFixed(track)));
+}
 function trackOk(c, repeatAllowed) {
   if (c.kind !== 'function') return trackBreadth(c, true);
   if (c.name === '[') return true;
   const inner = components(c.text.slice(c.name.length + 1, -1));
   if (c.name === 'minmax') return !!inner && inner.length === 3 && isComma(inner[1]) && trackBreadth(inner[0], false) && trackBreadth(inner[2], true);
   if (c.name === 'fit-content') return !!inner && inner.length === 1 && lengthPercentage(inner[0], false) !== null;
-  if (c.name === 'repeat') {
-    if (!repeatAllowed || !inner) return false;
-    const comma = inner.findIndex(isComma);
-    if (comma < 0) return false;
-    const head = inner.slice(0, comma), tracks = inner.slice(comma + 1);
-    const auto = head.length === 1 && isIdent(head[0], ['auto-fill', 'auto-fit']);
-    const count = head.length === 1 && (head[0].kind === 'number' ? head[0].integer && head[0].value >= 1 : auto);
-    return count && tracksValid(tracks) && tracks.every((track) => trackOk(track, false) && (!auto || trackFixed(track)));
-  }
+  if (c.name === 'repeat') return trackOkRepeat(inner, repeatAllowed);
   return lengthPercentage(c, false) !== null;
 }
 function trackList(comps) {
@@ -1509,6 +1847,44 @@ function areasText(rows) {
   for (const box of boxes.values()) if ((box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1) !== box.count) return null;
   return rows.map((row) => `"${row.join(' ')}"`).join(' ');
 }
+const isNamesBlock = (c) => c.kind === 'function' && c.name === '[';
+function gridTemplateColumns(parts) {
+  if (parts.length === 1) return { rows: parts[0], cols: null };
+  if (parts.length === 2 && !parts[1].some((c) => functionNamed(c, ['repeat']) !== null)) {
+    const cols = trackList(parts[1]);
+    return cols === null ? null : { rows: parts[0], cols };
+  }
+  return null;
+}
+function gridTemplateTrackSize(c) {
+  if (!c || string(c) !== null || isNamesBlock(c)) return null;
+  return lengthPercentage(c, false) ?? keyword(c, ['auto', 'min-content', 'max-content']) ?? functionNamed(c, ['minmax', 'fit-content']) ?? (c.kind === 'dimension' && c.unit === 'fr' ? c.text : null);
+}
+function gridTemplateAreasAndTracks(rows) {
+  const areas = [], tracks = [];
+  let at = 0;
+  const pushNames = () => { if (rows[at] && isNamesBlock(rows[at])) { tracks.push(rows[at].text); at++; } };
+  while (at < rows.length) {
+    pushNames();
+    const area = rows[at] ? areaRow(rows[at]) : null;
+    if (area === null) return null;
+    areas.push(area);
+    at++;
+    const size = gridTemplateTrackSize(rows[at]);
+    if (size !== null) { tracks.push(size); at++; } else tracks.push('auto');
+    pushNames();
+  }
+  return { areas, tracks };
+}
+function mergeTrackNames(tracks) {
+  const merged = [];
+  for (const track of tracks) {
+    const last = merged[merged.length - 1];
+    if (last !== undefined && track.startsWith('[') && last.startsWith('[')) { merged[merged.length - 1] = `${last.slice(0, -1)} ${track.slice(1)}`; continue; }
+    merged.push(track);
+  }
+  return merged;
+}
 function gridTemplate(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return ['none', 'none', 'none'];
   const hasStrings = comps.some((c) => string(c) !== null);
@@ -1518,35 +1894,12 @@ function gridTemplate(comps) {
     const rows = trackList(parts[0]), cols = trackList(parts[1]);
     return rows === null || cols === null ? null : [rows, cols, 'none'];
   }
-  let rows, cols = null;
-  if (parts.length === 1) rows = parts[0];
-  // The explicit columns of the areas form take no `repeat()`.
-  else if (parts.length === 2 && !parts[1].some((c) => functionNamed(c, ['repeat']) !== null)) { rows = parts[0]; cols = trackList(parts[1]); if (cols === null) return null; }
-  else return null;
-  const areas = [], tracks = [];
-  let at = 0;
-  const isNames = (c) => c.kind === 'function' && c.name === '[';
-  const names = () => { if (rows[at] && isNames(rows[at])) { tracks.push(rows[at].text); at++; } };
-  while (at < rows.length) {
-    names();
-    const area = rows[at] ? areaRow(rows[at]) : null;
-    if (area === null) return null;
-    areas.push(area);
-    at++;
-    const c = rows[at];
-    let size = null;
-    if (c && string(c) === null && !isNames(c)) size = lengthPercentage(c, false) ?? keyword(c, ['auto', 'min-content', 'max-content']) ?? functionNamed(c, ['minmax', 'fit-content']) ?? (c.kind === 'dimension' && c.unit === 'fr' ? c.text : null);
-    if (size !== null) { tracks.push(size); at++; } else tracks.push('auto');
-    names();
-  }
-  const merged = [];
-  for (const track of tracks) {
-    const last = merged[merged.length - 1];
-    if (last !== undefined && track.startsWith('[') && last.startsWith('[')) { merged[merged.length - 1] = `${last.slice(0, -1)} ${track.slice(1)}`; continue; }
-    merged.push(track);
-  }
-  const areasValue = areasText(areas);
-  return areasValue === null ? null : [merged.join(' '), cols ?? 'none', areasValue];
+  const split = gridTemplateColumns(parts);
+  if (!split) return null;
+  const parsed = gridTemplateAreasAndTracks(split.rows);
+  if (!parsed) return null;
+  const areasValue = areasText(parsed.areas);
+  return areasValue === null ? null : [mergeTrackNames(parsed.tracks).join(' '), split.cols ?? 'none', areasValue];
 }
 function grid(comps) {
   const parts = slashes(comps);
@@ -1587,49 +1940,64 @@ function collapse4(values) {
   const full = values.length === 1 ? [values[0], values[0], values[0], values[0]] : values.length === 2 ? [values[0], values[1], values[0], values[1]] : values.length === 3 ? [values[0], values[1], values[2], values[1]] : values.length === 4 ? values : null;
   return full ? boxText(full) : values.join(' ');
 }
+function borderImageRepeat(comps, at) {
+  const kw = (c) => keyword(c, ['stretch', 'repeat', 'round', 'space']);
+  const first = kw(comps[at]);
+  if (first === null) return null;
+  const second = comps[at + 1] ? kw(comps[at + 1]) : null;
+  const used = second !== null ? 2 : 1;
+  return { value: second !== null && second !== first ? `${first} ${second}` : first, used };
+}
+function borderImageSliceValues(comps, state) {
+  const values = [];
+  let fill = false;
+  while (comps[state.at]) {
+    const c = comps[state.at];
+    if (isIdent(c, ['fill']) && !fill) fill = true;
+    else if (fill && values.length) break; // `fill` goes before or after the numbers
+    else { const value = values.length < 4 ? number(c, false) ?? percentage(c, false) : null; if (value === null) break; values.push(value); }
+    state.at++;
+  }
+  return { values, fill };
+}
+function borderImageQuad(comps, state, ty) {
+  const list = [];
+  while (comps[state.at] && list.length < 4) { const value = ty(comps[state.at]); if (value === null) break; list.push(value); state.at++; }
+  return list.length ? collapse4(list) : null;
+}
+function borderImageWidthOutset(comps, state) {
+  if (!comps[state.at] || !isSlash(comps[state.at])) return { width: null, outset: null };
+  state.at++;
+  const w = borderImageQuad(comps, state, (c) => number(c, false) ?? lengthPercentage(c, false) ?? keyword(c, ['auto']));
+  let o = null;
+  if (comps[state.at] && isSlash(comps[state.at])) {
+    state.at++;
+    o = borderImageQuad(comps, state, (c) => number(c, false) ?? length(c, false));
+    if (o === null) return null;
+  } else if (w === null) return null;
+  return { width: w, outset: o };
+}
+function borderImageSlice(comps, state, webkit) {
+  const { values, fill } = borderImageSliceValues(comps, state);
+  if (!values.length) return null;
+  const slice = collapse4(values) + (fill || webkit ? ' fill' : '');
+  const wo = borderImageWidthOutset(comps, state);
+  return wo && { slice, width: wo.width, outset: wo.outset };
+}
 function borderImage(comps, webkit) {
-  let source = null, slice = null, width = null, outset = null, repeat = null, at = 0;
-  while (at < comps.length) {
-    const comp = comps[at];
-    if (source === null) { const value = image(comp) ?? keyword(comp, ['none']); if (value !== null) { source = value; at++; continue; } }
+  let source = null, slice = null, width = null, outset = null, repeat = null;
+  const state = { at: 0 };
+  while (state.at < comps.length) {
+    const comp = comps[state.at];
+    if (source === null) { const value = image(comp) ?? keyword(comp, ['none']); if (value !== null) { source = value; state.at++; continue; } }
     if (repeat === null) {
-      const kw = (c) => keyword(c, ['stretch', 'repeat', 'round', 'space']);
-      const first = kw(comp);
-      if (first !== null) {
-        const second = comps[at + 1] ? kw(comps[at + 1]) : null;
-        at += second !== null ? 2 : 1;
-        repeat = second !== null && second !== first ? `${first} ${second}` : first;
-        continue;
-      }
+      const r = borderImageRepeat(comps, state.at);
+      if (r) { repeat = r.value; state.at += r.used; continue; }
     }
     if (slice === null) {
-      const values = [];
-      let fill = false;
-      while (comps[at]) {
-        const c = comps[at];
-        if (isIdent(c, ['fill']) && !fill) fill = true;
-        else if (fill && values.length) break; // `fill` goes before or after the numbers
-        else { const value = values.length < 4 ? number(c, false) ?? percentage(c, false) : null; if (value === null) break; values.push(value); }
-        at++;
-      }
-      if (!values.length) return null;
-      slice = collapse4(values) + (fill || webkit ? ' fill' : '');
-      const quad = (ty) => {
-        const list = [];
-        while (comps[at] && list.length < 4) { const value = ty(comps[at]); if (value === null) break; list.push(value); at++; }
-        return list.length ? collapse4(list) : null;
-      };
-      if (comps[at] && isSlash(comps[at])) {
-        at++;
-        const w = quad((c) => number(c, false) ?? lengthPercentage(c, false) ?? keyword(c, ['auto']));
-        let o = null;
-        if (comps[at] && isSlash(comps[at])) {
-          at++;
-          o = quad((c) => number(c, false) ?? length(c, false));
-          if (o === null) return null;
-        } else if (w === null) return null;
-        width = w; outset = o;
-      }
+      const parsed = borderImageSlice(comps, state, webkit);
+      if (!parsed) return null;
+      slice = parsed.slice; width = parsed.width; outset = parsed.outset;
       continue;
     }
     return null;
@@ -1669,51 +2037,54 @@ function pathText(text) {
   if (current) tokens.push(current);
   return `${text.slice(0, start)}"${tokens.join(' ')}")`;
 }
+function offsetAnchor(anchorPart) {
+  if (anchorPart === null) return 'auto';
+  if (anchorPart.length === 1 && isIdent(anchorPart[0], ['auto'])) return 'auto';
+  // Three-value positions are background-only.
+  if (anchorPart.length === 3) return null;
+  const p = position(anchorPart);
+  return p ? `${p[0]} ${p[1]}` : null;
+}
+const OFFSET_POS_KW = (c) => keyword(c, ['left', 'right', 'top', 'bottom', 'center']) !== null || lengthPercentage(c, true) !== null;
+function offsetPositionPart(main) {
+  if (!main.length) return { value: 'normal', at: 0 };
+  if (isIdent(main[0], ['auto', 'normal'])) return { value: ident(main[0]), at: 1 };
+  for (let len = 4; len >= 1; len--) {
+    if (main.length < len) continue;
+    const slice = main.slice(0, len);
+    if (slice.every(OFFSET_POS_KW)) {
+      const p = position(slice);
+      if (p) { if (len === 3) return null; return { value: `${p[0]} ${p[1]}`, at: len }; }
+    }
+  }
+  return { value: 'normal', at: 0 };
+}
+function offsetPathPart(main, at) {
+  const comp = main[at];
+  if (!comp) return { path: 'none', distance: '0px', rotate: 'auto', at };
+  const value = isIdent(comp, ['none']) ? 'none' : functionNamed(comp, ['path', 'ray', 'url', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(comp);
+  if (value === null) return { path: 'none', distance: '0px', rotate: 'auto', at };
+  if (value.startsWith('path(') && !pathDataValid(value)) return null;
+  const path = value.startsWith('path(') ? pathText(value) : value;
+  at++;
+  const parsed = anyOrder(main.slice(at), [one((c) => lengthPercentage(c, true)), rotatePart]);
+  if (!parsed) return null;
+  return { path, distance: parsed[0] ?? '0px', rotate: parsed[1] ?? 'auto', at: main.length };
+}
 function offset(comps) {
   const parts = slashes(comps);
   let main, anchorPart = null;
   if (parts.length === 1) main = parts[0];
   else if (parts.length === 2) { main = parts[0]; anchorPart = parts[1]; }
   else return null;
-  let anchor;
-  if (anchorPart === null) anchor = 'auto';
-  else if (anchorPart.length === 1 && isIdent(anchorPart[0], ['auto'])) anchor = 'auto';
-  // Three-value positions are background-only.
-  else if (anchorPart.length === 3) return null;
-  else { const p = position(anchorPart); if (!p) return null; anchor = `${p[0]} ${p[1]}`; }
-  let at = 0, positionValue = 'normal';
-  if (main.length) {
-    if (isIdent(main[0], ['auto', 'normal'])) { positionValue = ident(main[0]); at = 1; }
-    else {
-      for (let len = 4; len >= 1; len--) {
-        if (main.length < len) continue;
-        const slice = main.slice(0, len);
-        if (slice.every((c) => keyword(c, ['left', 'right', 'top', 'bottom', 'center']) !== null || lengthPercentage(c, true) !== null)) {
-          const p = position(slice);
-          if (p) { if (len === 3) return null; positionValue = `${p[0]} ${p[1]}`; at = len; break; }
-        }
-      }
-    }
-  }
-  let path = 'none', distance = '0px', rotate = 'auto';
-  const comp = main[at];
-  if (comp) {
-    {
-      const value = isIdent(comp, ['none']) ? 'none' : functionNamed(comp, ['path', 'ray', 'url', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(comp);
-      if (value !== null) {
-        if (value.startsWith('path(') && !pathDataValid(value)) return null;
-        path = value.startsWith('path(') ? pathText(value) : value;
-        at++;
-        const parsed = anyOrder(main.slice(at), [one((c) => lengthPercentage(c, true)), rotatePart]);
-        if (!parsed) return null;
-        at = main.length;
-        if (parsed[0] !== null) distance = parsed[0];
-        if (parsed[1] !== null) rotate = parsed[1];
-      }
-    }
-  }
-  if (at !== main.length || (!main.length && parts.length === 1)) return null;
-  return [['offset-position', positionValue], ['offset-path', path], ['offset-distance', distance], ['offset-rotate', rotate], ['offset-anchor', anchor]];
+  const anchor = offsetAnchor(anchorPart);
+  if (anchor === null) return null;
+  const pos = offsetPositionPart(main);
+  if (!pos) return null;
+  const path = offsetPathPart(main, pos.at);
+  if (!path) return null;
+  if (path.at !== main.length || (!main.length && parts.length === 1)) return null;
+  return [['offset-position', pos.value], ['offset-path', path.path], ['offset-distance', path.distance], ['offset-rotate', path.rotate], ['offset-anchor', anchor]];
 }
 function repeatStyle(comps) {
   if (!comps.length) return null;
@@ -1747,39 +2118,72 @@ function bgSize(comps) {
   // A single width other than `auto` spells its height `auto`.
   return a === 'auto' ? [1, a] : [1, `${a} auto`];
 }
+function layerPositionSize(out, comps, at) {
+  const p = layerPosition(comps.slice(at));
+  if (!p) return null;
+  out.position = p[1]; at += p[0];
+  if (comps[at] && isSlash(comps[at])) {
+    const s = bgSize(comps.slice(at + 1));
+    if (!s) return -1;
+    out.size = s[1]; at += 1 + s[0];
+  }
+  return at;
+}
+function layerBoxSlot(out, value) {
+  const clipOnly = value === 'text' || value === 'no-clip';
+  if (out.origin === null && !clipOnly) out.origin = value;
+  else if (out.clip === null) out.clip = value;
+  else return false;
+  return true;
+}
+function layerMaskSlot(out, comp) {
+  if (out.composite === null) { const value = keyword(comp, ['add', 'subtract', 'intersect', 'exclude']); if (value !== null) { out.composite = value; return 1; } }
+  if (out.mode === null) { const value = keyword(comp, ['alpha', 'luminance', 'match-source']); if (value !== null) { out.mode = value; return 1; } }
+  return 0;
+}
+function layerStepImageOrPos(out, comps, at) {
+  const comp = comps[at];
+  if (out.image === null) { const value = image(comp) ?? keyword(comp, ['none']); if (value !== null) { out.image = value; return at + 1; } }
+  if (out.position === null) {
+    const next = layerPositionSize(out, comps, at);
+    if (next === -1) return -1;
+    if (next !== null) return next;
+  }
+  return null;
+}
+function layerStepRepeatAttach(out, comps, at, mask) {
+  const comp = comps[at];
+  if (out.repeat === null) { const r = repeatStyle(comps.slice(at)); if (r) { out.repeat = r[1]; return at + r[0]; } }
+  if (!mask && out.attachment === null) { const value = keyword(comp, ['scroll', 'fixed', 'local']); if (value !== null) { out.attachment = value; return at + 1; } }
+  return null;
+}
+function layerStepTail(out, comps, at, mask, last, boxes) {
+  const comp = comps[at];
+  if (out.clip === null || out.origin === null) {
+    const value = keyword(comp, boxes);
+    if (value !== null) return layerBoxSlot(out, value) ? at + 1 : -1;
+  }
+  if (mask) { const used = layerMaskSlot(out, comp); if (used) return at + used; }
+  else if (last && out.color === null) { const value = color(comp); if (value !== null) { out.color = value; return at + 1; } }
+  return -1;
+}
+function layerStep(out, comps, at, mask, last, boxes) {
+  const first = layerStepImageOrPos(out, comps, at);
+  if (first !== null) return first;
+  const second = layerStepRepeatAttach(out, comps, at, mask);
+  if (second !== null) return second;
+  return layerStepTail(out, comps, at, mask, last, boxes);
+}
+const LAYER_BOXES_MASK = ['border-box', 'padding-box', 'content-box', 'fill-box', 'stroke-box', 'view-box', 'no-clip'];
+const LAYER_BOXES_BG = ['border-box', 'padding-box', 'content-box', 'text', 'border-area'];
 function layer(comps, mask, last) {
   const out = { image: null, position: null, size: null, repeat: null, attachment: null, origin: null, clip: null, color: null, composite: null, mode: null };
-  const boxes = mask ? ['border-box', 'padding-box', 'content-box', 'fill-box', 'stroke-box', 'view-box', 'no-clip'] : ['border-box', 'padding-box', 'content-box', 'text', 'border-area'];
+  const boxes = mask ? LAYER_BOXES_MASK : LAYER_BOXES_BG;
   let at = 0;
   while (at < comps.length) {
-    const rest = comps.slice(at), comp = comps[at];
-    if (out.image === null) { const value = image(comp) ?? keyword(comp, ['none']); if (value !== null) { out.image = value; at++; continue; } }
-    if (out.position === null) {
-      const p = layerPosition(rest);
-      if (p) {
-        out.position = p[1]; at += p[0];
-        if (comps[at] && isSlash(comps[at])) { const s = bgSize(comps.slice(at + 1)); if (!s) return null; out.size = s[1]; at += 1 + s[0]; }
-        continue;
-      }
-    }
-    if (out.repeat === null) { const r = repeatStyle(rest); if (r) { out.repeat = r[1]; at += r[0]; continue; } }
-    if (!mask && out.attachment === null) { const value = keyword(comp, ['scroll', 'fixed', 'local']); if (value !== null) { out.attachment = value; at++; continue; } }
-    if (out.clip === null || out.origin === null) {
-      const value = keyword(comp, boxes);
-      if (value !== null) {
-        const clipOnly = value === 'text' || value === 'no-clip';
-        if (out.origin === null && !clipOnly) out.origin = value;
-        else if (out.clip === null) out.clip = value;
-        else return null;
-        at++;
-        continue;
-      }
-    }
-    if (mask) {
-      if (out.composite === null) { const value = keyword(comp, ['add', 'subtract', 'intersect', 'exclude']); if (value !== null) { out.composite = value; at++; continue; } }
-      if (out.mode === null) { const value = keyword(comp, ['alpha', 'luminance', 'match-source']); if (value !== null) { out.mode = value; at++; continue; } }
-    } else if (last && out.color === null) { const value = color(comp); if (value !== null) { out.color = value; at++; continue; } }
-    return null;
+    const next = layerStep(out, comps, at, mask, last, boxes);
+    if (next === -1) return null;
+    at = next;
   }
   if (out.origin !== null && out.clip === null) out.clip = out.origin;
   return out;
@@ -2209,178 +2613,221 @@ const BOXES = {
   'corner-shape': ['corner-top-left-shape', 'corner-top-right-shape', 'corner-bottom-right-shape', 'corner-bottom-left-shape'],
 };
 
+// Per-shorthand serializers (lookup table below). Each takes (v, texts, grammar) and returns the
+// shorthand's spelling, '' when the values have no shorthand form.
+function borderRadiusText(v) {
+  const corners = ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'].map(v);
+  const horizontal = [], vertical = [];
+  for (const corner of corners) { const space = corner.indexOf(' '); const h = space < 0 ? corner : corner.slice(0, space); horizontal.push(h); vertical.push(space < 0 ? h : corner.slice(space + 1)); }
+  const h = boxText(horizontal);
+  return horizontal.every((value, index) => value === vertical[index]) ? h : `${h} / ${boxText(vertical)}`;
+}
+function ruleInsetBoth(v) {
+  const column = ruleInsetText(v, 'column');
+  return column === ruleInsetText(v, 'row') ? column : '';
+}
+function ruleInsetPartText(v, part) {
+  const row = pairText(v(`row-rule-inset-${part}-start`), v(`row-rule-inset-${part}-end`));
+  return row === pairText(v(`column-rule-inset-${part}-start`), v(`column-rule-inset-${part}-end`)) ? row : '';
+}
+function positionShorthandText(texts) {
+  const xs = layers(texts[0]), ys = layers(texts[1]);
+  if (xs.length !== ys.length) {
+    const part = (list, index) => (list[index] === undefined || list[index] === INITIAL ? '' : list[index]);
+    return Array.from({ length: Math.max(xs.length, ys.length) }, (_, index) => joined([part(xs, index), part(ys, index)])).filter((layer) => layer).join(', ');
+  }
+  if ([...xs, ...ys].includes(INITIAL)) return '';
+  return xs.map((x, index) => `${x} ${ys[index]}`).join(', ');
+}
+function borderSideShort(v, _texts, grammar) {
+  return lineText(v(`${grammar}-width`), v(`${grammar}-style`), v(`${grammar}-color`));
+}
+function borderLogicalSideText(v, _texts, grammar) {
+  return joined(['width', 'style', 'color'].map((part) => omitIf(v(`${grammar}-${part}`), null)));
+}
+function borderBothSidesText(v, _texts, grammar) {
+  const [start, end] = grammar === 'rule' ? ['column-rule', 'row-rule'] : [`${grammar}-start`, `${grammar}-end`];
+  const a = ['width', 'style', 'color'].map((part) => v(`${start}-${part}`));
+  const b = ['width', 'style', 'color'].map((part) => v(`${end}-${part}`));
+  return a.every((value, index) => value === b[index]) ? lineText(...a) : '';
+}
+function borderShort(v) {
+  const image = ['border-image-source', 'border-image-slice', 'border-image-width', 'border-image-outset', 'border-image-repeat'].map(v);
+  if (image.some((value, index) => value !== BORDER_IMAGE_INITIAL[index])) return '';
+  const parts = [];
+  for (const part of ['width', 'style', 'color']) {
+    const sides = ['top', 'right', 'bottom', 'left'].map((s) => v(`border-${s}-${part}`));
+    if (sides.some((value) => value !== sides[0])) return '';
+    parts.push(sides[0]);
+  }
+  return lineText(...parts);
+}
+function textDecorationShort(v) {
+  const lineValue = v('text-decoration-line');
+  const text = joined([omitIf(lineValue, 'none'), omitIf(v('text-decoration-thickness'), 'auto'), omitIf(v('text-decoration-style'), 'solid'), omitIf(v('text-decoration-color'), 'currentcolor')]);
+  return text || (lineValue === INITIAL ? 'none' : lineValue);
+}
+function flexFlowText(v) {
+  const direction = v('flex-direction'), wrap = v('flex-wrap');
+  return wrap === 'nowrap' ? direction : direction === 'row' ? wrap : `${direction} ${wrap}`;
+}
+function columnsText(v) {
+  const width = v('column-width'), count = v('column-count'), height = v('column-height');
+  const main = width === 'auto' && count === 'auto' ? 'auto' : width === 'auto' ? count : count === 'auto' ? width : `${width} ${count}`;
+  return height === 'auto' ? main : `${main} / ${height}`;
+}
+function textWrapText(v) {
+  const mode = v('text-wrap-mode') === INITIAL ? 'wrap' : v('text-wrap-mode');
+  const style = v('text-wrap-style') === INITIAL ? 'auto' : v('text-wrap-style');
+  return style === 'auto' ? mode : mode === 'wrap' ? style : `${mode} ${style}`;
+}
+const WHITE_SPACE_MAP = { 'collapse wrap': 'normal', 'preserve nowrap': 'pre', 'collapse nowrap': 'nowrap', 'preserve wrap': 'pre-wrap', 'preserve-breaks wrap': 'pre-line', 'break-spaces wrap': 'break-spaces' };
+function whiteSpaceText(v) {
+  const collapse = v('white-space-collapse') === INITIAL ? 'collapse' : v('white-space-collapse');
+  const mode = v('text-wrap-mode') === INITIAL ? 'wrap' : v('text-wrap-mode');
+  return WHITE_SPACE_MAP[`${collapse} ${mode}`] ?? `${collapse} ${mode}`;
+}
+function fontSynthesisText(v) {
+  const parts = [];
+  const values = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'].map(v);
+  for (const [index, name] of ['weight', 'style', 'small-caps'].entries()) {
+    if (values[index] === 'auto') parts.push(name);
+    else if (values[index] !== 'none') return '';
+  }
+  return parts.length ? parts.join(' ') : 'none';
+}
+function textBoxText(v) {
+  const trim = v('text-box-trim'), edge = v('text-box-edge');
+  if (trim === 'none' && edge === 'auto') return 'normal';
+  if (trim === 'trim-both') return edge === 'auto' ? 'trim-both' : edge;
+  return edge === 'auto' ? trim : `${trim} ${edge}`;
+}
+function scrollTimelineText(v) {
+  const names = layers(v('scroll-timeline-name')), axes = layers(v('scroll-timeline-axis'));
+  if (names.length !== axes.length) return '';
+  return names.map((name, index) => (axes[index] === 'block' ? name : `${name} ${axes[index]}`)).join(', ');
+}
+function viewTimelineText(v) {
+  const names = layers(v('view-timeline-name')), axes = layers(v('view-timeline-axis')), insets = layers(v('view-timeline-inset'));
+  if (names.length !== axes.length || names.length !== insets.length) return '';
+  return names.map((name, index) => joined([name, axes[index] === 'block' ? '' : axes[index], insets[index] === 'auto' ? '' : insets[index]])).join(', ');
+}
+function fontVariantText(v) {
+  const values = ['font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji'].map(v);
+  if (values.every((value) => value === 'normal')) return 'normal';
+  if (values[0] === 'none') return values.slice(1).every((value) => value === 'normal') ? 'none' : '';
+  return joined(values.map((value) => (value === 'normal' ? '' : value)));
+}
+function gridAreaText(v) {
+  const [rs, cs, re, ce] = ['grid-row-start', 'grid-column-start', 'grid-row-end', 'grid-column-end'].map(v);
+  const parts = [rs, cs, re, ce];
+  if (ce === lineDefault(cs)) { parts.pop(); if (re === lineDefault(rs)) { parts.pop(); if (cs === lineDefault(rs)) parts.pop(); } }
+  return parts.join(' / ');
+}
+function gridFlowText(rows, cols, flow, autoCols, autoRows) {
+  const dense = flow.endsWith('dense');
+  if ((flow.startsWith('row') || flow === 'dense') && rows === 'none' && autoCols === 'auto') return `${joined(['auto-flow', dense ? 'dense' : '', autoRows === 'auto' ? '' : autoRows])} / ${cols}`;
+  if (flow.startsWith('column') && cols === 'none' && autoRows === 'auto') return `${rows} / ${joined(['auto-flow', dense ? 'dense' : '', autoCols === 'auto' ? '' : autoCols])}`;
+  return '';
+}
+function gridText(v) {
+  const rows = v('grid-template-rows'), cols = v('grid-template-columns'), areas = v('grid-template-areas'), flow = v('grid-auto-flow'), autoCols = v('grid-auto-columns'), autoRows = v('grid-auto-rows');
+  if (flow === 'row' && autoRows === 'auto' && autoCols === 'auto') return gridTemplateText(rows, cols, areas);
+  if (areas !== 'none') return '';
+  return gridFlowText(rows, cols, flow, autoCols, autoRows);
+}
+function borderImageText(v) {
+  const [source, slice, width, outsetValue, repeat] = ['border-image-source', 'border-image-slice', 'border-image-width', 'border-image-outset', 'border-image-repeat'].map(v);
+  if (slice === '100%' && width === '1' && outsetValue === '0' && repeat === 'stretch') return source;
+  return `${source} ${slice} / ${width} / ${outsetValue} ${repeat}`;
+}
+function offsetText(v) {
+  const [pos, path, distance, rotate, anchor] = ['offset-position', 'offset-path', 'offset-distance', 'offset-rotate', 'offset-anchor'].map(v);
+  const moved = distance !== '0px' || rotate !== 'auto';
+  const main = joined([pos === 'normal' ? '' : pos, path === 'none' && !moved ? '' : path, distance === '0px' ? '' : distance, rotate === 'auto' ? '' : rotate]) || 'normal';
+  return anchor === 'auto' ? main : `${main} / ${anchor}`;
+}
+function timelineTriggerText(v) {
+  const columns = ['timeline-trigger-name', 'timeline-trigger-source', 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end'].map((name) => layers(v(name)));
+  const count = columns[0].length;
+  if (columns.some((column) => column.length !== count)) return '';
+  return Array.from({ length: count }, (_, index) => {
+    const [name, source, as, ae, bs, be] = columns.map((column) => column[index]);
+    return triggerText(name, source, [as, ae], [bs, be]);
+  }).join(', ');
+}
+
+const SERIALIZERS = {
+  'border-radius': (v) => borderRadiusText(v),
+  '-webkit-border-radius': (v) => borderRadiusText(v),
+  'column-rule-inset': (v) => ruleInsetText(v, 'column'),
+  'row-rule-inset': (v) => ruleInsetText(v, 'row'),
+  'rule-inset': ruleInsetBoth,
+  'rule-inset-cap': (v) => ruleInsetPartText(v, 'cap'),
+  'rule-inset-junction': (v) => ruleInsetPartText(v, 'junction'),
+  'place-items': (v) => pairText(v('align-items'), v('justify-items')),
+  'place-self': (v) => pairText(v('align-self'), v('justify-self')),
+  'place-content': (v) => pairText(v('align-content'), v('justify-content')),
+  'background-position': (_v, texts) => positionShorthandText(texts),
+  'mask-position': (_v, texts) => positionShorthandText(texts),
+  '-webkit-mask-position': (_v, texts) => positionShorthandText(texts),
+  'animation-range': (v) => rangeText(v('animation-range-start'), v('animation-range-end'), 'normal'),
+  'timeline-trigger-activation-range': (v) => rangesText(v('timeline-trigger-activation-range-start'), v('timeline-trigger-activation-range-end'), 'normal'),
+  'timeline-trigger-active-range': (v) => rangesText(v('timeline-trigger-active-range-start'), v('timeline-trigger-active-range-end'), 'auto'),
+  'border-top': borderSideShort,
+  'border-right': borderSideShort,
+  'border-bottom': borderSideShort,
+  'border-left': borderSideShort,
+  'column-rule': borderSideShort,
+  'row-rule': borderSideShort,
+  'border-block-start': borderLogicalSideText,
+  'border-block-end': borderLogicalSideText,
+  'border-inline-start': borderLogicalSideText,
+  'border-inline-end': borderLogicalSideText,
+  'border-block': borderBothSidesText,
+  'border-inline': borderBothSidesText,
+  rule: borderBothSidesText,
+  border: borderShort,
+  outline: (v) => joined(['outline-color', 'outline-style', 'outline-width'].map((name) => omitIf(v(name), null))),
+  '-webkit-text-stroke': (v) => joined(['-webkit-text-stroke-width', '-webkit-text-stroke-color'].map((name) => omitIf(v(name), null))),
+  'text-decoration': textDecorationShort,
+  'text-emphasis': (v) => joined([omitIf(v('text-emphasis-style'), 'none'), omitIf(v('text-emphasis-color'), 'currentcolor')]) || 'none',
+  'flex-flow': flexFlowText,
+  'list-style': (v) => joined(['list-style-position', 'list-style-image', 'list-style-type'].map((name) => omitIf(v(name), null))),
+  columns: columnsText,
+  container: (v) => { const kind = v('container-type'); return kind === 'normal' ? v('container-name') : `${v('container-name')} / ${kind}`; },
+  'text-wrap': textWrapText,
+  'white-space': whiteSpaceText,
+  'font-synthesis': fontSynthesisText,
+  'text-box': textBoxText,
+  'position-try': (v) => (v('position-try-order') === 'normal' ? v('position-try-fallbacks') : `${v('position-try-order')} ${v('position-try-fallbacks')}`),
+  'scroll-timeline': scrollTimelineText,
+  'view-timeline': viewTimelineText,
+  'font-variant': fontVariantText,
+  flex: (v) => `${v('flex-grow')} ${v('flex-shrink')} ${v('flex-basis')}`,
+  font: (v) => fontText(v),
+  'grid-area': gridAreaText,
+  'grid-row': (_v, texts) => (texts[1] === lineDefault(texts[0]) ? texts[0] : `${texts[0]} / ${texts[1]}`),
+  'grid-column': (_v, texts) => (texts[1] === lineDefault(texts[0]) ? texts[0] : `${texts[0]} / ${texts[1]}`),
+  'grid-template': (v) => gridTemplateText(v('grid-template-rows'), v('grid-template-columns'), v('grid-template-areas')),
+  grid: gridText,
+  'border-image': borderImageText,
+  offset: offsetText,
+  background: (v) => backgroundText(v),
+  mask: (v) => maskText(v),
+  transition: (v) => transitionText(v),
+  animation: (v) => animationText(v),
+  'timeline-trigger': timelineTriggerText,
+};
+
 /** Serialize `grammar` from its longhands' values (`texts` in table order). */
 function serializeValue(grammar, entry, texts) {
   const v = (name) => { const index = entry.longhands.indexOf(name); return index < 0 ? '' : texts[index]; };
   if (BOXES[grammar]) return boxText(BOXES[grammar].map(v));
   if (PAIRS.has(grammar)) return pairText(texts[0], texts[1]);
   if (SAME.has(grammar)) return allSame(texts);
-  switch (grammar) {
-    case 'border-radius':
-    case '-webkit-border-radius': {
-      const corners = ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'].map(v);
-      const horizontal = [], vertical = [];
-      for (const corner of corners) { const space = corner.indexOf(' '); const h = space < 0 ? corner : corner.slice(0, space); horizontal.push(h); vertical.push(space < 0 ? h : corner.slice(space + 1)); }
-      const h = boxText(horizontal);
-      return horizontal.every((value, index) => value === vertical[index]) ? h : `${h} / ${boxText(vertical)}`;
-    }
-    case 'column-rule-inset': return ruleInsetText(v, 'column');
-    case 'row-rule-inset': return ruleInsetText(v, 'row');
-    case 'rule-inset': { const column = ruleInsetText(v, 'column'); return column === ruleInsetText(v, 'row') ? column : ''; }
-    case 'rule-inset-cap':
-    case 'rule-inset-junction': {
-      const part = grammar === 'rule-inset-cap' ? 'cap' : 'junction';
-      const row = pairText(v(`row-rule-inset-${part}-start`), v(`row-rule-inset-${part}-end`));
-      return row === pairText(v(`column-rule-inset-${part}-start`), v(`column-rule-inset-${part}-end`)) ? row : '';
-    }
-    case 'place-items': return pairText(v('align-items'), v('justify-items'));
-    case 'place-self': return pairText(v('align-self'), v('justify-self'));
-    case 'place-content': return pairText(v('align-content'), v('justify-content'));
-    case 'background-position':
-    case 'mask-position':
-    case '-webkit-mask-position': {
-      const xs = layers(texts[0]), ys = layers(texts[1]);
-      if (xs.length !== ys.length) {
-        // Uneven lists: each layer's set parts; layers with none drop out.
-        const part = (list, index) => (list[index] === undefined || list[index] === INITIAL ? '' : list[index]);
-        return Array.from({ length: Math.max(xs.length, ys.length) }, (_, index) => joined([part(xs, index), part(ys, index)])).filter((layer) => layer).join(', ');
-      }
-      if ([...xs, ...ys].includes(INITIAL)) return '';
-      return xs.map((x, index) => `${x} ${ys[index]}`).join(', ');
-    }
-    case 'animation-range': return rangeText(v('animation-range-start'), v('animation-range-end'), 'normal');
-    case 'timeline-trigger-activation-range': return rangesText(v('timeline-trigger-activation-range-start'), v('timeline-trigger-activation-range-end'), 'normal');
-    case 'timeline-trigger-active-range': return rangesText(v('timeline-trigger-active-range-start'), v('timeline-trigger-active-range-end'), 'auto');
-    case 'border-top': case 'border-right': case 'border-bottom': case 'border-left': case 'column-rule': case 'row-rule':
-      return lineText(v(`${grammar}-width`), v(`${grammar}-style`), v(`${grammar}-color`));
-    // The logical sides leave omitted parts `initial` and keep every other value.
-    case 'border-block-start': case 'border-block-end': case 'border-inline-start': case 'border-inline-end':
-      return joined(['width', 'style', 'color'].map((part) => omitIf(v(`${grammar}-${part}`), null)));
-    case 'border-block': case 'border-inline': case 'rule': {
-      const [start, end] = grammar === 'rule' ? ['column-rule', 'row-rule'] : [`${grammar}-start`, `${grammar}-end`];
-      const a = ['width', 'style', 'color'].map((part) => v(`${start}-${part}`)), b = ['width', 'style', 'color'].map((part) => v(`${end}-${part}`));
-      return a.every((value, index) => value === b[index]) ? lineText(...a) : '';
-    }
-    case 'border': {
-      const image = ['border-image-source', 'border-image-slice', 'border-image-width', 'border-image-outset', 'border-image-repeat'].map(v);
-      if (image.some((value, index) => value !== BORDER_IMAGE_INITIAL[index])) return '';
-      const parts = [];
-      for (const part of ['width', 'style', 'color']) {
-        const sides = ['top', 'right', 'bottom', 'left'].map((s) => v(`border-${s}-${part}`));
-        if (sides.some((value) => value !== sides[0])) return '';
-        parts.push(sides[0]);
-      }
-      return lineText(...parts);
-    }
-    case 'outline': return joined(['outline-color', 'outline-style', 'outline-width'].map((name) => omitIf(v(name), null)));
-    case '-webkit-text-stroke': return joined(['-webkit-text-stroke-width', '-webkit-text-stroke-color'].map((name) => omitIf(v(name), null)));
-    case 'text-decoration': {
-      const lineValue = v('text-decoration-line');
-      const text = joined([omitIf(lineValue, 'none'), omitIf(v('text-decoration-thickness'), 'auto'), omitIf(v('text-decoration-style'), 'solid'), omitIf(v('text-decoration-color'), 'currentcolor')]);
-      return text || (lineValue === INITIAL ? 'none' : lineValue);
-    }
-    case 'text-emphasis': return joined([omitIf(v('text-emphasis-style'), 'none'), omitIf(v('text-emphasis-color'), 'currentcolor')]) || 'none';
-    case 'flex-flow': {
-      const direction = v('flex-direction'), wrap = v('flex-wrap');
-      return wrap === 'nowrap' ? direction : direction === 'row' ? wrap : `${direction} ${wrap}`;
-    }
-    case 'list-style': return joined(['list-style-position', 'list-style-image', 'list-style-type'].map((name) => omitIf(v(name), null)));
-    case 'columns': {
-      // Chrome 156 leaves `column-wrap` out of the spelling, whatever its value.
-      const width = v('column-width'), count = v('column-count'), height = v('column-height');
-      const main = width === 'auto' && count === 'auto' ? 'auto' : width === 'auto' ? count : count === 'auto' ? width : `${width} ${count}`;
-      return height === 'auto' ? main : `${main} / ${height}`;
-    }
-    case 'container': { const kind = v('container-type'); return kind === 'normal' ? v('container-name') : `${v('container-name')} / ${kind}`; }
-    case 'text-wrap': {
-      const mode = v('text-wrap-mode') === INITIAL ? 'wrap' : v('text-wrap-mode');
-      const style = v('text-wrap-style') === INITIAL ? 'auto' : v('text-wrap-style');
-      return style === 'auto' ? mode : mode === 'wrap' ? style : `${mode} ${style}`;
-    }
-    case 'white-space': {
-      const collapse = v('white-space-collapse') === INITIAL ? 'collapse' : v('white-space-collapse');
-      const mode = v('text-wrap-mode') === INITIAL ? 'wrap' : v('text-wrap-mode');
-      return { 'collapse wrap': 'normal', 'preserve nowrap': 'pre', 'collapse nowrap': 'nowrap', 'preserve wrap': 'pre-wrap', 'preserve-breaks wrap': 'pre-line', 'break-spaces wrap': 'break-spaces' }[`${collapse} ${mode}`] ?? `${collapse} ${mode}`;
-    }
-    case 'font-synthesis': {
-      const parts = [];
-      const values = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps'].map(v);
-      for (const [index, name] of ['weight', 'style', 'small-caps'].entries()) {
-        if (values[index] === 'auto') parts.push(name);
-        else if (values[index] !== 'none') return '';
-      }
-      return parts.length ? parts.join(' ') : 'none';
-    }
-    case 'text-box': {
-      const trim = v('text-box-trim'), edge = v('text-box-edge');
-      if (trim === 'none' && edge === 'auto') return 'normal';
-      if (trim === 'trim-both') return edge === 'auto' ? 'trim-both' : edge;
-      return edge === 'auto' ? trim : `${trim} ${edge}`;
-    }
-    case 'position-try': return v('position-try-order') === 'normal' ? v('position-try-fallbacks') : `${v('position-try-order')} ${v('position-try-fallbacks')}`;
-    case 'scroll-timeline': {
-      const names = layers(v('scroll-timeline-name')), axes = layers(v('scroll-timeline-axis'));
-      if (names.length !== axes.length) return '';
-      return names.map((name, index) => (axes[index] === 'block' ? name : `${name} ${axes[index]}`)).join(', ');
-    }
-    case 'view-timeline': {
-      const names = layers(v('view-timeline-name')), axes = layers(v('view-timeline-axis')), insets = layers(v('view-timeline-inset'));
-      if (names.length !== axes.length || names.length !== insets.length) return '';
-      return names.map((name, index) => joined([name, axes[index] === 'block' ? '' : axes[index], insets[index] === 'auto' ? '' : insets[index]])).join(', ');
-    }
-    case 'font-variant': {
-      const values = ['font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji'].map(v);
-      if (values.every((value) => value === 'normal')) return 'normal';
-      if (values[0] === 'none') return values.slice(1).every((value) => value === 'normal') ? 'none' : '';
-      return joined(values.map((value) => (value === 'normal' ? '' : value)));
-    }
-    case 'flex': return `${v('flex-grow')} ${v('flex-shrink')} ${v('flex-basis')}`;
-    case 'font': return fontText(v);
-    case 'grid-area': {
-      const [rs, cs, re, ce] = ['grid-row-start', 'grid-column-start', 'grid-row-end', 'grid-column-end'].map(v);
-      const parts = [rs, cs, re, ce];
-      if (ce === lineDefault(cs)) { parts.pop(); if (re === lineDefault(rs)) { parts.pop(); if (cs === lineDefault(rs)) parts.pop(); } }
-      return parts.join(' / ');
-    }
-    case 'grid-row':
-    case 'grid-column': return texts[1] === lineDefault(texts[0]) ? texts[0] : `${texts[0]} / ${texts[1]}`;
-    case 'grid-template': return gridTemplateText(v('grid-template-rows'), v('grid-template-columns'), v('grid-template-areas'));
-    case 'grid': {
-      const rows = v('grid-template-rows'), cols = v('grid-template-columns'), areas = v('grid-template-areas'), flow = v('grid-auto-flow'), autoCols = v('grid-auto-columns'), autoRows = v('grid-auto-rows');
-      if (flow === 'row' && autoRows === 'auto' && autoCols === 'auto') return gridTemplateText(rows, cols, areas);
-      if (areas !== 'none') return '';
-      const dense = flow.endsWith('dense');
-      if ((flow.startsWith('row') || flow === 'dense') && rows === 'none' && autoCols === 'auto') return `${joined(['auto-flow', dense ? 'dense' : '', autoRows === 'auto' ? '' : autoRows])} / ${cols}`;
-      if (flow.startsWith('column') && cols === 'none' && autoRows === 'auto') return `${rows} / ${joined(['auto-flow', dense ? 'dense' : '', autoCols === 'auto' ? '' : autoCols])}`;
-      return '';
-    }
-    case 'border-image': {
-      const [source, slice, width, outsetValue, repeat] = ['border-image-source', 'border-image-slice', 'border-image-width', 'border-image-outset', 'border-image-repeat'].map(v);
-      if (slice === '100%' && width === '1' && outsetValue === '0' && repeat === 'stretch') return source;
-      return `${source} ${slice} / ${width} / ${outsetValue} ${repeat}`;
-    }
-    case 'offset': {
-      const [pos, path, distance, rotate, anchor] = ['offset-position', 'offset-path', 'offset-distance', 'offset-rotate', 'offset-anchor'].map(v);
-      const moved = distance !== '0px' || rotate !== 'auto';
-      const main = joined([pos === 'normal' ? '' : pos, path === 'none' && !moved ? '' : path, distance === '0px' ? '' : distance, rotate === 'auto' ? '' : rotate]) || 'normal';
-      return anchor === 'auto' ? main : `${main} / ${anchor}`;
-    }
-    case 'background': return backgroundText(v);
-    case 'mask': return maskText(v);
-    case 'transition': return transitionText(v);
-    case 'animation': return animationText(v);
-    case 'timeline-trigger': {
-      const columns = ['timeline-trigger-name', 'timeline-trigger-source', 'timeline-trigger-activation-range-start', 'timeline-trigger-activation-range-end', 'timeline-trigger-active-range-start', 'timeline-trigger-active-range-end'].map((name) => layers(v(name)));
-      // Lists of different lengths have no shorthand spelling.
-      const count = columns[0].length;
-      if (columns.some((column) => column.length !== count)) return '';
-      return Array.from({ length: count }, (_, index) => {
-        const [name, source, as, ae, bs, be] = columns.map((column) => column[index]);
-        return triggerText(name, source, [as, ae], [bs, be]);
-      }).join(', ');
-    }
-    default: return '';
-  }
+  const serializer = SERIALIZERS[grammar];
+  return serializer ? serializer(v, texts, grammar) : '';
 }
 
 // ------------------------------------------------------------------- table ----
@@ -2436,29 +2883,36 @@ export function expand(name, value) {
  * getPropertyValue(shorthand) from `declarations` ([{ name, value, important, pending }]):
  * '' when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
  */
+function collectLonghandValues(longhands, declarations) {
+  const values = [];
+  for (const longhand of longhands) {
+    let found = null;
+    for (let index = declarations.length - 1; index >= 0; index--) if (declarations[index].name === longhand) { found = declarations[index]; break; }
+    if (!found) return null;
+    values.push(found);
+  }
+  return values;
+}
+const samePending = (a, b) => (a === null || a === undefined ? b === null || b === undefined : !!b && a[0] === b[0] && a[1] === b[1]);
+function pendingShorthandText(first, entry) {
+  // A system font keyword leaves the font-variant longhands at `normal`.
+  if (first.pending[0] === 'font' && entry.canonical === 'font-variant' && SYSTEM_FONTS.includes(first.pending[1])) return 'normal';
+  return first.pending[0] === entry.canonical ? first.pending[1] : '';
+}
+function shorthandUniformText(values, entry) {
+  const first = values[0];
+  if (!first.pending && !CSS_WIDE.has(first.value)) return null;
+  if (!values.every((v) => v.value === first.value && samePending(first.pending, v.pending))) return null;
+  return first.pending ? pendingShorthandText(first, entry) : first.value;
+}
 export function shorthandValue(name, declarations) {
   const entry = ENTRIES.get(name);
   if (!entry) return '';
-  const values = [];
-  for (const longhand of entry.longhands) {
-    let found = null;
-    for (let index = declarations.length - 1; index >= 0; index--) if (declarations[index].name === longhand) { found = declarations[index]; break; }
-    if (!found) return '';
-    values.push(found);
-  }
+  const values = collectLonghandValues(entry.longhands, declarations);
+  if (!values) return '';
   if (values.some((v) => v.important) && values.some((v) => !v.important)) return '';
-  const first = values[0];
-  const samePending = (a, b) => (a === null || a === undefined ? b === null || b === undefined : !!b && a[0] === b[0] && a[1] === b[1]);
-  if (first.pending || CSS_WIDE.has(first.value)) {
-    if (values.every((v) => v.value === first.value && samePending(first.pending, v.pending))) {
-      if (first.pending) {
-        // A system font keyword leaves the font-variant longhands at `normal`.
-        if (first.pending[0] === 'font' && entry.canonical === 'font-variant' && SYSTEM_FONTS.includes(first.pending[1])) return 'normal';
-        return first.pending[0] === entry.canonical ? first.pending[1] : '';
-      }
-      return first.value;
-    }
-  }
+  const uniform = shorthandUniformText(values, entry);
+  if (uniform !== null) return uniform;
   for (const v of values) {
     if (v.pending || (CSS_WIDE.has(v.value) && (v.value !== 'initial' || !entry.allowInitial))) return '';
   }
@@ -2491,34 +2945,48 @@ export function blockText(declarations) {
 }
 
 /** A declaration list's `[name, value, important]` declarations, in order. */
+function declarationsScanInQuote(source, state, c) {
+  if (c === '\\') state.index++;
+  else if (c === state.quote) state.quote = '';
+}
+function declarationsScanBracket(state, c) {
+  if (c === '(' || c === '[' || c === '{') { state.depth++; return true; }
+  if (c === ')' || c === ']' || c === '}') { state.depth = Math.max(0, state.depth - 1); return true; }
+  return false;
+}
+function declarationsScan(source, state) {
+  const c = source[state.index];
+  if (state.quote) { declarationsScanInQuote(source, state, c); return 'skip'; }
+  if (c === '"' || c === "'") { state.quote = c; return 'skip'; }
+  if (c === '/' && source[state.index + 1] === '*') { const end = source.indexOf('*/', state.index + 2); state.index = end < 0 ? source.length : end + 1; return 'skip'; }
+  if (declarationsScanBracket(state, c)) return 'skip';
+  if (c !== ';' || state.depth > 0) return 'skip';
+  return 'split';
+}
+function parseDeclarationPart(part) {
+  const colon = part.indexOf(':');
+  if (colon < 0) return null;
+  const name = part.slice(0, colon).trim();
+  if (!/^-?[A-Za-z_-][A-Za-z0-9_-]*$/.test(name)) return null;
+  let value = part.slice(colon + 1).trim();
+  const important = /!\s*important\s*$/i.exec(value);
+  if (important) value = value.slice(0, important.index).trim();
+  else if (value.includes('!')) return null;
+  return [name, value, !!important];
+}
 export function declarations(text) {
   const tokens = tokenize(String(text));
   const out = [];
   if (!tokens) return out;
-  // Split at top-level semicolons, keeping each declaration's source span.
   const source = String(text);
-  let depth = 0, start = 0, quote = '';
-  for (let index = 0; index <= source.length; index++) {
-    const c = source[index];
-    if (index < source.length) {
-      if (quote) { if (c === '\\') index++; else if (c === quote) quote = ''; continue; }
-      if (c === '"' || c === "'") { quote = c; continue; }
-      if (c === '/' && source[index + 1] === '*') { const end = source.indexOf('*/', index + 2); index = end < 0 ? source.length : end + 1; continue; }
-      if (c === '(' || c === '[' || c === '{') { depth++; continue; }
-      if (c === ')' || c === ']' || c === '}') { depth = Math.max(0, depth - 1); continue; }
-      if (c !== ';' || depth > 0) continue;
-    }
-    const part = source.slice(start, index).replace(/\/\*[\s\S]*?\*\//g, '');
-    start = index + 1;
-    const colon = part.indexOf(':');
-    if (colon < 0) continue;
-    const name = part.slice(0, colon).trim();
-    if (!/^-?[A-Za-z_-][A-Za-z0-9_-]*$/.test(name)) continue;
-    let value = part.slice(colon + 1).trim();
-    const important = /!\s*important\s*$/i.exec(value);
-    if (important) value = value.slice(0, important.index).trim();
-    else if (value.includes('!')) continue;
-    out.push([name, value, !!important]);
+  const state = { depth: 0, quote: '', index: 0 };
+  let start = 0;
+  for (state.index = 0; state.index <= source.length; state.index++) {
+    if (state.index < source.length && declarationsScan(source, state) === 'skip') continue;
+    const part = source.slice(start, state.index).replace(/\/\*[\s\S]*?\*\//g, '');
+    start = state.index + 1;
+    const parsed = parseDeclarationPart(part);
+    if (parsed) out.push(parsed);
   }
   return out;
 }
@@ -2539,7 +3007,8 @@ function radiusPair(comps) {
 }
 const flexBasis = (comps) => single(comps, (c) => keyword(c, ['auto', 'content', 'min-content', 'max-content', 'fit-content']) ?? lengthPercentage(c, false));
 const fontSize = (comps) => single(comps, (c) => keyword(c, FONT_SIZES) ?? lengthPercentage(c, false));
-const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind === 'number' && c.value >= 1 && c.value <= 1000 ? number(c, false) : null));
+const fontWeight = (comps) => single(comps, (c) => keyword(c, ['normal', 'bold', 'bolder', 'lighter']) ?? (c.kind !== 'number' || (c.value >= 1 && c.value <= 1000) ? number(c, false) : null));
+// (A literal weight is in [1, 1000]; a math function is checked when computed.)
 function fontStyle(comps) {
   if (comps.length === 1) return keyword(comps[0], ['normal', 'italic', 'oblique']);
   if (comps.length === 2 && isIdent(comps[0], ['oblique'])) return oblique(comps[1]);
@@ -2584,12 +3053,20 @@ function gridAreas(comps) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
   return areasText(comps.map(areaRow));
 }
-const offsetPath = (comps) => single(comps, (c) => {
+const COORD_BOXES = ['content-box', 'padding-box', 'border-box', 'fill-box', 'stroke-box', 'view-box'];
+/** `clip-path`'s `shape() || <geometry-box>` and `path()`; the embedder's grammar decides the rest. */
+const clipPath = (comps) => shapeWithBox(comps, [...COORD_BOXES, 'margin-box'], 'border-box') ?? single(comps, (c) => {
+  const value = functionNamed(c, ['path']);
+  return value !== null && pathDataValid(value) ? pathText(value) : null;
+});
+/** `shape-outside`'s `shape() || <shape-box>`; the embedder's grammar decides the rest. */
+const shapeOutside = (comps) => shapeWithBox(comps, ['margin-box', 'border-box', 'padding-box', 'content-box'], 'margin-box');
+const offsetPath = (comps) => (comps.some((c) => functionNamed(c, ['shape']) !== null) ? shapeWithBox(comps, COORD_BOXES, 'border-box') : single(comps, (c) => {
   if (isIdent(c, ['none'])) return 'none';
-  const value = functionNamed(c, ['path', 'ray', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect', 'shape']) ?? url(c);
+  const value = functionNamed(c, ['path', 'ray', 'circle', 'ellipse', 'inset', 'polygon', 'xywh', 'rect']) ?? url(c);
   if (value === null || (value.startsWith('path(') && !pathDataValid(value))) return null;
   return value.startsWith('path(') ? pathText(value) : value;
-});
+}));
 // A percentage calc() stays as written.
 const opacityV = (comps) => single(comps, (c) => number(c, true) ?? (c.kind === 'percentage' ? cssNumber(c.value / 100) : mathOf(c, isLengthUnit, true, false) && c.text.includes('%') ? c.text : null));
 const DISPLAY_KEYWORDS = ['none', 'contents', 'block', 'inline', 'inline-block', 'flow-root', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'inline-table', 'table-row-group', 'table-header-group', 'table-footer-group', 'table-row', 'table-cell', 'table-column-group', 'table-column', 'table-caption', 'list-item', 'ruby', 'ruby-text', 'math', '-webkit-box', '-webkit-inline-box'];
@@ -2606,25 +3083,27 @@ const animationNames = (comps) => listed(comps, (item) => single(item, (c) => {
   if (c.kind === 'string') return animationNameString(c);
   return customIdent(c, ['none']);
 }));
+function shadowItemStep(state, comp, box) {
+  if (box && isIdent(comp, ['inset']) && !state.inset) { state.inset = true; return true; }
+  // The blur radius (the third length) is not negative.
+  const negative = comp.kind === 'dimension' && comp.value < 0;
+  const l = state.lengths.length < (box ? 4 : 3) && !(state.lengths.length === 2 && negative) ? length(comp, true) : null;
+  if (l !== null) { state.lengths.push(l); return true; }
+  const c = state.shadowColor === null ? color(comp) : null;
+  if (c === null) return false;
+  state.shadowColor = c;
+  return true;
+}
+function shadowItem(item, box) {
+  const state = { shadowColor: null, inset: false, lengths: [] };
+  for (const comp of item) if (!shadowItemStep(state, comp, box)) return null;
+  if (state.lengths.length < 2) return null;
+  return [...(state.shadowColor === null ? [] : [state.shadowColor]), ...state.lengths, ...(state.inset ? ['inset'] : [])].join(' ');
+}
 /** `box-shadow` / `text-shadow` (`box`: a spread length and `inset`): each shadow as Chrome orders it (color, lengths, `inset`). */
 function shadow(comps, box) {
   if (comps.length === 1 && isIdent(comps[0], ['none'])) return 'none';
-  return listed(comps, (item) => {
-    let shadowColor = null, inset = false;
-    const lengths = [];
-    for (const comp of item) {
-      if (box && isIdent(comp, ['inset']) && !inset) { inset = true; continue; }
-      // The blur radius (the third length) is not negative.
-      const negative = comp.kind === 'dimension' && comp.value < 0;
-      const l = lengths.length < (box ? 4 : 3) && !(lengths.length === 2 && negative) ? length(comp, true) : null;
-      if (l !== null) { lengths.push(l); continue; }
-      const c = shadowColor === null ? color(comp) : null;
-      if (c === null) return null;
-      shadowColor = c;
-    }
-    if (lengths.length < 2) return null;
-    return [...(shadowColor === null ? [] : [shadowColor]), ...lengths, ...(inset ? ['inset'] : [])].join(' ');
-  });
+  return listed(comps, (item) => shadowItem(item, box));
 }
 const SIDES4 = ['top', 'right', 'bottom', 'left'];
 const LOGICAL = ['block-start', 'block-end', 'inline-start', 'inline-end'];
@@ -2699,6 +3178,7 @@ add(['text-decoration-style'], (c) => keywords(c, ['solid', 'double', 'dotted', 
 add(['list-style-position'], (c) => keywords(c, ['inside', 'outside']));
 add(['list-style-image'], (c) => single(c, (x) => image(x) ?? keyword(x, ['none'])), false);
 add(['z-index'], zIndex);
+add(['order'], (comps) => single(comps, (c) => integer(c, -Infinity)));
 add(['width', 'height', 'min-width', 'min-height', 'block-size', 'inline-size', 'min-block-size', 'min-inline-size'], sizeV);
 add(['max-width', 'max-height', 'max-block-size', 'max-inline-size'], maxSizeV);
 add(['column-count'], (c) => single(c, (x) => keyword(x, ['auto']) ?? integer(x, 1)));
@@ -2745,6 +3225,8 @@ add(['text-wrap-style'], (c) => keywords(c, ['auto', 'balance', 'stable', 'prett
 add(['overflow-wrap'], (c) => keywords(c, ['normal', 'break-word', 'anywhere']));
 add(['grid-template-areas'], gridAreas);
 add(['offset-path'], offsetPath);
+add(['clip-path'], clipPath, false);
+add(['shape-outside'], shapeOutside, false);
 add(['opacity'], opacityV);
 add(['display'], display, false);
 add(['animation-name'], animationNames);
@@ -2799,5 +3281,6 @@ export function longhandValue(name, value) {
   if (!grammar) return { valid: null, text: genericSpelling(name, comps) };
   const text = grammar[0](comps);
   if (text !== null) return { valid: true, text };
-  return grammar[1] ? { valid: false } : { valid: null, text: genericSpelling(name, comps) };
+  // A lenient grammar's rejection of a shape() is final: no embedder grammar knows shape() (#338).
+  return grammar[1] || comps.some((c) => functionNamed(c, ['shape']) !== null) ? { valid: false } : { valid: null, text: genericSpelling(name, comps) };
 }

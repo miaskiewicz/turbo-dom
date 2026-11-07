@@ -1,6 +1,6 @@
 {
   "package": "turbo-dom-v8",
-  "version": "150.4.0",
+  "version": "150.4.1",
   "rust_version": "1.91",
   "repository": "https://github.com/miaskiewicz/turbo-dom",
   "description": "turbo-dom fork of rusty_v8 (v8 150.4.0) with the interceptor ShouldThrowOnError and isolate weak-teardown fixes: Rust bindings to V8",
@@ -41,14 +41,15 @@
     "fork-marker.patch": "ff9a325c3c83afcf6ee73aaec4f9d166408b18c38acb9664fd43068315babbcf",
     "v8-teardown-tests.patch": "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c",
     "lib-test-init.patch": "c6ff2657b257348214f32a737ee0125c3ba4e5bc57d0e52ef578e9f2e56a39b0",
-    "doctests.patch": "c771b47979ab2d933a0481ca851276088cd7241860fe1dbe7982afbc342d9514"
+    "doctests.patch": "c771b47979ab2d933a0481ca851276088cd7241860fe1dbe7982afbc342d9514",
+    "incumbent-context.patch": "aeb394c5c956a71d8f8eca212d3ea75cb2f39cf9464d832b7c6527d18439d365"
   },
   "generated": {
-    "files": 188,
-    "tree_sha256": "0da89110c6d84251e04f6edecc403995744c018006bd9fd256b80aa6572a2afa",
+    "files": 189,
+    "tree_sha256": "1a76a467785e3558c80171ae32de16a88f31c173614b602465d4fdf3e29c20c2",
     "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
     "key_files": {
-      "Cargo.toml": "df276df62448220cc8d2408aba411c2c235acbdfa25531954e64768c4be46216",
+      "Cargo.toml": "d604bd998a542718f1ef89debefca8e262b728caf22dec9821b2ba0aa7b616c6",
       "build.rs": "7cdac7cec16ef0d8a39b0b6d78d550826248be2f4d2bd1e31d1bcf3e91f00d0c",
       "src/lib.rs": "647aea9ba7621934b5d7ee3d3ab344f1534f456ac06c56ebc27b0898bfb15b65",
       "src/function.rs": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",

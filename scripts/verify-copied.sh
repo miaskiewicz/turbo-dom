@@ -44,6 +44,7 @@ CRATE_SRC=crates/turbo-dom-browser-env/src
 EXCLUDES="bin bundler.rs coverage.rs coverage_branch.rs esm_cjs.rs graph.rs launcher.rs napi_host.rs runner.rs transform.rs runtime.js lib.rs"
 # Moved files edited semantically after the move (path: reason).
 SEMANTIC_EDITS="
+dom_implementation.rs: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
 xpath_provider/README.md: 0.7.0 turbo-dom#185 documents fragment/shadow-root contexts and the empty namespace axis
 cssom_parser.rs: zoom_value + helpers moved to turbo_dom::rtdom::css_values (re-exported here)
 interceptor_mode.rs: frame read placed behind the native-sdk-frame-read feature scaffolding
@@ -359,6 +360,47 @@ browser_env.js: 0.7.1 perf the internal-call dispatcher passes arguments as arra
 browser_env.rs: 0.7.1 perf test-only STYLE_GENERATION_READS / SHEET_READS counters; the snapshot fingerprint folds in the engine scripts' hash (fingerprint_of)
 css_admission_tests.rs: 0.7.0 turbo-dom#275/#276 specificity and @scope proximity vs their Chrome 156 control
 control_labels.rs: 0.7.0 perf turbo-dom#271 label lookups read a per-tree-version index (first element per id, label candidates per host chain) + a test-only walk counter
+browser_env.js: 0.8.0 turbo-dom#341 the document.createEvent stub moves to html_reflections.js (Chrome's createEvent table)
+browser_env.js: 0.8.0 turbo-dom#322 ns.cssSupports / cssSupportsProperty (CSS.supports from the engine grammar), if() is a substitution function, a supports declaration followed by ';' is false
+browser_env.rs: 0.8.0 turbo-dom#323 installs html_reflections.js and html_media (html_media.rs/.js) after interface_members.js; interface_parity and css_supports control test modules
+element_tokens.js: 0.8.0 turbo-dom#323 ns.defineTokenList and per-list supported tokens (relList / sizes / blocking / controlsList)
+element_relations.rs: 0.8.0 turbo-dom#323 a src attribute change runs the media element load algorithm (html_media::attribute_changed)
+form_collections.js: 0.8.0 turbo-dom#323 fieldset.elements and datalist.options live collections
+cssom_parser.rs: 0.8.0 turbo-dom#322 if() as an arbitrary substitution function with its condition grammar
+typed_om.js: 0.8.0 turbo-dom#322 anchor-name / anchor-scope / timeline-scope / position-anchor dashed-ident grammars (fixedGrammar)
+user_activation_gates.rs: 0.8.0 turbo-dom#323 ActivationQuery::Sticky and sticky_activation() for media play()'s autoplay policy
+computed_defaults_tests.rs: 0.8.0 turbo-dom#323 the test activation host answers ActivationQuery::Sticky
+browser_env.rs: 0.8.0 turbo-dom#339 wrapping an audio / video / source / track element turns on html_media's mutation recording (html_media::observe); method and setter calls run html_media's pending insertion steps after the mutation flush; clear_interface_records clears them; html_media_events control test module
+mutation_observers.rs: 0.8.0 turbo-dom#339 recording() includes html_media::recording(); childList records reach html_media::mutation
+event_listeners.js: 0.8.0 turbo-dom#339 ns.makeEventTarget gives an engine object (html_media.js's TextTrackList) a listener record
+browser_env.js: 0.8.0 turbo-dom#318 buttons and button-like inputs compute html.css's ButtonFace background-color, rgb(239, 239, 239)
+css_live_tests.rs: 0.8.0 turbo-dom#318 button UA background-color vs its Chrome 156 control
+animations_chrome156.json: 0.8.0 turbo-dom#340 recapture with Animation rangeStart / rangeEnd (#369)
+trusted_types_mapping.json: 0.8.0 onchecked / onopenerchange map to TrustedScript like Chrome 156 (turbo-surf#154)
+trusted_types_chrome155.json: 0.8.0 recaptured in Chrome 156.0.8078.47 with the same pinned cases / probe / collector (the moved path is kept); only onchecked / onopenerchange join the mapping (turbo-surf#154)
+document_xpath.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+document_basics.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+mutation_observers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+html_invokers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+event_listeners.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+interest_invokers.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+form_outputs.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+element_relations.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+element_internals.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+dom_implementation.js: 0.8.0 turbo-dom#297 cc <= 15 helper extraction (behaviour-preserving)
+editing.js: 0.8.0 turbo-dom#389 review: skipEmojiExtendersBackward consumes the emoji base again (Backspace over 👍🏽 / ❤️ / 1️⃣ deletes the sequence, Chrome 156)
+editing_tests.rs: 0.8.0 turbo-dom#389 review: the trusted-input control accepts the headless shell's HeadlessChrome/156.0.8078.47
+trusted_types.rs: 0.8.0 turbo-dom#389 review: Object.prototype-named namespaces / properties are unknown names (Chrome 156) test
+trusted_types.js: 0.8.0 turbo-dom#389 review: KNOWN_NS / SCRIPT_TEXT_PROPS have a null prototype (Object.prototype names are unknown, Chrome 156)
+browser_env.rs: 0.8.0 turbo-dom#389 review: initMouseEvent receiver-before-arguments test
+browser_env.js: 0.8.0 turbo-dom#389 review: initMouseEvent checks its receiver before the argument count (main / Chrome 156)
+browser_env.js: 0.8.0 turbo-dom#389 review: the binding's own text-control selection model is reachable on the private namespace (fallbackControlSelection) for its unit test
+browser_env.rs: 0.8.0 turbo-dom#389 review: fallback setRangeText 'preserve' unit test
+browser_env.js: 0.8.0 turbo-dom#389 review: setRangeText 'preserve' captures the selection before the value write (main)
+browser_env.js: 0.8.0 turbo-dom#389 review: the primordial dispatcher's string / function extras return a shared NOT_HANDLED sentinel instead of a {hit, value} object per call
+browser_env.rs: 0.8.0 turbo-dom#389 review: mark_worker_context(scope, context) returns Result and refuses a context that already holds a window (snapshot_blob() contexts included); WindowAlreadyInstalled
+editing_input_steps.json: 0.8.0 turbo-dom#389 review: Backspace / execCommand('delete') after x + 👍🏽 / ❤️ / 1️⃣ steps
+editing_input_chrome156.json: 0.8.0 turbo-dom#389 review: recaptured with the frozen headless shell (HeadlessChrome/156.0.8078.47, the collector's current flags) over the extended steps; the existing rows are unchanged
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -380,12 +422,14 @@ OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
+OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"
 OWNED="$OWNED activation_focus_probe.js activation_focus_chrome156.json selector_errors_probe.js selector_errors_chrome156.json"
 OWNED="$OWNED keyframe_values_probe.js keyframe_values_chrome156.json"
 OWNED="$OWNED style_invalidation_probe.js style_invalidation_chrome156.json style_invalidation_tests.rs"
 OWNED="$OWNED rule_bucket_tests.rs style_sharing_tests.rs"
 OWNED="$OWNED jsdom_media_jsdom27.json jsdom_media_probe.js media_override_chrome156.json media_override_probe.js"
 OWNED="$OWNED jsdom_transitions_chrome156.json jsdom_transitions_jsdom27.json jsdom_transitions_probe.js"
+OWNED="$OWNED css_animation_events_probe.js css_animation_events_cases.json css_animation_events_chrome156.json"
 OWNED="$OWNED details_toggle_probe.js details_toggle_chrome156.json"
 OWNED="$OWNED popover_exceptions_probe.js popover_exceptions_chrome156.json"
 OWNED="$OWNED xpath_contexts_probe.js xpath_contexts_chrome156.json xpath_contexts_tests.rs"
@@ -397,6 +441,14 @@ OWNED="$OWNED css_grouping_cascade_probe.js css_grouping_cascade_chrome156.json"
 OWNED="$OWNED css_cascade_specificity_probe.js css_cascade_specificity_chrome156.json"
 OWNED="$OWNED inline_style_reuse_probe.js inline_style_reuse_chrome156.json"
 OWNED="$OWNED viewport_cssom_tests.rs custom_property_colors_probe.js custom_property_colors_chrome156.json computed_custom_properties_probe.js computed_custom_properties_chrome156.json match_media_probe.js match_media_chrome156.json iframe_viewport_probe.js iframe_viewport_chrome156.json iframe_media_probe.js iframe_media_chrome156.json iframe_cascade_probe.js iframe_cascade_chrome156.json"
+OWNED="$OWNED html_media_events_probe.js html_media_events_cases.json html_media_events_chrome156.json html_media_events_tests.rs"
+OWNED="$OWNED html_reflections.js html_media.js html_media.rs interface_parity_probe.js interface_parity_cases.json interface_parity_chrome156.json interface_parity_tests.rs create_event_probe.js create_event_cases.json create_event_chrome156.json css_supports_probe.js css_supports_cases.json css_supports_chrome156.json css_supports_tests.rs"
+OWNED="$OWNED listener_errors_probe.js listener_errors_chrome156.json"
+OWNED="$OWNED worker_context_tests.rs"
+# turbo-dom#338 (tree-counting math, shape()) and #340 (Animation rangeStart / rangeEnd) Chrome 156 controls.
+OWNED="$OWNED css_tree_counting_shape_probe.js css_tree_counting_shape_cases.json css_tree_counting_shape_chrome156.json css_tree_counting_shape_tests.rs animation_range_probe.js animation_range_cases.json animation_range_chrome156.json animation_range_tests.rs"
+# turbo-dom#358 CSS Nesting Chrome 156 control.
+OWNED="$OWNED css_nesting_probe.js css_nesting_cases.json css_nesting_chrome156.json css_nesting_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use turbo_dom::rtdom::tree::Namespace;
 use turbo_dom::{Handle, Tree};
 
 use super::testing::{capture_light, light_children, DOCUMENT};
@@ -115,15 +114,54 @@ fn only_the_outermost_svg_is_a_viewport_and_other_namespaces_are_rejected() {
     let capture = captured(&tree).unwrap();
     let ids = ["o", "s"].map(|id| source_id(DOCUMENT, tree.get_element_by_id(id).unwrap()));
     assert_eq!(capture.svg_viewports, ids);
-    assert_eq!(
-        captured(&Tree::parse("<math></math>")).unwrap_err(),
-        LiveError::Namespace
-    );
     let mut tree = Tree::parse("");
     let body = body(&tree);
     let other = tree.create_element_namespace(None, "x");
     tree.append_child(body, other);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::Namespace);
+}
+
+// miaskiewicz/turbo-dom#376: a composed MathML subtree no longer fails the capture; its
+// outermost element is tracked as a MathML root so the style pass can give it placeholder
+// box metrics (inline-block, 0×0), and nested `<math>` subtrees never nest their roots.
+#[test]
+fn only_the_outermost_math_is_a_mathml_root() {
+    let tree = Tree::parse(
+        "<math id=o><mrow><mi>x</mi><math id=i></math></mrow></math><p><math id=s></math></p>",
+    );
+    let capture = captured(&tree).unwrap();
+    let ids = ["o", "s"].map(|id| source_id(DOCUMENT, tree.get_element_by_id(id).unwrap()));
+    assert_eq!(capture.math_roots, ids);
+}
+
+// miaskiewicz/turbo-dom#376: the placeholder MathML style. The root is a 0x0
+// inline-block and every MathML element under it takes `display: none`, so no MathML
+// content (here a `<mrow>` with an `<mi>`'s text) gets a box until MathML layout lands.
+#[test]
+fn mathml_descendants_take_display_none_under_a_zero_sized_root() {
+    let (tree, snapshot, styles) = super::testing::layout(
+        "<body style='margin:0'><math id=m><mrow id=r><mi id=x>x</mi></mrow></math></body>",
+        "",
+        (800.0, 600.0),
+        Some(1.0),
+    );
+    let m = tree.get_element_by_id("m").unwrap();
+    assert_eq!(
+        styles[&source_id(DOCUMENT, m)].style.get("display"),
+        Some("inline-block")
+    );
+    assert_eq!(border(&snapshot, m), (0.0, 0.0));
+    for id in ["r", "x"] {
+        let node = tree.get_element_by_id(id).unwrap();
+        let source = source_id(DOCUMENT, node);
+        assert_eq!(styles[&source].style.get("display"), Some("none"), "{id}");
+        assert!(
+            snapshot
+                .source(source)
+                .is_none_or(|placed| placed.fragment_indices.is_empty()),
+            "{id} is laid out"
+        );
+    }
 }
 
 #[test]
@@ -187,14 +225,14 @@ fn budgets_follow_the_counting_rules() {
 fn the_first_violation_in_composed_order_wins() {
     let mut tree = Tree::parse("");
     let body = body(&tree);
-    let math = tree.create_element_ns("math", Namespace::MathMl);
-    tree.set_attribute(math, "title", &"a".repeat(MAX_ATTRIBUTE_BYTES));
-    tree.append_child(body, math);
+    let foreign = tree.create_element_namespace(None, "x");
+    tree.set_attribute(foreign, "title", &"a".repeat(MAX_ATTRIBUTE_BYTES));
+    tree.append_child(body, foreign);
     let text = tree.create_text_node(&"x".repeat(MAX_TEXT_BYTES + 1));
     tree.append_child(body, text);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::Namespace);
-    tree.remove_child(body, math);
-    tree.append_child(body, math);
+    tree.remove_child(body, foreign);
+    tree.append_child(body, foreign);
     assert_eq!(captured(&tree).unwrap_err(), LiveError::TextBudget);
 }
 
@@ -303,7 +341,13 @@ fn pre_matched_rules_rank_by_origin_specificity_and_order_under_inline_and_hints
         "<body style='margin:0'><div id=a width=20 style='height:5px'></div><div id=b bgcolor=red width=30></div></body>",
     );
     let (a, b) = (styled.el("a"), styled.el("b"));
-    let ua = [rule("width:90px;height:90px", &[a, b], (0, 0, 1))];
+    // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): this
+    // test builds its own origins instead of using `LIVE_UA`, so the block rule joins
+    // the UA origin here.
+    let ua = [
+        rule("width:90px;height:90px", &[a, b], (0, 0, 1)),
+        rule("display:block", &[a, b], (0, 0, 1)),
+    ];
     let author = [
         rule("width:40px", &[a], (0, 1, 0)),
         rule("width:50px", &[a], (0, 0, 1)),
@@ -342,8 +386,16 @@ fn the_inline_override_replaces_an_existing_style_attribute_only() {
         .set_attribute_ns(a, Some("http://www.w3.org/1999/xlink"), "xlink:title", "x");
     styled.children = light_children(&styled.tree);
     let overrides = [(a, "width:30px;height:5px"), (b, "width:40px;height:5px")];
+    // Chrome's `html.css` `div { display: block }` (miaskiewicz/turbo-dom#375): this
+    // test builds its own origins instead of using `LIVE_UA`, so the block rule joins
+    // the UA origin here (CSSOM-style inline overrides sit above the UA).
+    let ua = [rule("display:block", &[a, b], (0, 0, 1))];
+    let origins = [OriginRules {
+        origin: CascadeOrigin::UserAgent,
+        rules: ua.iter().map(Some).collect(),
+    }];
     let (snapshot, attrs) = styled
-        .run(&[], &overrides, &|_| Ok(0), |nodes| {
+        .run(&origins, &overrides, &|_| Ok(0), |nodes| {
             Ok(find(nodes, a).unwrap().attrs.clone())
         })
         .unwrap();
@@ -469,7 +521,11 @@ fn the_hook_sees_the_whole_styled_forest_before_layout() {
                 for node in nodes {
                     if let StyledNode::Element(element) = node {
                         if element.source == Some(a) {
+                            // Chrome's `html.css` `div { display: block }`
+                            // (miaskiewicz/turbo-dom#375): this test builds its origins
+                            // without `LIVE_UA`, so the rewritten used style sets block.
                             element.style = crate::ComputedStyle::from_pairs([
+                                ("display", "block"),
                                 ("width", "20px"),
                                 ("height", "10px"),
                             ]);

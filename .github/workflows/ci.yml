@@ -8,14 +8,14 @@ name: CI
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       rustfmt, version agreement, retired-gate guard, verify-copied reviews, script self-tests
 #   coverage     tarpaulin per crate with fail-under floors (blocking)
-#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); report-only for 0.6.0
+#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); blocking since 0.8.0
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'release/**']
   workflow_call:
     inputs:
       darwin:
@@ -216,6 +216,7 @@ jobs:
           cargo clippy -p turbo-dom-layout --all-targets -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --features svg,perf,serde,test-support -- -D warnings
           cargo clippy -p turbo-dom-layout --all-targets --no-default-features -- -D warnings
+          cargo clippy -p turbo-dom-layout --all-targets --no-default-features --features bundled-fonts,hyphenation -- -D warnings
       - name: Test (default = bundled-fonts)
         run: cargo test -p turbo-dom-layout
       - name: Test --no-default-features (exact baseline-red list, turbo-html2pdf#28)
@@ -225,6 +226,8 @@ jobs:
           python scripts/check-baseline-red.py
           scripts/baseline-red/turbo-dom-layout-no-default-features.tsv
           -- -p turbo-dom-layout --no-default-features
+      - name: Test English-only hyphenation (no hyphenation-languages, turbo-dom#289)
+        run: cargo test -p turbo-dom-layout --no-default-features --features bundled-fonts,hyphenation
       - name: Test --features svg
         run: cargo test -p turbo-dom-layout --features svg
       - name: Test --features perf
@@ -266,12 +269,15 @@ jobs:
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features jxl -- -D warnings
           cargo test -p turbo-dom-raster --features jxl
-      - name: Clippy + check coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
+      - name: Clippy + test coretext / gpu-metal (macOS; the CoreText deps are macOS-only)
         if: runner.os == 'macOS'
         run: |
           cargo clippy -p turbo-dom-raster --all-targets --features coretext,gpu-metal -- -D warnings
           cargo check -p turbo-dom-raster --features coretext
           cargo check -p turbo-dom-raster --features gpu-metal
+          # The Chrome 156 canvas controls through CoreText text and the Metal replay
+          # (turbo-dom#342; a runner without a Metal adapter replays on tiny-skia).
+          cargo test -p turbo-dom-raster --features coretext,gpu-metal
       - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
         if: runner.os == 'Linux'
         run: cargo check -p turbo-dom-raster --features coretext,gpu-metal
@@ -441,20 +447,16 @@ jobs:
             bash scripts/verify-copied-layout.sh
 
   # ---- complexity: cyclomatic complexity <= 15 per function, no allow-list, no baseline ----
-  # EXPECTED RED until the post-coverage refactor: the functions above 15 when the gate landed
-  # are the refactor backlog (docs/CONSOLIDATION.md "Complexity"); refactoring waits until
-  # unit-test coverage is complete so it cannot break behaviour silently. Never raise the limit
-  # or skip a file to turn it green. Rust: turbo-html2pdf's tools/cc-check installed from its
-  # home at a pinned rev (not copied here) over every tracked .rs file; JS: oxlint's
-  # `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's shipped JS (crates/turbo-dom-browser-env/src, runs in V8 on every page).
-  # `continue-on-error` keeps the red jobs from failing the workflow (publish.yml runs it via
-  # workflow_call) while the backlog exists; the failing job and its step summary list every
-  # function over the limit. Drop `continue-on-error` (and make both checks required) once
-  # the backlog is cleared.
+  # Blocking since 0.8.0 (turbo-dom#297 cleared the backlog). Never raise the limit to turn it
+  # green. Rust: turbo-html2pdf's tools/cc-check installed from its home at a pinned rev (not
+  # copied here) over every tracked .rs file; JS: oxlint's `complexity` rule
+  # (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's JS.
+  # The only JS exclusions are the vendored xpath@0.0.35 drop and 16 named Chrome-control
+  # probes whose controls pin the probe's SHA-256 (see the config). 0.8.1 lowers the limit
+  # (turbo-dom#379).
   complexity-rust:
     name: complexity / rust (cc <= 15)
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       CC_CHECK_REV: 923c89f791f3a89cb089a59626a25cef0a9cbd5f
     steps:
@@ -484,7 +486,6 @@ jobs:
   complexity-js:
     name: complexity / js (cc <= 15)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

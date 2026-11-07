@@ -99,52 +99,54 @@ fn decoded(units: &[u16], quoted: bool) -> Vec<u16> {
             out.push(if unit == 0 { 0xfffd } else { unit });
             continue;
         }
-        if i == units.len() {
-            // an escape at the end: U+FFFD in a name, nothing in a string (CSS Syntax)
-            if !quoted {
-                out.push(0xfffd);
-            }
-            continue;
-        }
-        if matches!(units[i], 10 | 12 | 13) {
-            if units[i] == 13 && units.get(i + 1) == Some(&10) {
-                i += 1;
-            }
-            i += 1;
-            continue;
-        }
-        let mut hex = 0u32;
-        let mut count = 0;
-        while count < 6 && i < units.len() {
-            let Some(digit) = char::from_u32(u32::from(units[i])).and_then(|c| c.to_digit(16))
-            else {
-                break;
-            };
-            hex = hex * 16 + digit;
-            i += 1;
-            count += 1;
-        }
-        if count != 0 {
-            if i < units.len() && whitespace(units[i]) {
-                if units[i] == 13 && units.get(i + 1) == Some(&10) {
-                    i += 1;
-                }
-                i += 1;
-            }
-            let scalar = char::from_u32(hex)
-                .filter(|&c| c != '\0')
-                .unwrap_or('\u{fffd}');
-            let mut buffer = [0; 2];
-            out.extend_from_slice(scalar.encode_utf16(&mut buffer));
-        } else {
-            out.push(units[i]);
-            i += 1;
-        }
+        decode_escape(units, &mut i, quoted, &mut out);
     }
     if quoted {
         out
     } else {
         String::from_utf16_lossy(&out).encode_utf16().collect()
+    }
+}
+
+fn decode_escape(units: &[u16], i: &mut usize, quoted: bool, out: &mut Vec<u16>) {
+    if *i == units.len() {
+        if !quoted {
+            out.push(0xfffd);
+        }
+        return;
+    }
+    if matches!(units[*i], 10 | 12 | 13) {
+        if units[*i] == 13 && units.get(*i + 1) == Some(&10) {
+            *i += 1;
+        }
+        *i += 1;
+        return;
+    }
+    let mut hex = 0u32;
+    let mut count = 0;
+    while count < 6 && *i < units.len() {
+        let Some(digit) = char::from_u32(u32::from(units[*i])).and_then(|c| c.to_digit(16)) else {
+            break;
+        };
+        hex = hex * 16 + digit;
+        *i += 1;
+        count += 1;
+    }
+    if count != 0 {
+        if *i < units.len() && whitespace(units[*i]) {
+            if units[*i] == 13 && units.get(*i + 1) == Some(&10) {
+                *i += 1;
+            }
+            *i += 1;
+        }
+        let scalar = char::from_u32(hex)
+            .filter(|&c| c != '\0')
+            .unwrap_or('\u{fffd}');
+        let mut buffer = [0; 2];
+        out.extend_from_slice(scalar.encode_utf16(&mut buffer));
+    } else {
+        out.push(units[*i]);
+        *i += 1;
     }
 }
 fn identifier(units: &[u16]) -> String {

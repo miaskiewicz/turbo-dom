@@ -59,99 +59,16 @@ pub fn elements_at_point(
         .map(|run| (run.fragment_index, run))
         .collect();
     for fragment in snapshot.fragments().iter().rev() {
-        if let Some(owner) = snapshot.list_marker_owner(fragment.index) {
-            let rect = runs
-                .get(&fragment.index)
-                .map_or(Some(fragment.rect), |run| {
-                    super::text::run_rect(snapshot, run)
-                });
-            if !seen.contains(&owner)
-                && marker_hit(snapshot, styles, offsets, point, (fragment, rect, owner))?
-            {
-                seen.insert(owner);
-                result.push(owner);
-            }
-            continue;
-        }
-        if let Some(run) = runs.get(&fragment.index) {
-            let Some(source) = run.source_id else {
-                continue;
-            };
-            let Some(rect) = super::text::run_rect(snapshot, run) else {
-                continue;
-            };
-            let translation = scroll_translation(snapshot, styles, source, offsets)?;
-            if contains(
-                rect,
-                snapshot
-                    .native_hit_transform(fragment.index)
-                    .ok_or("native text hit transform unavailable")?,
-                translation,
-                point,
-            ) {
-                // Text hits its inline ancestors (a `display: contents` one has no box
-                // and is passed over), up to the first block-level one, which only its
-                // own box hits — not text overflowing it (Chrome; turbo-dom#146).
-                for id in run.source_ancestors.iter().rev() {
-                    match styles.get(id).and_then(|style| style.style.get("display")) {
-                        Some("inline") => {}
-                        Some("contents") => continue,
-                        _ => break,
-                    }
-                    if seen.contains(id)
-                        || property(styles, *id, "pointer-events") == Some("none")
-                        || property(styles, *id, "visibility")
-                            .is_some_and(|value| value != "visible")
-                    {
-                        continue;
-                    }
-                    if !hidden_by_clip(
-                        snapshot,
-                        styles,
-                        (&run.source_ancestors, None),
-                        offsets,
-                        point,
-                    )? {
-                        seen.insert(*id);
-                        result.push(*id);
-                    }
-                }
-            }
-        }
-        if fragment.kind != GeometryKind::BorderBox {
-            continue;
-        }
-        let Some(id) = fragment.source_id else {
-            continue;
-        };
-        if seen.contains(&id)
-            || property(styles, id, "pointer-events") == Some("none")
-            || property(styles, id, "visibility").is_some_and(|value| value != "visible")
-        {
-            continue;
-        }
-        let translation = scroll_translation(snapshot, styles, id, offsets)?;
-        if !contains(
-            fragment.rect,
-            snapshot
-                .native_hit_transform(fragment.index)
-                .ok_or("native hit transform unavailable")?,
-            translation,
-            point,
-        ) {
-            continue;
-        }
-        let clipped = hidden_by_clip(
+        process_fragment_hit(
             snapshot,
             styles,
-            (&fragment.source_ancestors, Some(id)),
             offsets,
             point,
+            fragment,
+            &runs,
+            &mut result,
+            &mut seen,
         )?;
-        if !clipped {
-            seen.insert(id);
-            result.push(id);
-        }
     }
     if let Some((&root, _)) = styles
         .iter()
@@ -163,6 +80,161 @@ pub fn elements_at_point(
     }
     Ok(result)
 }
+#[allow(clippy::too_many_arguments)]
+fn process_marker_hit(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    runs: &BTreeMap<usize, &crate::layout_snapshot::SnapshotTextRun>,
+    result: &mut Vec<SourceId>,
+    seen: &mut BTreeSet<SourceId>,
+    owner: SourceId,
+) -> Result<(), String> {
+    let rect = runs
+        .get(&fragment.index)
+        .map_or(Some(fragment.rect), |run| {
+            super::text::run_rect(snapshot, run)
+        });
+    if !seen.contains(&owner)
+        && marker_hit(snapshot, styles, offsets, point, (fragment, rect, owner))?
+    {
+        seen.insert(owner);
+        result.push(owner);
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn process_fragment_hit(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    runs: &BTreeMap<usize, &crate::layout_snapshot::SnapshotTextRun>,
+    result: &mut Vec<SourceId>,
+    seen: &mut BTreeSet<SourceId>,
+) -> Result<(), String> {
+    if let Some(owner) = snapshot.list_marker_owner(fragment.index) {
+        process_marker_hit(
+            snapshot, styles, offsets, point, fragment, runs, result, seen, owner,
+        )?;
+        return Ok(());
+    }
+    if let Some(run) = runs.get(&fragment.index) {
+        process_run_hit(
+            snapshot, styles, offsets, point, fragment, run, result, seen,
+        )?;
+    }
+    if fragment.kind != GeometryKind::BorderBox {
+        return Ok(());
+    }
+    let Some(id) = fragment.source_id else {
+        return Ok(());
+    };
+    if seen.contains(&id) || owns_no_hit_area(styles, id) || !hittable(styles, id) {
+        return Ok(());
+    }
+    let translation = scroll_translation(snapshot, styles, id, offsets)?;
+    if !contains(
+        fragment.rect,
+        snapshot
+            .native_hit_transform(fragment.index)
+            .ok_or("native hit transform unavailable")?,
+        translation,
+        point,
+    ) {
+        return Ok(());
+    }
+    let clipped = hidden_by_clip(
+        snapshot,
+        styles,
+        (&fragment.source_ancestors, Some(id)),
+        offsets,
+        point,
+    )?;
+    if !clipped {
+        seen.insert(id);
+        result.push(id);
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn process_run_hit(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    run: &crate::layout_snapshot::SnapshotTextRun,
+    result: &mut Vec<SourceId>,
+    seen: &mut BTreeSet<SourceId>,
+) -> Result<(), String> {
+    let Some(source) = run.source_id else {
+        return Ok(());
+    };
+    let Some(rect) = super::text::run_rect(snapshot, run) else {
+        return Ok(());
+    };
+    let translation = scroll_translation(snapshot, styles, source, offsets)?;
+    if !contains(
+        rect,
+        snapshot
+            .native_hit_transform(fragment.index)
+            .ok_or("native text hit transform unavailable")?,
+        translation,
+        point,
+    ) {
+        return Ok(());
+    }
+    // Text hits its inline ancestors (a `display: contents` one has no box
+    // and is passed over), up to the first block-level one, which only its
+    // own box hits — not text overflowing it (Chrome; turbo-dom#146).
+    for id in run.source_ancestors.iter().rev() {
+        match styles.get(id).and_then(|style| style.style.get("display")) {
+            Some("inline") => {}
+            Some("contents") => continue,
+            _ => break,
+        }
+        if seen.contains(id)
+            || property(styles, *id, "pointer-events") == Some("none")
+            || property(styles, *id, "visibility").is_some_and(|value| value != "visible")
+        {
+            continue;
+        }
+        if !hidden_by_clip(
+            snapshot,
+            styles,
+            (&run.source_ancestors, None),
+            offsets,
+            point,
+        )? {
+            seen.insert(*id);
+            result.push(*id);
+        }
+    }
+    Ok(())
+}
+
+/// Whether `id` is a table row or row group, whose box is not a hit target: only its
+/// cells are, and a point between them (in the border-spacing, or a missing cell's slot)
+/// hits the table (Chrome 156; miaskiewicz/turbo-dom#321). A blockified (floated or out of
+/// flow) one is a block and hits.
+fn owns_no_hit_area(styles: &SourceStyles, id: SourceId) -> bool {
+    use crate::layout::value::{float_of, position_of, Float};
+    styles.get(&id).is_some_and(|source| {
+        let style = &source.style;
+        matches!(
+            style.get("display").map(str::trim),
+            Some("table-row" | "table-row-group" | "table-header-group" | "table-footer-group")
+        ) && !position_of(style).is_out_of_flow()
+            && float_of(style) == Float::None
+    })
+}
+
 /// Whether `id` takes hits (`pointer-events` not `none`, `visibility: visible`).
 fn hittable(styles: &SourceStyles, id: SourceId) -> bool {
     property(styles, id, "pointer-events") != Some("none")

@@ -78,25 +78,29 @@
   const datasetTest=RegExp.prototype.test;
   const propertyToAttribute=name=>'data-'+apply(datasetReplace,name,[/[A-Z]/g,character=>'-'+apply(datasetLower,character,[])]);
   const attributeToProperty=name=>apply(datasetReplace,apply(datasetSlice,name,[5]),[/-([a-z])/g,(_,character)=>apply(datasetUpper,character,[])]);
+  // The dataset's property names ('keys') or array-index names ('indices'), in attribute order.
+  const datasetKeys=(owner,operation)=>{
+    const keys=[],attrs=apply(nativeAttributes,owner,[]);for(let index=0;index<attrs.length;index++){
+      const name=apply(nativeAttrName,attrs[index],[]);if(apply(datasetSlice,name,[0,5])!=='data-'||apply(datasetTest,/[A-Z]/,[name]))continue;
+      const property=attributeToProperty(name);if(operation==='keys')keys[keys.length]=property;else if(apply(datasetTest,/^(0|[1-9][0-9]*)$/,[property])&&+property<4294967295)keys[keys.length]=+property;
+    }return keys;
+  };
+  const datasetWrite=(owner,operation,key,attribute,value)=>{
+    if(operation==='define'){if('get'in value||'set'in value)return false;value=value.value;}
+    if(apply(datasetTest,/-[a-z]/,[key]))throw new ns.DOMException('Invalid dataset property name','SyntaxError');
+    apply(setAttribute,owner,[attribute,string(value)]);return true;
+  };
   const dataset=function(){
     check(this,[1]);let value=apply(datasetGet,datasetValues,[this]);if(value)return value;const owner=this;
     value=datasetFactory(g.DOMStringMap.prototype,function(operation,key,value){
-      if(operation==='keys'||operation==='indices'){
-        const keys=[],attrs=apply(nativeAttributes,owner,[]);for(let index=0;index<attrs.length;index++){
-          const name=apply(nativeAttrName,attrs[index],[]);if(apply(datasetSlice,name,[0,5])!=='data-'||apply(datasetTest,/[A-Z]/,[name]))continue;
-          const property=attributeToProperty(name);if(operation==='keys')keys[keys.length]=property;else if(apply(datasetTest,/^(0|[1-9][0-9]*)$/,[property])&&+property<4294967295)keys[keys.length]=+property;
-        }return keys;
-      }
+      if(operation==='keys'||operation==='indices')return datasetKeys(owner,operation);
       const attribute=propertyToAttribute(key),current=apply(getAttribute,owner,[attribute]);
       if(operation==='get')return current===null?undefined:current;
       if(operation==='has')return current!==null;
       if(operation==='descriptor')return current===null?undefined:{value:current,writable:true,enumerable:true,configurable:true};
       if(operation==='delete'){apply(nativeRemoveAttribute,owner,[attribute]);return true;}
-      if(operation==='set'||operation==='define'){
-        if(operation==='define'){if('get'in value||'set'in value)return false;value=value.value;}
-        if(apply(datasetTest,/-[a-z]/,[key]))throw new ns.DOMException('Invalid dataset property name','SyntaxError');
-        apply(setAttribute,owner,[attribute,string(value)]);return true;
-      }return undefined;
+      if(operation==='set'||operation==='define')return datasetWrite(owner,operation,key,attribute,value);
+      return undefined;
     },true,true);
     apply(datasetSet,datasetValues,[owner,value]);return value;
   };
@@ -173,36 +177,45 @@
   function live(list, namedProperties, options) {
     const proto = options ? options.prototype : namedProperties ? collection.proto : nodeList.proto;
     const namedLookup = options && options.named || named;
-    const object = ns.makeNamedObject(proto, function (operation, key, value, throws) {
-      const indexed = test(/^(0|[1-9][0-9]*)$/, key) && Number(key) < 4294967295;
-      // An indexed setter (HTMLOptionsCollection) owns every index, supported or not. A define
-      // also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
-      if(indexed&&options&&options.setIndex&&(operation==='set'||operation==='define'))return options.setIndex(Number(key),value,operation==='define',throws===true);
-      const rows = list();
-      if(indexed&&options&&options.readonlyIndices&&(operation==='set'||operation==='define'))return true;
-      const hiddenNames=!!(options&&options.hiddenNames);
-      const supported = indexed ? Number(key) < rows.length || hiddenNames&&operation==='descriptor'&&namedLookup(rows,key)!==null : namedProperties && (hiddenNames||!(key in proto)) && namedLookup(rows, key) !== null;
-      if (operation === 'indices') {const indices=[];for(let index=0;index<rows.length;index++)collectionOwn(indices,index,index);return indices;}
-      if (operation === 'keys') {
-        const names = [];
-        if (namedProperties) for (let index=0;index<rows.length;index++) {
-          const node=rows[index],values=[call(getAttribute, node,'id'),call(namespace, node)===html?call(getAttribute, node,'name'):null];
-          for(let at=0;at<values.length;at++){
-            const value=values[at];let duplicate=false;
-            for(let existing=0;existing<names.length;existing++)if(names[existing]===value){duplicate=true;break;}
-            if(value&&(hiddenNames||!test(/^(0|[1-9][0-9]*)$/, value)&&!(value in proto))&&!duplicate)collectionOwn(names,names.length,value);
-          }
+    const writes = operation => operation==='set'||operation==='define';
+    const supportedKey = (indexed,key,rows,operation,hiddenNames) => indexed ? Number(key) < rows.length || hiddenNames&&operation==='descriptor'&&namedLookup(rows,key)!==null : namedProperties && (hiddenNames||!(key in proto)) && namedLookup(rows, key) !== null;
+    const indicesOf = rows => {const indices=[];for(let index=0;index<rows.length;index++)collectionOwn(indices,index,index);return indices;};
+    // The supported property names: each row's id, then its HTML name, first occurrence only.
+    const namesOf = (rows,hiddenNames) => {
+      const names = [];
+      if (namedProperties) for (let index=0;index<rows.length;index++) {
+        const node=rows[index],values=[call(getAttribute, node,'id'),call(namespace, node)===html?call(getAttribute, node,'name'):null];
+        for(let at=0;at<values.length;at++){
+          const value=values[at];let duplicate=false;
+          for(let existing=0;existing<names.length;existing++)if(names[existing]===value){duplicate=true;break;}
+          if(value&&(hiddenNames||!test(/^(0|[1-9][0-9]*)$/, value)&&!(value in proto))&&!duplicate)collectionOwn(names,names.length,value);
         }
-        return names;
       }
-      if (!supported) return undefined;
+      return names;
+    };
+    // A supported index or name: the operation's answer.
+    const supportedAnswer = (operation,indexed,key,rows) => {
       const found = indexed && Number(key)<rows.length ? rows[Number(key)] : namedLookup(rows, key);
       if (operation === 'get') return found;
       if (operation === 'has') return true;
       if (operation === 'descriptor') return { value: found, writable: indexed && !!(options&&options.setIndex), enumerable: indexed || !!(options&&options.namedEnumerable), configurable: true };
       if (operation === 'delete') return false;
-      if (operation === 'set' || operation === 'define') return true;
+      if (writes(operation)) return true;
       return undefined;
+    };
+    const object = ns.makeNamedObject(proto, function (operation, key, value, throws) {
+      const indexed = test(/^(0|[1-9][0-9]*)$/, key) && Number(key) < 4294967295;
+      // An indexed setter (HTMLOptionsCollection) owns every index, supported or not. A define
+      // also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
+      if(indexed&&options&&options.setIndex&&writes(operation))return options.setIndex(Number(key),value,operation==='define',throws===true);
+      const rows = list();
+      if(indexed&&options&&options.readonlyIndices&&writes(operation))return true;
+      const hiddenNames=!!(options&&options.hiddenNames);
+      const supported = supportedKey(indexed,key,rows,operation,hiddenNames);
+      if (operation === 'indices') return indicesOf(rows);
+      if (operation === 'keys') return namesOf(rows,hiddenNames);
+      if (!supported) return undefined;
+      return supportedAnswer(operation,indexed,key,rows);
     }, true);
     setRecord(object,{kind:options?options.kind:namedProperties?'HTMLCollection':'NodeList',read:list});
     return object;
@@ -267,6 +280,8 @@
     check(this, [9]); const receiver = this;
     return cached(receiver, 'embeds', () => descendants(receiver, selectors.embeds));
   });
+  // getElementsByTagName / -NS / -ClassName / -Name, and the document-instance factories moved to Document.prototype.
+  function installElementQueries() {
   for (const owner of ['Document', 'Element']) {
     const valid = owner === 'Document' ? [9] : [1];
     method(g[owner].prototype, 'getElementsByTagName', function (name) {
@@ -300,6 +315,8 @@
     const descriptor=Object.getOwnPropertyDescriptor(g.document,name);
     if(descriptor){Object.defineProperty(g.Document.prototype,name,{...descriptor,enumerable:true});delete g.document[name];}
   }
+  }
+  installElementQueries();
   const createElement=g.Document.prototype.createElement;
   method(g.Document.prototype,'createElement',function(name){
     check(this,[9]);if(!arguments.length)throw new TypeError('createElement requires 1 argument');
@@ -336,12 +353,15 @@
   Object.defineProperty(documentType, 'prototype', { writable: false });
   Object.defineProperty(g, 'DocumentType', { value: documentType, writable: true, configurable: true });
   for (const [index, name] of ['name', 'publicId', 'systemId'].entries()) property(documentTypeProto, name, function () { return native('doctypeFields', this)[index]; });
+  function installDoctypeChildNode() {
   // ChildNode: DocumentType's own copies brand-check a doctype receiver (turbo-dom#114).
   for (const name of ['before', 'after', 'remove', 'replaceWith']) {
     const operation = ns.childNodeOperations[name];
     method(documentTypeProto, name, function () { check(this, [10]); return apply(operation, this, arguments); }, 0);
   }
   if(Object.hasOwn(g.document,'title'))delete g.document.title;
+  }
+  installDoctypeChildNode();
   property(g.Document.prototype, 'designMode', function () { return state(this).designMode || 'off'; }, function (value) {
     const record = state(this); value = string(value).toLowerCase(); if (value === 'on' || value === 'off') record.designMode = value;
   });
@@ -358,6 +378,8 @@
     check(this, [9]); if (!arguments.length) throw new TypeError('adoptNode requires 1 argument');
     const result = native('adopt', this, node); if (typeof result === 'string') throw new ns.DOMException(result, 'NotSupportedError'); return result;
   }, 1);
+  // moveBefore and the ParentNode / ChildNode unscopables.
+  function installMoveBefore() {
   for (const owner of ['Document', 'Element', 'DocumentFragment']) {
     const allowed = owner === 'Document' ? [9] : owner === 'Element' ? [1] : [11];
     method(g[owner].prototype, 'moveBefore', function (node, child) {
@@ -379,6 +401,10 @@
     for (const name of names) blocked[name] = true;
     Object.defineProperty(g[owner].prototype, Symbol.unscopables, { value: blocked, configurable: true });
   }
+  }
+  installMoveBefore();
+  // webkit aliases, the doctype projection and Document's on* handler attributes.
+  function installDocumentAliasesAndHandlers() {
   // Alias the current document state; parsed documents and child realms supply
   // their own visibility/fullscreen state rather than inheriting this document's.
   for (const [alias, name] of Object.entries({webkitHidden: 'hidden', webkitVisibilityState: 'visibilityState', webkitFullscreenElement: 'fullscreenElement', webkitCurrentFullScreenElement: 'fullscreenElement'})) {
@@ -402,4 +428,6 @@
       entry.value = value;
     });
   }
+  }
+  installDocumentAliasesAndHandlers();
 })();

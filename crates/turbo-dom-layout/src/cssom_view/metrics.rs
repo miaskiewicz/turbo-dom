@@ -1,6 +1,8 @@
 //! CSSOM measurements obtained from actual native source fragments. Missing
 //! inline/caret provenance is an explicit error, never a synthetic zero box.
-use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, Rect, SourceId, SourceKind};
+use crate::layout_snapshot::{
+    GeometryKind, LayoutSnapshot, Rect, SnapshotFragment, SourceId, SourceKind,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -22,6 +24,29 @@ pub struct ElementGeometry {
     pub rects: Vec<Rect>,
     pub client: ClientMetrics,
     pub offset: OffsetSize,
+}
+
+fn inline_fragment_geometry(boxes: &[&SnapshotFragment]) -> Result<ElementGeometry, String> {
+    let rects: Vec<_> = boxes
+        .iter()
+        .map(|fragment| fragment.transformed_bounds)
+        .collect();
+    let local_rects: Vec<_> = boxes.iter().map(|fragment| fragment.rect).collect();
+    let local = all_fragment_bounds(&local_rects);
+    Ok(ElementGeometry {
+        bounds: bounding_box(&rects),
+        rects,
+        client: ClientMetrics {
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0,
+        },
+        offset: OffsetSize {
+            width: integer(local.width)?,
+            height: integer(local.height)?,
+        },
+    })
 }
 
 pub fn element_geometry(
@@ -52,30 +77,7 @@ pub fn element_geometry(
         .used_box
         .ok_or("native live layout used box metrics are missing")?;
     if used.inline_fragment {
-        let rects = boxes
-            .iter()
-            .map(|fragment| fragment.transformed_bounds)
-            .collect::<Vec<_>>();
-        let local = all_fragment_bounds(
-            &boxes
-                .iter()
-                .map(|fragment| fragment.rect)
-                .collect::<Vec<_>>(),
-        );
-        return Ok(ElementGeometry {
-            bounds: bounding_box(&rects),
-            rects,
-            client: ClientMetrics {
-                left: 0,
-                top: 0,
-                width: 0,
-                height: 0,
-            },
-            offset: OffsetSize {
-                width: integer(local.width)?,
-                height: integer(local.height)?,
-            },
-        });
+        return inline_fragment_geometry(&boxes);
     }
     let padding = used.padding_rect(first.rect);
     let rects: Vec<_> = boxes
@@ -281,57 +283,80 @@ fn offset_unsnapped(
             next = parent_style.parent;
             continue;
         }
-        // The statically positioned BODY fallback uses document coordinates,
-        // while actual positioned/transform/table parents use their padding edge.
-        let positioned = parent_style
-            .style
-            .get("position")
-            .is_some_and(|value| value != "static");
-        let transformed = parent_style
-            .style
-            .get("transform")
-            .is_some_and(|value| value != "none")
-            && !is_inline_fragment(snapshot, parent);
-        let table = used.position == crate::layout::value::Position::Static
-            && matches!(parent_style.tag.as_str(), "table" | "td" | "th");
-        // Blink's WebKit extension: offsetParent also stops at a zoom change.
-        let zoomed = parent_style.zoom != style.zoom;
-        if positioned || transformed || table || zoomed || parent_style.tag == "body" {
-            let (x, y) = if parent_style.tag == "body" && !positioned && !transformed {
-                (0.0, 0.0)
-            } else {
-                let source = snapshot
-                    .source(parent)
-                    .ok_or("native offset parent source missing")?;
-                let box_ = source
-                    .fragment_indices
-                    .iter()
-                    .map(|&index| &snapshot.fragments()[index])
-                    .find(|fragment| fragment.kind == GeometryKind::BorderBox)
-                    .ok_or("native offset parent border missing")?;
-                let metrics = box_
-                    .used_box
-                    .ok_or("native offset parent used box missing")?;
-                (
-                    box_.rect.x
-                        + if metrics.inline_fragment {
-                            0.0
-                        } else {
-                            metrics.border.left
-                        },
-                    box_.rect.y
-                        + if metrics.inline_fragment {
-                            0.0
-                        } else {
-                            metrics.border.top
-                        },
-                )
-            };
+        if offset_parent_stops(snapshot, parent, parent_style, style, used) {
+            let (x, y) = offset_parent_origin(snapshot, parent, parent_style)?;
             return Ok((border.rect.x - x, border.rect.y - y, Some(parent)));
         }
         next = parent_style.parent;
     }
     Ok((border.rect.x, border.rect.y, None))
+}
+
+fn offset_parent_stops(
+    snapshot: &LayoutSnapshot,
+    parent: SourceId,
+    parent_style: &super::scroll::SourceStyle,
+    style: &super::scroll::SourceStyle,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+) -> bool {
+    let positioned = parent_style
+        .style
+        .get("position")
+        .is_some_and(|value| value != "static");
+    let transformed = parent_style
+        .style
+        .get("transform")
+        .is_some_and(|value| value != "none")
+        && !is_inline_fragment(snapshot, parent);
+    let table = used.position == crate::layout::value::Position::Static
+        && matches!(parent_style.tag.as_str(), "table" | "td" | "th");
+    let zoomed = parent_style.zoom != style.zoom;
+    positioned || transformed || table || zoomed || parent_style.tag == "body"
+}
+
+fn offset_parent_origin(
+    snapshot: &LayoutSnapshot,
+    parent: SourceId,
+    parent_style: &super::scroll::SourceStyle,
+) -> Result<(f32, f32), String> {
+    let positioned = parent_style
+        .style
+        .get("position")
+        .is_some_and(|value| value != "static");
+    let transformed = parent_style
+        .style
+        .get("transform")
+        .is_some_and(|value| value != "none")
+        && !is_inline_fragment(snapshot, parent);
+    if parent_style.tag == "body" && !positioned && !transformed {
+        return Ok((0.0, 0.0));
+    }
+    let source = snapshot
+        .source(parent)
+        .ok_or("native offset parent source missing")?;
+    let box_ = source
+        .fragment_indices
+        .iter()
+        .map(|&index| &snapshot.fragments()[index])
+        .find(|fragment| fragment.kind == GeometryKind::BorderBox)
+        .ok_or("native offset parent border missing")?;
+    let metrics = box_
+        .used_box
+        .ok_or("native offset parent used box missing")?;
+    Ok((
+        box_.rect.x
+            + if metrics.inline_fragment {
+                0.0
+            } else {
+                metrics.border.left
+            },
+        box_.rect.y
+            + if metrics.inline_fragment {
+                0.0
+            } else {
+                metrics.border.top
+            },
+    ))
 }
 
 #[cfg(test)]

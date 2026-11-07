@@ -459,9 +459,7 @@ fn local_name<'i>(input: &mut Parser<'i, '_>) -> Fallible<'i, String> {
     }
 }
 
-fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
-    skip_whitespace(input);
-    let mut name = String::new();
+fn attribute_name<'i>(input: &mut Parser<'i, '_>, name: &mut String) -> Fallible<'i> {
     let start = input.state();
     match input.next_including_whitespace().map_err(basic)?.clone() {
         Token::Delim('*') => {
@@ -490,6 +488,13 @@ fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
             return fail(input);
         }
     }
+    Ok(())
+}
+
+fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    skip_whitespace(input);
+    let mut name = String::new();
+    attribute_name(input, &mut name)?;
     out.push('[');
     out.push_str(&name);
     skip_whitespace(input);
@@ -607,6 +612,44 @@ fn element_kind(name: &str) -> Element {
     }
 }
 
+fn pseudo_element<'i>(
+    input: &mut Parser<'i, '_>,
+    context: Context,
+    out: &mut String,
+    element: &mut Option<Element>,
+    state: &mut State,
+    name: &str,
+    functional: bool,
+) -> Fallible<'i> {
+    if context.no_elements {
+        return fail(input);
+    }
+    if let Some(previous) = *element {
+        if !element_follows(previous, name) {
+            return fail(input);
+        }
+    }
+    out.push_str("::");
+    out.push_str(name);
+    if functional {
+        if !FUNCTIONAL_ELEMENTS.contains(&name) {
+            return fail(input);
+        }
+        out.push('(');
+        input.parse_nested_block(|input| element_arguments(input, name, out, state))?;
+        out.push(')');
+    } else if let Some(webkit) = name.strip_prefix("-webkit-") {
+        if CLASSES.contains(&name) {
+            return fail(input);
+        }
+        state.supported &= WEBKIT_ELEMENTS.contains(&webkit);
+    } else if !ELEMENTS.contains(&name) {
+        return fail(input);
+    }
+    *element = Some(element_kind(name));
+    Ok(())
+}
+
 fn pseudo<'i>(
     input: &mut Parser<'i, '_>,
     context: Context,
@@ -625,58 +668,44 @@ fn pseudo<'i>(
         _ => return fail(input),
     };
     if double || (!functional && LEGACY_ELEMENTS.contains(&name.as_str())) {
-        if context.no_elements {
-            return fail(input);
-        }
-        if let Some(previous) = *element {
-            if !element_follows(previous, &name) {
-                return fail(input);
-            }
-        }
-        out.push_str("::");
-        out.push_str(&name);
-        if functional {
-            if !FUNCTIONAL_ELEMENTS.contains(&name.as_str()) {
-                return fail(input);
-            }
-            out.push('(');
-            input.parse_nested_block(|input| element_arguments(input, &name, out, state))?;
-            out.push(')');
-        } else if let Some(webkit) = name.strip_prefix("-webkit-") {
-            if CLASSES.contains(&name.as_str()) {
-                return fail(input);
-            }
-            state.supported &= WEBKIT_ELEMENTS.contains(&webkit);
-        } else if !ELEMENTS.contains(&name.as_str()) {
-            return fail(input);
-        }
-        *element = Some(element_kind(&name));
-        return Ok(());
+        return pseudo_element(input, context, out, element, state, &name, functional);
     }
+    pseudo_class(input, context, out, element, state, &name, functional)
+}
+
+fn pseudo_class<'i>(
+    input: &mut Parser<'i, '_>,
+    context: Context,
+    out: &mut String,
+    element: &mut Option<Element>,
+    state: &mut State,
+    name: &str,
+    functional: bool,
+) -> Fallible<'i> {
     if let Some(previous) = *element {
         // :is()/:where() survive after any pseudo-element, filtering their
         // branches by what that pseudo-element accepts.
-        let wrapper = functional && matches!(name.as_str(), "is" | "where");
+        let wrapper = functional && matches!(name, "is" | "where");
         let negation = functional && name == "not" && previous == Element::Shadow;
-        if !wrapper && !negation && !class_follows(previous, &name) {
+        if !wrapper && !negation && !class_follows(previous, name) {
             return fail(input);
         }
     }
     out.push(':');
-    out.push_str(&name);
+    out.push_str(name);
     if !functional {
-        return if CLASSES.contains(&name.as_str()) {
+        return if CLASSES.contains(&name) {
             Ok(())
         } else {
             fail(input)
         };
     }
-    if !FUNCTIONAL_CLASSES.contains(&name.as_str()) {
+    if !FUNCTIONAL_CLASSES.contains(&name) {
         return fail(input);
     }
     out.push('(');
     let after = *element;
-    input.parse_nested_block(|input| class_arguments(input, &name, context, after, out, state))?;
+    input.parse_nested_block(|input| class_arguments(input, name, context, after, out, state))?;
     out.push(')');
     Ok(())
 }
@@ -725,49 +754,70 @@ fn class_arguments<'i>(
             joined(out, list(input, nested, false, state)?);
         }
         "nth-child" | "nth-last-child" | "nth-of-type" | "nth-last-of-type" => {
-            skip_whitespace(input);
-            let (a, b) = cssparser::parse_nth(input).map_err(basic)?;
-            out.push_str(&nth(a, b));
-            skip_whitespace(input);
-            if !input.is_exhausted() && name.starts_with("nth-") && !name.ends_with("of-type") {
-                if !identifier(input)?.eq_ignore_ascii_case("of") {
-                    return fail(input);
-                }
-                // Chrome's `of` branch keeps pseudo-elements admissible.
-                let nested = Context {
-                    no_elements: false,
-                    ..nested
-                };
-                out.push_str(" of ");
-                joined(out, list(input, nested, false, state)?);
-            }
+            class_arg_nth(input, name, nested, out, state)?;
         }
         "dir" | "lang" | "state" => {
-            skip_whitespace(input);
-            let start = input.position();
-            identifier(input)?;
-            out.push_str(input.slice_from(start));
-            skip_whitespace(input);
+            class_arg_ident(input, out)?;
         }
         "active-view-transition-type" => {
-            let mut names = Vec::new();
-            loop {
-                skip_whitespace(input);
-                let start = input.position();
-                identifier(input)?;
-                names.push(input.slice_from(start).to_owned());
-                skip_whitespace(input);
-                match input.next() {
-                    Ok(Token::Comma) => {}
-                    Ok(_) => return fail(input),
-                    Err(_) => break,
-                }
-            }
-            joined(out, names);
+            class_arg_view_transition(input, out)?;
         }
         _ => return fail(input),
     }
     input.expect_exhausted().map_err(basic)
+}
+
+fn class_arg_nth<'i>(
+    input: &mut Parser<'i, '_>,
+    name: &str,
+    nested: Context,
+    out: &mut String,
+    state: &mut State,
+) -> Fallible<'i> {
+    skip_whitespace(input);
+    let (a, b) = cssparser::parse_nth(input).map_err(basic)?;
+    out.push_str(&nth(a, b));
+    skip_whitespace(input);
+    if !input.is_exhausted() && name.starts_with("nth-") && !name.ends_with("of-type") {
+        if !identifier(input)?.eq_ignore_ascii_case("of") {
+            return fail(input);
+        }
+        // Chrome's `of` branch keeps pseudo-elements admissible.
+        let nested = Context {
+            no_elements: false,
+            ..nested
+        };
+        out.push_str(" of ");
+        joined(out, list(input, nested, false, state)?);
+    }
+    Ok(())
+}
+
+fn class_arg_ident<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    skip_whitespace(input);
+    let start = input.position();
+    identifier(input)?;
+    out.push_str(input.slice_from(start));
+    skip_whitespace(input);
+    Ok(())
+}
+
+fn class_arg_view_transition<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    let mut names = Vec::new();
+    loop {
+        skip_whitespace(input);
+        let start = input.position();
+        identifier(input)?;
+        names.push(input.slice_from(start).to_owned());
+        skip_whitespace(input);
+        match input.next() {
+            Ok(Token::Comma) => {}
+            Ok(_) => return fail(input),
+            Err(_) => break,
+        }
+    }
+    joined(out, names);
+    Ok(())
 }
 
 // CSSOM An+B serialization.
@@ -806,19 +856,7 @@ fn element_arguments<'i>(
             complex(input, nested, out, state)?;
         }
         "cue" => joined(out, list(input, nested, false, state)?),
-        "part" => {
-            let mut names = Vec::new();
-            while !input.is_exhausted() {
-                let start = input.position();
-                identifier(input)?;
-                names.push(input.slice_from(start).to_owned());
-                skip_whitespace(input);
-            }
-            if names.is_empty() {
-                return fail(input);
-            }
-            out.push_str(&names.join(" "));
-        }
+        "part" => element_arg_part(input, out)?,
         "highlight" => {
             let start = input.position();
             identifier(input)?;
@@ -830,44 +868,65 @@ fn element_arguments<'i>(
             }
             out.push_str("select");
         }
-        "scroll-button" => {
-            if delim(input, '*') {
-                out.push('*');
-            } else {
-                let value = lower(&identifier(input)?);
-                if !SCROLL_BUTTONS.contains(&value.as_str()) {
-                    return fail(input);
-                }
-                out.push_str(&value);
-            }
-        }
-        // <pt-name-selector>: `*` or a name, then optional `.class` tags.
-        _ => {
-            let start = input.position();
-            let named = delim(input, '*') || {
-                let before = input.state();
-                let ident = matches!(input.next_including_whitespace(), Ok(Token::Ident(_)));
-                if !ident {
-                    input.reset(&before);
-                }
-                ident
-            };
-            let head = input.slice_from(start).to_owned();
-            let classes = input.position();
-            let mut tagged = false;
-            while delim(input, '.') {
-                identifier(input)?;
-                tagged = true;
-            }
-            if !named && !tagged {
-                return fail(input);
-            }
-            out.push_str(if named { &head } else { "*" });
-            out.push_str(input.slice_from(classes));
-        }
+        "scroll-button" => element_arg_scroll_button(input, out)?,
+        _ => element_arg_pt_name(input, out)?,
     }
     skip_whitespace(input);
     input.expect_exhausted().map_err(basic)
+}
+
+fn element_arg_part<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    let mut names = Vec::new();
+    while !input.is_exhausted() {
+        let start = input.position();
+        identifier(input)?;
+        names.push(input.slice_from(start).to_owned());
+        skip_whitespace(input);
+    }
+    if names.is_empty() {
+        return fail(input);
+    }
+    out.push_str(&names.join(" "));
+    Ok(())
+}
+
+fn element_arg_scroll_button<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    if delim(input, '*') {
+        out.push('*');
+    } else {
+        let value = lower(&identifier(input)?);
+        if !SCROLL_BUTTONS.contains(&value.as_str()) {
+            return fail(input);
+        }
+        out.push_str(&value);
+    }
+    Ok(())
+}
+
+/// `<pt-name-selector>`: `*` or a name, then optional `.class` tags.
+fn element_arg_pt_name<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    let start = input.position();
+    let named = delim(input, '*') || {
+        let before = input.state();
+        let ident = matches!(input.next_including_whitespace(), Ok(Token::Ident(_)));
+        if !ident {
+            input.reset(&before);
+        }
+        ident
+    };
+    let head = input.slice_from(start).to_owned();
+    let classes = input.position();
+    let mut tagged = false;
+    while delim(input, '.') {
+        identifier(input)?;
+        tagged = true;
+    }
+    if !named && !tagged {
+        return fail(input);
+    }
+    out.push_str(if named { &head } else { "*" });
+    out.push_str(input.slice_from(classes));
+    Ok(())
 }
 
 fn admit(source: &str) -> Option<Admitted> {

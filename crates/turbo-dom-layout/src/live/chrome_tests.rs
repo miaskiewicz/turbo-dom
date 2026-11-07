@@ -44,6 +44,10 @@ const TEXT_CASES: &[&str] = &[
     "ws-space-line-break-spaces",
     "ws-pre-line-newline",
     "ws-nowrap-space-span",
+    // The empty `<math>` placeholder is an inline-block sitting on a line: its `y` is
+    // the line's strut baseline, and the following `<p>`'s text line height is a font's.
+    "math-empty",
+    "math-empty-then-p",
 ];
 
 /// The `<style>` text of a control document (the testing cascade takes the CSS apart
@@ -324,6 +328,15 @@ fn inline_flex_and_grid_are_inline_level_like_chrome_156() {
 #[test]
 fn auto_width_tables_shrink_to_fit_like_chrome_156() {
     assert_matches_chrome(compare_cases(|id| AUTO_TABLE_CASES.contains(&id)));
+}
+
+/// miaskiewicz/turbo-dom#321: a point in a table's border-spacing hits the table (rows
+/// and row groups do not own the spacing), and a row-spanning cell spans it.
+#[test]
+fn table_spacing_gaps_hit_the_table_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| {
+        id.starts_with("table-spacing-") || id == "table-rowspan-spacing"
+    }));
 }
 
 #[test]
@@ -789,6 +802,56 @@ fn sticky_blocks_and_viewport_stickies_follow_the_scroll_like_chrome_156() {
         failures.is_empty(),
         "{} sticky reads differ from Chrome 156:\n{}",
         failures.len(),
+        failures.join("\n")
+    );
+}
+/// miaskiewicz/turbo-dom#372: a percentage-resolved width snaps to Chrome's `LayoutUnit`
+/// grid (1/64 device px).
+#[test]
+fn percentage_widths_snap_to_layout_unit_like_chrome_156() {
+    assert_matches_chrome(compare_cases(|id| {
+        id == "percent-width-snaps-to-layout-unit"
+    }));
+}
+
+/// miaskiewicz/turbo-dom#375: an empty unknown inline element (`HTMLUnknownElement`,
+/// CSS initial `display: inline`) has `offsetWidth: 0`.
+#[test]
+fn unknown_inline_offset_width_is_zero_like_chrome_156() {
+    let (compared, failures) = compare_cases(|id| id == "unknown-inline-empty");
+    assert!(compared > 0);
+    assert!(
+        failures.is_empty(),
+        "{} unknown-inline reads differ from Chrome 156:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+    // The metrics check (offsetWidth/offsetHeight) is through the `metrics` field.
+    let fixture: serde_json::Value = serde_json::from_str(FIXTURE).unwrap();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == "unknown-inline-empty")
+        .unwrap();
+    let html = case["html"].as_str().unwrap();
+    let fonts = crate::FontRegistry::new();
+    let (tree, snapshot, styles) = super::testing::layout_with_fonts(
+        html,
+        css_of(html),
+        (1280.0, 800.0),
+        Some(1.0),
+        |_| {},
+        &fonts,
+    );
+    let laid: Laid = (&tree, &snapshot, &styles);
+    let mut failures = Vec::new();
+    for want in case["boxes"].as_array().unwrap() {
+        check_metrics(case, want, laid, &mut failures);
+    }
+    assert!(
+        failures.is_empty(),
+        "unknown-inline metrics differ from Chrome 156:\n{}",
         failures.join("\n")
     );
 }

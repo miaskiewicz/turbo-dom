@@ -275,4 +275,46 @@
     writable: true,
     configurable: true,
   });
+  // fieldset.elements (the listed elements among its descendants, image buttons included) and
+  // datalist.options (its option descendants): live HTMLCollections, one per element
+  // (turbo-dom#323).
+  const descendants = Element.prototype.getElementsByTagName,
+    item = HTMLCollection.prototype.item,
+    count = Object.getOwnPropertyDescriptor(HTMLCollection.prototype, "length").get;
+  const listedKinds = { __proto__: null, button: 1, fieldset: 1, input: 1, object: 1, output: 1, select: 1, textarea: 1 };
+  const collected = (root, keep) => {
+    const all = apply(descendants, root, ["*"]),
+      result = [];
+    for (let index = 0, length = apply(count, all, []); index < length; index++) {
+      const element = apply(item, all, [index]);
+      if (keep(element)) row(result, element);
+    }
+    return result;
+  };
+  for (const [owner, name, tag, keep] of [
+    ["HTMLFieldSetElement", "elements", "fieldset", (element) => !!forms.associatedGet(element) || (html(element) && !!listedKinds[local(element)])],
+    ["HTMLDataListElement", "options", "datalist", (element) => html(element) && local(element) === "option"],
+  ]) {
+    const proto = g[owner] && g[owner].prototype;
+    if (!proto || Object.prototype.hasOwnProperty.call(proto, name)) continue;
+    const check = ns.domAccessor("nodeType", false, "HTML:" + tag);
+    define(proto, name, {
+      get: make(
+        function () {
+          apply(check, this, []);
+          let list = forms.privateGet(this, name);
+          if (!list) {
+            const root = this;
+            list = factory.live(() => collected(root, keep), true);
+            forms.privateSet(this, name, list);
+          }
+          return list;
+        },
+        "get " + name,
+        0,
+      ),
+      enumerable: true,
+      configurable: true,
+    });
+  }
 })();

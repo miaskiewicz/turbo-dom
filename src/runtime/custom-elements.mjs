@@ -270,6 +270,13 @@ export function constructCustomElement(newTarget) {
   return el;
 }
 
+// Is the constructor result `el` a fresh <localName> of `doc` (no parent, children or
+// attributes)?
+function isFreshElement(el, doc, localName) {
+  return !(!el || el.nodeType !== 1 || el.localName !== localName || el.ownerDocument !== doc || el.parentNode
+    || el.__children().length !== 0 || (el.__attrs !== undefined && el.__attrs.length !== 0));
+}
+
 // HTML "create an element" for an HTML element of `doc` (createElement, cloneNode):
 // `synchronous` runs an autonomous definition's constructor directly (createElement),
 // else the element is created "undefined" and upgraded (clones).
@@ -279,8 +286,7 @@ export function createCustomElement(doc, localName, is, synchronous) {
   if (def && def.localName === def.name && synchronous) {
     try {
       const el = Reflect.construct(def.ctor, []);
-      if (!el || el.nodeType !== 1 || el.localName !== localName || el.ownerDocument !== doc || el.parentNode
-        || el.__children().length !== 0 || (el.__attrs !== undefined && el.__attrs.length !== 0)) {
+      if (!isFreshElement(el, doc, localName)) {
         throw new TypeError(`Failed to execute 'createElement' on 'Document': The result must be a fresh <${localName}> element`);
       }
       return el;

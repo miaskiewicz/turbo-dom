@@ -337,13 +337,43 @@ pub fn layout_html_tree(
 pub fn layout_html_tree_in_viewport(
     tree: &Tree,
     extra_css: &str,
-    (cb_width, viewport_height): (f32, f32),
+    viewport: (f32, f32),
     fonts: &FontRegistry,
     images: &ImageCtx,
     options: &HtmlOptions,
     diags: &mut Diagnostics,
 ) -> Fragment {
-    let styled = style_document(tree, extra_css, cb_width, options);
+    layout_html_tree_in_viewport_with(
+        tree,
+        extra_css,
+        viewport,
+        fonts,
+        images,
+        options,
+        |_| {},
+        diags,
+    )
+}
+
+/// [`layout_html_tree_in_viewport`] with a `post_cascade` hook: the closure is
+/// handed the styled document between the cascade and layout, so a caller can
+/// inject the IDL-state attributes a screenshot has no script to set — the
+/// `indeterminate` flag of a checkbox, say ([`crate::INDETERMINATE_ATTR`];
+/// miaskiewicz/turbo-dom#293, #371). With a no-op closure this is byte-for-byte
+/// identical to [`layout_html_tree_in_viewport`].
+#[allow(clippy::too_many_arguments)]
+pub fn layout_html_tree_in_viewport_with(
+    tree: &Tree,
+    extra_css: &str,
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    post_cascade: impl FnOnce(&mut [StyledNode]),
+    diags: &mut Diagnostics,
+) -> Fragment {
+    let mut styled = style_document(tree, extra_css, cb_width, options);
+    post_cascade(&mut styled);
     let viewport = (cb_width, viewport_height);
     lay_out_document(styled, viewport, fonts, images, options.layout(), diags)
 }

@@ -29,7 +29,9 @@ fn probe_activation(
         .get(scope, key.into())
         .is_some_and(|value| value.is_true());
     match query {
-        ActivationQuery::Transient | ActivationQuery::HistoryAction => active,
+        ActivationQuery::Transient | ActivationQuery::HistoryAction | ActivationQuery::Sticky => {
+            active
+        }
         ActivationQuery::ConsumeTransient | ActivationQuery::ConsumeHistoryAction => {
             let inactive = v8::Boolean::new(scope, false);
             global.set(scope, key.into(), inactive.into());
@@ -48,6 +50,12 @@ fn probe(html: &str) -> serde_json::Value {
 
 /// Run `source` (an expression, possibly a promise) in `html` with the probe harness.
 fn run(html: &str, source: &str) -> serde_json::Value {
+    run_with(html, source, "")
+}
+
+/// [`run`] after `engine` ran as an engine script (`__tsNs` is the realm's namespace): the
+/// stand-in embedder's hooks.
+fn run_with(html: &str, source: &str, engine: &str) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
@@ -62,6 +70,9 @@ fn run(html: &str, source: &str) -> serde_json::Value {
          globalThis.__cdpGesture=()=>{globalThis.__probeActivation=true;__tasks.push(()=>__cdpGestureDone());};",
     );
     capture_popover_scheduler(scope);
+    if !engine.is_empty() {
+        run_js(scope, engine);
+    }
     let code = format!(
         "Promise.resolve({}).then(JSON.stringify)",
         source.trim().trim_end_matches(';')
@@ -156,6 +167,9 @@ fn computed_defaults_and_head_match_chrome156_control() {
                 | "form-control-fonts"
                 | "fullscreen"
                 | "unset-properties"
+                | "css-wide-keywords"
+                | "used-size"
+                | "transform-resolution"
         )
     });
     assert!(
@@ -268,6 +282,275 @@ fn unset_properties_match_chrome156_control() {
         found.len(),
         found.join("\n")
     );
+}
+
+/// turbo-dom#317: a CSS-wide keyword computes to the value it selects — `initial` the
+/// initial value (currentcolor: the element's color; a border width 0px while its style is
+/// none), `inherit` the parent's computed value, `unset` either by whether the property
+/// inherits, `revert` html.css's value — from inline and rule declarations in any case
+/// (case `css-wide-keywords`).
+#[test]
+fn css_wide_keywords_match_chrome156_control() {
+    let found = mismatches(|id| id == "css-wide-keywords");
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// The `used-size` rows (`used.*`, `usedDetached`) of the probe's result against the
+/// control's, as mismatches; `usedBoxes` (Chrome's layout facts) is only the stand-in
+/// embedder's input (`BOXES` in `engine`).
+fn used_size_mismatches(engine: &str, keep: impl Fn(&str) -> bool) -> Vec<String> {
+    let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
+    let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
+    let index = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|case| case["id"] == "used-size")
+        .unwrap();
+    let expected = &control["result"][index]["result"];
+    let actual = run_with(
+        cases[index]["html"].as_str().unwrap(),
+        PROBE,
+        &engine.replace("BOXES", &expected["usedBoxes"].to_string()),
+    );
+    let mut found = Vec::new();
+    for key in ["used", "usedDetached"] {
+        let (mut want, mut got) = (Vec::new(), Vec::new());
+        rows(key, &expected[key], &mut want);
+        rows(key, &actual[key], &mut got);
+        let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
+        found.extend(want.into_iter().filter(|(path, _)| keep(path)).filter_map(
+            |(path, value)| {
+                let binding = got.get(&path).map_or("<missing>", String::as_str);
+                (binding != value).then(|| format!("{path}: binding {binding}, chrome {value}"))
+            },
+        ));
+    }
+    found
+}
+
+/// turbo-dom#316: with the embedder's layout (`__tsNs.layoutUsedSize`, here answering
+/// Chrome's own boxes from the control's `usedBoxes`), width / height read Chrome's used
+/// value of a rendered box — the content or border box by box-sizing, serialized like Blink
+/// (`%g`: 261.297px, 5.32812px) — and the computed value where Chrome reports it: display
+/// none (also inside a display:none ancestor: no box) / contents, inline non-replaced
+/// elements, SVG children other than rect / image / foreignObject; "" disconnected
+/// (case `used-size`).
+#[test]
+fn used_sizes_match_chrome156_control_with_embedder_layout() {
+    let found = used_size_mismatches(
+        "const boxes = BOXES; __tsNs.layoutUsedSize = (el) => boxes[el.id] ?? null;",
+        |_| true,
+    );
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#316 without a layout: the rows that need no box (the computed value Chrome
+/// reports for display none / contents, inline non-replaced elements and SVG children,
+/// declared sizes of unclamped boxes, "" disconnected) still match, also when the embedder's
+/// layout throws or answers no box (the computed value); without a layout a rendered box's
+/// undeclared size stays "" (no used value to report) and a percentage resolves against a px
+/// ancestor.
+#[test]
+fn used_sizes_without_a_layout_report_computed_values() {
+    let known = |path: &str| {
+        let id = path.split('.').nth(1).unwrap_or("");
+        path.starts_with("usedDetached")
+            || matches!(
+                id,
+                "fixed"
+                    | "padded"
+                    | "borderBox"
+                    | "none"
+                    | "noneAuto"
+                    | "contents"
+                    | "inline"
+                    | "inlineSized"
+                    | "usedSize"
+                    | "svgG"
+                    | "svgInner"
+            )
+    };
+    for engine in [
+        "",
+        "__tsNs.layoutUsedSize = () => { throw Error('layout'); };",
+        "__tsNs.layoutUsedSize = () => 7;",
+        "__tsNs.layoutUsedSize = () => [NaN, NaN, NaN, NaN];",
+    ] {
+        let found = used_size_mismatches(engine, known);
+        assert!(
+            found.is_empty(),
+            "{engine}: {} mismatches:\n{}",
+            found.len(),
+            found.join("\n")
+        );
+    }
+    let value = run(
+        "<!doctype html><body><div id=a></div><div style='width:200px'><div id=b style='width:10%'></div></div></body>",
+        "['a', 'b'].map((id) => { const s = getComputedStyle(document.getElementById(id)); return [s.width, s.height]; })",
+    );
+    assert_eq!(value, serde_json::json!([["", ""], ["20px", ""]]));
+}
+
+/// turbo-dom#316: a returned declaration reads the used size from the embedder's layout on
+/// every access, so a layout change shows without a DOM change.
+#[test]
+fn used_sizes_follow_the_embedder_layout_live() {
+    let value = run_with(
+        "<!doctype html><body><div id=a></div></body>",
+        "(() => { const s = getComputedStyle(document.getElementById('a')), rows = [s.width];
+          globalThis.__size = 12.5; rows.push(s.width, s.height); return rows; })()",
+        "__tsNs.layoutUsedSize = () => { const v = globalThis.__size ?? 100; return [v, v, v, v]; };",
+    );
+    assert_eq!(value, serde_json::json!(["100px", "12.5px", "12.5px"]));
+}
+
+/// The `transform-resolution` row (`transform.*`) of the probe's result against the
+/// control's, as mismatches; `transformBoxes` (Chrome's layout facts) is only the stand-in
+/// embedder's input (`BOXES` in `engine`).
+fn transform_mismatches(engine: &str, keep: impl Fn(&str) -> bool) -> Vec<String> {
+    let control: serde_json::Value = serde_json::from_str(CONTROL).unwrap();
+    let cases: serde_json::Value = serde_json::from_slice(CASES).unwrap();
+    let index = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|case| case["id"] == "transform-resolution")
+        .unwrap();
+    let expected = &control["result"][index]["result"];
+    let actual = run_with(
+        cases[index]["html"].as_str().unwrap(),
+        PROBE,
+        &engine.replace("BOXES", &expected["transformBoxes"].to_string()),
+    );
+    let mut found = Vec::new();
+    for key in ["transform", "transformCamel", "transformDetached"] {
+        let (mut want, mut got) = (Vec::new(), Vec::new());
+        rows(key, &expected[key], &mut want);
+        rows(key, &actual[key], &mut got);
+        let got: std::collections::BTreeMap<_, _> = got.into_iter().collect();
+        found.extend(want.into_iter().filter(|(path, _)| keep(path)).filter_map(
+            |(path, value)| {
+                let binding = got.get(&path).map_or("<missing>", String::as_str);
+                (binding != value).then(|| format!("{path}: binding {binding}, chrome {value}"))
+            },
+        ));
+    }
+    found
+}
+
+/// turbo-dom#353: `transform` computes to the resolved matrix() / matrix3d() / none like
+/// Chrome 156. With the embedder's layout (`__tsNs.layoutUsedSize`, here answering Chrome's
+/// own boxes from the control's `transformBoxes` so percentage translates resolve against
+/// the border box), every 2D function list serializes as `matrix(a, b, c, d, e, f)` with six
+/// Blink-%g values, and any 3D function (`translate3d`, `rotateX`/`Y`, `matrix3d`,
+/// `perspective`, ...) as `matrix3d(16 column-major values)`. `none`, a disconnected element
+/// and an unparented host element compute to `none`. em resolves against the font size the
+/// embedder reports as the fifth box entry.
+#[test]
+fn transform_matches_chrome156_control_with_embedder_layout() {
+    let found = transform_mismatches(
+        "const boxes = BOXES; __tsNs.layoutUsedSize = (el) => boxes[el.id] ?? null;",
+        |_| true,
+    );
+    assert!(
+        found.is_empty(),
+        "{} mismatches:\n{}",
+        found.len(),
+        found.join("\n")
+    );
+}
+
+/// turbo-dom#374: `getComputedStyle` canonicalizes named colors in every `<color>` longhand
+/// (not just `color`) to Chrome 156's rgb() / rgba() form, so `background-color: red` reads
+/// back as `rgb(255, 0, 0)` and `border-top-color: blue` as `rgb(0, 0, 255)`.
+#[test]
+fn computed_colors_canonicalize_named_values_to_rgb() {
+    let value = run(
+        "<!doctype html><body><div id=c style='background-color:red;border-top-color:blue;outline-color:lime;caret-color:orange;text-decoration-color:fuchsia'></div></body>",
+        "(() => { const s = getComputedStyle(document.getElementById('c'));
+          return [s.backgroundColor, s.borderTopColor, s.outlineColor, s.caretColor, s.textDecorationColor,
+                  s.getPropertyValue('background-color'), s.getPropertyValue('border-top-color')]; })()",
+    );
+    assert_eq!(
+        value,
+        serde_json::json!([
+            "rgb(255, 0, 0)",
+            "rgb(0, 0, 255)",
+            "rgb(0, 255, 0)",
+            "rgb(255, 165, 0)",
+            "rgb(255, 0, 255)",
+            "rgb(255, 0, 0)",
+            "rgb(0, 0, 255)"
+        ])
+    );
+}
+
+/// turbo-dom#373: `em` in a transform resolves against the layout's reported font size
+/// (`layoutUsedSize(el)[4]`), not the element's declared `font-size`. An element that
+/// inherits its font-size has no declared value on itself, so without reading the layout's
+/// font size the resolver would fall back to Chrome's initial 16 and produce the wrong
+/// translation. Chrome 156 gives `matrix(1, 0, 0, 1, 24, 0)` for `translateX(2em)` on a
+/// child whose inherited font-size is 12px.
+#[test]
+fn transform_em_resolves_against_layout_reported_font_size() {
+    let value = run_with(
+        "<!doctype html><body style='font-size:12px'><div id=c style='transform:translateX(2em)'></div></body>",
+        "getComputedStyle(document.getElementById('c')).transform",
+        "__tsNs.layoutUsedSize = (el) => el.id === 'c' ? [100, 50, 100, 50, 12] : null;",
+    );
+    assert_eq!(value, serde_json::json!("matrix(1, 0, 0, 1, 24, 0)"));
+}
+
+/// turbo-dom#353 without a layout: the rows that need no box — none / an initial transform,
+/// non-percentage function lists, disconnected / host-only elements — still match. A
+/// percentage translate stays as the declared text, as Chrome also cannot resolve it before
+/// layout.
+#[test]
+fn transform_without_a_layout_resolves_non_percentage_lists() {
+    let known = |path: &str| {
+        let id = path.split('.').nth(1).unwrap_or("");
+        path.starts_with("transformDetached")
+            || matches!(
+                id,
+                "none"
+                    | "page"
+                    | "x1"
+                    | "x2"
+                    | "x3"
+                    | "x4"
+                    | "x5"
+                    | "x6"
+                    | "x9"
+                    | "x10"
+                    | "x11"
+                    | "xform"
+            )
+    };
+    for engine in [
+        "",
+        "__tsNs.layoutUsedSize = () => { throw Error('layout'); };",
+        "__tsNs.layoutUsedSize = () => 7;",
+        "__tsNs.layoutUsedSize = () => null;",
+    ] {
+        let found = transform_mismatches(engine, known);
+        assert!(
+            found.is_empty(),
+            "{engine}: {} mismatches:\n{}",
+            found.len(),
+            found.join("\n")
+        );
+    }
 }
 
 /// turbo-test#125: a reused computed style follows the viewport: the fullscreen element's width /

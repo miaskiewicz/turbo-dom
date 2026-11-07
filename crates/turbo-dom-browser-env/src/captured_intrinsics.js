@@ -11,6 +11,20 @@
   ns.handlerRemove = target.removeEventListener;
   // Every interface prototype's own `on*` setters, keyed by prototype.
   const tables = new Map(), names = ownKeys(g);
+  // One prototype's own `on*` setters, or null when it has none.
+  const handlerSetters = function (proto) {
+    const keys = ownKeys(proto);
+    let table = null;
+    for (let k = 0; k < keys.length; k++) {
+      const key = keys[k];
+      if (typeof key !== 'string' || key.length < 3 || key[0] !== 'o' || key[1] !== 'n') continue;
+      const descriptor = gopd(proto, key);
+      if (!descriptor || typeof descriptor.set !== 'function') continue;
+      if (table === null) table = { __proto__: null };
+      table[key] = descriptor.set;
+    }
+    return table;
+  };
   for (let i = 0; i < names.length; i++) {
     const name = names[i];
     if (typeof name !== 'string') continue;
@@ -18,16 +32,7 @@
     if (typeof ctor !== 'function') continue;
     const prototype = gopd(ctor, 'prototype');
     if (!prototype || prototype.value === null || typeof prototype.value !== 'object') continue;
-    const keys = ownKeys(prototype.value);
-    let table = null;
-    for (let k = 0; k < keys.length; k++) {
-      const key = keys[k];
-      if (typeof key !== 'string' || key.length < 3 || key[0] !== 'o' || key[1] !== 'n') continue;
-      const descriptor = gopd(prototype.value, key);
-      if (!descriptor || typeof descriptor.set !== 'function') continue;
-      if (table === null) table = { __proto__: null };
-      table[key] = descriptor.set;
-    }
+    const table = handlerSetters(prototype.value);
     if (table !== null) apply(mapSet, tables, [prototype.value, table]);
   }
   g.__setInlineHandler = function (element, name, value) {

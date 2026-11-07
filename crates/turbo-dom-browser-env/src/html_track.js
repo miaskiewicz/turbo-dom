@@ -1,11 +1,15 @@
 (function () {
   "use strict";
   // HTMLTrackElement and TextTrack (turbo-dom#74), measured in html_track_chrome156.json. The
-  // binding has no media pipeline, so a track never loads: readyState stays NONE, and its
-  // TextTrack has no cues (`cues` / `activeCues` are empty lists once the mode is not
-  // disabled, null while disabled). Everything else is reflection: `src` (the shared URL
-  // reflection), `kind` (enumerated: missing -> subtitles, invalid -> metadata), `srclang`,
-  // `label`, `default`; the TextTrack's kind / label / language / id follow the element.
+  // binding has no media pipeline, so a track never loads cues: its TextTrack has no cues
+  // (`cues` / `activeCues` are empty lists once the mode is not disabled, null while
+  // disabled), and its readyState is the track processing model's (html_media.js, turbo-dom#339:
+  // ERROR without a src, LOADING while a fetch that never answers runs). Everything else is
+  // reflection: `src` (the shared URL reflection), `kind` (enumerated: missing -> subtitles,
+  // invalid -> metadata), `srclang`, `label`, `default`; the TextTrack's kind / label /
+  // language / id follow the element. A mode change of a track in a media element's
+  // TextTrackList reaches html_media.js (ns.textTrackModeChanged): the list's change event, the
+  // automatic selection's bookkeeping and the start of the track processing model.
   const g = globalThis,
     ns = __tsNs,
     make = ns.makeNativeFunction,
@@ -113,22 +117,32 @@
   // A real EventTarget whose prototype is TextTrack's (addEventListener works on it).
   const Shape = function () {};
   Shape.prototype = Track.prototype;
-  const newTrack = (element) => {
+  // A track element's track reads its element; addTextTrack()'s (html_media.js) keeps the
+  // kind / label / language it was created with and starts hidden.
+  const newTrack = (element, fixed) => {
     const track = construct(g.EventTarget, [], Shape);
-    apply(mapSet, states, [track, { __proto__: null, element, mode: "disabled", cues: null, activeCues: null, handler: null }]);
+    apply(mapSet, states, [track, { __proto__: null, element, fixed, mode: fixed ? "hidden" : "disabled", cues: fixed ? newCueList() : null, activeCues: fixed ? newCueList() : null, handler: null, ready: 0, configured: false, loading: false, url: null }]);
     return track;
   };
+  ns.newTextTrack = (kind, label, language) => newTrack(null, { __proto__: null, kind, label, language });
+  // A TextTrack's state (html_media.js's TrackEvent brand check, list events and track
+  // processing model), or undefined for anything else.
+  ns.textTrackState = (value) => (value !== null && typeof value === "object" ? apply(mapGet, states, [value]) : undefined);
   member(Track.prototype, "kind", function () {
-    return kindOf(stateOf(this).element);
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.kind : kindOf(state.element);
   });
   member(Track.prototype, "label", function () {
-    return attribute(stateOf(this).element, "label");
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.label : attribute(state.element, "label");
   });
   member(Track.prototype, "language", function () {
-    return attribute(stateOf(this).element, "srclang");
+    const state = stateOf(this);
+    return state.fixed ? state.fixed.language : attribute(state.element, "srclang");
   });
   member(Track.prototype, "id", function () {
-    return attribute(stateOf(this).element, "id");
+    const state = stateOf(this);
+    return state.fixed ? "" : attribute(state.element, "id");
   });
   const modes = { __proto__: null, disabled: 1, hidden: 1, showing: 1 };
   member(
@@ -140,12 +154,13 @@
     function (value) {
       const state = stateOf(this),
         mode = text(value);
-      if (!modes[mode]) return;
+      if (!modes[mode] || mode === state.mode) return;
       state.mode = mode;
       if (mode !== "disabled" && !state.cues) {
         state.cues = newCueList();
         state.activeCues = newCueList();
       }
+      ns.textTrackModeChanged(this, state);
     },
   );
   member(Track.prototype, "cues", function () {
@@ -237,16 +252,22 @@
   );
   member(P, "readyState", function () {
     apply(trackBrand, this, []);
-    return 0;
+    return stateOf(trackOf(this)).ready;
   });
-  member(P, "track", function () {
-    apply(trackBrand, this, []);
-    let track = apply(mapGet, tracks, [this]);
+  const trackOf = (element) => {
+    let track = apply(mapGet, tracks, [element]);
     if (!track) {
-      track = newTrack(this);
-      apply(mapSet, tracks, [this, track]);
+      track = newTrack(element, null);
+      apply(mapSet, tracks, [element, track]);
+      ns.textTrackCreated(element);
     }
     return track;
+  };
+  // html_media.js lists a media element's track element children's tracks.
+  ns.textTrackOf = trackOf;
+  member(P, "track", function () {
+    apply(trackBrand, this, []);
+    return trackOf(this);
   });
   ["NONE", "LOADING", "LOADED", "ERROR"].forEach((name, value) => {
     // Configurable until key_order.js moves them into Chrome's order and freezes them; a

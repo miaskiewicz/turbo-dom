@@ -376,29 +376,30 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
         }
         if !sel.is_empty() && !sel.starts_with('@') {
             let body = &css[j + 1..k.saturating_sub(1)];
-            let mut decls = HashMap::new();
-            parse_decls(body, &mut decls);
-            // The prelude is a selector LIST split at top-level commas only (`:is(a, b)`,
-            // `:not(.x, .y)`, `of S` keep theirs); an invalid list drops the whole rule, as
-            // in a browser (P5b, miaskiewicz/turbo-dom#18).
-            if let (false, Ok(list)) = (decls.is_empty(), parse_for_cascade(&sel)) {
-                for item in list.selectors() {
-                    rules.push(Rule {
-                        selector: item.text().to_string(),
-                        parsed: item.clone(),
-                        decls: decls.clone(),
-                        spec: item.specificity(),
-                        order,
-                    });
-                    order += 1;
-                }
-            }
+            emit_rule_list(&sel, body, &mut order, rules);
         } else {
             order += 1;
         }
         i = k;
     }
     order
+}
+
+fn emit_rule_list(sel: &str, body: &str, order: &mut u32, rules: &mut Vec<Rule>) {
+    let mut decls = HashMap::new();
+    parse_decls(body, &mut decls);
+    if let (false, Ok(list)) = (decls.is_empty(), parse_for_cascade(sel)) {
+        for item in list.selectors() {
+            rules.push(Rule {
+                selector: item.text().to_string(),
+                parsed: item.clone(),
+                decls: decls.clone(),
+                spec: item.specificity(),
+                order: *order,
+            });
+            *order += 1;
+        }
+    }
 }
 
 /// Build the rule index from every `<style>` element's text content in the doc.
@@ -561,6 +562,126 @@ pub fn computed_style(tree: &Tree, h: Handle) -> HashMap<String, String> {
     computed_style_with_policy(tree, h, &StylePolicy::default())
 }
 
+enum PrepareOutcome {
+    Cached(HashMap<String, String>),
+    Rules(std::rc::Rc<Vec<Rule>>),
+}
+
+fn prepare_cascade_cache(tree: &Tree, h: Handle, policy: &StylePolicy) -> PrepareOutcome {
+    let version = tree.version;
+    let policy_key = policy.cache_key();
+    let mut c = tree.css_cache.borrow_mut();
+    if c.version != version || c.policy_key != policy_key {
+        c.version = version;
+        c.policy_key = policy_key;
+        c.computed.clear();
+        let key = style_source_hash(tree, policy);
+        if c.rules_key != Some(key) {
+            c.rules = None;
+            c.rules_key = Some(key);
+        }
+    }
+    if let Some(cached) = c.computed.get(&h) {
+        return PrepareOutcome::Cached((**cached).clone());
+    }
+    if c.rules.is_none() {
+        if c.rules_key.is_none() {
+            c.rules_key = Some(style_source_hash(tree, policy));
+        }
+        c.rules = Some(std::rc::Rc::new(build_index(tree, policy)));
+    }
+    PrepareOutcome::Rules(c.rules.clone().unwrap())
+}
+
+fn collect_shadow_and_light_matches(
+    tree: &Tree,
+    h: Handle,
+    policy: &StylePolicy,
+    light_rules: &[Rule],
+    matched: &mut Vec<Rule>,
+) {
+    let in_shadow = tree.shadow_root_of(h);
+    if in_shadow.is_none() {
+        collect_matched(tree, h, light_rules, matched);
+    } else if let Some(sr) = in_shadow {
+        for r in shadow_rules(tree, sr, policy) {
+            if !is_shadow_only_selector(&r.selector) && r.matches(tree, h) {
+                matched.push(r);
+            }
+        }
+    }
+    collect_host_matches(tree, h, policy, matched);
+    collect_slotted_matches(tree, h, policy, matched);
+}
+
+fn collect_host_matches(tree: &Tree, h: Handle, policy: &StylePolicy, matched: &mut Vec<Rule>) {
+    let Some(sr) = tree.shadow_root(h) else {
+        return;
+    };
+    for r in shadow_rules(tree, sr, policy) {
+        if let Some(sel) = host_selector(&r.selector) {
+            if sel.is_empty() || tree.matches(h, sel) {
+                matched.push(r);
+            }
+        }
+    }
+}
+
+fn collect_slotted_matches(tree: &Tree, h: Handle, policy: &StylePolicy, matched: &mut Vec<Rule>) {
+    let Some(parent) = tree.parent(h) else {
+        return;
+    };
+    let Some(sr) = tree.shadow_root(parent) else {
+        return;
+    };
+    for r in shadow_rules(tree, sr, policy) {
+        if let Some(inner) = slotted_selector(&r.selector) {
+            if inner.is_empty() || tree.matches(h, inner) {
+                matched.push(r);
+            }
+        }
+    }
+}
+
+fn apply_inline_overrides(
+    tree: &Tree,
+    h: Handle,
+    policy: &StylePolicy,
+    map: &mut HashMap<String, String>,
+) {
+    let inline = policy
+        .inline_overrides
+        .get(&h)
+        .map(String::as_str)
+        .or_else(|| tree.get_attribute(h, "style"));
+    if let Some(inline) = inline {
+        if !policy.blocked_inline.contains(&h) && !inline.is_empty() {
+            let inline = inline.to_string();
+            parse_decls(&inline, map);
+        }
+    }
+}
+
+fn apply_inheritance(
+    tree: &Tree,
+    h: Handle,
+    policy: &StylePolicy,
+    map: &mut HashMap<String, String>,
+) {
+    let Some(parent) = flattened_parent(tree, h) else {
+        return;
+    };
+    let ps = computed_style_with_policy(tree, parent, policy);
+    for prop in INHERITED {
+        if !map.contains_key(*prop) {
+            let pv = lookup(&ps, prop);
+            if !pv.is_empty() {
+                map.insert((*prop).to_string(), pv);
+            }
+        }
+    }
+}
+
 /// Apply host-authorized stylesheet and inline-style exclusions to the same native cascade.
 pub fn computed_style_with_policy(
     tree: &Tree,
@@ -572,114 +693,16 @@ pub fn computed_style_with_policy(
         return map;
     }
 
-    // --- version-keyed memo: return a cached result, and build the rule index
-    // at most once per version (not per call / per inheritance-recursion hop). ---
-    let version = tree.version;
-    let policy_key = policy.cache_key();
-    let light_rules: std::rc::Rc<Vec<Rule>> = {
-        let mut c = tree.css_cache.borrow_mut();
-        if c.version != version || c.policy_key != policy_key {
-            c.version = version;
-            c.policy_key = policy_key;
-            // Per-element resolved maps depend on the tree shape (selector matching), so they
-            // always die on a version bump. The parsed rule index only depends on the `<style>`
-            // sources, so keep it across bumps whose CSS is unchanged — re-parse only on a real
-            // stylesheet edit (rules_key mismatch). A stylesheet edit bumps the version too, so
-            // re-hashing on each version change is enough to catch it (and within a version the
-            // CSS can't change, so the steady state never re-hashes).
-            c.computed.clear();
-            let key = style_source_hash(tree, policy);
-            if c.rules_key != Some(key) {
-                c.rules = None;
-                c.rules_key = Some(key);
-            }
-        }
-        if let Some(cached) = c.computed.get(&h) {
-            return (**cached).clone();
-        }
-        if c.rules.is_none() {
-            // First build (or a just-invalidated index). Set the source key even when the
-            // version-change guard above didn't run — `Tree::parse` leaves version at 0, so the
-            // very first getComputedStyle skips that guard and must still record the key, or the
-            // next version bump would needlessly re-parse. `rules_key` is already set on the
-            // invalidation path, so this re-hashes only on the genuine first build.
-            if c.rules_key.is_none() {
-                c.rules_key = Some(style_source_hash(tree, policy));
-            }
-            c.rules = Some(std::rc::Rc::new(build_index(tree, policy)));
-        }
-        c.rules.clone().unwrap()
+    let light_rules = match prepare_cascade_cache(tree, h, policy) {
+        PrepareOutcome::Cached(cached) => return cached,
+        PrepareOutcome::Rules(rules) => rules,
     };
 
     let mut matched = Vec::new();
-
-    // Document <style> rules apply to LIGHT-DOM elements only (encapsulation).
-    let in_shadow = tree.shadow_root_of(h);
-    if in_shadow.is_none() {
-        collect_matched(tree, h, &light_rules, &mut matched);
-    } else if let Some(sr) = in_shadow {
-        // shadow-internal element: normal selectors from the shadow's own <style>.
-        for r in shadow_rules(tree, sr, policy) {
-            if !is_shadow_only_selector(&r.selector) && r.matches(tree, h) {
-                matched.push(r);
-            }
-        }
-    }
-
-    // :host — if `h` hosts a shadow root, its shadow's :host rules style the host.
-    if let Some(sr) = tree.shadow_root(h) {
-        for r in shadow_rules(tree, sr, policy) {
-            if let Some(sel) = host_selector(&r.selector) {
-                if sel.is_empty() || tree.matches(h, sel) {
-                    matched.push(r);
-                }
-            }
-        }
-    }
-
-    // ::slotted(sel) — if `h` is a light child slotted into a shadow host, that
-    // shadow's ::slotted rules style the distributed node.
-    if let Some(parent) = tree.parent(h) {
-        if let Some(sr) = tree.shadow_root(parent) {
-            for r in shadow_rules(tree, sr, policy) {
-                if let Some(inner) = slotted_selector(&r.selector) {
-                    if inner.is_empty() || tree.matches(h, inner) {
-                        matched.push(r);
-                    }
-                }
-            }
-        }
-    }
-
+    collect_shadow_and_light_matches(tree, h, policy, &light_rules, &mut matched);
     apply_matched(&mut matched, &mut map);
-
-    // inline style wins over stylesheet rules
-    if let Some(inline) = policy
-        .inline_overrides
-        .get(&h)
-        .map(String::as_str)
-        .or_else(|| tree.get_attribute(h, "style"))
-    {
-        if !policy.blocked_inline.contains(&h) && !inline.is_empty() {
-            let inline = inline.to_string();
-            parse_decls(&inline, &mut map);
-        }
-    }
-
-    // Inheritance: inherit unset INHERITED props from the flattened parent, using
-    // the parent's already-resolved value (only when a REAL rule/inline set it).
-    if let Some(parent) = flattened_parent(tree, h) {
-        let ps = computed_style_with_policy(tree, parent, policy);
-        for prop in INHERITED {
-            if !map.contains_key(*prop) {
-                let pv = lookup(&ps, prop);
-                if !pv.is_empty() {
-                    // store the resolved value so child lookups stay consistent
-                    map.insert((*prop).to_string(), pv);
-                }
-            }
-        }
-    }
+    apply_inline_overrides(tree, h, policy, &mut map);
+    apply_inheritance(tree, h, policy, &mut map);
 
     // memoize for this (handle, version) — inheritance recursion + repeat calls hit this.
     let result = std::rc::Rc::new(map);
@@ -718,6 +741,20 @@ mod tests {
                    #x{padding-left:2px}</style><div id=x>hi</div>";
         assert_eq!(gcs_prop(css, "#x", "color"), "rgb(0, 128, 0)");
         assert_eq!(gcs_prop(css, "#x", "padding-left"), "2px");
+    }
+
+    #[test]
+    fn a_parentless_element_resolves_its_own_inline_style() {
+        // A detached element (no parent, so no shadow host to take `::slotted` rules
+        // from and nothing to inherit) still resolves its inline declarations, and only
+        // those: the body's inherited colour does not reach it.
+        let mut tree = Tree::parse("<body style=\"color:blue\"></body>");
+        let el = tree.create_element("div");
+        tree.set_attribute(el, "style", "color:red;padding-left:3px");
+        let map = computed_style(&tree, el);
+        assert_eq!(get_property_value(&map, "color"), "rgb(255, 0, 0)");
+        assert_eq!(get_property_value(&map, "padding-left"), "3px");
+        assert_eq!(get_property_value(&map, "font-size"), "");
     }
 
     #[test]
