@@ -1342,12 +1342,13 @@
     }
     return [c, 1];
   }
+  // Past the trailing extenders AND the base they extend: each code point is consumed, and the
+  // walk stops after the first one that is not an extender (the emoji base).
   function skipEmojiExtendersBackward(text, at) {
     while (at > 0) {
       const [p, m] = codePointBefore(text, at);
-      const isExt = p === 0xfe0f || p === 0x20e3 || (p >= 0x1f3fb && p <= 0x1f3ff);
-      if (!isExt) break;
       at -= m;
+      if (p !== 0xfe0f && p !== 0x20e3 && !(p >= 0x1f3fb && p <= 0x1f3ff)) break;
     }
     return at;
   }
