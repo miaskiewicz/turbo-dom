@@ -10800,6 +10800,37 @@ mod tests {
         reset();
     }
 
+    /// initMouseEvent checks its receiver before its argument count, like Chrome 156 (frozen
+    /// headless shell: both receiver calls throw "TypeError: Illegal invocation").
+    #[test]
+    fn init_mouse_event_checks_the_receiver_before_the_argument_count() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install(scope);
+        let source = v8::String::new(
+            scope,
+            r#"
+          const run=f=>{try{f();return 'ok'}catch(e){return e.constructor.name+': '+e.message}};
+          JSON.stringify([
+            run(()=>MouseEvent.prototype.initMouseEvent.call(new Event('x'))),
+            run(()=>MouseEvent.prototype.initMouseEvent.call(new Event('x'),'a')),
+            run(()=>new MouseEvent('x').initMouseEvent()).startsWith('TypeError: '),
+          ]);
+        "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, source, None).unwrap();
+        let result = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        assert_eq!(
+            result,
+            r#"["TypeError: Illegal invocation","TypeError: Illegal invocation",true]"#
+        );
+        reset();
+    }
+
     #[test]
     fn inert_same_realm_documents_keep_native_tree_ownership_and_imports() {
         init_v8();
