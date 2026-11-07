@@ -1,12 +1,14 @@
 // Cyclomatic-complexity gate for the JS runtime (`npm run complexity:js`, CI job
 // `complexity / js (cc <= 15)`). Only ESLint's `complexity` rule is enabled: every other
 // category is off so this config never doubles as a general linter. The limit is the
-// repo-wide cc <= 15 (CLAUDE.md "Complexity gates"); there is no allow-list or baseline.
-// The vendored xpath@0.0.35 drop is excluded: it must stay byte-identical to upstream (its
-// README pins the SHA-256), so it cannot be refactored. The 16 listed *_probe.js files are
-// Chrome-control fixtures whose control JSON pins the probe's SHA-256: editing one breaks its
-// recorded Chrome output, and several were captured on Chromes not cached here. New probes
-// are gated like any other file; only these named ones are excluded.
+// repo-wide cc <= 15 (CLAUDE.md "Complexity gates"); there is no baseline and no per-function
+// allow-list, only these 17 excluded files. The vendored xpath@0.0.35 drop must stay
+// byte-identical to upstream (its README pins the SHA-256), so it cannot be refactored. The 16
+// listed *_probe.js files are Chrome-control fixtures whose control JSON pins the probe's
+// SHA-256: editing one breaks its recorded Chrome output, and several were captured on Chromes
+// not cached here (computed_defaults_probe.js was edited and recaptured in 0.8.0; its pin
+// matches, and it is excluded because the control pins the hash). New probes are gated like
+// any other file; only these named ones are excluded.
 {
   "ignorePatterns": [
     "crates/turbo-dom-browser-env/src/xpath_provider/xpath.js",

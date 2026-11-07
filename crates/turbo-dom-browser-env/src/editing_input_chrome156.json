@@ -1,11 +1,13 @@
 {
-  "browser": "Chrome/156.0.8078.47",
+  "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "steps": "editing_input_steps.json",
-  "stepsSha256": "e981b311ce39372bc3529e58b8208cf51d35d89b1e9a98531b1b2489f03d87d2",
-  "collectorSha256": "3d5b277affa53d9bfe50d0a5d545adb33b92d0a3cb780e42a9b87849bebd667c",
+  "stepsSha256": "4d34f35850bd14752637495677dbadb7b1ed2c45576f9d3125f667e4f2540938",
+  "collectorSha256": "c64f082f4dd8d93b5047ee073254276464b81b9b32eac189fbdf6b87ee1ad2f0",
   "flags": [
     "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
     "--remote-debugging-pipe",
     "--user-data-dir=<fresh-profile>",
     "--no-first-run",
@@ -256,6 +258,78 @@
       "a",
       1,
       1
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x👍🏽</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      5,
+      5,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:1:#text:5",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "input,e,true,false,true,deleteContentBackward,,"
+      ],
+      true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x❤️</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      3,
+      3,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:1:#text:3",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "input,e,true,false,true,deleteContentBackward,,"
+      ],
+      true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x1️⃣</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      4,
+      4,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:1:#text:4",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "input,e,true,false,true,deleteContentBackward,,"
+      ],
+      true
     ]
   ]
 }

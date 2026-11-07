@@ -8393,12 +8393,47 @@ struct WorkerContextMarker;
 /// window/document DOM template onto its `globalThis`. For embedders (turbo-surf #203) that
 /// run the binding in a Worker-shaped global scope that owns its own globals.
 ///
+/// Mark the context before anything installs into it. A context that already holds a
+/// window is refused with [`WindowAlreadyInstalled`] and left unmarked: one an install
+/// already ran in, and every context `v8::Context::new` makes on a [`snapshot_blob`]
+/// isolate (the blob's default context IS the bootstrapped window). Make worker contexts on
+/// a non-snapshot isolate, or on a [`snapshot_blob_with`] isolate, whose default context ran
+/// only the embedder's prelude (the window is [`SNAPSHOT_WINDOW_CONTEXT`]).
+///
 /// Minimum opt-out hook for miaskiewicz/turbo-dom#385 landed in 0.8.0; the full
 /// `install_worker_global_scope(scope, context)` helper (DedicatedWorkerGlobalScope `self`,
 /// `importScripts`, structured-clone helpers) lands in 0.8.1.
-pub fn mark_worker_context(context: v8::Local<v8::Context>) {
+pub fn mark_worker_context(
+    scope: &mut v8::PinScope<'_, '_, ()>,
+    context: v8::Local<v8::Context>,
+) -> Result<(), WindowAlreadyInstalled> {
+    let scope = &mut v8::ContextScope::new(scope, context);
+    // invariant: a short string always allocates
+    let name = v8::String::new(scope, "turbo-dom.ownership.window-document").unwrap();
+    let key = v8::Private::for_api(scope, Some(name));
+    let window = context.global(scope).get_private(scope, key);
+    if window.is_some_and(|document| document.is_object()) {
+        return Err(WindowAlreadyInstalled);
+    }
     context.set_slot(std::rc::Rc::new(WorkerContextMarker));
+    Ok(())
 }
+
+/// [`mark_worker_context`] refused a context that already holds a window (an installed
+/// document, or a [`snapshot_blob`] context's bootstrapped one).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowAlreadyInstalled;
+
+impl std::fmt::Display for WindowAlreadyInstalled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            "the context already holds a window: mark a worker context before any install, on a \
+             non-snapshot isolate or a snapshot_blob_with isolate's default context",
+        )
+    }
+}
+
+impl std::error::Error for WindowAlreadyInstalled {}
 
 /// True if `context` was tagged with [`mark_worker_context`].
 fn is_worker_context(context: v8::Local<v8::Context>) -> bool {
@@ -10797,6 +10832,78 @@ mod tests {
         let script = v8::Script::compile(scope, source, None).unwrap();
         let result = script.run(scope).unwrap().to_rust_string_lossy(scope);
         assert_eq!(result, "[true,true,true,true,true]");
+        reset();
+    }
+
+    /// The binding's own setRangeText (selection.js replaces it on the prototypes, so it is
+    /// driven through the private namespace) keeps a 'preserve' selection relative to the
+    /// selection BEFORE the value write: without selection.js's controlValueChanged hook the
+    /// write itself moves the selection to the end of the value.
+    #[test]
+    fn fallback_set_range_text_preserve_uses_the_selection_before_the_write() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install(scope);
+        let namespace = engine_namespace(scope).unwrap();
+        let key = v8::String::new(scope, "controlValueChanged").unwrap();
+        namespace.delete(scope, key.into()).unwrap();
+        let key = v8::String::new(scope, "fallbackControlSelection").unwrap();
+        let hook = namespace.get(scope, key.into()).unwrap();
+        let global = context.global(scope);
+        let key = v8::String::new(scope, "__fallbackSelection").unwrap();
+        global.set(scope, key.into(), hook);
+        let source = v8::String::new(
+            scope,
+            r#"
+          const hook=__fallbackSelection,input=document.createElement('input'),rows=[];
+          input.value='abcdef';
+          for(const [start,end,from,to,text] of [[1,5,2,3,'XY'],[3,4,0,1,''],[0,2,4,6,'Q']]){
+            input.value='abcdef';
+            hook.setSelectionRange.call(input,start,end);
+            hook.setRangeText.call(input,text,from,to);
+            rows.push([input.value].concat(hook.read(input)));
+          }
+          JSON.stringify(rows);
+        "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, source, None).unwrap();
+        let result = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        assert_eq!(result, r#"[["abXYdef",1,6],["bcdef",2,3],["abcdQ",0,2]]"#);
+        reset();
+    }
+
+    /// initMouseEvent checks its receiver before its argument count, like Chrome 156 (frozen
+    /// headless shell: both receiver calls throw "TypeError: Illegal invocation").
+    #[test]
+    fn init_mouse_event_checks_the_receiver_before_the_argument_count() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install(scope);
+        let source = v8::String::new(
+            scope,
+            r#"
+          const run=f=>{try{f();return 'ok'}catch(e){return e.constructor.name+': '+e.message}};
+          JSON.stringify([
+            run(()=>MouseEvent.prototype.initMouseEvent.call(new Event('x'))),
+            run(()=>MouseEvent.prototype.initMouseEvent.call(new Event('x'),'a')),
+            run(()=>new MouseEvent('x').initMouseEvent()).startsWith('TypeError: '),
+          ]);
+        "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, source, None).unwrap();
+        let result = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        assert_eq!(
+            result,
+            r#"["TypeError: Illegal invocation","TypeError: Illegal invocation",true]"#
+        );
         reset();
     }
 

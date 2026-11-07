@@ -99,19 +99,22 @@
       if(receiver instanceof RegExpType)return regexps;
       return null;
     };
+    // The extras return their result, or NOT_HANDLED (one shared sentinel, nothing allocated
+    // per call) to fall through to the receiver's own member.
+    var NOT_HANDLED={__proto__:null};
     var dispatchStringExtra=function(name,receiver,rest){
-      if(name==='replace')return {hit:true,value:replace(receiver,rest[0],rest[1])};
-      if(name==='split'&&rest[0] instanceof RegExpType)return {hit:true,value:split(receiver,rest[0],rest[1])};
-      return null;
+      if(name==='replace')return replace(receiver,rest[0],rest[1]);
+      if(name==='split'&&rest[0] instanceof RegExpType)return split(receiver,rest[0],rest[1]);
+      return NOT_HANDLED;
     };
     var dispatchFunctionExtra=function(name,receiver,rest){
-      if(name==='call')return {hit:true,value:$apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]))};
-      if(name==='apply')return {hit:true,value:$apply(receiver,rest[0],rest[1]==null?[]:rest[1])};
-      return null;
+      if(name==='call')return $apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]));
+      if(name==='apply')return $apply(receiver,rest[0],rest[1]==null?[]:rest[1]);
+      return NOT_HANDLED;
     };
     var dispatch=function(name){return function(receiver,a,b,c){var rest=restOf(arguments,a,b,c);var t=null;
-      if(typeof receiver==='string'){var sx=dispatchStringExtra(name,receiver,rest);if(sx)return sx.value;t=strings;}
-      else if(typeof receiver==='function'){var fx=dispatchFunctionExtra(name,receiver,rest);if(fx)return fx.value;}
+      if(typeof receiver==='string'){var sx=dispatchStringExtra(name,receiver,rest);if(sx!==NOT_HANDLED)return sx;t=strings;}
+      else if(typeof receiver==='function'){var fx=dispatchFunctionExtra(name,receiver,rest);if(fx!==NOT_HANDLED)return fx;}
       else if(isArray(receiver)){if(arrays[name])return $apply(arrays[name],null,withReceiver(receiver,rest));}
       else {t=dispatchTableOf(receiver);if(t===regexps&&name==='test')return $apply(exec,receiver,rest)!==null;}
       if(t&&t[name])return $apply(t[name],receiver,rest);
@@ -2193,7 +2196,7 @@
     member(MouseEvent.prototype,'getModifierState',{value:function getModifierState(key){if(!arguments.length)throw new TypeError('A modifier is required');return modifier(mouseStates,this,key);}});
     var initMouseEventImpl=function(self,args){stateOf(mouseStates,self);if(eventRecord(self).dispatching)return;$call(initUIEvent,self,args.type,args.bubbles,args.cancelable,args.view,args.detail);$call($wmSet,mouseStates,self,mouseState(args));relatedRecord(self,$call($wmGet,mouseStates,self).relatedTarget);};
     var initMouseEventDefaults={bubbles:false,cancelable:false,view:null,detail:0,screenX:0,screenY:0,clientX:0,clientY:0,ctrlKey:false,altKey:false,shiftKey:false,metaKey:false,button:0,relatedTarget:null};
-    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type){if(!arguments.length)throw new TypeError('A type is required');var args=$O.assign({__proto__:null,type:type},initMouseEventDefaults);var names=['bubbles','cancelable','view','detail','screenX','screenY','clientX','clientY','ctrlKey','altKey','shiftKey','metaKey','button','relatedTarget'];for(var i=0;i<names.length;i++)if(i+1<arguments.length)args[names[i]]=arguments[i+1];initMouseEventImpl(this,args);}});
+    member(MouseEvent.prototype,'initMouseEvent',{value:function initMouseEvent(type){stateOf(mouseStates,this);if(!arguments.length)throw new TypeError('A type is required');var args=$O.assign({__proto__:null,type:type},initMouseEventDefaults);var names=['bubbles','cancelable','view','detail','screenX','screenY','clientX','clientY','ctrlKey','altKey','shiftKey','metaKey','button','relatedTarget'];for(var i=0;i<names.length;i++)if(i+1<arguments.length)args[names[i]]=arguments[i+1];initMouseEventImpl(this,args);}});
     tagEvent(MouseEvent,'MouseEvent');g.MouseEvent=MouseEvent;
     class KeyboardEvent extends UIEvent {
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.key=stringValue(init.key);state.code=stringValue(init.code);state.location=intValue(init.location)>>>0;state.repeat=!!init.repeat;state.isComposing=!!init.isComposing;state.charCode=intValue(init.charCode)>>>0;state.keyCode=intValue(init.keyCode)>>>0;$call($wmSet,keyStates,this,state);}
@@ -3823,11 +3826,12 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,selectionMin(state.start,end),end,state.direction);}};
     var selDirDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).direction:null;},set:function(value){selectionRequire(this);var state=selectionState(this);selectionUpdate(this,state.start,state.end,value===null?'none':selectionText(value));}};
     function setControlSelectionRange(start,end){if(arguments.length<2)throw new selectionTypeError('setSelectionRange requires two arguments');start=+start>>>0;end=+end>>>0;var direction=arguments.length<3||arguments[2]===undefined?'none':selectionText(arguments[2]);selectionRequire(this);selectionUpdate(this,start,end,direction);}
-    function setControlRangeTextApplyMode(self,mode,state,start,end,replacement,next){
+    // oldStart / oldEnd: the selection before the value write (the write may move it).
+    function setControlRangeTextApplyMode(self,mode,oldStart,oldEnd,start,end,replacement,next){
       if(mode==='select'){selectionUpdate(self,start,next,'none');return;}
       if(mode==='start'){selectionUpdate(self,start,start,'none');return;}
       if(mode==='end'){selectionUpdate(self,next,next,'none');return;}
-      var delta=replacement.length-(end-start),oldStart=state.start,oldEnd=state.end;
+      var delta=replacement.length-(end-start);
       selectionUpdate(self,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');
     }
     function setControlRangeTextMode(args){
@@ -3842,10 +3846,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var mode=setControlRangeTextMode(arguments);
       selectionRequire(this);if(start>end)throw new selectionException('The start exceeds the end','IndexSizeError');
       var value=selectionValue(this),length=value.length;start=selectionMin(start,length);end=selectionMin(end,length);
-      var next=start+replacement.length;
+      var oldStart=state.start,oldEnd=state.end,next=start+replacement.length;
       selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
-      setControlRangeTextApplyMode(this,mode,state,start,end,replacement,next);
+      setControlRangeTextApplyMode(this,mode,oldStart,oldEnd,start,end,replacement,next);
     }
+    // selection.js replaces these members on every text control prototype; the private namespace
+    // keeps the binding's own selection model reachable for its unit test (never page-visible).
+    __ns.fallbackControlSelection={setRangeText:setControlRangeText,setSelectionRange:setControlSelectionRange,read:function(element){var state=selectionState(element);return [state.start,state.end];}};
     var baseProto = compatibilityElementPrototype = Object.getPrototypeOf(orig.call(d,'span'));
     // Reflected IDL attributes on every element: setting el.src / el.href (script/img/link/a — a DOM
     // property) must show as the content attribute so attribute selectors like script[src*="maps"]

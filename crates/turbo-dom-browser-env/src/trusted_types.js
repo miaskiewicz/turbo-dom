@@ -114,7 +114,8 @@
     if (tag === 'iframe' && attribute === 'srcdoc') return 'TrustedHTML';
     return null;
   }
-  const KNOWN_NS = { [HTML]: 1, [SVG]: 1, 'http://www.w3.org/1998/Math/MathML': 1 };
+  // Null-prototype tables: 'constructor' / '__proto__' are unknown names, not inherited hits.
+  const KNOWN_NS = { __proto__: null, [HTML]: 1, [SVG]: 1, 'http://www.w3.org/1998/Math/MathML': 1 };
   function attributeType(tag, attribute, ns, attributeNS) {
     if (attributeNS != null && attributeNS !== '' && !(ns === SVG && attributeNS === XLINK)) return null;
     if (!KNOWN_NS[ns]) return null;
@@ -130,7 +131,7 @@
     ns = namespace(ns, 'getAttributeType'); attributeNS = attributeNS == null ? '' : string(attributeNS, 'getAttributeType', 'TrustedTypePolicyFactory');
     return attributeType(tag, attribute, ns, attributeNS);
   }, 2);
-  const SCRIPT_TEXT_PROPS = { text: 1, textContent: 1, innerText: 1 };
+  const SCRIPT_TEXT_PROPS = { __proto__: null, text: 1, textContent: 1, innerText: 1 };
   function htmlPropertyType(tag, property) {
     if (tag === 'script') {
       if (SCRIPT_TEXT_PROPS[property]) return 'TrustedScript';

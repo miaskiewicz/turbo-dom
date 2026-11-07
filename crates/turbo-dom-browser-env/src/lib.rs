@@ -41,7 +41,7 @@ pub use turbo_dom_parser::rtdom::css_values;
 
 /// Minimum worker opt-out hook (turbo-dom#385, for turbo-surf #203). See
 /// [`browser_env::mark_worker_context`].
-pub use browser_env::mark_worker_context;
+pub use browser_env::{mark_worker_context, WindowAlreadyInstalled};
 
 #[cfg(feature = "host-internals")]
 #[doc(hidden)]

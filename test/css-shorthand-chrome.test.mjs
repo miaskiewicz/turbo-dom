@@ -79,3 +79,24 @@ test('an overflowing length reads back clamped to the largest float like Chrome 
     assert.equal(el.style.borderRadius, '3.40282e+38px', value);
   }
 });
+
+test('Object.prototype member names are ordinary function names, not special-function handlers', () => {
+  // `__proto__(1)` / `constructor(x)` / `toString(1)` must take the unknown-function path like
+  // any other name (`foo(…)`) instead of reaching an Object.prototype member through the
+  // special-function table (turbo-dom#389 review).
+  const { document } = createEnvironment('<div></div>');
+  const read = (prop, value) => {
+    const el = document.createElement('div');
+    el.style[prop] = value;
+    return el.style.cssText;
+  };
+  for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+    for (const [prop, args] of [['color', '1'], ['willChange', 'x'], ['transitionTimingFunction', '1'], ['width', '1px']]) {
+      assert.equal(read(prop, `${name}(${args})`), read(prop, `foo(${args})`).replaceAll('foo', name.toLowerCase()), `${prop}: ${name}(${args})`);
+    }
+  }
+  const el = document.createElement('div');
+  el.style.color = 'red';
+  el.style.color = '__proto__(1)';
+  assert.equal(el.style.color, 'red');
+});

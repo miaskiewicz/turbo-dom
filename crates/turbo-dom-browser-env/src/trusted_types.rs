@@ -518,6 +518,42 @@ mod tests {
         }
         reset();
     }
+    /// Namespaces and property names spelled like Object.prototype members are unknown names,
+    /// not table hits (turbo-dom#389 review). Expected rows: the frozen Chrome 156 headless shell
+    /// running the same expression over a file:// page.
+    #[test]
+    fn object_prototype_names_are_unknown_namespaces_and_properties_like_chrome() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body>");
+        let result = eval(
+            scope,
+            r#"(()=>{
+          const t=trustedTypes,r=[];
+          for(const ns of ['constructor','__proto__','toString','hasOwnProperty'])r.push(['attr',ns,t.getAttributeType('div','onclick',ns),t.getAttributeType('script','src',ns),t.getPropertyType('div','innerHTML',ns),t.getPropertyType('script','text',ns)]);
+          for(const p of ['constructor','__proto__','toString','valueOf','hasOwnProperty'])r.push(['prop',p,t.getPropertyType('script',p),t.getPropertyType('div',p),t.getAttributeType('script',p)]);
+          return JSON.stringify(r);
+        })()"#,
+        );
+        let actual: serde_json::Value =
+            serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
+        let chrome = serde_json::json!([
+            ["attr", "constructor", null, null, "TrustedHTML", null],
+            ["attr", "__proto__", null, null, "TrustedHTML", null],
+            ["attr", "toString", null, null, "TrustedHTML", null],
+            ["attr", "hasOwnProperty", null, null, "TrustedHTML", null],
+            ["prop", "constructor", null, null, null],
+            ["prop", "__proto__", null, null, null],
+            ["prop", "toString", null, null, null],
+            ["prop", "valueOf", null, null, null],
+            ["prop", "hasOwnProperty", null, null, null]
+        ]);
+        assert_eq!(actual, chrome);
+        reset();
+    }
     #[test]
     fn private_rules_and_strings_ignore_guest_collection_prototype_replacements() {
         super::super::tests::init_v8();

@@ -870,7 +870,10 @@ function simplifyMathLiterals(name, inner) {
     else if (term && term[0] === '%' && name === 'linear') inner[index] = { kind: 'percentage', value: f32(term[1]), text: `${cssNumber(term[1])}%` };
   });
 }
+// Null prototype: a function named after an Object.prototype member (`constructor(…)`,
+// `__proto__(…)`) is an ordinary unknown function, never a handler.
 const SPECIAL_FUNCTION_HANDLERS = {
+  __proto__: null,
   calc: (name, inner) => calcSum(inner),
   min: (name, inner) => minMax(name, inner),
   max: (name, inner) => minMax(name, inner),
