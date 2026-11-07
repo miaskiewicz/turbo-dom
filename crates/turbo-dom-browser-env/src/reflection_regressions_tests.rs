@@ -282,3 +282,31 @@ fn popover_members_survive_patched_call() {
         r#"["auto",false,true,"manual"]"#
     );
 }
+
+/// turbo-dom#389 review: a control's `type` names no `Object.prototype` member when its value
+/// is sanitized. `<button type=constructor value=x>.value` is `"x"` (a button's value
+/// reflects its attribute; an unknown input type is the Text state), whether the type comes
+/// from the attribute or the `.type` setter, and through the `.value` setter too.
+#[test]
+fn control_value_ignores_object_prototype_type_names() {
+    assert_eq!(
+        page_json(
+            PAGE,
+            "(() => { const out = []; \
+             const run = (f) => { try { return f(); } catch (e) { return e.name; } }; \
+             for (const type of ['constructor', '__proto__', 'toString']) { \
+               for (const tag of ['button', 'input']) { \
+                 const host = document.createElement('div'); \
+                 host.innerHTML = '<' + tag + ' type=\"' + type + '\" value=\"x\">'; \
+                 out.push(run(() => host.firstChild.value)); \
+                 const typed = document.createElement(tag); typed.setAttribute('value', 'x'); \
+                 out.push(run(() => { typed.type = type; return typed.value; })); \
+                 const set = document.createElement(tag); set.setAttribute('type', type); \
+                 out.push(run(() => { set.value = 'x'; return set.value; })); \
+               } \
+             } \
+             return out; })()",
+        ),
+        format!("[{}]", vec![r#""x""#; 18].join(","))
+    );
+}
