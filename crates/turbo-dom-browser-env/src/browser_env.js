@@ -99,19 +99,22 @@
       if(receiver instanceof RegExpType)return regexps;
       return null;
     };
+    // The extras return their result, or NOT_HANDLED (one shared sentinel, nothing allocated
+    // per call) to fall through to the receiver's own member.
+    var NOT_HANDLED={__proto__:null};
     var dispatchStringExtra=function(name,receiver,rest){
-      if(name==='replace')return {hit:true,value:replace(receiver,rest[0],rest[1])};
-      if(name==='split'&&rest[0] instanceof RegExpType)return {hit:true,value:split(receiver,rest[0],rest[1])};
-      return null;
+      if(name==='replace')return replace(receiver,rest[0],rest[1]);
+      if(name==='split'&&rest[0] instanceof RegExpType)return split(receiver,rest[0],rest[1]);
+      return NOT_HANDLED;
     };
     var dispatchFunctionExtra=function(name,receiver,rest){
-      if(name==='call')return {hit:true,value:$apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]))};
-      if(name==='apply')return {hit:true,value:$apply(receiver,rest[0],rest[1]==null?[]:rest[1])};
-      return null;
+      if(name==='call')return $apply(receiver,rest[0],$apply(arrays.slice,null,[rest,1]));
+      if(name==='apply')return $apply(receiver,rest[0],rest[1]==null?[]:rest[1]);
+      return NOT_HANDLED;
     };
     var dispatch=function(name){return function(receiver,a,b,c){var rest=restOf(arguments,a,b,c);var t=null;
-      if(typeof receiver==='string'){var sx=dispatchStringExtra(name,receiver,rest);if(sx)return sx.value;t=strings;}
-      else if(typeof receiver==='function'){var fx=dispatchFunctionExtra(name,receiver,rest);if(fx)return fx.value;}
+      if(typeof receiver==='string'){var sx=dispatchStringExtra(name,receiver,rest);if(sx!==NOT_HANDLED)return sx;t=strings;}
+      else if(typeof receiver==='function'){var fx=dispatchFunctionExtra(name,receiver,rest);if(fx!==NOT_HANDLED)return fx;}
       else if(isArray(receiver)){if(arrays[name])return $apply(arrays[name],null,withReceiver(receiver,rest));}
       else {t=dispatchTableOf(receiver);if(t===regexps&&name==='test')return $apply(exec,receiver,rest)!==null;}
       if(t&&t[name])return $apply(t[name],receiver,rest);
