@@ -3813,47 +3813,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var mkTypeDesc = function(def){ return { configurable: true, get: function(){ var t = $c.toLowerCase($getAttr(this, 'type') || def); return def === 'text' && !$c.test(inputTypeStates, t) ? 'text' : t; }, set: function(v){ $setAttr(this, 'type', v); } }; };
     // `form` → the nearest ancestor <form> (userEvent fires submit on a submit-button's form).
     var formDesc = { configurable: true, get: function(){ return this.closest ? this.closest('form') : null; } };
-    var selectionMin=Math.min,selectionMax=Math.max;
-    var controlSelections=new WeakMap(),selectionApply=Reflect.apply,selectionGet=WeakMap.prototype.get,selectionSet=WeakMap.prototype.set;
-    var selectionString=String,selectionTypeError=TypeError,selectionException=__ns.DOMException;
-    function selectionText(value){if(typeof value==='symbol')throw new selectionTypeError('Cannot convert a Symbol value to a string');return selectionString(value);}
-    function selectionAvailable(element){var tag=selectionApply(sheetTagName,element,[]);if(tag==='TEXTAREA')return true;var type=sheetNativeAttribute(element,'type')||'text';return $c.test(/^(text|search|url|tel|password)$/,$c.toLowerCase(type));}
-    function selectionValue(element){return selectionApply(valDesc.get,element,[]);}
-    function selectionState(element){var state=selectionApply(selectionGet,controlSelections,[element]);if(!state){state={start:0,end:0,direction:'none'};selectionApply(selectionSet,controlSelections,[element,state]);}return state;}
-    function selectionRequire(element){if(!selectionAvailable(element))throw new selectionException('The input type does not support selection','InvalidStateError');}
-    function selectionUpdate(element,start,end,direction){var length=selectionValue(element).length;end=selectionMin(end,length);start=selectionMin(start,end);var state=selectionState(element);state.start=start;state.end=end;state.direction=direction==='forward'||direction==='backward'?direction:'none';}
-    function selectionValueChanged(element,oldValue,newValue){if(__ns.controlValueChanged){__ns.controlValueChanged(element,oldValue,newValue);return;}if(oldValue!==newValue&&selectionAvailable(element))selectionUpdate(element,newValue.length,newValue.length,'none');}
-    var selStartDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).start:null;},set:function(value){selectionRequire(this);var state=selectionState(this),start=value===null?0:+value>>>0;selectionUpdate(this,start,selectionMax(start,state.end),state.direction);}};
-    var selEndDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).end:null;},set:function(value){selectionRequire(this);var state=selectionState(this),end=value===null?0:+value>>>0;selectionUpdate(this,selectionMin(state.start,end),end,state.direction);}};
-    var selDirDesc={configurable:true,get:function(){return selectionAvailable(this)?selectionState(this).direction:null;},set:function(value){selectionRequire(this);var state=selectionState(this);selectionUpdate(this,state.start,state.end,value===null?'none':selectionText(value));}};
-    function setControlSelectionRange(start,end){if(arguments.length<2)throw new selectionTypeError('setSelectionRange requires two arguments');start=+start>>>0;end=+end>>>0;var direction=arguments.length<3||arguments[2]===undefined?'none':selectionText(arguments[2]);selectionRequire(this);selectionUpdate(this,start,end,direction);}
-    // oldStart / oldEnd: the selection before the value write (the write may move it).
-    function setControlRangeTextApplyMode(self,mode,oldStart,oldEnd,start,end,replacement,next){
-      if(mode==='select'){selectionUpdate(self,start,next,'none');return;}
-      if(mode==='start'){selectionUpdate(self,start,start,'none');return;}
-      if(mode==='end'){selectionUpdate(self,next,next,'none');return;}
-      var delta=replacement.length-(end-start);
-      selectionUpdate(self,oldStart>end?oldStart+delta:oldStart>start?start:oldStart,oldEnd>end?oldEnd+delta:oldEnd>start?next:oldEnd,'none');
-    }
-    function setControlRangeTextMode(args){
-      var mode=args.length<4||args[3]===undefined?'preserve':selectionText(args[3]);
-      if(mode!=='select'&&mode!=='start'&&mode!=='end'&&mode!=='preserve')throw new selectionTypeError('Invalid selection mode');
-      return mode;
-    }
-    function setControlRangeText(replacement){
-      if(arguments.length===0||arguments.length===2)throw new selectionTypeError('setRangeText requires one or at least three arguments');
-      replacement=selectionText(replacement);var state=selectionState(this),start=state.start,end=state.end;
-      if(arguments.length>=3){start=+arguments[1]>>>0;end=+arguments[2]>>>0;}
-      var mode=setControlRangeTextMode(arguments);
-      selectionRequire(this);if(start>end)throw new selectionException('The start exceeds the end','IndexSizeError');
-      var value=selectionValue(this),length=value.length;start=selectionMin(start,length);end=selectionMin(end,length);
-      var oldStart=state.start,oldEnd=state.end,next=start+replacement.length;
-      selectionApply(valDesc.set,this,[value.slice(0,start)+replacement+value.slice(end)]);
-      setControlRangeTextApplyMode(this,mode,oldStart,oldEnd,start,end,replacement,next);
-    }
-    // selection.js replaces these members on every text control prototype; the private namespace
-    // keeps the binding's own selection model reachable for its unit test (never page-visible).
-    __ns.fallbackControlSelection={setRangeText:setControlRangeText,setSelectionRange:setControlSelectionRange,read:function(element){var state=selectionState(element);return [state.start,state.end];}};
+    // selection.js owns the text-control selection model: it defines selectionStart/End/Direction,
+    // select, setSelectionRange and setRangeText on both control prototypes during every install,
+    // and value writes report to its controlValueChanged hook (absent only before it installs).
+    var selectionApply=Reflect.apply;
+    function selectionValueChanged(element,oldValue,newValue){if(__ns.controlValueChanged)__ns.controlValueChanged(element,oldValue,newValue);}
     var baseProto = compatibilityElementPrototype = Object.getPrototypeOf(orig.call(d,'span'));
     // Reflected IDL attributes on every element: setting el.src / el.href (script/img/link/a — a DOM
     // property) must show as the content attribute so attribute selectors like script[src*="maps"]
@@ -3979,10 +3943,6 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       (controlBooleans[n]||[]).forEach(function(pair){ Object.defineProperty(p, pair[0], { configurable: true, enumerable:true, get: function(){ return $hasAttr(this, pair[1]); }, set: function(v){ if (v) $setAttr(this, pair[1], ''); else $removeAttr(this, pair[1]); } }); });
       if (n === 'HTMLInputElement' || n === 'HTMLTextAreaElement') {
         defineControl('defaultValue',defaultValueDesc);
-        defineControl('selectionStart',selStartDesc);defineControl('selectionEnd',selEndDesc);defineControl('selectionDirection',selDirDesc);
-        p.setSelectionRange=setControlSelectionRange;
-        p.select=function(){if(selectionAvailable(this))selectionUpdate(this,0,selectionValue(this).length,'none');};
-        p.setRangeText=setControlRangeText;
       }
     } catch(e){} g[n].prototype = p; protoFor[n] = p; });
     // The select's list of options (HTML's "option element nearest ancestor select", Chrome 156
