@@ -75,3 +75,19 @@ fn mark_worker_context_skips_dom_install() {
     }
     reset();
 }
+
+/// A context made from a `snapshot_blob()` isolate already holds the bootstrapped window, so
+/// marking it a worker cannot keep the DOM off its `globalThis` (turbo-dom#389 review).
+#[test]
+fn a_snapshot_blob_context_is_not_a_worker_context() {
+    crate::browser_env::tests::init_v8();
+    let blob = snapshot_blob().expect("the process blob builds");
+    let isolate = &mut v8::Isolate::new(blob.create_params());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    mark_worker_context(context);
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p></p>");
+    assert_eq!(eval(scope, "typeof window"), "undefined");
+    reset();
+}
