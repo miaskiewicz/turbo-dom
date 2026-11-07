@@ -586,8 +586,20 @@ impl<'s> PinnedRef<'s, HandleScope<'_>> {
   /// populate `MessageEvent.source` on cross-realm `postMessage`
   /// (turbo-surf#90).
   pub fn get_incumbent_context(&self) -> Local<'_, Context> {
-    let context_ptr =
-      unsafe { raw::v8__Isolate__GetIncumbentContext(self.0.isolate.as_ptr()) };
+    let isolate = self.0.isolate.as_ptr();
+    #[cfg(not(target_env = "msvc"))]
+    let context_ptr = unsafe { raw::v8__Isolate__GetIncumbentContext(isolate) };
+    // MSVC returns the `Local<Context>` through the result buffer (see the
+    // declaration in raw.rs); read the buffer rather than the returned
+    // pointer, which only x64 guarantees to be the buffer's address.
+    #[cfg(target_env = "msvc")]
+    let context_ptr = {
+      let mut context_ptr: *const Context = std::ptr::null();
+      unsafe {
+        raw::v8__Isolate__GetIncumbentContext(isolate, &mut context_ptr)
+      };
+      context_ptr
+    };
     unsafe { Local::from_raw_unchecked(context_ptr) }
   }
 

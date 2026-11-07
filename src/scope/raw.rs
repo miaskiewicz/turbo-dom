@@ -230,21 +230,31 @@ unsafe extern "C" {
   // `v8::Isolate::GetIncumbentContext()` is not wrapped by the prebuilt
   // binding.cc (upstream rusty_v8 150.4 has no `v8__Isolate__GetIncumbentContext`
   // wrapper), so call V8's exported member function directly via its C++
-  // mangled symbol. `Local<Context>` is a trivially-copyable one-pointer
-  // wrapper, ABI-compatible with the `*const Context` return the sibling
-  // accessors use. Needed for HTML's incumbent-realm concept
-  // (postMessage `event.source`; turbo-surf#90).
-  #[cfg_attr(
-    not(target_env = "msvc"),
-    link_name = "_ZN2v87Isolate19GetIncumbentContextEv"
-  )]
-  #[cfg_attr(
-    target_env = "msvc",
-    link_name = "?GetIncumbentContext@Isolate@v8@@QEAA?AV?$Local@VContext@v8@@@2@XZ"
-  )]
+  // mangled symbol. Needed for HTML's incumbent-realm concept (postMessage
+  // `event.source`; turbo-surf#90).
+  //
+  // It returns the class `Local<Context>` (one pointer) by value, and the two
+  // C++ ABIs return that differently:
+  // - Itanium (Linux, macOS): `Local` has trivial copy/move constructors and a
+  //   trivial destructor, so it is returned in a register (RAX / X0) like the
+  //   `*const Context` the sibling accessors return.
+  // - MSVC (Windows): a non-static member function returns any class type
+  //   through a hidden result pointer passed after `this` (x64: `this` in RCX,
+  //   result buffer in RDX; ARM64: X0 / X1). Declared as a one-argument
+  //   pointer return, the callee writes the result through whatever RDX
+  //   holds (0xc0000005), so the MSVC declaration passes the result buffer
+  //   and `get_incumbent_context` reads it.
+  #[cfg(not(target_env = "msvc"))]
+  #[link_name = "_ZN2v87Isolate19GetIncumbentContextEv"]
   pub(super) fn v8__Isolate__GetIncumbentContext(
     isolate: *mut RealIsolate,
   ) -> *const Context;
+  #[cfg(target_env = "msvc")]
+  #[link_name = "?GetIncumbentContext@Isolate@v8@@QEAA?AV?$Local@VContext@v8@@@2@XZ"]
+  pub(super) fn v8__Isolate__GetIncumbentContext(
+    isolate: *mut RealIsolate,
+    ret: *mut *const Context,
+  ) -> *mut *const Context;
   pub(super) fn v8__Isolate__ThrowException(
     isolate: *mut RealIsolate,
     exception: *const Value,

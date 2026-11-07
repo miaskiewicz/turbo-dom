@@ -2,7 +2,7 @@
 
 turbo-dom's fork of [rusty_v8](https://github.com/denoland/rusty_v8): crates.io `v8` 150.4.0
 (upstream revision `5c15a6995c9bb4bacd3e341b59fff32c909c80bf`) plus a small set of reviewed
-Rust-only fixes. It links the **official prebuilt** rusty_v8 v150.4.0 static library and
+Rust-only fixes and one addition. It links the **official prebuilt** rusty_v8 v150.4.0 static library and
 generated bindings unchanged. The library name stays `v8` (`use v8::...`).
 
 The crate is **generated, not vendored**: this directory holds only pins, patches, tests and
@@ -41,10 +41,13 @@ adds no features.
 
 ## API
 
-Upstream rusty_v8 150.4.0's API, plus one item: `pub const FORK_SHOULD_THROW_FIX: bool = true`.
-Bindings that rely on the fixed interceptor accessor assert it at compile time
-(`const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);`), so stock `v8` cannot be substituted
-silently.
+Upstream rusty_v8 150.4.0's API, plus two items:
+
+- `pub const FORK_SHOULD_THROW_FIX: bool = true`. Bindings that rely on the fixed interceptor
+  accessor assert it at compile time (`const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);`), so
+  stock `v8` cannot be substituted silently.
+- `PinScope::get_incumbent_context()` (since 150.4.1): HTML's incumbent realm, V8's
+  `v8::Isolate::GetIncumbentContext()` (`MessageEvent.source` on cross-realm `postMessage`).
 
 ### Fork delta
 
@@ -54,12 +57,13 @@ silently.
 | Isolate weak teardown | `src/isolate.rs` | Upstream invalidates its `IsolateHandle` before dropping native isolate/context slots, so a `Weak` destructor skips V8's global-handle reset while its callback data can already be freed. The handle now stays live through slot and finalizer cleanup and is invalidated immediately before V8 disposal. |
 | `UPSTREAM_V8_VERSION` | `build.rs` | The prebuilt archive URL and the `RUSTY_V8_MIRROR` binding URL use `const UPSTREAM_V8_VERSION: &str = "150.4.0"` instead of `CARGO_PKG_VERSION`, so fork patch releases (150.4.x) keep downloading the upstream v150.4.0 SDK. A `build.rs` unit test (`cargo test --test build`) asserts it equals the manifest's pinned `upstream-version`. |
 | Fork marker | `src/lib.rs` | `pub const FORK_SHOULD_THROW_FIX: bool = true;` Bindings that rely on the accessor write `const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);` so a stock `v8` cannot be substituted silently. |
+| Incumbent context | `src/scope.rs`, `src/scope/raw.rs` | `incumbent-context.patch` (turbo-dom#367, turbo-surf#90): the prebuilt binding has no `GetIncumbentContext` wrapper, so `get_incumbent_context()` calls V8's exported member function by its mangled name. It returns the class `Local<Context>`: in a register on Itanium (Linux, macOS), through a hidden result buffer passed after `this` on MSVC (Windows), so the Windows declaration takes that buffer. |
 | Lint allows | `src/lib.rs` | `#![allow(warnings, clippy::all, clippy::pedantic)]`: upstream code is kept as-is, so consumers' lint gates do not apply to it. |
 | Release teardown tests | `tests/test_api.rs` | turbo-surf's reviewed `v8-teardown-tests.patch`: corrects upstream's contradictory slot-liveness assertion and adds weak-slot retirement controls. `test_api` is not a test target here (it needs `icudtl.dat`), so these run only in turbo-surf; `release_v8_teardown.rs` carries the same retirement controls. |
 | Lib test init | `src/array_buffer.rs` (test only) | Upstream's `test_default_allocator` initialized V8 itself, so whichever other lib test initialized second panicked; it now shares the crate's `Once`. |
 | Doc examples | `src/scope.rs` (docs only) | `doctests.patch` (turbo-dom#182): upstream never runs its doctests and 6 of the 12 in `scope.rs` do not compile (duplicate `Object` import, no `isolate` in scope, `Number::new(scope, 42)`, a `;` dropping a return value). They now set up V8 (hidden `#` lines) and run; `cargo test --doc` is a CI step. |
 | Manifest | `Cargo.toml` | Renamed `turbo-dom-v8`; `links = "rusty_v8"`; `rust-version = "1.91"`; `LICENSE` kept in the package; repository/description name the fork; `[package.metadata.turbo-dom-v8]` records the upstream package, version, revision and repository; the `test_api`, `test_cppgc` (need `third_party/icu/common/icudtl.dat`, not shipped) and `test_ui` (trybuild) targets and their only dev-dependencies (`align-data`, `rustversion`, `trybuild`) removed; explicit `[[test]]` targets for our tests (upstream sets `autotests = false`). `Cargo.toml.orig`, `Cargo.lock`, `.cargo_vcs_info.json` and `rust-toolchain.toml` are dropped. |
-| Regression tests | `tests/` | `interceptor_should_throw.rs` (4 tests: setters, definers, deleters, getters), `release_v8_teardown.rs` (2), `weak_teardown.rs` (1), `fork_marker.rs` (1). On stock function.rs three interceptor tests fail. |
+| Regression tests | `tests/` | `interceptor_should_throw.rs` (4 tests: setters, definers, deleters, getters), `release_v8_teardown.rs` (2), `weak_teardown.rs` (1), `fork_marker.rs` (1), `incumbent_context.rs` (1). On stock function.rs three interceptor tests fail. |
 
 ## Generate
 
@@ -131,8 +135,8 @@ does. `V8_FROM_SOURCE` is unsupported: the crate ships no C++ sources.
 `[patch.crates-io]` until the crate is on crates.io.
 
 `scripts/release.py --out DIR` packages and checks the crate; with `--publish` (only on a
-`v<turbo-dom version>` tag of miaskiewicz/turbo-dom) it publishes `turbo-dom-v8 150.4.0` once.
-An existing 150.4.0 must match the fresh package apart from Cargo's lock/VCS records, and then
+`v<turbo-dom version>` tag of miaskiewicz/turbo-dom) it publishes `turbo-dom-v8 150.4.1` once.
+An existing 150.4.1 must match the fresh package apart from Cargo's lock/VCS records, and then
 nothing is uploaded. It publishes first in the chain ([PUBLISHING.md](https://github.com/miaskiewicz/turbo-dom/blob/main/PUBLISHING.md)).
 A fork-only change bumps the patch version in `pins.json`; `UPSTREAM_V8_VERSION` keeps the
 SDK download at 150.4.0.
