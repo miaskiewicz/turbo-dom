@@ -3744,7 +3744,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // sets value to ''. userEvent.type relies on this (isValidDateOrTimeValue clones, assigns, and
     // checks the value stuck) to commit the typed value + fire onChange only once a full valid date
     // is entered. Without it, partials commit and the controlled reset mangles the result.
-    var validForTypePatterns = {
+    // Null-prototype: the key is the page's `type` attribute (`constructor`, `__proto__`).
+    var validForTypePatterns = { __proto__: null,
       date: /^\d{4}-\d{2}-\d{2}$/,
       time: /^\d{2}:\d{2}(:\d{2})?$/,
       month: /^\d{4}-\d{2}$/,
