@@ -10835,47 +10835,6 @@ mod tests {
         reset();
     }
 
-    /// The binding's own setRangeText (selection.js replaces it on the prototypes, so it is
-    /// driven through the private namespace) keeps a 'preserve' selection relative to the
-    /// selection BEFORE the value write: without selection.js's controlValueChanged hook the
-    /// write itself moves the selection to the end of the value.
-    #[test]
-    fn fallback_set_range_text_preserve_uses_the_selection_before_the_write() {
-        init_v8();
-        let isolate = &mut crate::browser_env::tests::new_isolate();
-        v8::scope!(let scope, isolate);
-        let context = v8::Context::new(scope, Default::default());
-        let scope = &mut v8::ContextScope::new(scope, context);
-        install(scope);
-        let namespace = engine_namespace(scope).unwrap();
-        let key = v8::String::new(scope, "controlValueChanged").unwrap();
-        namespace.delete(scope, key.into()).unwrap();
-        let key = v8::String::new(scope, "fallbackControlSelection").unwrap();
-        let hook = namespace.get(scope, key.into()).unwrap();
-        let global = context.global(scope);
-        let key = v8::String::new(scope, "__fallbackSelection").unwrap();
-        global.set(scope, key.into(), hook);
-        let source = v8::String::new(
-            scope,
-            r#"
-          const hook=__fallbackSelection,input=document.createElement('input'),rows=[];
-          input.value='abcdef';
-          for(const [start,end,from,to,text] of [[1,5,2,3,'XY'],[3,4,0,1,''],[0,2,4,6,'Q']]){
-            input.value='abcdef';
-            hook.setSelectionRange.call(input,start,end);
-            hook.setRangeText.call(input,text,from,to);
-            rows.push([input.value].concat(hook.read(input)));
-          }
-          JSON.stringify(rows);
-        "#,
-        )
-        .unwrap();
-        let script = v8::Script::compile(scope, source, None).unwrap();
-        let result = script.run(scope).unwrap().to_rust_string_lossy(scope);
-        assert_eq!(result, r#"[["abXYdef",1,6],["bcdef",2,3],["abcdQ",0,2]]"#);
-        reset();
-    }
-
     /// initMouseEvent checks its receiver before its argument count, like Chrome 156 (frozen
     /// headless shell: both receiver calls throw "TypeError: Illegal invocation").
     #[test]

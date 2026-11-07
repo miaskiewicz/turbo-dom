@@ -29,8 +29,8 @@ match. Origin: turbo-html2pdf-core 0.3.9's layout half plus turbo-surf's CSSOM-V
 ## Install
 
 ```toml
-turbo-dom-layout = "0.7"                                            # bundled fonts on
-turbo-dom-layout = { version = "0.7", default-features = false }   # caller fonts only
+turbo-dom-layout = "0.8"                                            # bundled fonts on
+turbo-dom-layout = { version = "0.8", default-features = false }   # caller fonts only
 ```
 
 MSRV 1.89.

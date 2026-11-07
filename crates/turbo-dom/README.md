@@ -25,7 +25,7 @@ Consumers: **turbo-test** and **turbo-surf** (through turbo-dom-browser-env and 
 ## Install
 
 ```bash
-cargo add turbo-dom        # turbo-dom = "0.7"; MSRV 1.89
+cargo add turbo-dom        # turbo-dom = "0.8"; MSRV 1.89
 ```
 
 Dependencies: html5ever / markup5ever_rcdom 0.39, cssparser 0.37, rustc-hash, smol_str,

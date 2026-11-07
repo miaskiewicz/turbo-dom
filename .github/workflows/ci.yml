@@ -418,13 +418,15 @@ jobs:
         run: cargo fmt --all --check
       - name: One release version everywhere
         run: python scripts/check-versions.py
+      - name: Cargo.lock is current (resolves the [patch] candidate rev without re-locking)
+        run: cargo metadata --locked --format-version 1 > /dev/null
       - name: The retired dual selector-engine gate stays gone
         run: sh scripts/check-no-selector-dual.sh
       - name: turbo-dom-v8 generator + release script self-tests
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
-      - name: Script self-tests (publish-crates.py, check-baseline-red.py, check-glibc-ceiling.sh)
+      - name: Script self-tests (publish-crates.py, check-versions.py, check-baseline-red.py, check-glibc-ceiling.sh)
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)
         run: python -m unittest discover -s tools/parity -p 'test_*.py'

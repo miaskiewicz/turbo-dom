@@ -10,7 +10,11 @@
   required to publish), and turbo-dom-browser-env requires turbo-dom-v8 `~<pins
   version without patch>`; `crates/turbo-dom-v8/pins.json` keeps its upstream-derived
   version;
-- README's "Release **X.Y.Z**" line names it;
+- `Cargo.lock` locks the root crate and the four workspace crates at that version and
+  turbo-dom-v8 at the pins version (exactly one entry each; `cargo metadata --locked`
+  would otherwise fail in CI);
+- README's "Release **X.Y.Z**" line names it, and every README dependency snippet
+  (`turbo-dom… = "X.Y"` / `{ version = "X.Y…"`) names this release's `X.Y`;
 - with --tag, the tag equals `v<version>` (the publish workflow passes its tag).
 """
 import argparse
@@ -22,6 +26,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 CRATES = ["turbo-dom", "turbo-dom-layout", "turbo-dom-raster", "turbo-dom-browser-env"]
+READMES = ["README.md"] + [f"crates/{crate}/README.md" for crate in CRATES]
+# `turbo-dom-layout = "0.8"`, `turbo-dom-browser-env = { version = "0.8", ... }`
+SNIPPET = re.compile(r'\b(turbo-dom(?:-layout|-raster|-browser-env)?)\s*=\s*(?:\{\s*version\s*=\s*)?"([0-9][^"]*)"')
 
 
 def manifest(path):
@@ -32,6 +39,33 @@ def dependencies(toml):
     yield from toml.get("dependencies", {}).items()
     for target in toml.get("target", {}).values():
         yield from target.get("dependencies", {}).items()
+
+
+def lock_errors(lock_text, version, v8_version):
+    """Cargo.lock entries of our packages that disagree with the release versions."""
+    expected = {name: version for name in ["turbo-dom-parser", *CRATES]}
+    expected["turbo-dom-v8"] = v8_version
+    locked = {}
+    for package in tomllib.loads(lock_text).get("package", []):
+        if package["name"] in expected:
+            locked.setdefault(package["name"], []).append(package["version"])
+    errors = []
+    for name, want in expected.items():
+        have = locked.get(name, [])
+        if have != [want]:
+            errors.append(f"Cargo.lock locks {name} at {have or 'nothing'}, expected {want}")
+    return errors
+
+
+def snippet_errors(where, text, version):
+    """README dependency snippets that do not name the release's major.minor."""
+    minor = ".".join(version.split(".")[:2])
+    errors = []
+    for number, line in enumerate(text.splitlines(), 1):
+        for name, value in SNIPPET.findall(line):
+            if ".".join(value.split(".")[:2]) != minor:
+                errors.append(f"{where}:{number}: {name} = \"{value}\", release is {minor}")
+    return errors
 
 
 def main(argv=None):
@@ -63,6 +97,9 @@ def main(argv=None):
     env_v8 = dict(dependencies(manifest("crates/turbo-dom-browser-env/Cargo.toml")))["v8"]
     if env_v8.get("package") != "turbo-dom-v8" or env_v8.get("version") != v8_req:
         errors.append(f"turbo-dom-browser-env must depend on turbo-dom-v8 {v8_req} (has {env_v8})")
+    errors += lock_errors((REPO / "Cargo.lock").read_text(), version, pins["version"])
+    for readme in READMES:
+        errors += snippet_errors(readme, (REPO / readme).read_text(), version)
     if not re.search(rf"^Release \*\*{re.escape(version)}\*\*", (REPO / "README.md").read_text(), re.M):
         errors.append(f"README.md has no 'Release **{version}**' line")
     if args.tag is not None and args.tag != f"v{version}":

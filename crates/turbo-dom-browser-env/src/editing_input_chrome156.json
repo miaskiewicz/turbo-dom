@@ -2,7 +2,7 @@
   "browser": "HeadlessChrome/156.0.8078.47",
   "v8": "15.6.75.19",
   "steps": "editing_input_steps.json",
-  "stepsSha256": "4d34f35850bd14752637495677dbadb7b1ed2c45576f9d3125f667e4f2540938",
+  "stepsSha256": "340f43be956c32678954ac39bb14779941e1215f58f295daa52de42857306daa",
   "collectorSha256": "c64f082f4dd8d93b5047ee073254276464b81b9b32eac189fbdf6b87ee1ad2f0",
   "flags": [
     "--headless=new",
@@ -330,6 +330,45 @@
         "input,e,true,false,true,deleteContentBackward,,"
       ],
       true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x👨🏽‍💻</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      8,
+      8,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:1:#text:8",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "input,e,true,false,true,deleteContentBackward,,"
+      ],
+      true
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x❤️‍🔥</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      6,
+      6,
+      []
+    ],
+    [
+      "<div id=\"e\" contenteditable=\"\">x</div><div id=\"f\">abc</div><p id=\"n\">static</p>",
+      1,
+      1,
+      [
+        "beforeinput,e,true,true,true,deleteContentBackward,,StaticRange:#text:1:#text:6",
+        "input,e,true,false,true,deleteContentBackward,,"
+      ]
     ]
   ]
 }

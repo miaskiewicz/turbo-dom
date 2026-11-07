@@ -1,4 +1,4 @@
-# turbo-dom consolidation (0.6.0; current release 0.7.0)
+# turbo-dom consolidation (0.6.0; current release 0.8.0)
 
 turbo-html2pdf, turbo-test and turbo-surf used to carry their own copies of the browser
 engine pieces they share: a rusty_v8 fork (`turbo-surf-v8`, vendored twice), turbo-test's
@@ -19,12 +19,12 @@ is declared in `tools/parity/expected/` and listed in [CHANGELOG.md](../CHANGELO
 
 | crate | version | MSRV | contents | origin |
 |---|---|---|---|---|
-| [`turbo-dom`](../crates/turbo-dom) | 0.7.0 | 1.89 | pure-Rust DOM (`rtdom::Tree`), the ONE selector engine (`query*.rs`, `parse_for_cascade`/`match_for_cascade`/`parse_for_supports` over a `Navigator`), CSSOM, `rtdom::cascade`, `rtdom::css_values`, `Tree::parse_with` | this repository |
-| [`turbo-dom-v8`](../crates/turbo-dom-v8) | 150.4.0 | 1.91 | rusty_v8 150.4.0 + interceptor `ShouldThrowOnError` and isolate weak-teardown fixes, `FORK_SHOULD_THROW_FIX`; generated, never committed | upstream `v8-150.4.0.crate` + turbo-surf's reviewed patch |
-| [`turbo-dom-layout`](../crates/turbo-dom-layout) | 0.7.0 | 1.89 | style cascade, box generation, block/inline/flex/grid/table layout, fonts, image sizing, layout snapshots, `layout_html`; `style::TreeView` (html2pdf mode), `live` (surf mode), `cssom_view` | turbo-html2pdf-core 0.3.9 layout half (S1), turbo-surf CSSOM-View modules (S4) |
-| [`turbo-dom-raster`](../crates/turbo-dom-raster) | 0.7.0 | 1.89 | synthetic screenshots (PNG/SVG painters), canvas op-log replay, `gpu-metal` WebGL replay | turbo-surf-raster 0.5.5 (S1) |
-| [`turbo-dom-browser-env`](../crates/turbo-dom-browser-env) | 0.7.0 | 1.91 | the rtdom <-> V8 browser binding (window, document, CSSOM, forms, events, …) + JS bootstrap + production JSON; features `host-internals`, `test-support`, `native-sdk-frame-read`; Chrome controls and their collectors | turbo-test 0.4.8 `src/` (S0), collectors from turbo-test (S5) |
-| npm `@miaskiewicz/turbo-dom` + `turbo-dom-parser` (npm only, `publish = false`) | 0.7.0 | — | JS DOM runtime + native/WASM parser addon | this repository |
+| [`turbo-dom`](../crates/turbo-dom) | 0.8.0 | 1.89 | pure-Rust DOM (`rtdom::Tree`), the ONE selector engine (`query*.rs`, `parse_for_cascade`/`match_for_cascade`/`parse_for_supports` over a `Navigator`), CSSOM, `rtdom::cascade`, `rtdom::css_values`, `Tree::parse_with` | this repository |
+| [`turbo-dom-v8`](../crates/turbo-dom-v8) | 150.4.1 | 1.91 | rusty_v8 150.4.0 + interceptor `ShouldThrowOnError` and isolate weak-teardown fixes, `FORK_SHOULD_THROW_FIX`, `PinScope::get_incumbent_context()` (150.4.1); generated, never committed | upstream `v8-150.4.0.crate` + turbo-surf's reviewed patch |
+| [`turbo-dom-layout`](../crates/turbo-dom-layout) | 0.8.0 | 1.89 | style cascade, box generation, block/inline/flex/grid/table layout, fonts, image sizing, layout snapshots, `layout_html`; `style::TreeView` (html2pdf mode), `live` (surf mode), `cssom_view` | turbo-html2pdf-core 0.3.9 layout half (S1), turbo-surf CSSOM-View modules (S4) |
+| [`turbo-dom-raster`](../crates/turbo-dom-raster) | 0.8.0 | 1.89 | synthetic screenshots (PNG/SVG painters), canvas op-log replay, `gpu-metal` WebGL replay | turbo-surf-raster 0.5.5 (S1) |
+| [`turbo-dom-browser-env`](../crates/turbo-dom-browser-env) | 0.8.0 | 1.91 | the rtdom <-> V8 browser binding (window, document, CSSOM, forms, events, …) + JS bootstrap + production JSON; features `host-internals`, `test-support`, `native-sdk-frame-read`; Chrome controls and their collectors | turbo-test 0.4.8 `src/` (S0), collectors from turbo-test (S5) |
+| npm `@miaskiewicz/turbo-dom` + `turbo-dom-parser` (npm only, `publish = false`) | 0.8.0 | — | JS DOM runtime + native/WASM parser addon | this repository |
 
 ## Dependency graph (acyclic)
 
@@ -47,18 +47,18 @@ require `~150.4`.
 
 ## Publish order
 
-One annotated `vX.Y.Z` tag (0.6.0, now `v0.7.0`) on the merge commit runs `.github/workflows/publish.yml`
+One annotated `vX.Y.Z` tag (0.6.0, now `v0.8.0`) on the merge commit runs `.github/workflows/publish.yml`
 (see [PUBLISHING.md](../PUBLISHING.md)): the full CI workflow, then
 
-1. `turbo-dom-v8` 150.4.0 — generated from the pins, published by
-   `crates/turbo-dom-v8/scripts/release.py --publish` (an existing 150.4.0 must match the
+1. `turbo-dom-v8` 150.4.1 — generated from the pins, published by
+   `crates/turbo-dom-v8/scripts/release.py --publish` (an existing 150.4.1 must match the
    fresh package byte-for-byte);
-2. `turbo-dom` 0.7.0;
-3. `turbo-dom-layout` 0.7.0 (needs turbo-dom);
-4. `turbo-dom-raster` 0.7.0 (needs turbo-dom-layout);
-5. `turbo-dom-browser-env` 0.7.0 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
+2. `turbo-dom` 0.8.0;
+3. `turbo-dom-layout` 0.8.0 (needs turbo-dom);
+4. `turbo-dom-raster` 0.8.0 (needs turbo-dom-layout);
+5. `turbo-dom-browser-env` 0.8.0 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
    pre-publish `[patch]` is dropped first so it verifies against the published fork);
-6. npm `@miaskiewicz/turbo-dom` 0.7.0.
+6. npm `@miaskiewicz/turbo-dom` 0.8.0.
 
 Each crate step skips a version crates.io already has and waits for the crates.io index
 to list it before the next one (`scripts/publish-crates.py`). Then, in parallel, the
@@ -77,9 +77,9 @@ fork publishes first.
 
 ## How consumers depend on the crates
 
-Manifests always name the registry version (`turbo-dom = "0.7"`,
-`turbo-dom-layout = { version = "0.7.0", default-features = false }`,
-`turbo-dom-browser-env = { version = "0.7.0", features = ["host-internals"] }`, dev
+Manifests always name the registry version (`turbo-dom = "0.8"`,
+`turbo-dom-layout = { version = "0.8.0", default-features = false }`,
+`turbo-dom-browser-env = { version = "0.8.0", features = ["host-internals"] }`, dev
 `features = ["test-support"]`, `v8 = { package = "turbo-dom-v8", version = "~150.4" }`).
 
 - **Before publication (PR time)**: each consumer adds a `[patch.crates-io]` section that
@@ -122,7 +122,7 @@ pushes, tags and the `workflow_call` from `publish.yml` each get a group of thei
 | msrv | `cargo +1.89 check --all-targets` for turbo-dom, -layout, -raster |
 | guards | `check-versions.py`, `check-no-selector-dual.sh`, turbo-dom-v8 generator/release self-tests + `generate.py --check`, `scripts/` and `tools/parity` self-tests, `verify-copied.sh` (verbatim + current), `verify-copied-collectors.sh`, `verify-copied-layout.sh` |
 | coverage | tarpaulin 0.37.5 (LLVM, ubuntu) per crate with `--fail-under` floors (blocking) |
-| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); report-only (`continue-on-error`) until the post-release refactor (below) |
+| complexity (rust, js) | cyclomatic complexity <= 15 per function: `cc-check` (turbo-html2pdf, pinned rev) over every tracked `.rs` file, oxlint `complexity` over `src/` and `crates/turbo-dom-browser-env/src` (the binding's shipped JS); blocking since 0.8.0 (no `continue-on-error`; a cc > 15 function fails CI and `publish.yml`) |
 
 ### Coverage
 
@@ -215,11 +215,11 @@ browser-env crate's shipped JS (`crates/turbo-dom-browser-env/src`, which runs i
 page); measured 2026-10-28 the backlog is 59 Rust functions and 228 JS functions (45 in
 `src/`, 183 in browser-env).
 
-For 0.6.0 and 0.7.0 both jobs are **report-only** (`continue-on-error`; the workflow and `publish.yml`
-stay green; not required checks): when a job fails, its last step writes the current functions over
-the limit to the job's step summary, which is the authoritative backlog. After the release the backlog is refactored
-(behaviour-preserving, coverage as the safety net), coverage is re-measured, and the jobs
-become blocking required checks.
+For 0.6.0 and 0.7.0 both jobs were **report-only** (`continue-on-error`; the workflow and
+`publish.yml` stayed green): a failing job wrote the functions over the limit to its step
+summary, the authoritative backlog. The 0.8.0 refactor (turbo-dom#297, behaviour-preserving,
+coverage as the safety net) drove both counts to zero, and since 0.8.0 both jobs are
+**blocking**: a new cc > 15 function fails CI and blocks `publish.yml`.
 
 `crates/turbo-dom-layout`'s old cc <= 5 allow-list for the surf-origin `cssom_view` modules
 is superseded by this gate.

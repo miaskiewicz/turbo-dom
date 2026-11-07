@@ -107,10 +107,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.7"
-turbo-dom-layout = "0.7"                 # bundled fonts on by default
-turbo-dom-raster = "0.7"
-turbo-dom-browser-env = "0.7"            # needs a V8 archive, see its README
+turbo-dom = "0.8"
+turbo-dom-layout = "0.8"                 # bundled fonts on by default
+turbo-dom-raster = "0.8"
+turbo-dom-browser-env = "0.8"            # needs a V8 archive, see its README
 ```
 
 ```rust
