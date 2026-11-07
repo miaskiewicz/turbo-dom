@@ -1352,15 +1352,13 @@
     }
     return at;
   }
+  // Each ZWJ joins the emoji before it: its trailing extenders (FE0F, a skin-tone modifier)
+  // and its base go with it.
   function skipZwjSequencesBackward(text, at) {
     while (at > 0) {
       const [p, m] = codePointBefore(text, at);
       if (p !== 0x200d) break;
-      at -= m;
-      if (at <= 0) break;
-      const [q, k] = codePointBefore(text, at);
-      at -= k;
-      if (q === 0xfe0f && at > 0) { const [, j] = codePointBefore(text, at); at -= j; }
+      at = skipEmojiExtendersBackward(text, at - m);
     }
     return at;
   }
