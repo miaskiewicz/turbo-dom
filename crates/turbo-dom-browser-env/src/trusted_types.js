@@ -85,7 +85,18 @@
     finishInterface(type);
   }
   const emptyHTML = make('TrustedHTML', { value: '' }), emptyScript = make('TrustedScript', { value: '' });
-  const factory = make('TrustedTypePolicyFactory', { names: create(null), defaultPolicy: null, emptyHTML, emptyScript });
+  // Review R2 V8 H1: the factory's state object must have a null prototype,
+  // so Rust-side `install_policy` writing `state.set('authorize', fn)` cannot
+  // walk the prototype chain into an attacker-planted `authorize` setter on
+  // `Object.prototype`. Such a setter would otherwise run guest JS inside
+  // the cancel/restore-terminate window around the write (defeating the
+  // embedder's watchdog termination for its duration).
+  const factoryState = create(null);
+  factoryState.names = create(null);
+  factoryState.defaultPolicy = null;
+  factoryState.emptyHTML = emptyHTML;
+  factoryState.emptyScript = emptyScript;
+  const factory = make('TrustedTypePolicyFactory', factoryState);
   for (const name of ['emptyHTML', 'emptyScript', 'defaultPolicy']) accessor(factoryPrototype, name, function () { return read(this, 'TrustedTypePolicyFactory')[name]; });
   member(factoryPrototype, 'createPolicy', function (name, options) {
     const state = read(this, 'TrustedTypePolicyFactory');
