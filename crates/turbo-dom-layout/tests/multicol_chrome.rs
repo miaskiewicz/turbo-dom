@@ -6,12 +6,10 @@
 // pass produces Chrome 156's container and item border boxes. PR-C1 activated
 // the three cleanest equal-width sequential-fill cases (`basic-2col-equal`,
 // `basic-3col-with-gap`, `column-width-driven`); PR-C2 activates the other
-// four (`mixed-child-heights`, `overflow-at-column-height`, `nested-multicol`,
-// `floats-inside-column`) by adding `column-fill: balance`, column
-// fragmentation, overflow into extra strips beyond `used_count`, and a
-// union-geometry pass for fragmented children. The remaining `columns-shorthand`
-// case stays `#[ignore]`d for PR-E because its anomalous i2 / i5 captures ride
-// on `break-inside` / `column-span` behaviour PR-E owns.
+// five (`columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+// `nested-multicol`, `floats-inside-column`) by adding `column-fill: balance`,
+// column fragmentation, overflow into extra strips beyond `used_count`, and
+// a union-geometry pass for fragmented children.
 
 use serde_json::Value;
 use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
@@ -204,8 +202,14 @@ fn pr_c1_activates_three_cases() {
 // --------------------------------------------------------------------------
 
 #[test]
-#[ignore = "PR-E: anomalous i2 / i5 captures ride on break-inside / column-span behaviour (see tests/fixtures/multicol_chrome156.json columns-shorthand); PR-C2's balance + fragmentation covers the rest of the case but Chrome's 1/64 px balanced col height rounds slightly off its content_h / used_count"]
 fn columns_shorthand_matches_chrome_156() {
+    // PR-C1's docstring tagged i2 / i5 as a "column-span capture anomaly" —
+    // the capture is actually `getBoundingClientRect()` returning the union of
+    // two column fragments a block produces when `column-fill: balance`
+    // (default) cuts it at the column boundary, which PR-C2's fragmenter
+    // models directly. The remaining fixture rounding (Chrome's 1/64 px
+    // `LayoutUnit` grid on the balanced column height, `content_h /
+    // used_count`) stays within the harness's 0.5 px tolerance.
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "columns-shorthand");
     assert_matches_chrome("columns-shorthand", case);
