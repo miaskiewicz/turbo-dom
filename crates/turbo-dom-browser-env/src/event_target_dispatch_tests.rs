@@ -127,3 +127,58 @@ fn host_dispatch_checkpoints_microtasks_between_listeners() {
         "microtask observability differs"
     );
 }
+
+/// turbo-dom R1 (expert H1): `collectPath` must dispatch across chains deeper than
+/// Chrome's defactor-nonexistent cap. The pre-R1 implementation silently truncated
+/// the parent walk at 100 hops; Chrome 156 has no such ceiling, so a 101+-deep chain
+/// (an IDB-style tree an embedder could legitimately build, or a surf non-Node
+/// hierarchy) dropped listeners past hop 100 without diagnostic. The fix raises the
+/// cap to 10 000 (so an adversarial infinite chain throws loudly instead of DoS-ing
+/// the dispatch), and asserts the walk reaches every real ancestor.
+#[test]
+fn collect_path_reaches_ancestors_beyond_the_old_100_hop_cap() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    // Build a chain of 150 EventTargets A0 -> A1 -> ... -> A149, attach a bubble
+    // listener to the deepest ancestor, dispatch a bubbling Event on A0. Chrome
+    // 156 fires the A149 listener; the pre-fix 100-hop cap stops the walk at
+    // A99 and the deep listener never sees the event.
+    let source = r#"(() => {
+      const DEPTH = 150;
+      const nodes = [];
+      for (let i = 0; i < DEPTH; i++) nodes.push(new EventTarget());
+      for (let i = 0; i < DEPTH - 1; i++) {
+        globalThis.__testSetParent(nodes[i], () => nodes[i + 1]);
+      }
+      let deepSaw = false;
+      nodes[DEPTH - 1].addEventListener('x', () => { deepSaw = true; });
+      nodes[0].dispatchEvent(new Event('x', { bubbles: true }));
+      return JSON.stringify({ deepSaw, depth: DEPTH });
+    })()"#;
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "deep-chain dispatch script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"deepSaw":true,"depth":150}"#,
+        "deepest ancestor saw the bubbled event (no silent truncation at 100)",
+    );
+    reset();
+}

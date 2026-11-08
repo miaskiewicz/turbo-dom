@@ -5,10 +5,68 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.1]
+## [0.8.1] — unreleased
 
 ### Fixed
 
+- **turbo-dom-layout multicol**: adversarial review R1 cleanups.
+  (1) The Chrome 156 geometry oracle tolerance
+  tightens from 0.5 px to 0.1 px — Chrome's `LayoutUnit` grid is 1/64 px
+  (≈0.016 px), so a 0.5 px budget was six times the float-rounding headroom
+  and would silently accept a quarter-pixel column-origin bug. All 14
+  activated cases still pass. (2) `apply_pre_break` is a no-op when
+  `col_h <= 0`, matching `fits_in_count`'s existing guard — a `height:0`
+  multicol with repeated `break-before:column` kids no longer strides
+  across phantom overflow strips. (3) `section_col_h` falls back to the
+  plain `total / used_count` when every `col_h` fails the break-aware
+  fitness check (CSS Fragmentation 3 §5.2 lets the UA ignore
+  unsatisfiable break values), so overflow lines up with the regular
+  column stride instead of a phantom `total + max_single` height.
+  (4) `column_rule_fragments`' doc comment now matches the code and the
+  Chrome fixture: a rule wider than the gap is clamped to the gap, not
+  "overlapped".
+- **turbo-dom-browser-env**: adversarial review R1 cleanups.
+  (1) `__turboDomWorker` is locked
+  (non-writable, non-configurable, non-enumerable on `globalThis`; the
+  object itself is frozen) so page JS in a worker cannot overwrite the
+  slot or replace individual hook methods. (2) `structuredClone` in the
+  worker scope now throws `DataCloneError` for non-POJO inputs (Date /
+  Map / Set / BigInt / undefined / Infinity / NaN / typed arrays /
+  cyclic references / non-plain prototypes), so a page feature
+  detection fails cleanly rather than seeing a silent data loss; full
+  structured-clone semantics is turbo-dom#428. (3) `reset()` also
+  clears `INIT_SCRIPTS`, so an embedder teardown no longer leaks init
+  scripts into the next isolate's installs. (4) `trusted_types::
+  install_policy` carries an assertion and comment that its
+  cancel/restore-terminate window cannot reach a `v8::PrivateName`
+  interceptor — the realm global is a plain object, not a Proxy.
+- **turbo-dom-browser-env**: `collectPath`'s EventTarget-parent-chain walk no
+  longer silently truncates at 100 hops. Chrome has no such cap, so a 101+-deep
+  legitimate chain (an IDB-style tree an embedder could build, or a surf
+  non-Node hierarchy) dropped bubble listeners past hop 100 without diagnostic.
+  The cap is now 10 000, and a chain that exceeds it throws a loud
+  `TypeError('EventTarget parent chain exceeded 10000 hops (runaway chain)')`
+  instead of silently losing ancestors — an adversarial infinite chain would
+  otherwise DoS the dispatch (miaskiewicz/turbo-dom R1 expert H1,
+  turbo-dom#381 follow-up).
+- **turbo-dom-layout**: `ensure_default_display` now covers every HTML tag whose
+  Chrome `html.css` default display is not `inline`, not just the block-tag list
+  #395 added. Extended tags: `<li>` → `list-item`, the table family (`<table>`
+  / `<thead>` / `<tbody>` / `<tfoot>` / `<tr>` / `<caption>` / `<td>` / `<th>` /
+  `<colgroup>` / `<col>` → the matching `table-*` display), form controls
+  `<input>` / `<textarea>` / `<select>` / `<button>` / `<progress>` / `<meter>`
+  → `inline-block`, `<template>` → `none`. A surf-level inline override on any
+  of these no longer collapses the border box to `(0, 0)` when the embedder
+  supplies no UA origin. The deeper refactor — threading `UA_CSS` through the
+  live cascade when no UA origin is supplied — stays as a 0.8.2 follow-up
+  (miaskiewicz/turbo-dom R1 expert H2 + meshde, #395 follow-up).
+- **turbo-dom-browser-env**: a throwing embedder init script
+  (`add_init_script`) is now caught in its own `v8::TryCatch`, so a pending V8
+  exception can no longer leak into later init scripts or into the embedder's
+  inline parser scripts. The caught exception is reported through the window's
+  error channel (an `ErrorEvent` dispatched to `window.onerror`), the same way
+  an `on*` compile error is surfaced (miaskiewicz/turbo-dom R1 expert H4,
+  turbo-dom#394 follow-up).
 - **turbo-dom-layout**: the inline-box fragment `content_height` and the inline
   formatting context's strut now resolve `@font-face` web-font metrics at the
   CSS size directly (via `scaled_html_metrics`), instead of reading at the
@@ -51,7 +109,20 @@ at the time); this file reconstructs them from history.
   (turbo-dom#396). A page that replaces every configurable prototype
   method with a thrower (turbo-surf#87 / turbo-dom#172 contract) no longer
   reaches this path. Regression introduced in 0.8.0's canvas style surface
-  (turbo-dom#108).
+  (turbo-dom#108). Follow-up audit confirmed every other bootstrap WeakSet
+  bookkeeping site (`emptySelects` for `<select>` state, `eventTargets` for
+  the EventTarget brand, `projected` for native-node projection,
+  `instances` for the XMLSerializer brand, `cueLists` for TextTrackCueList)
+  already routes through `$c.{add,has,delete}` or a captured module-init
+  `WeakSet.prototype.*` binding. The wider sweep is pinned by
+  `every_weakset_bookkeeping_site_uses_captured_intrinsics` in
+  `dom_projection_tests.rs`, which replaces `WeakSet.prototype.{add,has,delete}`
+  with throwers and exercises each site end-to-end. The remaining surf
+  `page_patched_intrinsics_*` repros now fail inside the EMBEDDER
+  (turbo-surf-render's promise-rejection realm calls `queued.add(promise)`
+  etc. on live `WeakSet.prototype.*`); fixed by a sibling turbo-surf PR
+  that captures the three WeakSet members at bootstrap and dispatches
+  through them.
 - **turbo-dom-browser-env**: `CSS.supports` / `cssSupportsProperty` now reject four inputs
   Chrome 156 rejects (turbo-dom#390). `-moz-appearance: none` fails because every `-moz-*`
   vendor-prefixed property name is refused (`cssom_parser::is_supported_property`);
@@ -72,7 +143,6 @@ at the time); this file reconstructs them from history.
   turbo-surf#240, where `page.route`'s `fetch`/`XMLHttpRequest` monkey-patch was
   previously beaten by parse-time inline-script fetches.
 - **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
-## [0.8.1] — unreleased
 
 ### Added
 

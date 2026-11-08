@@ -80,10 +80,16 @@
   function targetUnlisten(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('removeEventListener requires 2 arguments');const wanted=flatten(type,callback,options,true);for(let index=0,list=slice(state.listeners);index<list.length;index++){const record=list[index];if(!record.handler&&!record.removed&&record.type===wanted.type&&record.callback===wanted.callback&&record.capture===wanted.capture)targetRemove(this,state,record);}}
   // turbo-dom#381: build the dispatch path by walking the embedder-set parent hook up the chain
   // (`request -> tx -> db` for IDB). Each hop reads its own target record; a missing or null
-  // parent stops the walk. Capped at 100 hops (safety).
+  // parent stops the walk.
+  //
+  // R1 expert H1: Chrome has no cap on the chain's depth. The pre-R1 limit of 100 silently
+  // truncated deeper legitimate chains, so a bubble listener past hop 100 never fired. The cap
+  // is now 10 000 and a chain that exceeds it throws a loud TypeError instead of silently
+  // dropping ancestors (an adversarial infinite chain would otherwise DoS the dispatch).
   function collectPath(target,state){
     const path=[target];let node=target,hop=state.parent;
-    while(hop&&path.length<100){
+    while(hop){
+      if(path.length>=10000)throw new ErrorType('EventTarget parent chain exceeded 10000 hops (runaway chain)');
       const next=hop(node);if(next==null)break;
       const record=native('targetGet',next);if(!record)break;
       push(path,next);node=next;hop=record.parent;

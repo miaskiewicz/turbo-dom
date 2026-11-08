@@ -30,11 +30,12 @@ pub use parser::{
 pub use token::{StyleToken, TokenSet};
 
 /// Chrome's UA-default `display` for an HTML tag (`None` for the CSS initial `inline`).
-/// Mirrors the `display: block` rule in [`UA_CSS`]. The ordinary HTML cascade reaches
-/// it through that rule; the live-DOM input ([`crate::live`]) relies on this fallback
-/// when an embedder does not supply the UA origin, and test-built styled trees that
-/// bypass the UA cascade set `display` through [`ensure_default_display`]
-/// (miaskiewicz/turbo-dom#375, #395).
+/// Mirrors every non-`inline` rule in [`UA_CSS`]: block, list-item, table family and
+/// inline-block form controls. The ordinary HTML cascade reaches it through those
+/// rules; the live-DOM input ([`crate::live`]) relies on this fallback when an
+/// embedder does not supply the UA origin, and test-built styled trees that bypass
+/// the UA cascade set `display` through [`ensure_default_display`]
+/// (miaskiewicz/turbo-dom#375, #395, R1 expert H2 + meshde).
 #[must_use]
 pub fn html_default_display(tag: &str) -> Option<&'static str> {
     const BLOCK: &[&str] = &[
@@ -85,7 +86,26 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
     if BLOCK.contains(&tag) {
         return Some("block");
     }
-    None
+    // Chrome's html.css `display` rules beyond `block` (every tag whose UA default
+    // is not `inline`). Covering these keeps the #395 fix from leaking its scope:
+    // a surf-level inline override on, e.g., a `<li>`, a `<td>` or a form control
+    // would otherwise collapse the border box to zero when the embedder supplies
+    // no UA origin (R1 expert H2 + meshde).
+    match tag {
+        "li" => Some("list-item"),
+        "table" => Some("table"),
+        "thead" => Some("table-header-group"),
+        "tbody" => Some("table-row-group"),
+        "tfoot" => Some("table-footer-group"),
+        "tr" => Some("table-row"),
+        "caption" => Some("table-caption"),
+        "td" | "th" => Some("table-cell"),
+        "colgroup" => Some("table-column-group"),
+        "col" => Some("table-column"),
+        "input" | "textarea" | "select" | "button" | "progress" | "meter" => Some("inline-block"),
+        "template" => Some("none"),
+        _ => None,
+    }
 }
 
 /// Apply [`html_default_display`] to `style` when it carries no explicit `display`.

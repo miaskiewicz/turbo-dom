@@ -242,6 +242,116 @@ mod tests {
     }
 
     #[test]
+    fn turbo_dom_worker_namespace_is_locked_against_page_tampering() {
+        // Review R1 M4: page JS inside a worker must not be able to
+        // overwrite the `__turboDomWorker` object (whole-slot takeover) nor
+        // any of its hook methods (per-method intercept of incoming
+        // messages). The namespace is installed non-writable +
+        // non-configurable + non-enumerable, and the object itself is
+        // frozen. Chrome's real DedicatedWorkerGlobalScope has no such
+        // namespace — this is extra attack surface and must be inert from
+        // the page.
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // The descriptor on `globalThis` is non-writable, non-configurable
+        // and non-enumerable.
+        assert_eq!(
+            eval(
+                scope,
+                "const d = Object.getOwnPropertyDescriptor(globalThis, '__turboDomWorker'); \
+                 d && d.writable === false && d.configurable === false && \
+                 d.enumerable === false ? 'ok' : 'no'"
+            ),
+            "ok",
+            "__turboDomWorker must be locked on globalThis"
+        );
+        // The namespace object itself is frozen.
+        assert_eq!(
+            eval(scope, "Object.isFrozen(__turboDomWorker) ? 'ok' : 'no'"),
+            "ok",
+            "__turboDomWorker must be frozen"
+        );
+        // A page-side write to `dispatch` is a no-op (strict mode would
+        // throw; the bootstrap runs non-strict, so it silently fails).
+        assert_eq!(
+            eval(
+                scope,
+                "const original = __turboDomWorker.dispatch; \
+                 try { __turboDomWorker.dispatch = () => 'EVIL'; } catch (_) {} \
+                 __turboDomWorker.dispatch === original ? 'ok' : 'no'"
+            ),
+            "ok",
+            "page JS must not be able to replace dispatch"
+        );
+        // A page-side whole-slot overwrite is a no-op.
+        assert_eq!(
+            eval(
+                scope,
+                "try { globalThis.__turboDomWorker = { dispatch: () => 'EVIL' }; } catch (_) {} \
+                 typeof __turboDomWorker.dispatch === 'function' && \
+                 __turboDomWorker.dispatch !== undefined ? 'ok' : 'no'"
+            ),
+            "ok",
+            "page JS must not be able to overwrite __turboDomWorker"
+        );
+        browser_env::reset();
+    }
+
+    #[test]
+    fn structured_clone_throws_on_unsupported_inputs() {
+        // Review R1 M5: the JSON round-trip stub silently dropped Date /
+        // Map / Set / typed arrays / BigInt / undefined / Infinity / NaN
+        // and threw on cycles with a misleading SyntaxError. A feature
+        // detection `typeof structuredClone === 'function'` succeeded but
+        // the behaviour differed. The stub now throws a DataCloneError
+        // with a clear message for anything it cannot faithfully round-
+        // trip, so a page's feature detection fails cleanly (follow-up
+        // issue for real structured-clone semantics).
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // POJOs still clone.
+        assert_eq!(
+            eval(
+                scope,
+                "const c = structuredClone({ a: 1, b: [2, 3] }); \
+                 c.a === 1 && c.b[1] === 3 ? 'ok' : 'no'"
+            ),
+            "ok",
+        );
+        for src in [
+            "structuredClone(new Date(0))",
+            "structuredClone(new Map())",
+            "structuredClone(new Set())",
+            "structuredClone(1n)",
+            "structuredClone({ x: undefined })",
+            "const o = {}; o.self = o; structuredClone(o)",
+            "structuredClone(Infinity)",
+            "structuredClone(NaN)",
+        ] {
+            assert_eq!(
+                eval(
+                    scope,
+                    &format!(
+                        "try {{ {src}; 'no-throw' }} \
+                         catch (e) {{ e && e.name === 'DataCloneError' ? 'ok' : (e && e.name) }}"
+                    ),
+                ),
+                "ok",
+                "structuredClone({src}) must throw DataCloneError",
+            );
+        }
+        browser_env::reset();
+    }
+
+    #[test]
     fn interface_parity_against_chrome_156() {
         // Shape check: the install stamps the same three-brand chain that Chrome
         // exposes (`DedicatedWorkerGlobalScope -> WorkerGlobalScope ->
