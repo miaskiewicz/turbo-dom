@@ -2,12 +2,18 @@
 use super::*;
 type SourceKey = (Handle, String);
 type SourceValue = Option<Vec<u16>>;
-type AdoptedSource = (SourceKey, SourceValue);
+type AdoptedSource = (SourceKey, SourceValue, bool);
 #[derive(Default)]
 pub(super) struct State {
     policy: Option<v8::Weak<v8::Function>>,
     base: String,
     sources: HashMap<SourceKey, SourceValue>,
+    /// Keys whose current `sources` entry has already been compiled and installed on the
+    /// element's slot. Chrome 156 compiles an `on*` content-attribute body lazily (first
+    /// handler read, listener add or dispatch), so set-phase CSP and compile-phase CSP
+    /// each run their own `script-src-attr` hook — keeping the two apart requires knowing
+    /// which keys are still only recorded, not yet compiled (turbo-dom#380).
+    compiled: std::collections::HashSet<SourceKey>,
     /// Compile errors of content-attribute handlers not yet read or dispatched to. Chrome
     /// compiles lazily and reports the error then; the eager compile keeps it until that
     /// point (turbo-dom#153).
@@ -63,6 +69,12 @@ pub(super) fn report(scope: &mut v8::PinScope, node: Handle, name: &str) {
 /// Dispatch reaches the `on<type>` handlers of `nodes`: report their pending errors.
 pub(super) fn report_dispatch(scope: &mut v8::PinScope, nodes: &[Handle], ty: &str) {
     let name = format!("on{ty}");
+    // Chrome 156 compiles `on*` content-attribute bodies lazily (turbo-dom#380); a
+    // compile failure on a path ancestor only surfaces once its event is dispatched, so
+    // drive the compile for each path node before the dispatch's single error report.
+    for node in nodes {
+        refresh(scope, *node, &name);
+    }
     let pending = DOM.with(|dom| {
         dom.borrow().as_ref().is_some_and(|dom| {
             nodes.iter().any(|node| {
@@ -83,33 +95,28 @@ pub(super) fn changed(scope: &mut v8::PinScope, node: Handle, name: &str) {
         return;
     }
     DOM.with(|dom| {
-        dom.borrow_mut()
-            .as_mut()
-            // invariant: natives run under the DomScope of an installed DOM
-            .unwrap()
-            .event_handlers
-            .sources
-            .remove(&(node, name.to_owned()));
+        let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
+        let state = &mut dom.as_mut().unwrap().event_handlers;
+        state.sources.remove(&(node, name.to_owned()));
+        state.errors.remove(&(node, name.to_owned()));
+        state.compiled.remove(&(node, name.to_owned()));
     });
-    DOM.with(|dom| {
-        dom.borrow_mut()
-            .as_mut()
-            // invariant: natives run under the DomScope of an installed DOM
-            .unwrap()
-            .event_handlers
-            .errors
-            .remove(&(node, name.to_owned()));
-    });
-    refresh(scope, node, name);
+    record_set_phase(scope, node, name);
 }
-pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
+
+/// Record the current `on*` content-attribute value and fire the set-phase
+/// `script-src-attr` policy check; defer compilation to the first handler read, listener
+/// add or dispatch (Chrome 156's lazy compile; turbo-dom#380). Clears the handler slot so
+/// a stale previously compiled function cannot keep responding.
+pub(super) fn record_set_phase(scope: &mut v8::PinScope, node: Handle, name: &str) {
     if with_tree(|tree| tree.node_type_id(node)) != Some(1)
         || !element_members::compiles_content_attribute(node, name)
     {
         return;
     }
     let source = source(node, name);
-    let (same, policy, base) = DOM.with(|dom| {
+    let (same, policy) = DOM.with(|dom| {
         let dom = dom.borrow();
         // invariant: natives run under the DomScope of an installed DOM
         let state = &dom.as_ref().unwrap().event_handlers;
@@ -119,10 +126,95 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
                 .get(&(node, name.to_owned()))
                 .is_some_and(|old| old == &source),
             state.policy.clone(),
-            state.base.clone(),
         )
     });
     if same {
+        return;
+    }
+    let element = wrap(scope, node);
+    // invariant: engine-built name, far below V8's string length limit
+    let key = v8::String::new(scope, name).unwrap();
+    if element.has(scope, key.into()) != Some(true) {
+        return;
+    }
+    DOM.with(|dom| {
+        let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
+        let state = &mut dom.as_mut().unwrap().event_handlers;
+        state
+            .sources
+            .insert((node, name.to_owned()), source.clone());
+        state.compiled.remove(&(node, name.to_owned()));
+    });
+    // Fire the set-phase CSP check. Return value is intentionally ignored here: the
+    // compile phase runs its own check whose return value can still abort the compile.
+    // For a report-only policy both phases just produce reports.
+    if let (Some(policy), Some(text)) = (policy, source) {
+        // invariant: an installed DOM tree is in scope
+        let root = with_tree(Tree::root).unwrap();
+        let document = wrap(scope, root);
+        let callback = dom_ownership::local(scope, &policy);
+        let kind = v8::String::new(scope, "script-src-attr").unwrap();
+        if let Some(code) = v8::String::new_from_two_byte(scope, &text, v8::NewStringType::Normal)
+        {
+            let receiver = v8::undefined(scope);
+            let _ = callback.call(
+                scope,
+                receiver.into(),
+                &[document.into(), element.into(), kind.into(), code.into()],
+            );
+        }
+    }
+    install_slot(scope, element, key, v8::null(scope).into());
+}
+
+fn install_slot<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    element: v8::Local<'s, v8::Object>,
+    key: v8::Local<'s, v8::String>,
+    value: v8::Local<'s, v8::Value>,
+) {
+    let setter = element
+        .get_creation_context(scope)
+        .and_then(|context| context.get_slot::<InlineHandlerSetter>())
+        .map(|setter| dom_ownership::local(scope, &setter.0));
+    match setter {
+        Some(setter) => {
+            let receiver = v8::undefined(scope).into();
+            setter.call(scope, receiver, &[element.into(), key.into(), value]);
+        }
+        None => {
+            element.set(scope, key.into(), value);
+        }
+    }
+}
+pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
+    if with_tree(|tree| tree.node_type_id(node)) != Some(1)
+        || !element_members::compiles_content_attribute(node, name)
+    {
+        return;
+    }
+    let source = source(node, name);
+    let (same_stored, in_compiled, policy, base) = DOM.with(|dom| {
+        let dom = dom.borrow();
+        // invariant: natives run under the DomScope of an installed DOM
+        let state = &dom.as_ref().unwrap().event_handlers;
+        (
+            state
+                .sources
+                .get(&(node, name.to_owned()))
+                .is_some_and(|old| old == &source),
+            state.compiled.contains(&(node, name.to_owned())),
+            state.policy.clone(),
+            state.base.clone(),
+        )
+    });
+    // No-op when the recorded source still matches and there is either nothing to
+    // compile (no content attribute) or it has already been compiled. The first clause
+    // keeps a JS-assigned `el.on<type> = fn` from being wiped by a later refresh (there
+    // is no content-attribute source to re-install), the second is the normal
+    // "already lazily compiled since recording" short-circuit (turbo-dom#380).
+    if same_stored && (source.is_none() || in_compiled) {
         return;
     }
     let element = wrap(scope, node);
@@ -239,19 +331,20 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
         function
     });
     let value = function.map_or_else(|| v8::null(scope).into(), Into::into);
-    let setter = element
-        .get_creation_context(scope)
-        .and_then(|context| context.get_slot::<InlineHandlerSetter>())
-        .map(|setter| dom_ownership::local(scope, &setter.0));
-    match setter {
-        Some(setter) => {
-            let receiver = v8::undefined(scope).into();
-            setter.call(scope, receiver, &[element.into(), key.into(), value]);
-        }
-        None => {
-            element.set(scope, key.into(), value);
-        }
-    }
+    // Mark as compiled BEFORE install_slot: the captured setter can add a listener
+    // (handlerAdd) when the value goes from null to a function, which re-enters
+    // `refresh` through `addEventListener`'s refresh call. A second compile here would
+    // run the policy a second time and loop.
+    DOM.with(|dom| {
+        // invariant: natives run under the DomScope of an installed DOM
+        dom.borrow_mut()
+            .as_mut()
+            .unwrap()
+            .event_handlers
+            .compiled
+            .insert((node, name.to_owned()));
+    });
+    install_slot(scope, element, key, value);
 }
 pub(super) fn register(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
@@ -278,6 +371,7 @@ pub(super) fn install(
             policy,
             base: base.to_owned(),
             sources: HashMap::new(),
+            compiled: std::collections::HashSet::new(),
             errors: HashMap::new(),
         };
     });
@@ -294,7 +388,7 @@ pub(super) fn install(
     })
     .unwrap_or_default();
     for (node, name) in attrs {
-        refresh(scope, node, &name);
+        record_set_phase(scope, node, &name);
     }
 }
 
@@ -305,8 +399,9 @@ pub(super) fn take_adopted_sources(mapping: &[(Handle, Handle)]) -> Vec<AdoptedS
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
         // invariant: natives run under the DomScope of an installed DOM
-        let sources = &mut dom.as_mut().unwrap().event_handlers.sources;
-        let keys = sources
+        let state = &mut dom.as_mut().unwrap().event_handlers;
+        let keys = state
+            .sources
             .keys()
             .filter(|(node, _)| mapping.contains_key(node))
             .cloned()
@@ -314,26 +409,30 @@ pub(super) fn take_adopted_sources(mapping: &[(Handle, Handle)]) -> Vec<AdoptedS
         keys.into_iter()
             .map(|key| {
                 // invariant: value produced by engine code, never page input
-                let value = sources.remove(&key).unwrap();
-                ((mapping[&key.0], key.1), value)
+                let value = state.sources.remove(&key).unwrap();
+                let was_compiled = state.compiled.remove(&key);
+                ((mapping[&key.0], key.1), value, was_compiled)
             })
             .collect()
     })
 }
 pub(super) fn restore_adopted_sources(sources: Vec<AdoptedSource>) {
     DOM.with(|dom| {
-        dom.borrow_mut()
-            .as_mut()
-            // invariant: natives run under the DomScope of an installed DOM
-            .unwrap()
-            .event_handlers
-            .sources
-            .extend(sources)
+        let mut dom = dom.borrow_mut();
+        // invariant: natives run under the DomScope of an installed DOM
+        let state = &mut dom.as_mut().unwrap().event_handlers;
+        for (key, value, was_compiled) in sources {
+            state.sources.insert(key.clone(), value);
+            if was_compiled {
+                state.compiled.insert(key);
+            }
+        }
     });
 }
 impl State {
     pub(super) fn sweep_storage(&mut self, tree: &Tree) {
         self.sources.retain(|(node, _), _| tree.is_live(*node));
+        self.compiled.retain(|(node, _)| tree.is_live(*node));
         self.errors.retain(|(node, _), _| tree.is_live(*node));
     }
 }
