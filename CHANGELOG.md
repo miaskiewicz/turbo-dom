@@ -5,6 +5,20 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: `sweep_collected_documents()` now also prunes `OTHER_DOMS`
+  / `DOM_CONTEXTS` entries whose weak V8 context handle is empty, not only entries whose
+  `DocumentGraph` has gone through `observe()` and reports `!document_alive()`. A retired
+  iframe whose native-document record was registered before `observe` ran, or whose
+  ownership graph was never materialised under a non-standard install path, now reports
+  its collection to the host's GC sweep. The surf 0.8.0 regression in
+  `frame_gc_contracts::collected_frame_context_metadata_is_reclaimed_without_dropping_live_retired_documents`
+  reported `cleared: 0` instead of the three retired frames V8 had actually collected
+  (turbo-dom#397).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

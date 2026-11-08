@@ -245,23 +245,47 @@ fn retired_frame_weak_context_handles_are_pruned_after_gc() {
     reset();
     assert_eq!(native_document_count_for_testing(), 0);
     let isolate = &mut crate::browser_env::tests::new_isolate();
-    v8::scope!(let scope, isolate);
-    let main = v8::Context::new(scope, Default::default());
-    let scope = &mut v8::ContextScope::new(scope, main);
-    install_with_html(scope, "<!doctype html>");
     const N: usize = 3;
-    for _ in 0..N {
-        let child = v8::Context::new(scope, Default::default());
-        let child_scope = &mut v8::ContextScope::new(scope, child);
-        install_independent_html(child_scope, "<p>retired</p>");
+    // Hold each child document in an isolate-level Global, as a surf page's JS
+    // holds every retired iframe's `contentDocument`. Dropping the Global later
+    // is the "release" that lets a full GC collect that frame's context.
+    let mut held: Vec<v8::Global<v8::Object>> = Vec::new();
+    {
+        v8::scope!(let scope, isolate);
+        let main = v8::Context::new(scope, Default::default());
+        let main_scope = &mut v8::ContextScope::new(scope, main);
+        install_with_html(main_scope, "<!doctype html>");
+        for _ in 0..N {
+            v8::scope!(let child_scope, main_scope);
+            let child = v8::Context::new(child_scope, Default::default());
+            let scope = &mut v8::ContextScope::new(child_scope, child);
+            install_independent_html(scope, "<p>retired</p>");
+            let document = v8::Script::compile(
+                scope,
+                v8::String::new(scope, "document").unwrap(),
+                None,
+            )
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+            held.push(v8::Global::new(scope, document));
+        }
+        assert_eq!(native_document_count_for_testing(), 1 + N);
+        // Nothing is stale yet: every retired frame's document is still held.
+        for _ in 0..3 {
+            main_scope.low_memory_notification();
+        }
+        assert_eq!(sweep_collected_documents(), 0);
+        // Release the holds on the retired frames' documents.
+        held.clear();
+        for _ in 0..3 {
+            main_scope.low_memory_notification();
+        }
+        assert_eq!(sweep_collected_documents(), N);
+        assert_eq!(native_document_count_for_testing(), 1);
     }
-    assert_eq!(native_document_count_for_testing(), 1 + N);
-    // No Local or Global holds the child contexts; a full GC drops their document wrappers.
-    for _ in 0..3 {
-        scope.low_memory_notification();
-    }
-    assert_eq!(sweep_collected_documents(), N);
-    assert_eq!(native_document_count_for_testing(), 1);
     reset();
 }
 

@@ -494,7 +494,13 @@ pub(super) fn release_listener<'s>(
 }
 
 pub(super) fn sweep_collected() -> usize {
-    let stale = OTHER_DOMS.with(|states| {
+    // A retired frame's context dies once nothing holds its document wrapper. The ownership
+    // graph's weak document goes empty then; its weak context in DOM_CONTEXTS does too, so
+    // either signal identifies a frame whose native-document record is now stale (turbo-dom
+    // #397: before 0.8.1 only the first was consulted, so a retired frame whose graph had
+    // never been materialised, or whose ownership was `None` under a non-standard install
+    // path, kept its OTHER_DOMS and DOM_CONTEXTS entries forever).
+    let mut stale = OTHER_DOMS.with(|states| {
         states
             .borrow()
             .iter()
@@ -507,6 +513,14 @@ pub(super) fn sweep_collected() -> usize {
             })
             .map(|(id, _)| *id)
             .collect::<Vec<_>>()
+    });
+    DOM_CONTEXTS.with(|contexts| {
+        let contexts = contexts.borrow();
+        for (id, weak) in contexts.iter() {
+            if weak.is_empty() && !stale.contains(id) {
+                stale.push(*id);
+            }
+        }
     });
     OTHER_DOMS.with(|states| {
         let mut states = states.borrow_mut();
