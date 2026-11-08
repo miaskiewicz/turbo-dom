@@ -73,13 +73,13 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
         "menu",
         "nav",
         "ol",
+        "optgroup",
         "option",
         "p",
         "plaintext",
         "pre",
         "search",
         "section",
-        "summary",
         "ul",
         "xmp",
     ];
@@ -91,8 +91,19 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
     // a surf-level inline override on, e.g., a `<li>`, a `<td>` or a form control
     // would otherwise collapse the border box to zero when the embedder supplies
     // no UA origin (R1 expert H2 + meshde).
+    //
+    // Review R2 layout H1: the BLOCK list dropped `summary` (Chrome's actual UA
+    // is `display: list-item` with `list-style: disclosure-closed inside` so
+    // `<details>` paints its disclosure triangle), and the match below now also
+    // covers `datalist` / `marquee` / `slot` / the ruby family. `input` /
+    // `select` / `textarea` here default to `inline-block`; `input[type=hidden]`
+    // is attribute-driven and handled per-element at the call site (see
+    // `live::style`).
     match tag {
         "li" => Some("list-item"),
+        // Chrome 156: `summary { display: list-item; counter-increment: list-item 0;
+        //                        list-style: disclosure-closed inside }`.
+        "summary" => Some("list-item"),
         "table" => Some("table"),
         "thead" => Some("table-header-group"),
         "tbody" => Some("table-row-group"),
@@ -103,7 +114,16 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
         "colgroup" => Some("table-column-group"),
         "col" => Some("table-column"),
         "input" | "textarea" | "select" | "button" | "progress" | "meter" => Some("inline-block"),
-        "template" => Some("none"),
+        "template" | "datalist" => Some("none"),
+        "marquee" => Some("inline-block"),
+        "slot" => Some("contents"),
+        // Ruby family (Chrome 156 html.css): the containers render as
+        // ruby-text / ruby-text-container; `<rp>` is `display: none`.
+        // Full ruby layout is a future consumer; the honest fallback still
+        // keeps a width/height inline override applying to the border box.
+        "rt" => Some("ruby-text"),
+        "rtc" => Some("ruby-text-container"),
+        "rp" => Some("none"),
         _ => None,
     }
 }
@@ -140,7 +160,14 @@ pub fn ensure_default_display(style: &mut ComputedStyle, tag: &str) {
 /// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
 /// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
 const UA_CSS: &str = "
-address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, option, p, plaintext, pre, search, section, summary, ul, xmp { display: block }
+address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, optgroup, option, p, plaintext, pre, search, section, ul, xmp { display: block }
+summary { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside }
+datalist { display: none }
+marquee { display: inline-block }
+slot { display: contents }
+rt { display: ruby-text }
+rtc { display: ruby-text-container }
+rp { display: none }
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
 pre, listing, xmp, plaintext { white-space: pre }

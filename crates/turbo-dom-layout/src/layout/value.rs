@@ -3077,6 +3077,43 @@ mod display_tests {
         );
     }
 
+    /// Review R2 layout H2: `html_default_display` returned
+    /// `"table-row-group"` / `"table-column-group"` / `"table-column"` for
+    /// tbody / colgroup / col, but `specified_display` had no match arms for
+    /// them, so they fell through to `Display::Block` — the R1 H2 tbody fix
+    /// was a no-op end-to-end. Add distinct variants + match arms so the
+    /// honest Chrome keyword lands on a distinct `Display`.
+    #[test]
+    fn table_row_group_and_column_variants_resolve_from_their_chrome_keywords() {
+        assert_eq!(
+            display(&[("display", "table-row-group")]),
+            Display::TableRowGroup
+        );
+        assert_eq!(
+            display(&[("display", "table-column-group")]),
+            Display::TableColumnGroup
+        );
+        assert_eq!(
+            display(&[("display", "table-column")]),
+            Display::TableColumn
+        );
+        // The three new variants also blockify when the box is floated /
+        // absolutely positioned (CSS 2.1 §9.7): internal-table values become
+        // `block`, like the pre-existing row / cell / header / footer group.
+        for value in ["table-row-group", "table-column-group", "table-column"] {
+            assert_eq!(
+                display(&[("display", value), ("float", "left")]),
+                Display::Block,
+                "{value}: floated internal-table must blockify",
+            );
+            assert_eq!(
+                display(&[("display", value), ("position", "absolute")]),
+                Display::Block,
+                "{value}: absolute internal-table must blockify",
+            );
+        }
+    }
+
     #[test]
     fn floats_blockify_like_absolutely_positioned_boxes() {
         for value in [
