@@ -8541,12 +8541,20 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
                     before,
                     "a snapshot install ran an engine script"
                 );
+                // turbo-dom#394: embedder init scripts run after the engine is in place
+                // but before the embedder executes the parser's inline `<script>`s.
+                run_init_scripts(scope);
                 return;
             }
-            Err(tree) => return install_split_or_full(scope, tree),
+            Err(tree) => {
+                install_split_or_full(scope, tree);
+                run_init_scripts(scope);
+                return;
+            }
         }
     }
     install_split_or_full(scope, tree);
+    run_init_scripts(scope);
 }
 
 fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {

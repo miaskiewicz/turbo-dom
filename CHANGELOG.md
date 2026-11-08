@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **browser-env: embedder init scripts run before the parser's inline `<script>`**
+  (miaskiewicz/turbo-dom#394). `turbo-dom-browser-env` now exposes
+  `add_init_script` / `clear_init_scripts` (CDP's
+  `Page.addScriptToEvaluateOnNewDocument` / Playwright's `addInitScript`): every
+  registered script runs on each `install_with_html` after the engine is in place
+  but BEFORE the embedder executes any parser inline `<script>`. Unblocks
+  turbo-surf#240, where `page.route`'s `fetch`/`XMLHttpRequest` monkey-patch was
+  previously beaten by parse-time inline-script fetches.
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights
