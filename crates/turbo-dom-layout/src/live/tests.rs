@@ -542,6 +542,38 @@ fn the_hook_sees_the_whole_styled_forest_before_layout() {
     assert_eq!(border(&snapshot, a), (20.0, 10.0));
 }
 
+// miaskiewicz/turbo-dom#395: the surf-level oracle. A CSSOM inline override on a
+// styled element must drive layout even when the embedder supplies no UA origin
+// — the live style pass has to recognise a known HTML block tag's default
+// `display: block` the way `test_support::ensure_default_display` does. Pre-0.8.0
+// the implicit default already did this; after #375 flipped the default to
+// `inline`, surf's captured `Composition` (which carries no UA rules in the
+// budget-test shape) saw every `div` collapse to zero. The border box of `a`
+// must be `(30, 5)` (the override replaces the existing style attribute) and
+// `b` must be `(200, 0)` (no style attribute, no override applied, but a block
+// div fills the viewport).
+#[test]
+fn inline_override_replaces_only_an_existing_style_attribute_395() {
+    let styled = Styled::new(
+        "<body style='margin:0'><div id=a style='width:10px;height:5px'></div><div id=b></div></body>",
+    );
+    let (a, b) = (styled.el("a"), styled.el("b"));
+    let overrides = [(a, "width:30px;height:5px"), (b, "width:40px;height:5px")];
+    let (snapshot, ()) = styled
+        .run(&[], &overrides, &|_| Ok(0), |_| Ok(()))
+        .unwrap();
+    assert_eq!(border(&snapshot, a), (30.0, 5.0));
+    // `b` has no `style` attribute, so the override must not apply: a block div
+    // takes the container width with auto (zero) content height.
+    assert_eq!(border(&snapshot, b), (200.0, 0.0));
+    // The DOM itself is never rewritten.
+    assert_eq!(
+        styled.tree.get_attribute(a, "style"),
+        Some("width:10px;height:5px")
+    );
+    assert_eq!(styled.tree.get_attribute(b, "style"), None);
+}
+
 #[test]
 fn snapshot_errors_pass_through() {
     let styled = Styled::new("<body></body>");
