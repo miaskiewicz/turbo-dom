@@ -89,23 +89,28 @@
 		err.name = "DataCloneError";
 		return err;
 	}
-	function assertCloneable(value, seen) {
-		if (value === null) return;
+	const PRIMITIVE_REJECTS = {
+		undefined: "undefined",
+		bigint: "BigInt",
+		symbol: "Symbol",
+		function: "Function",
+	};
+	function assertPrimitive(value) {
+		if (value === null) return true;
 		const t = typeof value;
-		if (t === "string" || t === "boolean") return;
+		if (t === "string" || t === "boolean") return true;
 		if (t === "number") {
-			if (Number.isFinite(value)) return;
+			if (Number.isFinite(value)) return true;
 			throw dataCloneError(String(value));
 		}
-		if (t === "undefined") throw dataCloneError("undefined");
-		if (t === "bigint") throw dataCloneError("BigInt");
-		if (t === "symbol") throw dataCloneError("Symbol");
-		if (t === "function") throw dataCloneError("Function");
-		// From here on `value` is an object. Reject non-POJO built-ins
-		// whose JSON round-trip would lose type.
+		const reject = PRIMITIVE_REJECTS[t];
+		if (reject) throw dataCloneError(reject);
+		return false;
+	}
+	function assertObject(value, seen) {
+		if (seen.has(value)) throw dataCloneError("cyclic reference");
+		seen.add(value);
 		if (Array.isArray(value)) {
-			if (seen.has(value)) throw dataCloneError("cyclic reference");
-			seen.add(value);
 			for (let i = 0; i < value.length; i++) assertCloneable(value[i], seen);
 			return;
 		}
@@ -115,9 +120,11 @@
 		if (proto !== null && proto !== Object.prototype) {
 			throw dataCloneError("non-POJO object");
 		}
-		if (seen.has(value)) throw dataCloneError("cyclic reference");
-		seen.add(value);
 		for (const key of Object.keys(value)) assertCloneable(value[key], seen);
+	}
+	function assertCloneable(value, seen) {
+		if (assertPrimitive(value)) return;
+		assertObject(value, seen);
 	}
 	global.structuredClone = function structuredClone(value) {
 		assertCloneable(value, new Set());
