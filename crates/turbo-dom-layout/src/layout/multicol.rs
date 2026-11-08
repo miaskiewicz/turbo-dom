@@ -175,9 +175,7 @@ fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
 /// colour (CSS Multicol 1 §5.3).
 fn parse_rule_color(s: &ComputedStyle) -> Rgba {
     let current = s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK);
-    let raw = s
-        .get("column-rule-color")
-        .map_or("currentcolor", str::trim);
+    let raw = s.get("column-rule-color").map_or("currentcolor", str::trim);
     if raw.eq_ignore_ascii_case("currentcolor") {
         return current;
     }
@@ -450,11 +448,17 @@ fn place_measured(
     cx: f32,
     cy: f32,
 ) -> Fragment {
+    // `measure_kids` lays each kid out at `(0, 0)`, so the translation to the
+    // column strip is the strip's origin directly — one `translate` rather
+    // than a `cx + ... - measured.x` difference whose subtracted zero is
+    // indistinguishable from an addition on a mutant.
+    debug_assert_eq!(measured.x, 0.0);
+    debug_assert_eq!(measured.y, 0.0);
     let stride = used_width + gap;
     if pieces.len() == 1 {
         let p = pieces[0];
-        let dx = cx + p.col_index as f32 * stride - measured.x;
-        let dy = cy + p.y - measured.y;
+        let dx = cx + p.col_index as f32 * stride;
+        let dy = cy + p.y;
         if dx != 0.0 || dy != 0.0 {
             measured.translate(dx, dy);
         }
@@ -704,6 +708,22 @@ mod tests {
         assert!((pieces[0].height - 100.0).abs() < 1e-5);
         assert_eq!(ci, 1);
         assert!((cc - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_does_not_advance_from_column_top_when_col_h_barely_positive() {
+        // col_h = 0.4 (below FRAG_EPS=0.5), item = 10. At the top of a column
+        // (cursor=0) the "no room" branch's `col_cursor > 0.0` guard must stay
+        // strict: a `>=` mutation would spin the column index past every
+        // output without ever placing a piece.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(10.0, 0.4, &mut ci, &mut cc);
+        // At least one piece should land in col 0 at y=0 (progress made).
+        assert!(!pieces.is_empty());
+        assert_eq!(pieces[0].col_index, 0);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!(pieces[0].height > 0.0);
     }
 
     #[test]
