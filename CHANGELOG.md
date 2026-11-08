@@ -5,6 +5,16 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: `on*` content-attribute handlers compile lazily, on the
+  first handler read / listener-add / dispatch, matching Chrome 156. The eager compile
+  at attribute-set time collapsed the set-phase and compile-phase CSP `script-src-attr`
+  policy calls into one, producing a single report where a report-only policy should
+  see two (miaskiewicz/turbo-dom#380).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

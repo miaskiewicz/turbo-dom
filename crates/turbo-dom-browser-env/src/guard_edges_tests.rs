@@ -262,12 +262,13 @@ fn inline_handler_policy_runs_at_set_and_at_first_compile() {
     install_inline_event_handlers(scope, policy, "https://test/");
     let code = v8::String::new(
         scope,
-        "(() => { globalThis.calls = 0; \
+        "(() => { globalThis.calls = 0; globalThis.ran = 0; \
          const d = document.getElementById('d'); \
          d.setAttribute('onclick', 'globalThis.ran = (globalThis.ran||0) + 1'); \
          const afterSet = calls; \
-         d.click(); \
-         return JSON.stringify({ afterSet, afterClick: calls, ran: globalThis.ran }); \
+         d.click(); const afterClick = calls; \
+         d.click(); const afterSecondClick = calls; \
+         return JSON.stringify({ afterSet, afterClick, afterSecondClick, ran: globalThis.ran }); \
          })()",
     )
     .unwrap();
@@ -275,7 +276,10 @@ fn inline_handler_policy_runs_at_set_and_at_first_compile() {
         .and_then(|script| script.run(scope))
         .unwrap()
         .to_rust_string_lossy(scope);
-    assert_eq!(value, r#"{"afterSet":1,"afterClick":2,"ran":1}"#);
+    assert_eq!(
+        value,
+        r#"{"afterSet":1,"afterClick":2,"afterSecondClick":2,"ran":2}"#
+    );
     reset();
 }
 
