@@ -235,6 +235,36 @@ fn native_document_census() {
     assert_eq!(native_document_count_for_testing(), 0);
 }
 
+/// Retired iframe-like child contexts become collectible once nothing holds them, and the
+/// host's sweep then reclaims every stale frame's native-document record (turbo-dom#397).
+/// Before 0.8.1 the sweep walked each record but failed to drop its weak Document handle, so
+/// the surf test's `cleared` reported 0 instead of the count V8 had actually collected.
+#[test]
+fn retired_frame_weak_context_handles_are_pruned_after_gc() {
+    crate::browser_env::tests::init_v8();
+    reset();
+    assert_eq!(native_document_count_for_testing(), 0);
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let main = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, main);
+    install_with_html(scope, "<!doctype html>");
+    const N: usize = 3;
+    for _ in 0..N {
+        let child = v8::Context::new(scope, Default::default());
+        let child_scope = &mut v8::ContextScope::new(scope, child);
+        install_independent_html(child_scope, "<p>retired</p>");
+    }
+    assert_eq!(native_document_count_for_testing(), 1 + N);
+    // No Local or Global holds the child contexts; a full GC drops their document wrappers.
+    for _ in 0..3 {
+        scope.low_memory_notification();
+    }
+    assert_eq!(sweep_collected_documents(), N);
+    assert_eq!(native_document_count_for_testing(), 1);
+    reset();
+}
+
 /// The host's Trusted Types entry points: a sink input converts through the document's
 /// policy (a typed value is unwrapped exactly, a string passes only while the policy allows
 /// it), and the engine's code-generation check reads only genuine TrustedScript values.
