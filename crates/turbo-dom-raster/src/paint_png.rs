@@ -3124,6 +3124,130 @@ mod exact_tests {
         assert_eq!(got.pixel(44, 14).unwrap().red(), 255, "shadow clipped away");
     }
 
+    /// A `ColumnRule` fragment with `(style, color)` at `(x, y) size (w, h)`.
+    fn rule(x: f32, y: f32, w: f32, h: f32, style: ColumnRuleStyle, color: Rgba) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::ColumnRule { style, color },
+        )
+    }
+
+    /// Returns whether `pm` is a white rectangle (the canvas `white` fills).
+    fn is_blank(pm: &Pixmap) -> bool {
+        pm.pixels()
+            .iter()
+            .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 255, 255, 255])
+    }
+
+    // miaskiewicz/turbo-dom#398 PR-D: `paint_column_rule` must early-return on
+    // a transparent colour or a zero-sized rect — without the guard the Dotted
+    // and Dashed helpers would loop forever on a zero width. Each sub-case
+    // paints over white and asserts the pixmap is unchanged.
+    #[test]
+    fn paint_column_rule_is_a_no_op_on_degenerate_fragments() {
+        for style in [
+            ColumnRuleStyle::Solid,
+            ColumnRuleStyle::Dotted,
+            ColumnRuleStyle::Dashed,
+            ColumnRuleStyle::Double,
+        ] {
+            // Transparent colour: every opaque style skips painting.
+            let transparent = Rgba {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 0,
+            };
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 4.0, 8.0, style, transparent), 10, 10)),
+                "alpha 0 must paint nothing ({style:?})"
+            );
+            // Zero width.
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 0.0, 8.0, style, RED), 10, 10)),
+                "zero width must paint nothing ({style:?})"
+            );
+            // Zero height.
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 4.0, 0.0, style, RED), 10, 10)),
+                "zero height must paint nothing ({style:?})"
+            );
+        }
+    }
+
+    // `Double` below 3 px wide collapses to a single solid band (CSS Backgrounds
+    // 3 §4.2: a thin double still shows). A mutation that flipped `< 3.0` to
+    // `>= 3.0` or dropped the `return` would paint the two-band version, which
+    // leaves a hollow centre a `band = 1` thick (so the middle column at a 2 px
+    // rule would be blank) — the test asserts the full rect is filled.
+    #[test]
+    fn paint_column_rule_thin_double_paints_a_single_solid_band() {
+        let got = drawn(&rule(1.0, 1.0, 2.0, 6.0, ColumnRuleStyle::Double, RED), 10, 10);
+        for y in 1..7 {
+            for x in 1..3 {
+                let c = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [c.red(), c.green(), c.blue()],
+                    [255, 0, 0],
+                    "rule pixel ({x}, {y}) stays red"
+                );
+            }
+        }
+        // The band stays inside its box: outside it stays white.
+        for (x, y) in [(0, 2), (3, 2), (2, 0), (2, 7)] {
+            let c = got.pixel(x, y).unwrap();
+            assert_eq!([c.red(), c.green(), c.blue()], [255, 255, 255]);
+        }
+    }
+
+    // `circle_path` returns `None` for a non-positive radius; a mutation that
+    // dropped the guard would produce a degenerate cubic path that tiny-skia
+    // either rejects or renders as a single filled pixel at the centre — which
+    // paint_dotted_rule would then stamp at every y step on the centerline.
+    // The direct test keeps the contract pinned without touching the raster
+    // walk.
+    #[test]
+    fn circle_path_is_none_for_a_non_positive_radius() {
+        assert!(circle_path(5.0, 5.0, 0.0).is_none(), "r = 0");
+        assert!(circle_path(5.0, 5.0, -0.5).is_none(), "r < 0");
+        assert!(circle_path(5.0, 5.0, 0.5).is_some(), "r > 0");
+    }
+
+    // The `paint_dotted_rule` and `paint_dashed_rule` helpers both guard
+    // `period <= 0.0` so a zero-width rule can never infinite-loop
+    // (`cy += period` of 0, `dash_top += period` of 0). The caller
+    // `paint_column_rule` guards `f.width <= 0.0` first, so the guards sit on
+    // the function contract rather than a reachable branch via `paint`.
+    // Calling the helpers directly with a zero-width fragment keeps that
+    // contract — and the loop-protection — pinned against a mutation that
+    // flipped the guard's `<=` to `<`.
+    #[test]
+    fn dotted_and_dashed_helpers_return_on_zero_width_fragments() {
+        let mut pm = white(10, 10);
+        let id = Transform::identity();
+        let f = Fragment::new(
+            NodeId(0),
+            1.0,
+            1.0,
+            0.0,
+            8.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dotted,
+                color: RED,
+            },
+        );
+        paint_dotted_rule(&mut pm, &f, RED, id);
+        paint_dashed_rule(&mut pm, &f, RED, id);
+        assert!(
+            is_blank(&pm),
+            "zero-width helpers must not paint or loop"
+        );
+    }
+
     #[test]
     fn glyph_ink_past_its_line_box_is_clipped_by_overflow() {
         // `overflow:hidden; height:10px; line-height:10px; font-size:40px` around "gy": the

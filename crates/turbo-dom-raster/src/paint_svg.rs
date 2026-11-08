@@ -1856,6 +1856,96 @@ mod tests {
             .collect()
     }
 
+    /// A `ColumnRule` fragment with `(style, color)` at `(x, y)` size `(w, h)`.
+    fn rule(x: f32, y: f32, w: f32, h: f32, style: ColumnRuleStyle, color: Rgba) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::ColumnRule { style, color },
+        )
+    }
+
+    /// miaskiewicz/turbo-dom#398 PR-D: the SVG painter's `paint_column_rule`
+    /// must skip a transparent, zero-width or zero-height fragment — without
+    /// the guard the Dotted / Dashed helpers would infinite-loop on a zero
+    /// width.
+    #[test]
+    fn paint_column_rule_svg_is_a_no_op_on_degenerate_fragments() {
+        for style in [
+            ColumnRuleStyle::Solid,
+            ColumnRuleStyle::Dotted,
+            ColumnRuleStyle::Dashed,
+            ColumnRuleStyle::Double,
+        ] {
+            let transparent = Rgba {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 0,
+            };
+            let body_t = body(&rule(1.0, 1.0, 4.0, 8.0, style, transparent), &HashMap::new());
+            assert!(
+                body_t.is_empty(),
+                "alpha 0 must emit no rule markup ({style:?}): {body_t}"
+            );
+            let body_w = body(&rule(1.0, 1.0, 0.0, 8.0, style, RED), &HashMap::new());
+            assert!(
+                body_w.is_empty(),
+                "zero width must emit no rule markup ({style:?}): {body_w}"
+            );
+            let body_h = body(&rule(1.0, 1.0, 4.0, 0.0, style, RED), &HashMap::new());
+            assert!(
+                body_h.is_empty(),
+                "zero height must emit no rule markup ({style:?}): {body_h}"
+            );
+        }
+    }
+
+    /// miaskiewicz/turbo-dom#398 PR-D: a `Double` rule below 3 px wide falls
+    /// back to a single solid rect so a thin double still shows (CSS
+    /// Backgrounds 3 §4.2). The two-band path would emit two `<rect>`s each
+    /// one band wide; this path emits exactly one at the full width.
+    #[test]
+    fn paint_column_rule_svg_thin_double_emits_one_solid_rect() {
+        let svg = body(
+            &rule(1.0, 1.0, 2.0, 6.0, ColumnRuleStyle::Double, RED),
+            &HashMap::new(),
+        );
+        // A thick double (band >= 1 and width >= 3) produces two rects; this
+        // fallback stays at exactly one.
+        assert_eq!(svg.matches("<rect ").count(), 1, "got: {svg}");
+        assert!(svg.contains("width=\"2.00\""), "full width: {svg}");
+    }
+
+    /// `paint_dotted_rule` and `paint_dashed_rule` both guard `period <= 0.0`
+    /// so a zero-width fragment cannot infinite-loop (`cy += 0` / `dash_top +=
+    /// 0`). `paint_column_rule` guards the caller first, so the per-helper
+    /// guard is a contract pin, exercised here directly.
+    #[test]
+    fn dotted_and_dashed_svg_helpers_return_on_zero_width_fragments() {
+        let f = Fragment::new(
+            NodeId(0),
+            1.0,
+            1.0,
+            0.0,
+            8.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dotted,
+                color: RED,
+            },
+        );
+        let mut buf = String::new();
+        paint_dotted_rule(&mut buf, &f, RED);
+        paint_dashed_rule(&mut buf, &f, RED);
+        assert!(
+            buf.is_empty(),
+            "zero-width helpers must not emit markup or loop: {buf}"
+        );
+    }
+
     #[test]
     fn boxes_at_one_origin_get_their_own_gradient_and_shadow_ids() {
         let blue = Rgba::new(0, 0, 255, 255);
