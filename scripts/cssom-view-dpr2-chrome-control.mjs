@@ -43,7 +43,11 @@ const fira = readFileSync(
   join(repo, "crates/turbo-dom-layout/assets/fonts/fira-code/FiraCode-Regular.ttf"),
 ).toString("base64");
 const FACE = `@font-face{font-family:"Fira Code";src:url(data:font/ttf;base64,${fira})}`;
-const BASE = 'body{margin:0;font-family:"Fira Code";font-size:20px;line-height:1}';
+// line-height:25px matches the font's content height at 20px Fira Code (25 CSS px at
+// DPR 2 per turbo-dom#377), so the line box and the font content box align and the
+// isolated reading is the inline y itself — no leading overflow to drown the 0.5-px
+// bug of miaskiewicz/turbo-dom#386.
+const BASE = 'body{margin:0;font-family:"Fira Code";font-size:20px;line-height:25px}';
 const DOC = (css, body) => `<!doctype html><style>${BASE}${css}</style>${body}`;
 
 // A single case: an inline web-font Range in a block. 20px Fira Code has an odd content
