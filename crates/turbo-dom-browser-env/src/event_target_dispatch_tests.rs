@@ -103,14 +103,23 @@ fn host_dispatch_target(
     dispatch_host_event(scope, event, target);
 }
 
+/// turbo-dom#381: phase records across the parent chain match Chrome 156 IDB.
 #[test]
-fn non_node_event_target_dispatch_matches_chrome156() {
+fn non_node_event_target_phases_match_chrome156() {
     let expected = fixture_result();
     let actual = run_chain();
     assert_eq!(
         actual["phases"], expected["phases"],
         "phase records differ"
     );
+}
+
+/// turbo-dom#382: a microtask queued inside listener A has run by the time listener B is
+/// invoked (IDB transaction deactivation observable).
+#[test]
+fn host_dispatch_checkpoints_microtasks_between_listeners() {
+    let expected = fixture_result();
+    let actual = run_chain();
     assert_eq!(
         actual["microtask"], expected["microtask"],
         "microtask observability differs"
