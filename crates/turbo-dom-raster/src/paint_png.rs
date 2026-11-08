@@ -10,8 +10,9 @@ use tiny_skia::{
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
-    OverflowClip, PositionedGlyph, Rgba, TilePattern, Transform2D as BoxTransform,
+    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
+    LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba, TilePattern,
+    Transform2D as BoxTransform,
 };
 
 use std::rc::Rc;
@@ -401,9 +402,110 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
         ),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Tiles(pattern) => paint_tiles(pm, f, pattern, images, xf),
+        FragmentContent::ColumnRule { style, color } => {
+            paint_column_rule(pm, f, *style, *color, xf);
+        }
         FragmentContent::Marker(_) => {}
     }
     paint_children(pm, f, images, xf);
+}
+
+/// Paint a multicol `column-rule` fragment ([`FragmentContent::ColumnRule`];
+/// miaskiewicz/turbo-dom#398 PR-D) centred in its box: solid fills the rect,
+/// dotted stamps circles of diameter `width` on period `2 * width`, dashed
+/// stamps dashes `2 * width` long on period `3 * width`, double paints two
+/// bands each `floor(width / 3)` thick at the long edges.
+fn paint_column_rule(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    style: ColumnRuleStyle,
+    color: Rgba,
+    xf: Transform,
+) {
+    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    match style {
+        ColumnRuleStyle::Solid => fill_rect(pm, f.x, f.y, f.width, f.height, color, xf),
+        ColumnRuleStyle::Dotted => paint_dotted_rule(pm, f, color, xf),
+        ColumnRuleStyle::Dashed => paint_dashed_rule(pm, f, color, xf),
+        ColumnRuleStyle::Double => paint_double_rule(pm, f, color, xf),
+    }
+}
+
+/// Stamp circular dots of diameter `f.width` down the rule's centerline, period
+/// `2 * width` (Blink's `kDottedStroke` with cap-round).
+fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let diameter = f.width;
+    let radius = diameter / 2.0;
+    let cx = f.x + radius;
+    let period = 2.0 * diameter;
+    if period <= 0.0 {
+        return;
+    }
+    let mut cy = f.y + radius;
+    let end = f.y + f.height;
+    while cy - radius < end {
+        if let Some(path) = circle_path(cx, cy, radius) {
+            pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
+        }
+        cy += period;
+    }
+}
+
+/// Kappa: the cubic control offset that approximates a quarter-circle to
+/// within ~0.0003 units.
+const CIRCLE_KAPPA: f32 = 0.552_284_8;
+
+/// Build a tiny-skia path for a circle of radius `r` at `(cx, cy)` as four cubic
+/// Béziers. `None` when `r < 0.5` pixel (tiny-skia ignores a degenerate path).
+fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
+    if r <= 0.0 {
+        return None;
+    }
+    let k = r * CIRCLE_KAPPA;
+    let mut p = PathBuilder::new();
+    p.move_to(cx + r, cy);
+    p.cubic_to(cx + r, cy + k, cx + k, cy + r, cx, cy + r);
+    p.cubic_to(cx - k, cy + r, cx - r, cy + k, cx - r, cy);
+    p.cubic_to(cx - r, cy - k, cx - k, cy - r, cx, cy - r);
+    p.cubic_to(cx + k, cy - r, cx + r, cy - k, cx + r, cy);
+    p.close();
+    p.finish()
+}
+
+/// Stamp dashes of length `2 * width` down the rule, period `3 * width` (Blink's
+/// `kDashedStroke`: a `width` gap between each dash).
+fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let width = f.width;
+    let dash = 2.0 * width;
+    let gap = width;
+    let period = dash + gap;
+    if period <= 0.0 {
+        return;
+    }
+    let end = f.y + f.height;
+    let mut dash_top = f.y;
+    while dash_top < end {
+        let dash_h = dash.min(end - dash_top);
+        if dash_h > 0.0 {
+            fill_rect(pm, f.x, dash_top, width, dash_h, color, xf);
+        }
+        dash_top += period;
+    }
+}
+
+/// Paint two bands at the long edges, each `floor(width / 3)` thick, matching
+/// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
+/// painter falls back to one solid band so a thin double rule still shows.
+fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let band = (f.width / 3.0).floor().max(1.0);
+    if f.width < 3.0 {
+        fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
+        return;
+    }
+    fill_rect(pm, f.x, f.y, band, f.height, color, xf);
+    fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
 }
 
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)

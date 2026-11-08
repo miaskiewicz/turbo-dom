@@ -249,13 +249,22 @@ package or publish workflow.
   (`layout::multicol`, CSS Multicol 1): an independent formatting context whose in-flow
   children flow into equal-width column strips of the content box per Chrome's widen rule
   (`used_count = floor((W + gap) / (width + gap))`), with `column-fill: balance` when the
-  container's height is auto. The `columns: <width> <count>` shorthand rides the cascade's
-  shorthand expansion (`font` / `list-style` / `border-radius` / `background` / `columns`).
+  container's height is auto. The `columns: <width> <count>` and
+  `column-rule: <width> <style> <color>` shorthands ride the cascade's shorthand
+  expansion (`font` / `list-style` / `border-radius` / `background` / `columns` /
+  `column-rule`).
   Control: `tests/multicol_chrome.rs` + `tests/fixtures/multicol_chrome156.json`; PR-C1 asserts
   the three equal-width sequential-fill cases (`basic-2col-equal`, `basic-3col-with-gap`,
   `column-width-driven`) within 0.5 px, the other five fixture cases are `#[ignore]`d for PR-C2
   (column-span capture anomaly, mixed-height sequential fill, N+1 strip overflow, nested
-  multicol, floats inside a column).
+  multicol, floats inside a column). Since turbo-dom#398 PR-D a multicol
+  container also emits `FragmentContent::ColumnRule { style, color }` fragments
+  between adjacent columns: rule width = `column-rule-width` clamped to the gap
+  (Blink's multicol painter never paints outside the gap), height = the column
+  content height; `currentcolor` resolves to the container's `color`. Painted
+  by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` /
+  `double` (raster `multicol_rule_chrome156.json`); groove / ridge / inset /
+  outset deferred.
   The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
