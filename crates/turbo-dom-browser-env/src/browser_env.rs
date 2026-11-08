@@ -8445,6 +8445,50 @@ pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     install_with_tree(scope, Tree::parse_with_processing_instructions(html));
 }
 
+thread_local! {
+    /// turbo-dom#394: embedder-supplied init scripts (CDP's
+    /// `Page.addScriptToEvaluateOnNewDocument` / Playwright `addInitScript`).
+    /// Each [`install_with_html`] runs them, in registration order, AFTER the
+    /// engine bootstrap but BEFORE the embedder executes the parser's inline
+    /// `<script>` elements.
+    static INIT_SCRIPTS: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Register an embedder init script: the next (and every later) install into a
+/// freshly-opened document runs it before the parser's inline `<script>`
+/// elements. Equivalent to CDP's `Page.addScriptToEvaluateOnNewDocument`.
+/// Surfaced by turbo-surf#240 (page.route fetch-monkey-patch missing
+/// parse-time inline-script fetches).
+pub fn add_init_script(source: impl Into<String>) {
+    INIT_SCRIPTS.with(|s| s.borrow_mut().push(source.into()));
+}
+
+/// Drop every registered init script. Call between isolated test setups or when
+/// the embedder tears down a routing policy.
+pub fn clear_init_scripts() {
+    let _ = INIT_SCRIPTS.try_with(|s| s.borrow_mut().clear());
+}
+
+/// Compile and run each registered init script in the current context. Called
+/// at the end of [`install_with_tree`] so the next parser-driven inline script
+/// already sees the patched globals (turbo-dom#394).
+fn run_init_scripts(scope: &mut v8::PinScope) {
+    // Skip a worker context: it has no window, and the embedder's page-oriented
+    // init script would be meaningless there.
+    if is_worker_context(scope.get_current_context()) {
+        return;
+    }
+    let sources = INIT_SCRIPTS.with(|s| s.borrow().clone());
+    for source in sources {
+        let Some(code) = v8::String::new(scope, &source) else {
+            continue;
+        };
+        if let Some(script) = v8::Script::compile(scope, code, None) {
+            script.run(scope);
+        }
+    }
+}
+
 /// Setup was cut short because V8 execution was terminated while the document was being
 /// installed (e.g. an embedder's watchdog `TerminateExecution` landed during setup). The
 /// document is incomplete; the embedder should discard the context (turbo-dom#184).
@@ -8497,12 +8541,20 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
                     before,
                     "a snapshot install ran an engine script"
                 );
+                // turbo-dom#394: embedder init scripts run after the engine is in place
+                // but before the embedder executes the parser's inline `<script>`s.
+                run_init_scripts(scope);
                 return;
             }
-            Err(tree) => return install_split_or_full(scope, tree),
+            Err(tree) => {
+                install_split_or_full(scope, tree);
+                run_init_scripts(scope);
+                return;
+            }
         }
     }
     install_split_or_full(scope, tree);
+    run_init_scripts(scope);
 }
 
 fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {
@@ -11535,6 +11587,9 @@ mod html_meta_tests;
 #[cfg(test)]
 #[path = "animation_range_tests.rs"]
 mod animation_range_tests;
+#[cfg(test)]
+#[path = "init_script_tests.rs"]
+mod init_script_tests;
 #[cfg(test)]
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
