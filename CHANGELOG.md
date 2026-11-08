@@ -68,6 +68,25 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- CSS multi-column: `column-span: all` + `break-{before,after,inside}` flow
+  honouring (#398 PR-E). A child with `column-span: all` breaks the multicol
+  flow — the pre-span and post-span runs each become a sub-flow balanced
+  over `used_count` columns, and the span-all child places at the
+  container's full content inline size (CSS Multicol 1 §6 "Spanning
+  columns"). `break-before: column` / `break-after: column` force a column
+  break at a child's start / after its end, and `break-inside: avoid` /
+  `avoid-column` pushes a child that would fragment to a fresh column
+  (when it fits in one; CSS Fragmentation 3 §5.2 "If the fragment does not
+  fit, the user agent may ignore the value"). `page` / `avoid-page`
+  values stay no-ops in multicol (pagination is turbo-html2pdf's concern).
+  The balancer becomes a 30-step binary search for the smallest `col_h`
+  at which the break-aware flow fits in `used_count` columns, capped by
+  the container's definite height when present; a `col_h` smaller than
+  the break-aware minimum (because the definite cap binds) accepts
+  overflow into extra strips past `used_count` as PR-C2 did. Activates
+  six new Chrome 156 oracle cases (`span-all-simple`, `span-all-balance`,
+  `break-before-column`, `break-after-column`, `break-inside-avoid`,
+  `break-inside-avoid-fits-anyway`).
 - CSS multi-column: `column-fill: balance`, column fragmentation and overflow
   strips (#398 PR-C2 of multi-PR stack). Layered over PR-C1's equal-width
   sequential-fill scaffold in `crates/turbo-dom-layout/src/layout/multicol.rs`:

@@ -1,5 +1,4 @@
-//! CSS multi-column layout (§CSS Multicol 1; miaskiewicz/turbo-dom#398 PR-C1 /
-//! PR-C2 of a multi-PR stack).
+//! CSS multi-column layout (§CSS Multicol 1; miaskiewicz/turbo-dom#398).
 //!
 //! A container is a multicol formatting context when its computed
 //! `column-count` or `column-width` is not `auto`; its in-flow children flow
@@ -7,17 +6,38 @@
 //! sequentially top-to-bottom within each strip and left-to-right across
 //! strips (CSS Multicol 1 §3 "The multi-column model", `column-fill: balance`).
 //!
-//! PR-C1 scope was the three cleanest Chrome 156 cases (`basic-2col-equal`,
+//! PR-C1 was the three cleanest Chrome 156 cases (`basic-2col-equal`,
 //! `basic-3col-with-gap`, `column-width-driven`): equal-width tracks, no
 //! fragmentation, column height = container's definite height.
 //!
-//! PR-C2 layers `column-fill: balance`, fragmenting fill across the column
+//! PR-C2 layered `column-fill: balance`, fragmenting fill across the column
 //! strips, overflow into extra strips beyond `used_count` (an item that
 //! cannot fit in the last tracked column opens a new strip at `col_index *
 //! (used_width + gap)` with no upper bound), and a union-geometry pass for
 //! fragmented children — Chrome's `getBoundingClientRect()` returns the union
 //! of every column fragment a box produces, and the oracle harness asserts
 //! against it.
+//!
+//! PR-D (in `turbo-dom-raster`) painted `column-rule-*` between adjacent
+//! columns.
+//!
+//! PR-E layers `column-span: all` and the `break-{before,after,inside}`
+//! flow-honouring on top. A child with `column-span: all` breaks the
+//! multicol flow: pre-span children balance over their own sub-flow,
+//! the span-all child places at the container's full content inline size
+//! (`cw`), and post-span children flow into a fresh column set below
+//! (CSS Multicol 1 §6 "Spanning columns"). `break-before: column` /
+//! `break-after: column` force a column break at a child's start or after
+//! its end; `break-inside: avoid` / `avoid-column` push a child that would
+//! fragment into a fresh column instead (when it fits in one; CSS
+//! Fragmentation 3 §5.2 "If the fragment does not fit, the user agent may
+//! ignore the value"). `break-before: page` / `page` / `avoid-page` are
+//! pagination's concern (that's turbo-html2pdf) and are no-ops here but
+//! keep their computed value through the cascade for pagination to read.
+//! The balancer becomes a binary search over `col_h` for each non-span
+//! sub-flow: the smallest height at which the flow (respecting the break
+//! rules) fits in `used_count` columns, capped by the container's definite
+//! height when present.
 //!
 //! Chrome 156's multicol widths live on its 1/64 px `LayoutUnit` grid
 //! (`crates/turbo-dom-layout/src/layout/Blink-layout-unit.LICENSE`): the
@@ -29,16 +49,6 @@
 //! formula matches each column's reported `x` / `width` exactly within that
 //! bound, and Chrome's balanced column height `content_h / used_count` rounds
 //! within the same tolerance.
-//!
-//! Scope deferred to PR-E: `column-span: all`, the `break-{before,after,inside}`
-//! honouring (`break-inside: avoid` turning a would-be fragmentation into an
-//! anticipated column break, `break-after: column`, etc.), and column-rule
-//! painting (that's PR-D, in `turbo-dom-raster`). PR-C2's fragmenter splits a
-//! box blindly once it would overrun the balanced column height and the union
-//! Fragment paints its background once across the gap — the Chrome oracle's
-//! `columns-shorthand` i2 / i5 captures assert against the union rect only,
-//! so the geometry matches, but a block with its own background painting
-//! per column is PR-E / PR-D's job.
 
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
@@ -231,6 +241,54 @@ fn column_rule_fragments(
         .collect()
 }
 
+/// Per-child flags read from the computed style that steer the multicol flow
+/// (CSS Multicol 1 §6, CSS Fragmentation 3 §5): `column-span: all` opens a
+/// fresh column set, `break-before: column` / `break-after: column` force a
+/// column break around the child, `break-inside: avoid` / `avoid-column`
+/// pushes a would-be-fragmented child to a fresh column when it fits in one.
+#[derive(Copy, Clone, Default)]
+struct KidFlags {
+    column_span_all: bool,
+    break_before_column: bool,
+    break_after_column: bool,
+    break_inside_avoid: bool,
+}
+
+/// Read the flags of one kid's computed style. Keywords are ASCII
+/// case-insensitive (CSS 2.2 §4.1.1). `column-span: all` is the only non-
+/// `none` value; `break-{before,after}: column` is the forced column break
+/// (`page` / `left` / `right` / `recto` / `verso` are pagination's concern,
+/// left as a no-op here); `break-inside: avoid` and `avoid-column` are the
+/// same thing for multicol ("avoid any break inside this box" implies no
+/// column break either).
+fn kid_flags(style: &ComputedStyle) -> KidFlags {
+    KidFlags {
+        column_span_all: keyword_eq(style, "column-span", "all"),
+        break_before_column: keyword_eq(style, "break-before", "column"),
+        break_after_column: keyword_eq(style, "break-after", "column"),
+        break_inside_avoid: keyword_in(style, "break-inside", &["avoid", "avoid-column"]),
+    }
+}
+
+/// Trim-and-ASCII-lowercase compare one keyword value: the way the cascade's
+/// shorthands expand a longhand with surrounding whitespace and the way
+/// `break-*` / `column-span` are specified (`all`, `column`, `avoid`,
+/// `avoid-column`, …).
+fn keyword_eq(style: &ComputedStyle, prop: &str, want: &str) -> bool {
+    style
+        .get(prop)
+        .is_some_and(|v| v.trim().eq_ignore_ascii_case(want))
+}
+
+/// Same as [`keyword_eq`] but any of a short list of keywords (`break-inside`
+/// accepts both `avoid` and `avoid-column` for the multicol-break purpose).
+fn keyword_in(style: &ComputedStyle, prop: &str, wants: &[&str]) -> bool {
+    style.get(prop).is_some_and(|v| {
+        let t = v.trim();
+        wants.iter().any(|w| t.eq_ignore_ascii_case(w))
+    })
+}
+
 /// The container's content-box height when its CSS `height` is definite, else
 /// `None` for an auto height the balancer resolves from the content.
 fn definite_container_height(bs: &BoxStyle) -> Option<f32> {
@@ -256,12 +314,14 @@ const FRAG_EPS: f32 = 0.5;
 /// Returns the item fragments (galley-absolute) and the content height of the
 /// container.
 ///
-/// PR-C2 adds fragmenting `column-fill: balance` over PR-C1's equal-width
-/// sequential-fill scaffold: a block that would overrun the balanced column
-/// height is split across the column boundary, and a block that cannot fit
-/// inside `used_count` columns opens a new strip at `col_index * (used_width +
-/// gap)` with no upper bound (Chrome's "overflow columns" spill, visible past
-/// the container's own box when `overflow: visible`).
+/// Children with `column-span: all` break the flow: each run of non-span
+/// kids becomes a sub-flow balanced over `used_count` columns, each span-all
+/// kid lays out at the container's full content inline size `cw`, and
+/// successive sub-flows stack below. Within a sub-flow, `break-before:
+/// column` / `break-after: column` force column breaks and `break-inside:
+/// avoid` / `avoid-column` pushes a would-be-fragmented kid to a fresh
+/// column (when it fits in one; a kid taller than `col_h` fragments like
+/// any other block, per CSS Fragmentation 3 §5.2).
 pub(crate) fn layout_multicol(
     container: &LayoutBox,
     kids: &[LayoutBox],
@@ -275,31 +335,181 @@ pub(crate) fn layout_multicol(
         return (Vec::new(), 0.0);
     }
     let fs = bs.font_size;
-    let (used_count, used_width, gap) = resolve_tracks(&container.style, cw, fs);
-    // Pass 1: measure each kid at `used_width` so pass 2 can balance.
-    let measured = measure_kids(kids, used_width, fs, ctx);
-    // Pass 2: balance the column height. `column-fill: balance` (the default)
-    // picks the smallest column height that fits the content in `used_count`
-    // columns — `content_h / used_count` — capped at the container's definite
-    // height, which allows overflow into extra strips beyond `used_count`
-    // (CSS Multicol 1 §7.3 "Pseudo-algorithm").
-    let total: f32 = measured.iter().map(|f| f.height).sum();
+    let tracks = resolve_tracks(&container.style, cw, fs);
     let container_h = definite_container_height(bs);
-    let col_h = balanced_col_height(total, used_count, container_h);
-    // Pass 3: flow measured items into columns in source order, fragmenting a
-    // block whose height would overrun the remaining space in the current
-    // column and opening overflow strips past `used_count` when needed.
-    let mut placed = flow_into_columns(measured, col_h, used_width, gap, cx, cy);
-    // A definite height wins; otherwise the box grows to hold the balanced
-    // column content.
-    let content_h = container_h.unwrap_or(col_h);
-    // `column-rule-*` paints between adjacent columns after the content
-    // (CSS Multicol 1 §5; miaskiewicz/turbo-dom#398 PR-D). Rules are
-    // appended after the content so they paint over any column content
-    // they overlap (`multicol-rule-wider-than-gap`). The rule runs the
-    // balanced column content height, which may be smaller than the
-    // container's definite height — Chrome stops painting a rule at
-    // the end of the column it sits between.
+    let flags: Vec<KidFlags> = kids.iter().map(|k| kid_flags(&k.style)).collect();
+    let segments = partition_segments(&flags);
+    // The container's definite height caps the balanced `col_h` only when
+    // the container has a single sub-flow (no span-all child). A sub-flow
+    // on either side of a span-all balances to its own content — Chrome
+    // leaves the content short in the container rather than stretching
+    // sub-flows to share the container height (visible in
+    // `span-all-simple`'s 120 px of content inside a 400 px container).
+    let single_flow_cap = (segments.len() == 1).then_some(container_h).flatten();
+    let mut placed: Vec<Fragment> = Vec::with_capacity(kids.len());
+    let mut y_cursor: f32 = 0.0;
+    for seg in &segments {
+        let seg_out = lay_out_segment(
+            seg,
+            kids,
+            &flags,
+            container,
+            tracks,
+            cw,
+            cx,
+            cy + y_cursor,
+            fs,
+            single_flow_cap,
+            ctx,
+        );
+        placed.extend(seg_out.fragments);
+        y_cursor += seg_out.advance_y;
+    }
+    // A definite container height wins; otherwise the box grows to hold all
+    // the sub-flows and span-all slabs.
+    let content_h = container_h.unwrap_or(y_cursor);
+    (placed, content_h)
+}
+
+/// A contiguous slice of children the layout handles as one unit: either a
+/// multicol sub-flow (a run of non-span kids balanced over `used_count`
+/// columns) or a single span-all kid that occupies the full content inline
+/// size on its own row.
+enum Segment {
+    /// Indices `[start, end)` in `kids` — a non-span sub-flow.
+    SubFlow { start: usize, end: usize },
+    /// One span-all kid at `index`.
+    Span { index: usize },
+}
+
+/// Split `kids` into alternating sub-flow and span-all segments. A span-all
+/// kid at the very start or end still spawns a zero-width sub-flow around
+/// it — [`lay_out_segment`] short-circuits on an empty range.
+fn partition_segments(flags: &[KidFlags]) -> Vec<Segment> {
+    let mut out: Vec<Segment> = Vec::new();
+    let mut start = 0usize;
+    for (i, f) in flags.iter().enumerate() {
+        if !f.column_span_all {
+            continue;
+        }
+        if i > start {
+            out.push(Segment::SubFlow { start, end: i });
+        }
+        out.push(Segment::Span { index: i });
+        start = i + 1;
+    }
+    if start < flags.len() {
+        out.push(Segment::SubFlow {
+            start,
+            end: flags.len(),
+        });
+    }
+    out
+}
+
+/// One segment's output: the fragments it emits (in galley-absolute space)
+/// and the vertical advance it contributes to `content_h`.
+struct SegmentOut {
+    fragments: Vec<Fragment>,
+    advance_y: f32,
+}
+
+/// Lay out one [`Segment`]: a sub-flow balances its measured kids, flows
+/// them into columns respecting break rules and emits column rules; a
+/// span-all kid lays out at the container's full content inline size and
+/// places at the current y cursor.
+#[allow(clippy::too_many_arguments)]
+fn lay_out_segment(
+    seg: &Segment,
+    kids: &[LayoutBox],
+    flags: &[KidFlags],
+    container: &LayoutBox,
+    (used_count, used_width, gap): (u32, f32, f32),
+    cw: f32,
+    cx: f32,
+    cy: f32,
+    fs: f32,
+    col_h_cap: Option<f32>,
+    ctx: &mut Ctx,
+) -> SegmentOut {
+    match *seg {
+        Segment::SubFlow { start, end } => lay_out_subflow(
+            &kids[start..end],
+            &flags[start..end],
+            container,
+            (used_count, used_width, gap),
+            cx,
+            cy,
+            fs,
+            col_h_cap,
+            ctx,
+        ),
+        Segment::Span { index } => lay_out_span_all(&kids[index], cw, cx, cy, fs, ctx),
+    }
+}
+
+/// Measure one kid at `cb_width` as an isolated BFC. The returned fragment
+/// lives at `(0, 0)` so the caller translates it into place.
+fn measure_kid(kid: &LayoutBox, cb_width: f32, fs: f32, ctx: &mut Ctx) -> Fragment {
+    let kbs = kid.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width,
+    });
+    let kw = block::border_box_width(&kbs, cb_width);
+    block::layout_box_sized_isolated(kid, &kbs, 0.0, 0.0, kw, ctx)
+}
+
+/// Lay out a span-all kid at the container's full content inline size `cw`,
+/// place it at `(cx, cy)` and advance by its measured height.
+fn lay_out_span_all(
+    kid: &LayoutBox,
+    cw: f32,
+    cx: f32,
+    cy: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> SegmentOut {
+    let mut m = measure_kid(kid, cw, fs, ctx);
+    if cx != 0.0 || cy != 0.0 {
+        m.translate(cx, cy);
+    }
+    let advance = m.height;
+    SegmentOut {
+        fragments: vec![m],
+        advance_y: advance,
+    }
+}
+
+/// Lay out one sub-flow: measure each kid at `used_width`, balance `col_h`
+/// so the break-aware flow fits in `used_count` columns, flow, and append
+/// `column-rule-*` fragments for the sub-flow's own column set. `col_h_cap`
+/// caps the balanced height when the container has a definite height and
+/// no span-all; a capped `col_h` smaller than the break-aware minimum
+/// causes overflow into extra strips past `used_count`.
+#[allow(clippy::too_many_arguments)]
+fn lay_out_subflow(
+    kids: &[LayoutBox],
+    flags: &[KidFlags],
+    container: &LayoutBox,
+    (used_count, used_width, gap): (u32, f32, f32),
+    cx: f32,
+    cy: f32,
+    fs: f32,
+    col_h_cap: Option<f32>,
+    ctx: &mut Ctx,
+) -> SegmentOut {
+    if kids.is_empty() {
+        return SegmentOut {
+            fragments: Vec::new(),
+            advance_y: 0.0,
+        };
+    }
+    let measured: Vec<Fragment> = kids
+        .iter()
+        .map(|k| measure_kid(k, used_width, fs, ctx))
+        .collect();
+    let col_h = capped(section_col_h(&measured, flags, used_count), col_h_cap);
+    let mut out = flow_section(measured, flags, col_h, used_width, gap, cx, cy);
     let rules = column_rule_fragments(
         container,
         (cx, cy),
@@ -307,38 +517,114 @@ pub(crate) fn layout_multicol(
         fs,
         col_h,
     );
-    placed.extend(rules);
-    (placed, content_h)
-}
-
-/// Lay out each kid at `(0, 0)` at `used_width` so pass 3 can translate the
-/// resulting fragment into its final column strip. An isolated BFC so floats
-/// inside the kid are contained and compose into the column's inline flow
-/// rather than escaping into the outer multicol container.
-fn measure_kids(kids: &[LayoutBox], used_width: f32, fs: f32, ctx: &mut Ctx) -> Vec<Fragment> {
-    let mut measured: Vec<Fragment> = Vec::with_capacity(kids.len());
-    for kid in kids {
-        let kbs = kid.resolved(ResolveCtx {
-            parent_font_size: fs,
-            cb_width: used_width,
-        });
-        let kw = block::border_box_width(&kbs, used_width);
-        measured.push(block::layout_box_sized_isolated(
-            kid, &kbs, 0.0, 0.0, kw, ctx,
-        ));
+    out.extend(rules);
+    SegmentOut {
+        fragments: out,
+        advance_y: col_h,
     }
-    measured
 }
 
-/// `min(total_content / used_count, definite_height)` with a positive floor so
-/// an auto-height empty container does not drive the flow loop to zero.
-/// `None` for `definite` = auto height, which uses the balanced height straight.
-fn balanced_col_height(total: f32, used_count: u32, definite: Option<f32>) -> f32 {
-    let balance = (total / used_count.max(1) as f32).max(0.0);
-    // `f32::min` over a cap-clamped definite height, so an equivalent `<` /
-    // `<=` branch is not open to a mutant on the boundary where balance meets
-    // the cap (both branches then return the same value).
-    definite.map_or(balance, |def| balance.min(def.max(0.0)))
+/// `min(col_h, cap)` when `cap` is some and positive, else `col_h`. A
+/// capped-below-zero `cap` collapses to zero and overflow absorbs the
+/// content (`fragment_pieces` has the zero-col_h short circuit).
+fn capped(col_h: f32, cap: Option<f32>) -> f32 {
+    cap.map_or(col_h, |c| col_h.min(c.max(0.0)))
+}
+
+/// Smallest `col_h` such that the break-aware flow fits in `used_count`
+/// columns. `column-fill: balance` (the default) picks the minimum — CSS
+/// Multicol 1 §7.3 "Pseudo-algorithm". Without break constraints the
+/// minimum is the plain `total / used_count`; `break-before: column` /
+/// `break-inside: avoid` can raise it (an unbreakable block has to fit in
+/// a single column, and a forced column break splits content into chunks
+/// that each occupy whole columns). A binary search finds it: 30 bisections
+/// give 1 part in a billion, plenty under the harness's 0.5 px tolerance.
+fn section_col_h(measured: &[Fragment], flags: &[KidFlags], used_count: u32) -> f32 {
+    let heights: Vec<f32> = measured.iter().map(|f| f.height).collect();
+    let total: f32 = heights.iter().sum();
+    let max_single = heights.iter().copied().fold(0.0_f32, f32::max);
+    let n = used_count.max(1) as f32;
+    let lo_init = (total / n).max(0.0);
+    // `hi` must be large enough to always fit: a `col_h` of `total + max_single`
+    // trivially fits every kid in column 0 (one column), so it is a valid
+    // upper bound.
+    let hi_init = (total + max_single).max(lo_init);
+    let (mut lo, mut hi) = (lo_init, hi_init);
+    if fits_in_count(&heights, flags, lo, used_count) {
+        return lo;
+    }
+    for _ in 0..30 {
+        let mid = 0.5 * (lo + hi);
+        if fits_in_count(&heights, flags, mid, used_count) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    hi
+}
+
+/// Whether a break-aware flow at `col_h` fits in `used_count` columns.
+/// Walks the kids once, honouring forced column breaks and avoid-column:
+/// break-inside:avoid pushes a would-be-fragmented kid to a fresh column
+/// (when it fits in one); a kid taller than `col_h` fragments like any
+/// other block — "If the fragment does not fit, the user agent may ignore
+/// the value" (CSS Fragmentation 3 §5.2).
+fn fits_in_count(heights: &[f32], flags: &[KidFlags], col_h: f32, used_count: u32) -> bool {
+    if col_h <= 0.0 {
+        return false;
+    }
+    let mut col: u32 = 0;
+    let mut cursor: f32 = 0.0;
+    for (i, h) in heights.iter().enumerate() {
+        let f = flags[i];
+        if f.break_before_column && cursor > 0.0 {
+            col += 1;
+            cursor = 0.0;
+        }
+        if f.break_inside_avoid
+            && *h + FRAG_EPS <= col_h
+            && cursor + *h > col_h + FRAG_EPS
+            && cursor > 0.0
+        {
+            col += 1;
+            cursor = 0.0;
+        }
+        let (c_after, cur_after) = place_in_flow(col, cursor, *h, col_h);
+        col = c_after;
+        cursor = cur_after;
+        if f.break_after_column && (col + 1 < used_count || cursor > 0.0) {
+            col += 1;
+            cursor = 0.0;
+        }
+        if col >= used_count {
+            return false;
+        }
+    }
+    true
+}
+
+/// Return the `(col, cursor)` after placing a `h`-tall block at a given
+/// `(col, cursor)` into columns of `col_h`. A block that fits in the
+/// current column's remaining space advances the cursor; one that overruns
+/// is cut at the boundary and the tail flows into the next column
+/// (fragmentation). A tail that exactly fills a column advances the
+/// cursor to the next one. Shared by [`fits_in_count`] and
+/// [`flow_section`]'s flow (through [`fragment_pieces`]).
+fn place_in_flow(col: u32, cursor: f32, h: f32, col_h: f32) -> (u32, f32) {
+    let mut c = col;
+    let mut cur = cursor;
+    let mut rem = h;
+    if col_h <= 0.0 {
+        return (c, cur + rem);
+    }
+    while rem > (col_h - cur) + FRAG_EPS {
+        let avail = (col_h - cur).max(0.0);
+        rem -= avail;
+        c += 1;
+        cur = 0.0;
+    }
+    (c, cur + rem)
 }
 
 /// One contiguous fragment of a source box inside its column. Measured in the
@@ -353,12 +639,17 @@ struct ColPiece {
     height: f32,
 }
 
-/// Flow the measured kids into column strips. A kid that fits in the current
-/// column's remaining space is placed whole and `col_cursor` advances; a kid
-/// that overruns is cut at the column boundary and the rest flows into the
-/// next one (spawning an overflow strip past `used_count` when needed).
-fn flow_into_columns(
+/// Flow the measured kids into column strips, honouring the per-kid break
+/// rules. A kid that fits in the current column's remaining space is placed
+/// whole and `col_cursor` advances; a kid that overruns is cut at the column
+/// boundary and the rest flows into the next one (spawning an overflow strip
+/// past `used_count` when needed). `break-before: column` forces a new
+/// column at the kid's start, `break-inside: avoid` / `avoid-column` pushes
+/// a kid that would fragment to a fresh column (when it fits in one), and
+/// `break-after: column` forces a new column after the kid.
+fn flow_section(
     measured: Vec<Fragment>,
+    flags: &[KidFlags],
     col_h: f32,
     used_width: f32,
     gap: f32,
@@ -368,11 +659,36 @@ fn flow_into_columns(
     let mut out: Vec<Fragment> = Vec::with_capacity(measured.len());
     let mut col_index: u32 = 0;
     let mut col_cursor: f32 = 0.0;
-    for frag in measured {
+    for (i, frag) in measured.into_iter().enumerate() {
+        let f = flags[i];
+        apply_pre_break(f, col_h, frag.height, &mut col_index, &mut col_cursor);
         let pieces = fragment_pieces(frag.height, col_h, &mut col_index, &mut col_cursor);
         out.push(place_measured(frag, &pieces, used_width, gap, cx, cy));
+        if f.break_after_column {
+            col_index += 1;
+            col_cursor = 0.0;
+        }
     }
     out
+}
+
+/// Apply the forced column break before a kid and the `break-inside: avoid`
+/// push to a fresh column. Shared between the flow and the fitness check so
+/// the two agree on where a column break would occur.
+fn apply_pre_break(f: KidFlags, col_h: f32, h: f32, col_index: &mut u32, col_cursor: &mut f32) {
+    if f.break_before_column && *col_cursor > 0.0 {
+        *col_index += 1;
+        *col_cursor = 0.0;
+    }
+    if f.break_inside_avoid
+        && col_h > 0.0
+        && h + FRAG_EPS <= col_h
+        && *col_cursor + h > col_h + FRAG_EPS
+        && *col_cursor > 0.0
+    {
+        *col_index += 1;
+        *col_cursor = 0.0;
+    }
 }
 
 /// Cut a block of `item_h` into one or more [`ColPiece`]s. The function
@@ -634,20 +950,204 @@ mod tests {
         );
     }
 
+    fn frag(h: f32) -> Fragment {
+        use super::super::fragment::{BorderRadii, FragmentContent, NodeId};
+        use super::super::value::BorderEdges;
+        Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            100.0,
+            h,
+            FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: BorderRadii::ZERO,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn fs_default() -> Vec<KidFlags> {
+        Vec::new()
+    }
+
     #[test]
-    fn balanced_col_height_picks_min_of_balance_and_definite() {
-        // definite caps balance (overflow case).
-        assert!((balanced_col_height(400.0, 2, Some(150.0)) - 150.0).abs() < 1e-5);
-        // balance < definite: use balance (true `column-fill: balance`).
-        assert!((balanced_col_height(330.0, 2, Some(200.0)) - 165.0).abs() < 1e-5);
-        // no definite: balance wins.
-        assert!((balanced_col_height(350.0, 2, None) - 175.0).abs() < 1e-5);
-        // auto height, zero content → zero col height.
-        assert_eq!(balanced_col_height(0.0, 2, None), 0.0);
-        // used_count == 0 is clamped to 1 so a stray style does not div-by-zero.
-        assert!((balanced_col_height(100.0, 0, None) - 100.0).abs() < 1e-5);
-        // Negative definite is clamped at zero.
-        assert_eq!(balanced_col_height(0.0, 2, Some(-10.0)), 0.0);
+    fn section_col_h_without_breaks_matches_plain_balance() {
+        // 4 blocks of 100 across 2 columns: min col_h = 200.
+        let m: Vec<Fragment> = [100.0, 100.0, 100.0, 100.0].into_iter().map(frag).collect();
+        let flags = vec![KidFlags::default(); 4];
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!((col_h - 200.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn section_col_h_grows_for_break_before_column() {
+        // heights=[80,80,80]; i1 has break-before:column; used=2 → col_h≈160
+        // (chrome's reported value, within the fragmenter's `FRAG_EPS`
+        // tolerance since the balancer bisects `fits_in_count`).
+        let m: Vec<Fragment> = [80.0, 80.0, 80.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 3];
+        flags[1].break_before_column = true;
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 160.0).abs() < FRAG_EPS + 1e-4,
+            "col_h = {col_h}, expected within FRAG_EPS of 160"
+        );
+        // The plain balance (240/2 = 120) is strictly below: the forced
+        // break grew col_h.
+        assert!(col_h > 120.0 + FRAG_EPS);
+    }
+
+    #[test]
+    fn section_col_h_grows_for_break_after_column() {
+        // Mirror of break-before: i0 has break-after:column; used=2 → ≈160.
+        let m: Vec<Fragment> = [80.0, 80.0, 80.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 3];
+        flags[0].break_after_column = true;
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 160.0).abs() < FRAG_EPS + 1e-4,
+            "col_h = {col_h}"
+        );
+        assert!(col_h > 120.0 + FRAG_EPS);
+    }
+
+    #[test]
+    fn section_col_h_grows_for_break_inside_avoid() {
+        // heights=[60,60,60]; i1 avoid; used=2 → col_h≈120 (i0+i1 col1).
+        let m: Vec<Fragment> = [60.0, 60.0, 60.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 3];
+        flags[1].break_inside_avoid = true;
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 120.0).abs() < FRAG_EPS + 1e-4,
+            "col_h = {col_h}"
+        );
+        // The plain balance (180/2 = 90) is strictly below: the avoid grew col_h.
+        assert!(col_h > 90.0 + FRAG_EPS);
+    }
+
+    #[test]
+    fn section_col_h_ignores_avoid_when_block_is_taller_than_a_column() {
+        // A 300-high avoid block across 2 columns of 100 each (plain
+        // balance = 150). Chrome fragments it anyway (CSS Fragmentation
+        // 3 §5.2 "may ignore the value"), so the balance stays at 150.
+        let m: Vec<Fragment> = [300.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 1];
+        flags[0].break_inside_avoid = true;
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!((col_h - 150.0).abs() < 0.2);
+    }
+
+    #[test]
+    fn section_col_h_is_zero_for_zero_content() {
+        let m: Vec<Fragment> = Vec::new();
+        let col_h = section_col_h(&m, &fs_default(), 2);
+        assert!(col_h.abs() < 1e-5);
+    }
+
+    #[test]
+    fn capped_min_with_cap_else_passthrough() {
+        assert!((capped(200.0, Some(150.0)) - 150.0).abs() < 1e-5);
+        assert!((capped(100.0, Some(150.0)) - 100.0).abs() < 1e-5);
+        assert!((capped(200.0, None) - 200.0).abs() < 1e-5);
+        // A negative cap clamps to zero.
+        assert_eq!(capped(100.0, Some(-10.0)), 0.0);
+    }
+
+    #[test]
+    fn place_in_flow_advances_within_a_column() {
+        let (c, cur) = place_in_flow(0, 60.0, 40.0, 165.0);
+        assert_eq!(c, 0);
+        assert!((cur - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn place_in_flow_splits_at_column_boundary() {
+        let (c, cur) = place_in_flow(0, 140.0, 40.0, 165.0);
+        // 25 fills col1, 15 lands in col2.
+        assert_eq!(c, 1);
+        assert!((cur - 15.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn place_in_flow_chains_across_several_columns() {
+        let (c, cur) = place_in_flow(0, 0.0, 120.0, 50.0);
+        // 50 + 50 + 20: ends in col 2 at cursor 20.
+        assert_eq!(c, 2);
+        assert!((cur - 20.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn place_in_flow_short_circuits_on_non_positive_col_height() {
+        let (c, cur) = place_in_flow(3, 10.0, 40.0, 0.0);
+        assert_eq!(c, 3);
+        assert!((cur - 50.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn partition_segments_handles_leading_and_trailing_and_adjacent_spans() {
+        // Leading span, interior run, two adjacent spans, trailing run.
+        let flags = vec![
+            KidFlags { column_span_all: true, ..KidFlags::default() },
+            KidFlags::default(),
+            KidFlags::default(),
+            KidFlags { column_span_all: true, ..KidFlags::default() },
+            KidFlags { column_span_all: true, ..KidFlags::default() },
+            KidFlags::default(),
+        ];
+        let segs = partition_segments(&flags);
+        // Expect: Span(0), SubFlow(1..3), Span(3), Span(4), SubFlow(5..6).
+        assert_eq!(segs.len(), 5);
+        assert!(matches!(segs[0], Segment::Span { index: 0 }));
+        assert!(matches!(
+            segs[1],
+            Segment::SubFlow { start: 1, end: 3 }
+        ));
+        assert!(matches!(segs[2], Segment::Span { index: 3 }));
+        assert!(matches!(segs[3], Segment::Span { index: 4 }));
+        assert!(matches!(
+            segs[4],
+            Segment::SubFlow { start: 5, end: 6 }
+        ));
+    }
+
+    #[test]
+    fn kid_flags_reads_all_four_properties_case_insensitively() {
+        let f = kid_flags(&cs(&[
+            ("column-span", "  ALL  "),
+            ("break-before", "Column"),
+            ("break-after", "  column "),
+            ("break-inside", "AVOID-COLUMN"),
+        ]));
+        assert!(f.column_span_all);
+        assert!(f.break_before_column);
+        assert!(f.break_after_column);
+        assert!(f.break_inside_avoid);
+    }
+
+    #[test]
+    fn kid_flags_rejects_unrelated_keywords() {
+        // `break-before: page` / `avoid-page` / `avoid` are not a column
+        // break (pagination's concern) — PR-E ignores them so they stay
+        // no-ops here.
+        let f = kid_flags(&cs(&[
+            ("column-span", "none"),
+            ("break-before", "page"),
+            ("break-after", "avoid-page"),
+            ("break-inside", "avoid-page"),
+        ]));
+        assert!(!f.column_span_all);
+        assert!(!f.break_before_column);
+        assert!(!f.break_after_column);
+        assert!(!f.break_inside_avoid);
+        // `break-inside: avoid` is also a column-break-avoid (same for
+        // multicol as `avoid-column`).
+        let f = kid_flags(&cs(&[("break-inside", "avoid")]));
+        assert!(f.break_inside_avoid);
     }
 
     #[test]

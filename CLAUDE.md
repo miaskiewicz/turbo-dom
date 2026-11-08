@@ -269,7 +269,21 @@ package or publish workflow.
   column content height; `currentcolor` resolves to the container's `color`. Painted
   by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` / `double`
   (raster `multicol_rule_chrome156.json`); `groove` / `ridge` / `inset` / `outset` are
-  deferred. `column-span: all` and `break-{before,after,inside}` honouring are PR-E.
+  deferred. Since turbo-dom#398 PR-E a child with `column-span: all` breaks the
+  flow: pre-span and post-span runs each become their own sub-flow balanced
+  over `used_count` columns, and the span-all child places at the
+  container's full content inline size (CSS Multicol 1 §6). `break-before:
+  column` / `break-after: column` force a column break; `break-inside: avoid`
+  / `avoid-column` pushes a child that would fragment into a fresh column
+  (when it fits in one — CSS Fragmentation 3 §5.2 "may ignore the value"
+  otherwise). `page` / `avoid-page` are pagination's concern (turbo-html2pdf)
+  and stay no-ops here. The balancer becomes a 30-step binary search for the
+  smallest `col_h` at which the break-aware flow fits in `used_count` columns,
+  capped by the container's definite height (a capped `col_h` smaller than
+  the break-aware minimum accepts overflow strips past `used_count`). Six
+  new Chrome 156 cases cover it: `span-all-simple`, `span-all-balance`,
+  `break-before-column`, `break-after-column`, `break-inside-avoid`,
+  `break-inside-avoid-fits-anyway`.
   The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
