@@ -790,6 +790,74 @@ mod tests {
         }
     }
 
+    fn container(pairs: &[(&str, &str)]) -> LayoutBox {
+        super::super::boxgen::anonymous_box(
+            super::super::fragment::NodeId(0),
+            cs(pairs),
+            super::super::boxgen::BoxKind::Block(Vec::new()),
+        )
+    }
+
+    #[test]
+    fn column_rule_fragments_emits_one_per_gap_with_declared_width() {
+        // Three columns, non-zero gap, a solid 2px rule centered in each gap.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-width", "2px"),
+            ("column-rule-color", "#ff0000"),
+        ]);
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0);
+        assert_eq!(fr.len(), 2);
+        // Rule 0 centered at cx + 1*width + 0.5*gap = 0 + 200 + 10 = 210 ± 1.
+        assert!((fr[0].x - 209.0).abs() < 1e-5); // 210 - 2/2
+        assert!((fr[0].y - 0.0).abs() < 1e-5);
+        assert!((fr[0].width - 2.0).abs() < 1e-5);
+        assert!((fr[0].height - 300.0).abs() < 1e-5);
+        // Rule 1 centered at cx + 2*width + 1.5*gap = 0 + 400 + 30 = 430 ± 1.
+        assert!((fr[1].x - 429.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn column_rule_fragments_declines_single_column_or_zero_gap_or_height() {
+        let c = container(&[("column-rule-style", "solid")]);
+        // Single column -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // Zero gap -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 16.0, 300.0).is_empty());
+        // Non-positive col height -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 0.0).is_empty());
+    }
+
+    #[test]
+    fn column_rule_fragments_declines_unpaintable_style_or_zero_width_or_transparent_color() {
+        // style unset (`none`) -> no rules.
+        let c = container(&[]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // declared width 0 -> no rules.
+        let c = container(&[("column-rule-style", "solid"), ("column-rule-width", "0px")]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // Fully transparent colour -> no rules.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-color", "rgba(0,0,0,0)"),
+        ]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+    }
+
+    #[test]
+    fn column_rule_fragments_clamps_width_to_the_gap() {
+        // Declared 10px rule into a 4px gap: rule stays centered, truncated to 4px.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-width", "10px"),
+        ]);
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (2, 100.0, 4.0), 16.0, 50.0);
+        assert_eq!(fr.len(), 1);
+        assert!((fr[0].width - 4.0).abs() < 1e-5);
+        // Center of the gap at x=100 + 0.5*4 = 102, left edge at 102 - 2 = 100.
+        assert!((fr[0].x - 100.0).abs() < 1e-5);
+    }
+
     #[test]
     fn parse_rule_color_resolves_currentcolor_and_explicit() {
         let c = parse_rule_color(&cs(&[("color", "#f00")]));
