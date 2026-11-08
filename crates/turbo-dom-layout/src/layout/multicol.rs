@@ -752,10 +752,11 @@ fn fragment_pieces(
 /// the measured fragment moves whole; a fragmented block collapses into one
 /// Fragment whose rectangle is the UNION of its column fragments (Chrome's
 /// `getBoundingClientRect()` on a block that split across the column gap).
-/// PR-C2's fragmenter loses the per-column paint for a fragmented block (the
-/// union Fragment paints its background once across the gap) — PR-E owns the
-/// per-column paint, and no case in the Chrome 156 oracle paints a
-/// fragmented block's background.
+/// The fragmenter loses the per-column paint for a fragmented block — the
+/// union Fragment paints its background once across the gap. A per-column
+/// paint of a fragmented block is a future followup; no case in the Chrome
+/// 156 oracle paints a fragmented block's background, so PR-C2 / PR-E both
+/// pass with the union rect.
 fn place_measured(
     mut measured: Fragment,
     pieces: &[ColPiece],
@@ -791,7 +792,8 @@ fn place_measured(
     // the block is fragmented across strips the union box cannot host them
     // sensibly (they would paint off their column). Clearing them also keeps
     // `collect_boxes` from re-emitting a now-invalid per-column cid under the
-    // union rect. PR-E restores the per-column paint.
+    // union rect. A per-column paint of a fragmented block is a future
+    // followup (no Chrome 156 oracle case needs it yet).
     measured.children.clear();
     measured
 }
@@ -1284,7 +1286,7 @@ mod tests {
         // Default (unset) is `none` and returns None (no rule painted).
         assert_eq!(parse_rule_style(&cs(&[])), None);
         // Deferred keywords (`groove` / `ridge` / `inset` / `outset`) and
-        // `hidden` all come back as `None` until PR-E picks them up.
+        // `hidden` all come back as `None` (miaskiewicz/turbo-dom#419).
         for k in ["hidden", "groove", "ridge", "inset", "outset", "wat"] {
             assert_eq!(parse_rule_style(&cs(&[("column-rule-style", k)])), None);
         }
