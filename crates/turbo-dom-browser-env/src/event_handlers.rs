@@ -155,8 +155,7 @@ pub(super) fn record_set_phase(scope: &mut v8::PinScope, node: Handle, name: &st
         let document = wrap(scope, root);
         let callback = dom_ownership::local(scope, &policy);
         let kind = v8::String::new(scope, "script-src-attr").unwrap();
-        if let Some(code) = v8::String::new_from_two_byte(scope, &text, v8::NewStringType::Normal)
-        {
+        if let Some(code) = v8::String::new_from_two_byte(scope, &text, v8::NewStringType::Normal) {
             let receiver = v8::undefined(scope);
             let _ = callback.call(
                 scope,
