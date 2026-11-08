@@ -681,4 +681,49 @@ mod tests {
         }
         assert!(weak.is_empty());
     }
+
+    /// turbo-dom#401: a prior cross-origin iframe's script left a watchdog termination
+    /// pending on the isolate. The host's host-authorization install is a private-field
+    /// mutation that does not run guest JS, so it must still succeed; otherwise the
+    /// consumer (turbo-surf#248) throws "native Trusted Types authorization
+    /// initialization interrupted" and the whole frame bootstrap aborts.
+    #[test]
+    fn install_policy_succeeds_while_a_prior_frames_termination_is_pending() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body>");
+        fn authorize(
+            _: &mut v8::PinScope,
+            _: v8::FunctionCallbackArguments,
+            mut result: v8::ReturnValue,
+        ) {
+            result.set_bool(true);
+        }
+        let callback = v8::Function::new(scope, ext!(FunctionCallback, authorize)).unwrap();
+        // A pending termination stays observable only while a TryCatch is on the stack.
+        v8::tc_scope!(let scope, scope);
+        // A watchdog terminated a prior frame's script; the request is pending on this
+        // isolate. install_trusted_types_policy must not treat the pending termination
+        // as a reason to abort — it mutates a V8 private field, it does not run guest JS.
+        let code = v8::String::new(scope, "0").unwrap();
+        let script = v8::Script::compile(scope, code, None).unwrap();
+        scope.terminate_execution();
+        assert!(script.run(scope).is_none());
+        assert!(scope.is_execution_terminating());
+        assert!(install_trusted_types_policy(scope, callback));
+        // And when the embedder clears the watchdog, the installed callback is live:
+        // the next createPolicy consults it (returns true → allowed).
+        scope.cancel_terminate_execution();
+        assert!(
+            eval(
+                scope,
+                "trustedTypes.createPolicy('x',{createHTML:s=>s}).createHTML('t') instanceof TrustedHTML"
+            )
+            .is_true()
+        );
+        reset();
+    }
 }
