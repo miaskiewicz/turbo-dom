@@ -100,8 +100,26 @@ pub enum Display {
     Table,
     TableRow,
     TableCell,
+    /// `table-row-group`: a `<tbody>`'s box, grouping its rows between a
+    /// `<thead>` and a `<tfoot>` without a fragment of its own. Honest
+    /// counterpart to [`Display::TableHeaderGroup`] / [`Display::TableFooterGroup`]
+    /// so `html_default_display`'s `"table-row-group"` fallback lands on a
+    /// distinct variant instead of silently falling through to
+    /// [`Display::Block`] (Review R2 layout H2).
+    TableRowGroup,
     TableHeaderGroup,
     TableFooterGroup,
+    /// `table-column-group`: a `<colgroup>`'s box, describing a run of
+    /// columns for intrinsic sizing (CSS 2.1 §17.2 / CSS Tables 3). The
+    /// current layout keeps `<colgroup>` out of row-group flow; the
+    /// variant exists so the Chrome keyword maps to its own value instead
+    /// of falling through to [`Display::Block`] (Review R2 layout H2;
+    /// column widths are turbo-dom#419 follow-up).
+    TableColumnGroup,
+    /// `table-column`: a `<col>`'s box, holding width/style for one column
+    /// of its parent `<colgroup>` / `<table>`. Follows the same shape as
+    /// `TableColumnGroup`.
+    TableColumn,
     /// `table-caption`: a caption of its parent table, laid out in the table wrapper box
     /// above or below the grid (miaskiewicz/turbo-dom#51); a block anywhere else.
     TableCaption,
@@ -926,8 +944,11 @@ fn blockified(display: Display) -> Display {
         | Display::InlineBlock
         | Display::TableRow
         | Display::TableCell
+        | Display::TableRowGroup
         | Display::TableHeaderGroup
         | Display::TableFooterGroup
+        | Display::TableColumnGroup
+        | Display::TableColumn
         | Display::TableCaption => Display::Block,
         other => other,
     }
@@ -952,8 +973,11 @@ fn specified_display(s: &ComputedStyle) -> Display {
         "inline-table" => Display::InlineTable,
         "table-row" => Display::TableRow,
         "table-cell" => Display::TableCell,
+        "table-row-group" => Display::TableRowGroup,
         "table-header-group" => Display::TableHeaderGroup,
         "table-footer-group" => Display::TableFooterGroup,
+        "table-column-group" => Display::TableColumnGroup,
+        "table-column" => Display::TableColumn,
         "table-caption" => Display::TableCaption,
         "list-item" => Display::ListItem,
         _ => Display::Block,
