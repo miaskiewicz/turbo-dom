@@ -153,7 +153,7 @@ fn parse_rule_width(s: &ComputedStyle, fs: f32) -> f32 {
 
 /// The used `column-rule-style` as one of the four [`ColumnRuleStyle`] variants
 /// this PR paints, or `None` for `none` / `hidden` / an unsupported keyword
-/// (`groove` / `ridge` / `inset` / `outset`: deferred, miaskiewicz/turbo-dom#415).
+/// (`groove` / `ridge` / `inset` / `outset`: deferred, miaskiewicz/turbo-dom#419).
 fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
     match s.get("column-rule-style").map_or("none", str::trim) {
         "solid" => Some(ColumnRuleStyle::Solid),

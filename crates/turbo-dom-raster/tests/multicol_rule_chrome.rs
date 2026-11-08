@@ -2,16 +2,16 @@
 //! (miaskiewicz/turbo-dom#398 PR-D).
 //!
 //! The fixture `tests/fixtures/multicol_rule_chrome156.json` (captured by
-//! `scripts/multicol-rule-chrome-control.mjs`) lists five `column-rule-*`
+//! `scripts/multicol-rule-chrome-control.mjs`) lists seven `column-rule-*`
 //! cases, each with a page rendered over the cyan backdrop and probe points
 //! whose colour class (`R`/`G`/`B`/`Y`/`W`/`T`/`?`) and raw RGB Chrome 156
 //! records. Each case is screenshot here (PNG and SVG, the latter rasterized
 //! through resvg) and the probes compared with the same tolerance the rest of
 //! the paint tests use (`paint_chrome.rs` `probe_difference` contract).
 //!
-//! Styles covered: `none`, `solid`, `dotted`, `dashed` (filed as a follow-up
-//! case in miaskiewicz/turbo-dom#416), `double`. The `groove` / `ridge` /
-//! `inset` / `outset` family is deferred to miaskiewicz/turbo-dom#415.
+//! Styles covered: `none`, `solid`, `dotted`, `dashed`, `double`, plus
+//! `currentcolor` colour and a gap-clamp case. The `groove` / `ridge` /
+//! `inset` / `outset` family is deferred to miaskiewicz/turbo-dom#419.
 use std::collections::HashSet;
 
 use turbo_dom_raster::{screenshot_png_with_opts, screenshot_svg_with_opts, ImageAssets, Viewport};
@@ -165,7 +165,7 @@ fn solid_column_rules_paint_like_chrome_156() {
 
 /// `column-rule-style: dotted` stamps a dot of diameter `column-rule-width`
 /// at the rule top in both painters (Chrome's exact dot phase past the first
-/// dot is captured outside PR-D; follow-up miaskiewicz/turbo-dom#417).
+/// dot is a Blink LayoutUnit arithmetic detail outside PR-D's scope).
 #[test]
 fn dotted_column_rules_paint_like_chrome_156() {
     let pick = |id: &str| id == "multicol-rule-dotted-3col";

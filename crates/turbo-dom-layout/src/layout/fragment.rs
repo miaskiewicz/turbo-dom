@@ -122,7 +122,7 @@ pub enum FragmentContent {
 
 /// A supported `column-rule-style` keyword (CSS Multicol 1 §5.2;
 /// miaskiewicz/turbo-dom#398 PR-D). The `groove` / `ridge` / `inset` / `outset`
-/// family is tracked separately (miaskiewicz/turbo-dom#415): a style fragment
+/// family is tracked separately (miaskiewicz/turbo-dom#419): a style fragment
 /// is emitted only for the keywords this enum lists, so the painter never sees
 /// one it cannot draw.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
