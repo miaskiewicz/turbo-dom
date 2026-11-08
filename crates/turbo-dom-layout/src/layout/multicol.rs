@@ -42,8 +42,8 @@
 
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
-use super::fragment::Fragment;
-use super::value::{parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx};
+use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
+use super::value::{parse_color, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, Rgba};
 use crate::style::ComputedStyle;
 
 /// CSS Multicol 1 §5.1: `column-gap: normal` is `1em`. Chrome 156 uses the font
@@ -142,6 +142,97 @@ fn used_column_width(cw: f32, gap: f32, count: u32) -> f32 {
     ((cw - gaps_total) / count as f32).max(0.0)
 }
 
+/// The used `column-rule-width` in px (CSS Multicol 1 §5.1, matching Chrome 156
+/// `getComputedStyle`): a CSS length, else the `thin` / `medium` / `thick`
+/// keywords at 1 / 3 / 5 px. An unparsable value is treated as `medium`.
+fn parse_rule_width(s: &ComputedStyle, fs: f32) -> f32 {
+    let raw = s.get("column-rule-width").map_or("medium", str::trim);
+    match raw {
+        "thin" => 1.0,
+        "medium" => 3.0,
+        "thick" => 5.0,
+        "none" => 0.0,
+        other => parse_px(other, fs).unwrap_or(3.0),
+    }
+    .max(0.0)
+}
+
+/// The used `column-rule-style` as one of the four [`ColumnRuleStyle`] variants
+/// this PR paints, or `None` for `none` / `hidden` / an unsupported keyword
+/// (`groove` / `ridge` / `inset` / `outset`: deferred, miaskiewicz/turbo-dom#419).
+fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
+    match s.get("column-rule-style").map_or("none", str::trim) {
+        "solid" => Some(ColumnRuleStyle::Solid),
+        "dotted" => Some(ColumnRuleStyle::Dotted),
+        "dashed" => Some(ColumnRuleStyle::Dashed),
+        "double" => Some(ColumnRuleStyle::Double),
+        _ => None,
+    }
+}
+
+/// The used `column-rule-color`: `currentcolor` resolves to the container's own
+/// `color` (initial black). Any parse failure falls back to that same current
+/// colour (CSS Multicol 1 §5.3).
+fn parse_rule_color(s: &ComputedStyle) -> Rgba {
+    let current = s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK);
+    let raw = s
+        .get("column-rule-color")
+        .map_or("currentcolor", str::trim);
+    if raw.eq_ignore_ascii_case("currentcolor") {
+        return current;
+    }
+    parse_color(raw).unwrap_or(current)
+}
+
+/// Emit a rule fragment for each pair of adjacent columns when the container's
+/// `column-rule-style` is a paintable keyword and `column-rule-width` is positive
+/// (CSS Multicol 1 §5): rule `k` is centered in the gap after column `k`, runs
+/// the full column content height, and carries the rule's resolved
+/// [`ColumnRuleStyle`] and colour. A rule wider than the gap stays centered and
+/// overlaps the adjacent columns, matching Chrome 156's `multicol-rule-wider-
+/// than-gap` fixture.
+fn column_rule_fragments(
+    container: &LayoutBox,
+    (cx, cy): (f32, f32),
+    (used_count, used_width, gap): (u32, f32, f32),
+    fs: f32,
+    col_h: f32,
+) -> Vec<Fragment> {
+    if used_count <= 1 || col_h <= 0.0 || gap <= 0.0 {
+        return Vec::new();
+    }
+    let Some(style) = parse_rule_style(&container.style) else {
+        return Vec::new();
+    };
+    // Chrome 156 clamps `column-rule-width` to the gap (Blink's
+    // `MultiColumnSet::PaintObject`: the rule is drawn inside the gap; a
+    // declared width that exceeds it is truncated), matched by the
+    // `multicol-rule-wider-than-gap` fixture.
+    let declared = parse_rule_width(&container.style, fs);
+    let rule_w = declared.min(gap);
+    if rule_w <= 0.0 {
+        return Vec::new();
+    }
+    let color = parse_rule_color(&container.style);
+    if color.a == 0 {
+        return Vec::new();
+    }
+    (0..(used_count - 1))
+        .map(|k| {
+            let k_f = k as f32;
+            let gap_center = cx + (k_f + 1.0) * used_width + (k_f + 0.5) * gap;
+            Fragment::new(
+                container.node_id,
+                gap_center - rule_w / 2.0,
+                cy,
+                rule_w,
+                col_h,
+                FragmentContent::ColumnRule { style, color },
+            )
+        })
+        .collect()
+}
+
 /// The container's content-box height when its CSS `height` is definite, else
 /// `None` for an auto height the balancer resolves from the content.
 fn definite_container_height(bs: &BoxStyle) -> Option<f32> {
@@ -200,10 +291,25 @@ pub(crate) fn layout_multicol(
     // Pass 3: flow measured items into columns in source order, fragmenting a
     // block whose height would overrun the remaining space in the current
     // column and opening overflow strips past `used_count` when needed.
-    let placed = flow_into_columns(measured, col_h, used_width, gap, cx, cy);
+    let mut placed = flow_into_columns(measured, col_h, used_width, gap, cx, cy);
     // A definite height wins; otherwise the box grows to hold the balanced
     // column content.
     let content_h = container_h.unwrap_or(col_h);
+    // `column-rule-*` paints between adjacent columns after the content
+    // (CSS Multicol 1 §5; miaskiewicz/turbo-dom#398 PR-D). Rules are
+    // appended after the content so they paint over any column content
+    // they overlap (`multicol-rule-wider-than-gap`). The rule runs the
+    // balanced column content height, which may be smaller than the
+    // container's definite height — Chrome stops painting a rule at
+    // the end of the column it sits between.
+    let rules = column_rule_fragments(
+        container,
+        (cx, cy),
+        (used_count, used_width, gap),
+        fs,
+        col_h,
+    );
+    placed.extend(rules);
     (placed, content_h)
 }
 

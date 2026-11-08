@@ -9,8 +9,8 @@ use std::fmt::Write;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
-    PositionedGlyph, Rgba, TilePattern,
+    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
+    LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
@@ -228,9 +228,76 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
         }
         FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
         FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
+        FragmentContent::ColumnRule { style, color } => paint_column_rule(svg, f, *style, *color),
         FragmentContent::Marker(_) => {}
     }
     paint_children(svg, f, images);
+}
+
+/// Paint a multicol `column-rule` fragment (`FragmentContent::ColumnRule`;
+/// miaskiewicz/turbo-dom#398 PR-D). The SVG geometry matches the raster
+/// painter's — solid is the whole rect, dotted stamps circles of diameter
+/// `width`, dashed stamps dashes `2 * width` long, double paints two edge
+/// bands of `floor(width / 3)` thickness.
+fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    match style {
+        ColumnRuleStyle::Solid => rect(svg, f.x, f.y, f.width, f.height, color),
+        ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
+        ColumnRuleStyle::Dashed => paint_dashed_rule(svg, f, color),
+        ColumnRuleStyle::Double => paint_double_rule(svg, f, color),
+    }
+}
+
+fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    let diameter = f.width;
+    let radius = diameter / 2.0;
+    let cx = f.x + radius;
+    let period = 2.0 * diameter;
+    if period <= 0.0 {
+        return;
+    }
+    let mut cy = f.y + radius;
+    let end = f.y + f.height;
+    while cy - radius < end {
+        let _ = writeln!(
+            svg,
+            "<circle cx=\"{cx:.2}\" cy=\"{cy:.2}\" r=\"{radius:.2}\" {}/>",
+            fill_attrs(color)
+        );
+        cy += period;
+    }
+}
+
+fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    let width = f.width;
+    let dash = 2.0 * width;
+    let gap = width;
+    let period = dash + gap;
+    if period <= 0.0 {
+        return;
+    }
+    let end = f.y + f.height;
+    let mut dash_top = f.y;
+    while dash_top < end {
+        let dash_h = dash.min(end - dash_top);
+        if dash_h > 0.0 {
+            rect(svg, f.x, dash_top, width, dash_h, color);
+        }
+        dash_top += period;
+    }
+}
+
+fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    if f.width < 3.0 {
+        rect(svg, f.x, f.y, f.width, f.height, color);
+        return;
+    }
+    let band = (f.width / 3.0).floor().max(1.0);
+    rect(svg, f.x, f.y, band, f.height, color);
+    rect(svg, f.x + f.width - band, f.y, band, f.height, color);
 }
 
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.

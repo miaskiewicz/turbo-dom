@@ -125,7 +125,10 @@ fn kind(content: &FragmentContent) -> GeometryKind {
         // A background layer's tiles paint an image (or gradient) across their box.
         FragmentContent::Image(_) | FragmentContent::Tiles(_) => GeometryKind::ImagePaint,
         FragmentContent::TextLine { .. } => GeometryKind::TextLineContainer,
-        FragmentContent::Marker(_) => GeometryKind::Marker,
+        // A column rule is a multicol decoration with no source element of its own
+        // (miaskiewicz/turbo-dom#398 PR-D). Treated like a marker here so geometry
+        // queries never return it.
+        FragmentContent::Marker(_) | FragmentContent::ColumnRule { .. } => GeometryKind::Marker,
     }
 }
 
