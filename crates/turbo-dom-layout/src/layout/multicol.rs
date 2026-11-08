@@ -539,20 +539,37 @@ fn capped(col_h: f32, cap: Option<f32>) -> f32 {
 /// `break-inside: avoid` can raise it (an unbreakable block has to fit in
 /// a single column, and a forced column break splits content into chunks
 /// that each occupy whole columns). A binary search finds it: 30 bisections
-/// give 1 part in a billion, plenty under the harness's 0.5 px tolerance.
+/// give 1 part in a billion, plenty under the harness's 0.1 px tolerance.
+///
+/// Unsatisfiable break constraints — e.g. `used_count + 1` kids each with
+/// `break-before: column`, where every kid opens a new column so
+/// `fits_in_count` returns false regardless of `col_h` — fall back to the
+/// plain `total / used_count`. CSS Fragmentation 3 §5.2 lets the UA ignore
+/// break values that cannot be satisfied; returning the plain balance keeps
+/// overflow strips at the regular column stride instead of a phantom
+/// `total + max_single` height that the rule painter would draw through.
 fn section_col_h(measured: &[Fragment], flags: &[KidFlags], used_count: u32) -> f32 {
     let heights: Vec<f32> = measured.iter().map(|f| f.height).collect();
     let total: f32 = heights.iter().sum();
     let max_single = heights.iter().copied().fold(0.0_f32, f32::max);
     let n = used_count.max(1) as f32;
     let lo_init = (total / n).max(0.0);
-    // `hi` must be large enough to always fit: a `col_h` of `total + max_single`
-    // trivially fits every kid in column 0 (one column), so it is a valid
-    // upper bound.
+    // `hi` must be large enough to always fit WHEN the break constraints
+    // are satisfiable: a `col_h` of `total + max_single` trivially fits
+    // every kid in column 0 (one column), which honours every `break-*`
+    // flag by definition. If `used_count == 1` the search is unnecessary —
+    // the single-column fit is the smallest `col_h`.
     let hi_init = (total + max_single).max(lo_init);
     let (mut lo, mut hi) = (lo_init, hi_init);
     if fits_in_count(&heights, flags, lo, used_count) {
         return lo;
+    }
+    if !fits_in_count(&heights, flags, hi, used_count) {
+        // Unsatisfiable: no `col_h` lets the break-aware flow fit in
+        // `used_count` columns. The spec lets the UA ignore the values;
+        // fall back to the plain balance so overflow lines up with the
+        // regular column stride.
+        return lo_init;
     }
     for _ in 0..30 {
         let mid = 0.5 * (lo + hi);
