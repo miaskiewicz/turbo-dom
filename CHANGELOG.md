@@ -57,6 +57,7 @@ at the time); this file reconstructs them from history.
   but BEFORE the embedder executes any parser inline `<script>`. Unblocks
   turbo-surf#240, where `page.route`'s `fetch`/`XMLHttpRequest` monkey-patch was
   previously beaten by parse-time inline-script fetches.
+- **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
 
 ## [0.8.0] — 2026-11-06
 
