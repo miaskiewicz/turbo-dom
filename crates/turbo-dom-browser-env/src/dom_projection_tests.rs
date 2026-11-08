@@ -209,3 +209,43 @@ fn html_namespace_local_names_and_foreign_control_brands_match_chrome() {
     }
     reset();
 }
+
+/// miaskiewicz/turbo-dom#396: the canvas fillStyle / strokeStyle paint-set runs after page
+/// JS and must not look up the page's `WeakSet.prototype.add` / `.has` (turbo-surf#87 /
+/// turbo-dom#172 intrinsic-capture contract). A hostile page replaces every configurable
+/// prototype method with a thrower; the bootstrap's own paint-brand bookkeeping has to use
+/// the natives it captured at install time.
+#[test]
+fn canvas_paint_bookkeeping_does_not_call_page_replaced_weakset_members() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><body></body>");
+    let code = v8::String::new(scope, r#"(()=>{
+      const canvas=document.createElement('canvas');document.body.appendChild(canvas);
+      const ctx=canvas.getContext('2d');
+      const originals=[WeakSet.prototype.has,WeakSet.prototype.add];
+      let hooks=0;const poison=function(){hooks++;throw Error('patched WeakSet');};
+      let gradient,pattern;
+      try {
+        WeakSet.prototype.has=poison;WeakSet.prototype.add=poison;
+        gradient=ctx.createLinearGradient(0,0,1,1);
+        pattern=ctx.createPattern(canvas,'repeat');
+        ctx.fillStyle=gradient;
+        ctx.strokeStyle=pattern;
+      } finally {
+        WeakSet.prototype.has=originals[0];WeakSet.prototype.add=originals[1];
+      }
+      if(hooks!==0)throw Error('page hooks ran '+hooks);
+      if(ctx.fillStyle!==gradient||ctx.strokeStyle!==pattern)throw Error('paint not retained');
+      return 'ok';
+    })()"#).unwrap();
+    v8::tc_scope!(let catch, scope);
+    let result = v8::Script::compile(catch, code, None)
+        .and_then(|script| script.run(catch))
+        .unwrap_or_else(|| panic!("{}", catch.exception().unwrap().to_rust_string_lossy(catch)));
+    assert_eq!(result.to_rust_string_lossy(catch), "ok");
+    reset();
+}
