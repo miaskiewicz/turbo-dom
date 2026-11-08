@@ -699,6 +699,52 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
     }
 }
 
+/// Review R2 layout H1: Chrome's UA has `input[type=hidden] { display: none }`.
+/// ensure_default_display is tag-only and gave every `<input>` `inline-block`,
+/// so a surf-level `<input type=hidden>` under the live-input path (no UA
+/// origin) rendered its default text-field box. Honour the attribute.
+#[test]
+fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
+    use crate::layout::value::{display_of, Display};
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <input id=plain style='padding:0;border:0'>\
+         <input id=hidden type=hidden>\
+         <input id=hidden_mixed TYPE='Hidden'>\
+         <input id=text type=text>\
+         </body>",
+    );
+    let targets: Vec<Handle> = ["plain", "hidden", "hidden_mixed", "text"]
+        .iter()
+        .map(|id| styled.el(id))
+        .collect();
+    let (_, styles) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                out.push(find(nodes, *h).unwrap().style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    assert_eq!(display_of(&styles[0]), Display::InlineBlock, "input: plain");
+    assert_eq!(
+        display_of(&styles[1]),
+        Display::None,
+        "input[type=hidden]: display must be none"
+    );
+    assert_eq!(
+        display_of(&styles[2]),
+        Display::None,
+        "input[TYPE=Hidden]: attribute match is case-insensitive"
+    );
+    assert_eq!(
+        display_of(&styles[3]),
+        Display::InlineBlock,
+        "input[type=text]: unchanged"
+    );
+}
+
 #[test]
 fn snapshot_errors_pass_through() {
     let styled = Styled::new("<body></body>");
