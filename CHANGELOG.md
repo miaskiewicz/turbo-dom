@@ -5,6 +5,18 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: host install of a Trusted Types authorization callback
+  no longer aborts when a prior frame's script left a watchdog termination pending
+  on the isolate (miaskiewicz/turbo-dom#401). The install is a V8 private-field
+  write — it does not run guest JS, so the cached private-key slot is now consulted
+  before the termination check in `trusted_types::key`. Fixes the flaky
+  cross-origin iframe bootstrap surf saw under load as "native Trusted Types
+  authorization initialization interrupted" (miaskiewicz/turbo-surf#248).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

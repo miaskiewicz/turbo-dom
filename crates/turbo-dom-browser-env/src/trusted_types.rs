@@ -4,11 +4,16 @@ use super::*;
 struct RecordKey(v8::Global<v8::Private>);
 
 fn key<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Private>> {
-    if scope.is_execution_terminating() {
-        return None;
-    }
+    // The cached key is a V8 primitive handle — reading the slot does not run guest JS,
+    // so a pending termination (turbo-dom#401: left by a prior frame's watchdog) must not
+    // deny it to host-only paths like trusted-types authorization install, which likewise
+    // only mutate V8 private fields. Fresh-key allocation goes through v8::String::new,
+    // which can fail while terminating; that path is skipped in that case as before.
     if let Some(key) = scope.get_slot::<std::rc::Rc<RecordKey>>().cloned() {
         return Some(v8::Local::new(scope, &key.0));
+    }
+    if scope.is_execution_terminating() {
+        return None;
     }
     let name = v8::String::new(scope, "turbo.trusted-types.record")?;
     let key = v8::Private::for_api(scope, Some(name));
