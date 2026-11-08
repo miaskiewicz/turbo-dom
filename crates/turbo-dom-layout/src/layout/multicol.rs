@@ -196,9 +196,10 @@ fn parse_rule_color(s: &ComputedStyle) -> Rgba {
 /// `column-rule-style` is a paintable keyword and `column-rule-width` is positive
 /// (CSS Multicol 1 §5): rule `k` is centered in the gap after column `k`, runs
 /// the full column content height, and carries the rule's resolved
-/// [`ColumnRuleStyle`] and colour. A rule wider than the gap stays centered and
-/// overlaps the adjacent columns, matching Chrome 156's `multicol-rule-wider-
-/// than-gap` fixture.
+/// [`ColumnRuleStyle`] and colour. A rule wider than the gap is clamped to the
+/// gap (Blink's `MultiColumnSet::PaintObject` — the rule never paints outside
+/// the gap); the `multicol-rule-wider-than-gap` Chrome 156 fixture probes at
+/// x = 215 / 225 return the column background, not the rule colour.
 fn column_rule_fragments(
     container: &LayoutBox,
     (cx, cy): (f32, f32),
@@ -1069,6 +1070,28 @@ mod tests {
         let m: Vec<Fragment> = Vec::new();
         let col_h = section_col_h(&m, &fs_default(), 2);
         assert!(col_h.abs() < 1e-5);
+    }
+
+    #[test]
+    fn section_col_h_unsatisfiable_breaks_fall_back_to_plain_balance() {
+        // Review R1 M8: four blocks of 80 each with `break-before:column`,
+        // used=2. Every kid opens a new column, so `fits_in_count` returns
+        // false for ANY `col_h`; the previous `hi = total + max_single =
+        // 400` would silently fall out of the binary search. The fallback
+        // now reports the plain `total / used_count = 160` so the caller
+        // produces overflow at the regular stride instead of a phantom
+        // 400-px-tall column that the rule paint would have drawn through.
+        let m: Vec<Fragment> = [80.0, 80.0, 80.0, 80.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 4];
+        for f in &mut flags {
+            f.break_before_column = true;
+        }
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 160.0).abs() < 1e-4,
+            "col_h = {col_h}; expected 160 (plain balance) on an \
+             unsatisfiable break constraint, not the previous 400"
+        );
     }
 
     #[test]
