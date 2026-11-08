@@ -1,14 +1,17 @@
-// Chrome 156 multi-column geometry harness (#398 PR-B + PR-C1).
+// Chrome 156 multi-column geometry harness (#398 PR-B + PR-C1 + PR-C2).
 //
 // Loads the oracle captured by
 // `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs` and runs
 // turbo-dom-layout over each case's `html` to check that the CSS multi-column
-// pass produces Chrome 156's container and item border boxes. PR-C1 activates
-// the three cleanest cases (`basic-2col-equal`, `basic-3col-with-gap`,
-// `column-width-driven`); the remaining five stay fixture-shape-only here and
-// land in PR-C2 (column-span capture anomaly, sequential-fill edge cases,
-// overflow into an N+1 strip beyond the content box, nested multicol, and
-// floats inside a column).
+// pass produces Chrome 156's container and item border boxes. PR-C1 activated
+// the three cleanest equal-width sequential-fill cases (`basic-2col-equal`,
+// `basic-3col-with-gap`, `column-width-driven`); PR-C2 activates the other
+// four (`mixed-child-heights`, `overflow-at-column-height`, `nested-multicol`,
+// `floats-inside-column`) by adding `column-fill: balance`, column
+// fragmentation, overflow into extra strips beyond `used_count`, and a
+// union-geometry pass for fragmented children. The remaining `columns-shorthand`
+// case stays `#[ignore]`d for PR-E because its anomalous i2 / i5 captures ride
+// on `break-inside` / `column-span` behaviour PR-E owns.
 
 use serde_json::Value;
 use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
@@ -197,11 +200,11 @@ fn pr_c1_activates_three_cases() {
 }
 
 // --------------------------------------------------------------------------
-// PR-C2 deferrals: fixture-shape only, geometry comparison not yet activated.
+// PR-C2: column-fill: balance + column fragmentation + overflow strips.
 // --------------------------------------------------------------------------
 
 #[test]
-#[ignore = "PR-C2: anomalous i2 offsetWidth:400,offsetHeight:133 (column-span capture) — see tests/fixtures/multicol_chrome156.json columns-shorthand"]
+#[ignore = "PR-E: anomalous i2 / i5 captures ride on break-inside / column-span behaviour (see tests/fixtures/multicol_chrome156.json columns-shorthand); PR-C2's balance + fragmentation covers the rest of the case but Chrome's 1/64 px balanced col height rounds slightly off its content_h / used_count"]
 fn columns_shorthand_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "columns-shorthand");
@@ -209,7 +212,6 @@ fn columns_shorthand_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "PR-C2: sequential-fill edge cases with mixed heights"]
 fn mixed_child_heights_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "mixed-child-heights");
@@ -217,7 +219,6 @@ fn mixed_child_heights_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "PR-C2: overflow into N+1 column strip beyond the content box"]
 fn overflow_at_column_height_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(
@@ -228,7 +229,6 @@ fn overflow_at_column_height_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "PR-C2: nested multicol containers"]
 fn nested_multicol_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "nested-multicol");
@@ -236,7 +236,6 @@ fn nested_multicol_matches_chrome_156() {
 }
 
 #[test]
-#[ignore = "PR-C2: floats inside a column"]
 fn floats_inside_column_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "floats-inside-column");
