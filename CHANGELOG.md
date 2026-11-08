@@ -30,6 +30,14 @@ at the time); this file reconstructs them from history.
   `frame_gc_contracts::collected_frame_context_metadata_is_reclaimed_without_dropping_live_retired_documents`
   reported `cleared: 0` instead of the three retired frames V8 had actually collected
   (turbo-dom#397).
+- **turbo-dom-browser-env**: the canvas 2D paint-brand bookkeeping
+  (`fillStyle` / `strokeStyle` gradient and pattern tracking) now calls
+  `WeakSet.prototype.add` / `.has` through the intrinsics captured at
+  install time instead of looking them up live on `WeakSet.prototype`
+  (turbo-dom#396). A page that replaces every configurable prototype
+  method with a thrower (turbo-surf#87 / turbo-dom#172 contract) no longer
+  reaches this path. Regression introduced in 0.8.0's canvas style surface
+  (turbo-dom#108).
 
 ## [0.8.0] — 2026-11-06
 
