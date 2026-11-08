@@ -29,6 +29,74 @@ pub use parser::{
 };
 pub use token::{StyleToken, TokenSet};
 
+/// Chrome's UA-default `display` for an HTML tag (`None` for the CSS initial `inline`).
+/// Mirrors the `display: block` rule in [`UA_CSS`]. The ordinary HTML cascade reaches
+/// it through that rule; the live-DOM input ([`crate::live`]) relies on this fallback
+/// when an embedder does not supply the UA origin, and test-built styled trees that
+/// bypass the UA cascade set `display` through [`ensure_default_display`]
+/// (miaskiewicz/turbo-dom#375, #395).
+#[must_use]
+pub fn html_default_display(tag: &str) -> Option<&'static str> {
+    const BLOCK: &[&str] = &[
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "body",
+        "center",
+        "dd",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "dt",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hgroup",
+        "hr",
+        "html",
+        "legend",
+        "listing",
+        "main",
+        "menu",
+        "nav",
+        "ol",
+        "option",
+        "p",
+        "plaintext",
+        "pre",
+        "search",
+        "section",
+        "summary",
+        "ul",
+        "xmp",
+    ];
+    if BLOCK.contains(&tag) {
+        return Some("block");
+    }
+    None
+}
+
+/// Apply [`html_default_display`] to `style` when it carries no explicit `display`.
+pub fn ensure_default_display(style: &mut ComputedStyle, tag: &str) {
+    if style.get("display").is_none() {
+        if let Some(value) = html_default_display(tag) {
+            style.set("display", value.into());
+        }
+    }
+}
+
 /// A minimal user-agent stylesheet (§4.2): the defaults the cascade starts from.
 /// Block elements need no rule (display resolves to `block` by default); this
 /// declares the inline, table, and list-item defaults plus a few typographic

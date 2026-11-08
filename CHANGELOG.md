@@ -108,6 +108,13 @@ at the time); this file reconstructs them from history.
   before the termination check in `trusted_types::key`. Fixes the flaky
   cross-origin iframe bootstrap surf saw under load as "native Trusted Types
   authorization initialization interrupted" (miaskiewicz/turbo-surf#248).
+- **turbo-dom-layout live**: a known HTML block tag (`<div>`, `<p>`, `<section>`, …) now
+  falls back to Chrome's `html.css` `display: block` when the embedder supplies no UA
+  origin. Post-#375 the CSS initial `display` is `inline`, so an embedder's
+  `Composition.inline_overrides` that set `width` / `height` on a styled `<div>`
+  collapsed the border box to `(0, 0)` instead of the pre-0.8.0 `(30, 5)`; an explicit
+  UA or author rule still wins and unknown HTML tags stay `inline`
+  (miaskiewicz/turbo-dom#395).
 
 ## [0.8.0] — 2026-11-06
 
