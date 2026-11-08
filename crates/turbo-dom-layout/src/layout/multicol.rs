@@ -678,14 +678,20 @@ fn flow_section(
 
 /// Apply the forced column break before a kid and the `break-inside: avoid`
 /// push to a fresh column. Shared between the flow and the fitness check so
-/// the two agree on where a column break would occur.
+/// the two agree on where a column break would occur. `col_h <= 0` disables
+/// both: `fits_in_count` early-returns on it and `fragment_pieces` collapses
+/// to a single piece at the current cursor, so advancing `col_index` here
+/// would stride a kid chain across phantom overflow strips the flow never
+/// paints.
 fn apply_pre_break(f: KidFlags, col_h: f32, h: f32, col_index: &mut u32, col_cursor: &mut f32) {
+    if col_h <= 0.0 {
+        return;
+    }
     if f.break_before_column && *col_cursor > 0.0 {
         *col_index += 1;
         *col_cursor = 0.0;
     }
     if f.break_inside_avoid
-        && col_h > 0.0
         && h + FRAG_EPS <= col_h
         && *col_cursor + h > col_h + FRAG_EPS
         && *col_cursor > 0.0
