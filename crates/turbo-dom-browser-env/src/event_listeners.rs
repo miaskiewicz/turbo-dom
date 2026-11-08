@@ -34,6 +34,12 @@ fn_slots!(
 );
 fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     let operation = args.get(0).to_rust_string_lossy(scope);
+    // turbo-dom#382: drain microtasks before the next listener runs in a non-Node EventTarget
+    // dispatch (IDB transaction deactivation observable). Takes no object argument.
+    if operation == "microtaskCheckpoint" {
+        scope.perform_microtask_checkpoint();
+        return;
+    }
     let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
     };
@@ -148,6 +154,11 @@ pub(super) enum Called<'s> {
 /// exception it throws is reported at the callback's window (located like Chrome 156), and the
 /// event's did-listeners-throw flag is set (turbo-dom#301). Like Chrome 156, an object
 /// whose `handleEvent` is not callable is skipped without a report.
+///
+/// turbo-dom#382: a microtask checkpoint runs after every listener invocation, so a
+/// microtask queued inside listener A (IDB transaction deactivation, Promise.resolve().then,
+/// resolved-Promise microtasks) has settled by the time listener B is invoked — like
+/// Chrome 156's "clean up after running a callback" step.
 pub(super) fn call_listener<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     event: v8::Local<v8::Object>,

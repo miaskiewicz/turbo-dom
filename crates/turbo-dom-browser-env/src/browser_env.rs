@@ -11735,6 +11735,10 @@ mod custom_elements_collect_tests;
 mod html_image_srcset_tests;
 
 #[cfg(test)]
+#[path = "event_target_dispatch_tests.rs"]
+mod event_target_dispatch_tests;
+
+#[cfg(test)]
 #[path = "reflected_urls_tests.rs"]
 mod reflected_urls_tests;
 

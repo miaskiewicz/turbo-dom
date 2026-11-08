@@ -115,6 +115,14 @@ at the time); this file reconstructs them from history.
   collapsed the border box to `(0, 0)` instead of the pre-0.8.0 `(30, 5)`; an explicit
   UA or author rule still wins and unknown HTML tags stay `inline`
   (miaskiewicz/turbo-dom#395).
+- **turbo-dom-browser-env**: non-Node EventTarget dispatch with an embedder-settable parent
+  hook (`ns.setEventTargetParent(target, fn)`) and a phase-filtered invoke — capture / target /
+  bubble across a non-Node chain, with `composedPath()` inside each listener returning only
+  `[currentTarget]` like Chrome 156's IndexedDB (turbo-dom#381). Unblocks surf #193 (IDB).
+- **turbo-dom-browser-env**: microtask checkpoint after every listener in the non-Node
+  dispatch path, so a microtask queued inside one listener has settled by the time the next
+  listener is invoked — like Chrome 156's "clean up after running a callback" step,
+  observable as IDB transaction deactivation (turbo-dom#382). Unblocks surf #193.
 
 ## [0.8.0] — 2026-11-06
 

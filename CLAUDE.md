@@ -495,7 +495,15 @@ Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom
   accessed) read verbatim — zero cost.
 - **dispatchEvent skips propagation when no listener is on the path.** One ancestor walk builds
   the path AND flags `hasListener`; capture/target/bubble loops run only if true (preClick +
-  default actions still run). React fires thousands of listener-less events.
+  default actions still run). React fires thousands of listener-less events. **Non-Node
+  EventTargets (turbo-dom#381):** `EventTarget.dispatchEvent` walks an embedder-settable
+  parent hook (`ns.setEventTargetParent(target, fn)`, e.g. IDBRequest -> IDBTransaction ->
+  IDBDatabase in surf) and runs capture / target / bubble with the same listener-less
+  fast-skip; single-target dispatch (no parent hook) keeps the pre-#381 fast path.
+  `composedPath()` inside a non-Node listener returns only `[currentTarget]` (Chrome 156's
+  IDB contract). The non-Node path drains microtasks between listeners (turbo-dom#382) so a
+  Promise queued inside one listener has settled before the next runs — the window dispatch
+  (`invoke`) is unchanged.
 - **Shadow DOM is pay-for-what-you-use, gated on `Document.__hasShadow`** (set by the first
   `attachShadow`; armed eagerly for declarative `<template shadowrootmode>` in `index.mjs`, behind
   a `'shadowroot'` substring check on the HTML). Until then every hot path runs byte-for-byte as

@@ -10,11 +10,14 @@
   const some=(value,test)=>{for(let index=0;index<value.length;index++)if(test(value[index]))return true;return false;};
   const indexOf=(value,item)=>{for(let index=0;index<value.length;index++)if(value[index]===item)return index;return -1;};
   const splice=(value,index)=>{for(let at=index;at+1<value.length;at++)ownIndex(value,at,value[at+1]);delete value[value.length-1];value.length--;};
-  const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null)})}},'EventTarget',0,true,true);
+  const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null),parent:null})}},'EventTarget',0,true,true);
   NativeTarget.prototype=BaseTarget.prototype;define(NativeTarget.prototype,'constructor',{value:NativeTarget,writable:true,configurable:true});define(NativeTarget,'prototype',{writable:false});define(g,'EventTarget',{value:NativeTarget,writable:true,configurable:true});ns.eventTargetConstructor=NativeTarget;
   // An engine object that is an EventTarget without being constructed as one (html_media.js's
   // TextTrackList, a named object for its indexed tracks).
-  ns.makeEventTarget=object=>{native('targetSet',object,{__proto__:null,listeners:[],handlers:create(null)});return object;};
+  ns.makeEventTarget=object=>{native('targetSet',object,{__proto__:null,listeners:[],handlers:create(null),parent:null});return object;};
+  // turbo-dom#381: embedder-settable parent hook on a non-Node EventTarget. `fn(target)` returns
+  // the next ancestor (or null/undefined to stop). Chain walks are capped at 100 hops.
+  ns.setEventTargetParent=(target,fn)=>{const state=native('targetGet',target);if(!state)throw new ErrorType('Illegal invocation');if(fn!=null&&typeof fn!=='function')throw new ErrorType('parent must be a function');state.parent=fn==null?null:fn;};
   // Node was projected before the listener-backed constructor replaced EventTarget.
   // Keep its constructor inheritance aligned without replacing its instance prototype.
   if(getPrototype(NodeConstructor)===BaseTarget)setPrototype(NodeConstructor,NativeTarget);
@@ -75,9 +78,58 @@
   function targetHandler(target,type,value){const state=targetRecord(target);value=typeof value==='function'?value:null;const previous=state.handlers[type];if(previous){if(value===null){targetRemove(target,state,previous);delete state.handlers[type];}else previous.callback=value;}else if(value){const record={__proto__:null,type,callback:value,capture:false,once:false,passive:false,signal:null,removed:false,handler:true};state.handlers[type]=record;push(state.listeners,record);native('targetChanged',target);}}
   function targetListen(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('addEventListener requires 2 arguments');const record=flatten(type,callback,options);if(record.callback===null||record.signal&&aborted(record.signal))return;if(some(state.listeners,item=>!item.handler&&!item.removed&&item.type===record.type&&item.callback===record.callback&&item.capture===record.capture))return;record.removed=false;push(state.listeners,record);if(record.signal){const target=this;record.abortHook=()=>targetRemove(target,state,record);native('subscription',record.signal,record.abortHook,true);}native('targetChanged',this);}
   function targetUnlisten(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('removeEventListener requires 2 arguments');const wanted=flatten(type,callback,options,true);for(let index=0,list=slice(state.listeners);index<list.length;index++){const record=list[index];if(!record.handler&&!record.removed&&record.type===wanted.type&&record.callback===wanted.callback&&record.capture===wanted.capture)targetRemove(this,state,record);}}
+  // turbo-dom#381: build the dispatch path by walking the embedder-set parent hook up the chain
+  // (`request -> tx -> db` for IDB). Each hop reads its own target record; a missing or null
+  // parent stops the walk. Capped at 100 hops (safety).
+  function collectPath(target,state){
+    const path=[target];let node=target,hop=state.parent;
+    while(hop&&path.length<100){
+      const next=hop(node);if(next==null)break;
+      const record=native('targetGet',next);if(!record)break;
+      push(path,next);node=next;hop=record.parent;
+    }
+    return path;
+  }
+  // Any listener for `type` on any level of `path`? Used by the listener-less fast-skip.
+  function anyPathListener(path,type){
+    for(let i=0;i<path.length;i++){const s=native('targetGet',path[i]);if(!s)continue;const list=s.listeners;for(let j=0;j<list.length;j++){const l=list[j];if(!l.removed&&l.type===type)return true;}}
+    return false;
+  }
+  // Run every listener of `event` on `level` whose capture flag matches `captureFilter`
+  // (null = any, which is AT_TARGET's contract). Per-listener invocation sets
+  // currentTarget/eventPhase and scopes `composedPath()` to `[level]` (Chrome 156's IDB
+  // contract). Handler records that return false (legacy on* cancel) set defaultPrevented.
+  function invokeAt(event,record,level,captureFilter,phase){
+    const state=native('targetGet',level);if(!state)return;
+    record.currentTarget=level;record.eventPhase=phase;record.path=[level];
+    const list=slice(state.listeners);
+    for(let index=0;index<list.length;index++){
+      const listener=list[index];
+      if(record.stopImmediate)break;
+      if(listener.removed||listener.type!==record.type)continue;
+      if(captureFilter!==null&&listener.capture!==captureFilter)continue;
+      if(listener.signal&&aborted(listener.signal))continue;
+      if(listener.once)targetRemove(level,state,listener);
+      record.passive=listener.passive;
+      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;native('microtaskCheckpoint');}
+    }
+  }
+  // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at
+  // AT_TARGET both capture and non-capture listeners fire in registration order.
+  function dispatchSingle(event,record,target){invokeAt(event,record,target,null,2);}
+  // Multi-level dispatch across the parent chain: capture -> AT_TARGET -> bubble, with the
+  // listener-less fast-skip. `host` keeps the listener-less fast-skip from applying to
+  // host-initiated dispatch (bubbling reaches side-effects on empty paths; preserved).
+  function dispatchMulti(event,record,target,state,host){
+    const path=collectPath(target,state);
+    if(!host&&!anyPathListener(path,record.type))return;
+    for(let i=path.length-1;i>0;i--){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],true,1);}
+    if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+    if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
+  }
   function dispatchTarget(event,target,host=false){
     const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=[target];
-    try{const list=slice(state.listeners);for(let index=0;index<list.length;index++){const listener=list[index];if(record.stopImmediate)break;if(listener.removed||listener.type!==record.type||listener.signal&&aborted(listener.signal))continue;if(listener.once)targetRemove(target,state,listener);record.passive=listener.passive;try{const result=native('call',event,listener.callback,target);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;}}}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
+    try{if(state.parent)dispatchMulti(event,record,target,state,host);else dispatchSingle(event,record,target);}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
   }
   for(const [name,fn]of [['addEventListener',targetListen],['removeEventListener',targetUnlisten],['dispatchEvent',function(event){targetRecord(this);if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatchTarget(event,this)}]])ns.eventTargetCallbacks[name]=fn;
   const registry=new Map(),get=registry.get.bind(registry),set=registry.set.bind(registry);
