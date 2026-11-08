@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Added
+
+- **turbo-dom-browser-env**: non-Node EventTarget dispatch with an embedder-settable parent
+  hook (`ns.setEventTargetParent(target, fn)`) and a phase-filtered invoke — capture / target /
+  bubble across a non-Node chain, with `composedPath()` inside each listener returning only
+  `[currentTarget]` like Chrome 156's IndexedDB (turbo-dom#381). Unblocks surf #193 (IDB).
+- **turbo-dom-browser-env**: microtask checkpoint after every listener in the non-Node
+  dispatch path, so a microtask queued inside one listener has settled by the time the next
+  listener is invoked — like Chrome 156's "clean up after running a callback" step,
+  observable as IDB transaction deactivation (turbo-dom#382). Unblocks surf #193.
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights
