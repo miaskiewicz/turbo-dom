@@ -22,3 +22,4 @@ pkg-spike/
 .serena/
 __pycache__/
 mutants.out/
+mutants.out.old/
