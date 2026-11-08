@@ -9398,6 +9398,11 @@ pub fn reset() {
         dump_missing();
     }
     let _ = DOM.try_with(|d| *d.borrow_mut() = None);
+    // Review R1 M6: the init-script registry is per-thread state too. An
+    // embedder that teardown-resets without also calling
+    // `clear_init_scripts()` would otherwise leak scripts into the next
+    // isolate's installs.
+    let _ = INIT_SCRIPTS.try_with(|s| s.borrow_mut().clear());
 }
 
 #[cfg(test)]
