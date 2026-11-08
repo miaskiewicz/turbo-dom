@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-layout**: live-layout web-font inline y position at DPR 2 now matches
+  Chrome 156 at `--force-device-scale-factor=2` (miaskiewicz/turbo-dom#386, follow-up
+  to #377). `layout::inline::scaled_html_metrics` reads a web face's `html_metrics` at
+  `size * scale` and divides back so ascent / descent land on the device-pixel grid
+  (Fira Code 20px content box 24.5 CSS px at DPR 2, IBM Plex Mono 10px / 30px content
+  heights 12.5 / 38.5 at DSF 2; new real-DSF control
+  `tests/fixtures/cssom_view_chrome156_dpr2.json`,
+  `scripts/cssom-view-dpr2-chrome-control.mjs`).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights
