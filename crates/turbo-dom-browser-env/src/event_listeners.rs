@@ -57,40 +57,11 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         return;
     }
     if operation == "aborted" {
-        let Some(context) = object.get_creation_context(scope) else {
-            return;
-        };
-        let Some(reader) = context.get_slot::<SignalReader>() else {
-            return;
-        };
-        let reader = dom_ownership::local(scope, &reader.0);
-        let receiver = v8::undefined(scope).into();
-        if let Some(value) = reader.call(scope, receiver, &[object.into()]) {
-            rv.set(value);
-        }
+        aborted_operation(scope, object, &mut rv);
         return;
     }
     if operation == "error" {
-        let Some(context) = object.get_creation_context(scope) else {
-            return;
-        };
-        let Some(getters) = context.get_slot::<ErrorGetters>() else {
-            return;
-        };
-        if getters.0.len() != 5 {
-            return;
-        }
-        let scope = std::pin::pin!(v8::TryCatch::new(scope));
-        let scope = &mut scope.init();
-        let mut values = Vec::with_capacity(5);
-        for getter in &getters.0 {
-            let getter = dom_ownership::local(scope, getter);
-            let Some(value) = getter.call(scope, object.into(), &[]) else {
-                return;
-            };
-            values.push(value);
-        }
-        rv.set(v8::Array::new_with_elements(scope, &values).into());
+        error_operation(scope, object, &mut rv);
         return;
     }
     if operation == "call" {
@@ -119,6 +90,56 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         rv.set(value);
     }
 }
+/// `native('aborted', signal)`: run the signal-reader attached to the
+/// current context on `signal` and return its result.
+fn aborted_operation(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let Some(context) = object.get_creation_context(scope) else {
+        return;
+    };
+    let Some(reader) = context.get_slot::<SignalReader>() else {
+        return;
+    };
+    let reader = dom_ownership::local(scope, &reader.0);
+    let receiver = v8::undefined(scope).into();
+    if let Some(value) = reader.call(scope, receiver, &[object.into()]) {
+        rv.set(value);
+    }
+}
+
+/// `native('error', error)`: read the error's five legacy getters (name,
+/// message, filename, lineno, colno, in that order) and return an Array of
+/// their values.
+fn error_operation(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let Some(context) = object.get_creation_context(scope) else {
+        return;
+    };
+    let Some(getters) = context.get_slot::<ErrorGetters>() else {
+        return;
+    };
+    if getters.0.len() != 5 {
+        return;
+    }
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let mut values = Vec::with_capacity(5);
+    for getter in &getters.0 {
+        let getter = dom_ownership::local(scope, getter);
+        let Some(value) = getter.call(scope, object.into(), &[]) else {
+            return;
+        };
+        values.push(value);
+    }
+    rv.set(v8::Array::new_with_elements(scope, &values).into());
+}
+
 /// `native('call', event, callback, receiver, handlerArguments?)`: run one listener of
 /// `event` from the script dispatch paths and return what it returned.
 fn call_operation<'s>(
