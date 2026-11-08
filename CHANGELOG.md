@@ -62,6 +62,13 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- CSS multi-column: Chrome 156 geometry oracle + capture script (#398 PR-B of
+  multi-PR stack). Adds `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs`
+  and the captured `crates/turbo-dom-layout/tests/fixtures/multicol_chrome156.json`
+  (8 cases: `basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`,
+  `columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) plus a `tests/multicol_chrome.rs`
+  fixture-load harness; the real layout comparison activates in PR-C.
 - CSS multi-column: style parsing + cascade initials (#398 PR-A of multi-PR stack).
   Adds longhand grammar entries for `column-span`, `column-fill`, and
   `break-{before,after,inside}` (Rust `rtdom::css_shorthand` + JS `css-shorthand`
