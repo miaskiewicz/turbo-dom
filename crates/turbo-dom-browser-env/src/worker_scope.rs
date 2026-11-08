@@ -297,4 +297,105 @@ mod tests {
         }
         browser_env::reset();
     }
+
+    /// A Rust callback the hook tests install. Flips a thread-local flag
+    /// so the test can detect the hook firing without crossing V8 scopes.
+    fn note_hook_called(
+        _: &mut v8::PinScope,
+        _: v8::FunctionCallbackArguments,
+        mut result: v8::ReturnValue,
+    ) {
+        HOOK_FIRED.with(|f| f.set(true));
+        result.set_null();
+    }
+
+    thread_local! {
+        static HOOK_FIRED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    /// Install each hook, call its worker-side JS entry, verify the Rust
+    /// callback fired. Then clear the hook (pass `None` — the `None` arm
+    /// of `set_hook`'s `match`) and verify the entry no longer calls back.
+    #[test]
+    fn set_hook_registers_and_clears_each_embedder_hook() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let hook = v8::Function::new(scope, ext!(FunctionCallback, note_hook_called)).unwrap();
+        // `(setter, trigger)` — trigger is the JS that invokes the worker-scope
+        // API the hook backs. `importScripts` throws by default, so the
+        // trigger wraps it.
+        type Setter = fn(
+            &mut v8::PinScope,
+            v8::Local<v8::Context>,
+            Option<v8::Local<v8::Function>>,
+        );
+        let cases: &[(Setter, &str)] = &[
+            (
+                browser_env::set_worker_post_message_hook,
+                "postMessage('x');",
+            ),
+            (browser_env::set_worker_close_hook, "close();"),
+            (
+                browser_env::set_worker_import_scripts_hook,
+                "try { importScripts('a.js'); } catch (_) {}",
+            ),
+        ];
+        for (setter, trigger) in cases {
+            HOOK_FIRED.with(|f| f.set(false));
+            setter(scope, context, Some(hook));
+            let code = v8::String::new(scope, trigger).unwrap();
+            if let Some(script) = v8::Script::compile(scope, code, None) {
+                script.run(scope);
+            }
+            assert!(
+                HOOK_FIRED.with(std::cell::Cell::get),
+                "hook must fire ({trigger})",
+            );
+            // Clear the hook (None arm of set_hook's Some(f) / None match):
+            // the trigger must not call back again.
+            HOOK_FIRED.with(|f| f.set(false));
+            setter(scope, context, None);
+            let code = v8::String::new(scope, trigger).unwrap();
+            if let Some(script) = v8::Script::compile(scope, code, None) {
+                script.run(scope);
+            }
+            assert!(
+                !HOOK_FIRED.with(std::cell::Cell::get),
+                "cleared hook must not fire ({trigger})",
+            );
+        }
+        browser_env::reset();
+    }
+
+    /// A context without the worker bootstrap has no `__turboDomWorker`
+    /// namespace: `global.get` returns `undefined`, so
+    /// `v8::Local::<v8::Object>::try_from(undefined)` fails in both
+    /// `set_hook` and `dispatch_message` and each returns early. One bare
+    /// context exercises every helper's early-return path.
+    #[test]
+    fn worker_helpers_are_a_no_op_without_the_bootstrap() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        // No install_worker_global_scope — this is a bare context.
+        let cs = &mut v8::ContextScope::new(scope, context);
+        let hook = v8::Function::new(cs, ext!(FunctionCallback, note_hook_called)).unwrap();
+        browser_env::set_worker_post_message_hook(cs, context, Some(hook));
+        browser_env::set_worker_close_hook(cs, context, Some(hook));
+        browser_env::set_worker_import_scripts_hook(cs, context, Some(hook));
+        // And dispatch_message returns `false` without the bootstrap (no
+        // `dispatch` function to call).
+        let data = v8::String::new(cs, "noop").unwrap();
+        let delivered = browser_env::dispatch_worker_message(cs, data.into());
+        assert!(
+            !delivered,
+            "dispatch_worker_message must return false without the bootstrap",
+        );
+        browser_env::reset();
+    }
 }
