@@ -68,6 +68,25 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- CSS multi-column: `column-rule-*` painting (#398 PR-D). Styles: none, solid,
+  dotted, dashed, double; groove/ridge/inset/outset filed as follow-up.
+  `crates/turbo-dom-layout/src/layout/multicol.rs` now emits one
+  `FragmentContent::ColumnRule { style, color }` fragment between every adjacent
+  pair of column strips; width is `column-rule-width` clamped to the gap
+  (Blink's `MultiColumnSet` never paints outside the gap), height is the column
+  content height, `currentcolor` resolves to the container's `color`. The PNG
+  and SVG painters in `crates/turbo-dom-raster/` render each supported style
+  (solid: filled band, dotted: diameter-`width` circles on period `2·width`,
+  dashed: `2·width` dashes with `width` gaps, double: two `floor(width/3)`
+  bands flush with the rule's long edges). The `column-rule` shorthand is
+  routed through the cascade's shorthand expansion so `column-rule: 4px solid
+  #333` reaches the computed style as its three longhands. Chrome 156 paint
+  oracle: `crates/turbo-dom-raster/scripts/multicol-rule-chrome-control.mjs` →
+  `crates/turbo-dom-raster/tests/fixtures/multicol_rule_chrome156.json` (five
+  cases: `multicol-rule-solid-1col-gap`, `multicol-rule-dotted-3col`,
+  `multicol-rule-double-thick`, `multicol-rule-none`,
+  `multicol-rule-wider-than-gap`), asserted byte-for-byte within the paint
+  harness's probe tolerance by `crates/turbo-dom-raster/tests/multicol_rule_chrome.rs`.
 - CSS multi-column: equal-width sequential-fill layout pass for 3 Chrome 156
   cases (#398 PR-C1 of multi-PR stack). A `BoxKind::Block` whose computed
   `column-count` or `column-width` is not `auto` is now a multi-column

@@ -108,6 +108,36 @@ pub enum FragmentContent {
     /// it (a pattern shader, an SVG `<pattern>`) or walk [`TilePattern::tiles`] over
     /// the part they paint.
     Tiles(TilePattern),
+    /// A multi-column container's `column-rule-*`, painted between every adjacent
+    /// pair of column strips (CSS Multicol 1 §5 "The column-rule properties";
+    /// miaskiewicz/turbo-dom#398 PR-D). The fragment's `(x, y, width, height)` is
+    /// the rule's bounding rect — centered in the `column-gap`, as tall as the
+    /// column content box — and the painter draws the chosen [`ColumnRuleStyle`]
+    /// in `color` inside it.
+    ColumnRule {
+        style: ColumnRuleStyle,
+        color: Rgba,
+    },
+}
+
+/// A supported `column-rule-style` keyword (CSS Multicol 1 §5.2;
+/// miaskiewicz/turbo-dom#398 PR-D). The `groove` / `ridge` / `inset` / `outset`
+/// family is tracked separately (miaskiewicz/turbo-dom#419): a style fragment
+/// is emitted only for the keywords this enum lists, so the painter never sees
+/// one it cannot draw.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColumnRuleStyle {
+    /// A filled band of `color` filling the rule rect.
+    Solid,
+    /// Circular dots of diameter `width` centered along the rule, period `2 * width`
+    /// (CSS Backgrounds 3 §4.2 "Line styles"; Blink's `kDottedStroke`).
+    Dotted,
+    /// Rectangular dashes of length `2 * width` separated by `width` gaps
+    /// (Blink's `kDashedStroke`).
+    Dashed,
+    /// Two parallel bands, each `floor(width / 3)` thick, flush with the rule's
+    /// long edges, separated by the remaining width (CSS Backgrounds 3 §4.2).
+    Double,
 }
 
 /// A repeating background tile: [`TilePattern::tile`] painted `tile_width x

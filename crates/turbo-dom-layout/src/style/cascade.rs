@@ -965,14 +965,17 @@ fn take_longhand(longhands: &mut Vec<Cand>, name: &str) -> Option<String> {
 }
 
 /// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128), `border-radius`
-/// (#253) and `columns` (#398 PR-C1) shorthands' longhands, parsed by
-/// turbo-dom's shorthand grammar, at the shorthand's cascade position. An
-/// invalid value (or a system-font keyword, which has no longhand values here)
-/// contributes nothing; one whose `var()` fails is invalid at computed-value
-/// time and unsets every longhand.
+/// (#253), `columns` (#398 PR-C1) and `column-rule` (#398 PR-D) shorthands'
+/// longhands, parsed by turbo-dom's shorthand grammar, at the shorthand's
+/// cascade position. An invalid value (or a system-font keyword, which has no
+/// longhand values here) contributes nothing; one whose `var()` fails is
+/// invalid at computed-value time and unsets every longhand.
 fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
     let name = cand.property.as_str();
-    if !matches!(name, "font" | "list-style" | "border-radius" | "columns") {
+    if !matches!(
+        name,
+        "font" | "list-style" | "border-radius" | "columns" | "column-rule"
+    ) {
         return Vec::new();
     }
     let wide = if matches!(name, "font" | "list-style") {
