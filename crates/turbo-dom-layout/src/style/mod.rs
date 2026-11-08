@@ -398,6 +398,67 @@ pub fn user_agent_stylesheet() -> Stylesheet {
     parse_stylesheet(UA_CSS)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Review R2 layout H1: every HTML tag whose Chrome 156 `html.css` default
+    /// is NOT `inline` must have a fallback in [`html_default_display`]. Each
+    /// row pairs a tag with Chrome's actual UA default; the fallback keeps the
+    /// live-DOM input Chrome-correct when the embedder supplies no UA origin.
+    #[test]
+    fn html_default_display_covers_every_chrome_non_inline_tag() {
+        // Chrome `html.css` display rules beyond the block list. Each row:
+        // (tag, Chrome's default `display` keyword).
+        let cases: &[(&str, &str)] = &[
+            // Block tags carrying a display other than `block`.
+            ("li", "list-item"),
+            // The `<details>` disclosure triangle: Chrome sets
+            // `summary { display: list-item; list-style: disclosure-closed inside }`
+            // — R2 layout H1 / L7 (so the triangle paints).
+            ("summary", "list-item"),
+            // Table family.
+            ("table", "table"),
+            ("thead", "table-header-group"),
+            ("tbody", "table-row-group"),
+            ("tfoot", "table-footer-group"),
+            ("tr", "table-row"),
+            ("caption", "table-caption"),
+            ("td", "table-cell"),
+            ("th", "table-cell"),
+            ("colgroup", "table-column-group"),
+            ("col", "table-column"),
+            // Form controls — `inline-block` (not `inline`).
+            ("input", "inline-block"),
+            ("textarea", "inline-block"),
+            ("select", "inline-block"),
+            ("button", "inline-block"),
+            ("progress", "inline-block"),
+            ("meter", "inline-block"),
+            // `<template>` is hidden.
+            ("template", "none"),
+            // R2 layout H1 additions.
+            ("optgroup", "block"),
+            ("datalist", "none"),
+            ("marquee", "inline-block"),
+            ("slot", "contents"),
+            ("rt", "ruby-text"),
+            ("rp", "none"),
+            ("rtc", "ruby-text-container"),
+        ];
+        for (tag, want) in cases {
+            assert_eq!(
+                html_default_display(tag),
+                Some(*want),
+                "{tag}: html_default_display mismatch",
+            );
+        }
+        // `<span>` / unknown tags stay `inline` (the CSS initial): no fallback.
+        assert_eq!(html_default_display("span"), None);
+        assert_eq!(html_default_display("x-custom"), None);
+    }
+}
+
 /// Original UA source for embedders that use a different selector parser.
 #[must_use]
 pub fn user_agent_css() -> &'static str {
