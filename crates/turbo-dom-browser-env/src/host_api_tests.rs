@@ -235,6 +235,60 @@ fn native_document_census() {
     assert_eq!(native_document_count_for_testing(), 0);
 }
 
+/// Retired iframe-like child contexts become collectible once nothing holds them, and the
+/// host's sweep then reclaims every stale frame's native-document record (turbo-dom#397).
+/// Before 0.8.1 the sweep walked each record but failed to drop its weak Document handle, so
+/// the surf test's `cleared` reported 0 instead of the count V8 had actually collected.
+#[test]
+fn retired_frame_weak_context_handles_are_pruned_after_gc() {
+    crate::browser_env::tests::init_v8();
+    reset();
+    assert_eq!(native_document_count_for_testing(), 0);
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    const N: usize = 3;
+    // Hold each child document in an isolate-level Global, as a surf page's JS
+    // holds every retired iframe's `contentDocument`. Dropping the Global later
+    // is the "release" that lets a full GC collect that frame's context.
+    let mut held: Vec<v8::Global<v8::Object>> = Vec::new();
+    {
+        v8::scope!(let scope, isolate);
+        let main = v8::Context::new(scope, Default::default());
+        let main_scope = &mut v8::ContextScope::new(scope, main);
+        install_with_html(main_scope, "<!doctype html>");
+        for _ in 0..N {
+            v8::scope!(let child_scope, main_scope);
+            let child = v8::Context::new(child_scope, Default::default());
+            let scope = &mut v8::ContextScope::new(child_scope, child);
+            install_independent_html(scope, "<p>retired</p>");
+            let document = v8::Script::compile(
+                scope,
+                v8::String::new(scope, "document").unwrap(),
+                None,
+            )
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+            held.push(v8::Global::new(scope, document));
+        }
+        assert_eq!(native_document_count_for_testing(), 1 + N);
+        // Nothing is stale yet: every retired frame's document is still held.
+        for _ in 0..3 {
+            main_scope.low_memory_notification();
+        }
+        assert_eq!(sweep_collected_documents(), 0);
+        // Release the holds on the retired frames' documents.
+        held.clear();
+        for _ in 0..3 {
+            main_scope.low_memory_notification();
+        }
+        assert_eq!(sweep_collected_documents(), N);
+        assert_eq!(native_document_count_for_testing(), 1);
+    }
+    reset();
+}
+
 /// The host's Trusted Types entry points: a sink input converts through the document's
 /// policy (a typed value is unwrapped exactly, a string passes only while the policy allows
 /// it), and the engine's code-generation check reads only genuine TrustedScript values.
