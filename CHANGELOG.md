@@ -97,7 +97,20 @@ at the time); this file reconstructs them from history.
   (turbo-dom#396). A page that replaces every configurable prototype
   method with a thrower (turbo-surf#87 / turbo-dom#172 contract) no longer
   reaches this path. Regression introduced in 0.8.0's canvas style surface
-  (turbo-dom#108).
+  (turbo-dom#108). Follow-up audit confirmed every other bootstrap WeakSet
+  bookkeeping site (`emptySelects` for `<select>` state, `eventTargets` for
+  the EventTarget brand, `projected` for native-node projection,
+  `instances` for the XMLSerializer brand, `cueLists` for TextTrackCueList)
+  already routes through `$c.{add,has,delete}` or a captured module-init
+  `WeakSet.prototype.*` binding. The wider sweep is pinned by
+  `every_weakset_bookkeeping_site_uses_captured_intrinsics` in
+  `dom_projection_tests.rs`, which replaces `WeakSet.prototype.{add,has,delete}`
+  with throwers and exercises each site end-to-end. The remaining surf
+  `page_patched_intrinsics_*` repros now fail inside the EMBEDDER
+  (turbo-surf-render's promise-rejection realm calls `queued.add(promise)`
+  etc. on live `WeakSet.prototype.*`); fixed by a sibling turbo-surf PR
+  that captures the three WeakSet members at bootstrap and dispatches
+  through them.
 - **turbo-dom-browser-env**: `CSS.supports` / `cssSupportsProperty` now reject four inputs
   Chrome 156 rejects (turbo-dom#390). `-moz-appearance: none` fails because every `-moz-*`
   vendor-prefixed property name is refused (`cssom_parser::is_supported_property`);
