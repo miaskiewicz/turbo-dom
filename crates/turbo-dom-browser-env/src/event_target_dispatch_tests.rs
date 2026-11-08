@@ -39,12 +39,10 @@ fn run_chain() -> serde_json::Value {
     let source = r#"(() => {
       const request = new EventTarget(), tx = new EventTarget(), db = new EventTarget();
       const levels = [['request', request], ['tx', tx], ['db', db]];
-      // Parent hook: request -> tx -> db -> null.
-      const set = globalThis.__setEventTargetParent;
-      if (typeof set === 'function') {
-        set(request, () => tx);
-        set(tx, () => db);
-      }
+      // Parent hook: request -> tx -> db -> null. Bound by the Rust test harness; this is
+      // test-only (the production API is `ns.setEventTargetParent`, not page-visible).
+      globalThis.__testSetParent(request, () => tx);
+      globalThis.__testSetParent(tx, () => db);
       const phases = [];
       const push = (level, obj, capture, event) => {
         const path = event.composedPath();
@@ -76,6 +74,13 @@ fn run_chain() -> serde_json::Value {
     })()"#;
     let global = context.global(scope);
     bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    // Test-only: the production parent-hook API is `ns.setEventTargetParent`; expose it to
+    // the guest script through the engine namespace.
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
     let source = v8::String::new(scope, source).unwrap();
     let scope = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut scope.init();

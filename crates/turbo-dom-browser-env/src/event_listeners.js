@@ -18,7 +18,6 @@
   // turbo-dom#381: embedder-settable parent hook on a non-Node EventTarget. `fn(target)` returns
   // the next ancestor (or null/undefined to stop). Chain walks are capped at 100 hops.
   ns.setEventTargetParent=(target,fn)=>{const state=native('targetGet',target);if(!state)throw new ErrorType('Illegal invocation');if(fn!=null&&typeof fn!=='function')throw new ErrorType('parent must be a function');state.parent=fn==null?null:fn;};
-  g.__setEventTargetParent=ns.setEventTargetParent;
   // Node was projected before the listener-backed constructor replaced EventTarget.
   // Keep its constructor inheritance aligned without replacing its instance prototype.
   if(getPrototype(NodeConstructor)===BaseTarget)setPrototype(NodeConstructor,NativeTarget);
@@ -112,7 +111,7 @@
       if(listener.signal&&aborted(listener.signal))continue;
       if(listener.once)targetRemove(level,state,listener);
       record.passive=listener.passive;
-      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;}
+      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;native('microtaskCheckpoint');}
     }
   }
   // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at
