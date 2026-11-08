@@ -2566,9 +2566,7 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     }
     // A multi-column container establishes an independent formatting context
     // (CSS Multicol 1 §3; miaskiewicz/turbo-dom#398 PR-C1).
-    if matches!(lb.kind, BoxKind::Block(_))
-        && super::multicol::is_multicol_container(&lb.style)
-    {
+    if matches!(lb.kind, BoxKind::Block(_)) && super::multicol::is_multicol_container(&lb.style) {
         return true;
     }
     // Layout containment (`contain: layout`) and a size query container make an

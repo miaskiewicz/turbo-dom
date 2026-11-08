@@ -76,7 +76,7 @@ fn assert_matches_chrome(id: &str, case: &Value) {
         let want_v = want_c[field].as_f64().expect("container field");
         if (f64::from(got_v) - want_v).abs() > TOL {
             failures.push(format!(
-                "{id}: container.{field} = {got_v}, Chrome {want_v}",
+                "{id}: container.{field} = {got_v}, Chrome {want_v}"
             ));
         }
     }
@@ -84,7 +84,9 @@ fn assert_matches_chrome(id: &str, case: &Value) {
     for item in case["items"].as_array().expect("items") {
         let cid = item["cid"].as_str().expect("cid");
         let Some(b) = got.iter().find(|b| b.cid == cid) else {
-            failures.push(format!("{id}: item cid={cid} missing from layout_boxes output"));
+            failures.push(format!(
+                "{id}: item cid={cid} missing from layout_boxes output"
+            ));
             continue;
         };
         for (field, got_v) in [
@@ -95,9 +97,7 @@ fn assert_matches_chrome(id: &str, case: &Value) {
         ] {
             let want_v = item[field].as_f64().expect("item field");
             if (f64::from(got_v) - want_v).abs() > TOL {
-                failures.push(format!(
-                    "{id}: {cid}.{field} = {got_v}, Chrome {want_v}",
-                ));
+                failures.push(format!("{id}: {cid}.{field} = {got_v}, Chrome {want_v}"));
             }
         }
     }
@@ -124,7 +124,11 @@ fn multicol_fixture_loads_and_covers_the_eight_cases() {
     for case in cases {
         let id = case["id"].as_str().unwrap();
         let container = &case["container"];
-        assert_eq!(container["cid"].as_str(), Some("c"), "case {id}: container cid");
+        assert_eq!(
+            container["cid"].as_str(),
+            Some("c"),
+            "case {id}: container cid"
+        );
         assert!(
             !case["html"].as_str().unwrap().is_empty(),
             "case {id}: html present",
@@ -132,7 +136,10 @@ fn multicol_fixture_loads_and_covers_the_eight_cases() {
         let items = case["items"].as_array().expect("items array");
         assert!(!items.is_empty(), "case {id}: at least one flowed item");
         let columns = case["columns"].as_array().expect("columns array");
-        assert!(!columns.is_empty(), "case {id}: at least one derived column strip");
+        assert!(
+            !columns.is_empty(),
+            "case {id}: at least one derived column strip"
+        );
         let client_width = container["clientWidth"].as_f64().expect("clientWidth");
         for col in columns {
             let x = col["x"].as_f64().expect("col x");
@@ -176,12 +183,16 @@ fn column_width_driven_matches_chrome_156() {
     assert_matches_chrome("column-width-driven", case);
 }
 
-/// Covers PR_C1_CASES so a stray fifth case cannot sneak in without updating the list.
+/// Covers `PR_C1_CASES` so a stray fifth case cannot sneak in without updating the list.
 #[test]
 fn pr_c1_activates_three_cases() {
     assert_eq!(
         PR_C1_CASES,
-        &["basic-2col-equal", "basic-3col-with-gap", "column-width-driven"],
+        &[
+            "basic-2col-equal",
+            "basic-3col-with-gap",
+            "column-width-driven"
+        ],
     );
 }
 
@@ -209,7 +220,10 @@ fn mixed_child_heights_matches_chrome_156() {
 #[ignore = "PR-C2: overflow into N+1 column strip beyond the content box"]
 fn overflow_at_column_height_matches_chrome_156() {
     let fixture = fixture();
-    let case = find_case(fixture["cases"].as_array().unwrap(), "overflow-at-column-height");
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-at-column-height",
+    );
     assert_matches_chrome("overflow-at-column-height", case);
 }
 

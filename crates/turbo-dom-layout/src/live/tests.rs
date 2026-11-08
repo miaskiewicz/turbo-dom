@@ -559,9 +559,7 @@ fn inline_override_replaces_only_an_existing_style_attribute_395() {
     );
     let (a, b) = (styled.el("a"), styled.el("b"));
     let overrides = [(a, "width:30px;height:5px"), (b, "width:40px;height:5px")];
-    let (snapshot, ()) = styled
-        .run(&[], &overrides, &|_| Ok(0), |_| Ok(()))
-        .unwrap();
+    let (snapshot, ()) = styled.run(&[], &overrides, &|_| Ok(0), |_| Ok(())).unwrap();
     assert_eq!(border(&snapshot, a), (30.0, 5.0));
     // `b` has no `style` attribute, so the override must not apply: a block div
     // takes the container width with auto (zero) content height.

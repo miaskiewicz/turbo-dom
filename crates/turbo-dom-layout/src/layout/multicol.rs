@@ -206,10 +206,7 @@ pub(crate) fn layout_multicol(
     let mut max_col_content: f32 = 0.0;
     for mut frag in measured {
         let kid_h = frag.height;
-        if col_cursor > 0.0
-            && col_cursor + kid_h > col_h + 0.5
-            && col_index + 1 < used_count
-        {
+        if col_cursor > 0.0 && col_cursor + kid_h > col_h + 0.5 && col_index + 1 < used_count {
             col_index += 1;
             col_cursor = 0.0;
         }
@@ -324,7 +321,10 @@ mod tests {
         // Trimming applies before the keyword check (Chrome 156 getComputedStyle
         // emits untrimmed `column-count`/`column-width` values for a shorthand
         // whose expansion keeps surrounding whitespace).
-        assert_eq!(parse_column_count(&cs(&[("column-count", "  auto  ")])), None);
+        assert_eq!(
+            parse_column_count(&cs(&[("column-count", "  auto  ")])),
+            None
+        );
         assert_eq!(parse_column_count(&cs(&[("column-count", " 3 ")])), Some(3));
         assert_eq!(parse_column_count(&cs(&[("column-count", "  ")])), None);
         assert_eq!(parse_column_count(&cs(&[])), None);
@@ -338,13 +338,19 @@ mod tests {
             parse_column_width(&cs(&[("column-width", "180px")]), 16.0),
             Some(180.0)
         );
-        assert_eq!(parse_column_width(&cs(&[("column-width", "auto")]), 16.0), None);
+        assert_eq!(
+            parse_column_width(&cs(&[("column-width", "auto")]), 16.0),
+            None
+        );
         // Same trimming contract as `parse_column_count`.
         assert_eq!(
             parse_column_width(&cs(&[("column-width", "  180px  ")]), 16.0),
             Some(180.0)
         );
-        assert_eq!(parse_column_width(&cs(&[("column-width", "  auto  ")]), 16.0), None);
+        assert_eq!(
+            parse_column_width(&cs(&[("column-width", "  auto  ")]), 16.0),
+            None
+        );
         assert_eq!(parse_column_width(&cs(&[]), 16.0), None);
         // em resolves against the font size.
         assert_eq!(
@@ -352,7 +358,10 @@ mod tests {
             Some(200.0)
         );
         // A non-positive width is rejected.
-        assert_eq!(parse_column_width(&cs(&[("column-width", "0px")]), 16.0), None);
+        assert_eq!(
+            parse_column_width(&cs(&[("column-width", "0px")]), 16.0),
+            None
+        );
     }
 
     #[test]
