@@ -99,6 +99,9 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
       - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          # Pinned: unpinned it resolves "latest" via the API and fell back to 0.9.1 (no --no-default-features).
+          version: v0.13.1
       - name: Already published?
         id: published
         run: |
