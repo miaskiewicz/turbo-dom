@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1]
+
+### Fixed
+
+- **turbo-dom-layout**: the inline-box fragment `content_height` and the inline
+  formatting context's strut now resolve `@font-face` web-font metrics at the
+  CSS size directly (via `scaled_html_metrics`), instead of reading at the
+  device-scaled size and dividing back. Chrome 156 quantizes web-font ascent /
+  descent in CSS px, so the round-trip double-quantizes at DSF 2: an inline
+  `<span>` in IBM Plex Mono at 20px (turbo-surf's `font_face.rs`
+  plain/csp "ready-height" probe) is 25 CSS px tall at every DSF, not 26
+  (miaskiewicz/turbo-dom#387; sibling to the text Range path #377 fixed).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

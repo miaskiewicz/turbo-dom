@@ -381,17 +381,22 @@ pub(super) fn strut(bs: &BoxStyle, ctx: &Ctx, central: bool) -> Option<(f32, f32
         .collect::<Vec<_>>();
     let face = ctx.fonts.select(&families, bs.font_weight, bs.italic)?;
     let scale = ctx.html_font_scale.unwrap_or(1.0);
-    let font = face.html_metrics(bs.font_size * scale);
+    // An `@font-face` face reads at the CSS size directly: Chrome's web-font
+    // metrics are already a per-font-size quantization in CSS px, so going
+    // through the device-scaled size and dividing back double-quantizes the
+    // strut height (IBM Plex Mono 20px at DSF 2: 26 vs 25;
+    // miaskiewicz/turbo-dom#387).
+    let font = super::inline::scaled_html_metrics(face, bs.font_size, Some(scale));
     let (ascent, descent) = if central {
-        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale)
+        super::inline::central_metrics(font.ascent, font.descent, scale)
     } else {
-        (font.ascent / scale, font.descent / scale)
+        (font.ascent, font.descent)
     };
     Some(super::inline::native_font_height(
         ascent,
         descent,
         bs.line_height
-            .unwrap_or((font.ascent + font.descent + font.line_gap) / scale),
+            .unwrap_or(font.ascent + font.descent + font.line_gap),
         0.0,
         scale,
     ))
@@ -898,12 +903,16 @@ fn fragment(
     ctx: &mut Ctx,
 ) -> Fragment {
     let scale = ctx.html_font_scale.unwrap_or(1.0);
-    let font = open.edge.face.html_metrics(open.edge.font_size * scale);
-    let content_height = (font.ascent + font.descent) / scale;
+    // Web-font metrics are quantized at the CSS size (#387; sibling path to
+    // the text Range one #377 fixed): scaled_html_metrics skips the
+    // device-scale round-trip for `@font-face` faces so an inline box's
+    // fragment content_height matches Chrome's at every DSF.
+    let font = super::inline::scaled_html_metrics(&open.edge.face, open.edge.font_size, Some(scale));
+    let content_height = font.ascent + font.descent;
     let ascent = if central {
-        super::inline::central_metrics(font.ascent / scale, font.descent / scale, scale).0
+        super::inline::central_metrics(font.ascent, font.descent, scale).0
     } else {
-        font.ascent / scale
+        font.ascent
     };
     let mut border = used.border;
     let mut padding = used.padding;
