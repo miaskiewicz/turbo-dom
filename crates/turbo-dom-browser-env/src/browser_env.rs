@@ -8553,6 +8553,12 @@ pub fn clear_init_scripts() {
 /// Compile and run each registered init script in the current context. Called
 /// at the end of [`install_with_tree`] so the next parser-driven inline script
 /// already sees the patched globals (turbo-dom#394).
+///
+/// Each script is isolated in its own [`v8::TryCatch`] so a throwing init script
+/// does not leave a pending V8 exception that would leak into the next init
+/// script or into the embedder's inline parser scripts (R1 expert H4). A caught
+/// exception is reported through the window's error channel, matching the way a
+/// compile error in an `on*` handler is surfaced.
 fn run_init_scripts(scope: &mut v8::PinScope) {
     // Skip a worker context: it has no window, and the embedder's page-oriented
     // init script would be meaningless there.
@@ -8564,8 +8570,14 @@ fn run_init_scripts(scope: &mut v8::PinScope) {
         let Some(code) = v8::String::new(scope, &source) else {
             continue;
         };
-        if let Some(script) = v8::Script::compile(scope, code, None) {
-            script.run(scope);
+        let catch = std::pin::pin!(v8::TryCatch::new(scope));
+        let scope = &mut catch.init();
+        let ran = v8::Script::compile(scope, code, None).and_then(|script| script.run(scope));
+        if ran.is_none() && !scope.has_terminated() {
+            if let Some(error) = scope.exception() {
+                custom_elements::report_value(scope, error);
+            }
+            scope.reset();
         }
     }
 }
