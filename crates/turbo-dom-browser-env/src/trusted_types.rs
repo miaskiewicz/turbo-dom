@@ -117,7 +117,21 @@ pub(super) fn install_policy(
         scope.cancel_terminate_execution();
     }
     let result = (|| -> Option<()> {
+        // Review R1 M3: the realm global and the Trusted Types `factory` /
+        // `state` records are plain `v8::Object`s installed by
+        // `install_global`, which is called once from the engine side with no
+        // guest JS running — nothing between installation and here can swap
+        // them for a Proxy or stamp a `v8::PrivateName` interceptor. The
+        // `get_private` / `set` calls below therefore hit native slots only,
+        // never guest JS, and the cancel/restore window around them cannot
+        // leak a window where a `is_execution_terminating()` observer under
+        // user control sees "no termination pending".
         let global = scope.get_current_context().global(scope);
+        debug_assert!(
+            !global.is_proxy(),
+            "trusted_types::install_policy: realm global is a Proxy; a user-controlled \
+             private-name interceptor could observe the cancel/restore window"
+        );
         let record = private_record(scope, global)?;
         let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
         let state = private_record(scope, factory)?;

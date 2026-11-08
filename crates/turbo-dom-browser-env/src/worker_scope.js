@@ -16,7 +16,16 @@
 	let postHook = null;
 	let closeHook = null;
 	let importHook = null;
-	global.__turboDomWorker = {
+	// Review R1 M4: lock the embedder-facing namespace so page JS in the
+	// worker cannot overwrite the whole slot (whole-takeover) nor
+	// replace individual hooks (per-method intercept of incoming
+	// messages). `Object.freeze` makes the inner methods non-writable +
+	// non-configurable, and the `defineProperty` below seats it
+	// non-writable + non-configurable + non-enumerable on `globalThis`.
+	// Chrome's real `DedicatedWorkerGlobalScope` has no such namespace;
+	// keeping it inert is extra defense for turbo-surf's trusted-code
+	// model.
+	const turboDomWorker = Object.freeze({
 		setPostMessage(fn) {
 			postHook = typeof fn === "function" ? fn : null;
 		},
@@ -46,7 +55,13 @@
 			}
 			return fired;
 		},
-	};
+	});
+	Object.defineProperty(global, "__turboDomWorker", {
+		value: turboDomWorker,
+		writable: false,
+		configurable: false,
+		enumerable: false,
+	});
 	global.postMessage = function postMessage(message, transfer) {
 		if (postHook) return postHook.call(global, message, transfer);
 	};
@@ -60,11 +75,59 @@
 			);
 		return importHook.apply(global, urls);
 	};
-	// Minimum structuredClone stub: a JSON round trip handles the common
-	// page -> worker cases (plain data, nested objects/arrays). turbo-surf wires
-	// the real HTML structured clone through its message-port machinery, where
-	// typed arrays, Maps/Sets and transferables cross realms correctly.
+	// Review R1 M5: a POJO-only stub that THROWS DataCloneError on
+	// anything it cannot faithfully round-trip. The real
+	// `structuredClone` honours Date / Map / Set / BigInt / typed
+	// arrays / cycles / undefined / Infinity / NaN; silently dropping
+	// them (what the previous JSON round-trip did) made a page
+	// feature-detection succeed while behaviour disagreed with Chrome.
+	// turbo-surf wires the real HTML structured clone through its
+	// message-port machinery; this stub is just a well-behaved marker.
+	// Full structured-clone semantics is turbo-dom#422 (follow-up).
+	function dataCloneError(detail) {
+		const err = new Error(`${detail} is not cloneable (structuredClone stub)`);
+		err.name = "DataCloneError";
+		return err;
+	}
+	const PRIMITIVE_REJECTS = {
+		undefined: "undefined",
+		bigint: "BigInt",
+		symbol: "Symbol",
+		function: "Function",
+	};
+	function assertPrimitive(value) {
+		if (value === null) return true;
+		const t = typeof value;
+		if (t === "string" || t === "boolean") return true;
+		if (t === "number") {
+			if (Number.isFinite(value)) return true;
+			throw dataCloneError(String(value));
+		}
+		const reject = PRIMITIVE_REJECTS[t];
+		if (reject) throw dataCloneError(reject);
+		return false;
+	}
+	function assertObject(value, seen) {
+		if (seen.has(value)) throw dataCloneError("cyclic reference");
+		seen.add(value);
+		if (Array.isArray(value)) {
+			for (let i = 0; i < value.length; i++) assertCloneable(value[i], seen);
+			return;
+		}
+		const tag = Object.prototype.toString.call(value);
+		if (tag !== "[object Object]") throw dataCloneError(tag);
+		const proto = Object.getPrototypeOf(value);
+		if (proto !== null && proto !== Object.prototype) {
+			throw dataCloneError("non-POJO object");
+		}
+		for (const key of Object.keys(value)) assertCloneable(value[key], seen);
+	}
+	function assertCloneable(value, seen) {
+		if (assertPrimitive(value)) return;
+		assertObject(value, seen);
+	}
 	global.structuredClone = function structuredClone(value) {
+		assertCloneable(value, new Set());
 		return JSON.parse(JSON.stringify(value));
 	};
 	global.addEventListener = function addEventListener(type, listener) {

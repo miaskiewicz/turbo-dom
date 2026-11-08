@@ -108,3 +108,35 @@ fn init_scripts_run_in_registration_order_and_survive_across_installs() {
     clear_init_scripts();
     reset();
 }
+
+#[test]
+fn reset_clears_init_scripts_like_other_per_thread_state() {
+    // Review R1 M6: `reset()` historically cleared every per-thread cell
+    // except `INIT_SCRIPTS`, so an embedder that teardown-reset without
+    // also calling `clear_init_scripts()` leaked init scripts into the
+    // next isolate's installs. A `reset()` is the "clear per-thread
+    // state" boundary; the init-script registry belongs there.
+    super::tests::init_v8();
+    clear_init_scripts();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+
+    add_init_script("globalThis.__shouldNotLeak = 'leaked';");
+    reset();
+    install_with_html(
+        scope,
+        "<!doctype html><html><head><script>\
+         globalThis.__after = typeof globalThis.__shouldNotLeak;\
+         </script></head><body></body></html>",
+    );
+    run_inline_parser_scripts(scope);
+
+    assert_eq!(
+        eval_string(scope, "String(globalThis.__after)").as_deref(),
+        Some("undefined"),
+        "init scripts registered before reset() must not survive it",
+    );
+    reset();
+}

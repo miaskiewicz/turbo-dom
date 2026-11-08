@@ -196,9 +196,10 @@ fn parse_rule_color(s: &ComputedStyle) -> Rgba {
 /// `column-rule-style` is a paintable keyword and `column-rule-width` is positive
 /// (CSS Multicol 1 §5): rule `k` is centered in the gap after column `k`, runs
 /// the full column content height, and carries the rule's resolved
-/// [`ColumnRuleStyle`] and colour. A rule wider than the gap stays centered and
-/// overlaps the adjacent columns, matching Chrome 156's `multicol-rule-wider-
-/// than-gap` fixture.
+/// [`ColumnRuleStyle`] and colour. A rule wider than the gap is clamped to the
+/// gap (Blink's `MultiColumnSet::PaintObject` — the rule never paints outside
+/// the gap); the `multicol-rule-wider-than-gap` Chrome 156 fixture probes at
+/// x = 215 / 225 return the column background, not the rule colour.
 fn column_rule_fragments(
     container: &LayoutBox,
     (cx, cy): (f32, f32),
@@ -538,20 +539,37 @@ fn capped(col_h: f32, cap: Option<f32>) -> f32 {
 /// `break-inside: avoid` can raise it (an unbreakable block has to fit in
 /// a single column, and a forced column break splits content into chunks
 /// that each occupy whole columns). A binary search finds it: 30 bisections
-/// give 1 part in a billion, plenty under the harness's 0.5 px tolerance.
+/// give 1 part in a billion, plenty under the harness's 0.1 px tolerance.
+///
+/// Unsatisfiable break constraints — e.g. `used_count + 1` kids each with
+/// `break-before: column`, where every kid opens a new column so
+/// `fits_in_count` returns false regardless of `col_h` — fall back to the
+/// plain `total / used_count`. CSS Fragmentation 3 §5.2 lets the UA ignore
+/// break values that cannot be satisfied; returning the plain balance keeps
+/// overflow strips at the regular column stride instead of a phantom
+/// `total + max_single` height that the rule painter would draw through.
 fn section_col_h(measured: &[Fragment], flags: &[KidFlags], used_count: u32) -> f32 {
     let heights: Vec<f32> = measured.iter().map(|f| f.height).collect();
     let total: f32 = heights.iter().sum();
     let max_single = heights.iter().copied().fold(0.0_f32, f32::max);
     let n = used_count.max(1) as f32;
     let lo_init = (total / n).max(0.0);
-    // `hi` must be large enough to always fit: a `col_h` of `total + max_single`
-    // trivially fits every kid in column 0 (one column), so it is a valid
-    // upper bound.
+    // `hi` must be large enough to always fit WHEN the break constraints
+    // are satisfiable: a `col_h` of `total + max_single` trivially fits
+    // every kid in column 0 (one column), which honours every `break-*`
+    // flag by definition. If `used_count == 1` the search is unnecessary —
+    // the single-column fit is the smallest `col_h`.
     let hi_init = (total + max_single).max(lo_init);
     let (mut lo, mut hi) = (lo_init, hi_init);
     if fits_in_count(&heights, flags, lo, used_count) {
         return lo;
+    }
+    if !fits_in_count(&heights, flags, hi, used_count) {
+        // Unsatisfiable: no `col_h` lets the break-aware flow fit in
+        // `used_count` columns. The spec lets the UA ignore the values;
+        // fall back to the plain balance so overflow lines up with the
+        // regular column stride.
+        return lo_init;
     }
     for _ in 0..30 {
         let mid = 0.5 * (lo + hi);
@@ -678,14 +696,20 @@ fn flow_section(
 
 /// Apply the forced column break before a kid and the `break-inside: avoid`
 /// push to a fresh column. Shared between the flow and the fitness check so
-/// the two agree on where a column break would occur.
+/// the two agree on where a column break would occur. `col_h <= 0` disables
+/// both: `fits_in_count` early-returns on it and `fragment_pieces` collapses
+/// to a single piece at the current cursor, so advancing `col_index` here
+/// would stride a kid chain across phantom overflow strips the flow never
+/// paints.
 fn apply_pre_break(f: KidFlags, col_h: f32, h: f32, col_index: &mut u32, col_cursor: &mut f32) {
+    if col_h <= 0.0 {
+        return;
+    }
     if f.break_before_column && *col_cursor > 0.0 {
         *col_index += 1;
         *col_cursor = 0.0;
     }
     if f.break_inside_avoid
-        && col_h > 0.0
         && h + FRAG_EPS <= col_h
         && *col_cursor + h > col_h + FRAG_EPS
         && *col_cursor > 0.0
@@ -1063,6 +1087,54 @@ mod tests {
         let m: Vec<Fragment> = Vec::new();
         let col_h = section_col_h(&m, &fs_default(), 2);
         assert!(col_h.abs() < 1e-5);
+    }
+
+    #[test]
+    fn section_col_h_unsatisfiable_breaks_fall_back_to_plain_balance() {
+        // Review R1 M8: four blocks of 80 each with `break-before:column`,
+        // used=2. Every kid opens a new column, so `fits_in_count` returns
+        // false for ANY `col_h`; the previous `hi = total + max_single =
+        // 400` would silently fall out of the binary search. The fallback
+        // now reports the plain `total / used_count = 160` so the caller
+        // produces overflow at the regular stride instead of a phantom
+        // 400-px-tall column that the rule paint would have drawn through.
+        let m: Vec<Fragment> = [80.0, 80.0, 80.0, 80.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 4];
+        for f in &mut flags {
+            f.break_before_column = true;
+        }
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 160.0).abs() < 1e-4,
+            "col_h = {col_h}; expected 160 (plain balance) on an \
+             unsatisfiable break constraint, not the previous 400"
+        );
+    }
+
+    #[test]
+    fn apply_pre_break_does_not_advance_on_zero_col_h() {
+        // Review R1 M2: `fits_in_count` early-returns on `col_h <= 0` and
+        // `fragment_pieces` collapses to a single piece at the current
+        // cursor, but `apply_pre_break`'s `break_before_column` branch used
+        // to advance the column index regardless of `col_h`. That would
+        // stride a kid chain with repeated `break-before:column` across
+        // phantom column indices in a `height:0` multicol. Both branches
+        // must stay put when `col_h <= 0`.
+        let f = KidFlags {
+            break_before_column: true,
+            ..KidFlags::default()
+        };
+        let mut col_index = 0u32;
+        let mut col_cursor = 40.0f32;
+        apply_pre_break(f, 0.0, 10.0, &mut col_index, &mut col_cursor);
+        assert_eq!(
+            col_index, 0,
+            "break-before:column must be a no-op when col_h <= 0"
+        );
+        assert!(
+            (col_cursor - 40.0).abs() < 1e-5,
+            "col_cursor must not reset when the break is suppressed"
+        );
     }
 
     #[test]
