@@ -21,6 +21,12 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout**: completed the DPR-2 inline-box oracle for 20px / 60px
+  sizes — Chrome 156 at `--force-device-scale-factor=2` reports span content
+  heights of 26 / 78, captured by
+  `scripts/webfont-inline-dpr2-chrome-control.mjs` and activated in
+  `an_inline_box_with_a_web_face_takes_chromes_content_height`
+  (miaskiewicz/turbo-dom#386 follow-up).
 - **turbo-dom-browser-env**: `sweep_collected_documents()` now also prunes `OTHER_DOMS`
   / `DOM_CONTEXTS` entries whose weak V8 context handle is empty, not only entries whose
   `DocumentGraph` has gone through `observe()` and reports `!document_alive()`. A retired
