@@ -283,6 +283,54 @@ fn inline_handler_policy_runs_at_set_and_at_first_compile() {
     reset();
 }
 
+/// turbo-dom R1 (expert H3): a JS-assigned `el.on<type> = fn` wins over the
+/// earlier `setAttribute('on<type>', '…')` source, even after a sequence of
+/// property writes that bypass the setter's first-assignment `handlerAdd`
+/// path. The invariant: once `note()` has recorded the JS-side assignment,
+/// a subsequent refresh on dispatch must NOT recompile the content-attribute
+/// body and clobber the JS-assigned function.
+///
+/// The current setter path reaches `refresh` through `handlerAdd` on the
+/// first non-null JS assignment (which inserts `compiled` and short-circuits
+/// later refreshes). This test covers the full contract — JS wins after a
+/// `setAttribute` seed AND the attribute's source survives on the element —
+/// plus the `fn1 -> fn2` reassignment path where `handlerAdd` is NOT called
+/// again. A `note()` that marks `compiled` protects both.
+#[test]
+fn js_assignment_after_set_attribute_wins_over_content_attribute_body() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><div id=d></div>");
+    let code = v8::String::new(
+        scope,
+        "(() => { globalThis.seen = []; \
+         const d = document.getElementById('d'); \
+         d.setAttribute('onclick', 'seen.push(\"A\")'); \
+         d.onclick = () => seen.push('B1'); \
+         /* fn1 -> fn2: setter's handlerAdd is skipped (entry.value is non-null). */ \
+         d.onclick = () => seen.push('B2'); \
+         d.dispatchEvent(new Event('click')); \
+         /* The content-attribute source is still on the element. */ \
+         const attr = d.getAttribute('onclick'); \
+         return JSON.stringify({ seen, attr }); \
+         })()",
+    )
+    .unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        value,
+        r#"{"seen":["B2"],"attr":"seen.push(\"A\")"}"#,
+        "JS assignment fires (not the content-attribute body), attribute survives",
+    );
+    reset();
+}
+
 /// turbo-dom#164: a keyframe selector outside 0%..100% drops its keyframe rule (Chrome 156).
 #[test]
 fn out_of_range_keyframe_selectors_drop_the_rule() {

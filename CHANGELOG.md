@@ -40,6 +40,33 @@ at the time); this file reconstructs them from history.
   install_policy` carries an assertion and comment that its
   cancel/restore-terminate window cannot reach a `v8::PrivateName`
   interceptor — the realm global is a plain object, not a Proxy.
+- **turbo-dom-browser-env**: `collectPath`'s EventTarget-parent-chain walk no
+  longer silently truncates at 100 hops. Chrome has no such cap, so a 101+-deep
+  legitimate chain (an IDB-style tree an embedder could build, or a surf
+  non-Node hierarchy) dropped bubble listeners past hop 100 without diagnostic.
+  The cap is now 10 000, and a chain that exceeds it throws a loud
+  `TypeError('EventTarget parent chain exceeded 10000 hops (runaway chain)')`
+  instead of silently losing ancestors — an adversarial infinite chain would
+  otherwise DoS the dispatch (miaskiewicz/turbo-dom R1 expert H1,
+  turbo-dom#381 follow-up).
+- **turbo-dom-layout**: `ensure_default_display` now covers every HTML tag whose
+  Chrome `html.css` default display is not `inline`, not just the block-tag list
+  #395 added. Extended tags: `<li>` → `list-item`, the table family (`<table>`
+  / `<thead>` / `<tbody>` / `<tfoot>` / `<tr>` / `<caption>` / `<td>` / `<th>` /
+  `<colgroup>` / `<col>` → the matching `table-*` display), form controls
+  `<input>` / `<textarea>` / `<select>` / `<button>` / `<progress>` / `<meter>`
+  → `inline-block`, `<template>` → `none`. A surf-level inline override on any
+  of these no longer collapses the border box to `(0, 0)` when the embedder
+  supplies no UA origin. The deeper refactor — threading `UA_CSS` through the
+  live cascade when no UA origin is supplied — stays as a 0.8.2 follow-up
+  (miaskiewicz/turbo-dom R1 expert H2 + meshde, #395 follow-up).
+- **turbo-dom-browser-env**: a throwing embedder init script
+  (`add_init_script`) is now caught in its own `v8::TryCatch`, so a pending V8
+  exception can no longer leak into later init scripts or into the embedder's
+  inline parser scripts. The caught exception is reported through the window's
+  error channel (an `ErrorEvent` dispatched to `window.onerror`), the same way
+  an `on*` compile error is surfaced (miaskiewicz/turbo-dom R1 expert H4,
+  turbo-dom#394 follow-up).
 - **turbo-dom-layout**: the inline-box fragment `content_height` and the inline
   formatting context's strut now resolve `@font-face` web-font metrics at the
   CSS size directly (via `scaled_html_metrics`), instead of reading at the
