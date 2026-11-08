@@ -115,11 +115,16 @@ fn content_height(fonts: &FontRegistry, size: f32, scale: f32) -> f32 {
 
 #[test]
 fn a_web_face_lays_text_out_at_chromes_content_height() {
-    // turbo-surf#130's case: IBM Plex Mono as a web font at 20px is 25px tall in Chrome 156.
-    // miaskiewicz/turbo-dom#377: Chrome's emulated-DPR reads (what turbo-surf sees through
-    // `getBoundingClientRect`, in CSS px) take the CSS-size metrics -- no device-pixel
-    // rounding -- so the content height is the same at every DSF. The DSF-2 20px live
-    // path returned 26 before, now 25.
+    // turbo-surf#130's case: IBM Plex Mono as a web font at 20px is 25 CSS px tall in
+    // Chrome 156 at DSF 1, and the live path at `layout_scale: 2.0` matches Chrome at
+    // `--force-device-scale-factor=2` (miaskiewicz/turbo-dom#386, follow-up to #377):
+    // the metrics read at `size * scale` and divided back land ascent and descent on
+    // the device-pixel grid, so content height at DPR 2 lands on a half-CSS-px grain
+    // (IBM Plex Mono 10px -> 12.5, 30px -> 38.5; probe-captured against real Chrome at
+    // `--force-device-scale-factor=2`, not Playwright's emulated DPR, which rounds in
+    // CSS pixels and would return 13/39 — CLAUDE.md "Text-geometry tests name a repo
+    // font"). The DSF-2 20px live path returned 26 before #377; 25 after it; the
+    // CSS-px case (DSF 1) is unchanged.
     let _control = control();
     let mut fonts = FontRegistry::new();
     fonts.add(
@@ -131,13 +136,11 @@ fn a_web_face_lays_text_out_at_chromes_content_height() {
         )
         .unwrap(),
     );
-    // Chrome's emulated-DPR heights for IBM Plex Mono in CSS px: `html_metrics(size)`
-    // ascent + descent. 20px -> 25, 60px -> 77, 10px -> 13, 30px -> 39.
     for (dsf, size, want) in [
         (1.0_f32, 20.0_f32, 25.0_f32),
         (1.0, 60.0, 77.0),
-        (2.0, 10.0, 13.0),
-        (2.0, 30.0, 39.0),
+        (2.0, 10.0, 12.5),
+        (2.0, 30.0, 38.5),
     ] {
         assert_eq!(content_height(&fonts, size, dsf), want, "dsf{dsf} {size}px");
     }
