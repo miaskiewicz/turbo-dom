@@ -38,10 +38,12 @@ const EXPECTED_IDS: &[&str] = &[
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
-// grid, so a naive float formula can differ by up to a handful of 1/64 px from
-// Chrome's reported value. 0.5 px covers it with room to spare, the same
-// tolerance the hyphens / text-breaks Chrome controls use.
-const TOL: f64 = 0.5;
+// grid (≈0.015625 px). A naive float formula can differ by up to a handful of
+// 1/64 px (≈0.08 px) from Chrome's reported value, so 0.1 px suffices for every
+// case. Earlier revisions used 0.5 px "with room to spare", but 0.5 px is six
+// times the actual 1/64 px grid budget and would silently hide a quarter-pixel
+// column-origin bug.
+const TOL: f64 = 0.1;
 
 /// Cases PR-C1 asserts geometry for. The other five are in
 /// `pr_c2_ignored_but_fixture_shape_checked` below.
@@ -219,7 +221,7 @@ fn columns_shorthand_matches_chrome_156() {
     // (default) cuts it at the column boundary, which PR-C2's fragmenter
     // models directly. The remaining fixture rounding (Chrome's 1/64 px
     // `LayoutUnit` grid on the balanced column height, `content_h /
-    // used_count`) stays within the harness's 0.5 px tolerance.
+    // used_count`) stays within the harness's 1/64 px (≈0.1 px) tolerance.
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "columns-shorthand");
     assert_matches_chrome("columns-shorthand", case);
