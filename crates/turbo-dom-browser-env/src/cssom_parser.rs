@@ -18,6 +18,11 @@ use lightningcss::traits::ToCss;
 pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 
 pub fn is_supported_property(name: &str) -> bool {
+    // Chrome 156 refuses every `-moz-*` vendor-prefixed name, even the ones Lightning CSS
+    // maps to a known PropertyId (e.g. `-moz-appearance`): see turbo-dom#390.
+    if name.len() > 5 && name.as_bytes()[0] == b'-' && name[1..].starts_with("moz-") {
+        return false;
+    }
     !matches!(PropertyId::from(name), PropertyId::Custom(_))
         || interest_delay_arity(name).is_some()
         || name == "writing-mode"

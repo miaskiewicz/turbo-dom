@@ -2083,7 +2083,9 @@ function offset(comps) {
   if (!pos) return null;
   const path = offsetPathPart(main, pos.at);
   if (!path) return null;
-  if (path.at !== main.length || (!main.length && parts.length === 1)) return null;
+  // The `[/ <offset-anchor>]?` tail needs a leading position-or-path group: `offset: /
+  // center` and `offset: / auto` are rejected like `offset:` alone (turbo-dom#391).
+  if (path.at !== main.length || !main.length) return null;
   return [['offset-position', pos.value], ['offset-path', path.path], ['offset-distance', path.distance], ['offset-rotate', path.rotate], ['offset-anchor', anchor]];
 }
 function repeatStyle(comps) {
