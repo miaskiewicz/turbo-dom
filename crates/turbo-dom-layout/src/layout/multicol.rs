@@ -231,11 +231,10 @@ fn measure_kids(kids: &[LayoutBox], used_width: f32, fs: f32, ctx: &mut Ctx) -> 
 /// `None` for `definite` = auto height, which uses the balanced height straight.
 fn balanced_col_height(total: f32, used_count: u32, definite: Option<f32>) -> f32 {
     let balance = (total / used_count.max(1) as f32).max(0.0);
-    match definite {
-        Some(def) if balance < def => balance,
-        Some(def) => def.max(0.0),
-        None => balance,
-    }
+    // `f32::min` over a cap-clamped definite height, so an equivalent `<` /
+    // `<=` branch is not open to a mutant on the boundary where balance meets
+    // the cap (both branches then return the same value).
+    definite.map_or(balance, |def| balance.min(def.max(0.0)))
 }
 
 /// One contiguous fragment of a source box inside its column. Measured in the
