@@ -105,12 +105,29 @@ pub(super) fn install_policy(
     scope: &mut v8::PinScope,
     callback: v8::Local<v8::Function>,
 ) -> Option<()> {
-    let global = scope.get_current_context().global(scope);
-    let record = private_record(scope, global)?;
-    let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
-    let state = private_record(scope, factory)?;
-    let name = v8::String::new(scope, "authorize")?;
-    (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
+    // turbo-dom#401: a watchdog termination left pending by a prior frame's script
+    // can make V8's private-field reads and allocations return None here, even though
+    // this path only mutates native state and never runs guest JS. The embedder
+    // (turbo-surf) sees the resulting `false` as "authorization initialization
+    // interrupted" and aborts the frame bootstrap. The install is race-safe to
+    // retry, so clear the pending termination for the duration of the write and
+    // restore it before returning — the embedder's next guest-JS call still aborts.
+    let was_terminating = scope.is_execution_terminating();
+    if was_terminating {
+        scope.cancel_terminate_execution();
+    }
+    let result = (|| -> Option<()> {
+        let global = scope.get_current_context().global(scope);
+        let record = private_record(scope, global)?;
+        let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
+        let state = private_record(scope, factory)?;
+        let name = v8::String::new(scope, "authorize")?;
+        (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
+    })();
+    if was_terminating {
+        scope.terminate_execution();
+    }
+    result
 }
 pub(super) fn convert<'s>(
     scope: &mut v8::PinScope<'s, '_>,
