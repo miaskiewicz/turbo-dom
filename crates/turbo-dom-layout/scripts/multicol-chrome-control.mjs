@@ -1,10 +1,19 @@
-// Chrome-156 control for turbo-dom-layout's CSS multi-column geometry (#398 PR-B).
+// Chrome-156 control for turbo-dom-layout's CSS multi-column geometry
+// (#398 PR-B + PR-E).
 //
-// Captures the layout of eight multicol containers Chrome 156 lays out, as a geometry
-// oracle for the layout pass that lands in #398 PR-C. The capture pattern follows
-// `scripts/live-geometry-chrome-control.mjs` (same shape: one `boxes` array per case,
-// one JSON file). PR-C's layout harness asserts against this fixture; PR-B's harness
-// only loads it.
+// Captures the layout of the multicol containers Chrome 156 lays out, as a geometry
+// oracle for the layout pass that lands in #398 PR-C and PR-E. The capture pattern
+// follows `scripts/live-geometry-chrome-control.mjs` (same shape: one `boxes` array
+// per case, one JSON file). PR-C's and PR-E's layout harness assert against this
+// fixture; PR-B's harness only loaded it.
+//
+// PR-E adds six cases exercising `column-span: all` and the
+// `break-{before,after,inside}` property family: the span-all child breaks the
+// multicol flow, fills the content box's inline size, and Chrome balances the
+// pre-span and post-span sub-flows separately (CSS Multicol 1 §6 "Spanning
+// columns"); `break-before: column` / `break-after: column` force a column
+// break at the start / after the end of a flowed child; `break-inside: avoid`
+// pushes a would-be-fragmented child to a fresh column when it fits in one.
 //
 // Each case records, in document order:
 //   - the multicol container's own content-box (`cid: "c"`): its bounding rect plus
@@ -119,6 +128,91 @@ const CASES = [
           BLK(60, 1) +
           BLK(60, 2) +
           BLK(60, 3),
+      ),
+    ),
+  },
+  // PR-E: `column-span: all` breaks the flow — Chrome fragments the pre-span
+  // children, places the span-all child at the full container inline size,
+  // then flows the post-span children into a new column set below.
+  {
+    id: "span-all-simple",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:400px",
+        BLK(80, 0) +
+          `<div data-cid="i1" style="column-span:all;height:40px;background:#efe"></div>` +
+          BLK(80, 2),
+      ),
+    ),
+  },
+  // PR-E: `column-span: all` inside a balanced container — balance is per
+  // sub-flow, so the pre-span children balance over their own pair of columns.
+  {
+    id: "span-all-balance",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:16px;width:416px;height:400px",
+        stack([60, 60, 60, 60]).replace(/i(\d+)/g, (_, n) => `p${n}`) +
+          `<div data-cid="s" style="column-span:all;height:40px;background:#efe"></div>` +
+          stack([60, 60]).replace(/i(\d+)/g, (_, n) => `q${n}`),
+      ),
+    ),
+  },
+  // PR-E: `break-before: column` on i1 forces a new column at its start even
+  // though i0 did not fill its column.
+  {
+    id: "break-before-column",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:300px",
+        BLK(80, 0) +
+          `<div data-cid="i1" style="break-before:column;height:80px;background:#eef"></div>` +
+          BLK(80, 2),
+      ),
+    ),
+  },
+  // PR-E: `break-after: column` on i0 forces a new column after i0, so i1
+  // starts at the top of column 2 even though there was room in column 1.
+  {
+    id: "break-after-column",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:300px",
+        `<div data-cid="i0" style="break-after:column;height:80px;background:#eef"></div>` +
+          BLK(80, 1) +
+          BLK(80, 2),
+      ),
+    ),
+  },
+  // PR-E: `break-inside: avoid` on a child that would overrun the current
+  // column pushes it into a fresh one rather than fragmenting.
+  {
+    id: "break-inside-avoid",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:200px",
+        BLK(150, 0) +
+          `<div data-cid="i1" style="break-inside:avoid;height:80px;background:#eef"></div>` +
+          BLK(60, 2),
+      ),
+    ),
+  },
+  // PR-E: `break-inside: avoid` on a child that fits in the current column
+  // stays in place (no spurious column push).
+  {
+    id: "break-inside-avoid-fits-anyway",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:200px",
+        BLK(60, 0) +
+          `<div data-cid="i1" style="break-inside:avoid;height:60px;background:#eef"></div>` +
+          BLK(60, 2),
       ),
     ),
   },

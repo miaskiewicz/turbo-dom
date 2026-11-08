@@ -1,15 +1,19 @@
-// Chrome 156 multi-column geometry harness (#398 PR-B + PR-C1 + PR-C2).
+// Chrome 156 multi-column geometry harness (#398 PR-B + PR-C1 + PR-C2 + PR-E).
 //
 // Loads the oracle captured by
 // `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs` and runs
 // turbo-dom-layout over each case's `html` to check that the CSS multi-column
 // pass produces Chrome 156's container and item border boxes. PR-C1 activated
 // the three cleanest equal-width sequential-fill cases (`basic-2col-equal`,
-// `basic-3col-with-gap`, `column-width-driven`); PR-C2 activates the other
+// `basic-3col-with-gap`, `column-width-driven`); PR-C2 activated the other
 // five (`columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
 // `nested-multicol`, `floats-inside-column`) by adding `column-fill: balance`,
 // column fragmentation, overflow into extra strips beyond `used_count`, and
-// a union-geometry pass for fragmented children.
+// a union-geometry pass for fragmented children. PR-E activates six more
+// (`span-all-simple`, `span-all-balance`, `break-before-column`,
+// `break-after-column`, `break-inside-avoid`, `break-inside-avoid-fits-anyway`)
+// for `column-span: all` and the `break-{before,after,inside}` flow-honouring
+// rules.
 
 use serde_json::Value;
 use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
@@ -25,6 +29,12 @@ const EXPECTED_IDS: &[&str] = &[
     "overflow-at-column-height",
     "nested-multicol",
     "floats-inside-column",
+    "span-all-simple",
+    "span-all-balance",
+    "break-before-column",
+    "break-after-column",
+    "break-inside-avoid",
+    "break-inside-avoid-fits-anyway",
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
@@ -244,4 +254,53 @@ fn floats_inside_column_matches_chrome_156() {
     let fixture = fixture();
     let case = find_case(fixture["cases"].as_array().unwrap(), "floats-inside-column");
     assert_matches_chrome("floats-inside-column", case);
+}
+
+// --------------------------------------------------------------------------
+// PR-E: `column-span: all` + `break-{before,after,inside}` flow honouring.
+// --------------------------------------------------------------------------
+
+#[test]
+fn span_all_simple_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "span-all-simple");
+    assert_matches_chrome("span-all-simple", case);
+}
+
+#[test]
+fn span_all_balance_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "span-all-balance");
+    assert_matches_chrome("span-all-balance", case);
+}
+
+#[test]
+fn break_before_column_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "break-before-column");
+    assert_matches_chrome("break-before-column", case);
+}
+
+#[test]
+fn break_after_column_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "break-after-column");
+    assert_matches_chrome("break-after-column", case);
+}
+
+#[test]
+fn break_inside_avoid_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "break-inside-avoid");
+    assert_matches_chrome("break-inside-avoid", case);
+}
+
+#[test]
+fn break_inside_avoid_fits_anyway_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "break-inside-avoid-fits-anyway",
+    );
+    assert_matches_chrome("break-inside-avoid-fits-anyway", case);
 }
