@@ -12,8 +12,8 @@ use super::{
 };
 use crate::layout_snapshot::SourceId;
 use crate::style::{
-    presentational_declarations_of, resolve_matched_style, CascadeOrigin, ComputedStyle,
-    MatchedDeclaration,
+    ensure_default_display, presentational_declarations_of, resolve_matched_style, CascadeOrigin,
+    ComputedStyle, MatchedDeclaration,
 };
 use crate::tag::{Attr, Tag};
 use crate::{StyledElement, StyledNode, StyledText};
@@ -167,6 +167,14 @@ impl Styler<'_, '_> {
             );
         }
         let mut style = resolve_matched_style(parent, &declarations);
+        // Chrome's `html.css` `display: block` for known block tags
+        // (miaskiewicz/turbo-dom#395): the CSS initial `display` is `inline`
+        // (#375), so with no UA origin to carry the UA rule an embedder's
+        // inline-override `width` on a `<div>` would collapse to a zero-sized
+        // inline. Fall back to the HTML default when no declaration set it; a
+        // UA rule in the pre-matched origins still wins, and unknown tags stay
+        // inline.
+        ensure_default_display(&mut style, local);
         if self.capture.quirks {
             style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
             if matches!(local, "body" | "td" | "th") {
