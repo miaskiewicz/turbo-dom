@@ -11588,9 +11588,6 @@ mod html_meta_tests;
 #[path = "animation_range_tests.rs"]
 mod animation_range_tests;
 #[cfg(test)]
-#[path = "init_script_tests.rs"]
-mod init_script_tests;
-#[cfg(test)]
 #[path = "computed_defaults_tests.rs"]
 mod computed_defaults_tests;
 #[cfg(test)]
@@ -11620,6 +11617,9 @@ mod html_media_events_tests;
 #[cfg(test)]
 #[path = "html_track_tests.rs"]
 mod html_track_tests;
+#[cfg(test)]
+#[path = "init_script_tests.rs"]
+mod init_script_tests;
 #[cfg(test)]
 #[path = "interface_parity_tests.rs"]
 mod interface_parity_tests;

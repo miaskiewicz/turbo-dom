@@ -177,10 +177,15 @@ fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
         eprintln!(
             "[rust-dom] startup snapshot not built ({reason}): installs run the engine scripts"
         );
+        // Both must outlive this fn: the snapshot creator holds V8 state the RO anchor's
+        // disposal would otherwise touch, so dropping the anchor while the creator is
+        // leaked panics at v8::Isolate::drop.
         std::mem::forget(isolate);
+        std::mem::forget(_ro_anchor);
         return None;
     }
     let data = isolate.create_blob(v8::FunctionCodeHandling::Keep)?;
+    // `_ro_anchor` drops here at scope exit, AFTER `create_blob` consumed the creator.
     Some(Blob { data, references })
 }
 

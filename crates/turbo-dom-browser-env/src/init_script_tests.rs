@@ -26,8 +26,7 @@ fn run_inline_parser_scripts(scope: &mut v8::PinScope) {
                 (prepared.src.is_none()
                     && matches!(
                         prepared.kind.as_str(),
-                        ""
-                            | "text/javascript"
+                        "" | "text/javascript"
                             | "application/javascript"
                             | "text/ecmascript"
                             | "application/ecmascript"

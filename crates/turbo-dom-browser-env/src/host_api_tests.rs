@@ -260,16 +260,13 @@ fn retired_frame_weak_context_handles_are_pruned_after_gc() {
             let child = v8::Context::new(child_scope, Default::default());
             let scope = &mut v8::ContextScope::new(child_scope, child);
             install_independent_html(scope, "<p>retired</p>");
-            let document = v8::Script::compile(
-                scope,
-                v8::String::new(scope, "document").unwrap(),
-                None,
-            )
-            .unwrap()
-            .run(scope)
-            .unwrap()
-            .to_object(scope)
-            .unwrap();
+            let document =
+                v8::Script::compile(scope, v8::String::new(scope, "document").unwrap(), None)
+                    .unwrap()
+                    .run(scope)
+                    .unwrap()
+                    .to_object(scope)
+                    .unwrap();
             held.push(v8::Global::new(scope, document));
         }
         assert_eq!(native_document_count_for_testing(), 1 + N);
