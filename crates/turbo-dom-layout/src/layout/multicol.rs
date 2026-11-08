@@ -1066,6 +1066,32 @@ mod tests {
     }
 
     #[test]
+    fn apply_pre_break_does_not_advance_on_zero_col_h() {
+        // Review R1 M2: `fits_in_count` early-returns on `col_h <= 0` and
+        // `fragment_pieces` collapses to a single piece at the current
+        // cursor, but `apply_pre_break`'s `break_before_column` branch used
+        // to advance the column index regardless of `col_h`. That would
+        // stride a kid chain with repeated `break-before:column` across
+        // phantom column indices in a `height:0` multicol. Both branches
+        // must stay put when `col_h <= 0`.
+        let f = KidFlags {
+            break_before_column: true,
+            ..KidFlags::default()
+        };
+        let mut col_index = 0u32;
+        let mut col_cursor = 40.0f32;
+        apply_pre_break(f, 0.0, 10.0, &mut col_index, &mut col_cursor);
+        assert_eq!(
+            col_index, 0,
+            "break-before:column must be a no-op when col_h <= 0"
+        );
+        assert!(
+            (col_cursor - 40.0).abs() < 1e-5,
+            "col_cursor must not reset when the break is suppressed"
+        );
+    }
+
+    #[test]
     fn capped_min_with_cap_else_passthrough() {
         assert!((capped(200.0, Some(150.0)) - 150.0).abs() < 1e-5);
         assert!((capped(100.0, Some(150.0)) - 100.0).abs() < 1e-5);
