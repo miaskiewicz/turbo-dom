@@ -1,13 +1,17 @@
-// Chrome 156 multi-column geometry harness (#398 PR-B).
+// Chrome 156 multi-column geometry harness (#398 PR-B + PR-C1).
 //
 // Loads the oracle captured by
-// `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs` and asserts its
-// shape. The actual layout comparison (running turbo-dom-layout's multicol pass
-// against each case's recorded container + items + columns) lands in #398 PR-C,
-// which replaces the TODO below with a real `assert_matches_chrome` call per case.
-// Keeping the harness in place now means PR-C is a one-line activation.
+// `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs` and runs
+// turbo-dom-layout over each case's `html` to check that the CSS multi-column
+// pass produces Chrome 156's container and item border boxes. PR-C1 activates
+// the three cleanest cases (`basic-2col-equal`, `basic-3col-with-gap`,
+// `column-width-driven`); the remaining five stay fixture-shape-only here and
+// land in PR-C2 (column-span capture anomaly, sequential-fill edge cases,
+// overflow into an N+1 strip beyond the content box, nested multicol, and
+// floats inside a column).
 
 use serde_json::Value;
+use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
 
 const FIXTURE: &str = include_str!("fixtures/multicol_chrome156.json");
 
@@ -22,9 +26,87 @@ const EXPECTED_IDS: &[&str] = &[
     "floats-inside-column",
 ];
 
+// Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
+// grid, so a naive float formula can differ by up to a handful of 1/64 px from
+// Chrome's reported value. 0.5 px covers it with room to spare, the same
+// tolerance the hyphens / text-breaks Chrome controls use.
+const TOL: f64 = 0.5;
+
+/// Cases PR-C1 asserts geometry for. The other five are in
+/// `pr_c2_ignored_but_fixture_shape_checked` below.
+const PR_C1_CASES: &[&str] = &[
+    "basic-2col-equal",
+    "basic-3col-with-gap",
+    "column-width-driven",
+];
+
+fn fixture() -> Value {
+    serde_json::from_str(FIXTURE).expect("multicol_chrome156.json parses")
+}
+
+fn find_case<'a>(cases: &'a [Value], id: &str) -> &'a Value {
+    cases
+        .iter()
+        .find(|c| c["id"].as_str() == Some(id))
+        .expect("case present in fixture")
+}
+
+fn boxes_for(html: &str) -> Vec<turbo_dom_layout::CidBox> {
+    let fonts = fixture_fonts();
+    let mut diags = Diagnostics::default();
+    layout_boxes(html, "", 1280.0, 800.0, &fonts, &mut diags).expect("layout_boxes")
+}
+
+fn assert_matches_chrome(id: &str, case: &Value) {
+    let html = case["html"].as_str().expect("html");
+    let got = boxes_for(html);
+    let mut failures: Vec<String> = Vec::new();
+    // Container border box.
+    let want_c = &case["container"];
+    let got_c = got
+        .iter()
+        .find(|b| b.cid == "c")
+        .unwrap_or_else(|| panic!("{id}: container cid=c missing from layout_boxes output"));
+    for (field, got_v) in [
+        ("x", got_c.x),
+        ("y", got_c.y),
+        ("width", got_c.width),
+        ("height", got_c.height),
+    ] {
+        let want_v = want_c[field].as_f64().expect("container field");
+        if (f64::from(got_v) - want_v).abs() > TOL {
+            failures.push(format!(
+                "{id}: container.{field} = {got_v}, Chrome {want_v}"
+            ));
+        }
+    }
+    // Each flowed item's border box.
+    for item in case["items"].as_array().expect("items") {
+        let cid = item["cid"].as_str().expect("cid");
+        let Some(b) = got.iter().find(|b| b.cid == cid) else {
+            failures.push(format!(
+                "{id}: item cid={cid} missing from layout_boxes output"
+            ));
+            continue;
+        };
+        for (field, got_v) in [
+            ("x", b.x),
+            ("y", b.y),
+            ("width", b.width),
+            ("height", b.height),
+        ] {
+            let want_v = item[field].as_f64().expect("item field");
+            if (f64::from(got_v) - want_v).abs() > TOL {
+                failures.push(format!("{id}: {cid}.{field} = {got_v}, Chrome {want_v}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 #[test]
 fn multicol_fixture_loads_and_covers_the_eight_cases() {
-    let fixture: Value = serde_json::from_str(FIXTURE).expect("multicol_chrome156.json parses");
+    let fixture = fixture();
     let generator = fixture["generator"].as_str().expect("generator string");
     assert!(
         generator.ends_with("multicol-chrome-control.mjs"),
@@ -42,7 +124,11 @@ fn multicol_fixture_loads_and_covers_the_eight_cases() {
     for case in cases {
         let id = case["id"].as_str().unwrap();
         let container = &case["container"];
-        assert_eq!(container["cid"].as_str(), Some("c"), "case {id}: container cid");
+        assert_eq!(
+            container["cid"].as_str(),
+            Some("c"),
+            "case {id}: container cid"
+        );
         assert!(
             !case["html"].as_str().unwrap().is_empty(),
             "case {id}: html present",
@@ -50,7 +136,10 @@ fn multicol_fixture_loads_and_covers_the_eight_cases() {
         let items = case["items"].as_array().expect("items array");
         assert!(!items.is_empty(), "case {id}: at least one flowed item");
         let columns = case["columns"].as_array().expect("columns array");
-        assert!(!columns.is_empty(), "case {id}: at least one derived column strip");
+        assert!(
+            !columns.is_empty(),
+            "case {id}: at least one derived column strip"
+        );
         let client_width = container["clientWidth"].as_f64().expect("clientWidth");
         for col in columns {
             let x = col["x"].as_f64().expect("col x");
@@ -67,8 +156,89 @@ fn multicol_fixture_loads_and_covers_the_eight_cases() {
             let _ = client_width;
         }
     }
-    // TODO(#398 PR-C): once the multicol layout pass lands, replace the shape
-    // checks above with a call that runs turbo-dom-layout over each case's
-    // `html` and asserts the resulting container/items/columns match Chrome's
-    // numbers from this fixture.
+}
+
+// --------------------------------------------------------------------------
+// PR-C1: equal-width sequential-fill, 3 clean cases.
+// --------------------------------------------------------------------------
+
+#[test]
+fn basic_2col_equal_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "basic-2col-equal");
+    assert_matches_chrome("basic-2col-equal", case);
+}
+
+#[test]
+fn basic_3col_with_gap_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "basic-3col-with-gap");
+    assert_matches_chrome("basic-3col-with-gap", case);
+}
+
+#[test]
+fn column_width_driven_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "column-width-driven");
+    assert_matches_chrome("column-width-driven", case);
+}
+
+/// Covers `PR_C1_CASES` so a stray fifth case cannot sneak in without updating the list.
+#[test]
+fn pr_c1_activates_three_cases() {
+    assert_eq!(
+        PR_C1_CASES,
+        &[
+            "basic-2col-equal",
+            "basic-3col-with-gap",
+            "column-width-driven"
+        ],
+    );
+}
+
+// --------------------------------------------------------------------------
+// PR-C2 deferrals: fixture-shape only, geometry comparison not yet activated.
+// --------------------------------------------------------------------------
+
+#[test]
+#[ignore = "PR-C2: anomalous i2 offsetWidth:400,offsetHeight:133 (column-span capture) — see tests/fixtures/multicol_chrome156.json columns-shorthand"]
+fn columns_shorthand_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "columns-shorthand");
+    assert_matches_chrome("columns-shorthand", case);
+}
+
+#[test]
+#[ignore = "PR-C2: sequential-fill edge cases with mixed heights"]
+fn mixed_child_heights_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "mixed-child-heights");
+    assert_matches_chrome("mixed-child-heights", case);
+}
+
+#[test]
+#[ignore = "PR-C2: overflow into N+1 column strip beyond the content box"]
+fn overflow_at_column_height_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-at-column-height",
+    );
+    assert_matches_chrome("overflow-at-column-height", case);
+}
+
+#[test]
+#[ignore = "PR-C2: nested multicol containers"]
+fn nested_multicol_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "nested-multicol");
+    assert_matches_chrome("nested-multicol", case);
+}
+
+#[test]
+#[ignore = "PR-C2: floats inside a column"]
+fn floats_inside_column_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "floats-inside-column");
+    assert_matches_chrome("floats-inside-column", case);
 }

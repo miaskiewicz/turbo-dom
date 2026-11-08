@@ -907,7 +907,8 @@ fn fragment(
     // the text Range one #377 fixed): scaled_html_metrics skips the
     // device-scale round-trip for `@font-face` faces so an inline box's
     // fragment content_height matches Chrome's at every DSF.
-    let font = super::inline::scaled_html_metrics(&open.edge.face, open.edge.font_size, Some(scale));
+    let font =
+        super::inline::scaled_html_metrics(&open.edge.face, open.edge.font_size, Some(scale));
     let content_height = font.ascent + font.descent;
     let ascent = if central {
         super::inline::central_metrics(font.ascent, font.descent, scale).0

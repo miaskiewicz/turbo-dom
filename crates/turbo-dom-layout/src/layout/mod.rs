@@ -18,6 +18,7 @@ pub(crate) mod inline_boxes;
 mod invisible;
 pub(crate) mod list_marker;
 mod media_paint;
+pub mod multicol;
 pub mod sticky;
 mod svg_numbers;
 pub(crate) mod svg_viewport;

@@ -113,10 +113,7 @@ fn host_dispatch_target(
 fn non_node_event_target_phases_match_chrome156() {
     let expected = fixture_result();
     let actual = run_chain();
-    assert_eq!(
-        actual["phases"], expected["phases"],
-        "phase records differ"
-    );
+    assert_eq!(actual["phases"], expected["phases"], "phase records differ");
 }
 
 /// turbo-dom#382: a microtask queued inside listener A has run by the time listener B is

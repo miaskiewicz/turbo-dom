@@ -876,7 +876,7 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
         super::quad_shorthand::is_quad(&cand.property)
             || matches!(
                 cand.property.as_str(),
-                "font" | "list-style" | "border-radius" | "background"
+                "font" | "list-style" | "border-radius" | "background" | "columns",
             )
     }) {
         return cands;
@@ -964,14 +964,15 @@ fn take_longhand(longhands: &mut Vec<Cand>, name: &str) -> Option<String> {
     Some(longhands.remove(i).value)
 }
 
-/// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128) and `border-radius` (#253)
-/// shorthands' longhands, parsed by turbo-dom's
-/// shorthand grammar, at the shorthand's cascade position. An invalid value (or a
-/// system-font keyword, which has no longhand values here) contributes nothing; one
-/// whose `var()` fails is invalid at computed-value time and unsets every longhand.
+/// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128), `border-radius`
+/// (#253) and `columns` (#398 PR-C1) shorthands' longhands, parsed by
+/// turbo-dom's shorthand grammar, at the shorthand's cascade position. An
+/// invalid value (or a system-font keyword, which has no longhand values here)
+/// contributes nothing; one whose `var()` fails is invalid at computed-value
+/// time and unsets every longhand.
 fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand> {
     let name = cand.property.as_str();
-    if !matches!(name, "font" | "list-style" | "border-radius") {
+    if !matches!(name, "font" | "list-style" | "border-radius" | "columns") {
         return Vec::new();
     }
     let wide = if matches!(name, "font" | "list-style") {
