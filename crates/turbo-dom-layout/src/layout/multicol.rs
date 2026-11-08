@@ -219,7 +219,9 @@ fn measure_kids(kids: &[LayoutBox], used_width: f32, fs: f32, ctx: &mut Ctx) -> 
             cb_width: used_width,
         });
         let kw = block::border_box_width(&kbs, used_width);
-        measured.push(block::layout_box_sized_isolated(kid, &kbs, 0.0, 0.0, kw, ctx));
+        measured.push(block::layout_box_sized_isolated(
+            kid, &kbs, 0.0, 0.0, kw, ctx,
+        ));
     }
     measured
 }
