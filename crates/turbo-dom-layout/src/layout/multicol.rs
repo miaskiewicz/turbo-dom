@@ -608,6 +608,11 @@ mod tests {
         assert_eq!(pieces.len(), 1);
         assert_eq!(pieces[0].col_index, 0);
         assert!((pieces[0].height - 40.0).abs() < 1e-5);
+        // The cursor is advanced past the single piece — a later call to the
+        // same column strip picks up where this one left off (not the +=
+        // branch collapsing to -= or *=, both of which this assertion kills).
+        assert!((cc - 40.0).abs() < 1e-5);
+        assert_eq!(ci, 0);
     }
 
     #[test]
