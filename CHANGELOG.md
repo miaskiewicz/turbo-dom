@@ -154,6 +154,17 @@ at the time); this file reconstructs them from history.
   before the termination check in `trusted_types::key`. Fixes the flaky
   cross-origin iframe bootstrap surf saw under load as "native Trusted Types
   authorization initialization interrupted" (miaskiewicz/turbo-surf#248).
+  Related to the surf `canceling_pending_session_work_restores_the_peer_and_its_own_runtime`
+  session-isolation hang (turbo-dom#417 / turbo-surf#250): the same
+  termination-pending install path is exercised by that test when the host
+  drops a pending eval future at 200 ms while surf's per-session `Watchdog`
+  (5 s budget) races the drop, and once 0.8.1 is on crates.io the downstream
+  turbo-surf repin un-ignores the test (turbo-surf#250). Reproducing the hang
+  requires a slow-enough runner for the 5 s watchdog to fire before the drop
+  is observed (Linux CI tarpaulin coverage shard; neither local macOS nor
+  single-test Linux invocations hit it reliably), so the fix is landed as
+  the #401 install-policy guard plus the downstream regression, not a
+  turbo-dom-local repro.
 - **turbo-dom-layout live**: a known HTML block tag (`<div>`, `<p>`, `<section>`, …) now
   falls back to Chrome's `html.css` `display: block` when the embedder supplies no UA
   origin. Post-#375 the CSS initial `display` is `inline`, so an embedder's
