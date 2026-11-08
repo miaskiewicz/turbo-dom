@@ -894,6 +894,452 @@
      "height": 200
     }
    ]
+  },
+  {
+   "id": "span-all-simple",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:0;width:400px;height:400px\"><div data-cid=\"i0\" style=\"height:80px;background:#eef\"></div><div data-cid=\"i1\" style=\"column-span:all;height:40px;background:#efe\"></div><div data-cid=\"i2\" style=\"height:80px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 400,
+    "height": 400,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 400,
+    "clientHeight": 400,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "0px"
+   },
+   "items": [
+    {
+     "cid": "i0",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 40,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 400,
+     "offsetHeight": 40
+    },
+    {
+     "cid": "i1",
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 40,
+     "offsetLeft": 0,
+     "offsetTop": 40,
+     "offsetWidth": 400,
+     "offsetHeight": 40
+    },
+    {
+     "cid": "i2",
+     "x": 0,
+     "y": 80,
+     "width": 400,
+     "height": 40,
+     "offsetLeft": 0,
+     "offsetTop": 80,
+     "offsetWidth": 400,
+     "offsetHeight": 40
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 400,
+     "y": 0,
+     "height": 400
+    }
+   ]
+  },
+  {
+   "id": "span-all-balance",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:16px;width:416px;height:400px\"><div data-cid=\"p0\" style=\"height:60px;background:#eef\"></div><div data-cid=\"p1\" style=\"height:60px;background:#eef\"></div><div data-cid=\"p2\" style=\"height:60px;background:#eef\"></div><div data-cid=\"p3\" style=\"height:60px;background:#eef\"></div><div data-cid=\"s\" style=\"column-span:all;height:40px;background:#efe\"></div><div data-cid=\"q0\" style=\"height:60px;background:#eef\"></div><div data-cid=\"q1\" style=\"height:60px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 416,
+    "height": 400,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 416,
+    "clientHeight": 400,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "16px"
+   },
+   "items": [
+    {
+     "cid": "p0",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "p1",
+     "x": 0,
+     "y": 60,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 0,
+     "offsetTop": 60,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "p2",
+     "x": 216,
+     "y": 0,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 216,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "p3",
+     "x": 216,
+     "y": 60,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 216,
+     "offsetTop": 60,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "s",
+     "x": 0,
+     "y": 120,
+     "width": 416,
+     "height": 40,
+     "offsetLeft": 0,
+     "offsetTop": 120,
+     "offsetWidth": 416,
+     "offsetHeight": 40
+    },
+    {
+     "cid": "q0",
+     "x": 0,
+     "y": 160,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 0,
+     "offsetTop": 160,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "q1",
+     "x": 216,
+     "y": 160,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 216,
+     "offsetTop": 160,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 200,
+     "y": 0,
+     "height": 400
+    },
+    {
+     "x": 216,
+     "width": 200,
+     "y": 0,
+     "height": 400
+    },
+    {
+     "x": 0,
+     "width": 416,
+     "y": 0,
+     "height": 400
+    }
+   ]
+  },
+  {
+   "id": "break-before-column",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:0;width:400px;height:300px\"><div data-cid=\"i0\" style=\"height:80px;background:#eef\"></div><div data-cid=\"i1\" style=\"break-before:column;height:80px;background:#eef\"></div><div data-cid=\"i2\" style=\"height:80px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 400,
+    "height": 300,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 400,
+    "clientHeight": 300,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "0px"
+   },
+   "items": [
+    {
+     "cid": "i0",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    },
+    {
+     "cid": "i1",
+     "x": 200,
+     "y": 0,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 200,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    },
+    {
+     "cid": "i2",
+     "x": 200,
+     "y": 80,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 200,
+     "offsetTop": 80,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 200,
+     "y": 0,
+     "height": 300
+    },
+    {
+     "x": 200,
+     "width": 200,
+     "y": 0,
+     "height": 300
+    }
+   ]
+  },
+  {
+   "id": "break-after-column",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:0;width:400px;height:300px\"><div data-cid=\"i0\" style=\"break-after:column;height:80px;background:#eef\"></div><div data-cid=\"i1\" style=\"height:80px;background:#eef\"></div><div data-cid=\"i2\" style=\"height:80px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 400,
+    "height": 300,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 400,
+    "clientHeight": 300,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "0px"
+   },
+   "items": [
+    {
+     "cid": "i0",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    },
+    {
+     "cid": "i1",
+     "x": 200,
+     "y": 0,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 200,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    },
+    {
+     "cid": "i2",
+     "x": 200,
+     "y": 80,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 200,
+     "offsetTop": 80,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 200,
+     "y": 0,
+     "height": 300
+    },
+    {
+     "x": 200,
+     "width": 200,
+     "y": 0,
+     "height": 300
+    }
+   ]
+  },
+  {
+   "id": "break-inside-avoid",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:0;width:400px;height:200px\"><div data-cid=\"i0\" style=\"height:150px;background:#eef\"></div><div data-cid=\"i1\" style=\"break-inside:avoid;height:80px;background:#eef\"></div><div data-cid=\"i2\" style=\"height:60px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 400,
+    "height": 200,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 400,
+    "clientHeight": 200,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "0px"
+   },
+   "items": [
+    {
+     "cid": "i0",
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 145,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 400,
+     "offsetHeight": 145
+    },
+    {
+     "cid": "i1",
+     "x": 200,
+     "y": 5,
+     "width": 200,
+     "height": 80,
+     "offsetLeft": 200,
+     "offsetTop": 5,
+     "offsetWidth": 200,
+     "offsetHeight": 80
+    },
+    {
+     "cid": "i2",
+     "x": 200,
+     "y": 85,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 200,
+     "offsetTop": 85,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 400,
+     "y": 0,
+     "height": 200
+    },
+    {
+     "x": 200,
+     "width": 200,
+     "y": 0,
+     "height": 200
+    }
+   ]
+  },
+  {
+   "id": "break-inside-avoid-fits-anyway",
+   "html": "<!doctype html><style>*{box-sizing:border-box;margin:0}body{margin:0;font:16px/20px monospace}</style><div data-cid=\"c\" style=\"position:relative;columns:2;column-gap:0;width:400px;height:200px\"><div data-cid=\"i0\" style=\"height:60px;background:#eef\"></div><div data-cid=\"i1\" style=\"break-inside:avoid;height:60px;background:#eef\"></div><div data-cid=\"i2\" style=\"height:60px;background:#eef\"></div></div>",
+   "container": {
+    "cid": "c",
+    "x": 0,
+    "y": 0,
+    "width": 400,
+    "height": 200,
+    "clientLeft": 0,
+    "clientTop": 0,
+    "clientWidth": 400,
+    "clientHeight": 200,
+    "columnCount": "2",
+    "columnWidth": "auto",
+    "columnGap": "0px"
+   },
+   "items": [
+    {
+     "cid": "i0",
+     "x": 0,
+     "y": 0,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 0,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "i1",
+     "x": 0,
+     "y": 60,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 0,
+     "offsetTop": 60,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    },
+    {
+     "cid": "i2",
+     "x": 200,
+     "y": 0,
+     "width": 200,
+     "height": 60,
+     "offsetLeft": 200,
+     "offsetTop": 0,
+     "offsetWidth": 200,
+     "offsetHeight": 60
+    }
+   ],
+   "columns": [
+    {
+     "x": 0,
+     "width": 200,
+     "y": 0,
+     "height": 200
+    },
+    {
+     "x": 200,
+     "width": 200,
+     "y": 0,
+     "height": 200
+    }
+   ]
   }
  ]
 }
