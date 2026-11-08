@@ -5,6 +5,12 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

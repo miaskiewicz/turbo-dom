@@ -12,7 +12,6 @@
 use turbo_dom_browser_env::browser_env::snapshot_blob;
 
 #[test]
-#[ignore = "turbo-dom#392 red: aborts in ReadReadOnlyHeapRef until the build pins V8's shared read-only heap; unignored by the fix commit"]
 fn a_snapshot_blob_isolate_runs_alongside_a_plain_isolate() {
     let platform = v8::new_default_platform(0, false).make_shared();
     v8::V8::initialize_platform(platform);
