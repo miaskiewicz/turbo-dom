@@ -2178,21 +2178,18 @@ fn source_font_metrics(seg: &Seg, scale: Option<f32>) -> crate::text::HtmlFontMe
 }
 
 /// Resolve [`crate::FontFace::html_metrics`] for native text placement at an optional
-/// physical scale. An installed face is read at the device-scaled size and divided
-/// back to CSS px (Blink's per-device-pixel rounding, `AscentDescentWithHacks`). An
-/// `@font-face` face is read at the CSS size directly: Chrome's web-font metrics are
-/// already a fraction of the em scaled to the CSS font-size and rounded half up
-/// (`WebMetrics::px`), so device-scaled rounding here would double-quantize the
-/// ascent/descent (IBM Plex Mono 20px: 25 vs 26 at DSF 2; miaskiewicz/turbo-dom#377).
+/// physical scale. The face is read at the device-scaled size and divided back to CSS
+/// pixels so its ascent/descent land on the device-pixel grid (Blink's per-device-pixel
+/// rounding, `AscentDescentWithHacks`; `WebMetrics::px` for an `@font-face` face). At
+/// DPR 2 this gives Chrome's half-CSS-px web-font content box too — the inline y the
+/// live `cssom_view` reads then matches `getBoundingClientRect()` / `getClientRects()`
+/// (miaskiewicz/turbo-dom#386, follow-up to #377).
 pub(super) fn scaled_html_metrics(
     face: &crate::FontFace,
     font_size: f32,
     scale: Option<f32>,
 ) -> crate::text::HtmlFontMetrics {
     let scale = scale.unwrap_or(1.0);
-    if face.is_web_font() {
-        return face.html_metrics(font_size);
-    }
     let m = face.html_metrics(font_size * scale);
     crate::text::HtmlFontMetrics {
         ascent: m.ascent / scale,
