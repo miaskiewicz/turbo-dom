@@ -142,3 +142,87 @@ fn a_web_face_lays_text_out_at_chromes_content_height() {
         assert_eq!(content_height(&fonts, size, dsf), want, "dsf{dsf} {size}px");
     }
 }
+
+/// The content height of the inline `<span>` box wrapping `text` laid out in the
+/// web face `family` at `size`px and device scale `scale`, read from its
+/// `UsedBoxMetrics`. This reaches the live-layout "ready-height" probe path
+/// (miaskiewicz/turbo-dom#387), distinct from the `text_range_boxes` path #377
+/// fixed: an inline box's fragment `content_height` is set from
+/// `face.html_metrics(size * scale) / scale`, which for an `@font-face` face
+/// double-quantizes at DSF 2 (26 vs Chrome's 25 for IBM Plex Mono 20px).
+fn inline_box_content_height(fonts: &FontRegistry, size: f32, scale: f32) -> f32 {
+    let nodes = parse_html(&format!(
+        "<div><span style='font-family:\"wf\";font-size:{size}px;white-space:nowrap'>x</span></div>"
+    ))
+    .unwrap();
+    let id = |id, path: &[usize]| SourceIdentity {
+        id: SourceId(id),
+        path: path.to_vec(),
+    };
+    let snapshot = snapshot_html_live_tree_with_native_text(
+        &literal::tree(&nodes).input(),
+        // 1: <div>, 2: <span>, 3: text "x"
+        &[id(1, &[0]), id(2, &[0, 0]), id(3, &[0, 0, 0])],
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+        &NativeTextOptions {
+            original_text: &[],
+            svg_viewports: &[],
+            layout_scale: scale,
+        },
+        &SnapshotInputs {
+            width: 800.0,
+            height: 600.0,
+            fonts,
+            images: &ImageCtx {
+                resolver: &NoImages,
+                body_height: None,
+            },
+        },
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    let span = SourceId(2);
+    for frag in snapshot.fragments() {
+        if frag.source_id == Some(span) {
+            if let Some(used) = frag.used_box {
+                return used.content_height;
+            }
+        }
+    }
+    panic!("no used_box for the <span>");
+}
+
+/// miaskiewicz/turbo-dom#387: an inline `<span>` box laid out in a web face at
+/// DSF 2 sizes its content box from the CSS-size web-font metrics, not the
+/// device-scaled ones divided back (Chrome's per-device-pixel rounding). This
+/// is the live-layout path turbo-surf's `tests/font_face.rs` "plain"/"csp"
+/// ready-height cases exercise; #377 fixed the sibling `text_range_boxes`
+/// path, not this one.
+#[test]
+fn an_inline_box_with_a_web_face_takes_chromes_content_height() {
+    let _control = control();
+    let mut fonts = FontRegistry::new();
+    fonts.add(
+        FontFace::from_web_font_bytes(
+            asset("ibm-plex-mono/IBMPlexMono-Regular.ttf"),
+            "wf",
+            400,
+            false,
+        )
+        .unwrap(),
+    );
+    for (dsf, size, want) in [
+        (1.0_f32, 20.0_f32, 25.0_f32),
+        (1.0, 60.0, 77.0),
+        (2.0, 10.0, 13.0),
+        (2.0, 20.0, 25.0),
+        (2.0, 30.0, 39.0),
+        (2.0, 60.0, 77.0),
+    ] {
+        assert_eq!(
+            inline_box_content_height(&fonts, size, dsf),
+            want,
+            "dsf{dsf} {size}px"
+        );
+    }
+}
