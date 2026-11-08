@@ -572,6 +572,60 @@ fn inline_override_replaces_only_an_existing_style_attribute_395() {
     assert_eq!(styled.tree.get_attribute(b, "style"), None);
 }
 
+/// turbo-dom R1 (expert H2 + meshde): #395's `ensure_default_display` fix covered
+/// only the block-tag list. The same regression — a surf-level inline override on
+/// a styled element collapsing the border box to `(0, 0)` because the embedder
+/// supplied no UA origin — occurs for every HTML tag whose Chrome `html.css`
+/// default display is not `inline`: `<li>` (`list-item`), form controls
+/// (`inline-block`: `<input>`, `<button>`, `<select>`, `<textarea>`, `<progress>`,
+/// `<meter>`), and the table family (`<table>`, `<tr>`, `<td>`, `<th>`, `<thead>`,
+/// `<tbody>`, `<tfoot>`, `<caption>`). Each tag with a width/height override must
+/// honour the override under the live-input path with no UA origin supplied.
+#[test]
+fn inline_override_applies_to_every_non_inline_html_tag_default() {
+    // Non-inline HTML tags whose Chrome UA default is not `inline`. Each carries
+    // a seed `style` attribute so `inline_style` picks up the override (mirrors
+    // the #395 oracle: a surf page's CSSOM override only lands on an element
+    // whose `style` attribute already exists). The <ul> wraps <li> so list-item
+    // layout runs under a block ancestor.
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <ul style='margin:0;padding:0'><li id=li style='width:0;height:0'></li></ul>\
+         <table style='border-spacing:0'><tbody><tr><td id=td style='padding:0'></td><th id=th style='padding:0'></th></tr></tbody></table>\
+         <input id=input style='padding:0;border:0'>\
+         <button id=button style='padding:0;border:0'></button>\
+         <select id=select style='padding:0;border:0'></select>\
+         <textarea id=textarea style='padding:0;border:0'></textarea>\
+         <progress id=progress style='padding:0'></progress>\
+         <meter id=meter style='padding:0'></meter>\
+         </body>",
+    );
+    let names = [
+        "li", "td", "th", "input", "button", "select", "textarea", "progress", "meter",
+    ];
+    let handles: Vec<_> = names.iter().map(|id| (*id, styled.el(id))).collect();
+    // Each element already has a `style` attribute (so `inline_override` picks
+    // up the override), but the DOM itself is never rewritten — the fixture's
+    // authored value stays on the element.
+    for (id, h) in &handles {
+        assert!(
+            styled.tree.get_attribute(*h, "style").is_some(),
+            "{id}: seed style attribute must exist for the override to land",
+        );
+    }
+    // Each element gets a 30-px wide override.
+    let decl = "width:30px;height:5px";
+    let overrides: Vec<(Handle, &str)> = handles.iter().map(|(_, h)| (*h, decl)).collect();
+    let (snapshot, ()) = styled.run(&[], &overrides, &|_| Ok(0), |_| Ok(())).unwrap();
+    for (id, h) in &handles {
+        let (w, _) = border(&snapshot, *h);
+        assert_eq!(
+            w, 30.0,
+            "{id}: inline override must apply (width = 30 px)",
+        );
+    }
+}
+
 #[test]
 fn snapshot_errors_pass_through() {
     let styled = Styled::new("<body></body>");
