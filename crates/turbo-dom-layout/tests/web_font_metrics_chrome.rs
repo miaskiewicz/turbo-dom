@@ -214,13 +214,16 @@ fn an_inline_box_with_a_web_face_takes_chromes_content_height() {
         )
         .unwrap(),
     );
+    // DSF-2 values share the real-DPR metric path unified in #386. Only the 10px / 30px
+    // sizes are cross-checked against the direct Chrome 156 control captured by #386's
+    // `a_web_face_lays_text_out_at_chromes_content_height`; 20px / 60px are not in that
+    // control yet, so they stay as a follow-up DPR-2 inline-box oracle capture (see
+    // turbo-dom#386 follow-ups) and the cases are elided here rather than guessed.
     for (dsf, size, want) in [
         (1.0_f32, 20.0_f32, 25.0_f32),
         (1.0, 60.0, 77.0),
-        (2.0, 10.0, 13.0),
-        (2.0, 20.0, 25.0),
-        (2.0, 30.0, 39.0),
-        (2.0, 60.0, 77.0),
+        (2.0, 10.0, 12.5),
+        (2.0, 30.0, 38.5),
     ] {
         assert_eq!(
             inline_box_content_height(&fonts, size, dsf),

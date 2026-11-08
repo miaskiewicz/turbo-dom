@@ -38,10 +38,14 @@ fn find_target<'a>(node: &'a StyledNode, id: &str) -> Option<&'a turbo_dom_layou
 
 #[test]
 fn initial_keyword_resolves_multicol_defaults() {
-    let declarations: String = MULTICOL_INITIALS
-        .iter()
-        .map(|(name, _)| format!("{name}: initial;"))
-        .collect();
+    use std::fmt::Write as _;
+    let declarations: String =
+        MULTICOL_INITIALS
+            .iter()
+            .fold(String::new(), |mut acc, (name, _)| {
+                let _ = write!(acc, "{name}: initial;");
+                acc
+            });
     let html = format!(
         "<!doctype html><html><body><div id=t style='{declarations}'>x</div></body></html>"
     );

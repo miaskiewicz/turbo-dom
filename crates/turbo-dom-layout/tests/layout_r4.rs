@@ -160,7 +160,7 @@ fn time_layout_on_thread(html: &str) -> Duration {
         &turbo_dom_layout::HtmlOptions::default(),
         &mut Diagnostics::default(),
     );
-    assert!(!boxes.is_empty());
+    assert!(!boxes.is_empty(), "boxes must not be empty");
     start.elapsed()
 }
 
