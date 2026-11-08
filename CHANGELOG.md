@@ -75,6 +75,18 @@ at the time); this file reconstructs them from history.
   `<span>` in IBM Plex Mono at 20px (turbo-surf's `font_face.rs`
   plain/csp "ready-height" probe) is 25 CSS px tall at every DSF, not 26
   (miaskiewicz/turbo-dom#387; sibling to the text Range path #377 fixed).
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-raster** / **turbo-dom-browser-env**: restored the 100% /
+  97.6% coverage floors after PR-D (column-rule painting, turbo-dom#398)
+  and the release/0.8.1 browser-env additions (#381 non-Node dispatch,
+  #385 worker scope, #394 init scripts, #401 install_policy termination
+  handling). Added unit tests for the raster `paint_column_rule` guard
+  branches (zero alpha / zero width / zero height / thin double
+  fallback), `circle_path` radius guard, and the worker-scope hook
+  setter clear / absent-bootstrap paths.
 - **turbo-dom-layout**: completed the DPR-2 inline-box oracle for 20px / 60px
   sizes — Chrome 156 at `--force-device-scale-factor=2` reports span content
   heights of 26 / 78, captured by
