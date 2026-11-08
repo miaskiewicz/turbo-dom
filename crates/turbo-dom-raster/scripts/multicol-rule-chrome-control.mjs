@@ -177,6 +177,42 @@ const CASES = [
       [225, 50],
     ],
   },
+  {
+    // `dashed` style: 2 px rule, 20 px gap. The painters stamp dashes of
+    // `2 * width` px length on period `3 * width` (a `width` gap between).
+    // Content-box 20..420, column-width (400 - 20) / 2 = 190: col 0 =
+    // 20..210, gap = 210..230 (centre 220), col 1 = 230..420. Rule 2 px at
+    // 219..221.
+    id: "multicol-rule-dashed",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:2px dashed #008800">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre, first-dash row — green.
+      [219, 21],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  {
+    // `currentcolor` resolves to the container's own `color` (initial
+    // black) — a plain `column-rule-color: currentcolor` on a `color: red`
+    // container paints a red rule.
+    id: "multicol-rule-currentcolor",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule-width:4px;column-rule-style:solid;column-rule-color:currentcolor;color:#ff0000">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre — red.
+      [220, 60],
+      // Column block — `#eef` wash.
+      [50, 60],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */

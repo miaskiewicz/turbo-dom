@@ -184,6 +184,26 @@ fn double_column_rules_paint_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// `column-rule-style: dashed` stamps a dash at the rule top in both
+/// painters.
+#[test]
+fn dashed_column_rules_paint_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-dashed";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// `column-rule-color: currentcolor` resolves to the container's own `color`
+/// (initial black; here overridden to red), in both painters.
+#[test]
+fn currentcolor_column_rules_paint_in_container_color_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-currentcolor";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// `column-rule-style: none` suppresses the rule — the gap paints what is
 /// behind it, in both painters.
 #[test]
@@ -231,6 +251,8 @@ fn every_fixture_case_is_covered() {
                     | "multicol-rule-double-thick"
                     | "multicol-rule-none"
                     | "multicol-rule-wider-than-gap"
+                    | "multicol-rule-dashed"
+                    | "multicol-rule-currentcolor"
             )
         })
         .map(String::as_str)
