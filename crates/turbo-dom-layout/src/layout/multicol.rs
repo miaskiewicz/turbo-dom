@@ -576,6 +576,7 @@ fn fits_in_count(heights: &[f32], flags: &[KidFlags], col_h: f32, used_count: u3
     }
     let mut col: u32 = 0;
     let mut cursor: f32 = 0.0;
+    let last = heights.len().saturating_sub(1);
     for (i, h) in heights.iter().enumerate() {
         let f = flags[i];
         if f.break_before_column && cursor > 0.0 {
@@ -593,7 +594,10 @@ fn fits_in_count(heights: &[f32], flags: &[KidFlags], col_h: f32, used_count: u3
         let (c_after, cur_after) = place_in_flow(col, cursor, *h, col_h);
         col = c_after;
         cursor = cur_after;
-        if f.break_after_column && (col + 1 < used_count || cursor > 0.0) {
+        // `break-after: column` on the last kid is a no-op (nothing
+        // follows to break), so skip it rather than counting a trailing
+        // empty strip as an overflow and growing `col_h` unnecessarily.
+        if f.break_after_column && i < last {
             col += 1;
             cursor = 0.0;
         }
@@ -1024,6 +1028,22 @@ mod tests {
         assert!((col_h - 120.0).abs() < FRAG_EPS + 1e-4, "col_h = {col_h}");
         // The plain balance (180/2 = 90) is strictly below: the avoid grew col_h.
         assert!(col_h > 90.0 + FRAG_EPS);
+    }
+
+    #[test]
+    fn section_col_h_ignores_break_after_on_the_last_kid() {
+        // Two kids summing to 160, last one with `break-after: column`:
+        // the trailing break is a no-op (nothing follows), so the balance
+        // stays at 80 per column — a bug that counted it as overflow
+        // would instead grow `col_h` to 160.
+        let m: Vec<Fragment> = [80.0, 80.0].into_iter().map(frag).collect();
+        let mut flags = vec![KidFlags::default(); 2];
+        flags[1].break_after_column = true;
+        let col_h = section_col_h(&m, &flags, 2);
+        assert!(
+            (col_h - 80.0).abs() < FRAG_EPS + 1e-4,
+            "col_h = {col_h}, expected 80 (trailing break-after is a no-op)"
+        );
     }
 
     #[test]
