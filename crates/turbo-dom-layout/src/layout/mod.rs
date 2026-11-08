@@ -10,6 +10,7 @@ pub(crate) mod canvas_content;
 pub(crate) mod contents;
 pub mod flex;
 pub(crate) mod form_controls;
+pub mod multicol;
 mod form_paint;
 pub mod fragment;
 pub mod imgsize;

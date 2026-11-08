@@ -62,6 +62,27 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- CSS multi-column: equal-width sequential-fill layout pass for 3 Chrome 156
+  cases (#398 PR-C1 of multi-PR stack). A `BoxKind::Block` whose computed
+  `column-count` or `column-width` is not `auto` is now a multi-column
+  formatting context (CSS Multicol 1 §3): it establishes an independent
+  formatting context like a flex / grid / table container and its in-flow
+  children flow into equal-width column strips of the content box. The pass
+  implements Chrome's widen rule — `used_count = floor((W + gap) / (width +
+  gap))`, `used_column_width = (W - (used_count − 1) · gap) / used_count` —
+  and `column-fill: balance` when the container has no definite height. Also
+  routes the `columns: <width> <count>` shorthand through the existing
+  cascade shorthand expansion (`font` / `list-style` / `border-radius` /
+  `background` / `columns`) so `columns: 2` reaches the computed style as its
+  `column-count` / `column-width` longhands. New `crates/turbo-dom-layout/
+  src/layout/multicol.rs`; `tests/multicol_chrome.rs` activates the three
+  equal-width sequential-fill cases from the Chrome 156 oracle
+  (`basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`), within
+  a 0.5 px tolerance that covers Chrome's 1/64 px `LayoutUnit` rounding. The
+  remaining five oracle cases (`columns-shorthand` i2 column-span capture,
+  `mixed-child-heights`, `overflow-at-column-height`, `nested-multicol`,
+  `floats-inside-column`) stay `#[ignore]`d with per-case reasons and land
+  in PR-C2.
 - CSS multi-column: Chrome 156 geometry oracle + capture script (#398 PR-B of
   multi-PR stack). Adds `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs`
   and the captured `crates/turbo-dom-layout/tests/fixtures/multicol_chrome156.json`

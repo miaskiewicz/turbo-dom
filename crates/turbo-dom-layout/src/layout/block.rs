@@ -2564,6 +2564,13 @@ fn establishes_bfc(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     ) {
         return true;
     }
+    // A multi-column container establishes an independent formatting context
+    // (CSS Multicol 1 §3; miaskiewicz/turbo-dom#398 PR-C1).
+    if matches!(lb.kind, BoxKind::Block(_))
+        && super::multicol::is_multicol_container(&lb.style)
+    {
+        return true;
+    }
     // Layout containment (`contain: layout`) and a size query container make an
     // independent formatting context (miaskiewicz/turbo-dom#265).
     if lb.containment().formatting_root {
@@ -2788,6 +2795,14 @@ fn layout_content(
     ctx: &mut Ctx,
 ) -> (Vec<Fragment>, f32) {
     match &lb.kind {
+        // A block container whose computed `column-count` or `column-width` is
+        // not `auto` is a multi-column formatting context (CSS Multicol 1;
+        // miaskiewicz/turbo-dom#398 PR-C1): it establishes an independent
+        // formatting context like a flex / grid / table container, and its
+        // in-flow children flow through column strips rather than stacking.
+        BoxKind::Block(kids) if super::multicol::is_multicol_container(&lb.style) => {
+            super::multicol::layout_multicol(lb, kids, cx, cy, cw, bs, ctx)
+        }
         BoxKind::Block(kids) => {
             // When this box lets its first child's top margin collapse through, that
             // leading margin is applied by THIS box's own caller (via `leading_margin`)

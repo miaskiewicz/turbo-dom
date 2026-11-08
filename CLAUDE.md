@@ -169,7 +169,7 @@ package or publish workflow.
   Needs a V8 archive (`RUSTY_V8_ARCHIVE`). Lint-exempt by design (`#![allow(unused, clippy::all)]`);
   see its README. The shared `zoom` grammar lives in base `rtdom::css_values`.
 - `crates/turbo-dom-layout` — the native HTML/CSS layout engine (style cascade, block/inline/
-  flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
+  flex/grid/table/multicol layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
   `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
@@ -244,7 +244,19 @@ package or publish workflow.
   carrying `INDETERMINATE_ATTR` (a live embedder's script-set flag) paints Chrome's dash, and
   vertical-mode controls stay native (drawn in their logical space; glyphs `form_paint::upright`);
   since turbo-dom#292 `<audio controls>` paints Chrome's panel (`layout::media_paint`; controls:
-  raster `form_native_chrome156.json`). The
+  raster `form_native_chrome156.json`). Since turbo-dom#398 PR-C1 a `BoxKind::Block` with a
+  non-`auto` `column-count` / `column-width` is a multi-column formatting context
+  (`layout::multicol`, CSS Multicol 1): an independent formatting context whose in-flow
+  children flow into equal-width column strips of the content box per Chrome's widen rule
+  (`used_count = floor((W + gap) / (width + gap))`), with `column-fill: balance` when the
+  container's height is auto. The `columns: <width> <count>` shorthand rides the cascade's
+  shorthand expansion (`font` / `list-style` / `border-radius` / `background` / `columns`).
+  Control: `tests/multicol_chrome.rs` + `tests/fixtures/multicol_chrome156.json`; PR-C1 asserts
+  the three equal-width sequential-fill cases (`basic-2col-equal`, `basic-3col-with-gap`,
+  `column-width-driven`) within 0.5 px, the other five fixture cases are `#[ignore]`d for PR-C2
+  (column-span capture anomaly, mixed-height sequential fill, N+1 strip overflow, nested
+  multicol, floats inside a column).
+  The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (for inlines the static path
