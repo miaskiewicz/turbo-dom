@@ -2982,7 +2982,9 @@ fn offset(comps: &[Comp]) -> Option<Out> {
             rotate = value;
         }
     }
-    if at != main.len() || (main.is_empty() && parts.len() == 1) {
+    // The `[/ <offset-anchor>]?` tail needs a leading position-or-path group: `offset: /
+    // center` and `offset: / auto` are rejected like `offset:` alone (turbo-dom#391).
+    if at != main.len() || main.is_empty() {
         return None;
     }
     Some(vec![
@@ -3542,4 +3544,24 @@ fn timeline_trigger_item(comps: &[Comp]) -> Option<Out> {
     }
     out.extend(more);
     Some(out)
+}
+
+#[cfg(test)]
+mod offset_slash_strict_tests {
+    use super::super::components::components;
+    use super::expand;
+
+    /// turbo-dom#391: the `offset` shorthand's `[/ <offset-anchor>]?` tail needs a leading
+    /// position or path; Chrome 156 rejects `offset: / center` and `offset: / auto`
+    /// (oracle `CSS.supports('offset', '/ center') === false`, headless-shell 156.0.8078.47).
+    #[test]
+    fn offset_rejects_bare_slash_anchor() {
+        for value in ["/ center", "/ auto", "/ left top", "/ 10px"] {
+            let comps = components(value).expect("tokenizes");
+            assert!(
+                expand("offset", &comps).is_none(),
+                "offset: {value} must not be accepted (Chrome 156 rejects)"
+            );
+        }
+    }
 }

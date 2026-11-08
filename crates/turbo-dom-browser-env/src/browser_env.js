@@ -3292,10 +3292,33 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function cssLayerRanks(root){var next=0;(function visit(node){for(var index=0;index<node.children.length;index++)visit(node.children[index]);node.rank=next++;})(root);}
   var cssSupportsCache=$O.create(null);
   function cssSupportsDeclaration(inner){var parts=cssParts(inner,':'),name=$c.trim(parts[0]),record={__proto__:null};if(parts.length<2||!name||cssParts(inner,';').length>1)return false;parseDeclaration(record,name+': '+$c.trim($c.slice(inner,parts[0].length+1)));return record.names.length>0;}
+  // turbo-dom#390: `selector()` takes one <complex-selector>, not a list, and Chrome parses
+  // its forgiving `:is()` / `:where()` arguments non-forgivingly (`:is(:bogus)` and
+  // `:where(:bogus, p)` make the whole `selector()` false). cssSupportsForgivingChecks walks
+  // every `:is()` / `:where()` and validates each comma-split argument as a selector on its
+  // own; nativeMatches throws SyntaxError on an unknown pseudo outside the forgiving wrap.
+  function cssSupportsForgivingArg(piece,el){if(!piece)return true;try{cssApply(computedStyleNativeMatches,el,[piece]);}catch(e){return false;}return cssSupportsSelectorStrict(piece,el);}
+  function cssSupportsForgivingChecks(sel,el){
+    var re=/:(?:is|where)\(/gi, m;
+    while((m=$c.exec(re,sel))){
+      var open=m.index+m[0].length-1, depth=1, j=open+1;
+      while(j<sel.length&&depth>0){var cc=sel[j];if(cc==='(')depth++;else if(cc===')')depth--;j++;}
+      if(depth!==0)return false;
+      var pieces=cssParts($c.slice(sel,open+1,j-1),',');
+      for(var k=0;k<pieces.length;k++)if(!cssSupportsForgivingArg($c.trim(pieces[k]),el))return false;
+      re.lastIndex=j;
+    }
+    return true;
+  }
+  function cssSupportsSelectorStrict(sel,el){
+    if(cssParts(sel,',').length>1)return false;
+    try{cssApply(computedStyleNativeMatches,el,[sel]);}catch(e){return false;}
+    return cssSupportsForgivingChecks(sel,el);
+  }
   function cssSupportsTerm(term,el){
     if(term[0]==='('&&term[term.length-1]===')'){var inner=$c.trim($c.slice(term,1,term.length-1));return inner[0]==='('||$c.test(/^not\s/i,inner)?cssSupportsCondition(inner,el):cssSupportsDeclaration(inner);}
     var selector=$c.exec(/^selector\(([\s\S]*)\)$/i,term);if(!selector)return false;
-    try{cssApply(computedStyleNativeMatches,el,[selector[1]]);return true;}catch(e){return false;}
+    return cssSupportsSelectorStrict($c.trim(selector[1]),el);
   }
   // A <supports-condition>: `not <term>`, or terms joined by one of `and` / `or`.
   function cssSupportsCondition(text,el){

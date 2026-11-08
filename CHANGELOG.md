@@ -5,6 +5,22 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: `CSS.supports` / `cssSupportsProperty` now reject four inputs
+  Chrome 156 rejects (turbo-dom#390). `-moz-appearance: none` fails because every `-moz-*`
+  vendor-prefixed property name is refused (`cssom_parser::is_supported_property`);
+  `selector(div, span)`, `selector(:is(:bogus))` and `selector(:where(:bogus, p))` fail
+  because `selector()` is now parsed as one non-list complex selector, with each `:is()` /
+  `:where()` argument validated non-forgivingly (`cssSupportsSelectorStrict`).
+- **CSS shorthand `offset`**: the `[/ <offset-anchor>]?` tail now needs a leading
+  `<offset-position>` or `<offset-path>`; `offset: / center` and `offset: / auto` are
+  rejected like `offset:` alone, matching Chrome 156 (turbo-dom#391). Fix applied in
+  lockstep to `turbo-dom::rtdom::css_shorthand::grammar::offset` and
+  `src/runtime/css-shorthand.mjs`.
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights
