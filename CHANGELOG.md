@@ -94,6 +94,13 @@ at the time); this file reconstructs them from history.
   behaviour; `dispatch_worker_message(scope, data)` delivers a message from outside
   to `self.onmessage` / `message` listeners. Unblocks surf #203
   (`new Worker(url)` running in a separate V8 realm). turbo-dom#385.
+- **turbo-dom-browser-env**: host install of a Trusted Types authorization callback
+  no longer aborts when a prior frame's script left a watchdog termination pending
+  on the isolate (miaskiewicz/turbo-dom#401). The install is a V8 private-field
+  write — it does not run guest JS, so the cached private-key slot is now consulted
+  before the termination check in `trusted_types::key`. Fixes the flaky
+  cross-origin iframe bootstrap surf saw under load as "native Trusted Types
+  authorization initialization interrupted" (miaskiewicz/turbo-surf#248).
 
 ## [0.8.0] — 2026-11-06
 
