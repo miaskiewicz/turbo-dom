@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Fixed
+
+- **turbo-dom-browser-env**: the canvas 2D paint-brand bookkeeping
+  (`fillStyle` / `strokeStyle` gradient and pattern tracking) now calls
+  `WeakSet.prototype.add` / `.has` through the intrinsics captured at
+  install time instead of looking them up live on `WeakSet.prototype`
+  (turbo-dom#396). A page that replaces every configurable prototype
+  method with a thrower (turbo-surf#87 / turbo-dom#172 contract) no longer
+  reaches this path. Regression introduced in 0.8.0's canvas style surface
+  (turbo-dom#108).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

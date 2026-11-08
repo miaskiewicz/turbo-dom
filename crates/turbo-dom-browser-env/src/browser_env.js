@@ -4204,7 +4204,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
           get: function(){ return state[name]; },
           set: function(value){
-            if (paints && value !== null && typeof value === 'object' && __cvPaints.has(value)) { state[name] = value; return; }
+            if (paints && value !== null && typeof value === 'object' && $c.has(__cvPaints, value)) { state[name] = value; return; }
             var color = __cvColor(canvas, '' + value);
             if (color != null) state[name] = color;
           } });
@@ -4269,7 +4269,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
-      var paint = function(){ var p = { addColorStop: noop }; __cvPaints.add(p); return p; };
+      var paint = function(){ var p = { addColorStop: noop }; $c.add(__cvPaints, p); return p; };
       var lineDash = [], stack = [];
       var ctx = {
         canvas: canvas,
@@ -4284,7 +4284,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         createLinearGradient: paint,
         createRadialGradient: paint,
         createConicGradient: paint,
-        createPattern: function(){ var p = {}; __cvPaints.add(p); return p; },
+        createPattern: function(){ var p = {}; $c.add(__cvPaints, p); return p; },
         getImageData: function(x,y,w,h){
           w = w||0; h = h||0;
           var data = new Uint8ClampedArray(Math.max(0, w*h*4));
