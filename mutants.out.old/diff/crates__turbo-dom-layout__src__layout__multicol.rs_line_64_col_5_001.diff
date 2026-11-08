@@ -1,0 +1,21 @@
+--- crates/turbo-dom-layout/src/layout/multicol.rs
++++ replace normal_gap -> f32 with 1.0
+@@ -56,17 +56,17 @@
+ use super::value::{parse_color, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, Rgba};
+ use crate::style::ComputedStyle;
+ 
+ /// CSS Multicol 1 §5.1: `column-gap: normal` is `1em`. Chrome 156 uses the font
+ /// size of the multicol container as the basis; the fixture captures explicit
+ /// `0` / `16px` gaps, so this path is only exercised by a default-gap future
+ /// case.
+ fn normal_gap(fs: f32) -> f32 {
+-    fs
++    1.0 /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Whether `s` establishes a multicol formatting context: a non-`auto`
+ /// `column-count` or a non-`auto` `column-width`.
+ pub(crate) fn is_multicol_container(s: &ComputedStyle) -> bool {
+     non_auto(s, "column-count") || non_auto(s, "column-width")
+ }
+ 

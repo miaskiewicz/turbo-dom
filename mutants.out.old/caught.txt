@@ -1,0 +1,3 @@
+crates/turbo-dom-layout/src/layout/multicol.rs:64:5: replace normal_gap -> f32 with 0.0
+crates/turbo-dom-layout/src/layout/multicol.rs:64:5: replace normal_gap -> f32 with 1.0
+crates/turbo-dom-layout/src/layout/multicol.rs:64:5: replace normal_gap -> f32 with -1.0

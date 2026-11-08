@@ -1010,10 +1010,7 @@ mod tests {
         let mut flags = vec![KidFlags::default(); 3];
         flags[0].break_after_column = true;
         let col_h = section_col_h(&m, &flags, 2);
-        assert!(
-            (col_h - 160.0).abs() < FRAG_EPS + 1e-4,
-            "col_h = {col_h}"
-        );
+        assert!((col_h - 160.0).abs() < FRAG_EPS + 1e-4, "col_h = {col_h}");
         assert!(col_h > 120.0 + FRAG_EPS);
     }
 
@@ -1024,10 +1021,7 @@ mod tests {
         let mut flags = vec![KidFlags::default(); 3];
         flags[1].break_inside_avoid = true;
         let col_h = section_col_h(&m, &flags, 2);
-        assert!(
-            (col_h - 120.0).abs() < FRAG_EPS + 1e-4,
-            "col_h = {col_h}"
-        );
+        assert!((col_h - 120.0).abs() < FRAG_EPS + 1e-4, "col_h = {col_h}");
         // The plain balance (180/2 = 90) is strictly below: the avoid grew col_h.
         assert!(col_h > 90.0 + FRAG_EPS);
     }
@@ -1094,27 +1088,30 @@ mod tests {
     fn partition_segments_handles_leading_and_trailing_and_adjacent_spans() {
         // Leading span, interior run, two adjacent spans, trailing run.
         let flags = vec![
-            KidFlags { column_span_all: true, ..KidFlags::default() },
+            KidFlags {
+                column_span_all: true,
+                ..KidFlags::default()
+            },
             KidFlags::default(),
             KidFlags::default(),
-            KidFlags { column_span_all: true, ..KidFlags::default() },
-            KidFlags { column_span_all: true, ..KidFlags::default() },
+            KidFlags {
+                column_span_all: true,
+                ..KidFlags::default()
+            },
+            KidFlags {
+                column_span_all: true,
+                ..KidFlags::default()
+            },
             KidFlags::default(),
         ];
         let segs = partition_segments(&flags);
         // Expect: Span(0), SubFlow(1..3), Span(3), Span(4), SubFlow(5..6).
         assert_eq!(segs.len(), 5);
         assert!(matches!(segs[0], Segment::Span { index: 0 }));
-        assert!(matches!(
-            segs[1],
-            Segment::SubFlow { start: 1, end: 3 }
-        ));
+        assert!(matches!(segs[1], Segment::SubFlow { start: 1, end: 3 }));
         assert!(matches!(segs[2], Segment::Span { index: 3 }));
         assert!(matches!(segs[3], Segment::Span { index: 4 }));
-        assert!(matches!(
-            segs[4],
-            Segment::SubFlow { start: 5, end: 6 }
-        ));
+        assert!(matches!(segs[4], Segment::SubFlow { start: 5, end: 6 }));
     }
 
     #[test]
