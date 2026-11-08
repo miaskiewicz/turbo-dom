@@ -8401,8 +8401,8 @@ struct WorkerContextMarker;
 /// only the embedder's prelude (the window is [`SNAPSHOT_WINDOW_CONTEXT`]).
 ///
 /// Minimum opt-out hook for miaskiewicz/turbo-dom#385 landed in 0.8.0; the full
-/// `install_worker_global_scope(scope, context)` helper (DedicatedWorkerGlobalScope `self`,
-/// `importScripts`, structured-clone helpers) lands in 0.8.1.
+/// [`install_worker_global_scope`] (DedicatedWorkerGlobalScope `self`, `importScripts`,
+/// structured-clone helpers) lands in 0.8.1.
 pub fn mark_worker_context(
     scope: &mut v8::PinScope<'_, '_, ()>,
     context: v8::Local<v8::Context>,
@@ -8439,6 +8439,87 @@ impl std::error::Error for WindowAlreadyInstalled {}
 fn is_worker_context(context: v8::Local<v8::Context>) -> bool {
     context.get_slot::<WorkerContextMarker>().is_some()
 }
+
+/// Install the DedicatedWorkerGlobalScope surface onto `context`'s `globalThis`:
+/// `self` as an accessor to `globalThis`, `importScripts(...urls)` (invokes the
+/// embedder's hook, or throws a `TypeError` by default), `structuredClone(value)`
+/// (V8 round-trip), `postMessage(message, transfer?)` / `close()` (invoke
+/// embedder hooks), the `EventTarget` triplet (`addEventListener` /
+/// `removeEventListener` / `dispatchEvent`), the `onmessage` / `onmessageerror`
+/// / `onerror` event-handler slots, and the DedicatedWorkerGlobalScope ->
+/// WorkerGlobalScope -> EventTarget interface brands with their member names.
+///
+/// The context is marked as a worker via [`mark_worker_context`] on the way in,
+/// so a later `install*` into the same context will not stamp the DOM template
+/// over this scope. A context that already holds a window is refused with
+/// [`WindowAlreadyInstalled`] (see [`mark_worker_context`]'s gate).
+///
+/// For embedders (turbo-surf #203) that run the binding in a Worker-shaped
+/// global scope. The hook *surface* installed here is wired by the embedder
+/// via [`set_worker_post_message_hook`], [`set_worker_close_hook`] and
+/// [`set_worker_import_scripts_hook`]; this crate owns the ECMAScript surface,
+/// never the fetch/scheduler side.
+///
+/// turbo-dom#385.
+pub fn install_worker_global_scope(
+    scope: &mut v8::PinScope<'_, '_, ()>,
+    context: v8::Local<v8::Context>,
+) -> Result<(), WindowAlreadyInstalled> {
+    mark_worker_context(scope, context)?;
+    let scope = &mut v8::ContextScope::new(scope, context);
+    worker_scope::install(scope);
+    Ok(())
+    // (The ContextScope is dropped on return, restoring the outer scope.)
+}
+
+/// Embedder hook invoked when worker-side JS calls `postMessage(message, transfer?)`.
+/// turbo-surf replaces it with the real message-port plumbing; the default is a no-op.
+///
+/// Set per context. Multiple hook registrations overwrite; `None` clears.
+pub fn set_worker_post_message_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_post_message_hook(scope, context, hook);
+}
+
+/// Embedder hook invoked when worker-side JS calls `close()`. turbo-surf uses it
+/// to terminate the worker's event loop. The default is a no-op.
+pub fn set_worker_close_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_close_hook(scope, context, hook);
+}
+
+/// Embedder hook invoked when worker-side JS calls `importScripts(...urls)`.
+/// turbo-surf wires in the real sync script loader (spec: fetch, parse, execute
+/// in globalThis). The default throws a `TypeError`, matching the behaviour of
+/// an uninitialised Worker Fetch realm.
+pub fn set_worker_import_scripts_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_import_scripts_hook(scope, context, hook);
+}
+
+/// Dispatch `message` to this worker-scope context as a `MessageEvent`: the
+/// embedder (turbo-surf) calls this when the outside world posts a message to
+/// the worker. Delivers to `self.onmessage` and `self.addEventListener('message', ...)`
+/// listeners in the registration order. Returns `true` if any listener was
+/// attached (not whether they threw).
+pub fn dispatch_worker_message<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    data: v8::Local<'s, v8::Value>,
+) -> bool {
+    worker_scope::dispatch_message(scope, data)
+}
+
+#[path = "worker_scope.rs"]
+mod worker_scope;
 
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).

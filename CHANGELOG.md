@@ -84,6 +84,16 @@ at the time); this file reconstructs them from history.
   at attribute-set time collapsed the set-phase and compile-phase CSP `script-src-attr`
   policy calls into one, producing a single report where a report-only policy should
   see two (miaskiewicz/turbo-dom#380).
+- **turbo-dom-browser-env**: `install_worker_global_scope(scope, context)` installs
+  the DedicatedWorkerGlobalScope surface (`self`, `importScripts`, `structuredClone`,
+  `postMessage`, `close`, `addEventListener` / `removeEventListener` /
+  `dispatchEvent`, `onmessage` / `onmessageerror` / `onerror`, and the
+  `DedicatedWorkerGlobalScope -> WorkerGlobalScope -> EventTarget` brand chain)
+  onto a worker-marked context. Three embedder hooks — `set_worker_post_message_hook`,
+  `set_worker_close_hook`, `set_worker_import_scripts_hook` — wire the per-context
+  behaviour; `dispatch_worker_message(scope, data)` delivers a message from outside
+  to `self.onmessage` / `message` listeners. Unblocks surf #203
+  (`new Worker(url)` running in a separate V8 realm). turbo-dom#385.
 
 ## [0.8.0] — 2026-11-06
 
