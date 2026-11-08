@@ -718,6 +718,56 @@ mod tests {
         assert!(weak.is_empty());
     }
 
+    /// Review R2 V8 H1: the `state` object the Trusted Types factory records
+    /// was a plain object literal with `Object.prototype` as its prototype.
+    /// A hostile prelude that stamps `Object.defineProperty(Object.prototype,
+    /// 'authorize', { set(fn) {...} })` would see that setter fire INSIDE the
+    /// `install_policy` cancel/restore-terminate window, running guest JS
+    /// while the embedder's watchdog termination is cleared. The fix is to
+    /// use a null-prototype state; this test asserts the first
+    /// `install_policy` write does NOT fire a prototype-chain setter — the
+    /// setter's side effect would prove the prototype chain was walked.
+    #[test]
+    fn install_policy_does_not_walk_object_prototype_setter_for_authorize() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body>");
+        // A hostile prelude stamps an `authorize` setter on Object.prototype
+        // that, if it fires, writes `globalThis.__pollution = true`. The
+        // factory's internal state object must not inherit from
+        // Object.prototype — otherwise `state.set('authorize', fn)` walks the
+        // prototype chain and invokes this setter inside the Rust-side
+        // cancel/restore-terminate window around install_policy.
+        eval(
+            scope,
+            "globalThis.__pollution = false; \
+             Object.defineProperty(Object.prototype, 'authorize', { \
+               configurable: true, \
+               set(_value) { globalThis.__pollution = true; } \
+             });",
+        );
+        fn authorize(
+            _: &mut v8::PinScope,
+            _: v8::FunctionCallbackArguments,
+            mut result: v8::ReturnValue,
+        ) {
+            result.set_bool(true);
+        }
+        let callback = v8::Function::new(scope, ext!(FunctionCallback, authorize)).unwrap();
+        assert!(install_trusted_types_policy(scope, callback));
+        // The prelude's setter must NOT have fired.
+        assert!(
+            eval(scope, "globalThis.__pollution").is_false(),
+            "install_policy walked Object.prototype and fired the setter"
+        );
+        // Clean the pollution before reset (reset re-uses the isolate).
+        eval(scope, "delete Object.prototype.authorize;");
+        reset();
+    }
+
     /// turbo-dom#401: a prior cross-origin iframe's script left a watchdog termination
     /// pending on the isolate. The host's host-authorization install is a private-field
     /// mutation that does not run guest JS, so it must still succeed; otherwise the
