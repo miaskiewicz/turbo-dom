@@ -742,6 +742,91 @@ mod tests {
     }
 
     #[test]
+    fn place_measured_single_piece_translates_to_its_column_strip() {
+        use super::super::fragment::{BorderRadii, NodeId};
+        use super::super::value::BorderEdges;
+        let bx = |w, h| {
+            super::super::fragment::Fragment::new(
+                NodeId(42),
+                0.0,
+                0.0,
+                w,
+                h,
+                super::super::fragment::FragmentContent::Box {
+                    background: None,
+                    border: BorderEdges::default(),
+                    border_radius: BorderRadii::ZERO,
+                    shadow: None,
+                    gradient: None,
+                    transform: None,
+                },
+            )
+        };
+        let p = [ColPiece {
+            col_index: 2,
+            y: 45.0,
+            height: 60.0,
+        }];
+        let got = place_measured(bx(200.0, 60.0), &p, 200.0, 20.0, 10.0, 30.0);
+        // dx = cx + col * stride = 10 + 2 * (200 + 20) = 450. dy = cy + y = 30 + 45 = 75.
+        assert!((got.x - 450.0).abs() < 1e-5);
+        assert!((got.y - 75.0).abs() < 1e-5);
+        assert!((got.width - 200.0).abs() < 1e-5);
+        assert!((got.height - 60.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn place_measured_multi_piece_builds_union_corners() {
+        use super::super::fragment::{BorderRadii, NodeId};
+        use super::super::value::BorderEdges;
+        let bx = |w, h| {
+            super::super::fragment::Fragment::new(
+                NodeId(42),
+                0.0,
+                0.0,
+                w,
+                h,
+                super::super::fragment::FragmentContent::Box {
+                    background: None,
+                    border: BorderEdges::default(),
+                    border_radius: BorderRadii::ZERO,
+                    shadow: None,
+                    gradient: None,
+                    transform: None,
+                },
+            )
+        };
+        // Hand-crafted multi-piece spread across three columns with non-zero
+        // `min_y` so the `cy + min_y` arithmetic cannot collapse to `cy`
+        // (an invariant the real flow upholds but a mutant on `+` would exploit).
+        let p = [
+            ColPiece {
+                col_index: 1,
+                y: 10.0,
+                height: 50.0,
+            },
+            ColPiece {
+                col_index: 2,
+                y: 5.0,
+                height: 30.0,
+            },
+            ColPiece {
+                col_index: 3,
+                y: 20.0,
+                height: 40.0,
+            },
+        ];
+        let got = place_measured(bx(200.0, 120.0), &p, 200.0, 0.0, 100.0, 50.0);
+        // left_col=1, right_col=3, min_y=5, max_bottom=max(60,35,60)=60.
+        // x = cx + 1 * 200 = 300. y = cy + 5 = 55. width = (3 * 200 + 200) - 200 = 600.
+        // height = 60 - 5 = 55.
+        assert!((got.x - 300.0).abs() < 1e-5);
+        assert!((got.y - 55.0).abs() < 1e-5);
+        assert!((got.width - 600.0).abs() < 1e-5);
+        assert!((got.height - 55.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn piece_bounds_covers_columns_and_block_axis() {
         let pieces = [
             ColPiece {
