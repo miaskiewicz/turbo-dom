@@ -742,6 +742,74 @@ mod tests {
     }
 
     #[test]
+    fn parse_rule_width_resolves_keywords_and_lengths() {
+        assert!((parse_rule_width(&cs(&[("column-rule-width", "thin")]), 16.0) - 1.0).abs() < 1e-5);
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "medium")]), 16.0) - 3.0).abs() < 1e-5
+        );
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "thick")]), 16.0) - 5.0).abs() < 1e-5
+        );
+        assert_eq!(
+            parse_rule_width(&cs(&[("column-rule-width", "none")]), 16.0),
+            0.0
+        );
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "10px")]), 16.0) - 10.0).abs() < 1e-5
+        );
+        // Default (unset) is `medium` = 3px.
+        assert!((parse_rule_width(&cs(&[]), 16.0) - 3.0).abs() < 1e-5);
+        // An unparsable length falls back to `medium`.
+        assert!((parse_rule_width(&cs(&[("column-rule-width", "wat")]), 16.0) - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn parse_rule_style_accepts_paintable_keywords() {
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "solid")])),
+            Some(ColumnRuleStyle::Solid)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "dotted")])),
+            Some(ColumnRuleStyle::Dotted)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "dashed")])),
+            Some(ColumnRuleStyle::Dashed)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "double")])),
+            Some(ColumnRuleStyle::Double)
+        );
+        // Default (unset) is `none` and returns None (no rule painted).
+        assert_eq!(parse_rule_style(&cs(&[])), None);
+        // Deferred keywords (`groove` / `ridge` / `inset` / `outset`) and
+        // `hidden` all come back as `None` until PR-E picks them up.
+        for k in ["hidden", "groove", "ridge", "inset", "outset", "wat"] {
+            assert_eq!(parse_rule_style(&cs(&[("column-rule-style", k)])), None);
+        }
+    }
+
+    #[test]
+    fn parse_rule_color_resolves_currentcolor_and_explicit() {
+        let c = parse_rule_color(&cs(&[("color", "#f00")]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        let c = parse_rule_color(&cs(&[
+            ("color", "#f00"),
+            ("column-rule-color", "currentcolor"),
+        ]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        let c = parse_rule_color(&cs(&[("color", "#f00"), ("column-rule-color", "#0f0")]));
+        assert_eq!((c.r, c.g, c.b), (0, 255, 0));
+        // Unparsable colour falls back to currentcolor.
+        let c = parse_rule_color(&cs(&[("color", "#f00"), ("column-rule-color", "wat")]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        // Missing `color` defaults to black.
+        let c = parse_rule_color(&cs(&[]));
+        assert_eq!((c.r, c.g, c.b), (0, 0, 0));
+    }
+
+    #[test]
     fn place_measured_single_piece_translates_to_its_column_strip() {
         use super::super::fragment::{BorderRadii, NodeId};
         use super::super::value::BorderEdges;
