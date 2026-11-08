@@ -5,6 +5,20 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — unreleased
+
+### Added
+
+- CSS multi-column: style parsing + cascade initials (#398 PR-A of multi-PR stack).
+  Adds longhand grammar entries for `column-span`, `column-fill`, and
+  `break-{before,after,inside}` (Rust `rtdom::css_shorthand` + JS `css-shorthand`
+  lockstep), appends their Chrome 156 case rows to the shared longhand control
+  fixture, and registers the 11 non-inherited multicol / fragmentation initial
+  values (`column-count`, `column-width`, `column-gap`, `column-rule-*`,
+  `column-span`, `column-fill`, `break-*`) in turbo-dom-layout's cascade `INITIAL`
+  table so `initial` / `unset` resolve them. No layout behaviour change yet
+  (follow-up PRs land the multicol flow).
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights
