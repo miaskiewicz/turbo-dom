@@ -114,10 +114,7 @@ pub enum FragmentContent {
     /// the rule's bounding rect — centered in the `column-gap`, as tall as the
     /// column content box — and the painter draws the chosen [`ColumnRuleStyle`]
     /// in `color` inside it.
-    ColumnRule {
-        style: ColumnRuleStyle,
-        color: Rgba,
-    },
+    ColumnRule { style: ColumnRuleStyle, color: Rgba },
 }
 
 /// A supported `column-rule-style` keyword (CSS Multicol 1 §5.2;

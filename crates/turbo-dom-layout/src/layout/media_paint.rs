@@ -494,7 +494,7 @@ mod tests {
         // Under `SHOW_PLAY` (100px, `audio-panel-99`): no play button, so the timeline
         // starts 10px from the inline start and ends at the menu (`pw - 32`).
         let (narrow, _) = audio("width:99px");
-        assert!(panel_texts("width:99px").is_empty());
+        assert_eq!(panel_texts("width:99px"), Vec::<String>::new());
         assert!(
             narrow
                 .iter()

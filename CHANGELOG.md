@@ -68,6 +68,27 @@ at the time); this file reconstructs them from history.
 
 ### Added
 
+- CSS multi-column: `column-fill: balance`, column fragmentation and overflow
+  strips (#398 PR-C2 of multi-PR stack). Layered over PR-C1's equal-width
+  sequential-fill scaffold in `crates/turbo-dom-layout/src/layout/multicol.rs`:
+  the container's column height is now the smallest of
+  `content_height / used_count` and the container's definite height (CSS
+  Multicol 1 §7.3 pseudo-algorithm); a block whose height would overrun the
+  remaining column space is cut at the boundary and the tail flows into the
+  next column; a block that cannot fit in the last tracked column opens a
+  new strip at `col_index * (used_width + gap)` with no upper bound (Chrome's
+  overflow columns, visible past the container when `overflow: visible`);
+  and a fragmented block's `data-cid` reports the UNION rectangle of its
+  column fragments, matching Chrome's `getBoundingClientRect` contract.
+  Activates the remaining five Chrome 156 oracle cases
+  (`columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) within the harness's 0.5 px
+  tolerance. PR-C1's "column-span capture anomaly" note on
+  `columns-shorthand` i2 / i5 turned out to be plain fragmentation + union
+  of two 50 px block fragments Chrome's balanced 3-col flow produces at
+  `col_h ≈ 133.34 px`, which PR-C2's fragmenter models directly.
+  `column-span: all` and `break-{before,after,inside}` honouring stay
+  deferred to PR-E; column-rule painting to PR-D.
 - CSS multi-column: `column-rule-*` painting (#398 PR-D). Styles: none, solid,
   dotted, dashed, double; groove/ridge/inset/outset filed as follow-up.
   `crates/turbo-dom-layout/src/layout/multicol.rs` now emits one

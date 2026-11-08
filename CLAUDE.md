@@ -244,27 +244,32 @@ package or publish workflow.
   carrying `INDETERMINATE_ATTR` (a live embedder's script-set flag) paints Chrome's dash, and
   vertical-mode controls stay native (drawn in their logical space; glyphs `form_paint::upright`);
   since turbo-dom#292 `<audio controls>` paints Chrome's panel (`layout::media_paint`; controls:
-  raster `form_native_chrome156.json`). Since turbo-dom#398 PR-C1 a `BoxKind::Block` with a
-  non-`auto` `column-count` / `column-width` is a multi-column formatting context
+  raster `form_native_chrome156.json`). Since turbo-dom#398 PR-C1 / PR-C2 / PR-D a `BoxKind::Block`
+  with a non-`auto` `column-count` / `column-width` is a multi-column formatting context
   (`layout::multicol`, CSS Multicol 1): an independent formatting context whose in-flow
   children flow into equal-width column strips of the content box per Chrome's widen rule
-  (`used_count = floor((W + gap) / (width + gap))`), with `column-fill: balance` when the
-  container's height is auto. The `columns: <width> <count>` and
-  `column-rule: <width> <style> <color>` shorthands ride the cascade's shorthand
-  expansion (`font` / `list-style` / `border-radius` / `background` / `columns` /
-  `column-rule`).
-  Control: `tests/multicol_chrome.rs` + `tests/fixtures/multicol_chrome156.json`; PR-C1 asserts
-  the three equal-width sequential-fill cases (`basic-2col-equal`, `basic-3col-with-gap`,
-  `column-width-driven`) within 0.5 px, the other five fixture cases are `#[ignore]`d for PR-C2
-  (column-span capture anomaly, mixed-height sequential fill, N+1 strip overflow, nested
-  multicol, floats inside a column). Since turbo-dom#398 PR-D a multicol
-  container also emits `FragmentContent::ColumnRule { style, color }` fragments
-  between adjacent columns: rule width = `column-rule-width` clamped to the gap
-  (Blink's multicol painter never paints outside the gap), height = the column
-  content height; `currentcolor` resolves to the container's `color`. Painted
-  by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` /
-  `double` (raster `multicol_rule_chrome156.json`); groove / ridge / inset /
-  outset deferred.
+  (`used_count = floor((W + gap) / (width + gap))`). PR-C2 adds fragmenting `column-fill:
+  balance` — `col_h = min(content_h / used_count, definite_height)` per §7.3 pseudo-
+  algorithm, a block whose height would overrun the remaining space in the current column
+  is cut at the boundary and the tail flows into the next one, and a block that cannot
+  fit inside `used_count` columns opens a new strip at `col_index * (used_width + gap)`
+  with no upper bound (Chrome's overflow columns, visible past the container when
+  `overflow: visible`). A fragmented block's `data-cid` reports the UNION rectangle of
+  its column fragments (Chrome's `getBoundingClientRect` contract). The `columns:
+  <width> <count>` and `column-rule: <width> <style> <color>` shorthands ride the
+  cascade's shorthand expansion (`font` / `list-style` / `border-radius` / `background` /
+  `columns` / `column-rule`). Control:
+  `tests/multicol_chrome.rs` + `tests/fixtures/multicol_chrome156.json`; all 8 Chrome 156
+  cases (`basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`,
+  `columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) assert within 0.5 px. Since turbo-dom#398
+  PR-D the multicol container also emits `FragmentContent::ColumnRule { style, color }`
+  fragments between adjacent columns: rule width = `column-rule-width` clamped to the
+  gap (Blink's multicol painter never paints outside the gap), height = the balanced
+  column content height; `currentcolor` resolves to the container's `color`. Painted
+  by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` / `double`
+  (raster `multicol_rule_chrome156.json`); `groove` / `ridge` / `inset` / `outset` are
+  deferred. `column-span: all` and `break-{before,after,inside}` honouring are PR-E.
   The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's

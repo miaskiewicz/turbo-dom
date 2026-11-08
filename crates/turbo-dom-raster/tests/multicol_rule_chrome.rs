@@ -83,15 +83,8 @@ fn png_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
         }
         compared += 1;
         let html = case["html"].as_str().unwrap();
-        let png = screenshot_png_with_opts(
-            html,
-            "",
-            VIEWPORT,
-            &ImageAssets::new(),
-            false,
-            false,
-        )
-        .expect("png");
+        let png = screenshot_png_with_opts(html, "", VIEWPORT, &ImageAssets::new(), false, false)
+            .expect("png");
         let pm = tiny_skia::Pixmap::decode_png(&png).expect("decode");
         for probe in case["probes"].as_array().unwrap() {
             let (x, y) = (
@@ -128,15 +121,8 @@ fn svg_differences(select: impl Fn(&str) -> bool) -> Vec<String> {
         }
         compared += 1;
         let html = case["html"].as_str().unwrap();
-        let svg = screenshot_svg_with_opts(
-            html,
-            "",
-            VIEWPORT,
-            &ImageAssets::new(),
-            false,
-            false,
-        )
-        .expect("svg");
+        let svg = screenshot_svg_with_opts(html, "", VIEWPORT, &ImageAssets::new(), false, false)
+            .expect("svg");
         let pm = rasterize_svg(&svg);
         for probe in case["probes"].as_array().unwrap() {
             let (x, y) = (
@@ -165,7 +151,7 @@ fn solid_column_rules_paint_like_chrome_156() {
 
 /// `column-rule-style: dotted` stamps a dot of diameter `column-rule-width`
 /// at the rule top in both painters (Chrome's exact dot phase past the first
-/// dot is a Blink LayoutUnit arithmetic detail outside PR-D's scope).
+/// dot is a Blink `LayoutUnit` arithmetic detail outside PR-D's scope).
 #[test]
 fn dotted_column_rules_paint_like_chrome_156() {
     let pick = |id: &str| id == "multicol-rule-dotted-3col";

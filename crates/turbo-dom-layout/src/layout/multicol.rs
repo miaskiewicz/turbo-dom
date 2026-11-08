@@ -1,5 +1,5 @@
-//! CSS multi-column layout (§CSS Multicol 1; miaskiewicz/turbo-dom#398 PR-C1 of
-//! a multi-PR stack).
+//! CSS multi-column layout (§CSS Multicol 1; miaskiewicz/turbo-dom#398 PR-C1 /
+//! PR-C2 of a multi-PR stack).
 //!
 //! A container is a multicol formatting context when its computed
 //! `column-count` or `column-width` is not `auto`; its in-flow children flow
@@ -7,22 +7,17 @@
 //! sequentially top-to-bottom within each strip and left-to-right across
 //! strips (CSS Multicol 1 §3 "The multi-column model", `column-fill: balance`).
 //!
-//! PR-C1 scope is the three cleanest Chrome 156 cases:
+//! PR-C1 scope was the three cleanest Chrome 156 cases (`basic-2col-equal`,
+//! `basic-3col-with-gap`, `column-width-driven`): equal-width tracks, no
+//! fragmentation, column height = container's definite height.
 //!
-//! * `basic-2col-equal` — fixed-height container, two equal-width columns,
-//!   `column-gap: 0`.
-//! * `basic-3col-with-gap` — fixed-height container, three equal-width
-//!   columns, non-zero `column-gap`.
-//! * `column-width-driven` — auto `column-count`, non-auto `column-width`, the
-//!   container's own height derived from the balanced column content height.
-//!
-//! The remaining five cases from the oracle
-//! (`crates/turbo-dom-layout/tests/fixtures/multicol_chrome156.json`) — the
-//! `column-span` capture anomaly in `columns-shorthand` (i2's `offsetWidth:
-//! 400, offsetHeight: 133`), the mixed-height sequential-fill, the overflow
-//! into an N+1 strip beyond the content box, nested multicol containers and
-//! floats inside a column — stay `#[ignore]`d in the harness and land in
-//! PR-C2.
+//! PR-C2 layers `column-fill: balance`, fragmenting fill across the column
+//! strips, overflow into extra strips beyond `used_count` (an item that
+//! cannot fit in the last tracked column opens a new strip at `col_index *
+//! (used_width + gap)` with no upper bound), and a union-geometry pass for
+//! fragmented children — Chrome's `getBoundingClientRect()` returns the union
+//! of every column fragment a box produces, and the oracle harness asserts
+//! against it.
 //!
 //! Chrome 156's multicol widths live on its 1/64 px `LayoutUnit` grid
 //! (`crates/turbo-dom-layout/src/layout/Blink-layout-unit.LICENSE`): the
@@ -32,7 +27,18 @@
 //! further right than three equal-width tracks would otherwise predict. The
 //! exported fragments are compared within a 0.5 px tolerance, so a float
 //! formula matches each column's reported `x` / `width` exactly within that
-//! bound.
+//! bound, and Chrome's balanced column height `content_h / used_count` rounds
+//! within the same tolerance.
+//!
+//! Scope deferred to PR-E: `column-span: all`, the `break-{before,after,inside}`
+//! honouring (`break-inside: avoid` turning a would-be fragmentation into an
+//! anticipated column break, `break-after: column`, etc.), and column-rule
+//! painting (that's PR-D, in `turbo-dom-raster`). PR-C2's fragmenter splits a
+//! box blindly once it would overrun the balanced column height and the union
+//! Fragment paints its background once across the gap — the Chrome oracle's
+//! `columns-shorthand` i2 / i5 captures assert against the union rect only,
+//! so the geometry matches, but a block with its own background painting
+//! per column is PR-E / PR-D's job.
 
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
@@ -169,9 +175,7 @@ fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
 /// colour (CSS Multicol 1 §5.3).
 fn parse_rule_color(s: &ComputedStyle) -> Rgba {
     let current = s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK);
-    let raw = s
-        .get("column-rule-color")
-        .map_or("currentcolor", str::trim);
+    let raw = s.get("column-rule-color").map_or("currentcolor", str::trim);
     if raw.eq_ignore_ascii_case("currentcolor") {
         return current;
     }
@@ -242,18 +246,22 @@ fn definite_container_height(bs: &BoxStyle) -> Option<f32> {
     }
 }
 
+/// Chrome's getBoundingClientRect-of-fragments tolerance. A column fragment
+/// whose used height differs by at most this much from a whole column is
+/// treated as a WHOLE column for the fragmentation loop (so a 1/64 px rounding
+/// slop does not spawn a zero-height tail piece).
+const FRAG_EPS: f32 = 0.5;
+
 /// Lay out a multicol container's kids into equal-width column strips.
 /// Returns the item fragments (galley-absolute) and the content height of the
 /// container.
 ///
-/// PR-C1 scope: equal-width columns, sequential top-to-bottom fill within
-/// each column, kids flowed strictly in source order. A child whose height
-/// would exceed the remaining space in the current column advances to the
-/// next one. The N+1 strip overflow (a child that cannot fit inside
-/// `used_count` columns spills into a strip beyond the content box) is
-/// PR-C2 — PR-C1 lets the overflowing child flow into the LAST column
-/// instead of crashing, matching no Chrome case here but also not regressing
-/// any.
+/// PR-C2 adds fragmenting `column-fill: balance` over PR-C1's equal-width
+/// sequential-fill scaffold: a block that would overrun the balanced column
+/// height is split across the column boundary, and a block that cannot fit
+/// inside `used_count` columns opens a new strip at `col_index * (used_width +
+/// gap)` with no upper bound (Chrome's "overflow columns" spill, visible past
+/// the container's own box when `overflow: visible`).
 pub(crate) fn layout_multicol(
     container: &LayoutBox,
     kids: &[LayoutBox],
@@ -268,8 +276,46 @@ pub(crate) fn layout_multicol(
     }
     let fs = bs.font_size;
     let (used_count, used_width, gap) = resolve_tracks(&container.style, cw, fs);
-    // Pass 1: lay each kid out at (0,0) at width `used_width` so we know its
-    // measured height; the final placement in pass 3 translates it.
+    // Pass 1: measure each kid at `used_width` so pass 2 can balance.
+    let measured = measure_kids(kids, used_width, fs, ctx);
+    // Pass 2: balance the column height. `column-fill: balance` (the default)
+    // picks the smallest column height that fits the content in `used_count`
+    // columns — `content_h / used_count` — capped at the container's definite
+    // height, which allows overflow into extra strips beyond `used_count`
+    // (CSS Multicol 1 §7.3 "Pseudo-algorithm").
+    let total: f32 = measured.iter().map(|f| f.height).sum();
+    let container_h = definite_container_height(bs);
+    let col_h = balanced_col_height(total, used_count, container_h);
+    // Pass 3: flow measured items into columns in source order, fragmenting a
+    // block whose height would overrun the remaining space in the current
+    // column and opening overflow strips past `used_count` when needed.
+    let mut placed = flow_into_columns(measured, col_h, used_width, gap, cx, cy);
+    // A definite height wins; otherwise the box grows to hold the balanced
+    // column content.
+    let content_h = container_h.unwrap_or(col_h);
+    // `column-rule-*` paints between adjacent columns after the content
+    // (CSS Multicol 1 §5; miaskiewicz/turbo-dom#398 PR-D). Rules are
+    // appended after the content so they paint over any column content
+    // they overlap (`multicol-rule-wider-than-gap`). The rule runs the
+    // balanced column content height, which may be smaller than the
+    // container's definite height — Chrome stops painting a rule at
+    // the end of the column it sits between.
+    let rules = column_rule_fragments(
+        container,
+        (cx, cy),
+        (used_count, used_width, gap),
+        fs,
+        col_h,
+    );
+    placed.extend(rules);
+    (placed, content_h)
+}
+
+/// Lay out each kid at `(0, 0)` at `used_width` so pass 3 can translate the
+/// resulting fragment into its final column strip. An isolated BFC so floats
+/// inside the kid are contained and compose into the column's inline flow
+/// rather than escaping into the outer multicol container.
+fn measure_kids(kids: &[LayoutBox], used_width: f32, fs: f32, ctx: &mut Ctx) -> Vec<Fragment> {
     let mut measured: Vec<Fragment> = Vec::with_capacity(kids.len());
     for kid in kids {
         let kbs = kid.resolved(ResolveCtx {
@@ -277,57 +323,178 @@ pub(crate) fn layout_multicol(
             cb_width: used_width,
         });
         let kw = block::border_box_width(&kbs, used_width);
-        let frag = block::layout_box_sized_isolated(kid, &kbs, 0.0, 0.0, kw, ctx);
-        measured.push(frag);
+        measured.push(block::layout_box_sized_isolated(
+            kid, &kbs, 0.0, 0.0, kw, ctx,
+        ));
     }
-    // Pass 2: pick a column height. A definite container height is the
-    // column height; an auto one takes the balanced fill — total measured
-    // height divided across `used_count` columns (CSS Multicol 1 §7.3
-    // "Pseudo-algorithm", `column-fill: balance`).
-    let total: f32 = measured.iter().map(|f| f.height).sum();
-    let balanced_h = (total / used_count as f32).max(0.0);
-    let container_h = definite_container_height(bs);
-    let col_h = container_h.unwrap_or(balanced_h);
-    // Pass 3: flow measured items into columns in source order. A child whose
-    // height would overrun the remaining column space advances to the next
-    // column; staying within column 0 is also fine for an empty container.
-    let mut placed: Vec<Fragment> = Vec::with_capacity(measured.len());
+    measured
+}
+
+/// `min(total_content / used_count, definite_height)` with a positive floor so
+/// an auto-height empty container does not drive the flow loop to zero.
+/// `None` for `definite` = auto height, which uses the balanced height straight.
+fn balanced_col_height(total: f32, used_count: u32, definite: Option<f32>) -> f32 {
+    let balance = (total / used_count.max(1) as f32).max(0.0);
+    // `f32::min` over a cap-clamped definite height, so an equivalent `<` /
+    // `<=` branch is not open to a mutant on the boundary where balance meets
+    // the cap (both branches then return the same value).
+    definite.map_or(balance, |def| balance.min(def.max(0.0)))
+}
+
+/// One contiguous fragment of a source box inside its column. Measured in the
+/// container's content-box coordinates: `col_index` names the column strip
+/// (`0..used_count` for the in-flow strips, `>= used_count` for overflow
+/// strips beyond the content box), and `(y, height)` is the fragment's span
+/// along the block axis of THAT column.
+#[derive(Copy, Clone)]
+struct ColPiece {
+    col_index: u32,
+    y: f32,
+    height: f32,
+}
+
+/// Flow the measured kids into column strips. A kid that fits in the current
+/// column's remaining space is placed whole and `col_cursor` advances; a kid
+/// that overruns is cut at the column boundary and the rest flows into the
+/// next one (spawning an overflow strip past `used_count` when needed).
+fn flow_into_columns(
+    measured: Vec<Fragment>,
+    col_h: f32,
+    used_width: f32,
+    gap: f32,
+    cx: f32,
+    cy: f32,
+) -> Vec<Fragment> {
+    let mut out: Vec<Fragment> = Vec::with_capacity(measured.len());
     let mut col_index: u32 = 0;
     let mut col_cursor: f32 = 0.0;
-    let mut max_col_content: f32 = 0.0;
-    for mut frag in measured {
-        let kid_h = frag.height;
-        if col_cursor > 0.0 && col_cursor + kid_h > col_h + 0.5 && col_index + 1 < used_count {
-            col_index += 1;
-            col_cursor = 0.0;
-        }
-        let col_x = cx + col_index as f32 * (used_width + gap);
-        let col_y = cy + col_cursor;
-        let dx = col_x - frag.x;
-        let dy = col_y - frag.y;
-        if dx != 0.0 || dy != 0.0 {
-            frag.translate(dx, dy);
-        }
-        col_cursor += kid_h;
-        max_col_content = max_col_content.max(col_cursor);
-        placed.push(frag);
+    for frag in measured {
+        let pieces = fragment_pieces(frag.height, col_h, &mut col_index, &mut col_cursor);
+        out.push(place_measured(frag, &pieces, used_width, gap, cx, cy));
     }
-    // A definite height wins; otherwise the box grows to hold the tallest
-    // column's content.
-    let content_h = container_h.unwrap_or(max_col_content);
-    // `column-rule-*` paints between adjacent columns after the content
-    // (CSS Multicol 1 §5; miaskiewicz/turbo-dom#398 PR-D). Rules are
-    // appended after the content so they paint over any column content
-    // they overlap (`multicol-rule-wider-than-gap`).
-    let rules = column_rule_fragments(
-        container,
-        (cx, cy),
-        (used_count, used_width, gap),
-        fs,
-        content_h,
-    );
-    placed.extend(rules);
-    (placed, content_h)
+    out
+}
+
+/// Cut a block of `item_h` into one or more [`ColPiece`]s. The function
+/// advances `col_index` / `col_cursor` as the block consumes columns: a block
+/// that fits at `col_cursor` consumes exactly `item_h`; one that would overrun
+/// is cut at `col_h` and the tail falls to the next column (`col_index += 1`,
+/// `col_cursor = 0`). A block too tall for one column leaves a chain of
+/// full-column pieces plus a short tail.
+fn fragment_pieces(
+    item_h: f32,
+    col_h: f32,
+    col_index: &mut u32,
+    col_cursor: &mut f32,
+) -> Vec<ColPiece> {
+    let mut pieces: Vec<ColPiece> = Vec::new();
+    // A non-positive column height collapses fragmentation to a single piece
+    // at the current cursor: the caller owns the placement, the flow does not
+    // walk forever trying to spill into fresh strips.
+    if col_h <= 0.0 {
+        pieces.push(ColPiece {
+            col_index: *col_index,
+            y: *col_cursor,
+            height: item_h,
+        });
+        *col_cursor += item_h;
+        return pieces;
+    }
+    let mut remaining = item_h;
+    loop {
+        let available = (col_h - *col_cursor).max(0.0);
+        if available <= FRAG_EPS && *col_cursor > 0.0 {
+            // No room (within rounding slop) — open the next column.
+            *col_index += 1;
+            *col_cursor = 0.0;
+            continue;
+        }
+        if remaining <= available + FRAG_EPS {
+            // The block (or its last piece) fits — place and stop.
+            pieces.push(ColPiece {
+                col_index: *col_index,
+                y: *col_cursor,
+                height: remaining,
+            });
+            *col_cursor += remaining;
+            return pieces;
+        }
+        // Partial — fill the column, carry the tail to the next one.
+        pieces.push(ColPiece {
+            col_index: *col_index,
+            y: *col_cursor,
+            height: available,
+        });
+        remaining -= available;
+        *col_index += 1;
+        *col_cursor = 0.0;
+    }
+}
+
+/// Translate the measured fragment into its final column strip. For a block
+/// that fits in one column (the common case, including the whole of PR-C1),
+/// the measured fragment moves whole; a fragmented block collapses into one
+/// Fragment whose rectangle is the UNION of its column fragments (Chrome's
+/// `getBoundingClientRect()` on a block that split across the column gap).
+/// PR-C2's fragmenter loses the per-column paint for a fragmented block (the
+/// union Fragment paints its background once across the gap) — PR-E owns the
+/// per-column paint, and no case in the Chrome 156 oracle paints a
+/// fragmented block's background.
+fn place_measured(
+    mut measured: Fragment,
+    pieces: &[ColPiece],
+    used_width: f32,
+    gap: f32,
+    cx: f32,
+    cy: f32,
+) -> Fragment {
+    // `measure_kids` lays each kid out at `(0, 0)`, so the translation to the
+    // column strip is the strip's origin directly — one `translate` rather
+    // than a `cx + ... - measured.x` difference whose subtracted zero is
+    // indistinguishable from an addition on a mutant.
+    debug_assert_eq!(measured.x, 0.0);
+    debug_assert_eq!(measured.y, 0.0);
+    let stride = used_width + gap;
+    if pieces.len() == 1 {
+        let p = pieces[0];
+        let dx = cx + p.col_index as f32 * stride;
+        let dy = cy + p.y;
+        if dx != 0.0 || dy != 0.0 {
+            measured.translate(dx, dy);
+        }
+        return measured;
+    }
+    let (left_col, right_col, min_y, max_bottom) = piece_bounds(pieces);
+    let left = cx + left_col as f32 * stride;
+    let right = cx + right_col as f32 * stride + used_width;
+    measured.x = left;
+    measured.y = cy + min_y;
+    measured.width = right - left;
+    measured.height = max_bottom - min_y;
+    // The measured Fragment's own children live in its per-column paint; once
+    // the block is fragmented across strips the union box cannot host them
+    // sensibly (they would paint off their column). Clearing them also keeps
+    // `collect_boxes` from re-emitting a now-invalid per-column cid under the
+    // union rect. PR-E restores the per-column paint.
+    measured.children.clear();
+    measured
+}
+
+/// `(leftmost column index, rightmost column index, smallest piece y in its
+/// column, largest piece bottom in its column)` — the half-planes the union
+/// rect of a fragmented block takes its corners from.
+fn piece_bounds(pieces: &[ColPiece]) -> (u32, u32, f32, f32) {
+    let mut left = u32::MAX;
+    let mut right = 0u32;
+    let mut min_y = f32::INFINITY;
+    let mut max_bottom = f32::NEG_INFINITY;
+    for p in pieces {
+        left = left.min(p.col_index);
+        right = right.max(p.col_index);
+        min_y = min_y.min(p.y);
+        max_bottom = max_bottom.max(p.y + p.height);
+    }
+    (left, right, min_y, max_bottom)
 }
 
 #[cfg(test)]
@@ -465,6 +632,355 @@ mod tests {
             parse_column_width(&cs(&[("column-width", "0px")]), 16.0),
             None
         );
+    }
+
+    #[test]
+    fn balanced_col_height_picks_min_of_balance_and_definite() {
+        // definite caps balance (overflow case).
+        assert!((balanced_col_height(400.0, 2, Some(150.0)) - 150.0).abs() < 1e-5);
+        // balance < definite: use balance (true `column-fill: balance`).
+        assert!((balanced_col_height(330.0, 2, Some(200.0)) - 165.0).abs() < 1e-5);
+        // no definite: balance wins.
+        assert!((balanced_col_height(350.0, 2, None) - 175.0).abs() < 1e-5);
+        // auto height, zero content → zero col height.
+        assert_eq!(balanced_col_height(0.0, 2, None), 0.0);
+        // used_count == 0 is clamped to 1 so a stray style does not div-by-zero.
+        assert!((balanced_col_height(100.0, 0, None) - 100.0).abs() < 1e-5);
+        // Negative definite is clamped at zero.
+        assert_eq!(balanced_col_height(0.0, 2, Some(-10.0)), 0.0);
+    }
+
+    #[test]
+    fn fragment_pieces_places_a_single_piece_when_the_block_fits() {
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 60.0;
+        let pieces = fragment_pieces(40.0, 165.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 0);
+        assert!((pieces[0].y - 60.0).abs() < 1e-5);
+        assert!((pieces[0].height - 40.0).abs() < 1e-5);
+        assert_eq!(ci, 0);
+        assert!((cc - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_splits_a_block_at_the_column_boundary() {
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 140.0;
+        // col_h = 165, block = 40 → piece A h=25 (fills col1 from 140), piece B h=15 (0..15 in col2).
+        let pieces = fragment_pieces(40.0, 165.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 2);
+        assert_eq!(pieces[0].col_index, 0);
+        assert!((pieces[0].y - 140.0).abs() < 1e-5);
+        assert!((pieces[0].height - 25.0).abs() < 1e-5);
+        assert_eq!(pieces[1].col_index, 1);
+        assert_eq!(pieces[1].y, 0.0);
+        assert!((pieces[1].height - 15.0).abs() < 1e-5);
+        assert_eq!(ci, 1);
+        assert!((cc - 15.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_chains_a_block_taller_than_a_column_across_strips() {
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        // col_h=50, block=120 → piece A 50 in col0, piece B 50 in col1, piece C 20 in col2.
+        let pieces = fragment_pieces(120.0, 50.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 3);
+        assert_eq!(pieces[0].col_index, 0);
+        assert!((pieces[0].height - 50.0).abs() < 1e-5);
+        assert_eq!(pieces[1].col_index, 1);
+        assert!((pieces[1].height - 50.0).abs() < 1e-5);
+        assert_eq!(pieces[2].col_index, 2);
+        assert!((pieces[2].height - 20.0).abs() < 1e-5);
+        assert_eq!(ci, 2);
+        assert!((cc - 20.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_opens_overflow_strip_when_col_is_full_at_entry() {
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 150.0; // at col_h, no room.
+        let pieces = fragment_pieces(100.0, 150.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 1);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 100.0).abs() < 1e-5);
+        assert_eq!(ci, 1);
+        assert!((cc - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_does_not_advance_from_column_top_when_col_h_barely_positive() {
+        // col_h = 0.4 (below FRAG_EPS=0.5), item = 10. At the top of a column
+        // (cursor=0) the "no room" branch's `col_cursor > 0.0` guard must stay
+        // strict: a `>=` mutation would spin the column index past every
+        // output without ever placing a piece.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(10.0, 0.4, &mut ci, &mut cc);
+        // At least one piece should land in col 0 at y=0 (progress made).
+        assert!(!pieces.is_empty());
+        assert_eq!(pieces[0].col_index, 0);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!(pieces[0].height > 0.0);
+    }
+
+    #[test]
+    fn fragment_pieces_single_piece_for_non_positive_col_height() {
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(40.0, 0.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 0);
+        assert!((pieces[0].height - 40.0).abs() < 1e-5);
+        // The cursor is advanced past the single piece — a later call to the
+        // same column strip picks up where this one left off (not the +=
+        // branch collapsing to -= or *=, both of which this assertion kills).
+        assert!((cc - 40.0).abs() < 1e-5);
+        assert_eq!(ci, 0);
+    }
+
+    #[test]
+    fn parse_rule_width_resolves_keywords_and_lengths() {
+        assert!((parse_rule_width(&cs(&[("column-rule-width", "thin")]), 16.0) - 1.0).abs() < 1e-5);
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "medium")]), 16.0) - 3.0).abs() < 1e-5
+        );
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "thick")]), 16.0) - 5.0).abs() < 1e-5
+        );
+        assert_eq!(
+            parse_rule_width(&cs(&[("column-rule-width", "none")]), 16.0),
+            0.0
+        );
+        assert!(
+            (parse_rule_width(&cs(&[("column-rule-width", "10px")]), 16.0) - 10.0).abs() < 1e-5
+        );
+        // Default (unset) is `medium` = 3px.
+        assert!((parse_rule_width(&cs(&[]), 16.0) - 3.0).abs() < 1e-5);
+        // An unparsable length falls back to `medium`.
+        assert!((parse_rule_width(&cs(&[("column-rule-width", "wat")]), 16.0) - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn parse_rule_style_accepts_paintable_keywords() {
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "solid")])),
+            Some(ColumnRuleStyle::Solid)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "dotted")])),
+            Some(ColumnRuleStyle::Dotted)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "dashed")])),
+            Some(ColumnRuleStyle::Dashed)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "double")])),
+            Some(ColumnRuleStyle::Double)
+        );
+        // Default (unset) is `none` and returns None (no rule painted).
+        assert_eq!(parse_rule_style(&cs(&[])), None);
+        // Deferred keywords (`groove` / `ridge` / `inset` / `outset`) and
+        // `hidden` all come back as `None` until PR-E picks them up.
+        for k in ["hidden", "groove", "ridge", "inset", "outset", "wat"] {
+            assert_eq!(parse_rule_style(&cs(&[("column-rule-style", k)])), None);
+        }
+    }
+
+    fn container(pairs: &[(&str, &str)]) -> LayoutBox {
+        super::super::boxgen::anonymous_box(
+            super::super::fragment::NodeId(0),
+            cs(pairs),
+            super::super::boxgen::BoxKind::Block(Vec::new()),
+        )
+    }
+
+    #[test]
+    fn column_rule_fragments_emits_one_per_gap_with_declared_width() {
+        // Three columns, non-zero gap, a solid 2px rule centered in each gap.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-width", "2px"),
+            ("column-rule-color", "#ff0000"),
+        ]);
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0);
+        assert_eq!(fr.len(), 2);
+        // Rule 0 centered at cx + 1*width + 0.5*gap = 0 + 200 + 10 = 210 ± 1.
+        assert!((fr[0].x - 209.0).abs() < 1e-5); // 210 - 2/2
+        assert!((fr[0].y - 0.0).abs() < 1e-5);
+        assert!((fr[0].width - 2.0).abs() < 1e-5);
+        assert!((fr[0].height - 300.0).abs() < 1e-5);
+        // Rule 1 centered at cx + 2*width + 1.5*gap = 0 + 400 + 30 = 430 ± 1.
+        assert!((fr[1].x - 429.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn column_rule_fragments_declines_single_column_or_zero_gap_or_height() {
+        let c = container(&[("column-rule-style", "solid")]);
+        // Single column -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // Zero gap -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 16.0, 300.0).is_empty());
+        // Non-positive col height -> no rules.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 0.0).is_empty());
+    }
+
+    #[test]
+    fn column_rule_fragments_declines_unpaintable_style_or_zero_width_or_transparent_color() {
+        // style unset (`none`) -> no rules.
+        let c = container(&[]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // declared width 0 -> no rules.
+        let c = container(&[("column-rule-style", "solid"), ("column-rule-width", "0px")]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        // Fully transparent colour -> no rules.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-color", "rgba(0,0,0,0)"),
+        ]);
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+    }
+
+    #[test]
+    fn column_rule_fragments_clamps_width_to_the_gap() {
+        // Declared 10px rule into a 4px gap: rule stays centered, truncated to 4px.
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-width", "10px"),
+        ]);
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (2, 100.0, 4.0), 16.0, 50.0);
+        assert_eq!(fr.len(), 1);
+        assert!((fr[0].width - 4.0).abs() < 1e-5);
+        // Center of the gap at x=100 + 0.5*4 = 102, left edge at 102 - 2 = 100.
+        assert!((fr[0].x - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn parse_rule_color_resolves_currentcolor_and_explicit() {
+        let c = parse_rule_color(&cs(&[("color", "#f00")]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        let c = parse_rule_color(&cs(&[
+            ("color", "#f00"),
+            ("column-rule-color", "currentcolor"),
+        ]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        let c = parse_rule_color(&cs(&[("color", "#f00"), ("column-rule-color", "#0f0")]));
+        assert_eq!((c.r, c.g, c.b), (0, 255, 0));
+        // Unparsable colour falls back to currentcolor.
+        let c = parse_rule_color(&cs(&[("color", "#f00"), ("column-rule-color", "wat")]));
+        assert_eq!((c.r, c.g, c.b), (255, 0, 0));
+        // Missing `color` defaults to black.
+        let c = parse_rule_color(&cs(&[]));
+        assert_eq!((c.r, c.g, c.b), (0, 0, 0));
+    }
+
+    #[test]
+    fn place_measured_single_piece_translates_to_its_column_strip() {
+        use super::super::fragment::{BorderRadii, NodeId};
+        use super::super::value::BorderEdges;
+        let bx = |w, h| {
+            super::super::fragment::Fragment::new(
+                NodeId(42),
+                0.0,
+                0.0,
+                w,
+                h,
+                super::super::fragment::FragmentContent::Box {
+                    background: None,
+                    border: BorderEdges::default(),
+                    border_radius: BorderRadii::ZERO,
+                    shadow: None,
+                    gradient: None,
+                    transform: None,
+                },
+            )
+        };
+        let p = [ColPiece {
+            col_index: 2,
+            y: 45.0,
+            height: 60.0,
+        }];
+        let got = place_measured(bx(200.0, 60.0), &p, 200.0, 20.0, 10.0, 30.0);
+        // dx = cx + col * stride = 10 + 2 * (200 + 20) = 450. dy = cy + y = 30 + 45 = 75.
+        assert!((got.x - 450.0).abs() < 1e-5);
+        assert!((got.y - 75.0).abs() < 1e-5);
+        assert!((got.width - 200.0).abs() < 1e-5);
+        assert!((got.height - 60.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn place_measured_multi_piece_builds_union_corners() {
+        use super::super::fragment::{BorderRadii, NodeId};
+        use super::super::value::BorderEdges;
+        let bx = |w, h| {
+            super::super::fragment::Fragment::new(
+                NodeId(42),
+                0.0,
+                0.0,
+                w,
+                h,
+                super::super::fragment::FragmentContent::Box {
+                    background: None,
+                    border: BorderEdges::default(),
+                    border_radius: BorderRadii::ZERO,
+                    shadow: None,
+                    gradient: None,
+                    transform: None,
+                },
+            )
+        };
+        // Hand-crafted multi-piece spread across three columns with non-zero
+        // `min_y` so the `cy + min_y` arithmetic cannot collapse to `cy`
+        // (an invariant the real flow upholds but a mutant on `+` would exploit).
+        let p = [
+            ColPiece {
+                col_index: 1,
+                y: 10.0,
+                height: 50.0,
+            },
+            ColPiece {
+                col_index: 2,
+                y: 5.0,
+                height: 30.0,
+            },
+            ColPiece {
+                col_index: 3,
+                y: 20.0,
+                height: 40.0,
+            },
+        ];
+        let got = place_measured(bx(200.0, 120.0), &p, 200.0, 0.0, 100.0, 50.0);
+        // left_col=1, right_col=3, min_y=5, max_bottom=max(60,35,60)=60.
+        // x = cx + 1 * 200 = 300. y = cy + 5 = 55. width = (3 * 200 + 200) - 200 = 600.
+        // height = 60 - 5 = 55.
+        assert!((got.x - 300.0).abs() < 1e-5);
+        assert!((got.y - 55.0).abs() < 1e-5);
+        assert!((got.width - 600.0).abs() < 1e-5);
+        assert!((got.height - 55.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn piece_bounds_covers_columns_and_block_axis() {
+        let pieces = [
+            ColPiece {
+                col_index: 0,
+                y: 140.0,
+                height: 25.0,
+            },
+            ColPiece {
+                col_index: 1,
+                y: 0.0,
+                height: 15.0,
+            },
+        ];
+        let (l, r, min_y, max_bottom) = piece_bounds(&pieces);
+        assert_eq!(l, 0);
+        assert_eq!(r, 1);
+        assert!((min_y - 0.0).abs() < 1e-5);
+        assert!((max_bottom - 165.0).abs() < 1e-5);
     }
 
     #[test]
