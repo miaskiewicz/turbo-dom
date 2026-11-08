@@ -169,6 +169,15 @@ MUTATION.update({
     "offset-rotate": MUTATION["offset-rotate"] + ["0deg", "reverse 0", "calc(0)", "0 auto", "10deg auto", "auto calc(1deg)", "reverse auto", "45deg reverse"],
     "offset-path": MUTATION["offset-path"] + ["path('')", "path(' ')"],
 })
+# Round six (#398 PR-A): CSS multi-column keyword longhands -- column-span, column-fill,
+# break-{before,after,inside}. No earlier round exercised these.
+MUTATION.update({
+    "column-span": ["none", "all", "NONE", "ALL", "bogus", " all "],
+    "column-fill": ["auto", "balance", "AUTO", "Balance", "bogus"],
+    "break-before": ["auto", "avoid", "always", "all", "avoid-page", "page", "left", "right", "recto", "verso", "avoid-column", "column", "avoid-region", "region", "AUTO", "Avoid-Page", "bogus"],
+    "break-after": ["auto", "avoid", "always", "all", "avoid-page", "page", "left", "right", "recto", "verso", "avoid-column", "column", "avoid-region", "region", "AVOID", "bogus"],
+    "break-inside": ["auto", "avoid", "avoid-page", "avoid-column", "avoid-region", "Auto", "AVOID-PAGE", "bogus"],
+})
 for name, values in MUTATION.items():
     for value in values:
         if [name, value] not in pairs:

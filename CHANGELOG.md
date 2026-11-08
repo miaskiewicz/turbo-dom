@@ -58,6 +58,19 @@ at the time); this file reconstructs them from history.
   turbo-surf#240, where `page.route`'s `fetch`/`XMLHttpRequest` monkey-patch was
   previously beaten by parse-time inline-script fetches.
 - **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
+## [0.8.1] — unreleased
+
+### Added
+
+- CSS multi-column: style parsing + cascade initials (#398 PR-A of multi-PR stack).
+  Adds longhand grammar entries for `column-span`, `column-fill`, and
+  `break-{before,after,inside}` (Rust `rtdom::css_shorthand` + JS `css-shorthand`
+  lockstep), appends their Chrome 156 case rows to the shared longhand control
+  fixture, and registers the 11 non-inherited multicol / fragmentation initial
+  values (`column-count`, `column-width`, `column-gap`, `column-rule-*`,
+  `column-span`, `column-fill`, `break-*`) in turbo-dom-layout's cascade `INITIAL`
+  table so `initial` / `unset` resolve them. No layout behaviour change yet
+  (follow-up PRs land the multicol flow).
 
 ## [0.8.0] — 2026-11-06
 

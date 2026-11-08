@@ -696,6 +696,18 @@ const INITIAL: &[(&str, &str)] = &[
     ("caption-side", "top"),
     ("border-spacing", "0px"),
     ("display", "inline"),
+    // Multi-column + fragmentation (CSS Multicol 1, CSS Fragmentation 3; turbo-dom#398).
+    ("column-count", "auto"),
+    ("column-width", "auto"),
+    ("column-gap", "normal"),
+    ("column-rule-width", "medium"),
+    ("column-rule-style", "none"),
+    ("column-rule-color", "currentcolor"),
+    ("column-span", "none"),
+    ("column-fill", "balance"),
+    ("break-before", "auto"),
+    ("break-after", "auto"),
+    ("break-inside", "auto"),
 ];
 
 /// Resolve the CSS-wide `unset` and `initial` keywords (CSS Cascade 4 §7.3): `unset`
