@@ -241,6 +241,44 @@ fn termination_in_a_slotchange_listener_skips_later_slots() {
     );
 }
 
+/// turbo-dom#380: Chrome 156 compiles an `on*` content attribute's handler body lazily.
+/// Its CSP `script-src-attr` hook runs twice for a report-only policy — once at
+/// attribute set and once again when the handler is first compiled. An eager compile at
+/// attribute-set time collapses these into one policy call, producing one CSP report
+/// where Chrome produces two.
+#[test]
+fn inline_handler_policy_runs_at_set_and_at_first_compile() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><div id=d></div>");
+    let policy = function(
+        scope,
+        "((doc, el, kind, code) => { if (kind === 'script-src-attr') \
+         globalThis.calls = (globalThis.calls||0) + 1; return true; })",
+    );
+    install_inline_event_handlers(scope, policy, "https://test/");
+    let code = v8::String::new(
+        scope,
+        "(() => { globalThis.calls = 0; \
+         const d = document.getElementById('d'); \
+         d.setAttribute('onclick', 'globalThis.ran = (globalThis.ran||0) + 1'); \
+         const afterSet = calls; \
+         d.click(); \
+         return JSON.stringify({ afterSet, afterClick: calls, ran: globalThis.ran }); \
+         })()",
+    )
+    .unwrap();
+    let value = v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(value, r#"{"afterSet":1,"afterClick":2,"ran":1}"#);
+    reset();
+}
+
 /// turbo-dom#164: a keyframe selector outside 0%..100% drops its keyframe rule (Chrome 156).
 #[test]
 fn out_of_range_keyframe_selectors_drop_the_rule() {
