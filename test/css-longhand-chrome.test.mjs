@@ -29,7 +29,7 @@ const KEPT = [
 ];
 
 test('element.style longhands spell values like Chrome 156 (turbo-dom#97)', () => {
-  assert.equal(control.browser, 'Chrome/156.0.8078.4');
+  assert.equal(control.browser, 'Chrome/156.0.8078.47');
   assert.deepEqual(control.errors, []);
   assert.equal(control.probeSha256, sha(probe));
   assert.equal(control.casesSha256, sha(casesText));

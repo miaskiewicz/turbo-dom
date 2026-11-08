@@ -674,6 +674,26 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
             |c| single(c, |c| kw(c, &["auto"]).or_else(|| c.length(false)))
         }
         "column-wrap" => |c| keywords(c, &["auto", "nowrap", "wrap"]),
+        "column-span" => |c| keywords(c, &["none", "all"]),
+        "column-fill" => |c| keywords(c, &["auto", "balance"]),
+        "break-before" | "break-after" => |c| {
+            keywords(
+                c,
+                &[
+                    "auto",
+                    "avoid",
+                    "avoid-page",
+                    "page",
+                    "left",
+                    "right",
+                    "recto",
+                    "verso",
+                    "avoid-column",
+                    "column",
+                ],
+            )
+        },
+        "break-inside" => |c| keywords(c, &["auto", "avoid", "avoid-page", "avoid-column"]),
         "grid-row-start" | "grid-row-end" | "grid-column-start" | "grid-column-end" => {
             grid_line_value
         }

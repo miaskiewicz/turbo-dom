@@ -1,11 +1,13 @@
 {
-  "browser": "Chrome/156.0.8078.4",
-  "v8": "15.6.75",
-  "casesSha256": "5ae700800a1d1829e9c9c423a9fdc014f2dbd3f2443797efe5f12acc15dc13bd",
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "fab39ca80a4967c16bb1730f2596e7f3dc23ec969f6553e7ec00dcebed2d2bf8",
   "probeSha256": "a458463e8721c083a75be76315f0bdaf5cee10e5d0a6fc8d470a0b926d6ee37e",
-  "collectorSha256": "7bd6ffb7440d38e05cd2b8fbe0e84e91cf462043577ceada3e276728ad216172",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
   "flags": [
     "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
     "--remote-debugging-pipe",
     "--user-data-dir=<fresh-profile>",
     "--no-first-run",
@@ -15778,6 +15780,318 @@
         [
           "margin-top",
           "max(1px, 2s)",
+          "",
+          ""
+        ],
+        [
+          "column-span",
+          "none",
+          "none",
+          "column-span: none;"
+        ],
+        [
+          "column-span",
+          "all",
+          "all",
+          "column-span: all;"
+        ],
+        [
+          "column-span",
+          "NONE",
+          "none",
+          "column-span: none;"
+        ],
+        [
+          "column-span",
+          "ALL",
+          "all",
+          "column-span: all;"
+        ],
+        [
+          "column-span",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "column-span",
+          " all ",
+          "all",
+          "column-span: all;"
+        ],
+        [
+          "column-fill",
+          "auto",
+          "auto",
+          "column-fill: auto;"
+        ],
+        [
+          "column-fill",
+          "balance",
+          "balance",
+          "column-fill: balance;"
+        ],
+        [
+          "column-fill",
+          "AUTO",
+          "auto",
+          "column-fill: auto;"
+        ],
+        [
+          "column-fill",
+          "Balance",
+          "balance",
+          "column-fill: balance;"
+        ],
+        [
+          "column-fill",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "break-before",
+          "auto",
+          "auto",
+          "break-before: auto;"
+        ],
+        [
+          "break-before",
+          "avoid",
+          "avoid",
+          "break-before: avoid;"
+        ],
+        [
+          "break-before",
+          "always",
+          "",
+          ""
+        ],
+        [
+          "break-before",
+          "all",
+          "",
+          ""
+        ],
+        [
+          "break-before",
+          "avoid-page",
+          "avoid-page",
+          "break-before: avoid-page;"
+        ],
+        [
+          "break-before",
+          "page",
+          "page",
+          "break-before: page;"
+        ],
+        [
+          "break-before",
+          "left",
+          "left",
+          "break-before: left;"
+        ],
+        [
+          "break-before",
+          "right",
+          "right",
+          "break-before: right;"
+        ],
+        [
+          "break-before",
+          "recto",
+          "recto",
+          "break-before: recto;"
+        ],
+        [
+          "break-before",
+          "verso",
+          "verso",
+          "break-before: verso;"
+        ],
+        [
+          "break-before",
+          "avoid-column",
+          "avoid-column",
+          "break-before: avoid-column;"
+        ],
+        [
+          "break-before",
+          "column",
+          "column",
+          "break-before: column;"
+        ],
+        [
+          "break-before",
+          "avoid-region",
+          "",
+          ""
+        ],
+        [
+          "break-before",
+          "region",
+          "",
+          ""
+        ],
+        [
+          "break-before",
+          "AUTO",
+          "auto",
+          "break-before: auto;"
+        ],
+        [
+          "break-before",
+          "Avoid-Page",
+          "avoid-page",
+          "break-before: avoid-page;"
+        ],
+        [
+          "break-before",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "break-after",
+          "auto",
+          "auto",
+          "break-after: auto;"
+        ],
+        [
+          "break-after",
+          "avoid",
+          "avoid",
+          "break-after: avoid;"
+        ],
+        [
+          "break-after",
+          "always",
+          "",
+          ""
+        ],
+        [
+          "break-after",
+          "all",
+          "",
+          ""
+        ],
+        [
+          "break-after",
+          "avoid-page",
+          "avoid-page",
+          "break-after: avoid-page;"
+        ],
+        [
+          "break-after",
+          "page",
+          "page",
+          "break-after: page;"
+        ],
+        [
+          "break-after",
+          "left",
+          "left",
+          "break-after: left;"
+        ],
+        [
+          "break-after",
+          "right",
+          "right",
+          "break-after: right;"
+        ],
+        [
+          "break-after",
+          "recto",
+          "recto",
+          "break-after: recto;"
+        ],
+        [
+          "break-after",
+          "verso",
+          "verso",
+          "break-after: verso;"
+        ],
+        [
+          "break-after",
+          "avoid-column",
+          "avoid-column",
+          "break-after: avoid-column;"
+        ],
+        [
+          "break-after",
+          "column",
+          "column",
+          "break-after: column;"
+        ],
+        [
+          "break-after",
+          "avoid-region",
+          "",
+          ""
+        ],
+        [
+          "break-after",
+          "region",
+          "",
+          ""
+        ],
+        [
+          "break-after",
+          "AVOID",
+          "avoid",
+          "break-after: avoid;"
+        ],
+        [
+          "break-after",
+          "bogus",
+          "",
+          ""
+        ],
+        [
+          "break-inside",
+          "auto",
+          "auto",
+          "break-inside: auto;"
+        ],
+        [
+          "break-inside",
+          "avoid",
+          "avoid",
+          "break-inside: avoid;"
+        ],
+        [
+          "break-inside",
+          "avoid-page",
+          "avoid-page",
+          "break-inside: avoid-page;"
+        ],
+        [
+          "break-inside",
+          "avoid-column",
+          "avoid-column",
+          "break-inside: avoid-column;"
+        ],
+        [
+          "break-inside",
+          "avoid-region",
+          "",
+          ""
+        ],
+        [
+          "break-inside",
+          "Auto",
+          "auto",
+          "break-inside: auto;"
+        ],
+        [
+          "break-inside",
+          "AVOID-PAGE",
+          "avoid-page",
+          "break-inside: avoid-page;"
+        ],
+        [
+          "break-inside",
+          "bogus",
           "",
           ""
         ],
