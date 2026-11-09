@@ -1133,31 +1133,13 @@ fn mask(v: &Values<'_>) -> String {
             value => value,
         };
         let (x, y) = (position_part(1), position_part(2));
-        let position = if item(1).is_empty() && item(2).is_empty() && size.is_empty() {
-            String::new()
-        } else if item(1).is_empty() && item(2).is_empty() && item(0).is_empty() {
-            // Blink's position before a size starts its layer with a space.
-            format!(" {x} {y} / {size}")
-        } else if size.is_empty() {
-            format!("{x} {y}")
-        } else {
-            format!("{x} {y} / {size}")
-        };
+        let position = mask_position_string(item(0), item(1), item(2), x, y, size);
         let box_part = |column: usize| match raw(column) {
             INITIAL => "border-box",
             value => value,
         };
         let (origin, clip) = (box_part(5), box_part(6));
-        let boxes = if origin == "border-box" && clip == "border-box" {
-            String::new()
-        } else if origin == clip {
-            origin.to_string()
-        } else if origin == "border-box" && clip == "no-clip" {
-            // `no-clip` is a clip-only keyword: it reads back without the default origin.
-            clip.to_string()
-        } else {
-            format!("{origin} {clip}")
-        };
+        let boxes = mask_boxes_string(origin, clip);
         let layer = joined(&[item(0), &position, item(4), &boxes, item(7), item(8)]);
         out.push(if layer.is_empty() {
             "none".to_string()
@@ -1166,6 +1148,36 @@ fn mask(v: &Values<'_>) -> String {
         });
     }
     out.join(", ")
+}
+
+/// Serialize a mask layer's `<bg-position> [/ <bg-size>]` section from the already
+/// trimmed image/position fields and the raw `x`/`y`/`size` strings.
+fn mask_position_string(image: &str, xi: &str, yi: &str, x: &str, y: &str, size: &str) -> String {
+    if xi.is_empty() && yi.is_empty() && size.is_empty() {
+        String::new()
+    } else if xi.is_empty() && yi.is_empty() && image.is_empty() {
+        // Blink's position before a size starts its layer with a space.
+        format!(" {x} {y} / {size}")
+    } else if size.is_empty() {
+        format!("{x} {y}")
+    } else {
+        format!("{x} {y} / {size}")
+    }
+}
+
+/// Serialize a mask layer's `<origin> <clip>` keywords, folding `border-box` / `border-box`
+/// and equal pairs, with `no-clip` kept as the sole keyword.
+fn mask_boxes_string(origin: &str, clip: &str) -> String {
+    if origin == "border-box" && clip == "border-box" {
+        String::new()
+    } else if origin == clip {
+        origin.to_string()
+    } else if origin == "border-box" && clip == "no-clip" {
+        // `no-clip` is a clip-only keyword: it reads back without the default origin.
+        clip.to_string()
+    } else {
+        format!("{origin} {clip}")
+    }
 }
 
 fn transition(v: &Values<'_>) -> String {

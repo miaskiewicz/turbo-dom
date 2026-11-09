@@ -170,42 +170,52 @@ fn looks_like_width_token(p: &str) -> bool {
 fn set_prop(map: &mut HashMap<String, String>, name: &str, val: &str) {
     map.insert(name.to_string(), val.to_string());
     if name == "margin" || name == "padding" {
-        let t: Vec<&str> = val.split_whitespace().collect();
-        let top = t.first().copied().unwrap_or("");
-        let right = t.get(1).copied().unwrap_or(top);
-        let bottom = t.get(2).copied().unwrap_or(top);
-        let left = t.get(3).copied().unwrap_or(right);
-        map.insert(format!("{name}-top"), top.to_string());
-        map.insert(format!("{name}-right"), right.to_string());
-        map.insert(format!("{name}-bottom"), bottom.to_string());
-        map.insert(format!("{name}-left"), left.to_string());
+        expand_box_shorthand(map, name, val);
     } else if name == "border" {
-        let mut width: Option<&str> = None;
-        let mut style: Option<&str> = None;
-        let mut color_v: Option<&str> = None;
-        for p in val.split_whitespace() {
-            if BORDER_STYLES.contains(&p) {
-                style = Some(p);
-            } else if looks_like_width_token(p) {
-                width = Some(p);
-            } else {
-                color_v = Some(p);
-            }
-        }
-        if let Some(w) = width {
-            map.insert("border-width".to_string(), w.to_string());
-            for s in ["top", "right", "bottom", "left"] {
-                map.insert(format!("border-{s}-width"), w.to_string());
-            }
-        }
-        if let Some(s) = style {
-            map.insert("border-style".to_string(), s.to_string());
-        }
-        if let Some(c) = color_v {
-            map.insert("border-color".to_string(), c.to_string());
-        }
+        expand_border_shorthand(map, val);
     } else if name == "background" && !val.trim().contains(char::is_whitespace) {
         map.insert("background-color".to_string(), val.trim().to_string());
+    }
+}
+
+/// Expand a `margin`/`padding` shorthand value (1-4 tokens) into its four side longhands.
+fn expand_box_shorthand(map: &mut HashMap<String, String>, name: &str, val: &str) {
+    let t: Vec<&str> = val.split_whitespace().collect();
+    let top = t.first().copied().unwrap_or("");
+    let right = t.get(1).copied().unwrap_or(top);
+    let bottom = t.get(2).copied().unwrap_or(top);
+    let left = t.get(3).copied().unwrap_or(right);
+    map.insert(format!("{name}-top"), top.to_string());
+    map.insert(format!("{name}-right"), right.to_string());
+    map.insert(format!("{name}-bottom"), bottom.to_string());
+    map.insert(format!("{name}-left"), left.to_string());
+}
+
+/// Expand a `border` shorthand value into width/style/color longhands.
+fn expand_border_shorthand(map: &mut HashMap<String, String>, val: &str) {
+    let mut width: Option<&str> = None;
+    let mut style: Option<&str> = None;
+    let mut color_v: Option<&str> = None;
+    for p in val.split_whitespace() {
+        if BORDER_STYLES.contains(&p) {
+            style = Some(p);
+        } else if looks_like_width_token(p) {
+            width = Some(p);
+        } else {
+            color_v = Some(p);
+        }
+    }
+    if let Some(w) = width {
+        map.insert("border-width".to_string(), w.to_string());
+        for s in ["top", "right", "bottom", "left"] {
+            map.insert(format!("border-{s}-width"), w.to_string());
+        }
+    }
+    if let Some(s) = style {
+        map.insert("border-style".to_string(), s.to_string());
+    }
+    if let Some(c) = color_v {
+        map.insert("border-color".to_string(), c.to_string());
     }
 }
 

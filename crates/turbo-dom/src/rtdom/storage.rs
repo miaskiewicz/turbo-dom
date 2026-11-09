@@ -310,36 +310,10 @@ impl Tree {
         }
         // Admit expanded retained strings before cloning parser payloads. Shared
         // interned values can expand dramatically when each element is materialized.
-        let mut projected_payload = self.mutation_payload_bytes()
-            + self.utf16_extra_bytes(Some(&retained))
-            + self.custom_state_payload_bytes(Some(&retained));
-        if projected_payload > budget.max_payload_bytes {
-            return Err(CollectionError::BudgetExceeded);
-        }
-        for &h in &retained {
-            projected_payload = projected_payload
-                .checked_add(self.projected_node_bytes(h))
-                .ok_or(CollectionError::BudgetExceeded)?;
-            if projected_payload > budget.max_payload_bytes {
-                return Err(CollectionError::BudgetExceeded);
-            }
-        }
+        self.check_retained_payload_budget(&retained, &budget)?;
         // The parse buffer goes away: keep the creation-time custom element state it implies.
         self.record_parsed_states(retained.iter().copied());
-        let mut nodes = FxHashMap::default();
-        let mut parents = Overlay::collected();
-        let mut children = Overlay::collected();
-        let mut attrs = Overlay::collected();
-        for &h in &retained {
-            if h != self.root() {
-                nodes.insert(h, self.materialize_node(h));
-            }
-            parents.insert(h, self.parent(h));
-            children.insert(h, self.children(h).into_iter().collect::<ChildList>());
-            if self.node_type(h) == NodeType::Element {
-                attrs.insert(h, AttrList::from_native_records(self.native_attributes(h)));
-            }
-        }
+        let (nodes, parents, children, attrs) = self.materialize_retained_overlays(&retained);
         self.buf = document_buffer();
         self.buf_len = 1;
         self.new_nodes = NodeArena::Sparse(nodes);
@@ -382,6 +356,60 @@ impl Tree {
             before,
             after,
         })
+    }
+
+    /// Check that materializing `retained` into overlay storage stays within
+    /// `budget.max_payload_bytes` — accounting for interned UTF-16 units,
+    /// custom-state payloads and per-node projection costs.
+    fn check_retained_payload_budget(
+        &self,
+        retained: &FxHashSet<Handle>,
+        budget: &CollectionBudget,
+    ) -> Result<(), CollectionError> {
+        let mut projected_payload = self.mutation_payload_bytes()
+            + self.utf16_extra_bytes(Some(retained))
+            + self.custom_state_payload_bytes(Some(retained));
+        if projected_payload > budget.max_payload_bytes {
+            return Err(CollectionError::BudgetExceeded);
+        }
+        for &h in retained {
+            projected_payload = projected_payload
+                .checked_add(self.projected_node_bytes(h))
+                .ok_or(CollectionError::BudgetExceeded)?;
+            if projected_payload > budget.max_payload_bytes {
+                return Err(CollectionError::BudgetExceeded);
+            }
+        }
+        Ok(())
+    }
+
+    /// Materialize every retained node into fresh overlay storage, so the
+    /// backing parse buffer can be dropped. Returns `(nodes, parents, children, attrs)`.
+    #[allow(clippy::type_complexity)]
+    fn materialize_retained_overlays(
+        &self,
+        retained: &FxHashSet<Handle>,
+    ) -> (
+        FxHashMap<Handle, NewNode>,
+        Overlay<Option<Handle>>,
+        Overlay<ChildList>,
+        Overlay<AttrList>,
+    ) {
+        let mut nodes = FxHashMap::default();
+        let mut parents = Overlay::collected();
+        let mut children = Overlay::collected();
+        let mut attrs = Overlay::collected();
+        for &h in retained {
+            if h != self.root() {
+                nodes.insert(h, self.materialize_node(h));
+            }
+            parents.insert(h, self.parent(h));
+            children.insert(h, self.children(h).into_iter().collect::<ChildList>());
+            if self.node_type(h) == NodeType::Element {
+                attrs.insert(h, AttrList::from_native_records(self.native_attributes(h)));
+            }
+        }
+        (nodes, parents, children, attrs)
     }
 
     fn utf16_extra_bytes(&self, retained: Option<&FxHashSet<Handle>>) -> usize {
