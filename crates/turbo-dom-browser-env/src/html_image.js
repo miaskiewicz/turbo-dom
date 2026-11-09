@@ -413,6 +413,18 @@
     const viewport = VIEWPORT_UNITS[unit];
     return viewport === undefined ? null : n * viewport(w, h);
   };
+  const reduceMathArgs = (name, args, i) => {
+    const isLength = args[0][1];
+    for (const a of args) if (a[1] !== isLength) return null;
+    const values = args.map((a) => a[0]);
+    let value;
+    if (name === "calc") { if (values.length !== 1) return null; value = values[0]; }
+    else if (name === "min") value = MathMin(...values);
+    else if (name === "max") value = MathMax(...values);
+    else if (name === "clamp") { if (values.length !== 3) return null; value = MathMax(values[0], MathMin(values[1], values[2])); }
+    else return null;
+    return [value, isLength, i];
+  };
   // calc() / min() / max() / clamp() over lengths and numbers: [value, isLength] or null.
   const mathFunction = (tokens, at, env) => {
     // tokens[at] is ["f", name], tokens[at + 1] is "(".
@@ -460,16 +472,7 @@
       if (t && t[0] === ")") { i++; break; }
       return null;
     }
-    const isLength = args[0][1];
-    for (const a of args) if (a[1] !== isLength) return null;
-    const values = args.map((a) => a[0]);
-    let value;
-    if (name === "calc") { if (values.length !== 1) return null; value = values[0]; }
-    else if (name === "min") value = MathMin(...values);
-    else if (name === "max") value = MathMax(...values);
-    else if (name === "clamp") { if (values.length !== 3) return null; value = MathMax(values[0], MathMin(values[1], values[2])); }
-    else return null;
-    return [value, isLength, i];
+    return reduceMathArgs(name, args, i);
   };
   // A <source-size-value>: a non-negative length (a math function clamps to 0); null if invalid.
   const sourceSizeValue = (tokens, env) => {
@@ -618,12 +621,13 @@
     if (joiner && joiner !== t[1]) return false;
     return !(t[1] === "or" && !allowOr);
   };
+  const notCondition = (tokens, env) => {
+    const r = inParens(tokens, 1, env);
+    return r && r[1] === tokens.length ? !r[0] : undefined;
+  };
   const condition = (tokens, env, allowOr) => {
     if (tokens.length === 0) return undefined;
-    if (tokens[0][0] === "i" && tokens[0][1] === "not") {
-      const r = inParens(tokens, 1, env);
-      return r && r[1] === tokens.length ? !r[0] : undefined;
-    }
+    if (tokens[0][0] === "i" && tokens[0][1] === "not") return notCondition(tokens, env);
     let r = inParens(tokens, 0, env);
     if (!r) return undefined;
     let value = r[0], at = r[1], joiner = null;
@@ -643,6 +647,12 @@
     tokens[0][0] === "(" || (tokens[0][0] === "i" && tokens[0][1] === "not" && tokens[1] && tokens[1][0] === "(");
   const invalidMediaType = (type) =>
     !type || type[0] !== "i" || type[1] === "and" || type[1] === "or" || type[1] === "not" || type[1] === "only";
+  const mediaQueryTail = (tokens, env, at, value) => {
+    if (tokens[at][0] !== "i" || tokens[at][1] !== "and") return undefined;
+    const rest = condition(tokens.slice(at + 1), env, false);
+    if (rest === undefined) return undefined;
+    return value && rest;
+  };
   const mediaQuery = (tokens, env) => {
     if (tokens.length === 0) return undefined;
     if (conditionFirst(tokens)) return condition(tokens, env, true);
@@ -653,10 +663,8 @@
     let value = MEDIA_TYPES[type[1]] === true;
     at++;
     if (at < tokens.length) {
-      if (tokens[at][0] !== "i" || tokens[at][1] !== "and") return undefined;
-      const rest = condition(tokens.slice(at + 1), env, false);
-      if (rest === undefined) return undefined;
-      value = value && rest;
+      value = mediaQueryTail(tokens, env, at, value);
+      if (value === undefined) return undefined;
     }
     return negate ? !value : value;
   };
@@ -680,21 +688,25 @@
   };
   // HTML "parse a sizes attribute": the first entry whose media condition matches (or that has
   // none) with a valid size; else 100vw.
+  const findSizeStart = (entry) => {
+    let sizeStart = entry.length - 1;
+    if (entry[sizeStart][0] !== ")") return sizeStart;
+    let depth = 0;
+    for (; sizeStart >= 0; sizeStart--) {
+      const k = entry[sizeStart][0];
+      if (k === ")") depth++;
+      else if (k === "(" && --depth === 0) break;
+    }
+    sizeStart--; // the function name
+    if (sizeStart < 0 || entry[sizeStart][0] !== "f") return -1;
+    return sizeStart;
+  };
   const sourceSize = (text, env) => {
     if (text !== null) {
       for (const entry of splitCommas(tokenize(text))) {
         if (entry.length === 0) continue;
-        let sizeStart = entry.length - 1;
-        if (entry[sizeStart][0] === ")") {
-          let depth = 0;
-          for (; sizeStart >= 0; sizeStart--) {
-            const k = entry[sizeStart][0];
-            if (k === ")") depth++;
-            else if (k === "(" && --depth === 0) break;
-          }
-          sizeStart--; // the function name
-          if (sizeStart < 0 || entry[sizeStart][0] !== "f") continue;
-        }
+        const sizeStart = findSizeStart(entry);
+        if (sizeStart < 0) continue;
         const size = sourceSizeValue(entry.slice(sizeStart), env);
         if (size === null) continue;
         const media = entry.slice(0, sizeStart);

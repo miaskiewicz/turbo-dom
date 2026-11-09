@@ -79,6 +79,13 @@
       configurable: true, enumerable: true,
     });
   }
+  function readStaticRangeMember(init, name, state) {
+    const value = init == null ? undefined : init[name];
+    if (value === undefined) throw new TypeErrorClass("Missing required StaticRangeInit member: " + name);
+    if (name === "endContainer" || name === "startContainer") {
+      type(value); state[name] = value;
+    } else state[name] = (+value) >>> 0;
+  }
   const StaticRange = make(function (init) {
     required(arguments, 1);
     if (init !== null && init !== undefined && typeof init !== "object" && typeof init !== "function")
@@ -86,14 +93,7 @@
     const state = {__proto__: null};
     // Web IDL reads and converts dictionary members in lexicographic order.
     const names = ["endContainer", "endOffset", "startContainer", "startOffset"];
-    for (let index = 0; index < names.length; index++) {
-      const name = names[index];
-      const value = init == null ? undefined : init[name];
-      if (value === undefined) throw new TypeErrorClass("Missing required StaticRangeInit member: " + name);
-      if (name === "endContainer" || name === "startContainer") {
-        type(value); state[name] = value;
-      } else state[name] = (+value) >>> 0;
-    }
+    for (let index = 0; index < names.length; index++) readStaticRangeMember(init, names[index], state);
     const startType = type(state.startContainer), endType = type(state.endContainer);
     if (startType === 2 || startType === 10 || endType === 2 || endType === 10)
       fail("InvalidNodeTypeError");
@@ -261,22 +261,24 @@
     if (mode !== "clone") collapseAt(state, point.node, point.offset);
     return target;
   }
+  function resolveInsertionTarget(state, node, kind) {
+    if (kind === 3) {
+      const container = parent(state.startContainer);
+      ensureInsertion(container, node, state.startContainer);
+      return {container, reference: apply(split, state.startContainer, [state.startOffset])};
+    }
+    const container = state.startContainer;
+    const reference = children(container)[state.startOffset] || null;
+    ensureInsertion(container, node, reference);
+    return {container, reference};
+  }
   function insertNode(state, node) {
     const kind = type(state.startContainer);
     type(node);
     if (kind === 7 || kind === 8 || node === state.startContainer ||
         (kind === 3 && !parent(state.startContainer))) fail("HierarchyRequestError");
     const wasCollapsed = collapsed(state), count = type(node) === 11 ? length(node) : 1;
-    let container, reference;
-    if (kind === 3) {
-      container = parent(state.startContainer);
-      ensureInsertion(container, node, state.startContainer);
-      reference = apply(split, state.startContainer, [state.startOffset]);
-    } else {
-      container = state.startContainer;
-      reference = children(container)[state.startOffset] || null;
-      ensureInsertion(container, node, reference);
-    }
+    let {container, reference} = resolveInsertionTarget(state, node, kind);
     if (node === reference) reference = next(reference);
     const oldParent = parent(node);
     if (oldParent) apply(remove, oldParent, [node]);

@@ -87,12 +87,16 @@
     while (work >= 18446744073709551616n) { work /= 10n; exponent++; }
     return make(negative, exponent, work);
   };
-  const divide = (left, right) => {
-    const nan = special(left, right); if (nan) return nan;
-    const negative = left.negative !== right.negative;
+  const divideSpecial = (left, right, negative) => {
     if (left.kind === INFINITE) return right.kind === INFINITE ? NAN : infinity(negative);
     if (right.kind === INFINITE) return make(negative, 0, 0n);
     if (right.coefficient === 0n) return left.coefficient === 0n ? NAN : infinity(negative);
+    return null;
+  };
+  const divide = (left, right) => {
+    const nan = special(left, right); if (nan) return nan;
+    const negative = left.negative !== right.negative;
+    const early = divideSpecial(left, right, negative); if (early) return early;
     let exponent = left.exponent - right.exponent;
     if (left.coefficient === 0n) return make(negative, exponent, 0n);
     let remainder = left.coefficient, result = 0n;
@@ -305,21 +309,32 @@
     if (day < 1 || day > monthDays(parts.year, parts.month) || !withinDate(parts.year, parts.month, day, 0)) return null;
     return [{year: parts.year, month: parts.month, day}, month[1] + 3];
   };
+  const parseMillisecond = (text, end) => {
+    let stop = end + 1;
+    while (stop < text.length && text[stop] >= '0' && text[stop] <= '9') stop++;
+    const fraction = stop - end - 1;
+    if (fraction > 3) return null;
+    if (!fraction) return {millisecond: 0, end};
+    const millisecond = NumberValue(apply(sliceText, apply(sliceText, text, [end + 1, stop]) + '00', [0, 3]));
+    return {millisecond, end: stop};
+  };
+  const parseSecondAndMs = (text, end) => {
+    const second = twoDigits(text, end + 1);
+    if (second < 0 || second > 59) return null;
+    end += 3;
+    if (text[end] !== '.') return {second, millisecond: 0, end};
+    const ms = parseMillisecond(text, end);
+    if (!ms) return null;
+    return {second, millisecond: ms.millisecond, end: ms.end};
+  };
   const parseTimeAt = (text, at) => {
     const hour = twoDigits(text, at), minute = text[at + 2] === ':' ? twoDigits(text, at + 3) : -1;
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
     let end = at + 5, second = 0, millisecond = 0;
     if (text[end] === ':') {
-      second = twoDigits(text, end + 1);
-      if (second < 0 || second > 59) return null;
-      end += 3;
-      if (text[end] === '.') {
-        let stop = end + 1;
-        while (stop < text.length && text[stop] >= '0' && text[stop] <= '9') stop++;
-        const fraction = stop - end - 1;
-        if (fraction > 3) return null;
-        if (fraction) { millisecond = NumberValue(apply(sliceText, apply(sliceText, text, [end + 1, stop]) + '00', [0, 3])); end = stop; }
-      }
+      const sm = parseSecondAndMs(text, end);
+      if (!sm) return null;
+      second = sm.second; millisecond = sm.millisecond; end = sm.end;
     }
     return [{hour, minute, second, millisecond}, end];
   };
@@ -512,9 +527,17 @@
     if (less(next, range.minimum)) return add(base, multiply(ceilOf(divide(subtract(range.minimum, base), step)), step));
     return next;
   };
+  function assertSteppable(element, name, type) {
+    if (type !== 'number' && type !== 'range' && !TEMPORAL[type]) throw new Exception(execute(name, 'This form element is not steppable.'), 'InvalidStateError');
+  }
+  function stepOverflow(invalid, remaining, current, next) {
+    if (invalid) return false;
+    if (remaining < 0 && less(current, next)) return true;
+    return remaining > 0 && greater(current, next);
+  }
   function applyStep(element, name, count) {
     const type = typeOf(element);
-    if (type !== 'number' && type !== 'range' && !TEMPORAL[type]) throw new Exception(execute(name, 'This form element is not steppable.'), 'InvalidStateError');
+    assertSteppable(element, name, type);
     const range = stepRange(element, type);
     if (!finite(range.step)) throw new Exception(execute(name, 'This form element does not have an allowed value step.'), 'InvalidStateError');
     let current = parseFor(type, valueOf(element));
@@ -525,28 +548,29 @@
     if (!finite(alignedMaximum)) return;
     const [aligned, remaining] = alignToStep(range, current, count);
     const next = clampStepped(range, alignedMaximum, current, add(aligned, multiply(range.step, fromDouble(remaining))));
-    if (!invalid && (remaining < 0 && less(current, next) || remaining > 0 && greater(current, next))) return;
+    if (stepOverflow(invalid, remaining, current, next)) return;
     assignValue(element, serialize(element, type, next));
   }
   // Chromium value sanitization for range and the date/time family, plus the textarea API
   // value's newline normalization. Other types keep the compatibility sanitizer.
-  ns.sanitizeControlValue = (element, type, value) => {
-    const name = apply(localName, element, []);
-    if (name === 'textarea') return regexpReplace(value, /\r\n?/g, '\n');
-    if (name !== 'input') return undefined;
-    type = typeOf(element);
-    // Text-like states strip line breaks; url and email also trim ASCII whitespace,
-    // each comma-separated address for email[multiple].
+  const sanitizeRange = (element, value) => {
+    const range = stepRange(element, 'range');
+    const fallback = add(range.minimum, divide(subtract(range.maximum, range.minimum), integer(2)));
+    return numberText(clampValue(range, parseNumber(value, fallback)));
+  };
+  const sanitizeInput = (element, type, value) => {
     if (type === 'text' || type === 'search' || type === 'tel' || type === 'password') return regexpReplace(value, /[\r\n]/g, '');
     if (type === 'url' || type === 'email') return sanitizeAddress(element, type, value);
     if (type === 'number') return isNaNValue(parseDouble(value)) ? '' : value;
     if (type === 'color') return test(/^#[0-9a-fA-F]{6}$/, value) ? lowerAscii(value) : '#000000';
-    if (type === 'range') {
-      const range = stepRange(element, 'range');
-      const fallback = add(range.minimum, divide(subtract(range.maximum, range.minimum), integer(2)));
-      return numberText(clampValue(range, parseNumber(value, fallback)));
-    }
+    if (type === 'range') return sanitizeRange(element, value);
     return sanitizeTemporal(type, value);
+  };
+  ns.sanitizeControlValue = (element, type, value) => {
+    const name = apply(localName, element, []);
+    if (name === 'textarea') return regexpReplace(value, /\r\n?/g, '\n');
+    if (name !== 'input') return undefined;
+    return sanitizeInput(element, typeOf(element), value);
   };
   // url / email: strip line breaks and trim ASCII whitespace (each address for email[multiple]).
   const sanitizeAddress = (element, type, value) => {
@@ -681,13 +705,17 @@
   const internals = g.__captureFormInternals;
   if (internals) {
     internals.indeterminate = (element) => Native('indeterminate', element);
+    const computeRangeBounds = (element, type, range, value) => {
+      const hasMinimum = finite(parseFor(type, attr(element, 'min'))), hasMaximum = finite(parseFor(type, attr(element, 'max')));
+      const reversed = type === 'time' && hasMinimum && hasMaximum && less(range.maximum, range.minimum);
+      const below = finite(value) && less(value, range.minimum), above = finite(value) && greater(value, range.maximum);
+      return {hasMinimum, hasMaximum, reversed, below, above};
+    };
     internals.rangeState = (element) => {
       const type = typeOf(element);
       if (type !== 'number' && type !== 'range' && !TEMPORAL[type]) return null;
       const range = stepRange(element, type), value = parseFor(type, valueOf(element));
-      const hasMinimum = finite(parseFor(type, attr(element, 'min'))), hasMaximum = finite(parseFor(type, attr(element, 'max')));
-      const reversed = type === 'time' && hasMinimum && hasMaximum && less(range.maximum, range.minimum);
-      const below = finite(value) && less(value, range.minimum), above = finite(value) && greater(value, range.maximum);
+      const {hasMinimum, hasMaximum, reversed, below, above} = computeRangeBounds(element, type, range, value);
       return {
         empty: valueOf(element) === '', finite: finite(value), limited: type === 'range' || hasMinimum || hasMaximum,
         underflow: reversed ? below && above : below, overflow: reversed ? below && above : above,
