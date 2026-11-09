@@ -304,23 +304,27 @@ struct KidFlags {
 /// `avoid-page` into one [`BreakRule::Avoid`], and `avoid-page` is
 /// explicitly pagination-only — it must not forbid a column break.
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
-    // Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box": an
+    // Review R2 layout M1 + R4 H3: CSS Multicol 1 §6.1 "A spanning box": an
     // out-of-flow (`position: absolute` / `fixed`) or floated element
-    // "cannot be column-span-all". Chrome 156 obeys. Gate `column-span: all`
-    // on the box being in-flow, so a kid with `column-span: all;
-    // position: absolute` stays in its multicol sub-flow and the spec's
-    // "ignored" value does not stretch the box to the container inline
-    // size.
-    let span_all_allowed =
-        !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
+    // "cannot be column-span-all". Chrome 156 obeys. R4 H3 extends the gate
+    // to the three break-related flags: an abspos / floated kid is NOT in
+    // the column flow (positioned relative to the containing block) and
+    // contributes zero to column-break analysis — `fits_in_count` must
+    // not count a `break-before: column` on an abspos kid as a forced
+    // column break, nor an `avoid` on a floated kid as a reason to shift
+    // the surrounding in-flow content.
+    let in_flow = !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
     KidFlags {
         // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
-        column_span_all: span_all_allowed && keyword_eq(style, "column-span", "all"),
+        column_span_all: in_flow && keyword_eq(style, "column-span", "all"),
+        // R4 H3: break flags count only for in-flow kids.
         // BreakRule fix: route break-{before,after}: column through the shared parser so
         // `column` is distinguished from `page`.
-        break_before_column: matches!(break_rule_of(style, "break-before"), BreakRule::Column),
-        break_after_column: matches!(break_rule_of(style, "break-after"), BreakRule::Column),
-        break_inside_avoid: break_inside_column_avoid_of(style),
+        break_before_column: in_flow
+            && matches!(break_rule_of(style, "break-before"), BreakRule::Column),
+        break_after_column: in_flow
+            && matches!(break_rule_of(style, "break-after"), BreakRule::Column),
+        break_inside_avoid: in_flow && break_inside_column_avoid_of(style),
     }
 }
 
