@@ -35,6 +35,8 @@ const EXPECTED_IDS: &[&str] = &[
     "break-after-column",
     "break-inside-avoid",
     "break-inside-avoid-fits-anyway",
+    "overflow-visible-extra-strips",
+    "overflow-hidden-extra-strips",
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
@@ -305,4 +307,32 @@ fn break_inside_avoid_fits_anyway_matches_chrome_156() {
         "break-inside-avoid-fits-anyway",
     );
     assert_matches_chrome("break-inside-avoid-fits-anyway", case);
+}
+
+// --------------------------------------------------------------------------
+// #442: overflow strips past `used_count` under `overflow: visible` /
+// `overflow: hidden`. Chrome lays the overflow strips out past the content
+// box in both cases (the `overflow: hidden` clip is paint-time only, so a
+// `getBoundingClientRect()` on an overflowing kid still reports the laid-out
+// x of its strip — identical to the visible case).
+// --------------------------------------------------------------------------
+
+#[test]
+fn overflow_visible_extra_strips_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-visible-extra-strips",
+    );
+    assert_matches_chrome("overflow-visible-extra-strips", case);
+}
+
+#[test]
+fn overflow_hidden_extra_strips_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-hidden-extra-strips",
+    );
+    assert_matches_chrome("overflow-hidden-extra-strips", case);
 }
