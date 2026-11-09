@@ -275,7 +275,10 @@ package or publish workflow.
   container's full content inline size (CSS Multicol 1 §6). `column-span: all`
   is gated on the kid being in-flow — an out-of-flow (`position: absolute` /
   `fixed`) or floated kid that declares it is ignored, per §6.1 "A spanning box"
-  (R2 layout M1). `break-before:
+  (R2 layout M1). The SAME in-flow gate also applies to `break-before: column` /
+  `break-after: column` / `break-inside: avoid | avoid-column` (R4 H3): abspos /
+  floated kids are not in the column flow and contribute zero to column-break
+  analysis — `fits_in_count` ignores their break flags, matching Chrome. `break-before:
   column` / `break-after: column` force a column break; `break-inside: avoid`
   / `avoid-column` pushes a child that would fragment into a fresh column
   (when it fits in one — CSS Fragmentation 3 §5.2 "may ignore the value"
@@ -557,14 +560,23 @@ Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom
   (`invoke`) is unchanged. The per-listener drain is wrapped in
   `drainMicrotasksAcrossDispatch`: it saves and restores every dispatch-scoped field
   (`dispatching` / `currentTarget` / `eventPhase` / `path` / `target` / `stop` /
-  `stopImmediate`) across the
+  `stopImmediate` / `trusted`) across the
   checkpoint, so a microtask that synchronously re-dispatches the same event object runs
   in its own scope and the outer dispatch resumes unchanged — matching Chrome 156's
-  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3, R3 H1). R3 H1 added
-  `stop` / `stopImmediate` to the save set: the outer `dispatchTarget`'s `finally`
+  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3, R3 H1, R4 H1/H2). R3 H1
+  added `stop` / `stopImmediate` to the save set: the outer `dispatchTarget`'s `finally`
   unconditionally resets them, so an inner nested dispatch (from a microtask) would
   otherwise wipe an outer listener's `stopPropagation()` and the outer bubble phase
-  would run.
+  would run. R4 H1 extends the drain to CLEAR `stop` / `stopImmediate` BEFORE the
+  checkpoint — not just save/restore — so a nested re-dispatch starts fresh;
+  `dispatchTarget`'s entry writes the other dispatch-scoped fields but not these two,
+  relying on the previous dispatch's finally to reset them, so without the clear the
+  inner `dispatchMulti` would bail on its capture loop's first stop guard and skip
+  AT_TARGET and bubble as well. R4 H2 adds `trusted` to the save set because
+  `dispatchTarget`'s entry writes it from the `host` parameter but no finally restores
+  it: a trusted outer whose microtask re-dispatches via `target.dispatchEvent`
+  (non-host) would otherwise leave the outer's bubble listeners seeing
+  `event.isTrusted === false`.
 - **Shadow DOM is pay-for-what-you-use, gated on `Document.__hasShadow`** (set by the first
   `attachShadow`; armed eagerly for declarative `<template shadowrootmode>` in `index.mjs`, behind
   a `'shadowroot'` substring check on the HTML). Until then every hot path runs byte-for-byte as
