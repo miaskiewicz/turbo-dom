@@ -17,8 +17,8 @@
 
 use serde_json::Value;
 use turbo_dom_layout::{
-    layout_boxes, layout_html, test_support::fixture_fonts, Diagnostics, Fragment,
-    FragmentContent, Rgba,
+    layout_boxes, layout_html, test_support::fixture_fonts, Diagnostics, Fragment, FragmentContent,
+    Rgba,
 };
 
 const FIXTURE: &str = include_str!("fixtures/multicol_chrome156.json");
@@ -335,7 +335,10 @@ fn abspos_in_multicol_matches_chrome_156() {
 #[test]
 fn fragmented_background_matches_chrome_156() {
     let fixture = fixture();
-    let case = find_case(fixture["cases"].as_array().unwrap(), "fragmented-background");
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
     assert_matches_chrome("fragmented-background", case);
 }
 
@@ -343,19 +346,24 @@ fn fragmented_background_matches_chrome_156() {
 /// matches `want` (ARGB, exact — the fixture's `#cce` is `(0xcc, 0xcc,
 /// 0xee, 0xff)`), with the fragment's own `(x, y, width, height)`. Used
 /// by the #427 per-column-paint assertion below.
-fn collect_background_boxes(root: &Fragment, want: Rgba) -> Vec<(f32, f32, f32, f32)> {
-    let mut out = Vec::new();
-    fn walk(f: &Fragment, want: Rgba, out: &mut Vec<(f32, f32, f32, f32)>) {
-        if let FragmentContent::Box { background: Some(bg), .. } = &f.content {
-            if *bg == want {
-                out.push((f.x, f.y, f.width, f.height));
-            }
-        }
-        for c in &f.children {
-            walk(c, want, out);
+fn walk_bg(f: &Fragment, want: Rgba, out: &mut Vec<(f32, f32, f32, f32)>) {
+    if let FragmentContent::Box {
+        background: Some(bg),
+        ..
+    } = &f.content
+    {
+        if *bg == want {
+            out.push((f.x, f.y, f.width, f.height));
         }
     }
-    walk(root, want, &mut out);
+    for c in &f.children {
+        walk_bg(c, want, out);
+    }
+}
+
+fn collect_background_boxes(root: &Fragment, want: Rgba) -> Vec<(f32, f32, f32, f32)> {
+    let mut out = Vec::new();
+    walk_bg(root, want, &mut out);
     out
 }
 
@@ -368,7 +376,10 @@ fn collect_background_boxes(root: &Fragment, want: Rgba) -> Vec<(f32, f32, f32, 
 #[test]
 fn fragmented_block_paints_background_per_column() {
     let fixture = fixture();
-    let case = find_case(fixture["cases"].as_array().unwrap(), "fragmented-background");
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
     let html = case["html"].as_str().expect("html");
     let fonts = fixture_fonts();
     let mut diags = Diagnostics::default();
@@ -401,8 +412,7 @@ fn fragmented_block_paints_background_per_column() {
     assert_eq!(
         got.len(),
         want_rects.len(),
-        "expected one per-column background Box per column fragment; got {:?}",
-        got,
+        "expected one per-column background Box per column fragment; got {got:?}",
     );
     // Each reported rect must match a Chrome fragment within TOL.
     for want in &want_rects {

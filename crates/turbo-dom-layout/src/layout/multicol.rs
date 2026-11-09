@@ -52,7 +52,8 @@
 
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
-use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
+use super::fragment::{BorderRadii, ColumnRuleStyle, Fragment, FragmentContent};
+use super::value::BorderEdges;
 use super::value::{
     break_inside_column_avoid_of, break_rule_of, float_of, parse_color, parse_px, position_of,
     BoxSizing, BoxStyle, BreakRule, Float, LengthPct, ResolveCtx, Rgba,
@@ -328,9 +329,7 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
         // miaskiewicz/turbo-dom#440: a span-all segment does not fragment,
         // so `break-inside: avoid | avoid-column` on it has no multicol
         // semantics. Clear it here so the two flags never coexist.
-        break_inside_avoid: in_flow
-            && !column_span_all
-            && break_inside_column_avoid_of(style),
+        break_inside_avoid: in_flow && !column_span_all && break_inside_column_avoid_of(style),
     }
 }
 
@@ -397,9 +396,8 @@ pub(crate) fn layout_multicol(
     // against their own containing block. Floats inside a column still
     // participate in that column's inline layout — but a float declared
     // DIRECTLY on a multicol kid is treated like an abspos here (R2 L5).
-    let (in_flow_kids, oof_kids): (Vec<&LayoutBox>, Vec<&LayoutBox>) = kids
-        .iter()
-        .partition(|k| !is_out_of_flow_kid(&k.style));
+    let (in_flow_kids, oof_kids): (Vec<&LayoutBox>, Vec<&LayoutBox>) =
+        kids.iter().partition(|k| !is_out_of_flow_kid(&k.style));
     let in_flow_owned: Vec<LayoutBox> = in_flow_kids.into_iter().cloned().collect();
     let flags: Vec<KidFlags> = in_flow_owned.iter().map(|k| kid_flags(&k.style)).collect();
     let segments = partition_segments(&flags);
@@ -923,17 +921,85 @@ fn place_measured(
     let (left_col, right_col, min_y, max_bottom) = piece_bounds(pieces);
     let left = strip_origin(left_col);
     let right = strip_origin(right_col) + used_width;
+    // miaskiewicz/turbo-dom#427: emit ONE invisible union shell whose
+    // `(x, y, width, height)` is the union of the per-column pieces
+    // (so `collect_boxes` reports Chrome's `getBoundingClientRect`
+    // contract), with one Box child per piece carrying the original
+    // paint at that column strip's rect. The painter walks the
+    // children and paints each column fragment separately — a block's
+    // background and border no longer bleed across the gap.
+    //
+    // The outer shell carries NO paint: its Box content is zeroed to
+    // `background: None` / default borders / no radii / no shadow / no
+    // gradient, but the transform is preserved so a CSS `transform`
+    // still affects the whole fragmented block (per-column paint is
+    // inside the transform).
+    //
+    // The measured Fragment's original inline children can't be
+    // flowed per column at this layer (CSS Fragmentation's per-column
+    // text re-layout is a bigger follow-up); they are dropped, as they
+    // were before #427. No Chrome 156 oracle case has text content
+    // inside a fragmenting block yet.
+    let (per_column_content, transform) = match measured.content.clone() {
+        FragmentContent::Box {
+            background,
+            border,
+            border_radius,
+            shadow,
+            gradient,
+            transform,
+        } => (
+            FragmentContent::Box {
+                background,
+                border,
+                border_radius,
+                shadow,
+                gradient,
+                // Each per-column piece paints its own slice, not a
+                // double transform of the whole: transform is applied
+                // on the outer shell.
+                transform: None,
+            },
+            transform,
+        ),
+        // Non-Box content (e.g. an image or a text line) isn't a
+        // paintable block anyway; fall back to the pre-#427 union rect.
+        other => {
+            measured.x = left;
+            measured.y = cy + min_y;
+            measured.width = right - left;
+            measured.height = max_bottom - min_y;
+            measured.content = other;
+            measured.children.clear();
+            return measured;
+        }
+    };
     measured.x = left;
     measured.y = cy + min_y;
     measured.width = right - left;
     measured.height = max_bottom - min_y;
-    // The measured Fragment's own children live in its per-column paint; once
-    // the block is fragmented across strips the union box cannot host them
-    // sensibly (they would paint off their column). Clearing them also keeps
-    // `collect_boxes` from re-emitting a now-invalid per-column cid under the
-    // union rect. A per-column paint of a fragmented block is a future
-    // followup (no Chrome 156 oracle case needs it yet).
+    measured.content = FragmentContent::Box {
+        background: None,
+        border: BorderEdges::default(),
+        border_radius: BorderRadii::ZERO,
+        shadow: None,
+        gradient: None,
+        transform,
+    };
     measured.children.clear();
+    measured.children.reserve(pieces.len());
+    for p in pieces {
+        let ox = strip_origin(p.col_index);
+        let oy = cy + p.y;
+        measured.children.push(Fragment::new(
+            measured.node_id,
+            ox,
+            oy,
+            used_width,
+            p.height,
+            per_column_content.clone(),
+        ));
+    }
     measured
 }
 
@@ -1466,10 +1532,7 @@ mod tests {
     /// sees the two flags set at once.
     #[test]
     fn kid_flags_clears_break_inside_avoid_when_column_span_all() {
-        let f = kid_flags(&cs(&[
-            ("column-span", "all"),
-            ("break-inside", "avoid"),
-        ]));
+        let f = kid_flags(&cs(&[("column-span", "all"), ("break-inside", "avoid")]));
         assert!(f.column_span_all);
         assert!(
             !f.break_inside_avoid,
