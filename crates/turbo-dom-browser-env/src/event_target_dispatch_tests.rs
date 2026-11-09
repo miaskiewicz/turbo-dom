@@ -422,12 +422,24 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // Review R4 M4: tighten the R3 H1 assertion. The earlier version only
+    // checked `!has_parent_bubble` — a test that passes for both correct
+    // behaviour AND the R4 H1 leak (outer stop leaking INTO the inner
+    // dispatch), because both make bubble stop before `parent` runs. Add
+    // a `parent` capture listener: it must fire TWICE (once during the
+    // outer dispatch's capture, once during the inner re-dispatch's
+    // capture — each BEFORE `mid`'s capture calls stopPropagation). With
+    // the R4 H1 leak, the inner's `dispatchMulti` bails on its capture
+    // loop's first guard and `parent-capture` fires only once (outer).
     let source = r#"(() => {
       const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
       globalThis.__testSetParent(child, () => mid);
       globalThis.__testSetParent(mid, () => parent);
       const trace = [];
       let queued = false;
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-capture:' + event.eventPhase);
+      }, { capture: true });
       mid.addEventListener('ping', (event) => {
         trace.push('mid-capture:' + event.eventPhase);
         event.stopPropagation();
@@ -470,6 +482,36 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
         !has_parent_bubble,
         "parent-bubble must not fire: stopPropagation called on mid should \
          suppress bubble on both outer and inner dispatches. Trace: {trace}",
+    );
+    // R4 M4 tightening: `parent-capture:1` must fire BOTH during the
+    // outer dispatch AND during the inner re-dispatch — each BEFORE
+    // `mid`'s capture (which stops propagation). Exactly two
+    // occurrences distinguishes correct behaviour from the R4 H1 leak
+    // (which skips the inner's capture entirely).
+    let parent_capture_count = array
+        .iter()
+        .filter(|v| v.as_str().unwrap() == "parent-capture:1")
+        .count();
+    assert_eq!(
+        parent_capture_count, 2,
+        "parent-capture:1 must fire TWICE — once in the outer dispatch \
+         and once in the microtask-driven inner re-dispatch. The R4 H1 \
+         leak makes the inner's `dispatchMulti` bail on its first \
+         `if (record.stop || record.stopImmediate) return;`, so a \
+         single-occurrence trace is the signature of that bug. \
+         Trace: {trace}",
+    );
+    // Also assert the microtask actually ran — guards against a mutant
+    // that drops the drain altogether.
+    let has_microtask_start = array
+        .iter()
+        .any(|v| v.as_str().unwrap() == "microtask-start");
+    let has_microtask_end = array
+        .iter()
+        .any(|v| v.as_str().unwrap() == "microtask-end");
+    assert!(
+        has_microtask_start && has_microtask_end,
+        "the microtask must have started and completed. Trace: {trace}",
     );
     reset();
 }
