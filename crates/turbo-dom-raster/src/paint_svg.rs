@@ -1972,6 +1972,68 @@ mod tests {
         );
     }
 
+    // v0.8.2 R1 adversarial M1 + L1: a `NaN` or `Infinity` width / height
+    // slips past the `f.width <= 0.0 || f.height <= 0.0` guard because
+    // every comparison with `NaN` is false (and `Infinity > 0.0`), and
+    // would cascade into `cx = NaN / 2.0` / `period = 2 * NaN` — the SVG
+    // painter would emit `cx="NaN"` or run an undefined loop. The guard
+    // must reject both.
+    #[test]
+    fn paint_column_rule_svg_is_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for style in [
+                ColumnRuleStyle::Solid,
+                ColumnRuleStyle::Dotted,
+                ColumnRuleStyle::Dashed,
+                ColumnRuleStyle::Double,
+            ] {
+                let body_w = body(
+                    &rule(1.0, 1.0, bad, 8.0, style, RED),
+                    &HashMap::new(),
+                );
+                assert!(
+                    body_w.is_empty(),
+                    "non-finite width must emit no rule markup ({style:?}, {bad}): {body_w}"
+                );
+                let body_h = body(
+                    &rule(1.0, 1.0, 4.0, bad, style, RED),
+                    &HashMap::new(),
+                );
+                assert!(
+                    body_h.is_empty(),
+                    "non-finite height must emit no rule markup ({style:?}, {bad}): {body_h}"
+                );
+            }
+        }
+    }
+
+    // Helpers' direct contract: none of them may paint or loop on a
+    // non-finite width.
+    #[test]
+    fn rule_svg_helpers_are_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                bad,
+                8.0,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            let mut buf = String::new();
+            paint_dotted_rule(&mut buf, &f, RED);
+            paint_dashed_rule(&mut buf, &f, RED);
+            paint_double_rule(&mut buf, &f, RED);
+            assert!(
+                buf.is_empty(),
+                "non-finite-width SVG helpers must not emit markup or loop ({bad}): {buf}"
+            );
+        }
+    }
+
     #[test]
     fn boxes_at_one_origin_get_their_own_gradient_and_shadow_ids() {
         let blue = Rgba::new(0, 0, 255, 255);
