@@ -16,7 +16,10 @@
 // rules.
 
 use serde_json::Value;
-use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
+use turbo_dom_layout::{
+    layout_boxes, layout_html, test_support::fixture_fonts, Diagnostics, Fragment, FragmentContent,
+    Rgba,
+};
 
 const FIXTURE: &str = include_str!("fixtures/multicol_chrome156.json");
 
@@ -35,6 +38,8 @@ const EXPECTED_IDS: &[&str] = &[
     "break-after-column",
     "break-inside-avoid",
     "break-inside-avoid-fits-anyway",
+    "abspos-in-multicol",
+    "fragmented-background",
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
@@ -305,4 +310,121 @@ fn break_inside_avoid_fits_anyway_matches_chrome_156() {
         "break-inside-avoid-fits-anyway",
     );
     assert_matches_chrome("break-inside-avoid-fits-anyway", case);
+}
+
+// --------------------------------------------------------------------------
+// v0.8.2 correctness: out-of-flow kids (miaskiewicz/turbo-dom#444 /
+// miaskiewicz/turbo-dom#461) and per-column paint of a fragmented block
+// (miaskiewicz/turbo-dom#427).
+// --------------------------------------------------------------------------
+
+/// turbo-dom#444 / #461: an abspos kid inside a multicol does NOT occupy
+/// column flow space — Chrome routes it around the column flow and places
+/// it at its CSS `left`/`top` with its CSS `width`/`height`. The surrounding
+/// in-flow kids pack as if the abspos kid were absent.
+#[test]
+fn abspos_in_multicol_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "abspos-in-multicol");
+    assert_matches_chrome("abspos-in-multicol", case);
+}
+
+/// turbo-dom#427: a `background` on a block that fragments across the
+/// column gap still reports its union border box via `getBoundingClientRect`
+/// (Chrome's contract).
+#[test]
+fn fragmented_background_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
+    assert_matches_chrome("fragmented-background", case);
+}
+
+/// Collect every `FragmentContent::Box` fragment whose background colour
+/// matches `want` (ARGB, exact — the fixture's `#cce` is `(0xcc, 0xcc,
+/// 0xee, 0xff)`), with the fragment's own `(x, y, width, height)`. Used
+/// by the #427 per-column-paint assertion below.
+fn walk_bg(f: &Fragment, want: Rgba, out: &mut Vec<(f32, f32, f32, f32)>) {
+    if let FragmentContent::Box {
+        background: Some(bg),
+        ..
+    } = &f.content
+    {
+        if *bg == want {
+            out.push((f.x, f.y, f.width, f.height));
+        }
+    }
+    for c in &f.children {
+        walk_bg(c, want, out);
+    }
+}
+
+fn collect_background_boxes(root: &Fragment, want: Rgba) -> Vec<(f32, f32, f32, f32)> {
+    let mut out = Vec::new();
+    walk_bg(root, want, &mut out);
+    out
+}
+
+/// turbo-dom#427: a fragmented block paints its background PER COLUMN
+/// (never across the gap). The oracle's `items[].rects` captures the
+/// per-column fragments Chrome paints. Before the fix the engine
+/// collapses the fragmented block into one union-rect Fragment whose
+/// background bleeds across the gap; after the fix the painter sees one
+/// background Box per column fragment, each at a column strip's rect.
+#[test]
+fn fragmented_block_paints_background_per_column() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
+    let html = case["html"].as_str().expect("html");
+    let fonts = fixture_fonts();
+    let mut diags = Diagnostics::default();
+    let root = layout_html(html, "", 1280.0, &fonts, &mut diags).expect("layout_html");
+    // `background: #cce` on the one flowed div: Chrome paints it in each
+    // column fragment Chrome reported in the fixture.
+    let want_bg = Rgba::new(0xcc, 0xcc, 0xee, 0xff);
+    let got = collect_background_boxes(&root, want_bg);
+    let want_rects: Vec<(f64, f64, f64, f64)> = case["items"].as_array().unwrap()[0]["rects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["x"].as_f64().unwrap(),
+                r["y"].as_f64().unwrap(),
+                r["width"].as_f64().unwrap(),
+                r["height"].as_f64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        want_rects.len(),
+        2,
+        "fixture: two column fragments expected for the 300px block in a 2-col, 200px-tall container",
+    );
+    // There must be at least one background Box per column fragment. The
+    // outer shell (if any) carries no visible background, so the match
+    // count is strictly per-column.
+    assert_eq!(
+        got.len(),
+        want_rects.len(),
+        "expected one per-column background Box per column fragment; got {got:?}",
+    );
+    // Each reported rect must match a Chrome fragment within TOL.
+    for want in &want_rects {
+        let matched = got.iter().any(|g| {
+            (f64::from(g.0) - want.0).abs() < TOL
+                && (f64::from(g.1) - want.1).abs() < TOL
+                && (f64::from(g.2) - want.2).abs() < TOL
+                && (f64::from(g.3) - want.3).abs() < TOL
+        });
+        assert!(
+            matched,
+            "no per-column Box matched Chrome rect {want:?}; got {got:?}",
+        );
+    }
 }

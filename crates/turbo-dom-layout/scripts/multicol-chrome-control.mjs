@@ -216,6 +216,44 @@ const CASES = [
       ),
     ),
   },
+  // miaskiewicz/turbo-dom#444: `position: absolute` kids must NOT occupy
+  // column flow space. The abspos kid (i1) places relative to its
+  // containing block (the multicol container, position:relative) at its
+  // own CSS width/height, and the three in-flow kids pack as if i1 were
+  // absent — Chrome's multicol routes out-of-flow kids around the column
+  // flow entirely. The abspos kid's BCR must match its own CSS geometry,
+  // not the column's `used_width` (also closes miaskiewicz/turbo-dom#461:
+  // `measure_kid` was returning the multicol-container inline size for
+  // abspos descendants).
+  {
+    id: "abspos-in-multicol",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:300px",
+        BLK(60, 0) +
+          `<div data-cid="i1" style="position:absolute;left:10px;top:120px;width:80px;height:50px;background:#fcc"></div>` +
+          BLK(60, 2) +
+          BLK(60, 3),
+      ),
+    ),
+  },
+  // miaskiewicz/turbo-dom#427: `background` on a block that fragments
+  // across the column gap. Chrome paints the background inside EACH
+  // column fragment (never across the gap). `getBoundingClientRect` on
+  // the fragmented block returns the union of its column fragments, so
+  // the oracle's border-box is the union and `rects` records the
+  // per-column pieces `getClientRects` reports.
+  {
+    id: "fragmented-background",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:16px;width:416px;height:200px",
+        `<div data-cid="i0" style="height:300px;background:#cce"></div>`,
+      ),
+    ),
+  },
 ];
 
 const browser = await chromium.launch({
@@ -250,6 +288,15 @@ for (const testCase of CASES) {
       .filter((el) => el !== container)
       .map((el) => {
         const b = el.getBoundingClientRect();
+        // `getClientRects()` returns one rect per column fragment for a
+        // multicol-fragmented box (Chrome 156). For a non-fragmenting box
+        // it is a single rect equal to the BCR.
+        const rects = [...el.getClientRects()].map((r) => ({
+          x: r.x,
+          y: r.y,
+          width: r.width,
+          height: r.height,
+        }));
         return {
           cid: el.dataset.cid,
           x: b.x,
@@ -260,6 +307,7 @@ for (const testCase of CASES) {
           offsetTop: el.offsetTop,
           offsetWidth: el.offsetWidth,
           offsetHeight: el.offsetHeight,
+          rects,
         };
       });
     // Derive column strips from child x/width in document order: one strip per
