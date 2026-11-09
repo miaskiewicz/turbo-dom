@@ -325,6 +325,9 @@ fn stronger(group: BreakRule, row: BreakRule) -> BreakRule {
         (BreakRule::Page, _) | (_, BreakRule::Page) => BreakRule::Page,
         (BreakRule::Column, _) | (_, BreakRule::Column) => BreakRule::Column,
         (BreakRule::Avoid, _) | (_, BreakRule::Avoid) => BreakRule::Avoid,
+        // R4 M2 (#473): `avoid-page` is page-class like `avoid`; it beats
+        // `avoid-column` for the same "coarser class wins" reason.
+        (BreakRule::AvoidPage, _) | (_, BreakRule::AvoidPage) => BreakRule::AvoidPage,
         (BreakRule::AvoidColumn, _) | (_, BreakRule::AvoidColumn) => BreakRule::AvoidColumn,
         _ => BreakRule::Auto,
     }

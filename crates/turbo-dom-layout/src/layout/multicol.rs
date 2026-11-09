@@ -296,14 +296,14 @@ struct KidFlags {
 /// read through the shared [`break_rule_of`] parser so the paginator and the
 /// multicol flow see the same rule set (`page` / `left` / `right` / `recto` /
 /// `verso` are pagination's concern, left as a no-op here; turbo-html2pdf#69).
-/// `break-inside: avoid | avoid-column` reads through
-/// [`break_inside_column_avoid_of`] — multicol's sibling to
-/// [`super::value::break_inside_avoid_of`] — so the "which keywords
-/// forbid a column break here" set lives in one place next to the
-/// page-break parser (R3 M7). We do NOT route `break-inside` through
-/// [`break_rule_of`], because that parser collapses `avoid` and
-/// `avoid-page` into one [`BreakRule::Avoid`], and `avoid-page` is
-/// explicitly pagination-only — it must not forbid a column break.
+/// `break-inside: avoid | avoid-column` reads through the SHARED
+/// [`break_rule_of`] parser now that it distinguishes [`BreakRule::Avoid`]
+/// from [`BreakRule::AvoidPage`] (R4 M2 / #473). [`break_inside_column_avoid_of`]
+/// stays as a trivial typed wrapper that matches `Avoid | AvoidColumn`; the
+/// "which keywords forbid a column break here" set lives in exactly one
+/// place — the `break_rule_of` match — rather than two parsers reading
+/// the same raw string. `avoid-page` → [`BreakRule::AvoidPage`] stays
+/// off here (pagination-only, must not forbid a column break).
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
     // Review R2 layout M1 + R4 H3: CSS Multicol 1 §6.1 "A spanning box": an
     // out-of-flow (`position: absolute` / `fixed`) or floated element

@@ -157,8 +157,11 @@ pub enum VAlign {
 pub enum BreakRule {
     #[default]
     Auto,
-    /// `avoid` / `avoid-page`: forbid a page break at this boundary.
+    /// `avoid`: forbid any break (page + column) at this boundary
+    /// (CSS Fragmentation 3 §4.1 "avoid").
     Avoid,
+    /// `avoid-page`: forbid a page break only (§4.1).
+    AvoidPage,
     /// `avoid-column`: forbid a column break at this boundary.
     AvoidColumn,
     /// `page` / `left` / `right` / `recto` / `verso` (and legacy
@@ -1650,7 +1653,8 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
 pub fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     if let Some(v) = s.get(prop) {
         return match v.trim().to_ascii_lowercase().as_str() {
-            "avoid" | "avoid-page" => BreakRule::Avoid,
+            "avoid" => BreakRule::Avoid,
+            "avoid-page" => BreakRule::AvoidPage,
             "avoid-column" => BreakRule::AvoidColumn,
             "page" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
             "column" => BreakRule::Column,
@@ -1691,23 +1695,20 @@ pub fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
     is("break-inside", &["avoid", "avoid-page"]) || is("page-break-inside", &["avoid"])
 }
 
-/// `break-inside: avoid | avoid-column` — the multicol-flow sibling of
-/// [`break_inside_avoid_of`]. CSS Fragmentation 3 §4.1 defines `avoid` as
-/// "suppress any break at this boundary" (page + column + region) and
-/// `avoid-column` as "suppress column breaks only"; `avoid-page` is
-/// explicitly page-only and does NOT suppress a column break, so this
-/// helper omits it. Legacy `page-break-inside` is not considered: it has
-/// no `column` spelling. Review R3 M7: this replaces an inline keyword
-/// match in `multicol::kid_flags`, keeping the "which keywords count" set
-/// in one place (siblings with [`break_inside_avoid_of`]) rather than
-/// routing through [`break_rule_of`], which collapses `avoid` and
-/// `avoid-page` into one `BreakRule::Avoid`.
+/// Review R4 M2 (#473): `break-inside: avoid | avoid-column` reads through the
+/// shared [`break_rule_of`] parser now that `avoid` and `avoid-page` map to
+/// distinct variants ([`BreakRule::Avoid`] vs [`BreakRule::AvoidPage`]); the
+/// prior sibling parser (`break_inside_column_avoid_of`) is gone, so the
+/// "which keywords forbid a column break here" set lives in exactly one
+/// place — the `break_rule_of` match. CSS Fragmentation 3 §4.1: `avoid`
+/// suppresses every break (page + column + region), `avoid-column` only
+/// column, `avoid-page` only page (NOT a column-break-avoid).
 #[must_use]
 pub fn break_inside_column_avoid_of(s: &ComputedStyle) -> bool {
-    s.get("break-inside").is_some_and(|v| {
-        let v = v.trim();
-        v.eq_ignore_ascii_case("avoid") || v.eq_ignore_ascii_case("avoid-column")
-    })
+    matches!(
+        break_rule_of(s, "break-inside"),
+        BreakRule::Avoid | BreakRule::AvoidColumn,
+    )
 }
 
 /// A positive-integer property (`orphans` / `widows`): `0`, negatives and non-integers
@@ -3350,10 +3351,7 @@ mod break_rule_tests {
              — multicol would then treat it as a column-break-avoid, which \
              contradicts CSS Fragmentation 3 §4.1"
         );
-        assert_eq!(
-            rule("break-inside", "avoid-column"),
-            BreakRule::AvoidColumn
-        );
+        assert_eq!(rule("break-inside", "avoid-column"), BreakRule::AvoidColumn);
     }
 
     #[test]
