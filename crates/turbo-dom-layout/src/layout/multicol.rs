@@ -1420,6 +1420,40 @@ mod tests {
         }
     }
 
+    /// miaskiewicz/turbo-dom#440: a `column-span: all` box is its own
+    /// full-width segment (CSS Multicol 1 §6.1 "A spanning box") and does
+    /// not fragment — `break-inside: avoid` on it has no multicol
+    /// semantics. The engine already acts on `column_span_all` only, but
+    /// `KidFlags` must normalize the combination so a future reader never
+    /// sees the two flags set at once.
+    #[test]
+    fn kid_flags_clears_break_inside_avoid_when_column_span_all() {
+        let f = kid_flags(&cs(&[
+            ("column-span", "all"),
+            ("break-inside", "avoid"),
+        ]));
+        assert!(f.column_span_all);
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid is meaningless on a column-span:all segment",
+        );
+        let f = kid_flags(&cs(&[
+            ("column-span", "all"),
+            ("break-inside", "avoid-column"),
+        ]));
+        assert!(f.column_span_all);
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid-column is meaningless on a column-span:all segment",
+        );
+        // Guard against the inverse mutation (clearing column_span_all
+        // instead of break_inside_avoid): with no span-all the avoid flag
+        // must still carry through.
+        let f = kid_flags(&cs(&[("break-inside", "avoid")]));
+        assert!(!f.column_span_all);
+        assert!(f.break_inside_avoid);
+    }
+
     #[test]
     fn kid_flags_rejects_unrelated_keywords() {
         // `break-before: page` / `avoid-page` / `avoid` are not a column
