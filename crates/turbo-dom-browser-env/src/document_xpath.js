@@ -79,16 +79,25 @@
     return documentOrderAxis(step,context,node);
   };
   // following / preceding in document order from the context's topmost ancestor.
+  function includesInAxis(step,after,ancestors,current){
+    if(step.axis===provider.Step.FOLLOWING)return after;
+    return !after&&!ancestors.has(current);
+  }
+  function ancestorsAndRoot(anchor){
+    let root=anchor;while(root.parentNode)root=root.parentNode;
+    const ancestors=new Set();
+    for(let current=anchor.parentNode;current;current=current.parentNode)ancestors.add(current);
+    return {root,ancestors};
+  }
   function documentOrderAxis(step,context,node){
     context.contextNode=node;
     const attribute=node.nodeType===2,anchor=attribute?node.ownerElement:node;
-    let root=anchor;while(root.parentNode)root=root.parentNode;
-    const ancestors=new Set();for(let current=anchor.parentNode;current;current=current.parentNode)ancestors.add(current);
+    const {root,ancestors}=ancestorsAndRoot(anchor);
     const nodes=[],stack=[root];let after=false;
     while(stack.length){
       const current=stack.pop();
       if(current===anchor){after=true;if(!attribute&&step.axis===provider.Step.FOLLOWING)continue;}
-      else if(step.axis===provider.Step.FOLLOWING?after:!after&&!ancestors.has(current))if(step.nodeTest.matches(current,context))nodes.push(current);
+      else if(includesInAxis(step,after,ancestors,current)&&step.nodeTest.matches(current,context))nodes.push(current);
       if(step.axis===provider.Step.PRECEDING&&after)break;
       for(let child=current.lastChild;child;child=child.previousSibling)stack.push(child);
     }
@@ -138,17 +147,34 @@
           default:return siblingMember(key,siblings,position);
         }
       };
+      const nodeNameOf=()=>row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
+      const fieldMember=key=>{
+        switch(key){
+          case 'nodeType':return row[0];case 'nodeName':return nodeNameOf();
+          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
+          default:return undefined;
+        }
+      };
       const target={};proxies.push(new ProxyValue(target,{get(_target,key){
         spend();
         const siblings=row[6]==null?[]:children[row[6]],position=siblings.indexOf(index);
-        switch(key){
-          case 'nodeType':return row[0];case 'nodeName':return row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
-          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
-          default:return treeMember(key,siblings,position);
-        }
+        const field=fieldMember(key);
+        return field!==undefined?field:treeMember(key,siblings,position);
       }}));
     });
     return {node:proxies[data.context],actual:node=>{spend();const index=proxies.indexOf(node);if(index<0)throw failure('NotSupportedError','XPath result has no native Node representation');return data.nodes[index];}};
+  }
+  function inferResultType(record,value){
+    if(value instanceof record.provider.XNodeSet)return 4;
+    if(value instanceof record.provider.XNumber)return 1;
+    if(value instanceof record.provider.XBoolean)return 3;
+    return 2;
+  }
+  function populateResultState(state,value,view){
+    if(state.type===1)state.value=value.numberValue();
+    else if(state.type===2)state.value=value.stringValue();
+    else if(state.type===3)state.value=value.booleanValue();
+    else state.nodes=value.toArray().map(view.actual);
   }
   function execute(record,node,type){
     const kind=nodeType(node);if(![1,2,3,4,7,8,9].includes(kind))throw failure('NotSupportedError','Unsupported XPath context node');
@@ -158,10 +184,10 @@
     context.namespaceResolver={getNamespace:prefix=>record.namespaces.get(prefix)??null};
     let value;
     try{value=record.expression.evaluate(context);}catch(error){if(error instanceof NativeException)throw error;throw failure('NotSupportedError','XPath evaluation failed: '+error.message);}
-    if(type===0)type=value instanceof record.provider.XNodeSet?4:value instanceof record.provider.XNumber?1:value instanceof record.provider.XBoolean?3:2;
+    if(type===0)type=inferResultType(record,value);
     if(type>=4&&!(value instanceof record.provider.XNodeSet))throw new NativeTypeError('XPath value cannot be converted to a node result');
     const state={type,node,stamp:data.stamp,index:0};
-    if(type===1)state.value=value.numberValue();else if(type===2)state.value=value.stringValue();else if(type===3)state.value=value.booleanValue();else state.nodes=value.toArray().map(view.actual);
+    populateResultState(state,value,view);
     const result=create(record.interfaces[1]);writeResult(result,state);return result;
   }
   const state=receiver=>{const value=readResult(receiver);if(!value)throw new NativeTypeError('Illegal invocation');return value;};

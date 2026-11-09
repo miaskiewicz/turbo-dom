@@ -100,8 +100,26 @@ pub enum Display {
     Table,
     TableRow,
     TableCell,
+    /// `table-row-group`: a `<tbody>`'s box, grouping its rows between a
+    /// `<thead>` and a `<tfoot>` without a fragment of its own. Honest
+    /// counterpart to [`Display::TableHeaderGroup`] / [`Display::TableFooterGroup`]
+    /// so `html_default_display`'s `"table-row-group"` fallback lands on a
+    /// distinct variant instead of silently falling through to
+    /// [`Display::Block`] (Review R2 layout H2).
+    TableRowGroup,
     TableHeaderGroup,
     TableFooterGroup,
+    /// `table-column-group`: a `<colgroup>`'s box, describing a run of
+    /// columns for intrinsic sizing (CSS 2.1 §17.2 / CSS Tables 3). The
+    /// current layout keeps `<colgroup>` out of row-group flow; the
+    /// variant exists so the Chrome keyword maps to its own value instead
+    /// of falling through to [`Display::Block`] (Review R2 layout H2;
+    /// column widths are turbo-dom#419 follow-up).
+    TableColumnGroup,
+    /// `table-column`: a `<col>`'s box, holding width/style for one column
+    /// of its parent `<colgroup>` / `<table>`. Follows the same shape as
+    /// `TableColumnGroup`.
+    TableColumn,
     /// `table-caption`: a caption of its parent table, laid out in the table wrapper box
     /// above or below the grid (miaskiewicz/turbo-dom#51); a block anywhere else.
     TableCaption,
@@ -128,13 +146,26 @@ pub enum VAlign {
     Bottom,
 }
 
-/// CSS fragmentation rule (`break-before`/`break-after`/`break-inside`).
+/// CSS fragmentation rule (`break-before`/`break-after`/`break-inside`;
+/// CSS Fragmentation 3 §3). The paginator reads `Page`/`Avoid` for page-class
+/// breaks; the multicol flow (`layout::multicol`) reads `Column`/`AvoidColumn`
+/// for column-class breaks. `Avoid` is the backward-compat spelling for
+/// `avoid` / `avoid-page` (§3.2 "avoid"): with no explicit `avoid-column`,
+/// a plain `avoid` forbids any break at this boundary, so multicol treats it
+/// as a column-avoid too (miaskiewicz/turbo-dom#398 PR-E's `kid_flags`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BreakRule {
     #[default]
     Auto,
+    /// `avoid` / `avoid-page`: forbid a page break at this boundary.
     Avoid,
+    /// `avoid-column`: forbid a column break at this boundary.
+    AvoidColumn,
+    /// `page` / `left` / `right` / `recto` / `verso` (and legacy
+    /// `page-break-*: always|left|right`): force a page break here.
     Page,
+    /// `column`: force a column break here.
+    Column,
 }
 
 /// An RGBA color, 8 bits per channel.
@@ -926,8 +957,11 @@ fn blockified(display: Display) -> Display {
         | Display::InlineBlock
         | Display::TableRow
         | Display::TableCell
+        | Display::TableRowGroup
         | Display::TableHeaderGroup
         | Display::TableFooterGroup
+        | Display::TableColumnGroup
+        | Display::TableColumn
         | Display::TableCaption => Display::Block,
         other => other,
     }
@@ -952,8 +986,11 @@ fn specified_display(s: &ComputedStyle) -> Display {
         "inline-table" => Display::InlineTable,
         "table-row" => Display::TableRow,
         "table-cell" => Display::TableCell,
+        "table-row-group" => Display::TableRowGroup,
         "table-header-group" => Display::TableHeaderGroup,
         "table-footer-group" => Display::TableFooterGroup,
+        "table-column-group" => Display::TableColumnGroup,
+        "table-column" => Display::TableColumn,
         "table-caption" => Display::TableCaption,
         "list-item" => Display::ListItem,
         _ => Display::Block,
@@ -1601,15 +1638,21 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
 
 /// A `break-before` / `break-after` value, falling back to its legacy
 /// `page-break-*` alias when the standard property is unset (CSS Fragmentation 3
-/// §3.4). Chrome 156 forces a page break for `page`, `column`, `left`, `right`,
-/// `recto` and `verso` (it prints no blank page for the side values), and for the
-/// legacy `always`/`left`/`right`; the Fragmentation 4 `always` it does not support
-/// (miaskiewicz/turbo-dom#204). Keywords are ASCII case-insensitive.
+/// §3.4). Chrome 156 forces a page break for `page`, `left`, `right`, `recto`
+/// and `verso` (no blank page for the side values), a column break for `column`,
+/// and page breaks for the legacy `always` / `left` / `right`; the Fragmentation
+/// 4 `always` is not supported (miaskiewicz/turbo-dom#204). Column and page
+/// classes stay distinct so the paginator (turbo-html2pdf) and the multicol
+/// flow each honor their own (turbo-html2pdf#69 — the paginator must not treat
+/// `break-{before,after}: column` as a page break). Keywords are ASCII
+/// case-insensitive. `region` / `avoid-region` stay rejected (not implemented).
 pub(super) fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     if let Some(v) = s.get(prop) {
         return match v.trim().to_ascii_lowercase().as_str() {
             "avoid" | "avoid-page" => BreakRule::Avoid,
-            "page" | "column" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            "avoid-column" => BreakRule::AvoidColumn,
+            "page" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            "column" => BreakRule::Column,
             _ => BreakRule::Auto,
         };
     }
@@ -1644,6 +1687,24 @@ pub(super) fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
             .is_some_and(|v| want.contains(&v.trim().to_ascii_lowercase().as_str()))
     };
     is("break-inside", &["avoid", "avoid-page"]) || is("page-break-inside", &["avoid"])
+}
+
+/// `break-inside: avoid | avoid-column` — the multicol-flow sibling of
+/// [`break_inside_avoid_of`]. CSS Fragmentation 3 §4.1 defines `avoid` as
+/// "suppress any break at this boundary" (page + column + region) and
+/// `avoid-column` as "suppress column breaks only"; `avoid-page` is
+/// explicitly page-only and does NOT suppress a column break, so this
+/// helper omits it. Legacy `page-break-inside` is not considered: it has
+/// no `column` spelling. Review R3 M7: this replaces an inline keyword
+/// match in `multicol::kid_flags`, keeping the "which keywords count" set
+/// in one place (siblings with [`break_inside_avoid_of`]) rather than
+/// routing through [`break_rule_of`], which collapses `avoid` and
+/// `avoid-page` into one `BreakRule::Avoid`.
+pub(super) fn break_inside_column_avoid_of(s: &ComputedStyle) -> bool {
+    s.get("break-inside").is_some_and(|v| {
+        let v = v.trim();
+        v.eq_ignore_ascii_case("avoid") || v.eq_ignore_ascii_case("avoid-column")
+    })
 }
 
 /// A positive-integer property (`orphans` / `widows`): `0`, negatives and non-integers
@@ -3075,6 +3136,43 @@ mod display_tests {
             display(&[("display", "inline-grid"), ("position", "absolute")]),
             Display::Grid
         );
+    }
+
+    /// Review R2 layout H2: `html_default_display` returned
+    /// `"table-row-group"` / `"table-column-group"` / `"table-column"` for
+    /// tbody / colgroup / col, but `specified_display` had no match arms for
+    /// them, so they fell through to `Display::Block` — the R1 H2 tbody fix
+    /// was a no-op end-to-end. Add distinct variants + match arms so the
+    /// honest Chrome keyword lands on a distinct `Display`.
+    #[test]
+    fn table_row_group_and_column_variants_resolve_from_their_chrome_keywords() {
+        assert_eq!(
+            display(&[("display", "table-row-group")]),
+            Display::TableRowGroup
+        );
+        assert_eq!(
+            display(&[("display", "table-column-group")]),
+            Display::TableColumnGroup
+        );
+        assert_eq!(
+            display(&[("display", "table-column")]),
+            Display::TableColumn
+        );
+        // The three new variants also blockify when the box is floated /
+        // absolutely positioned (CSS 2.1 §9.7): internal-table values become
+        // `block`, like the pre-existing row / cell / header / footer group.
+        for value in ["table-row-group", "table-column-group", "table-column"] {
+            assert_eq!(
+                display(&[("display", value), ("float", "left")]),
+                Display::Block,
+                "{value}: floated internal-table must blockify",
+            );
+            assert_eq!(
+                display(&[("display", value), ("position", "absolute")]),
+                Display::Block,
+                "{value}: absolute internal-table must blockify",
+            );
+        }
     }
 
     #[test]

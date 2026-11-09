@@ -5,6 +5,648 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.1] — 2026-11-09
+
+### Changed
+
+- **#379 JS lane C (npm runtime)**: extracted helpers for cc <= 12 across
+  `src/runtime/{cascade,html-serialize,selectors,dom,css-shorthand}.mjs`;
+  hot-path fns deferred to v0.9.0 — see #462 (selectors.mjs match-time
+  family), #463 (dom.mjs hot-path methods), #464 (collections.mjs
+  live-collection `get` + events.mjs `dispatchEvent`).
+- **turbo-dom-browser-env JS cc 15 -> 12 small-tail (#379 JS lane E)**.
+  Mechanical, behaviour-preserving extracts in 15 browser-env `*.js`
+  files — `custom_elements.js` (2 fns), `document_basics.js` (2),
+  `edit_context.js`, `element_internals.js`, `element_tokens.js`,
+  `event_listeners.js`, `file_inputs.js`, `form_collections.js`,
+  `form_outputs.js`, `html_dialog.js`, `html_media.js`,
+  `html_popover.js`, `mutation_observers.js`, `select_element.js`,
+  `view_transitions.js` — split each cc 13-15 function into a
+  top-level helper plus the original caller, both at cc <= 12. All
+  three candidate non-pinned probes (`editing_probe.js`,
+  `form_reflection_probe.js`, `patched_builtins_members_probe.js`)
+  turned out to have `probeSha256` pins in their Chrome control
+  JSONs, so they were skipped. Non-hot paths only; the 739 + 9 test
+  cases in `cargo test -p turbo-dom-browser-env --features
+  test-support` all pass with no behaviour change. The JS gate
+  (`complexity / js`) still reads cc <= 15 at the integrator; the
+  per-lane PRs drive the counts to 12 ahead of the ceiling flip.
+- #379 JS lane B (typed_om / editing / animations): extracted helpers for cc <= 12.
+- **#379 Rust lane A (browser-env): extracted helpers for cc <= 12** across
+  `crates/turbo-dom-browser-env/src/` (27 functions at cc 13..=15 reduced to
+  cc <= 12 through mechanical helper extraction, no behaviour change). The
+  `install_engine_with_tree` capture-callback boilerplate was consolidated
+  into `capture_bootstrap_callback` / `try_capture_bootstrap_callback`;
+  `run_dispatch_phases` was split into `run_capture_phase` + `run_bubble_phase`
+  (one call per phase, so no per-entry overhead on the event dispatch hot
+  path).
+- **Rust cyclomatic-complexity ceiling 15 -> 12 (#379 rust half)**.
+  The blocking `complexity / rust (cc <= 12)` gate drops from 15 to
+  12 for 0.8.1. Every Rust function now sits at cc <= 12; a handful
+  of hot-path functions (`cascade.parse_stylesheet`,
+  `cssom.parse_stylesheet`, `rtdom/tree.insert_nodes`, selector
+  `matches_*`, and the `unit_tokenizer` `step_group_*` family) were
+  deliberately left inlined at 13-15 to avoid a regression and are
+  tracked for the cc <= 9 pass in 0.9.0. The JS gate
+  (`complexity / js`) stays at cc <= 15 for now and will drop in a
+  follow-up PR.
+  Rust lane B (this PR) lands the mechanical helper extractions in
+  `rtdom/cascade.rs`, `rtdom/query.rs`, `rtdom/query_utf16.rs`,
+  `rtdom/storage.rs` and the `rtdom/css_shorthand/` grammars and
+  serializers: 20 functions brought from cc 13-15 down to <= 12, each
+  by splitting out a behaviour-preserving helper. No hot-path
+  pessimization, no new allocations, and no change to the Chrome 156
+  selector-engine lockstep with `src/runtime/selectors.mjs`.
+  follow-up PR. Rust lane C extracts 14 helpers across turbo-dom-layout
+  (`cssom_view::hit::process_border_box_hit`,
+  `cssom_view::metrics::{block_geometry, offset_from_ancestors}`,
+  `cssom_view::scroll::{projector_in_container_space,
+  sweep_descendant_bounds, accumulate_ancestor_scroll,
+  viewport_blocked_axes}`, `layout::background::{size_auto_sides,
+  apply_round_axes}`, `layout::inline_boxes::attach_part_layers`,
+  `layout::media_paint::push_horizontal_controls`,
+  `live::chrome_tests::{offset_metric, client_metric}`,
+  `live::style::StyledInputScope::collect_declarations`, and the
+  `form_control_size_attrs_chrome` test split) and turbo-dom-raster
+  (`image_paint::read_url_inner`, `webgl::{create_target_texture,
+  translate_programs, encode_render_pass}`); layout + raster behaviour
+  unchanged.
+
+### Fixed
+
+- **turbo-dom-browser-env event dispatch (#450)**:
+  `drainMicrotasksAcrossDispatch` now saves and restores
+  `defaultPrevented` alongside the R3 H1 / R4 H2 save set. A microtask
+  queued inside a listener that re-dispatches the same cancelable Event
+  and whose inner listener calls `event.preventDefault()` previously
+  mutated the shared `record.defaultPrevented`; the inner
+  `dispatchTarget`'s `finally` did not reset it (preventDefault is
+  spec-persistent on the event), and the outer dispatch's
+  `return !record.defaultPrevented` therefore falsely reported canceled
+  even though no outer listener called `preventDefault()`. Chrome 156
+  probe
+  (`crates/turbo-dom-browser-env/src/event_defaultprevented_chrome156.json`,
+  scenario `listenerQueuesMicrotask`) confirmed `outerReturn=true` /
+  `innerReturn=false`: Chrome runs the microtask AFTER the outer
+  dispatch completes, so the outer's return is independent of the
+  inner's preventDefault. The save/restore pattern matches that
+  independence synchronously. Outer dispatches that themselves call
+  `preventDefault()` before queueing a microtask still return `false`
+  — the saved value (`true`) is restored on finally, so the inner's
+  additional preventDefault is a no-op for the outer return.
+- **turbo-dom-browser-env event dispatch (R3 H1)**:
+  `drainMicrotasksAcrossDispatch` now saves and restores `stop` and
+  `stopImmediate` alongside the previously saved 5 dispatch-scoped fields.
+  A listener that calls `event.stopPropagation()` and queues a microtask
+  which synchronously re-dispatches the same event previously saw the
+  outer bubble phase fire anyway: the inner `dispatchTarget`'s `finally`
+  reset `record.stop=false`, and the drain's restore did not put it back.
+  Chrome 156 probe confirmed the microtask-triggered re-dispatch is
+  allowed (so the R2 M3 save/restore stays); the fix extends the save set
+  rather than reverting it.
+- **CHANGELOG**: spliced the two `## [0.8.1] — unreleased` headers into
+  one section. The two separate `### Fixed` blocks (R1/R2/R3 fixes
+  above, pre-R1 fixes + `### Added` below) now live under one 0.8.1
+  header, so the release tagger can flip "unreleased" to a date without
+  physically splicing the file (R3 H2).
+- **turbo-dom-browser-env Trusted Types (R3 M1)**: the regression test
+  `install_policy_succeeds_while_a_prior_frames_termination_is_pending`
+  now asserts the `TerminationRestore::Drop` actually re-terminated by
+  running a probe script right after install and checking its return is
+  `None` — not just relying on the explicit `cancel_terminate_execution`
+  below, which would mask whether Drop ran. A mutant that empties Drop's
+  body now trips the probe (locally verified).
+- **turbo-dom-layout live-input (R3 M5)**: `input[type=hidden]`
+  resolves to `display: none` regardless of the current computed
+  display, matching Chrome 156's UA rule specificity (0, 1, 1), which
+  outranks an author `input { display: block }` (0, 0, 1). The previous
+  narrow guard only stamped `none` when the computed value was absent or
+  the `inline-block` from `ensure_default_display` — an author rule
+  setting `display: block / flex / grid` left the hidden input
+  visible, diverging from Chrome.
+- **turbo-dom-browser-env captured-intrinsics audit (R3 M6)**: added
+  `sibling_bootstrap_files_use_captured_intrinsics_under_prototype_poison`
+  which poisons every Set / Map / WeakSet / WeakMap prototype
+  bookkeeping method and exercises the window + non-Node EventTarget
+  add/dispatch paths plus the Trusted Types factory read and policy
+  creation. A regression that reads any of these prototypes live in
+  `event_listeners.js` or `trusted_types.js` now trips the thrower.
+- **turbo-dom-layout multicol (R3 M4)**: the multicol flow now hosts a
+  single module-level `col_x` helper that `place_measured` and
+  `column_rule_fragments` both call. The last in-flow column's
+  end-align (R2 M3) and each gap-centre now share one formula; on any
+  future rounded-`used_width` path the two would otherwise drift at the
+  final gap. New test `column_rule_fragments_use_shared_col_x_for_last_gap`.
+- **turbo-dom-layout multicol (R3 M7)**: `break-inside: avoid | avoid-column`
+  now reads through a new `break_inside_column_avoid_of` helper in
+  `value.rs`, sibling to `break_inside_avoid_of` for the paginator. The
+  "which keywords forbid a column break" set now lives next to the
+  page-break parser; a doc comment explains why multicol does NOT route
+  through `break_rule_of` — that parser collapses `avoid` and
+  `avoid-page` into one `BreakRule::Avoid`, and `avoid-page` must not
+  suppress a column break.
+- **turbo-dom-layout multicol (R3 M2 / M3 deferred)**: R3 M2 (a
+  dispatching-flicker side channel observable only through an async
+  side-channel) and R3 M3 (the R2 M3 end-align formula is algebraically
+  identical on the pure-float path; the drift vs Chrome is 0.005 px
+  within the 0.1 px tolerance, so not a correctness bug) are documented
+  here but not fixed. Reviewer may file 0.8.2 follow-ups if they warrant
+  action later.
+- **R3 adversarial review LOW follow-ups filed for 0.8.2**:
+  R2 M3 red-test isolation (#451), 9999-hop collectPath coverage
+  (#452), 1.99+ clippy `assert_is_empty` on `turbo-dom` tests
+  (#453), cargo-mutants sweep over R1/R2/R3 fixes (#454), CLAUDE.md
+  save-set audit habit (#455), broader `multicol_rule_chrome156.json`
+  spot-check (#457). (R3 L1's `defaultPrevented` save (#450) was
+  originally on this list; it is fixed in this release — see the
+  `### Fixed` entry above.)
+- **turbo-dom-browser-env event dispatch (R4 H1)**:
+  `drainMicrotasksAcrossDispatch` now CLEARS `record.stop` /
+  `record.stopImmediate` before `microtaskCheckpoint`, not just saves /
+  restores them. R3 H1 added them to the save-set but never cleared
+  them, so a microtask-driven re-dispatch of the same event entered
+  `dispatchTarget` with the outer's `record.stop = true` still on the
+  shared record — `dispatchTarget`'s entry writes `dispatching` /
+  `trusted` / `target` / `currentTarget` / `eventPhase` / `path` but
+  not `stop` / `stopImmediate`, relying on the previous dispatch's
+  finally to have reset them. The inner `dispatchMulti` then bailed on
+  its capture loop's first `if (record.stop || record.stopImmediate)
+  return;` and AT_TARGET + bubble never ran either (it returns from
+  the capture loop, not per-phase). Chrome 156 treats each nested
+  dispatch as an independent stop scope. New test
+  `nested_re_dispatch_sees_fresh_stop_propagation_state` asserts every
+  phase of the inner re-dispatch fires.
+- **turbo-dom-browser-env event dispatch (R4 H2)**: the drain's
+  save-set now covers `trusted`. `dispatchTarget`'s entry writes
+  `record.trusted = host`, and neither its own finally nor R3 H1's
+  save-set restored it — a trusted outer whose microtask re-dispatched
+  the same event via `target.dispatchEvent(event)` (non-host) flipped
+  `record.trusted` to false and the outer's subsequent bubble
+  listeners saw `event.isTrusted === false`. New test
+  `trusted_flag_survives_nested_re_dispatch_from_microtask`.
+- **turbo-dom-layout multicol (R4 H3)**: `kid_flags`'s in-flow gate
+  now applies to `break_before_column` / `break_after_column` /
+  `break_inside_avoid` as well, not just `column_span_all`. R2 M1
+  gated `column_span_all` on the kid being in-flow but the three
+  break flags remained unconditional, so a kid with `position:
+  absolute; break-before: column` still fired a forced column break
+  in `fits_in_count` and consumed column height during balance.
+  Chrome's abspos / floated kids are NOT in the column flow and
+  contribute zero to break analysis (CSS Multicol 1 §6.1). New test
+  `kid_flags_rejects_break_flags_on_out_of_flow_or_floated_boxes`.
+- **R4 M4 (R3 H1 test tightening)**: the R3 H1 regression test
+  (`microtask_re_dispatch_preserves_outer_stop_propagation`) used to
+  assert only `!has_parent_bubble`, which passes for BOTH the correct
+  behaviour and the R4 H1 leak (both outcomes block bubble before
+  parent fires). Added a `parent` capture listener and an assertion
+  that `parent-capture:1` fires EXACTLY TWICE — once in the outer
+  dispatch and once in the microtask-driven inner re-dispatch. A
+  single-occurrence trace now signals the R4 H1 leak.
+- **R4 adversarial review triage**:
+  - R4 M3 (`defaultPrevented` save) — **fixed in this release** as
+    its own `### Fixed` entry above (#450). The Chrome 156 probe at
+    `crates/turbo-dom-browser-env/scripts/event-defaultprevented-chrome156-probe.js`
+    pinned the behaviour: outer dispatchEvent returns true while a
+    microtask's inner re-dispatch that calls preventDefault returns
+    false. Save/restore added to `drainMicrotasksAcrossDispatch`.
+  - R4 M5 (#449 capture is forward-defensive, no engine reader) —
+    the capture is correct as a surf-consumer fix. No turbo-dom
+    change; documented in the #449 bullet above.
+  - R4 M1 (TableRowGroup variants ship but unused), R4 M2
+    (break-inside two sources of truth) and R4 M6 (mutation-coverage
+    debt) filed as 0.8.2 follow-ups #472, #473 and #474.
+- **turbo-dom-browser-env Promise[Symbol.species] captured at bootstrap (#449,
+  turbo-surf#245)**: the install-time captured-intrinsics snapshot
+  (`captured_intrinsics.js`) now captures `Array[Symbol.species]`,
+  `Promise[Symbol.species]`, `Map[Symbol.species]`, `Set[Symbol.species]`,
+  `RegExp[Symbol.species]` and `ArrayBuffer[Symbol.species]` onto the engine
+  namespace (`__tsNs.{ArraySpecies, PromiseSpecies, MapSpecies, SetSpecies,
+  RegExpSpecies, ArrayBufferSpecies}`), so a consumer that depends on
+  `Promise[@@species]` (surf's iframe content-Window build path through V8's
+  `.then()`/`.slice()`/`.map()` slow-path species lookup) can dispatch through
+  a captured reference, not a live read a page can replace. Before this,
+  turbo-surf#245's `page_patched_intrinsics_do_not_break_loading_or_append_child`
+  / `page_patched_intrinsics_full_set_like_chrome156` panicked at the
+  `headIframe` assertion with `patched get Promise.@@Symbol(Symbol.species)`.
+  Same capture-at-install-time pattern as #172 / #396 (WeakSet bookkeeping).
+  `WeakMap` / `WeakSet` have no `@@species` and are not captured.
+- **turbo-dom-layout break-before/after/inside: column**: `break_rule_of` in
+  `layout/value.rs` collapsed `page` / `column` / `left` / `right` / `recto` /
+  `verso` into a single `BreakRule::Page`, so `break-before: column` reached
+  the paginator as a page break (turbo-html2pdf PR #69). `BreakRule` gains
+  `Column` and `AvoidColumn` variants; the parser now routes `column` to
+  `Column`, `avoid-column` to `AvoidColumn`, and leaves `avoid` / `avoid-page`
+  as `Avoid` (page-class) and the pagination side keywords as `Page` — so
+  `BreakMeta.break_before` / `break_after` carry the correct class to the
+  paginator and the multicol flow reads the same parser (`kid_flags`). This
+  unblocks turbo-html2pdf PR #69 HIGH-2 (column vs page break parity with
+  Chrome 156). `region` / `avoid-region` stay rejected (v0.8.2 follow-up
+  #422). Table-row break merging promotes `Column` and `AvoidColumn` the
+  same way the row rule merges `Page` and `Avoid` (CSS Fragmentation 3 §3.1).
+- **turbo-dom-browser-env event dispatch (#423)**: per-level `composedPath()`
+  on a non-Node EventTarget is now immutable. `record.path` is frozen at
+  every `invokeAt` and at the dispatch init/finally boundaries, and
+  `copyEventPath` (shared with Node dispatch) returns a frozen copy so a
+  listener's stashed `event.composedPath()` can never be mutated by another
+  listener higher in the parent chain. Chrome 156 still hands out a fresh
+  array per call; the extra freeze matches the per-invocation immutability
+  the path contract promises. R1 meshde follow-up from #381.
+- **turbo-dom-browser-env Trusted Types**: adversarial review R2 cleanups.
+  (1) The factory's internal state object is now built from
+  `Object.create(null)`, so `trusted_types::install_policy`'s
+  `state.set('authorize', callback)` cannot walk into an attacker-planted
+  `Object.prototype.authorize` setter inside the cancel-terminate window —
+  closing a prototype-pollution escape of the embedder's watchdog
+  (miaskiewicz/turbo-dom R2 V8 H1). (2) The cancel / restore of the
+  terminating flag around the write is now a Rust scope-guard
+  (`TerminationRestore`); its `Drop` makes the restore panic-safe and
+  future-proof against a new branch forgetting the manual restore
+  (R2 V8 M6).
+- **turbo-dom-browser-env workers**: `worker_scope.js` now captures its own
+  intrinsics at install time (`SetType`, `SetAdd/Del/Has/Size/ForEach`,
+  `MapType` / `MapGet` / `MapSet`, `Reflect.apply`) and routes listener-set,
+  dispatch and `structuredClone` cycle detection through them. A worker
+  page that poisons `globalThis.Set` or `Array.prototype[@@iterator]` can
+  no longer intercept listener bookkeeping or the dispatch iteration —
+  parity with the main-realm `captured_intrinsics.js`
+  (R2 V8 M1, follow-ups miaskiewicz/turbo-dom#435, #437-#439).
+- **turbo-dom-browser-env dispatch**: a microtask queued inside a non-Node
+  EventTarget listener can now re-dispatch the same event object. The
+  per-listener microtask checkpoint (#382) runs through a
+  `drainMicrotasksAcrossDispatch` helper that saves and restores every
+  dispatch-scoped field (`dispatching` / `currentTarget` / `eventPhase` /
+  `path` / `target`), so Chrome 156's per-dispatch flag semantics hold
+  and the InvalidStateError throw is gone (R2 V8 M3).
+- **turbo-dom-browser-env dispatch (#456)**: the per-listener microtask
+  checkpoint now fires only at the OUTERMOST listener invocation. A
+  page-script dispatch (`dispatchEvent`, `AbortController.abort()`)
+  that runs synchronously inside another listener is nested and must
+  not flush microtasks between its own listener and its outer
+  continuation — Chrome 156's "clean up after running a callback"
+  checkpoints only when the realm sits at the top of the script
+  settings stack. #382's unconditional drain shifted the surf
+  `abort_signal_any_and_timeout_match_chrome156` probe's
+  `timeoutNestedAbort` section from the Chrome shape
+  `[inner, after-inner, inner-microtask]` to
+  `[inner, inner-microtask, after-inner]`. The fix threads a
+  `listenerDepth` counter through `invokeAt` and `invoke` (both the
+  target and the window dispatch) and runs the drain only when a
+  listener call returns with depth 0. Stacks cleanly with R3 H1's
+  save/restore of `stop` / `stopImmediate` across the drain.
+- **turbo-dom-browser-env lifecycle**: `run_init_scripts` breaks out of
+  its loop as soon as `scope.is_execution_terminating()` is true after a
+  script, so a terminating isolate no longer churns the remaining init
+  scripts against a scope V8 refuses (R2 V8 M2, miaskiewicz/turbo-dom#436).
+- **turbo-dom-browser-env ownership**: `sweep_collected`'s second
+  `DOM_CONTEXTS` pass now gates `weak.is_empty()` on
+  `OTHER_DOMS.contains(id)`. A non-surf embedder (host-internals feature
+  / standalone test harness) that registers a context without a paired
+  `OTHER_DOMS` record no longer sees its contexts pruned on the binding's
+  GC sweep — its lifecycle is the embedder's to drive (R2 V8 M5).
+- **turbo-dom-layout display defaults**: `ensure_default_display` and
+  `UA_CSS` now cover every HTML tag whose Chrome `html.css` default is
+  not `inline`. Additions: `optgroup` → `block`, `datalist` → `none`,
+  `marquee` → `inline-block`, `slot` → `contents`, `rt` → `ruby-text`,
+  `rtc` → `ruby-text-container`, `rp` → `none`. `summary` flipped from
+  `block` to `list-item` with the Chrome 156 `list-style:
+  disclosure-closed inside`, so `<details>` paints its disclosure
+  triangle (R2 layout H1).
+- **turbo-dom-layout Display enum**: introduced
+  `Display::TableRowGroup` / `Display::TableColumnGroup` /
+  `Display::TableColumn` variants, with matching `specified_display`
+  arms and blockification. `html_default_display`'s keywords for
+  `tbody` / `colgroup` / `col` now land on distinct variants instead of
+  silently falling through to `Display::Block` — the R1 H2 "tbody fix"
+  is no longer a no-op end-to-end (R2 layout H2).
+- **turbo-dom-layout live-input path**: `input[type=hidden]` resolves to
+  `Display::None` even when the embedder supplies no UA origin, matching
+  Chrome's `input[type=hidden] { display: none }` UA rule (R2 layout H1
+  continuation).
+- **turbo-dom-layout coverage**: tightened the R1 H2 live test to assert
+  the resolved `Display` variant (not just the inline-override width),
+  so a future dead-string regression — a new `table-*` keyword without a
+  `specified_display` match arm — fails loudly instead of masking under
+  `Block` (R2 layout M5).
+- **turbo-dom-layout multicol**: `column-span: all` is now gated on the
+  kid being in-flow (`!position_of(style).is_out_of_flow() &&
+  float_of(style) == Float::None`), matching CSS Multicol 1 §6.1 "A
+  spanning box: Out-of-flow boxes and floated elements cannot be
+  column-span-all" (R2 layout M1).
+- **turbo-dom-layout multicol**: the last in-flow column is end-aligned
+  at `cx + cw - used_width`, matching Chrome's Blink multicol. The two
+  formulas agree on a pure-float path (as `used_width` is not
+  integer-truncated), but the stride formula would drift by up to
+  1/64 px if a future change rounded `used_width` to Chrome's
+  LayoutUnit grid (R2 layout M3).
+- **turbo-dom-browser-env CSSOM**: `is_supported_property`'s `-moz-*`
+  rejection now matches ASCII case-insensitively (CSS 2.2 §4.1.1), so
+  `CSS.supports('-MOZ-appearance', 'none')` and mixed-case `-Moz-` /
+  `-moz-` spellings all return `false` like Chrome 156 (R2 layout M2,
+  miaskiewicz/turbo-dom#390 follow-up).
+- **turbo-dom-layout multicol**: adversarial review R1 cleanups.
+  (1) The Chrome 156 geometry oracle tolerance
+  tightens from 0.5 px to 0.1 px — Chrome's `LayoutUnit` grid is 1/64 px
+  (≈0.016 px), so a 0.5 px budget was six times the float-rounding headroom
+  and would silently accept a quarter-pixel column-origin bug. All 14
+  activated cases still pass. (2) `apply_pre_break` is a no-op when
+  `col_h <= 0`, matching `fits_in_count`'s existing guard — a `height:0`
+  multicol with repeated `break-before:column` kids no longer strides
+  across phantom overflow strips. (3) `section_col_h` falls back to the
+  plain `total / used_count` when every `col_h` fails the break-aware
+  fitness check (CSS Fragmentation 3 §5.2 lets the UA ignore
+  unsatisfiable break values), so overflow lines up with the regular
+  column stride instead of a phantom `total + max_single` height.
+  (4) `column_rule_fragments`' doc comment now matches the code and the
+  Chrome fixture: a rule wider than the gap is clamped to the gap, not
+  "overlapped".
+- **turbo-dom-browser-env**: adversarial review R1 cleanups.
+  (1) `__turboDomWorker` is locked
+  (non-writable, non-configurable, non-enumerable on `globalThis`; the
+  object itself is frozen) so page JS in a worker cannot overwrite the
+  slot or replace individual hook methods. (2) `structuredClone` in the
+  worker scope now throws `DataCloneError` for non-POJO inputs (Date /
+  Map / Set / BigInt / undefined / Infinity / NaN / typed arrays /
+  cyclic references / non-plain prototypes), so a page feature
+  detection fails cleanly rather than seeing a silent data loss; full
+  structured-clone semantics is turbo-dom#428. (3) `reset()` also
+  clears `INIT_SCRIPTS`, so an embedder teardown no longer leaks init
+  scripts into the next isolate's installs. (4) `trusted_types::
+  install_policy` carries an assertion and comment that its
+  cancel/restore-terminate window cannot reach a `v8::PrivateName`
+  interceptor — the realm global is a plain object, not a Proxy.
+- **turbo-dom-browser-env**: `collectPath`'s EventTarget-parent-chain walk no
+  longer silently truncates at 100 hops. Chrome has no such cap, so a 101+-deep
+  legitimate chain (an IDB-style tree an embedder could build, or a surf
+  non-Node hierarchy) dropped bubble listeners past hop 100 without diagnostic.
+  The cap is now 10 000, and a chain that exceeds it throws a loud
+  `TypeError('EventTarget parent chain exceeded 10000 hops (runaway chain)')`
+  instead of silently losing ancestors — an adversarial infinite chain would
+  otherwise DoS the dispatch (miaskiewicz/turbo-dom R1 expert H1,
+  turbo-dom#381 follow-up).
+- **turbo-dom-layout**: `ensure_default_display` now covers every HTML tag whose
+  Chrome `html.css` default display is not `inline`, not just the block-tag list
+  #395 added. Extended tags: `<li>` → `list-item`, the table family (`<table>`
+  / `<thead>` / `<tbody>` / `<tfoot>` / `<tr>` / `<caption>` / `<td>` / `<th>` /
+  `<colgroup>` / `<col>` → the matching `table-*` display), form controls
+  `<input>` / `<textarea>` / `<select>` / `<button>` / `<progress>` / `<meter>`
+  → `inline-block`, `<template>` → `none`. A surf-level inline override on any
+  of these no longer collapses the border box to `(0, 0)` when the embedder
+  supplies no UA origin. The deeper refactor — threading `UA_CSS` through the
+  live cascade when no UA origin is supplied — stays as a 0.8.2 follow-up
+  (miaskiewicz/turbo-dom R1 expert H2 + meshde, #395 follow-up).
+- **turbo-dom-browser-env**: a throwing embedder init script
+  (`add_init_script`) is now caught in its own `v8::TryCatch`, so a pending V8
+  exception can no longer leak into later init scripts or into the embedder's
+  inline parser scripts. The caught exception is reported through the window's
+  error channel (an `ErrorEvent` dispatched to `window.onerror`), the same way
+  an `on*` compile error is surfaced (miaskiewicz/turbo-dom R1 expert H4,
+  turbo-dom#394 follow-up).
+- **turbo-dom-layout**: the inline-box fragment `content_height` and the inline
+  formatting context's strut now resolve `@font-face` web-font metrics at the
+  CSS size directly (via `scaled_html_metrics`), instead of reading at the
+  device-scaled size and dividing back. Chrome 156 quantizes web-font ascent /
+  descent in CSS px, so the round-trip double-quantizes at DSF 2: an inline
+  `<span>` in IBM Plex Mono at 20px (turbo-surf's `font_face.rs`
+  plain/csp "ready-height" probe) is 25 CSS px tall at every DSF, not 26
+  (miaskiewicz/turbo-dom#387; sibling to the text Range path #377 fixed).
+- **turbo-dom-raster** / **turbo-dom-browser-env**: restored the 100% /
+  97.6% coverage floors after PR-D (column-rule painting, turbo-dom#398)
+  and the release/0.8.1 browser-env additions (#381 non-Node dispatch,
+  #385 worker scope, #394 init scripts, #401 install_policy termination
+  handling). Added unit tests for the raster `paint_column_rule` guard
+  branches (zero alpha / zero width / zero height / thin double
+  fallback), `circle_path` radius guard, and the worker-scope hook
+  setter clear / absent-bootstrap paths.
+- **turbo-dom-layout**: completed the DPR-2 inline-box oracle for 20px / 60px
+  sizes — Chrome 156 at `--force-device-scale-factor=2` reports span content
+  heights of 26 / 78, captured by
+  `scripts/webfont-inline-dpr2-chrome-control.mjs` and activated in
+  `an_inline_box_with_a_web_face_takes_chromes_content_height`
+  (miaskiewicz/turbo-dom#386 follow-up).
+- **turbo-dom-browser-env**: `sweep_collected_documents()` now also prunes `OTHER_DOMS`
+  / `DOM_CONTEXTS` entries whose weak V8 context handle is empty, not only entries whose
+  `DocumentGraph` has gone through `observe()` and reports `!document_alive()`. A retired
+  iframe whose native-document record was registered before `observe` ran, or whose
+  ownership graph was never materialised under a non-standard install path, now reports
+  its collection to the host's GC sweep. The surf 0.8.0 regression in
+  `frame_gc_contracts::collected_frame_context_metadata_is_reclaimed_without_dropping_live_retired_documents`
+  reported `cleared: 0` instead of the three retired frames V8 had actually collected
+  (turbo-dom#397).
+- **turbo-dom-browser-env**: the canvas 2D paint-brand bookkeeping
+  (`fillStyle` / `strokeStyle` gradient and pattern tracking) now calls
+  `WeakSet.prototype.add` / `.has` through the intrinsics captured at
+  install time instead of looking them up live on `WeakSet.prototype`
+  (turbo-dom#396). A page that replaces every configurable prototype
+  method with a thrower (turbo-surf#87 / turbo-dom#172 contract) no longer
+  reaches this path. Regression introduced in 0.8.0's canvas style surface
+  (turbo-dom#108). Follow-up audit confirmed every other bootstrap WeakSet
+  bookkeeping site (`emptySelects` for `<select>` state, `eventTargets` for
+  the EventTarget brand, `projected` for native-node projection,
+  `instances` for the XMLSerializer brand, `cueLists` for TextTrackCueList)
+  already routes through `$c.{add,has,delete}` or a captured module-init
+  `WeakSet.prototype.*` binding. The wider sweep is pinned by
+  `every_weakset_bookkeeping_site_uses_captured_intrinsics` in
+  `dom_projection_tests.rs`, which replaces `WeakSet.prototype.{add,has,delete}`
+  with throwers and exercises each site end-to-end. The remaining surf
+  `page_patched_intrinsics_*` repros now fail inside the EMBEDDER
+  (turbo-surf-render's promise-rejection realm calls `queued.add(promise)`
+  etc. on live `WeakSet.prototype.*`); fixed by a sibling turbo-surf PR
+  that captures the three WeakSet members at bootstrap and dispatches
+  through them.
+- **turbo-dom-browser-env**: `CSS.supports` / `cssSupportsProperty` now reject four inputs
+  Chrome 156 rejects (turbo-dom#390). `-moz-appearance: none` fails because every `-moz-*`
+  vendor-prefixed property name is refused (`cssom_parser::is_supported_property`);
+  `selector(div, span)`, `selector(:is(:bogus))` and `selector(:where(:bogus, p))` fail
+  because `selector()` is now parsed as one non-list complex selector, with each `:is()` /
+  `:where()` argument validated non-forgivingly (`cssSupportsSelectorStrict`).
+- **CSS shorthand `offset`**: the `[/ <offset-anchor>]?` tail now needs a leading
+  `<offset-position>` or `<offset-path>`; `offset: / center` and `offset: / auto` are
+  rejected like `offset:` alone, matching Chrome 156 (turbo-dom#391). Fix applied in
+  lockstep to `turbo-dom::rtdom::css_shorthand::grammar::offset` and
+  `src/runtime/css-shorthand.mjs`.
+- **browser-env: embedder init scripts run before the parser's inline `<script>`**
+  (miaskiewicz/turbo-dom#394). `turbo-dom-browser-env` now exposes
+  `add_init_script` / `clear_init_scripts` (CDP's
+  `Page.addScriptToEvaluateOnNewDocument` / Playwright's `addInitScript`): every
+  registered script runs on each `install_with_html` after the engine is in place
+  but BEFORE the embedder executes any parser inline `<script>`. Unblocks
+  turbo-surf#240, where `page.route`'s `fetch`/`XMLHttpRequest` monkey-patch was
+  previously beaten by parse-time inline-script fetches.
+- **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
+
+### Changed
+
+- **JS cyclomatic-complexity ceiling lowered to cc ≤ 12** (miaskiewicz/turbo-dom#379, JS half, lane A — `crates/turbo-dom-browser-env/src/browser_env.js`). All 44 functions in that file that measured cc 13–15 against the 0.8.0 ceiling were brought down to cc ≤ 12 by behavior-preserving extract-helper refactors. The hot families named in the complexity gate — `applied*`, `cssScopedMatch`, `appliedEntryMatch`, `computed*` — were extracted with allocation-aware helpers (hoisted named functions, no per-call closures beyond what the originals already built; small-literal returns avoided on per-element inner loops). Rust half, the other JS files, and the gate bump from `cc ≤ 15` to `cc ≤ 12` land in sibling PRs.
+
+### Added
+
+- CSS multi-column: `column-span: all` + `break-{before,after,inside}` flow
+  honouring (#398 PR-E). A child with `column-span: all` breaks the multicol
+  flow — the pre-span and post-span runs each become a sub-flow balanced
+  over `used_count` columns, and the span-all child places at the
+  container's full content inline size (CSS Multicol 1 §6 "Spanning
+  columns"). `break-before: column` / `break-after: column` force a column
+  break at a child's start / after its end, and `break-inside: avoid` /
+  `avoid-column` pushes a child that would fragment to a fresh column
+  (when it fits in one; CSS Fragmentation 3 §5.2 "If the fragment does not
+  fit, the user agent may ignore the value"). `page` / `avoid-page`
+  values stay no-ops in multicol (pagination is turbo-html2pdf's concern).
+  The balancer becomes a 30-step binary search for the smallest `col_h`
+  at which the break-aware flow fits in `used_count` columns, capped by
+  the container's definite height when present; a `col_h` smaller than
+  the break-aware minimum (because the definite cap binds) accepts
+  overflow into extra strips past `used_count` as PR-C2 did. Activates
+  six new Chrome 156 oracle cases (`span-all-simple`, `span-all-balance`,
+  `break-before-column`, `break-after-column`, `break-inside-avoid`,
+  `break-inside-avoid-fits-anyway`).
+- CSS multi-column: `column-fill: balance`, column fragmentation and overflow
+  strips (#398 PR-C2 of multi-PR stack). Layered over PR-C1's equal-width
+  sequential-fill scaffold in `crates/turbo-dom-layout/src/layout/multicol.rs`:
+  the container's column height is now the smallest of
+  `content_height / used_count` and the container's definite height (CSS
+  Multicol 1 §7.3 pseudo-algorithm); a block whose height would overrun the
+  remaining column space is cut at the boundary and the tail flows into the
+  next column; a block that cannot fit in the last tracked column opens a
+  new strip at `col_index * (used_width + gap)` with no upper bound (Chrome's
+  overflow columns, visible past the container when `overflow: visible`);
+  and a fragmented block's `data-cid` reports the UNION rectangle of its
+  column fragments, matching Chrome's `getBoundingClientRect` contract.
+  Activates the remaining five Chrome 156 oracle cases
+  (`columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) within the harness's 0.5 px
+  tolerance. PR-C1's "column-span capture anomaly" note on
+  `columns-shorthand` i2 / i5 turned out to be plain fragmentation + union
+  of two 50 px block fragments Chrome's balanced 3-col flow produces at
+  `col_h ≈ 133.34 px`, which PR-C2's fragmenter models directly.
+  `column-span: all` and `break-{before,after,inside}` honouring stay
+  deferred to PR-E; column-rule painting to PR-D.
+- CSS multi-column: `column-rule-*` painting (#398 PR-D). Styles: none, solid,
+  dotted, dashed, double; groove/ridge/inset/outset filed as follow-up.
+  `crates/turbo-dom-layout/src/layout/multicol.rs` now emits one
+  `FragmentContent::ColumnRule { style, color }` fragment between every adjacent
+  pair of column strips; width is `column-rule-width` clamped to the gap
+  (Blink's `MultiColumnSet` never paints outside the gap), height is the column
+  content height, `currentcolor` resolves to the container's `color`. The PNG
+  and SVG painters in `crates/turbo-dom-raster/` render each supported style
+  (solid: filled band, dotted: diameter-`width` circles on period `2·width`,
+  dashed: `2·width` dashes with `width` gaps, double: two `floor(width/3)`
+  bands flush with the rule's long edges). The `column-rule` shorthand is
+  routed through the cascade's shorthand expansion so `column-rule: 4px solid
+  #333` reaches the computed style as its three longhands. Chrome 156 paint
+  oracle: `crates/turbo-dom-raster/scripts/multicol-rule-chrome-control.mjs` →
+  `crates/turbo-dom-raster/tests/fixtures/multicol_rule_chrome156.json` (five
+  cases: `multicol-rule-solid-1col-gap`, `multicol-rule-dotted-3col`,
+  `multicol-rule-double-thick`, `multicol-rule-none`,
+  `multicol-rule-wider-than-gap`), asserted byte-for-byte within the paint
+  harness's probe tolerance by `crates/turbo-dom-raster/tests/multicol_rule_chrome.rs`.
+- CSS multi-column: equal-width sequential-fill layout pass for 3 Chrome 156
+  cases (#398 PR-C1 of multi-PR stack). A `BoxKind::Block` whose computed
+  `column-count` or `column-width` is not `auto` is now a multi-column
+  formatting context (CSS Multicol 1 §3): it establishes an independent
+  formatting context like a flex / grid / table container and its in-flow
+  children flow into equal-width column strips of the content box. The pass
+  implements Chrome's widen rule — `used_count = floor((W + gap) / (width +
+  gap))`, `used_column_width = (W - (used_count − 1) · gap) / used_count` —
+  and `column-fill: balance` when the container has no definite height. Also
+  routes the `columns: <width> <count>` shorthand through the existing
+  cascade shorthand expansion (`font` / `list-style` / `border-radius` /
+  `background` / `columns`) so `columns: 2` reaches the computed style as its
+  `column-count` / `column-width` longhands. New `crates/turbo-dom-layout/
+  src/layout/multicol.rs`; `tests/multicol_chrome.rs` activates the three
+  equal-width sequential-fill cases from the Chrome 156 oracle
+  (`basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`), within
+  a 0.5 px tolerance that covers Chrome's 1/64 px `LayoutUnit` rounding. The
+  remaining five oracle cases (`columns-shorthand` i2 column-span capture,
+  `mixed-child-heights`, `overflow-at-column-height`, `nested-multicol`,
+  `floats-inside-column`) stay `#[ignore]`d with per-case reasons and land
+  in PR-C2.
+- CSS multi-column: Chrome 156 geometry oracle + capture script (#398 PR-B of
+  multi-PR stack). Adds `crates/turbo-dom-layout/scripts/multicol-chrome-control.mjs`
+  and the captured `crates/turbo-dom-layout/tests/fixtures/multicol_chrome156.json`
+  (8 cases: `basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`,
+  `columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) plus a `tests/multicol_chrome.rs`
+  fixture-load harness; the real layout comparison activates in PR-C.
+- CSS multi-column: style parsing + cascade initials (#398 PR-A of multi-PR stack).
+  Adds longhand grammar entries for `column-span`, `column-fill`, and
+  `break-{before,after,inside}` (Rust `rtdom::css_shorthand` + JS `css-shorthand`
+  lockstep), appends their Chrome 156 case rows to the shared longhand control
+  fixture, and registers the 11 non-inherited multicol / fragmentation initial
+  values (`column-count`, `column-width`, `column-gap`, `column-rule-*`,
+  `column-span`, `column-fill`, `break-*`) in turbo-dom-layout's cascade `INITIAL`
+  table so `initial` / `unset` resolve them. No layout behaviour change yet
+  (follow-up PRs land the multicol flow).
+- **turbo-dom-layout**: live-layout web-font inline y position at DPR 2 now matches
+  Chrome 156 at `--force-device-scale-factor=2` (miaskiewicz/turbo-dom#386, follow-up
+  to #377). `layout::inline::scaled_html_metrics` reads a web face's `html_metrics` at
+  `size * scale` and divides back so ascent / descent land on the device-pixel grid
+  (Fira Code 20px content box 24.5 CSS px at DPR 2, IBM Plex Mono 10px / 30px content
+  heights 12.5 / 38.5 at DSF 2; new real-DSF control
+  `tests/fixtures/cssom_view_chrome156_dpr2.json`,
+  `scripts/cssom-view-dpr2-chrome-control.mjs`).
+- **turbo-dom-browser-env**: `on*` content-attribute handlers compile lazily, on the
+  first handler read / listener-add / dispatch, matching Chrome 156. The eager compile
+  at attribute-set time collapsed the set-phase and compile-phase CSP `script-src-attr`
+  policy calls into one, producing a single report where a report-only policy should
+  see two (miaskiewicz/turbo-dom#380).
+- **turbo-dom-browser-env**: `install_worker_global_scope(scope, context)` installs
+  the DedicatedWorkerGlobalScope surface (`self`, `importScripts`, `structuredClone`,
+  `postMessage`, `close`, `addEventListener` / `removeEventListener` /
+  `dispatchEvent`, `onmessage` / `onmessageerror` / `onerror`, and the
+  `DedicatedWorkerGlobalScope -> WorkerGlobalScope -> EventTarget` brand chain)
+  onto a worker-marked context. Three embedder hooks — `set_worker_post_message_hook`,
+  `set_worker_close_hook`, `set_worker_import_scripts_hook` — wire the per-context
+  behaviour; `dispatch_worker_message(scope, data)` delivers a message from outside
+  to `self.onmessage` / `message` listeners. Unblocks surf #203
+  (`new Worker(url)` running in a separate V8 realm). turbo-dom#385.
+- **turbo-dom-browser-env**: host install of a Trusted Types authorization callback
+  no longer aborts when a prior frame's script left a watchdog termination pending
+  on the isolate (miaskiewicz/turbo-dom#401). The install is a V8 private-field
+  write — it does not run guest JS, so the cached private-key slot is now consulted
+  before the termination check in `trusted_types::key`. Fixes the flaky
+  cross-origin iframe bootstrap surf saw under load as "native Trusted Types
+  authorization initialization interrupted" (miaskiewicz/turbo-surf#248).
+  Related to the surf `canceling_pending_session_work_restores_the_peer_and_its_own_runtime`
+  session-isolation hang (turbo-dom#417 / turbo-surf#250): the same
+  termination-pending install path is exercised by that test when the host
+  drops a pending eval future at 200 ms while surf's per-session `Watchdog`
+  (5 s budget) races the drop, and once 0.8.1 is on crates.io the downstream
+  turbo-surf repin un-ignores the test (turbo-surf#250). Reproducing the hang
+  requires a slow-enough runner for the 5 s watchdog to fire before the drop
+  is observed (Linux CI tarpaulin coverage shard; neither local macOS nor
+  single-test Linux invocations hit it reliably), so the fix is landed as
+  the #401 install-policy guard plus the downstream regression, not a
+  turbo-dom-local repro.
+- **turbo-dom-layout live**: a known HTML block tag (`<div>`, `<p>`, `<section>`, …) now
+  falls back to Chrome's `html.css` `display: block` when the embedder supplies no UA
+  origin. Post-#375 the CSS initial `display` is `inline`, so an embedder's
+  `Composition.inline_overrides` that set `width` / `height` on a styled `<div>`
+  collapsed the border box to `(0, 0)` instead of the pre-0.8.0 `(30, 5)`; an explicit
+  UA or author rule still wins and unknown HTML tags stay `inline`
+  (miaskiewicz/turbo-dom#395).
+- **turbo-dom-browser-env**: non-Node EventTarget dispatch with an embedder-settable parent
+  hook (`ns.setEventTargetParent(target, fn)`) and a phase-filtered invoke — capture / target /
+  bubble across a non-Node chain, with `composedPath()` inside each listener returning only
+  `[currentTarget]` like Chrome 156's IndexedDB (turbo-dom#381). Unblocks surf #193 (IDB).
+- **turbo-dom-browser-env**: microtask checkpoint after every listener in the non-Node
+  dispatch path, so a microtask queued inside one listener has settled by the time the next
+  listener is invoked — like Chrome 156's "clean up after running a callback" step,
+  observable as IDB transaction deactivation (turbo-dom#382). Unblocks surf #193.
+
+### Changed
+
+- **turbo-dom-browser-env JS: cc <= 12 refactor, lane D — medium files
+  (turbo-dom#379).** Mechanical extract-helper refactors across 9
+  `crates/turbo-dom-browser-env/src/*.js` files (`selection.js`,
+  `input_members.js`, `html_image.js`, `trusted_types.js`,
+  `form_controls.js`, `document_xpath.js`, `sanitizer.js`,
+  `range_contents.js`, `html_reflections.js`) take every function at cc
+  13..=15 down to <= 12. Behaviour-preserving: all 748 browser-env Rust
+  tests still pass. `trusted_types.js` keeps the R2 V8 H1 null-prototype
+  `factoryState` invariant and the R3 M1 Drop-assert comments in place;
+  the new `authorizePolicyName` helper routes through the same
+  null-prototype `state.names` / `state.defaultPolicy` writes.
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

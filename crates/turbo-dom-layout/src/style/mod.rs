@@ -29,6 +29,122 @@ pub use parser::{
 };
 pub use token::{StyleToken, TokenSet};
 
+/// Chrome's UA-default `display` for an HTML tag (`None` for the CSS initial `inline`).
+/// Mirrors every non-`inline` rule in [`UA_CSS`]: block, list-item, table family and
+/// inline-block form controls. The ordinary HTML cascade reaches it through those
+/// rules; the live-DOM input ([`crate::live`]) relies on this fallback when an
+/// embedder does not supply the UA origin, and test-built styled trees that bypass
+/// the UA cascade set `display` through [`ensure_default_display`]
+/// (miaskiewicz/turbo-dom#375, #395, R1 expert H2 + meshde).
+#[must_use]
+pub fn html_default_display(tag: &str) -> Option<&'static str> {
+    const BLOCK: &[&str] = &[
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "body",
+        "center",
+        "dd",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "dt",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hgroup",
+        "hr",
+        "html",
+        "legend",
+        "listing",
+        "main",
+        "menu",
+        "nav",
+        "ol",
+        "optgroup",
+        "option",
+        "p",
+        "plaintext",
+        "pre",
+        "search",
+        "section",
+        "ul",
+        "xmp",
+    ];
+    if BLOCK.contains(&tag) {
+        return Some("block");
+    }
+    // Chrome's html.css `display` rules beyond `block` (every tag whose UA default
+    // is not `inline`). Covering these keeps the #395 fix from leaking its scope:
+    // a surf-level inline override on, e.g., a `<li>`, a `<td>` or a form control
+    // would otherwise collapse the border box to zero when the embedder supplies
+    // no UA origin (R1 expert H2 + meshde).
+    //
+    // Review R2 layout H1: the BLOCK list dropped `summary` (Chrome's actual UA
+    // is `display: list-item` with `list-style: disclosure-closed inside` so
+    // `<details>` paints its disclosure triangle), and the match below now also
+    // covers `datalist` / `marquee` / `slot` / the ruby family. `input` /
+    // `select` / `textarea` here default to `inline-block`; `input[type=hidden]`
+    // is attribute-driven and handled per-element at the call site (see
+    // `live::style`).
+    // Chrome 156: `summary { display: list-item; counter-increment: list-item 0;
+    //                        list-style: disclosure-closed inside }` — the
+    // disclosure triangle for `<details>` paints only when summary is a
+    // list-item. Groups with the same default land on one arm each (the
+    // match-same-arms lint folds them for us); the specific keyword lives
+    // in the branch name so a future reader can grep for it.
+    match tag {
+        "li" | "summary" => Some("list-item"),
+        "table" => Some("table"),
+        "thead" => Some("table-header-group"),
+        "tbody" => Some("table-row-group"),
+        "tfoot" => Some("table-footer-group"),
+        "tr" => Some("table-row"),
+        "caption" => Some("table-caption"),
+        "td" | "th" => Some("table-cell"),
+        "colgroup" => Some("table-column-group"),
+        "col" => Some("table-column"),
+        // Form controls + `<marquee>` share `inline-block` as the honest
+        // default; `<marquee>` is grouped here so clippy's match-same-arms
+        // is clean.
+        "input" | "textarea" | "select" | "button" | "progress" | "meter" | "marquee" => {
+            Some("inline-block")
+        }
+        // Hidden-by-default tags.
+        "template" | "datalist" | "rp" => Some("none"),
+        "slot" => Some("contents"),
+        // Ruby family (Chrome 156 html.css): the containers render as
+        // ruby-text / ruby-text-container; `<rp>` is handled above as
+        // `display: none`. Full ruby layout is a future consumer; the
+        // honest fallback still keeps a width/height inline override
+        // applying to the border box.
+        "rt" => Some("ruby-text"),
+        "rtc" => Some("ruby-text-container"),
+        _ => None,
+    }
+}
+
+/// Apply [`html_default_display`] to `style` when it carries no explicit `display`.
+pub fn ensure_default_display(style: &mut ComputedStyle, tag: &str) {
+    if style.get("display").is_none() {
+        if let Some(value) = html_default_display(tag) {
+            style.set("display", value.into());
+        }
+    }
+}
+
 /// A minimal user-agent stylesheet (§4.2): the defaults the cascade starts from.
 /// Block elements need no rule (display resolves to `block` by default); this
 /// declares the inline, table, and list-item defaults plus a few typographic
@@ -52,7 +168,14 @@ pub use token::{StyleToken, TokenSet};
 /// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
 /// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
 const UA_CSS: &str = "
-address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, option, p, plaintext, pre, search, section, summary, ul, xmp { display: block }
+address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, optgroup, option, p, plaintext, pre, search, section, ul, xmp { display: block }
+summary { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside }
+datalist { display: none }
+marquee { display: inline-block }
+slot { display: contents }
+rt { display: ruby-text }
+rtc { display: ruby-text-container }
+rp { display: none }
 body { font-family: sans-serif }
 code, kbd, samp, pre { font-family: monospace }
 pre, listing, xmp, plaintext { white-space: pre }
@@ -308,6 +431,67 @@ impl Cascade {
 #[must_use]
 pub fn user_agent_stylesheet() -> Stylesheet {
     parse_stylesheet(UA_CSS)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Review R2 layout H1: every HTML tag whose Chrome 156 `html.css` default
+    /// is NOT `inline` must have a fallback in [`html_default_display`]. Each
+    /// row pairs a tag with Chrome's actual UA default; the fallback keeps the
+    /// live-DOM input Chrome-correct when the embedder supplies no UA origin.
+    #[test]
+    fn html_default_display_covers_every_chrome_non_inline_tag() {
+        // Chrome `html.css` display rules beyond the block list. Each row:
+        // (tag, Chrome's default `display` keyword).
+        let cases: &[(&str, &str)] = &[
+            // Block tags carrying a display other than `block`.
+            ("li", "list-item"),
+            // The `<details>` disclosure triangle: Chrome sets
+            // `summary { display: list-item; list-style: disclosure-closed inside }`
+            // — R2 layout H1 / L7 (so the triangle paints).
+            ("summary", "list-item"),
+            // Table family.
+            ("table", "table"),
+            ("thead", "table-header-group"),
+            ("tbody", "table-row-group"),
+            ("tfoot", "table-footer-group"),
+            ("tr", "table-row"),
+            ("caption", "table-caption"),
+            ("td", "table-cell"),
+            ("th", "table-cell"),
+            ("colgroup", "table-column-group"),
+            ("col", "table-column"),
+            // Form controls — `inline-block` (not `inline`).
+            ("input", "inline-block"),
+            ("textarea", "inline-block"),
+            ("select", "inline-block"),
+            ("button", "inline-block"),
+            ("progress", "inline-block"),
+            ("meter", "inline-block"),
+            // `<template>` is hidden.
+            ("template", "none"),
+            // R2 layout H1 additions.
+            ("optgroup", "block"),
+            ("datalist", "none"),
+            ("marquee", "inline-block"),
+            ("slot", "contents"),
+            ("rt", "ruby-text"),
+            ("rp", "none"),
+            ("rtc", "ruby-text-container"),
+        ];
+        for (tag, want) in cases {
+            assert_eq!(
+                html_default_display(tag),
+                Some(*want),
+                "{tag}: html_default_display mismatch",
+            );
+        }
+        // `<span>` / unknown tags stay `inline` (the CSS initial): no fallback.
+        assert_eq!(html_default_display("span"), None);
+        assert_eq!(html_default_display("x-custom"), None);
+    }
 }
 
 /// Original UA source for embedders that use a different selector parser.

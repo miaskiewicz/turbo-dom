@@ -91,25 +91,17 @@
     rowDescriptor.value = undefined;
     return array;
   };
+  const listedHtmlTags = { __proto__: null, input: 1, button: 1, textarea: 1, select: 1, fieldset: 1, object: 1, output: 1 };
+  const isListedElement = (element) => {
+    if (forms.associatedGet(element)) return true;
+    return html(element) && listedHtmlTags[local(element)] === 1;
+  };
   function listed(form) {
     const rows = forms.formControls(form),
       result = [];
     for (let index = 0; index < rows.length; index++) {
       const element = rows[index];
-      const kind = local(element);
-      if (
-        forms.associatedGet(element) ||
-        (html(element) &&
-          (kind === "input" ||
-            kind === "button" ||
-            kind === "textarea" ||
-            kind === "select" ||
-            kind === "fieldset" ||
-            kind === "object" ||
-            kind === "output"))
-      ) {
-        if (local(element) !== "input" || forms.type(element) !== "image") row(result, element);
-      }
+      if (isListedElement(element) && (local(element) !== "input" || forms.type(element) !== "image")) row(result, element);
     }
     return result;
   }

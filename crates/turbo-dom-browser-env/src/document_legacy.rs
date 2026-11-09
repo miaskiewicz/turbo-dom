@@ -650,43 +650,8 @@ fn dispatch<'s>(
     mut rv: v8::ReturnValue,
 ) {
     let operation = args.get(0).to_rust_string_lossy(scope);
-    match operation.as_str() {
-        "collection" => {
-            let (Ok(named), Ok(indexed), Ok(caller)) = (
-                v8::Local::<v8::Function>::try_from(args.get(2)),
-                v8::Local::<v8::Function>::try_from(args.get(3)),
-                v8::Local::<v8::Function>::try_from(args.get(4)),
-            ) else {
-                return;
-            };
-            if let Some(object) = collection(scope, args.get(1), named, indexed, caller) {
-                let key = private_key(scope, "turbo-dom.HTMLAllCollection.record");
-                object.set_private(scope, key, args.get(5));
-                rv.set(object.into());
-            }
-            return;
-        }
-        "record" => {
-            // The brand is isolate-wide so another realm's accessors accept it, as
-            // Blink's wrapper type check does; guest code cannot name the key.
-            if let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) {
-                let key = private_key(scope, "turbo-dom.HTMLAllCollection.record");
-                if let Some(record) = object
-                    .get_private(scope, key)
-                    .filter(|value| value.is_object())
-                {
-                    rv.set(record);
-                }
-            }
-            return;
-        }
-        "register" => {
-            if let Ok(factory) = v8::Local::<v8::Function>::try_from(args.get(1)) {
-                context_rehydrate::capture::<AllFactory>(scope, factory);
-            }
-            return;
-        }
-        _ => {}
+    if dispatch_collection_ops(scope, &operation, &args, &mut rv) {
+        return;
     }
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
@@ -758,6 +723,54 @@ fn dispatch<'s>(
             rv.set(v8::Array::new_with_elements(scope, &values).into());
         }
         _ => {}
+    }
+}
+
+/// Handle the HTMLAllCollection-brand operations that do not take a node argument. Returns
+/// true when the operation was recognized and already handled.
+fn dispatch_collection_ops<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    operation: &str,
+    args: &v8::FunctionCallbackArguments<'s>,
+    rv: &mut v8::ReturnValue,
+) -> bool {
+    match operation {
+        "collection" => {
+            let (Ok(named), Ok(indexed), Ok(caller)) = (
+                v8::Local::<v8::Function>::try_from(args.get(2)),
+                v8::Local::<v8::Function>::try_from(args.get(3)),
+                v8::Local::<v8::Function>::try_from(args.get(4)),
+            ) else {
+                return true;
+            };
+            if let Some(object) = collection(scope, args.get(1), named, indexed, caller) {
+                let key = private_key(scope, "turbo-dom.HTMLAllCollection.record");
+                object.set_private(scope, key, args.get(5));
+                rv.set(object.into());
+            }
+            true
+        }
+        "record" => {
+            // The brand is isolate-wide so another realm's accessors accept it, as
+            // Blink's wrapper type check does; guest code cannot name the key.
+            if let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) {
+                let key = private_key(scope, "turbo-dom.HTMLAllCollection.record");
+                if let Some(record) = object
+                    .get_private(scope, key)
+                    .filter(|value| value.is_object())
+                {
+                    rv.set(record);
+                }
+            }
+            true
+        }
+        "register" => {
+            if let Ok(factory) = v8::Local::<v8::Function>::try_from(args.get(1)) {
+                context_rehydrate::capture::<AllFactory>(scope, factory);
+            }
+            true
+        }
+        _ => false,
     }
 }
 

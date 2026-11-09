@@ -57,7 +57,15 @@
   // NamedNodeMap members from its interface prototype, or on first use from a real map when the
   // interface object is absent (installing creates no nodes).
   let mapLength = null, mapItemF = null;
-  try { if (typeof g.NamedNodeMap === 'function') { const proto = g.NamedNodeMap.prototype; const l = lookup(proto, 'length').get, item = lookup(proto, 'item').value; if (typeof l === 'function' && typeof item === 'function') { mapLength = map => apply(l, map, []); mapItemF = item; } } } catch (error) { mapLength = null; mapItemF = null; }
+  function installNamedNodeMapApi() {
+    try {
+      if (typeof g.NamedNodeMap !== 'function') return;
+      const proto = g.NamedNodeMap.prototype, l = lookup(proto, 'length').get, item = lookup(proto, 'item').value;
+      if (typeof l !== 'function' || typeof item !== 'function') return;
+      mapLength = map => apply(l, map, []); mapItemF = item;
+    } catch (error) { mapLength = null; mapItemF = null; }
+  }
+  installNamedNodeMapApi();
   function namedNodeMap(map) { if (mapLength === null) { mapLength = getter(map, 'length'); mapItemF = method(map, 'item'); } return map; }
   const attrNameOf = getter(g.Attr.prototype, 'name'), attrValueOf = getter(g.Attr.prototype, 'value');
   const getSelectionF = method(document, 'getSelection');
@@ -96,8 +104,11 @@
   const after = n => P(parentOf(n), indexOf(n) + 1);
   function chain(node) { const out = list(); for (let n = node; n !== null; n = parentOf(n)) push(out, n); return out; }
   // Tree-order comparison of boundary points.
+  function compareSameContainer(a, b) {
+    return a.o < b.o ? -1 : a.o > b.o ? 1 : 0;
+  }
   function compare(a, b) {
-    if (a.c === b.c) return a.o < b.o ? -1 : a.o > b.o ? 1 : 0;
+    if (a.c === b.c) return compareSameContainer(a, b);
     const A = chain(a.c), B = chain(b.c);
     let i = A.length - 1, j = B.length - 1;
     if (A[i] !== B[j]) return 0;
@@ -160,18 +171,20 @@
     if (memo !== undefined) return memo;
     return wset(displayMemo, el, computeDisplay(el));
   }
-  function computeDisplay(el) {
-    const own = declared(el, 'display');
-    if (own !== null) return lower(own);
-    const value = hasAuthorSheets() ? computed(el, 'display') : '';
-    if (value) return value;
-    const name = nameOf(el);
+  function computeDisplayByName(el, name) {
     if (name && hasAttr(el, 'hidden')) return 'none';
     if (hiddenNames[name]) return 'none';
     if (name === 'li') return 'list-item';
     if (typeOf(el) !== 1) return 'inline';
     if (namespaceOf(el) !== HTML) return localOf(el) === 'svg' || localOf(el) === 'math' ? 'inline' : 'inline';
     return blockNames[name] ? 'block' : 'inline';
+  }
+  function computeDisplay(el) {
+    const own = declared(el, 'display');
+    if (own !== null) return lower(own);
+    const value = hasAuthorSheets() ? computed(el, 'display') : '';
+    if (value) return value;
+    return computeDisplayByName(el, nameOf(el));
   }
   const inlineDisplays = record();
   for (const n of ['inline', 'inline-block', 'inline-flex', 'inline-grid', 'inline-table', 'contents', 'ruby', 'ruby-text', 'none']) inlineDisplays[n] = 1;
@@ -209,12 +222,18 @@
     if (v === 'false') return null;
     return undefined;
   }
-  function computeEditState(node) {
-    let el = isElement(node) ? node : parentOf(node);
+  function walkEditableAncestor(start) {
+    let el = isElement(start) ? start : parentOf(start);
     for (; el !== null && typeOf(el) === 1; el = parentOf(el)) {
       const r = contentEditableFromAttr(el);
-      if (r !== undefined) return r;
+      if (r !== undefined) return { done: true, value: r };
     }
+    return { done: false, value: el };
+  }
+  function computeEditState(node) {
+    const walk = walkEditableAncestor(node);
+    if (walk.done) return walk.value;
+    const el = walk.value;
     if (el !== null && typeOf(el) === 11) return null;
     const owner = node && typeOf(node) === 9 ? node : ownerOf(node);
     if (owner !== null && el !== null && typeOf(el) === 9 && designModeOf(owner) === 'on') return 'rich';
@@ -247,15 +266,15 @@
     const emit = (t, n, o) => push(items, { __proto__: null, t, n, o });
     const endLine = () => { if (lastSpace !== null && items[items.length - 1] === lastSpace) items.length--; lastSpace = null; lineStart = true; };
     const editableRoot = isEditable(root);
+    function textChar(node, i, c, mode) {
+      if (c === 10 && mode) { if (mode === 2) endLine(); emit(BR, node, i); lineStart = true; lastSpace = null; return; }
+      if (mode === 1) { emit(CHAR, node, i); lineStart = false; lastSpace = null; return; }
+      if (c === 32 || c === 9 || c === 10 || c === 13 || c === 12) { if (lineStart || lastSpace !== null) return; lastSpace = emit(CHAR, node, i); return; }
+      emit(CHAR, node, i); lineStart = false; lastSpace = null;
+    }
     function text(node, mode) {
       const d = dataOf(node);
-      for (let i = 0; i < d.length; i++) {
-        const c = code(d, i);
-        if (c === 10 && mode) { if (mode === 2) endLine(); emit(BR, node, i); lineStart = true; lastSpace = null; continue; }
-        if (mode === 1) { emit(CHAR, node, i); lineStart = false; lastSpace = null; continue; }
-        if (c === 32 || c === 9 || c === 10 || c === 13 || c === 12) { if (lineStart || lastSpace !== null) continue; lastSpace = emit(CHAR, node, i); continue; }
-        emit(CHAR, node, i); lineStart = false; lastSpace = null;
-      }
+      for (let i = 0; i < d.length; i++) textChar(node, i, code(d, i), mode);
     }
     function isAtomicChild(child, name) {
       if (name && atomicNames[name] && name !== 'wbr') return true;
@@ -523,6 +542,13 @@
     selectionMemo = raw === null ? null : { __proto__: null, doc, range, count: mutationCount, anchor: raw.anchor, focus: raw.focus, value };
     return value;
   }
+  function computeVisibleRangeSelection(raw, root) {
+    let start = canonicalForward(raw.start), end = canonical(raw.end);
+    if (root !== null && !contains(root, raw.end.c)) end = canonical(P(root, lengthOf(root)));
+    if (start === null || end === null) { const c = canonical(raw.start); if (c === null) return null; return { __proto__: null, start: c, end: c, caret: true, root: rootEditable(c.c), raw }; }
+    if (compare(start, end) >= 0) return { __proto__: null, start, end: start, caret: true, root: rootEditable(start.c), raw };
+    return { __proto__: null, start, end, caret: false, root: rootEditable(start.c), raw };
+  }
   function computeVisibleSelection(doc) {
     const raw = rawSelection(doc);
     if (raw === null || ownerOf(raw.start.c) !== doc && raw.start.c !== doc) return null;
@@ -533,11 +559,7 @@
       if (caret === null) return null;
       return { __proto__: null, start: caret, end: caret, caret: true, root: rootEditable(caret.c), raw };
     }
-    let start = canonicalForward(raw.start), end = canonical(raw.end);
-    if (root !== null && !contains(root, raw.end.c)) end = canonical(P(root, lengthOf(root)));
-    if (start === null || end === null) { const c = canonical(raw.start); if (c === null) return null; return { __proto__: null, start: c, end: c, caret: true, root: rootEditable(c.c), raw }; }
-    if (compare(start, end) >= 0) return { __proto__: null, start, end: start, caret: true, root: rootEditable(start.c), raw };
-    return { __proto__: null, start, end, caret: false, root: rootEditable(start.c), raw };
+    return computeVisibleRangeSelection(raw, root);
   }
   function setSelection(doc, start, end) {
     const s = selectionOf(doc);
@@ -582,16 +604,19 @@
     const n = NumberValue(v);
     return n === n && n >= 1 && n <= 1000 ? n : parent;
   }
+  function applyTagStyleSize(s, name) {
+    if (name === 'sub') { s.script = 'sub'; s.size = s.size / 1.2; return; }
+    if (name === 'sup') { s.script = 'super'; s.size = s.size / 1.2; return; }
+    if (name === 'small') s.size = s.size / 1.2;
+    else if (name === 'big') s.size = s.size * 1.2;
+    else if (headingSizes[name]) s.size = 16 * headingSizes[name];
+  }
   function applyTagStyle(s, name) {
     if (boldNames[name]) s.weight = name === 'b' || name === 'strong' ? weightNumber('bolder', s.weight) : 700;
     if (italicNames[name]) s.italic = true;
     if (name === 'u' || name === 'ins') s.underline = true;
     if (name === 's' || name === 'strike' || name === 'del') s.strike = true;
-    if (name === 'sub') { s.script = 'sub'; s.size = s.size / 1.2; }
-    if (name === 'sup') { s.script = 'super'; s.size = s.size / 1.2; }
-    if (name === 'small') s.size = s.size / 1.2;
-    if (name === 'big') s.size = s.size * 1.2;
-    if (headingSizes[name]) s.size = 16 * headingSizes[name];
+    applyTagStyleSize(s, name);
   }
   function applyAlignTag(s, el, name) {
     if (name === 'center' || (name && attr(el, 'align') !== null && isBlock(el))) {
@@ -617,13 +642,16 @@
     if (prop === 'background-color' || prop === 'background') { const c = parseColor(value, false); if (c && c !== 'rgba(0, 0, 0, 0)') s.background = c; return true; }
     return false;
   }
+  function applyDeclarationTail(s, el, prop, v) {
+    if (prop === 'text-decoration' || prop === 'text-decoration-line') { if (find(v, 'underline') >= 0) s.underline = true; if (find(v, 'line-through') >= 0) s.strike = true; return; }
+    if (prop === 'vertical-align') { if (v === 'sub' || v === 'super') s.script = v; return; }
+    if (prop === 'text-align' && isBlock(el)) s.align = v === 'start' ? 'left' : v === 'end' ? 'right' : v;
+  }
   function applyDeclaration(s, el, prop, value) {
     const v = lower(value);
     if (applyFontDecl(s, prop, value, v)) return;
     if (applyColorDecl(s, prop, value)) return;
-    if (prop === 'text-decoration' || prop === 'text-decoration-line') { if (find(v, 'underline') >= 0) s.underline = true; if (find(v, 'line-through') >= 0) s.strike = true; return; }
-    if (prop === 'vertical-align') { if (v === 'sub' || v === 'super') s.script = v; return; }
-    if (prop === 'text-align' && isBlock(el)) s.align = v === 'start' ? 'left' : v === 'end' ? 'right' : v;
+    applyDeclarationTail(s, el, prop, v);
   }
   // Inherited text style at an element: weight, slant, decorations in effect, script, color, family, size.
   function styleAt(node) {
@@ -776,12 +804,15 @@
     if (name === 'u') return !set.underline;
     return !set.strike;
   }
+  const STRIP_WEIGHT_NAMES = { __proto__: null, b: 1, strong: 1 };
+  const STRIP_STYLE_NAMES = { __proto__: null, i: 1, em: 1 };
+  const STRIP_DECORATION_NAMES = { __proto__: null, u: 1, s: 1, strike: 1 };
+  const STRIP_VALIGN_NAMES = { __proto__: null, sub: 1, sup: 1 };
   function shouldStripTag(style, name) {
-    if ('font-weight' in style && (name === 'b' || name === 'strong')) return true;
-    if ('font-style' in style && (name === 'i' || name === 'em')) return true;
-    if ('text-decoration-line' in style && (name === 'u' || name === 's' || name === 'strike') && decorationRemoves(style, name)) return true;
-    if ('vertical-align' in style && (name === 'sub' || name === 'sup')) return true;
-    return false;
+    if ('font-weight' in style && STRIP_WEIGHT_NAMES[name]) return true;
+    if ('font-style' in style && STRIP_STYLE_NAMES[name]) return true;
+    if ('text-decoration-line' in style && STRIP_DECORATION_NAMES[name] && decorationRemoves(style, name)) return true;
+    return 'vertical-align' in style && !!STRIP_VALIGN_NAMES[name];
   }
   function stripFontAttrs(style, el) {
     if ('color' in style) removeAttr(el, 'color');
@@ -1017,26 +1048,30 @@
     return startIn && endIn;
   }
   // Blink's ApplyStyleCommand::ApplyInlineStyle over [start, end].
+  function applyInlineStyleSplitStart(style, s, e) {
+    const node = s.c, parent = parentOf(node), sameNode = e.c === node;
+    splitText(node, s.o);
+    if (sameNode) e = P(node, e.o - s.o);
+    s = P(node, 0);
+    if (isElement(parent) && conflicts(style, parent) && rootEditable(parent) !== parent) splitElement(parent, node);
+    return [s, e];
+  }
+  function applyInlineStyleSplitEnd(style, s, e) {
+    const node = e.c, parent = parentOf(node);
+    const prefix = splitText(node, e.o);
+    if (s.c === node) s = P(prefix, s.o);
+    e = P(prefix, dataOf(prefix).length);
+    if (isElement(parent) && conflicts(style, parent) && rootEditable(parent) !== parent) splitElement(parent, node);
+    return [s, e];
+  }
   function applyInlineStyle(doc, style, start, end, css) {
     let s = start, e = end;
     if (styleIsEmpty(style)) return [s, e];
     const inText = p => isText(p.c) && p.o > 0 && p.o < dataOf(p.c).length;
     const splitStart = inText(s);
-    if (splitStart) {
-      const node = s.c, parent = parentOf(node), sameNode = e.c === node;
-      splitText(node, s.o);
-      if (sameNode) e = P(node, e.o - s.o);
-      s = P(node, 0);
-      if (isElement(parent) && conflicts(style, parent) && rootEditable(parent) !== parent) splitElement(parent, node);
-    }
+    if (splitStart) { const r = applyInlineStyleSplitStart(style, s, e); s = r[0]; e = r[1]; }
     const splitEnd = inText(e);
-    if (splitEnd) {
-      const node = e.c, parent = parentOf(node);
-      const prefix = splitText(node, e.o);
-      if (s.c === node) s = P(prefix, s.o);
-      e = P(prefix, dataOf(prefix).length);
-      if (isElement(parent) && conflicts(style, parent) && rootEditable(parent) !== parent) splitElement(parent, node);
-    }
+    if (splitEnd) { const r = applyInlineStyleSplitEnd(style, s, e); s = r[0]; e = r[1]; }
     removeInlineStyle(style, s, e);
     if (splitStart) { const merged = mergeStartWithPrevious(s, e); s = merged[0]; e = merged[1]; }
     if (splitEnd) { const merged = mergeEndWithNext(s, e); s = merged[0]; e = merged[1]; }
@@ -1198,16 +1233,26 @@
     for (const key in style) { const v = style[key]; if (prepareStyleKeep(key, v, at)) out[key] = v; }
     return out;
   }
+  function styleRecordDecoration(at) {
+    const d = record(); d.underline = at.underline && !at.link; d.strike = at.strike;
+    return d.underline || d.strike ? d : null;
+  }
+  function styleRecordSize(at) {
+    if (at.size === 16) return null;
+    const n = legacySizeOfPixels(at.size);
+    return legacyPixels[n] === at.size ? n : null;
+  }
   // The inline style at `node` expressed as a desired style (for type-over after a delete).
   function styleRecordAt(node) {
     const at = styleAt(node), out = record();
     if (at.weight >= 600) out['font-weight'] = 'bold';
     if (at.italic) out['font-style'] = 'italic';
-    if (at.underline || at.strike) { const d = record(); d.underline = at.underline && !at.link; d.strike = at.strike; if (d.underline || d.strike) out['text-decoration-line'] = d; }
+    if (at.underline || at.strike) { const d = styleRecordDecoration(at); if (d) out['text-decoration-line'] = d; }
     if (at.script !== 'baseline') out['vertical-align'] = at.script;
     if (at.color !== null && !at.link) out.color = at.color;
     if (at.family !== null) out['font-family'] = at.family;
-    if (at.size !== 16) { const n = legacySizeOfPixels(at.size); if (legacyPixels[n] === at.size) out['font-size'] = n; }
+    const sizeKey = styleRecordSize(at);
+    if (sizeKey !== null) out['font-size'] = sizeKey;
     if (at.background !== null) out['background-color'] = at.background;
     return out;
   }
@@ -1697,6 +1742,15 @@
     if (blocks !== 1 || nodes.length !== 1) return false;
     return blockOf((canonical(caret) || caret).c, root) === root;
   }
+  function insertHtmlFinalize(doc, root, inserted, blocks, trailingBreak) {
+    const trailingText = blocks && isText(inserted.last);
+    const endMark = trailingText ? mark(P(inserted.last, dataOf(inserted.last).length)) : mark(inserted.end);
+    mergeInsertedFirst(inserted.first);
+    if (trailingText) mergeInsertedLastText(inserted.last);
+    let end = trailingText ? marked(endMark) : (canonical(marked(endMark)) || marked(endMark));
+    if (trailingBreak) end = applyTrailingBreak(doc, root, end);
+    return end;
+  }
   function insertHTML(doc, root, sel, markup) {
     const caret = sel.caret ? sel.start : deleteRange(doc, root, sel.start, sel.end, true);
     editorOf(doc).pendingTyping = null;
@@ -1712,14 +1766,7 @@
       trailingBreak = computeTrailingBreak(nodes, blocks, caret, root);
       if (!flat.length) return caret;
     }
-    const inserted = insertNodesAt(doc, root, flat, caret, false);
-    const trailingText = blocks && isText(inserted.last);
-    const endMark = trailingText ? mark(P(inserted.last, dataOf(inserted.last).length)) : mark(inserted.end);
-    mergeInsertedFirst(inserted.first);
-    if (trailingText) mergeInsertedLastText(inserted.last);
-    let end = trailingText ? marked(endMark) : (canonical(marked(endMark)) || marked(endMark));
-    if (trailingBreak) end = applyTrailingBreak(doc, root, end);
-    return end;
+    return insertHtmlFinalize(doc, root, insertNodesAt(doc, root, flat, caret, false), blocks, trailingBreak);
   }
   function insertElement(doc, root, sel, element) {
     let caret = sel.caret ? sel.start : deleteRange(doc, root, sel.start, sel.end, true);
@@ -1916,22 +1963,24 @@
     if (listEl !== null && paragraphs.length === 1) return P(firstOf(listEl), 0);
     return null;
   }
+  function justifyTarget(doc, editor, root, cur, p, block) {
+    if (block !== root && startOfBlock(cur, p[0]) && endOfBlock(cur, p[1])) return block;
+    const iso = isolateParagraph(cur, p, block);
+    if (iso === null) return null;
+    const nodes = siblingsBetween(iso[0], iso[1]), trailing = nextOf(iso[1]);
+    const target = createElement(doc, editor.separator);
+    insertNode(target, parentOf(iso[0]), iso[0]);
+    for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], target, null);
+    if (trailing !== null && nameOf(trailing) === 'br') removeNode(trailing);
+    return target;
+  }
   function justify(doc, root, sel, value) {
     const editor = editorOf(doc), items = streamOf(root), paragraphs = paragraphsOf(items, sel);
     for (let i = 0; i < paragraphs.length; i++) {
       const cur = streamOf(root);
       const p = paragraphsOf(cur, sel)[i] || paragraphs[i];
-      const block = blockOf(cur[p[0]].n, root);
-      let target = block;
-      if (block === root || !(startOfBlock(cur, p[0]) && endOfBlock(cur, p[1]))) {
-        const iso = isolateParagraph(cur, p, block);
-        if (iso === null) continue;
-        const nodes = siblingsBetween(iso[0], iso[1]), trailing = nextOf(iso[1]);
-        target = createElement(doc, editor.separator);
-        insertNode(target, parentOf(iso[0]), iso[0]);
-        for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], target, null);
-        if (trailing !== null && nameOf(trailing) === 'br') removeNode(trailing);
-      }
+      const target = justifyTarget(doc, editor, root, cur, p, blockOf(cur[p[0]].n, root));
+      if (target === null) continue;
       const d = declarations(target), keep = list();
       for (let j = 0; j < d.length; j++) if (d[j][0] !== 'text-align') push(keep, d[j]);
       if (value !== null) push(keep, ['text-align', value]);
@@ -1939,16 +1988,23 @@
     }
   }
   const indentStyle = 'margin: 0 0 0 40px; border: none; padding: 0px;';
+  function indentParagraphNodes(cur, p, block, root) {
+    if (block !== root && startOfBlock(cur, p[0]) && endOfBlock(cur, p[1])) return { nodes: [block], ref: block };
+    const iso = isolateParagraph(cur, p, block);
+    if (iso === null) return null;
+    const nodes = siblingsBetween(iso[0], iso[1]), ref = iso[0], trailing = nextOf(iso[1]);
+    if (trailing !== null && nameOf(trailing) === 'br') removeNode(trailing);
+    return { nodes, ref };
+  }
   function indent(doc, root, sel) {
     const items = streamOf(root), paragraphs = paragraphsOf(items, sel);
     let quote = null;
     for (let i = 0; i < paragraphs.length; i++) {
       const cur = streamOf(root);
       const p = paragraphsOf(cur, sel)[i] || paragraphs[i];
-      const block = blockOf(cur[p[0]].n, root);
-      let nodes, ref;
-      if (block !== root && startOfBlock(cur, p[0]) && endOfBlock(cur, p[1])) { nodes = [block]; ref = block; }
-      else { const iso = isolateParagraph(cur, p, block); if (iso === null) continue; nodes = siblingsBetween(iso[0], iso[1]); ref = iso[0]; const trailing = nextOf(iso[1]); if (trailing !== null && nameOf(trailing) === 'br') removeNode(trailing); }
+      const picked = indentParagraphNodes(cur, p, blockOf(cur[p[0]].n, root), root);
+      if (picked === null) continue;
+      const nodes = picked.nodes, ref = picked.ref;
       if (quote === null) { quote = createElement(doc, 'blockquote'); apply(setAttrF, quote, ['style', indentStyle]); insertNode(quote, parentOf(ref), ref); }
       else if (firstOf(quote) !== null && !isBlock(lastOf(quote)) && !isBlock(nodes[0])) appendNode(createElement(doc, 'br'), quote);
       for (let j = 0; j < nodes.length; j++) moveNode(nodes[j], quote, null);
@@ -2017,6 +2073,15 @@
   }
   // Runs `body` recording its DOM primitives; registers or extends the undo step, fires `input` at the
   // editing hosts and moves the selection (Blink's Editor::AppliedEditing).
+  function finalizeEditStep(doc, editor, kind, step, result) {
+    const now = visibleSelection(doc);
+    step.end = snapshot(now);
+    editor.open = kind !== null ? step : null;
+    editor.openSelection = now === null ? null : [now.start, now.end];
+    editor.openValid = true;
+    editor.openRange = currentRange(doc);
+    updateTypingAfterEdit(editor, result, now);
+  }
   function edit(doc, kind, inputType, data, body, always) {
     const editor = editorOf(doc), sel = visibleSelection(doc);
     if (sel === null) return false;
@@ -2032,21 +2097,21 @@
     step.endRoot = endRoot;
     fireInputToRoots(startRoot, endRoot, inputType, data);
     applyEndSel(doc, endSel);
-    const now = visibleSelection(doc);
-    step.end = snapshot(now);
     if (!continuing) pushUndoStep(editor, step);
-    editor.open = kind !== null ? step : null;
-    editor.openSelection = now === null ? null : [now.start, now.end];
-    editor.openValid = true;
-    editor.openRange = currentRange(doc);
-    updateTypingAfterEdit(editor, result, now);
+    finalizeEditStep(doc, editor, kind, step, result);
     return true;
   }
   // An open typing step only continues while the selection is where the last edit left it.
+  function refreshOpenControl(doc, editor) {
+    const c = focusedControl(doc);
+    if (c === null || c.el !== editor.open.control) return false;
+    const state = controlState(c.el), after = editor.open.after;
+    return state[0] === after[0] && state[1] === after[1] && state[2] === after[2];
+  }
   function refreshOpen(doc) {
     const editor = editorOf(doc);
     if (editor.open === null) return;
-    if (editor.open.control) { const c = focusedControl(doc); editor.openValid = c !== null && c.el === editor.open.control && controlState(c.el)[0] === editor.open.after[0] && controlState(c.el)[1] === editor.open.after[1] && controlState(c.el)[2] === editor.open.after[2]; if (!editor.openValid) editor.open = null; return; }
+    if (editor.open.control) { editor.openValid = refreshOpenControl(doc, editor); if (!editor.openValid) editor.open = null; return; }
     const sel = visibleSelection(doc), last = editor.openSelection;
     editor.openValid = sel !== null && last !== null && same(sel.start, last[0]) && same(sel.end, last[1]) && currentRange(doc) === editor.openRange;
     if (!editor.openValid) editor.open = null;
@@ -2260,26 +2325,27 @@
     refreshOpen(doc);
     return edit(doc, kind, inputType, data, body, false);
   }
+  function execInsertTextLine(doc, editor, line) {
+    const sel = editableSelection(doc);
+    if (sel === null) return { stop: true };
+    if (sel.caret && !line.length) return { skip: true };
+    typingEdit(doc, 'insert', 'insertText', line, s => {
+      const typing = typingStyleFor(editor, s);
+      const end = insertTextRun(doc, s.root, s, line, typing === null ? null : prepareStyleAt(typing, s.start.c));
+      return { __proto__: null, selection: [end, end] };
+    });
+    return { skip: false };
+  }
   function execInsertText(doc, value) {
     const control = focusedControl(doc);
     if (control !== null) { refreshOpen(doc); return controlInsertText(doc, control, value); }
     const editor = editorOf(doc);
-    let sel = editableSelection(doc);
-    if (sel === null) return false;
+    if (editableSelection(doc) === null) return false;
     const lines = list(); let at = 0;
     for (;;) { const nl = find(value, '\n', at); if (nl < 0) { push(lines, sub(value, at)); break; } push(lines, sub(value, at, nl)); at = nl + 1; }
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i], last = i === lines.length - 1;
-      if (line.length || (last && i === 0)) {
-        sel = editableSelection(doc);
-        if (sel === null) return true;
-        if (sel.caret && !line.length) continue;
-        typingEdit(doc, 'insert', 'insertText', line, s => {
-          const typing = typingStyleFor(editor, s);
-          const end = insertTextRun(doc, s.root, s, line, typing === null ? null : prepareStyleAt(typing, s.start.c));
-          return { __proto__: null, selection: [end, end] };
-        });
-      }
+      if (line.length || (last && i === 0)) { const r = execInsertTextLine(doc, editor, line); if (r.stop) return true; }
       if (!last) typingEdit(doc, 'insert', 'insertText', null, s => {
         const caret = s.caret ? s.start : deleteRange(doc, s.root, s.start, s.end, true);
         const end = insertParagraph(doc, s.root, caret);
@@ -2478,19 +2544,23 @@
     if (first === lastOf(root) && nameOf(first) === 'br') return false;
     return true;
   }
+  function selectAllDispatchStart(target, root) {
+    if (target === null) return true;
+    const event = new EventType('selectstart', { __proto__: null, bubbles: true, cancelable: true });
+    if (!dispatch(target, event)) return false;
+    return connectedOf(root);
+  }
+  function selectAllRootTarget(doc, sel) {
+    if (sel !== null && sel.root !== null) { const r = highestEditableRoot(sel.root); return { root: r, target: r }; }
+    return { root: rootElementOf(doc), target: bodyOf(doc) };
+  }
   function execSelectAll(doc) {
     const control = focusedControl(doc);
     if (control !== null) return controlSelectAll(doc, control);
     const editor = editorOf(doc), sel = visibleSelection(doc);
-    let root, target;
-    if (sel !== null && sel.root !== null) { root = highestEditableRoot(sel.root); target = root; }
-    else { root = rootElementOf(doc); target = bodyOf(doc); }
+    const { root, target } = selectAllRootTarget(doc, sel);
     if (root === null) return true;
-    if (target !== null) {
-      const event = new EventType('selectstart', { __proto__: null, bubbles: true, cancelable: true });
-      if (!dispatch(target, event)) return true;
-      if (!connectedOf(root)) return true;
-    }
+    if (!selectAllDispatchStart(target, root)) return true;
     const items = streamOf(root);
     let first = null, last = null;
     for (let k = 0; k <= items.length && first === null; k++) first = forwardCandidate(items, k);
@@ -2883,8 +2953,9 @@
   });
 
   // ---- InputEvent.getTargetRanges for engine-created events -------------------------------------------------
-  const targetRangesDescriptor = getOwn(InputEventType.prototype, 'getTargetRanges');
-  if (targetRangesDescriptor && typeof targetRangesDescriptor.value === 'function') {
+  function installGetTargetRanges() {
+    const targetRangesDescriptor = getOwn(InputEventType.prototype, 'getTargetRanges');
+    if (!targetRangesDescriptor || typeof targetRangesDescriptor.value !== 'function') return;
     const original = targetRangesDescriptor.value;
     define(InputEventType.prototype, 'getTargetRanges', {
       __proto__: null, writable: true, enumerable: true, configurable: true,
@@ -2896,4 +2967,5 @@
       }, 'getTargetRanges', 0),
     });
   }
+  installGetTargetRanges();
 })();

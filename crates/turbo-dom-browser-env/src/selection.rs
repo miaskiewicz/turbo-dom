@@ -448,46 +448,66 @@ impl Flow<'_> {
             if !shown {
                 continue;
             }
-            if unit == 10 && preserve_lines {
-                if !preserve_spaces {
-                    self.end_line();
-                }
-                self.piece(Piece::Text {
-                    node,
-                    offset,
-                    unit,
-                    collapsible: false,
-                    more: [0; 2],
-                });
-                self.line_start = true;
-                self.space = false;
-            } else if !preserve_spaces && matches!(unit, 9 | 10 | 12 | 13 | 32) {
-                if !self.line_start && !self.space {
-                    self.piece(Piece::Text {
-                        node,
-                        offset,
-                        unit: 32,
-                        collapsible: true,
-                        more: [0; 2],
-                    });
-                    self.space = true;
-                }
-            } else {
-                let word_start = self.line_start || self.space || !word_unit(self.previous);
-                let (shown_unit, more) = transformed(unit, transform.as_deref(), word_start);
-                self.piece(Piece::Text {
-                    node,
-                    offset,
-                    unit: shown_unit,
-                    collapsible: false,
-                    more,
-                });
-                self.previous = unit;
-                self.line_start = false;
-                self.space = false;
-            }
+            self.emit_text_unit(
+                node,
+                offset,
+                unit,
+                transform.as_deref(),
+                preserve_spaces,
+                preserve_lines,
+            );
         }
         self.markers(node, units.len());
+    }
+
+    /// Emit one text unit for `text()` with its whitespace- and transform-driven variations.
+    fn emit_text_unit(
+        &mut self,
+        node: Handle,
+        offset: usize,
+        unit: u16,
+        transform: Option<&str>,
+        preserve_spaces: bool,
+        preserve_lines: bool,
+    ) {
+        if unit == 10 && preserve_lines {
+            if !preserve_spaces {
+                self.end_line();
+            }
+            self.piece(Piece::Text {
+                node,
+                offset,
+                unit,
+                collapsible: false,
+                more: [0; 2],
+            });
+            self.line_start = true;
+            self.space = false;
+        } else if !preserve_spaces && matches!(unit, 9 | 10 | 12 | 13 | 32) {
+            if !self.line_start && !self.space {
+                self.piece(Piece::Text {
+                    node,
+                    offset,
+                    unit: 32,
+                    collapsible: true,
+                    more: [0; 2],
+                });
+                self.space = true;
+            }
+        } else {
+            let word_start = self.line_start || self.space || !word_unit(self.previous);
+            let (shown_unit, more) = transformed(unit, transform, word_start);
+            self.piece(Piece::Text {
+                node,
+                offset,
+                unit: shown_unit,
+                collapsible: false,
+                more,
+            });
+            self.previous = unit;
+            self.line_start = false;
+            self.space = false;
+        }
     }
     fn element(&mut self, node: Handle, visible: bool) {
         let tree = self.tree;
@@ -513,43 +533,61 @@ impl Flow<'_> {
             self.space = false;
             return self.children(node, false);
         }
-        let kind = match display.as_str() {
-            "inline" | "contents" | "ruby" | "ruby-text" => None,
-            "table-cell" => Some(Kind::Cell),
-            "table-row" => Some(Kind::Row),
-            "table" => Some(Kind::Table),
-            "inline-block" | "inline-flex" | "inline-grid" | "inline-table" | "table-row-group"
-            | "table-header-group" | "table-footer-group" | "table-column"
-            | "table-column-group" => Some(Kind::Silent),
-            _ => Some(Kind::Block {
-                body: name == "body",
-                extra: tree.namespace_id(node) == 0 && name == "p",
-            }),
-        };
-        let floating = style.get("float").is_some_and(|value| value != "none")
-            || style
-                .get("position")
-                .is_some_and(|value| value == "absolute" || value == "fixed");
-        let kind = kind.map(|kind| match kind {
-            Kind::Block { .. } if floating => Kind::Silent,
-            kind => kind,
-        });
+        let kind = element_kind(tree, node, &name, &display, &style);
         if let Some(kind) = kind {
-            self.end_line();
-            if kind == Kind::Table {
-                self.events.push(Event::Edge(node, false));
-            }
-            self.events.push(Event::Start(node, kind));
-            self.children(node, true);
-            self.end_line();
-            self.events.push(Event::End(kind));
-            if kind == Kind::Table {
-                self.events.push(Event::Edge(node, true));
-            }
+            self.emit_block(node, kind);
         } else {
             self.children(node, true);
         }
     }
+
+    /// Emit the block-boundary / table-edge events for an element whose box boundary matters.
+    fn emit_block(&mut self, node: Handle, kind: Kind) {
+        self.end_line();
+        if kind == Kind::Table {
+            self.events.push(Event::Edge(node, false));
+        }
+        self.events.push(Event::Start(node, kind));
+        self.children(node, true);
+        self.end_line();
+        self.events.push(Event::End(kind));
+        if kind == Kind::Table {
+            self.events.push(Event::Edge(node, true));
+        }
+    }
+}
+
+/// Classify an element's `display` into a `Kind` (or `None` for an inline / contents / ruby
+/// box). A floated / absolutely positioned block collapses to `Silent` so its text is reached
+/// but produces no boundary events.
+fn element_kind(
+    tree: &Tree,
+    node: Handle,
+    name: &str,
+    display: &str,
+    style: &std::collections::HashMap<String, String>,
+) -> Option<Kind> {
+    let kind = match display {
+        "inline" | "contents" | "ruby" | "ruby-text" => None,
+        "table-cell" => Some(Kind::Cell),
+        "table-row" => Some(Kind::Row),
+        "table" => Some(Kind::Table),
+        "inline-block" | "inline-flex" | "inline-grid" | "inline-table" | "table-row-group"
+        | "table-header-group" | "table-footer-group" | "table-column"
+        | "table-column-group" => Some(Kind::Silent),
+        _ => Some(Kind::Block {
+            body: name == "body",
+            extra: tree.namespace_id(node) == 0 && name == "p",
+        }),
+    };
+    let floating = style.get("float").is_some_and(|value| value != "none")
+        || style
+            .get("position")
+            .is_some_and(|value| value == "absolute" || value == "fixed");
+    kind.map(|kind| match kind {
+        Kind::Block { .. } if floating => Kind::Silent,
+        kind => kind,
+    })
 }
 
 fn flow(

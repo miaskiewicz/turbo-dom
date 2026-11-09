@@ -1,7 +1,7 @@
 [package]
 name = "turbo-dom-raster"
 edition = "2021"
-version = "0.8.0"
+version = "0.8.1"
 license = "MIT"
 repository = "https://github.com/miaskiewicz/turbo-dom"
 readme = "README.md"
@@ -17,7 +17,7 @@ description = "turbo-dom synthetic screenshot tier: HTML snapshot → turbo-dom-
 # image layer: the PNG decode (`image::decode_png_rgba`), the header size probe and,
 # via `svg-rasterize`, the one SVG rasterizer (at 1x). Features explicit: its `svg`
 # feature (the PDF SVG pipeline) is never enabled from here.
-turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.8.0", default-features = false, features = [
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.8.1", default-features = false, features = [
     "bundled-fonts",
     "svg-rasterize",
 ] }

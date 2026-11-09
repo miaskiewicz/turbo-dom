@@ -12,8 +12,8 @@ use super::{
 };
 use crate::layout_snapshot::SourceId;
 use crate::style::{
-    presentational_declarations_of, resolve_matched_style, CascadeOrigin, ComputedStyle,
-    MatchedDeclaration,
+    ensure_default_display, presentational_declarations_of, resolve_matched_style, CascadeOrigin,
+    ComputedStyle, MatchedDeclaration,
 };
 use crate::tag::{Attr, Tag};
 use crate::{StyledElement, StyledNode, StyledText};
@@ -122,10 +122,17 @@ impl Styler<'_, '_> {
         source_id(self.style.tree.document, node)
     }
 
-    fn element(&self, node: Handle, parent: &ComputedStyle) -> Result<StyledElement, LiveError> {
+    /// Build the ordered declaration list: presentational attrs, quirks /
+    /// `MathML` stamps, pre-matched author rules, and finally the parsed inline
+    /// `style` attribute.
+    fn collect_declarations(
+        &self,
+        node: Handle,
+        local: &str,
+        depth: u32,
+        inline: Option<&str>,
+    ) -> Result<Vec<crate::style::MatchedDeclaration>, LiveError> {
         let tree = self.style.tree.tree;
-        let depth = (self.style.scope_depth)(node).map_err(LiveError::Embedder)?;
-        let local = tree.local_name(node).unwrap_or("");
         let mut declarations: Vec<_> = presentational_declarations_of(tree, node, local)
             .into_iter()
             .map(|declaration| author(declaration, depth, false, 0))
@@ -157,7 +164,6 @@ impl Styler<'_, '_> {
                     matched
                 }),
         );
-        let inline = self.inline_style(node);
         if let Some(inline) = inline {
             let parsed = (self.style.inline_declarations)(inline).map_err(LiveError::Embedder)?;
             declarations.extend(
@@ -166,7 +172,48 @@ impl Styler<'_, '_> {
                     .map(|declaration| author(declaration, depth, true, usize::MAX)),
             );
         }
+        Ok(declarations)
+    }
+
+    fn element(&self, node: Handle, parent: &ComputedStyle) -> Result<StyledElement, LiveError> {
+        let tree = self.style.tree.tree;
+        let depth = (self.style.scope_depth)(node).map_err(LiveError::Embedder)?;
+        let local = tree.local_name(node).unwrap_or("");
+        let inline = self.inline_style(node);
+        let declarations = self.collect_declarations(node, local, depth, inline)?;
         let mut style = resolve_matched_style(parent, &declarations);
+        // Chrome's `html.css` `display: block` for known block tags
+        // (miaskiewicz/turbo-dom#395): the CSS initial `display` is `inline`
+        // (#375), so with no UA origin to carry the UA rule an embedder's
+        // inline-override `width` on a `<div>` would collapse to a zero-sized
+        // inline. Fall back to the HTML default when no declaration set it; a
+        // UA rule in the pre-matched origins still wins, and unknown tags stay
+        // inline.
+        ensure_default_display(&mut style, local);
+        // Review R2 layout H1 continuation + R3 M5: Chrome's UA has
+        // `input[type=hidden] { display: none }` with specificity
+        // (0, 1, 1), which outranks an author `input { display: block }`
+        // (0, 0, 1). `ensure_default_display` is attribute-blind, so an
+        // `<input type=hidden>` under the live-input path (no UA origin)
+        // would otherwise paint its `inline-block` text-field box — and
+        // an author rule that sets `display` to anything else (`block` /
+        // `flex` / `grid`) would still win over the previous narrow
+        // guard. Stamp `display: none` unconditionally when the element
+        // is `input` with a `type` attribute whose ASCII-lowercase value
+        // is `hidden`: this represents the UA rule, and a Chrome cascade
+        // only lets an AUTHOR [type=hidden] rule override it — such a
+        // rule would already be in `declarations` as a user-supplied
+        // override, which this live-input path sees in `inline_style`
+        // (handled separately) but not through a stylesheet match
+        // without an embedder UA origin. Attribute match is
+        // case-insensitive like Chrome's `i` modifier.
+        if local == "input"
+            && tree
+                .get_attribute(node, "type")
+                .is_some_and(|v| v.eq_ignore_ascii_case("hidden"))
+        {
+            style.set("display", "none".to_string());
+        }
         if self.capture.quirks {
             style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
             if matches!(local, "body" | "td" | "th") {

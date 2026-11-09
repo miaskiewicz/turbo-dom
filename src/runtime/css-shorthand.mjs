@@ -109,15 +109,30 @@ function tokReadUrlEscape(text, state) {
   if (state.i < n) { const value = text[state.i]; state.i++; return value; }
   return '\ufffd';
 }
+// Handle a single body char `d` at state.i: either append-decoded text or return a
+// terminating/error result (`stop: true` ends the loop; `err: true` rejects the url).
+function tokReadUrlBodyStep(text, state, n, d) {
+  if (/\s/.test(d)) {
+    while (state.i < n && /\s/.test(text[state.i])) state.i++;
+    if (state.i < n && text[state.i] !== ')') return { err: true };
+    return { stop: true };
+  }
+  if (d === '"' || d === "'" || d === '(') return { err: true };
+  if (d === '\\') {
+    const escaped = tokReadUrlEscape(text, state);
+    return escaped === null ? { err: true } : { add: escaped };
+  }
+  state.i++;
+  return { add: d };
+}
 function tokReadUrlBody(text, state) {
   const n = text.length;
   let value = '';
   while (state.i < n && text[state.i] !== ')') {
-    const d = text[state.i];
-    if (/\s/.test(d)) { while (state.i < n && /\s/.test(text[state.i])) state.i++; if (state.i < n && text[state.i] !== ')') return null; break; }
-    if (d === '"' || d === "'" || d === '(') return null;
-    if (d === '\\') { const escaped = tokReadUrlEscape(text, state); if (escaped === null) return null; value += escaped; continue; }
-    value += d; state.i++;
+    const r = tokReadUrlBodyStep(text, state, n, text[state.i]);
+    if (r.err) return null;
+    if (r.stop) break;
+    value += r.add;
   }
   if (state.i < n) state.i++;
   return { type: 'url', value };
@@ -397,6 +412,17 @@ function argumentsType(inner) {
   }
   return total;
 }
+// The comma-separated legacy syntax: `rgb(r, g, b)` or `rgb(r, g, b, a)`.
+function rgbHslLegacyValid(inner, commasCount) {
+  return (commasCount === 2 || commasCount === 3)
+    && inner.length === 2 * commasCount + 1
+    && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
+}
+// Modern slash-separated or three-channel body.
+function rgbHslModernValid(inner) {
+  const slash = inner.findIndex((c) => c.kind === 'slash');
+  return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
+}
 function rgbHslValid(name, inner) {
   const commasCount = inner.filter((c) => c.kind === 'comma').length;
   // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
@@ -404,9 +430,7 @@ function rgbHslValid(name, inner) {
   // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
   const hue = (c) => c.kind === 'number' || (c.kind === 'dimension' && unitCategory(c.unit) === 2) || (commasCount === 0 && isIdent(c, ['none'])) || (isMath(c) && ['number', 'unit2', 'unknown'].includes(mathType(c)));
   if (name.startsWith('hsl') && inner.length && !hue(inner[0])) return false;
-  if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
-  const slash = inner.findIndex((c) => c.kind === 'slash');
-  return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
+  return commasCount ? rgbHslLegacyValid(inner, commasCount) : rgbHslModernValid(inner);
 }
 function linearValid(inner) {
   // Each stop: a number output and at most two percentage positions.
@@ -426,14 +450,20 @@ function cubicBezierValid(inner) {
   return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
 }
 const COLOR_FN_NAMES = new Set(['rgb', 'rgba', 'hsl', 'hsla']);
+// `min()` / `max()` / `clamp()` / `abs()` / `sign()`: each with its own arity + argument
+// structure check.
+function mathFunctionValid(name, inner) {
+  if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
+  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
+  return !inner.some(isComma) && checkedSum(inner) !== null;
+}
+const MATH_MULTI_ARG = new Set(['min', 'max', 'clamp', 'abs', 'sign']);
 /**
  * Structural checks Chrome makes before keeping a function.
  */
 function functionValid(name, inner) {
   if (name === 'calc') return checkedSum(inner) !== null;
-  if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
-  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
-  if (name === 'abs' || name === 'sign') return !inner.some(isComma) && checkedSum(inner) !== null;
+  if (MATH_MULTI_ARG.has(name)) return mathFunctionValid(name, inner);
   if (COLOR_FN_NAMES.has(name)) return rgbHslValid(name, inner);
   if (name === 'linear') return linearValid(inner);
   if (name === 'steps') return stepsValid(inner);
@@ -559,11 +589,17 @@ function arcRadii(rest, parts) {
   parts.radii = values.join(' ');
   return values.length && values.length + 1;
 }
+// Map an arc-part keyword to its grouping flag (sweep / size), or null when it is not a flag.
+function arcFlag(word) {
+  if (word === 'cw' || word === 'ccw') return 'sweep';
+  if (word === 'large' || word === 'small') return 'size';
+  return null;
+}
 /** One arc part at the front of `rest` into `parts`: the components it used, or 0. */
 function arcPart(rest, parts) {
   const word = ident(rest[0]);
   if (word === 'of' && parts.radii === undefined) return arcRadii(rest, parts);
-  const flag = (word === 'cw' || word === 'ccw') ? 'sweep' : (word === 'large' || word === 'small') ? 'size' : null;
+  const flag = arcFlag(word);
   if (flag && parts[flag] === undefined) { parts[flag] = word; return 1; }
   if (word === 'rotate' && parts.rotate === undefined && rest[1] && angleStrict(rest[1]) !== null) { parts.rotate = rest[1]; return 2; }
   return 0;
@@ -607,19 +643,25 @@ function shapeCommand(comps) {
   if (text === null || text === undefined) return null;
   return text ? `${name} ${text}` : name;
 }
+// Parse the first item of a `shape()` body: its optional fill rule and `from <position>`.
+// Returns { rule, from } or null when Chrome rejects the head.
+function shapeHead(headIn) {
+  let head = headIn;
+  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
+  if (rule) head = head.slice(1);
+  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
+  return from === null ? null : { rule, from };
+}
 /** A `shape()` function in Chrome's spelling, or null when Chrome rejects it. */
 function shapeText(comp) {
   const items = split(innerOf(comp), isComma);
   // One trailing comma is dropped.
   if (items.length > 2 && !items[items.length - 1].length) items.pop();
-  let head = items[0];
-  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
-  if (rule) head = head.slice(1);
-  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
-  if (from === null || items.length < 2) return null;
-  const parts = [`from ${from}`];
+  const head = shapeHead(items[0]);
+  if (head === null || items.length < 2) return null;
+  const parts = [`from ${head.from}`];
   for (const item of items.slice(1)) { const command = shapeCommand(item); if (command === null) return null; parts.push(command); }
-  return `shape(${rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
+  return `shape(${head.rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
 }
 /** `shape() || <box>` (`fallback` left out), or null when `comps` hold no valid shape(). */
 function shapeWithBox(comps, boxes, fallback) {
@@ -657,6 +699,14 @@ function treeOperand(comp) {
   if (comp.text.startsWith('calc(')) return treeSum(components(comp.text.slice(5, -1)));
   return { kind: 'function', text: comp.text };
 }
+// Fold one term of a sum (its sign, its expression) into the running literals + rest.
+function treeSumFold(expr, literals, rest, negative) {
+  if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
+  else if (expr.kind === 'sum') {
+    addTerms(literals, expr.literals, negative);
+    for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]);
+  } else rest.push([negative, expr]);
+}
 /** A checked `calc()` sum: operands at even positions, operators between them. */
 function treeSum(comps) {
   const literals = [], rest = [];
@@ -664,10 +714,7 @@ function treeSum(comps) {
   for (let index = 1; index <= comps.length; index += 2) {
     const next = comps[index];
     if (next && !(next.kind === 'delim' && (next.value === '+' || next.value === '-'))) continue;
-    const expr = treeProduct(comps.slice(start, index));
-    if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
-    else if (expr.kind === 'sum') { addTerms(literals, expr.literals, negative); for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]); }
-    else rest.push([negative, expr]);
+    treeSumFold(treeProduct(comps.slice(start, index)), literals, rest, negative);
     negative = !!next && next.value === '-';
     start = index + 1;
   }
@@ -699,21 +746,28 @@ function treeProduct(comps) {
   return { kind: 'product', coefficient, factors };
 }
 const literalText = (terms) => calcText(terms.map((term) => [...term])).slice(5, -1);
+// Render a tree-counting sum's body (the literal terms plus each signed `rest` term).
+function treeSumBody(expr) {
+  let body = expr.literals.length ? literalText(expr.literals) : '';
+  // The first term is never subtracted.
+  for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
+  return body;
+}
+// Render a tree-counting product's body (the coefficient plus each factor with `*` / `/`).
+function treeProductBody(expr) {
+  const [unit, value] = expr.coefficient;
+  // A unitless 1 is left out before a multiplied factor.
+  let body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
+  for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
+  return body;
+}
 /** `calc()`'s text without the wrapper; `(...)` around a nested sum or product. */
 function treeText(expr, grouped) {
   if (expr.kind === 'function') return expr.text;
   let body;
   if (expr.kind === 'literal') body = literalText(expr.terms);
-  else if (expr.kind === 'sum') {
-    body = expr.literals.length ? literalText(expr.literals) : '';
-    // The first term is never subtracted.
-    for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
-  } else {
-    const [unit, value] = expr.coefficient;
-    // A unitless 1 is left out before a multiplied factor.
-    body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
-    for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
-  }
+  else if (expr.kind === 'sum') body = treeSumBody(expr);
+  else body = treeProductBody(expr);
   return grouped ? `(${body})` : body;
 }
 /** `calc(<sum>)` holding a tree-counting function: a lone function without the wrapper. */
@@ -755,41 +809,65 @@ function hexColor(hex) {
   else return null;
   return rgbText(pairs.slice(0, 3), pairs.length > 3 ? pairs[3] / 255 : 1);
 }
-/** `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax. */
-function colorFunction(name, inner) {
-  // functionValid admitted three channels and an optional alpha, or the relative syntax (kept as written).
-  const values = inner.filter((c) => c.kind !== 'comma' && c.kind !== 'slash');
-  if (values.length > 4) return null;
-  const parts = values.slice(0, 3), alphaPart = values[3] ?? null;
+// A channel accessor pair ({num, pct}) over `inner`'s value components. Shared between the
+// alpha reader, rgb-channel reader, and hsl's hue/sat/light readers.
+function colorChannelReaders() {
   // A channel: a literal, `none` (zero) or a math function that computes to one.
   const computed = (c, unit) => {
     if (isIdent(c, ['none'])) return 0;
     const term = mathValue(c);
     return term && term[0] === unit ? term[1] : null;
   };
-  const num = (c) => (c.kind === 'number' ? c.value : computed(c, ''));
-  const pct = (c) => (c.kind === 'percentage' ? c.value : computed(c, '%'));
-  let alpha = 1;
-  if (alphaPart !== null) { const n = num(alphaPart); const p = pct(alphaPart); if (n !== null) alpha = n; else if (p !== null) alpha = p / 100; else return null; }
-  let channels;
-  if (name.startsWith('rgb')) {
-    channels = parts.map((c) => { const n = num(c); if (n !== null) return n; const p = pct(c); return p === null ? null : p * 2.55; });
-    if (channels.some((c) => c === null)) return null;
-  } else {
-    const h = parts[0];
-    let hue;
-    const turns = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
-    // functionValid admitted a number, an angle, `none` or a math function hue.
-    if (h.kind === 'number') hue = h.value; else if (h.kind === 'dimension') hue = h.value * turns[h.unit]; else hue = computed(h, '') ?? computed(h, 'deg');
-    if (hue === null) return null;
-    const sat = pct(parts[1]), light = pct(parts[2]);
-    if (sat === null || light === null) return null;
-    const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
-    const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
-    const channel = (t) => { t = ((t % 1) + 1) % 1; return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p); };
-    channels = [channel(H + 1 / 3), channel(H), channel(H - 1 / 3)];
-  }
-  return rgbText(channels, alpha);
+  return {
+    computed,
+    num: (c) => (c.kind === 'number' ? c.value : computed(c, '')),
+    pct: (c) => (c.kind === 'percentage' ? c.value : computed(c, '%')),
+  };
+}
+function colorAlpha(alphaPart, readers) {
+  if (alphaPart === null) return 1;
+  const n = readers.num(alphaPart);
+  if (n !== null) return n;
+  const p = readers.pct(alphaPart);
+  return p === null ? null : p / 100;
+}
+function rgbChannels(parts, readers) {
+  const channels = parts.map((c) => {
+    const n = readers.num(c);
+    if (n !== null) return n;
+    const p = readers.pct(c);
+    return p === null ? null : p * 2.55;
+  });
+  return channels.some((c) => c === null) ? null : channels;
+}
+const HUE_TURNS = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
+function hslHue(h, readers) {
+  // functionValid admitted a number, an angle, `none` or a math function hue.
+  if (h.kind === 'number') return h.value;
+  if (h.kind === 'dimension') return h.value * HUE_TURNS[h.unit];
+  return readers.computed(h, '') ?? readers.computed(h, 'deg');
+}
+function hslChannels(parts, readers) {
+  const hue = hslHue(parts[0], readers);
+  if (hue === null) return null;
+  const sat = readers.pct(parts[1]), light = readers.pct(parts[2]);
+  if (sat === null || light === null) return null;
+  const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
+  const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
+  const channel = (t) => { t = ((t % 1) + 1) % 1; return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p); };
+  return [channel(H + 1 / 3), channel(H), channel(H - 1 / 3)];
+}
+/** `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax. */
+function colorFunction(name, inner) {
+  // functionValid admitted three channels and an optional alpha, or the relative syntax (kept as written).
+  const values = inner.filter((c) => c.kind !== 'comma' && c.kind !== 'slash');
+  if (values.length > 4) return null;
+  const parts = values.slice(0, 3), alphaPart = values[3] ?? null;
+  const readers = colorChannelReaders();
+  const alpha = colorAlpha(alphaPart, readers);
+  if (alpha === null) return null;
+  const channels = name.startsWith('rgb') ? rgbChannels(parts, readers) : hslChannels(parts, readers);
+  return channels === null ? null : rgbText(channels, alpha);
 }
 /** `lab()` / `lch()` / `oklab()` / `oklch()`: a percentage lightness spelled as a number. */
 function labFunction(name, inner) {
@@ -907,36 +985,40 @@ function readFunctionComponent(name, inner) {
   return { kind: 'function', name, text };
 }
 
+// Read a function token's body into one component; `null` when the body is malformed.
+function readFunctionToken(token, tokens, state) {
+  const name = token.name.toLowerCase();
+  const inner = read(tokens, state, ')');
+  if (inner === null) return null;
+  return readFunctionComponent(name, inner);
+}
+// Read a `(` / `[` block's body into one component; `null` on an unmatched / `{` opener.
+function readOpenToken(token, tokens, state) {
+  if (token.value === '{') return null;
+  const closer = token.value === '(' ? ')' : ']';
+  const inner = read(tokens, state, closer);
+  if (inner === null) return null;
+  return { kind: 'function', name: token.value, text: `${token.value}${join(inner)}${closer}` };
+}
 /** Tokens -> components (a function / block is one component); `null` on bad input. */
 function read(tokens, state, close) {
   const out = [];
   while (state.at < tokens.length) {
     const token = tokens[state.at++];
     if (token.type === 'ws') continue;
-    if (token.type === 'delim') { const comp = readDelim(token); if (!comp) return null; out.push(comp); continue; }
-    if (token.type === 'function') {
-      const name = token.name.toLowerCase();
-      const inner = read(tokens, state, ')');
-      if (inner === null) return null;
-      const comp = readFunctionComponent(name, inner);
-      if (!comp) return null;
-      out.push(comp);
-      continue;
-    }
-    if (token.type === 'open') {
-      if (token.value === '{') return null;
-      const closer = token.value === '(' ? ')' : ']';
-      const inner = read(tokens, state, closer);
-      if (inner === null) return null;
-      out.push({ kind: 'function', name: token.value, text: `${token.value}${join(inner)}${closer}` });
-      continue;
-    }
     if (token.type === 'close') return token.value === close ? out : null;
-    const simple = readSimpleComponent(token);
-    if (!simple) return null;
-    out.push(simple);
+    const comp = readTokenComponent(token, tokens, state);
+    if (comp === null) return null;
+    out.push(comp);
   }
   return out;
+}
+// Dispatch: one token (not ws / close) to its component, via the appropriate reader.
+function readTokenComponent(token, tokens, state) {
+  if (token.type === 'delim') return readDelim(token) || null;
+  if (token.type === 'function') return readFunctionToken(token, tokens, state);
+  if (token.type === 'open') return readOpenToken(token, tokens, state);
+  return readSimpleComponent(token) || null;
 }
 
 /** Tokenize a declaration value into components; `null` for unbalanced or bad input. */
@@ -1389,32 +1471,35 @@ function columns(comps) {
   return [['column-width', parsed.width ?? 'auto'], ['column-count', parsed.count ?? 'auto'], ['column-height', height ?? 'auto'], ['column-wrap', 'auto']];
 }
 
+const CONTAINER_NAME_RESERVED = ['none', 'and', 'or', 'not'];
+function containerName(names) {
+  if (names.length === 1) {
+    if (isIdent(names[0], ['none'])) return 'none';
+    return customIdent(names[0], CONTAINER_NAME_RESERVED);
+  }
+  const list = names.map((c) => customIdent(c, CONTAINER_NAME_RESERVED));
+  return list.some((v) => v === null) ? null : list.join(' ');
+}
+const CONTAINER_TYPE_KEYWORDS = ['normal', 'size', 'inline-size', 'scroll-state', 'anchored'];
+const CONTAINER_TYPE_COMPOUND = ['size', 'inline-size', 'scroll-state', 'anchored'];
+function containerType(kind) {
+  if (kind === null) return 'normal';
+  if (kind.length === 1) return keyword(kind[0], CONTAINER_TYPE_KEYWORDS);
+  const list = kind.map((c) => keyword(c, CONTAINER_TYPE_COMPOUND));
+  // Each keyword once, and at most one of size / inline-size.
+  if (list.some((v, index) => v === null || list.indexOf(v) !== index) || list.filter((v) => v.endsWith('size')).length > 1) return null;
+  return list.join(' ');
+}
 function container(comps) {
   const parts = slashes(comps);
   let names, kind = null;
   if (parts.length === 1) names = parts[0];
   else if (parts.length === 2 && parts[1].length) { names = parts[0]; kind = parts[1]; }
   else return null;
-  let name;
-  if (names.length === 1) {
-    if (isIdent(names[0], ['none'])) name = 'none';
-    else { name = customIdent(names[0], ['none', 'and', 'or', 'not']); if (name === null) return null; }
-  } else {
-    const list = names.map((c) => customIdent(c, ['none', 'and', 'or', 'not']));
-    if (list.some((v) => v === null)) return null;
-    name = list.join(' ');
-  }
+  const name = containerName(names);
   if (!name) return null;
-  let type;
-  if (kind === null) type = 'normal';
-  else if (kind.length === 1) { type = keyword(kind[0], ['normal', 'size', 'inline-size', 'scroll-state', 'anchored']); if (type === null) return null; }
-  else {
-    const list = kind.map((c) => keyword(c, ['size', 'inline-size', 'scroll-state', 'anchored']));
-    // Each keyword once, and at most one of size / inline-size.
-    if (list.some((v, index) => v === null || list.indexOf(v) !== index) || list.filter((v) => v.endsWith('size')).length > 1) return null;
-    type = list.join(' ');
-  }
-  return [['container-name', name], ['container-type', type]];
+  const type = containerType(kind);
+  return type === null ? null : [['container-name', name], ['container-type', type]];
 }
 
 function whiteSpace(comps) {
@@ -1611,18 +1696,26 @@ const reserved = (name, extra) => { const lower = name.toLowerCase(); return CSS
  */
 const familyText = (name) => (/^-?[A-Za-z_\u0080-\uffff][A-Za-z0-9_\-\u0080-\uffff]*$/.test(name) && !reserved(name, GENERIC_FAMILIES) ? name : quoted(name));
 const familyString = (comp) => familyText(comp.value);
+// Is `c` at `index` of `chars` a code point CSSOM serializes as its hex escape?
+function serializeIdentifierHexEscape(c, code, index, chars) {
+  if ((code >= 1 && code <= 0x1f) || code === 0x7f) return true;
+  if (index === 0 && /[0-9]/.test(c)) return true;
+  return index === 1 && /[0-9]/.test(c) && chars[0] === '-';
+}
+// One serialize-identifier char. `chars` is the pre-split code-point array (for lookbehind).
+function serializeIdentifierChar(c, index, chars) {
+  const code = c.codePointAt(0);
+  if (code === 0) return '\ufffd';
+  if (serializeIdentifierHexEscape(c, code, index, chars)) return `\\${code.toString(16)} `;
+  if (index === 0 && c === '-' && chars.length === 1) return '\\-';
+  if (code >= 0x80 || /[-_0-9A-Za-z]/.test(c)) return c;
+  return `\\${c}`;
+}
 /** CSSOM "serialize an identifier". */
 function serializeIdentifier(text) {
   const chars = [...text];
   let out = '';
-  chars.forEach((c, index) => {
-    const code = c.codePointAt(0);
-    if (code === 0) out += '\ufffd';
-    else if ((code >= 1 && code <= 0x1f) || code === 0x7f || (index === 0 && /[0-9]/.test(c)) || (index === 1 && /[0-9]/.test(c) && chars[0] === '-')) out += `\\${code.toString(16)} `;
-    else if (index === 0 && c === '-' && chars.length === 1) out += '\\-';
-    else if (code >= 0x80 || /[-_0-9A-Za-z]/.test(c)) out += c;
-    else out += `\\${c}`;
-  });
+  chars.forEach((c, index) => { out += serializeIdentifierChar(c, index, chars); });
   return out;
 }
 /** A quoted animation name: an identifier unless it is empty (invalid) or reads as `none`, a CSS-wide keyword or `default` (kept quoted). */
@@ -1668,25 +1761,32 @@ function fontWeightSlot(comp) {
   const value = keyword(comp, ['bold', 'bolder', 'lighter']) ?? (comp.kind === 'number' && comp.value >= 1 && comp.value <= 1000 ? number(comp, false) : null);
   return value === null ? null : { value, used: 1 };
 }
-function fontLeading(comps) {
-  let style = null, caps = null, weight = null, stretch = null, at = 0;
-  while (at < comps.length && at < 4) {
-    const comp = comps[at];
-    if (isIdent(comp, ['normal'])) { at++; continue; }
-    if (style === null) {
-      const s = fontStyleSlot(comps, at);
-      if (s === 'bad') return null;
-      if (s) { style = s.value; at += s.used; continue; }
-    }
-    if (caps === null) { const value = keyword(comp, ['small-caps']); if (value !== null) { caps = value; at++; continue; } }
-    if (weight === null) {
-      const w = fontWeightSlot(comp);
-      if (w) { weight = w.value; at++; continue; }
-    }
-    if (stretch === null) { const value = keyword(comp, STRETCHES); if (value !== null) { stretch = value; at++; continue; } }
-    break;
+// Try one unfilled leading slot at `comps[at]`. Returns { value, used, slot, bad } when the
+// slot matched (or found an invalid style run), else null for "try the next slot".
+function fontLeadingSlot(comps, at, acc) {
+  const comp = comps[at];
+  if (acc.style === null) {
+    const s = fontStyleSlot(comps, at);
+    if (s === 'bad') return { bad: true };
+    if (s) return { slot: 'style', value: s.value, used: s.used };
   }
-  return { style, caps, weight, stretch, at };
+  if (acc.caps === null) { const value = keyword(comp, ['small-caps']); if (value !== null) return { slot: 'caps', value, used: 1 }; }
+  if (acc.weight === null) { const w = fontWeightSlot(comp); if (w) return { slot: 'weight', value: w.value, used: 1 }; }
+  if (acc.stretch === null) { const value = keyword(comp, STRETCHES); if (value !== null) return { slot: 'stretch', value, used: 1 }; }
+  return null;
+}
+function fontLeading(comps) {
+  const acc = { style: null, caps: null, weight: null, stretch: null };
+  let at = 0;
+  while (at < comps.length && at < 4) {
+    if (isIdent(comps[at], ['normal'])) { at++; continue; }
+    const r = fontLeadingSlot(comps, at, acc);
+    if (!r) break;
+    if (r.bad) return null;
+    acc[r.slot] = r.value;
+    at += r.used;
+  }
+  return { ...acc, at };
 }
 function fontSizeAndLineHeight(comps, at) {
   const sizeComp = comps[at];
@@ -1901,34 +2001,40 @@ function gridTemplate(comps) {
   const areasValue = areasText(parsed.areas);
   return areasValue === null ? null : [mergeTrackNames(parsed.tracks).join(' '), split.cols ?? 'none', areasValue];
 }
+// Split one grid side into { dense, rest } when it carries an `auto-flow` keyword; else null.
+function gridAutoFlow(side) {
+  let flow = false, dense = false;
+  const rest = [];
+  for (const comp of side) {
+    if (isIdent(comp, ['auto-flow']) && !flow) flow = true;
+    else if (isIdent(comp, ['dense']) && !dense) dense = true;
+    else rest.push(comp);
+  }
+  return flow ? [dense, rest] : null;
+}
+// `auto-flow` on one side → the `rows auto-flow` or `columns auto-flow` shorthand.
+function gridAutoFlowShorthand(rows, cols) {
+  const r = gridAutoFlow(rows);
+  if (r) {
+    const auto = r[1].length ? trackList(r[1]) : 'auto';
+    const c = trackList(cols);
+    if (auto === null || c === null) return null;
+    return [['grid-template-columns', c], ['grid-template-rows', 'none'], ['grid-template-areas', 'none'], ['grid-auto-flow', r[0] ? 'dense' : 'row'], ['grid-auto-columns', 'auto'], ['grid-auto-rows', auto]];
+  }
+  const k = gridAutoFlow(cols);
+  if (k) {
+    const auto = k[1].length ? trackList(k[1]) : 'auto';
+    const t = trackList(rows);
+    if (auto === null || t === null) return null;
+    return [['grid-template-columns', 'none'], ['grid-template-rows', t], ['grid-template-areas', 'none'], ['grid-auto-flow', k[0] ? 'column dense' : 'column'], ['grid-auto-columns', auto], ['grid-auto-rows', 'auto']];
+  }
+  return null;
+}
 function grid(comps) {
   const parts = slashes(comps);
-  const autoFlow = (side) => {
-    let flow = false, dense = false;
-    const rest = [];
-    for (const comp of side) {
-      if (isIdent(comp, ['auto-flow']) && !flow) flow = true;
-      else if (isIdent(comp, ['dense']) && !dense) dense = true;
-      else rest.push(comp);
-    }
-    return flow ? [dense, rest] : null;
-  };
   if (parts.length === 2) {
-    const [rows, cols] = parts;
-    const r = autoFlow(rows);
-    if (r) {
-      const auto = r[1].length ? trackList(r[1]) : 'auto';
-      const c = trackList(cols);
-      if (auto === null || c === null) return null;
-      return [['grid-template-columns', c], ['grid-template-rows', 'none'], ['grid-template-areas', 'none'], ['grid-auto-flow', r[0] ? 'dense' : 'row'], ['grid-auto-columns', 'auto'], ['grid-auto-rows', auto]];
-    }
-    const k = autoFlow(cols);
-    if (k) {
-      const auto = k[1].length ? trackList(k[1]) : 'auto';
-      const t = trackList(rows);
-      if (auto === null || t === null) return null;
-      return [['grid-template-columns', 'none'], ['grid-template-rows', t], ['grid-template-areas', 'none'], ['grid-auto-flow', k[0] ? 'column dense' : 'column'], ['grid-auto-columns', auto], ['grid-auto-rows', 'auto']];
-    }
+    const flow = gridAutoFlowShorthand(parts[0], parts[1]);
+    if (flow) return flow;
   }
   if (comps.some((c) => isIdent(c, ['auto-flow', 'dense']))) return null;
   const template = gridTemplate(comps);
@@ -2021,21 +2127,31 @@ function rotatePart(comps) {
   const kw2 = comps[1] ? keyword(comps[1], ['auto', 'reverse']) : null;
   return kw2 !== null ? [2, `${kw2} ${a}`] : [1, a];
 }
+// Tokenize one path-data character into `state` ({ tokens, current }).
+function pathTextStep(state, c) {
+  if (/[A-Za-z]/.test(c) && c !== 'e' && c !== 'E') {
+    if (state.current) { state.tokens.push(state.current); state.current = ''; }
+    state.tokens.push(c);
+    return;
+  }
+  if (/\s/.test(c) || c === ',') {
+    if (state.current) { state.tokens.push(state.current); state.current = ''; }
+    return;
+  }
+  if (c === '-' && state.current && !/[eE]$/.test(state.current)) {
+    state.tokens.push(state.current); state.current = c; return;
+  }
+  state.current += c;
+}
 function pathText(text) {
   // pathDataValid found the quoted data.
   const start = text.indexOf('"');
   const end = text.lastIndexOf('"');
   const inner = text.slice(start + 1, end > start ? end : text.length);
-  const tokens = [];
-  let current = '';
-  for (const c of inner) {
-    if (/[A-Za-z]/.test(c) && c !== 'e' && c !== 'E') { if (current) { tokens.push(current); current = ''; } tokens.push(c); }
-    else if (/\s/.test(c) || c === ',') { if (current) { tokens.push(current); current = ''; } }
-    else if (c === '-' && current && !/[eE]$/.test(current)) { tokens.push(current); current = c; }
-    else current += c;
-  }
-  if (current) tokens.push(current);
-  return `${text.slice(0, start)}"${tokens.join(' ')}")`;
+  const state = { tokens: [], current: '' };
+  for (const c of inner) pathTextStep(state, c);
+  if (state.current) state.tokens.push(state.current);
+  return `${text.slice(0, start)}"${state.tokens.join(' ')}")`;
 }
 function offsetAnchor(anchorPart) {
   if (anchorPart === null) return 'auto';
@@ -2083,7 +2199,9 @@ function offset(comps) {
   if (!pos) return null;
   const path = offsetPathPart(main, pos.at);
   if (!path) return null;
-  if (path.at !== main.length || (!main.length && parts.length === 1)) return null;
+  // The `[/ <offset-anchor>]?` tail needs a leading position-or-path group: `offset: /
+  // center` and `offset: / auto` are rejected like `offset:` alone (turbo-dom#391).
+  if (path.at !== main.length || !main.length) return null;
   return [['offset-position', pos.value], ['offset-path', path.path], ['offset-distance', path.distance], ['offset-rotate', path.rotate], ['offset-anchor', anchor]];
 }
 function repeatStyle(comps) {
@@ -2551,6 +2669,20 @@ function backgroundText(v) {
   }
   return out.join(', ');
 }
+// The `mask` position/size run: Blink's position-before-size starts the layer with a space.
+function maskPosText(hasImage, item, size, x, y) {
+  if (!item(1) && !item(2) && !size) return '';
+  if (!item(1) && !item(2) && !hasImage) return ` ${x} ${y} / ${size}`;
+  return size ? `${x} ${y} / ${size}` : `${x} ${y}`;
+}
+// origin/clip pair → the serialized box run.
+function maskBoxesText(origin, clip) {
+  if (origin === 'border-box' && clip === 'border-box') return '';
+  if (origin === clip) return origin;
+  // `no-clip` is a clip-only keyword: it reads back without the default origin.
+  if (origin === 'border-box' && clip === 'no-clip') return clip;
+  return `${origin} ${clip}`;
+}
 function maskText(v) {
   const names = [['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'], ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'], ['mask-mode', 'match-source']];
   const columns = names.map(([name]) => layers(v(name)));
@@ -2562,11 +2694,8 @@ function maskText(v) {
     const item = (column) => { const value = raw(column); return value === names[column][1] || value === INITIAL ? '' : value; };
     const part = (column, initial) => (raw(column) === INITIAL ? initial : raw(column));
     const size = item(3), x = part(1, '0%'), y = part(2, '0%');
-    // Blink's position before a size starts its layer with a space.
-    const pos = !item(1) && !item(2) && !size ? '' : !item(1) && !item(2) && !item(0) ? ` ${x} ${y} / ${size}` : size ? `${x} ${y} / ${size}` : `${x} ${y}`;
-    const origin = part(5, 'border-box'), clip = part(6, 'border-box');
-    // `no-clip` is a clip-only keyword: it reads back without the default origin.
-    const boxes = origin === 'border-box' && clip === 'border-box' ? '' : origin === clip ? origin : origin === 'border-box' && clip === 'no-clip' ? clip : `${origin} ${clip}`;
+    const pos = maskPosText(item(0), item, size, x, y);
+    const boxes = maskBoxesText(part(5, 'border-box'), part(6, 'border-box'));
     out.push(joined([item(0), pos, item(4), boxes, item(7), item(8)]) || 'none');
   }
   return out.join(', ');
@@ -3184,6 +3313,10 @@ add(['max-width', 'max-height', 'max-block-size', 'max-inline-size'], maxSizeV);
 add(['column-count'], (c) => single(c, (x) => keyword(x, ['auto']) ?? integer(x, 1)));
 add(['column-width', 'column-height'], (c) => single(c, (x) => keyword(x, ['auto']) ?? length(x, false)));
 add(['column-wrap'], (c) => keywords(c, ['auto', 'nowrap', 'wrap']));
+add(['column-span'], (c) => keywords(c, ['none', 'all']));
+add(['column-fill'], (c) => keywords(c, ['auto', 'balance']));
+add(['break-before', 'break-after'], (c) => keywords(c, ['auto', 'avoid', 'avoid-page', 'page', 'left', 'right', 'recto', 'verso', 'avoid-column', 'column']));
+add(['break-inside'], (c) => keywords(c, ['auto', 'avoid', 'avoid-page', 'avoid-column']));
 add(['grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end'], gridLine);
 add(['grid-template-columns', 'grid-template-rows'], trackList);
 add(['transition-duration'], durationList);
@@ -3252,17 +3385,22 @@ function functionText(fn, comp) {
   const spelled = inner.map((part) => ({ ...part, text: part.kind === 'ident' && !part.value.startsWith('--') ? part.value.toLowerCase() : part.kind === 'number' && lengths && part.value === 0 ? '0px' : part.kind === 'function' ? functionText(part.name, part) : part.text }));
   return `${comp.text.slice(0, open + 1)}${join(spelled)}${comp.text.slice(-1)}`;
 }
+// One generic-spelling component → its text.
+function genericSpellingText(comp, name, isNamed, aloneAndLength) {
+  if (comp.kind === 'ident' && !comp.value.startsWith('--')) {
+    const lower = comp.value.toLowerCase();
+    return isNamed && !NAME_KEYWORDS.includes(lower) ? comp.value : lower;
+  }
+  if (comp.kind === 'hash') return color(comp) ?? comp.text;
+  if (comp.kind === 'function' && !isNamed) return functionText(comp.name, comp);
+  if (comp.kind === 'number' && comp.value === 0 && aloneAndLength) return '0px';
+  return comp.text;
+}
 /** The context-free spelling: identifiers lowercase unless they name something, a lone `0` as `0px` where a length is meant. */
 function genericSpelling(name, comps) {
   const isNamed = NAMED.includes(name) || name.startsWith('--');
-  return join(comps.map((comp) => {
-    let text = comp.text;
-    if (comp.kind === 'ident' && !comp.value.startsWith('--')) { const lower = comp.value.toLowerCase(); text = isNamed && !NAME_KEYWORDS.includes(lower) ? comp.value : lower; }
-    else if (comp.kind === 'hash') text = color(comp) ?? comp.text;
-    else if (comp.kind === 'function' && !isNamed) text = functionText(comp.name, comp);
-    else if (comp.kind === 'number' && comp.value === 0 && comps.length === 1 && zeroIsLength(name)) text = '0px';
-    return { ...comp, text };
-  }));
+  const aloneAndLength = comps.length === 1 && zeroIsLength(name);
+  return join(comps.map((comp) => ({ ...comp, text: genericSpellingText(comp, name, isNamed, aloneAndLength) })));
 }
 /**
  * The specified value of longhand `name` set to `value`, as Chrome 156 spells it:

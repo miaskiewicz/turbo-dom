@@ -458,35 +458,34 @@
     }
     return collection;
   });
+  function selectIndexedSet(element, index, value) {
+    if (value !== null && value !== undefined && !branded(optionBrand, value))
+      throw new ErrorType(
+        "Failed to set an indexed property [" +
+          index +
+          "] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
+      );
+    setOption(element, index, value ?? null);
+    return true;
+  }
+  function selectIndicesOf(options) {
+    const indices = [];
+    for (let at = 0; at < options.length; at++) indices[at] = at;
+    return indices;
+  }
   // Indexed exotic behaviour on the select itself, dispatched by the native element interceptor
   // (select_element.rs). undefined means "not intercepted", so ordinary lookup continues.
   g.__captureSelectIndexed = function (operation, element, index, value) {
     if (!branded(selectBrand, element)) return undefined;
     const options = optionsOf(element);
-    switch (operation) {
-      case "get":
-        return index < options.length ? options[index] : undefined;
-      case "descriptor":
-        return index < options.length
-          ? { value: options[index], writable: true, enumerable: true, configurable: true }
-          : undefined;
-      case "indices": {
-        const indices = [];
-        for (let at = 0; at < options.length; at++) indices[at] = at;
-        return indices;
-      }
-      case "delete":
-        return index < options.length ? false : undefined;
-      case "set":
-        if (value !== null && value !== undefined && !branded(optionBrand, value))
-          throw new ErrorType(
-            "Failed to set an indexed property [" +
-              index +
-              "] on 'HTMLSelectElement': parameter 2 is not of type 'HTMLOptionElement'.",
-          );
-        setOption(element, index, value ?? null);
-        return true;
-    }
+    if (operation === "get") return index < options.length ? options[index] : undefined;
+    if (operation === "descriptor")
+      return index < options.length
+        ? { value: options[index], writable: true, enumerable: true, configurable: true }
+        : undefined;
+    if (operation === "indices") return selectIndicesOf(options);
+    if (operation === "delete") return index < options.length ? false : undefined;
+    if (operation === "set") return selectIndexedSet(element, index, value);
     return undefined;
   };
 })();

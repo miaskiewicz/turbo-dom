@@ -128,6 +128,20 @@ fn process_fragment_hit(
             snapshot, styles, offsets, point, fragment, run, result, seen,
         )?;
     }
+    process_border_box_hit(snapshot, styles, offsets, point, fragment, result, seen)
+}
+
+/// The border-box arm of [`process_fragment_hit`]: only `BorderBox` fragments
+/// with a source hit-test against the fragment's own rect.
+fn process_border_box_hit(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    result: &mut Vec<SourceId>,
+    seen: &mut BTreeSet<SourceId>,
+) -> Result<(), String> {
     if fragment.kind != GeometryKind::BorderBox {
         return Ok(());
     }

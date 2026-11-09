@@ -21,7 +21,7 @@ fn sha(text: &str) -> String {
 #[test]
 fn longhand_values_spell_like_chrome156() {
     let control: Value = serde_json::from_str(CONTROL).unwrap();
-    assert_eq!(control["browser"], "Chrome/156.0.8078.4");
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     assert_eq!(control["errors"], json!([]));
     assert_eq!(control["probeSha256"], sha(PROBE));
     assert_eq!(control["casesSha256"], sha(CASES));

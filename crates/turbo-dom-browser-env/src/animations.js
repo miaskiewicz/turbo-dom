@@ -115,18 +115,18 @@
     };
   }
   // One linear() stop: an output and up to two input percentages; null if invalid.
+  function linearStopToken(token, isLast, state) {
+    const isNumber = intrinsic.test(NUMBER, token);
+    if (isNumber && state.output === null && (!state.inputs.length || isLast)) { state.output = +token; return true; }
+    if (intrinsic.test(/%$/, token) && intrinsic.test(NUMBER, intrinsic.slice(token, 0, -1))) { push(state.inputs, +intrinsic.slice(token, 0, -1) / 100); return true; }
+    return false;
+  }
   function linearStop(part) {
     const tokens = intrinsic.split(intrinsic.trim(part), /\s+/);
-    let output = null; const inputs = [];
-    for (let j = 0; j < tokens.length; j++) {
-      const token = tokens[j];
-      if (intrinsic.test(NUMBER, token) && output === null && !inputs.length) output = +token;
-      else if (intrinsic.test(NUMBER, token) && output === null && inputs.length && j === tokens.length - 1) output = +token;
-      else if (intrinsic.test(/%$/, token) && intrinsic.test(NUMBER, intrinsic.slice(token, 0, -1))) push(inputs, +intrinsic.slice(token, 0, -1) / 100);
-      else return null;
-    }
-    if (output === null || inputs.length > 2) return null;
-    return { output, inputs };
+    const state = { output: null, inputs: [] };
+    for (let j = 0; j < tokens.length; j++) if (!linearStopToken(tokens[j], j === tokens.length - 1, state)) return null;
+    if (state.output === null || state.inputs.length > 2) return null;
+    return { output: state.output, inputs: state.inputs };
   }
   // The first and last inputs default to 0 and the largest input (at least 1), inputs never
   // decrease, and runs of missing inputs spread evenly between their neighbours.
@@ -211,22 +211,18 @@
   const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : intrinsic.test(/^border-(top|right|bottom|left)-color$/, name) ? 'currentcolor' : intrinsic.test(/^(margin|padding)-/, name) ? '0px' : intrinsic.test(/-radius$/, name) ? '0px' : '';
 
   const LENGTH = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([a-z%]*)$/i;
+  // Multiplier onto px for each absolute-length unit (null = unit must be handled specially).
+  const LENGTH_PX_FACTORS = { __proto__: null, px: 1, rem: 16, in: 96, cm: 96 / 2.54, mm: 96 / 25.4, pt: 4 / 3, pc: 16 };
   function parseNumber(text) { return intrinsic.test(NUMBER, text) ? +text : null; }
   function parseLength(text, context) {
     const match = intrinsic.exec(LENGTH, text);
     if (!match) return null;
     const value = +match[1], unit = intrinsic.toLowerCase(match[2]);
     if (unit === '') return value === 0 ? { kind: 'length', value: 0, unit: 'px' } : null;
-    if (unit === 'px') return { kind: 'length', value, unit: 'px' };
     if (unit === 'em') return { kind: 'length', value: value * context.fontSize, unit: 'px' };
-    if (unit === 'rem') return { kind: 'length', value: value * 16, unit: 'px' };
-    if (unit === 'in') return { kind: 'length', value: value * 96, unit: 'px' };
-    if (unit === 'cm') return { kind: 'length', value: value * 96 / 2.54, unit: 'px' };
-    if (unit === 'mm') return { kind: 'length', value: value * 96 / 25.4, unit: 'px' };
-    if (unit === 'pt') return { kind: 'length', value: value * 4 / 3, unit: 'px' };
-    if (unit === 'pc') return { kind: 'length', value: value * 16, unit: 'px' };
     if (unit === '%') return { kind: 'length', value, unit: '%' };
-    return null;
+    const factor = LENGTH_PX_FACTORS[unit];
+    return factor === undefined ? null : { kind: 'length', value: value * factor, unit: 'px' };
   }
   // Colors in sRGB with straight alpha: hex, rgb()/hsl()/hwb() and named keywords.
   function hsl(h, s, l) {
@@ -409,20 +405,33 @@
     return `matrix3d(${intrinsic.join(intrinsic.map(m, format), ', ')})`;
   }
   // CSS Transforms 2 matrix decomposition, interpolation and recomposition.
+  function decomposePerspective(m) {
+    if (!(m[0][3] || m[1][3] || m[2][3])) return [0, 0, 0, 1];
+    const p = intrinsic.map(m, row => intrinsic.slice(row)); for (let i = 0; i < 3; i++) p[i][3] = 0; p[3][3] = 1;
+    const inverse = invert(intrinsic.concat([], p[0], p[1], p[2], p[3]));
+    if (!inverse) return null;
+    const rhs = [m[0][3], m[1][3], m[2][3], m[3][3]];
+    // perspective = rhs * transpose(inverse(p))
+    return intrinsic.map([0, 1, 2, 3], col => rhs[0] * inverse[col * 4] + rhs[1] * inverse[col * 4 + 1] + rhs[2] * inverse[col * 4 + 2] + rhs[3] * inverse[col * 4 + 3]);
+  }
+  function decomposeQuaternion(row, scale) {
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = [row[1][1] * row[2][2] - row[1][2] * row[2][1], row[1][2] * row[2][0] - row[1][0] * row[2][2], row[1][0] * row[2][1] - row[1][1] * row[2][0]];
+    if (dot(row[0], cross) < 0) for (let i = 0; i < 3; i++) { scale[i] = -scale[i]; row[i] = intrinsic.map(row[i], value => -value); }
+    const quaternion = [0.5 * sqrt(max(1 + row[0][0] - row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] + row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] - row[1][1] + row[2][2], 0)), 0.5 * sqrt(max(1 + row[0][0] + row[1][1] + row[2][2], 0))];
+    if (row[2][1] > row[1][2]) quaternion[0] = -quaternion[0];
+    if (row[0][2] > row[2][0]) quaternion[1] = -quaternion[1];
+    if (row[1][0] > row[0][1]) quaternion[2] = -quaternion[2];
+    return quaternion;
+  }
   function decompose(source) {
     const m = [[source[0], source[1], source[2], source[3]], [source[4], source[5], source[6], source[7]], [source[8], source[9], source[10], source[11]], [source[12], source[13], source[14], source[15]]];
     if (!m[3][3]) return null;
     for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) m[i][j] /= source[15];
     const det3 = (a) => a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
-    let perspective = [0, 0, 0, 1];
-    if (m[0][3] || m[1][3] || m[2][3]) {
-      const p = intrinsic.map(m, row => intrinsic.slice(row)); for (let i = 0; i < 3; i++) p[i][3] = 0; p[3][3] = 1;
-      const inverse = invert(intrinsic.concat([], p[0], p[1], p[2], p[3]));
-      if (!inverse) return null;
-      const rhs = [m[0][3], m[1][3], m[2][3], m[3][3]];
-      // perspective = rhs * transpose(inverse(p))
-      perspective = intrinsic.map([0, 1, 2, 3], col => rhs[0] * inverse[col * 4] + rhs[1] * inverse[col * 4 + 1] + rhs[2] * inverse[col * 4 + 2] + rhs[3] * inverse[col * 4 + 3]);
-    } else if (!det3(m)) return null;
+    const perspective = decomposePerspective(m);
+    if (perspective === null) return null;
+    if (!(m[0][3] || m[1][3] || m[2][3]) && !det3(m)) return null;
     const translate = [m[3][0], m[3][1], m[3][2]];
     const row = [intrinsic.slice(m[0], 0, 3), intrinsic.slice(m[1], 0, 3), intrinsic.slice(m[2], 0, 3)];
     const length = v => sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
@@ -435,12 +444,7 @@
     skew[1] = dot(row[0], row[2]); row[2] = combine(row[2], row[0], 1, -skew[1]);
     skew[2] = dot(row[1], row[2]); row[2] = combine(row[2], row[1], 1, -skew[2]);
     scale[2] = length(row[2]); row[2] = combine(row[2], row[2], 1 / scale[2], 0); skew[1] /= scale[2]; skew[2] /= scale[2];
-    const cross = [row[1][1] * row[2][2] - row[1][2] * row[2][1], row[1][2] * row[2][0] - row[1][0] * row[2][2], row[1][0] * row[2][1] - row[1][1] * row[2][0]];
-    if (dot(row[0], cross) < 0) for (let i = 0; i < 3; i++) { scale[i] = -scale[i]; row[i] = intrinsic.map(row[i], value => -value); }
-    const quaternion = [0.5 * sqrt(max(1 + row[0][0] - row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] + row[1][1] - row[2][2], 0)), 0.5 * sqrt(max(1 - row[0][0] - row[1][1] + row[2][2], 0)), 0.5 * sqrt(max(1 + row[0][0] + row[1][1] + row[2][2], 0))];
-    if (row[2][1] > row[1][2]) quaternion[0] = -quaternion[0];
-    if (row[0][2] > row[2][0]) quaternion[1] = -quaternion[1];
-    if (row[1][0] > row[0][1]) quaternion[2] = -quaternion[2];
+    const quaternion = decomposeQuaternion(row, scale);
     return { translate, scale, skew, perspective, quaternion };
   }
   function invert(m) {
@@ -491,9 +495,16 @@
     if (!la || !lb) return la === lb;
     return abs(a[0] / la - b[0] / lb) < 1e-9 && abs(a[1] / la - b[1] / lb) < 1e-9 && abs(a[2] / la - b[2] / lb) < 1e-9;
   }
+  function interpolateAsMatrix(a, b, p) {
+    return a.type === 'matrix' || b.type === 'matrix' || (a.type === 'rotate' && !sameAxis(a.v, b.v));
+  }
+  function interpolatePerspective(a, b, p) {
+    const ia = a.v[0] === Infinity ? 0 : 1 / max(a.v[0], 1), ib = b.v[0] === Infinity ? 0 : 1 / max(b.v[0], 1), inverse = ia + (ib - ia) * p;
+    return { type: 'perspective', v: [inverse ? 1 / inverse : Infinity], three: true };
+  }
   function interpolateFunction(a, b, p) {
-    if (a.type === 'matrix' || b.type === 'matrix' || (a.type === 'rotate' && !sameAxis(a.v, b.v))) return { type: 'matrix', m: interpolateMatrix(functionMatrix(a), functionMatrix(b), p), three: a.three || b.three };
-    if (a.type === 'perspective') { const ia = a.v[0] === Infinity ? 0 : 1 / max(a.v[0], 1), ib = b.v[0] === Infinity ? 0 : 1 / max(b.v[0], 1), inverse = ia + (ib - ia) * p; return { type: 'perspective', v: [inverse ? 1 / inverse : Infinity], three: true }; }
+    if (interpolateAsMatrix(a, b, p)) return { type: 'matrix', m: interpolateMatrix(functionMatrix(a), functionMatrix(b), p), three: a.three || b.three };
+    if (a.type === 'perspective') return interpolatePerspective(a, b, p);
     if (a.type === 'rotate') { const axis = sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2]) ? a.v : b.v; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a.v[3] + (b.v[3] - a.v[3]) * p], three: a.three || b.three }; }
     return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
   }
@@ -518,10 +529,15 @@
 
   // A number-valued property: unit numbers take percentages, font-weight its keywords and
   // line-height a px length.
+  function numericValueFromText(property, text) {
+    const n = parseNumber(text);
+    if (n !== null) return n;
+    if (UNIT_NUMBERS[property] && intrinsic.test(/%$/, text)) { const percent = parseNumber(intrinsic.slice(text, 0, -1)); if (percent !== null) return percent / 100; }
+    if (property === 'font-weight') return text === 'normal' ? 400 : text === 'bold' ? 700 : null;
+    return null;
+  }
   function numericValue(property, text, context) {
-    let number = parseNumber(text);
-    if (number === null && UNIT_NUMBERS[property] && intrinsic.test(/%$/, text)) { const percent = parseNumber(intrinsic.slice(text, 0, -1)); if (percent !== null) number = percent / 100; }
-    if (property === 'font-weight' && number === null) number = text === 'normal' ? 400 : text === 'bold' ? 700 : null;
+    const number = numericValueFromText(property, text);
     if (number !== null) return { kind: 'number', value: number };
     if (property === 'line-height') { const length = parseLength(text, context); if (length && length.unit === 'px') return length; }
     return { kind: 'discrete', text };
@@ -669,12 +685,17 @@
     sortBy(byOffset, frame => frame.computed);
     return byOffset;
   }
+  function indexedKeyframeLists(input, prefix) {
+    const composite = input.composite, easingText = input.easing, offset = input.offset;
+    return {
+      composites: composite === undefined ? { list: false, values: [] } : keyframeList(composite, value => enumeration(value, COMPOSITE_AUTO, prefix, 'composite', 'BasePropertyIndexedKeyframe', 'CompositeOperationOrAuto')),
+      easings: easingText === undefined ? { list: false, values: [] } : keyframeList(easingText, value => string(value)),
+      offsets: offset === undefined || offset === null ? { list: false, values: [] } : keyframeList(offset, value => offsetValue(value, prefix, 'BasePropertyIndexedKeyframe')),
+    };
+  }
   function indexedKeyframes(input, prefix) {
     const frames = [];
-    const composite = input.composite, easingText = input.easing, offset = input.offset;
-    const composites = composite === undefined ? { list: false, values: [] } : keyframeList(composite, value => enumeration(value, COMPOSITE_AUTO, prefix, 'composite', 'BasePropertyIndexedKeyframe', 'CompositeOperationOrAuto'));
-    const easings = easingText === undefined ? { list: false, values: [] } : keyframeList(easingText, value => string(value));
-    const offsets = offset === undefined || offset === null ? { list: false, values: [] } : keyframeList(offset, value => offsetValue(value, prefix, 'BasePropertyIndexedKeyframe'));
+    const { composites, easings, offsets } = indexedKeyframeLists(input, prefix);
     const byOffset = indexedOffsetFrames(input);
     for (let i = 0; i < byOffset.length && i < offsets.values.length; i++) byOffset[i].offset = offsets.values[i];
     for (let i = 0; i < byOffset.length && easings.values.length; i++) byOffset[i].easing = easings.values[i % easings.values.length];
@@ -991,13 +1012,17 @@
     return null;
   }
   // https://drafts.csswg.org/web-animations-1/#playing-an-animation-section
+  function playInitialSeek(record, rewind, rate, time, end, prefix) {
+    const seek = rewind ? rewindSeek(rate, time, end, prefix) : null;
+    if (seek === null && record.start === null && time === null) return 0;
+    return seek;
+  }
   function play(animation, record, rewind, prefix) {
     const abortedPause = record.task === 'pause', rate = effectiveRate(record), time = currentTime(record), end = effectEnd(record);
-    let pendingReady = false, seek = null;
-    if (rewind) seek = rewindSeek(rate, time, end, prefix);
-    if (seek === null && record.start === null && time === null) seek = 0;
+    const seek = playInitialSeek(record, rewind, rate, time, end, prefix);
     if (seek !== null) record.hold = seek;
     if (record.hold !== null) record.start = null;
+    let pendingReady = false;
     if (record.task !== null) { record.task = null; pendingReady = true; }
     if (record.hold === null && seek === null && !abortedPause && record.pendingRate === null) return;
     if (!pendingReady) record.ready = deferred(false);
@@ -1135,47 +1160,55 @@
     return value;
   }
   // https://drafts.csswg.org/web-animations-1/#the-effect-value-of-a-keyframe-animation-effect
+  function effectValueResolved(frames, underlying) {
+    const resolved = intrinsic.map(frames, frame => ({ offset: frame.offset, text: frame.text, composite: frame.composite, easing: frame.easing, value: null }));
+    if (resolved[0].offset !== 0) { for (let index = resolved.length; index > 0; index--) resolved[index] = resolved[index - 1]; resolved[0] = { offset: 0, easing: x => x, value: underlying }; }
+    if (resolved[resolved.length - 1].offset !== 1) push(resolved, { offset: 1, easing: x => x, value: underlying });
+    return resolved;
+  }
   function effectValue(entry, frames, property, underlying, context) {
     const progress = entry.progress;
     if (progress === null) return underlying;
     const effectComposite = entry.effect.composite;
     const keyframe = frame => frame.value || (frame.value = compose(property, underlying, parseValue(property, frame.text, context), frame.composite === 'auto' ? effectComposite : frame.composite));
-    const resolved = intrinsic.map(frames, frame => ({ offset: frame.offset, text: frame.text, composite: frame.composite, easing: frame.easing, value: null }));
-    if (resolved[0].offset !== 0) { for (let index = resolved.length; index > 0; index--) resolved[index] = resolved[index - 1]; resolved[0] = { offset: 0, easing: x => x, value: underlying }; }
-    if (resolved[resolved.length - 1].offset !== 1) push(resolved, { offset: 1, easing: x => x, value: underlying });
-    let start, end;
+    const resolved = effectValueResolved(frames, underlying);
     const zeros = intrinsic.filter(resolved, frame => frame.offset === 0), ones = intrinsic.filter(resolved, frame => frame.offset === 1);
     if (progress < 0 && zeros.length > 1) return keyframe(zeros[0]);
     if (progress >= 1 && ones.length > 1) return keyframe(ones[ones.length - 1]);
-    start = 0;
+    let start = 0;
     if (progress >= 0) for (let i = 0; i < resolved.length; i++) if (resolved[i].offset <= progress && resolved[i].offset < 1) start = i;
-    end = min(start + 1, resolved.length - 1);
+    const end = min(start + 1, resolved.length - 1);
     const from = resolved[start], to = resolved[end];
     const distance = to.offset === from.offset ? 0 : (progress - from.offset) / (to.offset - from.offset);
     const eased = from.easing(distance, false);
     return interpolate(property, keyframe(from), keyframe(to), eased);
   }
+  function effectStackEntry(animation, element, limit) {
+    const record = animations.get(animation);
+    if (!record.effect || (record.replace === 'removed' && animation !== limit)) return null;
+    const effect = effects.get(record.effect);
+    if (effect.target !== element || effect.pseudo !== null) return null;
+    if (limit && record.seq > animations.get(limit).seq) return null;
+    const state = timingAt(effect.timing, currentTime(record), record.rate < 0);
+    if (state.activeTime === null) return null;
+    return { record, effect, progress: state.progress };
+  }
   function effectStack(element, limit) {
     const entries = targets.get(element);
     if (!entries || !entries.length) return null;
     const stack = [];
-    for (let i = 0; i < entries.length; i++) {
-      const animation = entries[i], record = animations.get(animation);
-      if (!record.effect || (record.replace === 'removed' && animation !== limit)) continue;
-      const effect = effects.get(record.effect);
-      if (effect.target !== element || effect.pseudo !== null) continue;
-      if (limit && record.seq > animations.get(limit).seq) continue;
-      const state = timingAt(effect.timing, currentTime(record), record.rate < 0);
-      if (state.activeTime === null) continue;
-      push(stack, { record, effect, progress: state.progress });
-    }
+    for (let i = 0; i < entries.length; i++) { const entry = effectStackEntry(entries[i], element, limit); if (entry) push(stack, entry); }
     return stack.length ? sortBy(stack, entry => entry.record.seq) : null;
   }
-  function stackResult(stack, read, inherited) {
+  function stackResultProperties(stack) {
     const properties = [];
     for (let i = 0; i < stack.length; i++) for (let j = 0; j < stack[i].effect.frames.order.length; j++) { const name = stack[i].effect.frames.order[j]; if (!contains(properties, name)) push(properties, name); }
     // 'color' first (currentColor resolves against it), the rest in order.
     if (contains(properties, 'color') && properties[0] !== 'color') { let at = 0; while (properties[at] !== 'color') at++; for (; at > 0; at--) properties[at] = properties[at - 1]; properties[0] = 'color'; }
+    return properties;
+  }
+  function stackResult(stack, read, inherited) {
+    const properties = stackResultProperties(stack);
     let current = null;
     const underlyingText = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
     const context = {
@@ -1397,17 +1430,16 @@
     effects.set(effect, record);
     return more;
   }
+  function keyframeEffectClone(dest, source, prefix) {
+    if (!source || !(source.frames)) throw new ErrorType(`${prefix}parameter 1 is not of type 'KeyframeEffect'.`);
+    const timing = create(null); for (const key in source.timing) timing[key] = source.timing[key];
+    effects.set(dest, { target: source.target, pseudo: source.pseudo, composite: source.composite, timing, keyframes: source.keyframes, frames: source.frames, animation: null });
+  }
   const KeyframeEffectDelegate = function KeyframeEffect(target, keyframes, options) {
     requireNew(new.target, 'KeyframeEffect');
     const prefix = constructing('KeyframeEffect');
     if (!arguments.length) throw new ErrorType(`${prefix}1 argument required, but only 0 present.`);
-    if (arguments.length === 1) {
-      const source = objectLike(target) ? effects.get(target) : undefined;
-      if (!source || !(source.frames)) throw new ErrorType(`${prefix}parameter 1 is not of type 'KeyframeEffect'.`);
-      const timing = create(null); for (const key in source.timing) timing[key] = source.timing[key];
-      effects.set(this, { target: source.target, pseudo: source.pseudo, composite: source.composite, timing, keyframes: source.keyframes, frames: source.frames, animation: null });
-      return;
-    }
+    if (arguments.length === 1) { keyframeEffectClone(this, objectLike(target) ? effects.get(target) : undefined, prefix); return; }
     if (target !== null && target !== undefined && !isElement(target)) throw new ErrorType(`${prefix}parameter 1 is not of type 'Element'.`);
     if (keyframes !== null && keyframes !== undefined && !objectLike(keyframes)) throw new ErrorType(`${prefix}parameter 2 is not of type 'object'.`);
     createEffect(this, target === undefined ? null : target, keyframes, options, prefix);
@@ -1619,17 +1651,21 @@
   accessor(AP, 'finished', function () { return promised(this, 'finished'); });
   accessor(AP, 'ready', function () { return promised(this, 'ready'); });
   method(AP, 'cancel', function () { const record = animationRecord(this); mutate(this, record, () => cancel(this, record)); }, 0);
+  function commitStylesStack(record, effect, animation) {
+    const stack = effectStack(effect.target, animation) || [];
+    if (record.replace === 'removed' && !intrinsic.some(stack, entry => entry.record === record)) {
+      const state = timingAt(effect.timing, currentTime(record), record.rate < 0);
+      if (state.activeTime !== null) push(stack, { record, effect, progress: state.progress });
+    }
+    return stack;
+  }
   method(AP, 'commitStyles', function () {
     const record = animationRecord(this), prefix = executing('commitStyles', 'Animation');
     const effect = record.effect ? effects.get(record.effect) : null;
     if (!effect || !effect.target || effect.pseudo !== null) throw new Exception(`${prefix}Animation not associated with a styled element`, 'NoModificationAllowedError');
     const element = effect.target;
     if (!rendered(element)) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
-    const stack = effectStack(element, this) || [];
-    if (record.replace === 'removed' && !intrinsic.some(stack, entry => entry.record === record)) {
-      const state = timingAt(effect.timing, currentTime(record), record.rate < 0);
-      if (state.activeTime !== null) push(stack, { record, effect, progress: state.progress });
-    }
+    const stack = commitStylesStack(record, effect, this);
     if (!stack.length) return;
     sortBy(stack, entry => entry.record.seq);
     const base = baseStyle(element);
@@ -1917,16 +1953,13 @@
   // an iteration change inside active (one event, at the boundary crossed first),
   // animationend entering after (or before backwards), animationcancel entering idle from
   // anything but after, at the current time it was cancelled at.
+  function animationEventsSamePhase(timing, css, now, out) {
+    if (now.phase === 'active' && css.iteration !== now.iteration) push(out, ['animationiteration', timing.duration * ((css.iteration > now.iteration ? now.iteration + 1 : now.iteration) - timing.iterationStart)]);
+  }
   function animationEvents(timing, css, now, out) {
     const was = css.phase, phase = now.phase, span = timingAt(timing, null, false).active;
-    if (was === phase) {
-      if (phase === 'active' && css.iteration !== now.iteration) push(out, ['animationiteration', timing.duration * ((css.iteration > now.iteration ? now.iteration + 1 : now.iteration) - timing.iterationStart)]);
-      return;
-    }
-    if (phase === 'idle') {
-      if (was !== 'after') push(out, ['animationcancel', css.cancelTime || 0]);
-      return;
-    }
+    if (was === phase) { animationEventsSamePhase(timing, css, now, out); return; }
+    if (phase === 'idle') { if (was !== 'after') push(out, ['animationcancel', css.cancelTime || 0]); return; }
     const intervalStart = max(min(-timing.delay, span), 0), intervalEnd = max(min(span + timing.endDelay, span), 0);
     if (was !== 'active' && !(was === 'idle' && phase === 'before')) push(out, ['animationstart', was === 'after' ? intervalEnd : intervalStart]);
     if (phase === 'after') push(out, ['animationend', intervalEnd]);
@@ -2210,20 +2243,25 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   }
+  function cssUpdateUnderlying(read, inherited) {
+    return property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
+  }
+  function cssUpdateBody(element, read, inherited, snapshots, ownDisplay) {
+    const underlying = cssUpdateUnderlying(read, inherited);
+    const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
+    if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
+    if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
+    cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
+    // Stamped after the update: the invalidation its own animations cause is not a new input.
+    cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
+  }
   function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
     if (!cssAnyOn || cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy.set(element, true);
-    try {
-      const underlying = property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
-      const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
-      if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
-      if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-      cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
-      // Stamped after the update: the invalidation its own animations cause is not a new input.
-      cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
-    } finally { cssBusy.set(element, false); }
+    try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay); }
+    finally { cssBusy.set(element, false); }
   }
   // The switched-on kinds' update (set_css_animations / set_css_transitions).
   function cssRun(element, read, underlying, hidden) {

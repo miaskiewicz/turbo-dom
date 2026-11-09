@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const g=globalThis,ns=__tsNs,native=g.__windowListenerNative;delete g.__windowListenerNative;
-  const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf;
+  const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf,objectFreeze=Object.freeze;
   const Exception=__tsNs.DOMException;
   const oldHost=g.__captureHostEventDispatch,BaseTarget=g.EventTarget,NodeConstructor=g.Node,EventType=g.Event,document=g.document;
   const ownIndex=(value,index,item)=>define(value,index,{__proto__:null,value:item,writable:true,configurable:true,enumerable:true});
@@ -10,11 +10,14 @@
   const some=(value,test)=>{for(let index=0;index<value.length;index++)if(test(value[index]))return true;return false;};
   const indexOf=(value,item)=>{for(let index=0;index<value.length;index++)if(value[index]===item)return index;return -1;};
   const splice=(value,index)=>{for(let at=index;at+1<value.length;at++)ownIndex(value,at,value[at+1]);delete value[value.length-1];value.length--;};
-  const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null)})}},'EventTarget',0,true,true);
+  const NativeTarget=make(class EventTarget extends BaseTarget{constructor(){super();native('targetSet',this,{__proto__:null,listeners:[],handlers:create(null),parent:null})}},'EventTarget',0,true,true);
   NativeTarget.prototype=BaseTarget.prototype;define(NativeTarget.prototype,'constructor',{value:NativeTarget,writable:true,configurable:true});define(NativeTarget,'prototype',{writable:false});define(g,'EventTarget',{value:NativeTarget,writable:true,configurable:true});ns.eventTargetConstructor=NativeTarget;
   // An engine object that is an EventTarget without being constructed as one (html_media.js's
   // TextTrackList, a named object for its indexed tracks).
-  ns.makeEventTarget=object=>{native('targetSet',object,{__proto__:null,listeners:[],handlers:create(null)});return object;};
+  ns.makeEventTarget=object=>{native('targetSet',object,{__proto__:null,listeners:[],handlers:create(null),parent:null});return object;};
+  // turbo-dom#381: embedder-settable parent hook on a non-Node EventTarget. `fn(target)` returns
+  // the next ancestor (or null/undefined to stop). Chain walks are capped at 100 hops.
+  ns.setEventTargetParent=(target,fn)=>{const state=native('targetGet',target);if(!state)throw new ErrorType('Illegal invocation');if(fn!=null&&typeof fn!=='function')throw new ErrorType('parent must be a function');state.parent=fn==null?null:fn;};
   // Node was projected before the listener-backed constructor replaced EventTarget.
   // Keep its constructor inheritance aligned without replacing its instance prototype.
   if(getPrototype(NodeConstructor)===BaseTarget)setPrototype(NodeConstructor,NativeTarget);
@@ -75,9 +78,180 @@
   function targetHandler(target,type,value){const state=targetRecord(target);value=typeof value==='function'?value:null;const previous=state.handlers[type];if(previous){if(value===null){targetRemove(target,state,previous);delete state.handlers[type];}else previous.callback=value;}else if(value){const record={__proto__:null,type,callback:value,capture:false,once:false,passive:false,signal:null,removed:false,handler:true};state.handlers[type]=record;push(state.listeners,record);native('targetChanged',target);}}
   function targetListen(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('addEventListener requires 2 arguments');const record=flatten(type,callback,options);if(record.callback===null||record.signal&&aborted(record.signal))return;if(some(state.listeners,item=>!item.handler&&!item.removed&&item.type===record.type&&item.callback===record.callback&&item.capture===record.capture))return;record.removed=false;push(state.listeners,record);if(record.signal){const target=this;record.abortHook=()=>targetRemove(target,state,record);native('subscription',record.signal,record.abortHook,true);}native('targetChanged',this);}
   function targetUnlisten(type,callback,options){const state=targetRecord(this);if(arguments.length<2)throw new ErrorType('removeEventListener requires 2 arguments');const wanted=flatten(type,callback,options,true);for(let index=0,list=slice(state.listeners);index<list.length;index++){const record=list[index];if(!record.handler&&!record.removed&&record.type===wanted.type&&record.callback===wanted.callback&&record.capture===wanted.capture)targetRemove(this,state,record);}}
+  // turbo-dom#381: build the dispatch path by walking the embedder-set parent hook up the chain
+  // (`request -> tx -> db` for IDB). Each hop reads its own target record; a missing or null
+  // parent stops the walk.
+  //
+  // R1 expert H1: Chrome has no cap on the chain's depth. The pre-R1 limit of 100 silently
+  // truncated deeper legitimate chains, so a bubble listener past hop 100 never fired. The cap
+  // is now 10 000 and a chain that exceeds it throws a loud TypeError instead of silently
+  // dropping ancestors (an adversarial infinite chain would otherwise DoS the dispatch).
+  function collectPath(target,state){
+    const path=[target];let node=target,hop=state.parent;
+    while(hop){
+      if(path.length>=10000)throw new ErrorType('EventTarget parent chain exceeded 10000 hops (runaway chain)');
+      const next=hop(node);if(next==null)break;
+      const record=native('targetGet',next);if(!record)break;
+      push(path,next);node=next;hop=record.parent;
+    }
+    return path;
+  }
+  // Any listener for `type` on any level of `path`? Used by the listener-less fast-skip.
+  function anyPathListener(path,type){
+    for(let i=0;i<path.length;i++){const s=native('targetGet',path[i]);if(!s)continue;const list=s.listeners;for(let j=0;j<list.length;j++){const l=list[j];if(!l.removed&&l.type===type)return true;}}
+    return false;
+  }
+  // Per-listener microtask drain is the OUTERMOST dispatch's job only.
+  // The HTML spec's "clean up after running a callback" checkpoints
+  // microtasks only when the realm is at the top of the script
+  // settings stack — a page-script dispatch (`dispatchEvent`,
+  // `AbortController.abort()`) that runs INSIDE another listener is
+  // nested and never checkpoints between its own listeners. Chrome 156
+  // matches: the surf abort_signal_any probe's `timeoutNestedAbort`
+  // records `inner, after-inner, inner-microtask` — the inner
+  // listener's microtask fires only after its outer continuation
+  // (turbo-dom#456).
+  //
+  // `listenerDepth` tracks how deeply this dispatch is reentered;
+  // `afterListener` decrements it and drains microtasks only when the
+  // current listener call was the outermost one. Keeping the check in a
+  // helper keeps the hot `invokeAt` / `invoke` loops at cc <= 15.
+  let listenerDepth=0;
+  function afterListener(record){record.passive=false;if(--listenerDepth===0)drainMicrotasksAcrossDispatch(record);}
+  // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
+  // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
+  // true, so a microtask that synchronously re-dispatches the same event
+  // would see `dispatching=true` on the shared record and throw
+  // InvalidStateError — Chrome 156's dispatch flag is per-dispatch and
+  // allows the re-dispatch (Chrome 156 probe:
+  // `scripts/microtask-redispatch-chrome-control.mjs` records
+  // `count=2, error=null`). Save every dispatch-scoped field, clear
+  // dispatching for the drain, drain, then restore. A microtask's own
+  // dispatch runs in its scope; the outer dispatch resumes unchanged.
+  //
+  // Review R3 H1: `stop` and `stopImmediate` are dispatch-scoped too —
+  // dispatchTarget's outer finally unconditionally resets them, so a
+  // nested re-dispatch's finally would otherwise wipe an outer
+  // listener's `stopPropagation()`. Save and restore both, so the outer
+  // dispatch's stop-propagation state survives the drain window. The
+  // inner dispatch still sees its own fresh `stop`/`stopImmediate`
+  // (restored to the saved values once the inner dispatch's finally has
+  // reset them — which is its right: a re-dispatched event's stopping
+  // state is its own, not the outer's).
+  //
+  // Review R4 H1: the save-set alone is not enough — the drain must also
+  // CLEAR `stop`/`stopImmediate` BEFORE the checkpoint so a nested
+  // re-dispatch (from a microtask) starts fresh. `dispatchTarget`'s entry
+  // writes `dispatching` / `trusted` / `target` / `currentTarget` /
+  // `eventPhase` / `path` but not `stop` / `stopImmediate`; it relies on
+  // the previous dispatch's finally to have reset them. Without the
+  // clear, an inner `dispatchMulti` enters with the outer's
+  // `record.stop = true` and bails on its capture loop's first
+  // `if (record.stop || record.stopImmediate) return;` — AT_TARGET and
+  // bubble never run either, because `dispatchMulti` returns from the
+  // capture loop, not per-phase.
+  //
+  // Review R4 H2: `record.trusted` is dispatch-scoped too —
+  // `dispatchTarget`'s entry writes it from the `host` parameter but no
+  // finally restores it. A trusted outer whose microtask re-dispatches
+  // the same event (non-host) therefore flips the shared record's
+  // `trusted` to false and leaves it false; the outer's subsequent
+  // bubble listeners see `event.isTrusted === false`. Save `trusted`
+  // alongside stop/stopImmediate. (No pre-checkpoint clear needed: the
+  // inner's own `dispatchTarget` entry overwrites it anyway.)
+  //
+  // turbo-dom#450: `record.defaultPrevented` leaks the same way. A
+  // microtask whose inner listener calls `event.preventDefault()`
+  // mutates the shared record's `defaultPrevented = true`; the inner
+  // `dispatchTarget`'s finally resets `stop` / `stopImmediate` /
+  // `passive` but NOT `defaultPrevented` (it is spec-correct that
+  // preventDefault persists on the event, so dispatchTarget cannot
+  // clear it). The outer's `return !record.defaultPrevented` then
+  // falsely reports canceled even though no outer listener cancelled.
+  //
+  // Chrome 156 control
+  // (`event_defaultprevented_chrome156.json`.listenerQueuesMicrotask):
+  // outerReturn=true, innerReturn=false — the outer dispatch's return
+  // value is independent of the inner's preventDefault because Chrome
+  // runs the microtask AFTER the outer dispatch completes (it does not
+  // checkpoint microtasks between the outer's listeners when the
+  // dispatch is issued from user script). Add `defaultPrevented` to
+  // the save-set so turbo-dom matches that outer-return independence
+  // while the drain window itself remains per-listener for the
+  // #382 host-dispatch contract. (No pre-checkpoint clear needed: if
+  // the outer DID cancel, its saved value is restored on finally; if
+  // it did not, the inner's cancellation is confined to the inner
+  // dispatch's own `return !record.defaultPrevented`.)
+  function drainMicrotasksAcrossDispatch(record){
+    const savedDispatching=record.dispatching;
+    const savedCurrent=record.currentTarget;
+    const savedPhase=record.eventPhase;
+    const savedPath=record.path;
+    const savedTarget=record.target;
+    const savedStop=record.stop;
+    const savedStopImmediate=record.stopImmediate;
+    const savedTrusted=record.trusted;
+    const savedDefaultPrevented=record.defaultPrevented;
+    record.dispatching=false;
+    record.stop=false;
+    record.stopImmediate=false;
+    try{native('microtaskCheckpoint');}
+    finally{
+      record.dispatching=savedDispatching;
+      record.currentTarget=savedCurrent;
+      record.eventPhase=savedPhase;
+      record.path=savedPath;
+      record.target=savedTarget;
+      record.stop=savedStop;
+      record.stopImmediate=savedStopImmediate;
+      record.trusted=savedTrusted;
+      record.defaultPrevented=savedDefaultPrevented;
+    }
+  }
+  // Run every listener of `event` on `level` whose capture flag matches `captureFilter`
+  // (null = any, which is AT_TARGET's contract). Per-listener invocation sets
+  // currentTarget/eventPhase and scopes `composedPath()` to `[level]` (Chrome 156's IDB
+  // contract). Handler records that return false (legacy on* cancel) set defaultPrevented.
+  // Whether this listener should be skipped on the current invocation pass.
+  function skipListener(listener,record,captureFilter){
+    if(listener.removed||listener.type!==record.type)return true;
+    if(captureFilter!==null&&listener.capture!==captureFilter)return true;
+    if(listener.signal&&aborted(listener.signal))return true;
+    return false;
+  }
+  function callListener(event,record,listener,level){
+    listenerDepth++;
+    try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{afterListener(record);}
+  }
+  function invokeAt(event,record,level,captureFilter,phase){
+    const state=native('targetGet',level);if(!state)return;
+    record.currentTarget=level;record.eventPhase=phase;record.path=objectFreeze([level]);
+    const list=slice(state.listeners);
+    for(let index=0;index<list.length;index++){
+      const listener=list[index];
+      if(record.stopImmediate)break;
+      if(skipListener(listener,record,captureFilter))continue;
+      if(listener.once)targetRemove(level,state,listener);
+      record.passive=listener.passive;
+      callListener(event,record,listener,level);
+    }
+  }
+  // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at
+  // AT_TARGET both capture and non-capture listeners fire in registration order.
+  function dispatchSingle(event,record,target){invokeAt(event,record,target,null,2);}
+  // Multi-level dispatch across the parent chain: capture -> AT_TARGET -> bubble, with the
+  // listener-less fast-skip. `host` keeps the listener-less fast-skip from applying to
+  // host-initiated dispatch (bubbling reaches side-effects on empty paths; preserved).
+  function dispatchMulti(event,record,target,state,host){
+    const path=collectPath(target,state);
+    if(!host&&!anyPathListener(path,record.type))return;
+    for(let i=path.length-1;i>0;i--){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],true,1);}
+    if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+    if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
+  }
   function dispatchTarget(event,target,host=false){
-    const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=[target];
-    try{const list=slice(state.listeners);for(let index=0;index<list.length;index++){const listener=list[index];if(record.stopImmediate)break;if(listener.removed||listener.type!==record.type||listener.signal&&aborted(listener.signal))continue;if(listener.once)targetRemove(target,state,listener);record.passive=listener.passive;try{const result=native('call',event,listener.callback,target);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;}}}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
+    const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=objectFreeze([target]);
+    try{if(state.parent)dispatchMulti(event,record,target,state,host);else dispatchSingle(event,record,target);}finally{record.currentTarget=null;record.eventPhase=0;record.path=objectFreeze([]);record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
   }
   for(const [name,fn]of [['addEventListener',targetListen],['removeEventListener',targetUnlisten],['dispatchEvent',function(event){targetRecord(this);if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatchTarget(event,this)}]])ns.eventTargetCallbacks[name]=fn;
   const registry=new Map(),get=registry.get.bind(registry),set=registry.set.bind(registry);
@@ -99,14 +273,15 @@
   function invoke(event,capture,phase){
     const state=readEvent(event),records=slice(get(state.type)||[]);state.currentTarget=g;state.eventPhase=phase;
     for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal))continue;if(record.once)remove(record);state.passive=record.passive;
-      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{state.passive=false;}
+      listenerDepth++;
+      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{listenerDepth--;state.passive=false;}
     }
   }
   function dispatch(event,host=false){
     const state=readEvent(event);if(state.dispatching||!state.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');
-    state.dispatching=true;state.trusted=host;state.target=g;state.currentTarget=g;state.eventPhase=2;state.path=[g];
+    state.dispatching=true;state.trusted=host;state.target=g;state.currentTarget=g;state.eventPhase=2;state.path=objectFreeze([g]);
     const legacy=host&&(state.type==='load'||state.type==='pageshow');if(legacy)state.target=document;
-    try{invoke(event,null,2);}finally{if(!legacy){state.currentTarget=null;state.eventPhase=0;state.path=[];state.dispatching=false;state.stop=false;state.stopImmediate=false;}state.passive=false;}
+    try{invoke(event,null,2);}finally{if(!legacy){state.currentTarget=null;state.eventPhase=0;state.path=objectFreeze([]);state.dispatching=false;state.stop=false;state.stopImmediate=false;}state.passive=false;}
     return !state.defaultPrevented;
   }
   for(const type of 'abort blur cancel change click close contextmenu dblclick error focus hashchange input invalid keydown keypress keyup languagechange load message messageerror offline online pagehide pageshow popstate rejectionhandled reset resize scroll storage submit toggle unhandledrejection unload wheel beforeunload'.split(' ')){

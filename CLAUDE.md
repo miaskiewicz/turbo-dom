@@ -40,7 +40,7 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
 python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
 python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
 python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
-npm run complexity:rust   # cc-check --max 15 over every tracked .rs file (needs cc-check on PATH, below)
+npm run complexity:rust   # cc-check --max 12 over every tracked .rs file (needs cc-check on PATH, below)
 npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
 ```
 
@@ -108,6 +108,11 @@ global allocator that a parallel test would pollute. Don't loosen either thresho
 **Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
 Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
 baseline, no per-function allow-list (turbo-html2pdf's own crates stay at its stricter cc < 6).
+0.8.1 #379 refactored the non-hot-path fns across both Rust (3 lanes) and JS (5 lanes) to
+cc <= 12, but the ceiling drop 15 -> 12 is deferred to v0.9.0 along with the remaining
+hot-path extractions — 10 Rust fns (cascade/cssom parse_stylesheet + 8
+`unit_tokenizer::step_group_*`) and 10 JS fns (turbo-dom #462 / #463 / #464). A further step
+to cc <= 9 is tracked for a later release.
 The JS gate excludes 17 named files (`.oxlintrc.complexity.json` `ignorePatterns`) that cannot
 be refactored: the vendored `xpath_provider/xpath.js` (byte-identical to upstream, SHA-256
 pinned in its README) and 16 browser-env `*_probe.js` Chrome-control fixtures whose control
@@ -126,10 +131,11 @@ drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by
 `ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
 SHA-256), and so are 16 named Chrome-control `*_probe.js` files whose control JSON pins the
 probe's SHA-256 (editing one invalidates its recorded Chrome output; new probes stay gated).
-0.8.1 lowers the limit to cc <= 9 (turbo-dom#379). **0.8.0 flips both
-jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
-counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
-cc > 15 function fails CI and blocks `publish.yml` like any other required check. The
+0.8.1 #379 refactored the non-hot-path fns in both Rust and JS to cc <= 12; the gate stays at
+cc <= 15 pending the hot-path extractions deferred to v0.9.0. **0.8.0 flips both jobs
+blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS counts
+to zero, and the workflow drops `continue-on-error` on both jobs so a new over-ceiling function
+(cc > 15) fails CI and blocks `publish.yml` like any other required check. The
 report-only phase that carried 0.6.0 and 0.7.0 (59 Rust / 228 JS functions above the
 limit, measured 2026-10-28; `docs/CONSOLIDATION.md` "Complexity") is over. Don't add new
 ones, and never raise the limit to turn the jobs green.
@@ -169,7 +175,7 @@ package or publish workflow.
   Needs a V8 archive (`RUSTY_V8_ARCHIVE`). Lint-exempt by design (`#![allow(unused, clippy::all)]`);
   see its README. The shared `zoom` grammar lives in base `rtdom::css_values`.
 - `crates/turbo-dom-layout` — the native HTML/CSS layout engine (style cascade, block/inline/
-  flex/grid/table layout → `Fragment` galley, fonts, image sizing, layout snapshots,
+  flex/grid/table/multicol layout → `Fragment` galley, fonts, image sizing, layout snapshots,
   `layout_html`). Relocated verbatim from turbo-html2pdf-core 0.3.9 (S1); turbo-html2pdf-core
   depends on it and re-exports it at its old paths. Since S2 the cascade styles a turbo-dom
   `Tree` directly (`style::TreeView` + `Roots::{Detached, Document}`; since P5b the HTML
@@ -244,7 +250,61 @@ package or publish workflow.
   carrying `INDETERMINATE_ATTR` (a live embedder's script-set flag) paints Chrome's dash, and
   vertical-mode controls stay native (drawn in their logical space; glyphs `form_paint::upright`);
   since turbo-dom#292 `<audio controls>` paints Chrome's panel (`layout::media_paint`; controls:
-  raster `form_native_chrome156.json`). The
+  raster `form_native_chrome156.json`). Since turbo-dom#398 PR-C1 / PR-C2 / PR-D a `BoxKind::Block`
+  with a non-`auto` `column-count` / `column-width` is a multi-column formatting context
+  (`layout::multicol`, CSS Multicol 1): an independent formatting context whose in-flow
+  children flow into equal-width column strips of the content box per Chrome's widen rule
+  (`used_count = floor((W + gap) / (width + gap))`). PR-C2 adds fragmenting `column-fill:
+  balance` — `col_h = min(content_h / used_count, definite_height)` per §7.3 pseudo-
+  algorithm, a block whose height would overrun the remaining space in the current column
+  is cut at the boundary and the tail flows into the next one, and a block that cannot
+  fit inside `used_count` columns opens a new strip at `col_index * (used_width + gap)`
+  with no upper bound (Chrome's overflow columns, visible past the container when
+  `overflow: visible`). A fragmented block's `data-cid` reports the UNION rectangle of
+  its column fragments (Chrome's `getBoundingClientRect` contract). The `columns:
+  <width> <count>` and `column-rule: <width> <style> <color>` shorthands ride the
+  cascade's shorthand expansion (`font` / `list-style` / `border-radius` / `background` /
+  `columns` / `column-rule`). Control:
+  `tests/multicol_chrome.rs` + `tests/fixtures/multicol_chrome156.json`; all 8 Chrome 156
+  cases (`basic-2col-equal`, `basic-3col-with-gap`, `column-width-driven`,
+  `columns-shorthand`, `mixed-child-heights`, `overflow-at-column-height`,
+  `nested-multicol`, `floats-inside-column`) assert within 0.5 px. Since turbo-dom#398
+  PR-D the multicol container also emits `FragmentContent::ColumnRule { style, color }`
+  fragments between adjacent columns: rule width = `column-rule-width` clamped to the
+  gap (Blink's multicol painter never paints outside the gap), height = the balanced
+  column content height; `currentcolor` resolves to the container's `color`. Painted
+  by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` / `double`
+  (raster `multicol_rule_chrome156.json`); `groove` / `ridge` / `inset` / `outset` are
+  deferred. Since turbo-dom#398 PR-E a child with `column-span: all` breaks the
+  flow: pre-span and post-span runs each become their own sub-flow balanced
+  over `used_count` columns, and the span-all child places at the
+  container's full content inline size (CSS Multicol 1 §6). `column-span: all`
+  is gated on the kid being in-flow — an out-of-flow (`position: absolute` /
+  `fixed`) or floated kid that declares it is ignored, per §6.1 "A spanning box"
+  (R2 layout M1). The SAME in-flow gate also applies to `break-before: column` /
+  `break-after: column` / `break-inside: avoid | avoid-column` (R4 H3): abspos /
+  floated kids are not in the column flow and contribute zero to column-break
+  analysis — `fits_in_count` ignores their break flags, matching Chrome. `break-before:
+  column` / `break-after: column` force a column break; `break-inside: avoid`
+  / `avoid-column` pushes a child that would fragment into a fresh column
+  (when it fits in one — CSS Fragmentation 3 §5.2 "may ignore the value"
+  otherwise). `page` / `avoid-page` are pagination's concern (turbo-html2pdf)
+  and stay no-ops here. The `break-{before,after}` classes are read through
+  the central `layout::value::break_rule_of` parser, which returns one of
+  `BreakRule::{Auto, Avoid, AvoidColumn, Page, Column}` so the multicol flow
+  and the paginator see the same rule set and never collapse a column break
+  into a page break (turbo-html2pdf#69). The balancer becomes a 30-step binary search for the
+  smallest `col_h` at which the break-aware flow fits in `used_count` columns,
+  capped by the container's definite height (a capped `col_h` smaller than
+  the break-aware minimum accepts overflow strips past `used_count`). The last
+  in-flow column is end-aligned at `cx + cw - used_width` (Chrome's Blink
+  multicol), not `(used_count - 1) * stride`; the two agree on a pure-float
+  path but the stride formula would drift by up to 1/64 px if `used_width` is
+  ever rounded to Chrome's LayoutUnit grid (R2 layout M3). Six
+  new Chrome 156 cases cover it: `span-all-simple`, `span-all-balance`,
+  `break-before-column`, `break-after-column`, `break-inside-avoid`,
+  `break-inside-avoid-fits-anyway`.
+  The
   flow-relative `border-*-*-radius` corners map with the sides (turbo-dom#253). Since turbo-dom#238 inline layout is UAX #9 bidi
   (`layout::inline::bidi`): levels per paragraph from the text plus each inline box's
   `unicode-bidi`/`direction` as formatting characters (for inlines the static path
@@ -495,7 +555,34 @@ Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom
   accessed) read verbatim — zero cost.
 - **dispatchEvent skips propagation when no listener is on the path.** One ancestor walk builds
   the path AND flags `hasListener`; capture/target/bubble loops run only if true (preClick +
-  default actions still run). React fires thousands of listener-less events.
+  default actions still run). React fires thousands of listener-less events. **Non-Node
+  EventTargets (turbo-dom#381):** `EventTarget.dispatchEvent` walks an embedder-settable
+  parent hook (`ns.setEventTargetParent(target, fn)`, e.g. IDBRequest -> IDBTransaction ->
+  IDBDatabase in surf) and runs capture / target / bubble with the same listener-less
+  fast-skip; single-target dispatch (no parent hook) keeps the pre-#381 fast path.
+  `composedPath()` inside a non-Node listener returns only `[currentTarget]` (Chrome 156's
+  IDB contract). The non-Node path drains microtasks between listeners (turbo-dom#382) so a
+  Promise queued inside one listener has settled before the next runs — the window dispatch
+  (`invoke`) is unchanged. The per-listener drain is wrapped in
+  `drainMicrotasksAcrossDispatch`: it saves and restores every dispatch-scoped field
+  (`dispatching` / `currentTarget` / `eventPhase` / `path` / `target` / `stop` /
+  `stopImmediate` / `trusted`) across the
+  checkpoint, so a microtask that synchronously re-dispatches the same event object runs
+  in its own scope and the outer dispatch resumes unchanged — matching Chrome 156's
+  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3, R3 H1, R4 H1/H2). R3 H1
+  added `stop` / `stopImmediate` to the save set: the outer `dispatchTarget`'s `finally`
+  unconditionally resets them, so an inner nested dispatch (from a microtask) would
+  otherwise wipe an outer listener's `stopPropagation()` and the outer bubble phase
+  would run. R4 H1 extends the drain to CLEAR `stop` / `stopImmediate` BEFORE the
+  checkpoint — not just save/restore — so a nested re-dispatch starts fresh;
+  `dispatchTarget`'s entry writes the other dispatch-scoped fields but not these two,
+  relying on the previous dispatch's finally to reset them, so without the clear the
+  inner `dispatchMulti` would bail on its capture loop's first stop guard and skip
+  AT_TARGET and bubble as well. R4 H2 adds `trusted` to the save set because
+  `dispatchTarget`'s entry writes it from the `host` parameter but no finally restores
+  it: a trusted outer whose microtask re-dispatches via `target.dispatchEvent`
+  (non-host) would otherwise leave the outer's bubble listeners seeing
+  `event.isTrusted === false`.
 - **Shadow DOM is pay-for-what-you-use, gated on `Document.__hasShadow`** (set by the first
   `attachShadow`; armed eagerly for declarative `<template shadowrootmode>` in `index.mjs`, behind
   a `'shadowroot'` substring check on the HTML). Until then every hot path runs byte-for-byte as

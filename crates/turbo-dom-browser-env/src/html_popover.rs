@@ -782,23 +782,10 @@ fn pseudo_ranges<'i, 't>(
                 colon = None;
                 double_colon = false;
             }
-            Token::Function(ref name)
-                if name.eq_ignore_ascii_case("popover-open") && colon.is_some() =>
-            {
-                return Err(input.new_custom_error(()));
-            }
-            Token::Function(ref name)
-                if colon.is_some()
-                    && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")) =>
-            {
-                colon = None;
-                double_colon = false;
-                input.parse_nested_block(|nested| forgiving_list(nested, ranges))?;
-            }
             Token::Function(_) | Token::ParenthesisBlock => {
+                visit_function(input, &token, ranges, colon.is_some())?;
                 colon = None;
                 double_colon = false;
-                input.parse_nested_block(|nested| pseudo_ranges(nested, ranges))?;
             }
             Token::Comment(_) => (),
             _ => {
@@ -808,6 +795,29 @@ fn pseudo_ranges<'i, 't>(
         }
     }
     Ok(())
+}
+
+/// Recurse into a function or parenthesis block for `pseudo_ranges`. Rejects `:popover-open(...)`,
+/// treats `:is()` / `:where()` as forgiving selector lists, otherwise recurses as a plain nested
+/// selector context.
+fn visit_function<'i, 't>(
+    input: &mut cssparser::Parser<'i, 't>,
+    token: &cssparser::Token<'i>,
+    ranges: &mut Vec<(usize, usize, bool)>,
+    after_colon: bool,
+) -> Result<(), cssparser::ParseError<'i, ()>> {
+    use cssparser::Token;
+    if let Token::Function(ref name) = *token {
+        if after_colon && name.eq_ignore_ascii_case("popover-open") {
+            return Err(input.new_custom_error(()));
+        }
+        if after_colon
+            && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where"))
+        {
+            return input.parse_nested_block(|nested| forgiving_list(nested, ranges));
+        }
+    }
+    input.parse_nested_block(|nested| pseudo_ranges(nested, ranges))
 }
 /// Represent private native state as structural selectors within this exact DOM
 /// root. No attributes, styles or nodes are inserted into the guest's tree.

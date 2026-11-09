@@ -96,9 +96,10 @@
   const priority = keywords('high', 'low', 'auto'), loading = keywords('lazy', 'eager', 'auto');
   // unsigned long reflections (default 0): HTML's rules for parsing non-negative integers, kept
   // in [0, 2^31 - 1]; a larger value sets the default.
+  const isAsciiWhitespace = (ch) => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\r';
   const parseNonNegative = (value) => {
     let index = 0;
-    while (index < value.length && (value[index] === ' ' || value[index] === '\t' || value[index] === '\n' || value[index] === '\f' || value[index] === '\r')) index++;
+    while (index < value.length && isAsciiWhitespace(value[index])) index++;
     if (value[index] === '+') index++;
     let digits = '';
     while (index < value.length && value[index] >= '0' && value[index] <= '9') digits += value[index++];
@@ -229,9 +230,9 @@
   // <object>/<embed> browsing context and an iframe's documents are HTML documents, so for each
   // it is null (Chrome's answer for every non-SVG frame); object.contentDocument /
   // contentWindow are null for the same reason.
-  for (const [owner, tags] of [['HTMLIFrameElement', 'iframe'], ['HTMLObjectElement', 'object'], ['HTMLEmbedElement', 'embed']]) {
+  function installGetSVGDocument(owner, tags) {
     const proto = prototypeOf(owner);
-    if (!proto || hasOwn(proto, 'getSVGDocument')) continue;
+    if (!proto || hasOwn(proto, 'getSVGDocument')) return;
     const frame = owner === 'HTMLIFrameElement' ? find(proto, 'contentDocument') : null;
     const check = brand(tags);
     const contentType = find(g.Document.prototype, 'contentType').get;
@@ -241,6 +242,8 @@
       return document && apply(contentType, document, []) === 'image/svg+xml' ? document : null;
     }, 'getSVGDocument', 0), writable: true, enumerable: true, configurable: true });
   }
+  for (const [owner, tags] of [['HTMLIFrameElement', 'iframe'], ['HTMLObjectElement', 'object'], ['HTMLEmbedElement', 'embed']])
+    installGetSVGDocument(owner, tags);
   member('HTMLObjectElement', 'contentDocument', 'object', () => null);
   member('HTMLObjectElement', 'contentWindow', 'object', () => null);
   // CharacterData: NonDocumentTypeChildNode.

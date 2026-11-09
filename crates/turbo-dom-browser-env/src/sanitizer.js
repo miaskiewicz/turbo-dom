@@ -70,6 +70,22 @@
   const member = (prefix, name, dictionary) => prefix + `Failed to read the '${name}' property from '${dictionary}': `;
   // (DOMString or SanitizerElementNamespace[WithAttributes]) and
   // (DOMString or SanitizerAttributeNamespace), canonicalized on conversion.
+  function resolveNamespace(value, defaultNamespace, prefix, base) {
+    const rawNamespace = value.namespace;
+    let namespace = defaultNamespace;
+    if (rawNamespace === null) namespace = null;
+    else if (rawNamespace !== undefined) namespace = domString(rawNamespace, member(prefix, "namespace", base));
+    if (namespace === "") namespace = null;
+    return namespace;
+  }
+  function applyNameAttributes(result, value, prefix, dictionary) {
+    const allowed = value.attributes;
+    if (allowed !== undefined) result.attributes = sequence(allowed, member(prefix, "attributes", dictionary), attribute);
+    const removed = value.removeAttributes;
+    if (removed !== undefined)
+      result.removeAttributes = sequence(removed, member(prefix, "removeAttributes", dictionary), attribute);
+    if (result.attributes === undefined && result.removeAttributes === undefined) result.removeAttributes = [];
+  }
   function canonicalName(value, prefix, dictionary, defaultNamespace, withAttributes) {
     if (value === undefined || value === null) fail(prefix, `The provided value is not of type '${dictionary}'.`);
     if (!object(value)) {
@@ -81,19 +97,10 @@
     const rawName = value.name;
     if (rawName === undefined) fail(member(prefix, "name", base), "Required member is undefined.");
     const name = domString(rawName, member(prefix, "name", base));
-    const rawNamespace = value.namespace;
-    let namespace = defaultNamespace;
-    if (rawNamespace === null) namespace = null;
-    else if (rawNamespace !== undefined) namespace = domString(rawNamespace, member(prefix, "namespace", base));
-    if (namespace === "") namespace = null;
+    const namespace = resolveNamespace(value, defaultNamespace, prefix, base);
     const result = nameRecord(name, namespace);
     if (!withAttributes) return result;
-    const allowed = value.attributes;
-    if (allowed !== undefined) result.attributes = sequence(allowed, member(prefix, "attributes", dictionary), attribute);
-    const removed = value.removeAttributes;
-    if (removed !== undefined)
-      result.removeAttributes = sequence(removed, member(prefix, "removeAttributes", dictionary), attribute);
-    if (result.attributes === undefined && result.removeAttributes === undefined) result.removeAttributes = [];
+    applyNameAttributes(result, value, prefix, dictionary);
     return result;
   }
   const element = (value, prefix) => canonicalName(value, prefix, "SanitizerElementNamespaceWithAttributes", HTML, true);
@@ -296,31 +303,37 @@
   }
 
   // ------------------------------------------------------- Sanitizer methods
+  function pruneItemAttributes(config, item) {
+    if (config.attributes !== undefined) {
+      if (item.attributes !== undefined) {
+        item.attributes = filter(unique(item.attributes), (attr) => !contains(config.attributes, attr));
+        if (config.dataAttributes === true) item.attributes = filter(item.attributes, (attr) => !isData(attr));
+      }
+      if (item.removeAttributes !== undefined)
+        item.removeAttributes = filter(unique(item.removeAttributes), (attr) => contains(config.attributes, attr));
+      return;
+    }
+    if (item.attributes !== undefined)
+      item.attributes = filter(unique(item.attributes), (attr) => !contains(config.removeAttributes, attr));
+    if (item.removeAttributes !== undefined)
+      item.removeAttributes = filter(unique(item.removeAttributes), (attr) => !contains(config.removeAttributes, attr));
+  }
+  function upsertElement(config, item, modified) {
+    const index = indexOf(config.elements, item);
+    if (index < 0) {
+      push(config.elements, item);
+      return true;
+    }
+    if (equalElements(config.elements[index], item)) return modified;
+    remove(config.elements, item);
+    push(config.elements, item);
+    return true;
+  }
   function allowElement(config, item) {
     if (config.elements !== undefined) {
       const modified = remove(config.replaceWithChildrenElements, item);
-      if (config.attributes !== undefined) {
-        if (item.attributes !== undefined) {
-          item.attributes = filter(unique(item.attributes), (attr) => !contains(config.attributes, attr));
-          if (config.dataAttributes === true) item.attributes = filter(item.attributes, (attr) => !isData(attr));
-        }
-        if (item.removeAttributes !== undefined)
-          item.removeAttributes = filter(unique(item.removeAttributes), (attr) => contains(config.attributes, attr));
-      } else {
-        if (item.attributes !== undefined)
-          item.attributes = filter(unique(item.attributes), (attr) => !contains(config.removeAttributes, attr));
-        if (item.removeAttributes !== undefined)
-          item.removeAttributes = filter(unique(item.removeAttributes), (attr) => !contains(config.removeAttributes, attr));
-      }
-      const index = indexOf(config.elements, item);
-      if (index < 0) {
-        push(config.elements, item);
-        return true;
-      }
-      if (equalElements(config.elements[index], item)) return modified;
-      remove(config.elements, item);
-      push(config.elements, item);
-      return true;
+      pruneItemAttributes(config, item);
+      return upsertElement(config, item, modified);
     }
     if (item.attributes !== undefined || (item.removeAttributes !== undefined && item.removeAttributes.length)) return false;
     const modified = remove(config.replaceWithChildrenElements, item);

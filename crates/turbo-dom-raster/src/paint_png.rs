@@ -10,8 +10,9 @@ use tiny_skia::{
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, Fragment, FragmentContent, LinearGradient as CssGradient,
-    OverflowClip, PositionedGlyph, Rgba, TilePattern, Transform2D as BoxTransform,
+    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
+    LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba, TilePattern,
+    Transform2D as BoxTransform,
 };
 
 use std::rc::Rc;
@@ -401,9 +402,110 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
         ),
         FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
         FragmentContent::Tiles(pattern) => paint_tiles(pm, f, pattern, images, xf),
+        FragmentContent::ColumnRule { style, color } => {
+            paint_column_rule(pm, f, *style, *color, xf);
+        }
         FragmentContent::Marker(_) => {}
     }
     paint_children(pm, f, images, xf);
+}
+
+/// Paint a multicol `column-rule` fragment ([`FragmentContent::ColumnRule`];
+/// miaskiewicz/turbo-dom#398 PR-D) centred in its box: solid fills the rect,
+/// dotted stamps circles of diameter `width` on period `2 * width`, dashed
+/// stamps dashes `2 * width` long on period `3 * width`, double paints two
+/// bands each `floor(width / 3)` thick at the long edges.
+fn paint_column_rule(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    style: ColumnRuleStyle,
+    color: Rgba,
+    xf: Transform,
+) {
+    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    match style {
+        ColumnRuleStyle::Solid => fill_rect(pm, f.x, f.y, f.width, f.height, color, xf),
+        ColumnRuleStyle::Dotted => paint_dotted_rule(pm, f, color, xf),
+        ColumnRuleStyle::Dashed => paint_dashed_rule(pm, f, color, xf),
+        ColumnRuleStyle::Double => paint_double_rule(pm, f, color, xf),
+    }
+}
+
+/// Stamp circular dots of diameter `f.width` down the rule's centerline, period
+/// `2 * width` (Blink's `kDottedStroke` with cap-round).
+fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let diameter = f.width;
+    let radius = diameter / 2.0;
+    let cx = f.x + radius;
+    let period = 2.0 * diameter;
+    if period <= 0.0 {
+        return;
+    }
+    let mut cy = f.y + radius;
+    let end = f.y + f.height;
+    while cy - radius < end {
+        if let Some(path) = circle_path(cx, cy, radius) {
+            pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
+        }
+        cy += period;
+    }
+}
+
+/// Kappa: the cubic control offset that approximates a quarter-circle to
+/// within ~0.0003 units.
+const CIRCLE_KAPPA: f32 = 0.552_284_8;
+
+/// Build a tiny-skia path for a circle of radius `r` at `(cx, cy)` as four cubic
+/// Béziers. `None` when `r < 0.5` pixel (tiny-skia ignores a degenerate path).
+fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
+    if r <= 0.0 {
+        return None;
+    }
+    let k = r * CIRCLE_KAPPA;
+    let mut p = PathBuilder::new();
+    p.move_to(cx + r, cy);
+    p.cubic_to(cx + r, cy + k, cx + k, cy + r, cx, cy + r);
+    p.cubic_to(cx - k, cy + r, cx - r, cy + k, cx - r, cy);
+    p.cubic_to(cx - r, cy - k, cx - k, cy - r, cx, cy - r);
+    p.cubic_to(cx + k, cy - r, cx + r, cy - k, cx + r, cy);
+    p.close();
+    p.finish()
+}
+
+/// Stamp dashes of length `2 * width` down the rule, period `3 * width` (Blink's
+/// `kDashedStroke`: a `width` gap between each dash).
+fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let width = f.width;
+    let dash = 2.0 * width;
+    let gap = width;
+    let period = dash + gap;
+    if period <= 0.0 {
+        return;
+    }
+    let end = f.y + f.height;
+    let mut dash_top = f.y;
+    while dash_top < end {
+        let dash_h = dash.min(end - dash_top);
+        if dash_h > 0.0 {
+            fill_rect(pm, f.x, dash_top, width, dash_h, color, xf);
+        }
+        dash_top += period;
+    }
+}
+
+/// Paint two bands at the long edges, each `floor(width / 3)` thick, matching
+/// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
+/// painter falls back to one solid band so a thin double rule still shows.
+fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let band = (f.width / 3.0).floor().max(1.0);
+    if f.width < 3.0 {
+        fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
+        return;
+    }
+    fill_rect(pm, f.x, f.y, band, f.height, color, xf);
+    fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
 }
 
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)
@@ -3020,6 +3122,130 @@ mod exact_tests {
             "shadow clipped away"
         );
         assert_eq!(got.pixel(44, 14).unwrap().red(), 255, "shadow clipped away");
+    }
+
+    /// A `ColumnRule` fragment with `(style, color)` at `(x, y) size (w, h)`.
+    fn rule(x: f32, y: f32, w: f32, h: f32, style: ColumnRuleStyle, color: Rgba) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            FragmentContent::ColumnRule { style, color },
+        )
+    }
+
+    /// Returns whether `pm` is a white rectangle (the canvas `white` fills).
+    fn is_blank(pm: &Pixmap) -> bool {
+        pm.pixels()
+            .iter()
+            .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 255, 255, 255])
+    }
+
+    // miaskiewicz/turbo-dom#398 PR-D: `paint_column_rule` must early-return on
+    // a transparent colour or a zero-sized rect — without the guard the Dotted
+    // and Dashed helpers would loop forever on a zero width. Each sub-case
+    // paints over white and asserts the pixmap is unchanged.
+    #[test]
+    fn paint_column_rule_is_a_no_op_on_degenerate_fragments() {
+        for style in [
+            ColumnRuleStyle::Solid,
+            ColumnRuleStyle::Dotted,
+            ColumnRuleStyle::Dashed,
+            ColumnRuleStyle::Double,
+        ] {
+            // Transparent colour: every opaque style skips painting.
+            let transparent = Rgba {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 0,
+            };
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 4.0, 8.0, style, transparent), 10, 10)),
+                "alpha 0 must paint nothing ({style:?})"
+            );
+            // Zero width.
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 0.0, 8.0, style, RED), 10, 10)),
+                "zero width must paint nothing ({style:?})"
+            );
+            // Zero height.
+            assert!(
+                is_blank(&drawn(&rule(1.0, 1.0, 4.0, 0.0, style, RED), 10, 10)),
+                "zero height must paint nothing ({style:?})"
+            );
+        }
+    }
+
+    // `Double` below 3 px wide collapses to a single solid band (CSS Backgrounds
+    // 3 §4.2: a thin double still shows). A mutation that flipped `< 3.0` to
+    // `>= 3.0` or dropped the `return` would paint the two-band version, which
+    // leaves a hollow centre a `band = 1` thick (so the middle column at a 2 px
+    // rule would be blank) — the test asserts the full rect is filled.
+    #[test]
+    fn paint_column_rule_thin_double_paints_a_single_solid_band() {
+        let got = drawn(&rule(1.0, 1.0, 2.0, 6.0, ColumnRuleStyle::Double, RED), 10, 10);
+        for y in 1..7 {
+            for x in 1..3 {
+                let c = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [c.red(), c.green(), c.blue()],
+                    [255, 0, 0],
+                    "rule pixel ({x}, {y}) stays red"
+                );
+            }
+        }
+        // The band stays inside its box: outside it stays white.
+        for (x, y) in [(0, 2), (3, 2), (2, 0), (2, 7)] {
+            let c = got.pixel(x, y).unwrap();
+            assert_eq!([c.red(), c.green(), c.blue()], [255, 255, 255]);
+        }
+    }
+
+    // `circle_path` returns `None` for a non-positive radius; a mutation that
+    // dropped the guard would produce a degenerate cubic path that tiny-skia
+    // either rejects or renders as a single filled pixel at the centre — which
+    // paint_dotted_rule would then stamp at every y step on the centerline.
+    // The direct test keeps the contract pinned without touching the raster
+    // walk.
+    #[test]
+    fn circle_path_is_none_for_a_non_positive_radius() {
+        assert!(circle_path(5.0, 5.0, 0.0).is_none(), "r = 0");
+        assert!(circle_path(5.0, 5.0, -0.5).is_none(), "r < 0");
+        assert!(circle_path(5.0, 5.0, 0.5).is_some(), "r > 0");
+    }
+
+    // The `paint_dotted_rule` and `paint_dashed_rule` helpers both guard
+    // `period <= 0.0` so a zero-width rule can never infinite-loop
+    // (`cy += period` of 0, `dash_top += period` of 0). The caller
+    // `paint_column_rule` guards `f.width <= 0.0` first, so the guards sit on
+    // the function contract rather than a reachable branch via `paint`.
+    // Calling the helpers directly with a zero-width fragment keeps that
+    // contract — and the loop-protection — pinned against a mutation that
+    // flipped the guard's `<=` to `<`.
+    #[test]
+    fn dotted_and_dashed_helpers_return_on_zero_width_fragments() {
+        let mut pm = white(10, 10);
+        let id = Transform::identity();
+        let f = Fragment::new(
+            NodeId(0),
+            1.0,
+            1.0,
+            0.0,
+            8.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dotted,
+                color: RED,
+            },
+        );
+        paint_dotted_rule(&mut pm, &f, RED, id);
+        paint_dashed_rule(&mut pm, &f, RED, id);
+        assert!(
+            is_blank(&pm),
+            "zero-width helpers must not paint or loop"
+        );
     }
 
     #[test]

@@ -140,6 +140,16 @@ fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
     record_references();
     let references: &'static [v8::ExternalReference] =
         Box::leak(external_refs::table().into_boxed_slice());
+    // Anchor V8's process-shared read-only heap on this thread for the snapshot
+    // creator's lifetime (turbo-dom#392). V8 initializes the shared RO heap from
+    // whichever isolate first touches it in the process: a snapshot creator started
+    // with no default-snapshot isolate alive serializes read-only references into a
+    // creator-shaped layout, and any blob isolate deserialized later alongside a
+    // default-snapshot isolate (a worker, a leaked creator from a failed build) then
+    // reads the shared layout and crashes in `Deserializer::ReadReadOnlyHeapRef`.
+    // Keeping a default-snapshot isolate alive here forces the shared layout before
+    // the creator reads from it, so blobs are compatible with any later isolate.
+    let _ro_anchor = v8::Isolate::new(Default::default());
     let mut isolate = v8::Isolate::snapshot_creator(Some(Cow::Borrowed(references)), None);
     BUILDING.with(|building| building.set(true));
     external_refs::begin_build_log();
@@ -167,10 +177,15 @@ fn build_from(prelude: Option<fn(&mut v8::PinScope)>) -> Option<Blob> {
         eprintln!(
             "[rust-dom] startup snapshot not built ({reason}): installs run the engine scripts"
         );
+        // Both must outlive this fn: the snapshot creator holds V8 state the RO anchor's
+        // disposal would otherwise touch, so dropping the anchor while the creator is
+        // leaked panics at v8::Isolate::drop.
         std::mem::forget(isolate);
+        std::mem::forget(_ro_anchor);
         return None;
     }
     let data = isolate.create_blob(v8::FunctionCodeHandling::Keep)?;
+    // `_ro_anchor` drops here at scope exit, AFTER `create_blob` consumed the creator.
     Some(Blob { data, references })
 }
 

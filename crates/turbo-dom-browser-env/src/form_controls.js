@@ -237,12 +237,7 @@
     const below=base+floor((number(value)-base)/interval)*interval;
     return 'Please enter a valid value. The two nearest valid values are '+below+' and '+(below+interval)+'.';
   }
-  function message(element) {
-    checkControl(element);const state=flags(element);
-    const associatedRecord=associatedGet(element);if(associatedRecord)return candidate(element)&&!state.valid?associatedRecord.message:"";
-    if(!candidate(element)||state.valid)return '';
-    const own=customGet(element);if(own)return own;
-    const inputType=type(element),value=readValue(element);
+  function stateViolationMessage(element,state,inputType,value) {
     if(state.valueMissing)return valueMissingMessage(element,inputType);
     if(state.typeMismatch)return typeMismatchMessage(inputType,value);
     if(state.patternMismatch)return 'Please match the requested format.';
@@ -250,6 +245,13 @@
     if(state.rangeOverflow)return 'Value must be less than or equal to '+attr(element,'max')+'.';
     if(state.stepMismatch)return stepMismatchMessage(element,value);
     return '';
+  }
+  function message(element) {
+    checkControl(element);const state=flags(element);
+    const associatedRecord=associatedGet(element);if(associatedRecord)return candidate(element)&&!state.valid?associatedRecord.message:"";
+    if(!candidate(element)||state.valid)return '';
+    const own=customGet(element);if(own)return own;
+    return stateViolationMessage(element,state,type(element),readValue(element));
   }
   function validity(element) {
     checkControl(element);
@@ -345,12 +347,16 @@
     if(inputType==='hidden'&&name==='_charset_')charsetEntries[charsetEntries.length]=entries.length;
     append(name,inputType==='checkbox'||inputType==='radio'?attr(control,'value')??'on':readValue(control));
   }
+  function controlEntriesSkipped(control,kind,inputType,name,submitter,append) {
+    if(disabled(control)||!name||kind==='fieldset'||kind==='object'||kind==='output')return true;
+    if(buttonEntriesDone(control,kind,inputType,name,submitter,append))return true;
+    if(kind==='input'&&regexTest(/^(checkbox|radio)$/,inputType)&&!checkedValue(control))return true;
+    return false;
+  }
   function appendControlEntries(control,submitter,append,entries,charsetEntries) {
     const kind=tag(control),inputType=type(control),name=attr(control,'name');
     const associatedRecord=associatedGet(control);if(associatedRecord){appendAssociatedEntries(control,name,associatedRecord,append);return;}
-    if(disabled(control)||!name||kind==='fieldset'||kind==='object'||kind==='output')return;
-    if(buttonEntriesDone(control,kind,inputType,name,submitter,append))return;
-    if(kind==='input'&&regexTest(/^(checkbox|radio)$/,inputType)&&!checkedValue(control))return;
+    if(controlEntriesSkipped(control,kind,inputType,name,submitter,append))return;
     if(kind==='input'&&inputType==='file'){appendFileEntries(control,name,append);return;}
     if(kind==='select')appendSelectEntries(control,name,append);
     else appendValueEntry(control,inputType,name,append,entries,charsetEntries);
@@ -385,15 +391,21 @@
     } else submitter=null;
     return submitter;
   }
+  function bumpUserValidity(form) {
+    const controls=formControls(form);
+    for(let i=0;i<controls.length;i++){const kind=tag(controls[i]);if(kind==='input'||kind==='select'||kind==='textarea'){ns.bumpStyleState();privateSet(controls[i],'userValidity',true);}}
+  }
+  function shouldSkipValidation(form,submitter) {
+    return present(form,'novalidate')||!!(submitter&&present(submitter,'formnovalidate'));
+  }
   function request(form, submitter) {
     checkForm(form);submitter=normalizeSubmitter(form,submitter);
     if(!apply(connectedGetter,form,[])||!bridge('allowed',form)||!bridge('active',form)||privateGet(form,'firing-submit'))return;
     privateSet(form,'firing-submit',true);
     try {
       // A submission attempt sets every listed input, select and textarea's user validity.
-      const controls=formControls(form);
-      for(let i=0;i<controls.length;i++){const kind=tag(controls[i]);if(kind==='input'||kind==='select'||kind==='textarea'){ns.bumpStyleState();privateSet(controls[i],'userValidity',true);}}
-      if(!present(form,'novalidate')&&!(submitter&&present(submitter,'formnovalidate'))&&!validate(form))return;
+      bumpUserValidity(form);
+      if(!shouldSkipValidation(form,submitter)&&!validate(form))return;
       const event=new SubmitEventClass('submit',{bubbles:true,cancelable:true,composed:submitter!==null,submitter});
       if(!bridge('emit',form,event))return;
     } finally {privateSet(form,'firing-submit',false);}

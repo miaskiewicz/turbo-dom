@@ -331,9 +331,7 @@
   accessor(HTMLLabelElement.prototype, "control", function () {
     return forms.labelControl(this);
   });
-  method(Internals.prototype, "setValidity", 1, function (input, message, anchor) {
-    const record = formRecord(this);
-    if (!arguments.length) throw new ErrorType("One argument required");
+  function validityFlagsFrom(input) {
     const next = flags();
     if (input !== null && input !== undefined) {
       for (const key of flagNames) {
@@ -341,11 +339,20 @@
         if (next[key]) next.valid = false;
       }
     }
-    const text = message === undefined ? "" : string(message);
+    return next;
+  }
+  function validateSetValidityArgs(record, next, text, anchor) {
     if (anchor !== undefined && anchor !== null) forms.tag(anchor);
     if (!next.valid && text === "") throw new ErrorType("A validation message is required.");
     if (anchor !== undefined && !apply(contains, record.host, [anchor]))
       throw new Exception("The anchor is not a descendant.", "NotFoundError");
+  }
+  method(Internals.prototype, "setValidity", 1, function (input, message, anchor) {
+    const record = formRecord(this);
+    if (!arguments.length) throw new ErrorType("One argument required");
+    const next = validityFlagsFrom(input);
+    const text = message === undefined ? "" : string(message);
+    validateSetValidityArgs(record, next, text, anchor);
     ns.bumpStyleState();
     record.flags = next;
     record.message = next.valid ? "" : text;

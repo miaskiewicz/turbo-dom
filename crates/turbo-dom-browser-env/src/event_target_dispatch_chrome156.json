@@ -1,0 +1,87 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "event-target-dispatch-chrome156-probe.js",
+  "probeSha256": "b199e839179002c6e7c978fa9debae8e652cb8258abbded1018ca7eec7e636d9",
+  "collectorSha256": "2b80607365d8a6c1081c4ef0c7e8366b83f2adefeb03dad0e818729ebe780db9",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "phases": [
+      {
+        "level": "db",
+        "capture": true,
+        "phase": 1,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      },
+      {
+        "level": "tx",
+        "capture": true,
+        "phase": 1,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      },
+      {
+        "level": "request",
+        "capture": true,
+        "phase": 2,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      },
+      {
+        "level": "request",
+        "capture": false,
+        "phase": 2,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      },
+      {
+        "level": "tx",
+        "capture": false,
+        "phase": 3,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      },
+      {
+        "level": "db",
+        "capture": false,
+        "phase": 3,
+        "currentIsLevel": true,
+        "targetIsReq": true,
+        "pathLen": 1,
+        "pathFirst": true
+      }
+    ],
+    "microtask": [
+      [
+        "listenerA",
+        "pending"
+      ],
+      [
+        "listenerB",
+        "ran"
+      ]
+    ]
+  }
+}

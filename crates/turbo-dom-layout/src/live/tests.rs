@@ -542,6 +542,259 @@ fn the_hook_sees_the_whole_styled_forest_before_layout() {
     assert_eq!(border(&snapshot, a), (20.0, 10.0));
 }
 
+// miaskiewicz/turbo-dom#395: the surf-level oracle. A CSSOM inline override on a
+// styled element must drive layout even when the embedder supplies no UA origin
+// — the live style pass has to recognise a known HTML block tag's default
+// `display: block` the way `test_support::ensure_default_display` does. Pre-0.8.0
+// the implicit default already did this; after #375 flipped the default to
+// `inline`, surf's captured `Composition` (which carries no UA rules in the
+// budget-test shape) saw every `div` collapse to zero. The border box of `a`
+// must be `(30, 5)` (the override replaces the existing style attribute) and
+// `b` must be `(200, 0)` (no style attribute, no override applied, but a block
+// div fills the viewport).
+#[test]
+fn inline_override_replaces_only_an_existing_style_attribute_395() {
+    let styled = Styled::new(
+        "<body style='margin:0'><div id=a style='width:10px;height:5px'></div><div id=b></div></body>",
+    );
+    let (a, b) = (styled.el("a"), styled.el("b"));
+    let overrides = [(a, "width:30px;height:5px"), (b, "width:40px;height:5px")];
+    let (snapshot, ()) = styled.run(&[], &overrides, &|_| Ok(0), |_| Ok(())).unwrap();
+    assert_eq!(border(&snapshot, a), (30.0, 5.0));
+    // `b` has no `style` attribute, so the override must not apply: a block div
+    // takes the container width with auto (zero) content height.
+    assert_eq!(border(&snapshot, b), (200.0, 0.0));
+    // The DOM itself is never rewritten.
+    assert_eq!(
+        styled.tree.get_attribute(a, "style"),
+        Some("width:10px;height:5px")
+    );
+    assert_eq!(styled.tree.get_attribute(b, "style"), None);
+}
+
+/// turbo-dom R1 (expert H2 + meshde): #395's `ensure_default_display` fix covered
+/// only the block-tag list. The same regression — a surf-level inline override on
+/// a styled element collapsing the border box to `(0, 0)` because the embedder
+/// supplied no UA origin — occurs for every HTML tag whose Chrome `html.css`
+/// default display is not `inline`: `<li>` (`list-item`), form controls
+/// (`inline-block`: `<input>`, `<button>`, `<select>`, `<textarea>`, `<progress>`,
+/// `<meter>`), and the table family (`<table>`, `<tr>`, `<td>`, `<th>`, `<thead>`,
+/// `<tbody>`, `<tfoot>`, `<caption>`). Each tag with a width/height override must
+/// honour the override under the live-input path with no UA origin supplied.
+///
+/// Review R2 layout M5 tightens this test: assert the resolved `Display`
+/// variant too (not just the inline-override width), so the dead-string
+/// regression R2 H2 flagged — `<tbody>` / `<col>` / `<colgroup>` falling
+/// through to `Display::Block` — fails loudly next time instead of masking
+/// the width assertion.
+#[test]
+fn inline_override_applies_to_every_non_inline_html_tag_default() {
+    use crate::layout::value::{display_of, Display};
+    // Non-inline HTML tags whose Chrome UA default is not `inline`. Each carries
+    // a seed `style` attribute so `inline_style` picks up the override (mirrors
+    // the #395 oracle: a surf page's CSSOM override only lands on an element
+    // whose `style` attribute already exists). The <ul> wraps <li> so list-item
+    // layout runs under a block ancestor. The <tbody> / <col> / <colgroup>
+    // rows cover the R2 H2 variants that previously fell through to
+    // `Display::Block` end-to-end.
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <ul style='margin:0;padding:0'><li id=li style='width:0;height:0'></li></ul>\
+         <table id=table style='border-spacing:0;width:0;height:0'>\
+           <colgroup id=colgroup style='width:0'><col id=col style='width:0'></colgroup>\
+           <thead id=thead style='height:0'><tr id=trhead style='height:0'><th id=th style='padding:0'></th></tr></thead>\
+           <tbody id=tbody style='height:0'><tr id=tr style='height:0'><td id=td style='padding:0'></td></tr></tbody>\
+           <tfoot id=tfoot style='height:0'><tr id=trfoot style='height:0'><td id=tdfoot style='padding:0'></td></tr></tfoot>\
+           <caption id=caption style='padding:0'></caption>\
+         </table>\
+         <input id=input style='padding:0;border:0'>\
+         <button id=button style='padding:0;border:0'></button>\
+         <select id=select style='padding:0;border:0'></select>\
+         <textarea id=textarea style='padding:0;border:0'></textarea>\
+         <progress id=progress style='padding:0'></progress>\
+         <meter id=meter style='padding:0'></meter>\
+         </body>",
+    );
+    // (id, expected Display variant). The width/height overrides below still
+    // go through border(&snapshot, _) when the fragment has a BorderBox entry;
+    // tags that do not produce a BorderBox fragment (col / colgroup / the
+    // internal table groups outside a caption-bearing table wrapper) are
+    // kept to the `Display` assertion so the variant fix is still pinned
+    // without re-baselining.
+    let cases: &[(&str, Display)] = &[
+        ("li", Display::ListItem),
+        ("table", Display::Table),
+        ("colgroup", Display::TableColumnGroup),
+        ("col", Display::TableColumn),
+        ("thead", Display::TableHeaderGroup),
+        ("tbody", Display::TableRowGroup),
+        ("tfoot", Display::TableFooterGroup),
+        ("tr", Display::TableRow),
+        ("trhead", Display::TableRow),
+        ("trfoot", Display::TableRow),
+        ("td", Display::TableCell),
+        ("tdfoot", Display::TableCell),
+        ("th", Display::TableCell),
+        ("caption", Display::TableCaption),
+        ("input", Display::InlineBlock),
+        ("button", Display::InlineBlock),
+        ("select", Display::InlineBlock),
+        ("textarea", Display::InlineBlock),
+        ("progress", Display::InlineBlock),
+        ("meter", Display::InlineBlock),
+    ];
+    let handles: Vec<_> = cases
+        .iter()
+        .map(|(id, want)| (*id, styled.el(id), *want))
+        .collect();
+    // Each element already has a `style` attribute (so `inline_override` picks
+    // up the override).
+    for (id, h, _) in &handles {
+        assert!(
+            styled.tree.get_attribute(*h, "style").is_some(),
+            "{id}: seed style attribute must exist for the override to land",
+        );
+    }
+    let decl = "width:30px;height:5px";
+    let overrides: Vec<(Handle, &str)> = handles.iter().map(|(_, h, _)| (*h, decl)).collect();
+    // Pull every target's resolved style back through the StyledNode tree hook.
+    let targets: Vec<Handle> = handles.iter().map(|(_, h, _)| *h).collect();
+    let (snapshot, resolved) = styled
+        .run(&[], &overrides, &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                let el = find(nodes, *h).ok_or_else(|| "no styled element".to_string())?;
+                out.push(el.style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    for ((id, h, want), style) in handles.iter().zip(resolved.iter()) {
+        // R2 M5: the Display variant must be exactly what the Chrome keyword
+        // resolved to — a regression that drops the match arm for a new
+        // `table-*` keyword would re-land on Block and fail loudly here.
+        assert_eq!(
+            display_of(style),
+            *want,
+            "{id}: Display variant mismatch (specified_display match arm missing?)",
+        );
+        // If the element produces a border-box fragment, assert the inline
+        // override still applies to its width — the R1 H2 width guarantee.
+        if snapshot
+            .source(super::source_id(DOCUMENT, *h))
+            .and_then(|s| {
+                s.fragment_indices
+                    .iter()
+                    .map(|&i| &snapshot.fragments()[i])
+                    .find(|f| f.kind == GeometryKind::BorderBox)
+            })
+            .is_some()
+        {
+            let (w, _) = border(&snapshot, *h);
+            assert_eq!(
+                w, 30.0,
+                "{id}: inline override must apply (width = 30 px)",
+            );
+        }
+    }
+}
+
+/// Review R2 layout H1: Chrome's UA has `input[type=hidden] { display: none }`.
+/// `ensure_default_display` is tag-only and gave every `<input>` `inline-block`,
+/// so a surf-level `<input type=hidden>` under the live-input path (no UA
+/// origin) rendered its default text-field box. Honour the attribute.
+#[test]
+fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
+    use crate::layout::value::{display_of, Display};
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <input id=plain style='padding:0;border:0'>\
+         <input id=hidden type=hidden>\
+         <input id=hidden_mixed TYPE='Hidden'>\
+         <input id=text type=text>\
+         </body>",
+    );
+    let targets: Vec<Handle> = ["plain", "hidden", "hidden_mixed", "text"]
+        .iter()
+        .map(|id| styled.el(id))
+        .collect();
+    let (_, resolved) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                out.push(find(nodes, *h).unwrap().style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    assert_eq!(display_of(&resolved[0]), Display::InlineBlock, "input: plain");
+    assert_eq!(
+        display_of(&resolved[1]),
+        Display::None,
+        "input[type=hidden]: display must be none"
+    );
+    assert_eq!(
+        display_of(&resolved[2]),
+        Display::None,
+        "input[TYPE=Hidden]: attribute match is case-insensitive"
+    );
+    assert_eq!(
+        display_of(&resolved[3]),
+        Display::InlineBlock,
+        "input[type=text]: unchanged"
+    );
+}
+
+/// Review R3 M5: Chrome's UA `input[type=hidden] { display: none }` has
+/// attribute specificity (0, 1, 1), which beats an author `input { display:
+/// block }` (0, 0, 1). The prior R2 H1 continuation fallback stamped
+/// `display: none` only when the computed `display` was absent or the
+/// `inline-block` from `ensure_default_display` — so an author rule that
+/// set `display` to `block` / `flex` / `grid` left the hidden input
+/// visible, diverging from Chrome. The fix drops the narrow guard so the
+/// fallback stamps `display: none` regardless of the current computed
+/// value: it represents the UA rule, which outranks author `input { ... }`.
+#[test]
+fn input_type_hidden_overrides_author_display_block_in_live_path() {
+    use crate::layout::value::{display_of, Display};
+    // An author inline style sets display: block on an input[type=hidden].
+    // Chrome's UA rule (specificity (0,1,1)) beats the author's tag-only
+    // inline (which stays in the author origin as a tag rule once parsed —
+    // and even as an inline it ties on origin but loses on attribute
+    // specificity to a UA [type=hidden] rule). The engine's live fallback
+    // must honour that.
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <input id=auth_block type=hidden style='display:block'>\
+         <input id=auth_flex type=hidden style='display:flex'>\
+         </body>",
+    );
+    let targets: Vec<Handle> = ["auth_block", "auth_flex"]
+        .iter()
+        .map(|id| styled.el(id))
+        .collect();
+    let (_, resolved) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                out.push(find(nodes, *h).unwrap().style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    assert_eq!(
+        display_of(&resolved[0]),
+        Display::None,
+        "input[type=hidden] with author display:block must still be none \
+         — Chrome's UA rule outranks the author `input` rule"
+    );
+    assert_eq!(
+        display_of(&resolved[1]),
+        Display::None,
+        "input[type=hidden] with author display:flex must still be none"
+    );
+}
+
 #[test]
 fn snapshot_errors_pass_through() {
     let styled = Styled::new("<body></body>");

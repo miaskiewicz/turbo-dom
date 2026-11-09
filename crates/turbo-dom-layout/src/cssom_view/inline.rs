@@ -200,6 +200,56 @@ mod tests {
         );
     }
 
+    /// miaskiewicz/turbo-dom#386, follow-up to #377: the live inline y of a web-font line
+    /// at DPR 2 (`LiveOptions { layout_scale: 2.0 }`) matches Chrome 156's. 20px Fira Code
+    /// has an odd content height (25 CSS px) at DPR 2, so the line's top lands at a
+    /// fractional CSS px; Chrome snaps its `getBoundingClientRect` / `getClientRects` y to
+    /// the device-pixel grid, and the binding must do the same.
+    #[cfg(feature = "bundled-fonts")]
+    #[test]
+    fn webfont_inline_y_at_dpr_2_matches_chrome_156() {
+        use crate::text::FontFace;
+        use crate::FontRegistry;
+        let fira = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/fonts/fira-code/FiraCode-Regular.ttf"
+        ))
+        .unwrap();
+        let mut fonts = FontRegistry::new();
+        fonts.add(FontFace::from_web_font_bytes(fira, "Fira Code", 400, false).unwrap());
+        let css = "body{margin:0;font-family:\"Fira Code\";\
+            font-size:20px;line-height:25px}";
+        let html = "<!doctype html><div data-cid=\"r\"><div data-cid=\"a\">abc</div>\
+            <div data-cid=\"b\">de<span id=t data-cid=\"s\">fg</span>hi</div></div>";
+        let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            html,
+            css,
+            (1280.0, 800.0),
+            Some(2.0),
+            |_| {},
+            &fonts,
+        );
+        let id = crate::live::source_id(
+            crate::live::testing::DOCUMENT,
+            tree.query_selector("#t").unwrap(),
+        );
+        let got = geometry(&snapshot, &styles, id).unwrap();
+        // Chrome 156 `cssom_view_chrome156_dpr2.json`: span s bounds = [24.6171875, 25.0,
+        // 24.6171875, 24.5] (one rect). Line-height 25px aligns the line box with the
+        // font's 24.5-CSS-px content box at DPR 2, so the inline y is the line-box top
+        // snapped to the device-pixel grid.
+        assert!(
+            (got.bounds.y - 25.0).abs() <= 0.01,
+            "inline y {} vs Chrome 25.0",
+            got.bounds.y
+        );
+        assert!(
+            (got.bounds.height - 24.5).abs() <= 0.01,
+            "inline height {} vs Chrome 24.5",
+            got.bounds.height
+        );
+    }
+
     #[test]
     fn a_receiver_without_a_style_is_an_error() {
         let html = "<body><p id=t>text</p></body>";

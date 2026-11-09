@@ -2984,21 +2984,27 @@ fn el_set_attribute<'s>(
                 .insert(h, units.clone());
         });
     }
-
-    // When an <input> becomes a checkbox/radio (React sets `type` via setAttribute after createElement),
-    // strip the value-change tracker: those inputs track `checked`, not `value`, so a value-tracker
-    // would mis-detect changes and break onChange. Removing the own `value`/`_valueTracker` lets the
-    // framework use its checked path (we keep the own `checked` accessor).
     if key == "type" {
-        let v = value.to_ascii_lowercase();
-        if v == "checkbox" || v == "radio" {
-            let this = args.this();
-            for k in ["value", "_valueTracker"] {
-                if let Some(key) = v8::String::new(scope, k) {
-                    if this.has_own_property(scope, key.into()).unwrap_or(false) {
-                        this.delete(scope, key.into());
-                    }
-                }
+        maybe_strip_value_tracker(scope, args.this(), &value);
+    }
+}
+
+/// When an `<input>` becomes a checkbox/radio (React sets `type` via setAttribute after
+/// createElement), strip the value-change tracker: those inputs track `checked`, not `value`,
+/// so a value-tracker would mis-detect changes and break onChange.
+fn maybe_strip_value_tracker(
+    scope: &mut v8::PinScope,
+    this: v8::Local<v8::Object>,
+    value: &str,
+) {
+    let v = value.to_ascii_lowercase();
+    if v != "checkbox" && v != "radio" {
+        return;
+    }
+    for k in ["value", "_valueTracker"] {
+        if let Some(key) = v8::String::new(scope, k) {
+            if this.has_own_property(scope, key.into()).unwrap_or(false) {
+                this.delete(scope, key.into());
             }
         }
     }
@@ -5105,6 +5111,39 @@ fn run_dispatch_phases(
     fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
     set_targets: &dyn Fn(&mut v8::PinScope, usize),
 ) {
+    let reached_target = run_capture_phase(
+        scope,
+        record,
+        event_obj,
+        path_entries,
+        terminated,
+        fire,
+        set_targets,
+    );
+    run_bubble_phase(
+        scope,
+        record,
+        event_obj,
+        path_entries,
+        bubbles,
+        reached_target,
+        terminated,
+        fire,
+        set_targets,
+    );
+}
+
+/// Capture phase: fire listeners from the outermost ancestor toward the target. Returns
+/// whether the target was actually reached (`stop` or termination can short-circuit).
+fn run_capture_phase(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    event_obj: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    terminated: &std::cell::Cell<bool>,
+    fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) -> bool {
     let mut reached_target = false;
     for index in (0..path_entries.len()).rev() {
         let entry = path_entries[index];
@@ -5120,6 +5159,23 @@ fn run_dispatch_phases(
             }
         }
     }
+    reached_target
+}
+
+/// Bubble phase: fire listeners from the target back out. Non-adjusted ancestors are visited
+/// only when the event bubbles.
+#[allow(clippy::too_many_arguments)]
+fn run_bubble_phase(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    event_obj: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    bubbles: bool,
+    reached_target: bool,
+    terminated: &std::cell::Cell<bool>,
+    fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) {
     for (index, entry) in path_entries.iter().copied().enumerate() {
         if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
             break;
@@ -5913,6 +5969,38 @@ fn form_controls_private(
     }
 }
 
+/// Dispatch "active" / "submit" from `form_controls_native`: call the installed
+/// submission handler, or fall back to the standalone behaviour when none is installed.
+fn form_submission_active_or_submit(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    node: v8::Local<v8::Object>,
+    args: &v8::FunctionCallbackArguments,
+    rv: &mut v8::ReturnValue,
+) {
+    let callback = DOM.with(|dom| {
+        dom.borrow().as_ref().and_then(|dom| {
+            dom.form_submission_handler
+                .as_ref()
+                .and_then(|callback| callback.to_local(scope))
+        })
+    });
+    let Some(callback) = callback else {
+        // Standalone bindings still support validation and canceled submit events.
+        rv.set(v8::Boolean::new(scope, operation == "active").into());
+        return;
+    };
+    let Some(context) = callback.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let receiver = v8::undefined(scope);
+    let values = [args.get(0), node.into(), args.get(2), args.get(3)];
+    if let Some(value) = callback.call(scope, receiver.into(), &values) {
+        rv.set(value);
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -6014,29 +6102,7 @@ fn form_controls_native(
                 rv.set(value);
             }
         }
-        "active" | "submit" => {
-            let callback = DOM.with(|dom| {
-                dom.borrow().as_ref().and_then(|dom| {
-                    dom.form_submission_handler
-                        .as_ref()
-                        .and_then(|callback| callback.to_local(scope))
-                })
-            });
-            let Some(callback) = callback else {
-                // Standalone bindings still support validation and canceled submit events.
-                rv.set(v8::Boolean::new(scope, operation == "active").into());
-                return;
-            };
-            let Some(context) = callback.get_creation_context(scope) else {
-                return;
-            };
-            let scope = &mut v8::ContextScope::new(scope, context);
-            let receiver = v8::undefined(scope);
-            let values = [args.get(0), node.into(), args.get(2), args.get(3)];
-            if let Some(value) = callback.call(scope, receiver.into(), &values) {
-                rv.set(value);
-            }
-        }
+        "active" | "submit" => form_submission_active_or_submit(scope, &operation, node, &args, &mut rv),
         "action-url" | "submitter-action-url" => {
             let document_url = event_handlers::document_url();
             let raw = with_tree(|tree| {
@@ -6982,27 +7048,11 @@ fn parse_css_native(
         rv.set_bool(cssom_parser::is_supported_property(&source));
         return;
     }
-    if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "specificity" {
-        // turbo-dom#275: the selector list's complex selectors with their Selectors 4
-        // specificity, flat as [text, a, b, c, ...]; undefined for an invalid list.
-        if let Ok(list) = turbo_dom_parser::rtdom::query::parse_for_cascade(&source) {
-            let mut items: Vec<v8::Local<v8::Value>> = Vec::new();
-            for selector in list.selectors() {
-                let (a, b, c) = selector.specificity();
-                items.push(v8::String::new(scope, selector.text()).unwrap().into());
-                for part in [a, b, c] {
-                    items.push(v8::Number::new(scope, f64::from(part)).into());
-                }
-            }
-            rv.set(v8::Array::new_with_elements(scope, &items).into());
+    if args.get(1).is_string() {
+        let mode = args.get(1).to_rust_string_lossy(scope);
+        if parse_css_string_mode(scope, &source, &mode, &mut rv) {
+            return;
         }
-        return;
-    }
-    if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "media" {
-        if let Some(text) = v8::String::new(scope, &cssom_parser::parse_media(&source)) {
-            rv.set(text.into());
-        }
-        return;
     }
     if args.get(2).is_true() {
         let parsed = cssom_parser::parse_one(&source);
@@ -7016,6 +7066,41 @@ fn parse_css_native(
     let parsed = cssom_parser::parse(&source);
     if let Some(text) = v8::String::new(scope, &parsed) {
         rv.set(text.into());
+    }
+}
+
+/// Handle the string-mode branches of `parse_css_native` (`"specificity"`, `"media"`). Returns
+/// true when the mode was recognized and already handled.
+fn parse_css_string_mode(
+    scope: &mut v8::PinScope,
+    source: &str,
+    mode: &str,
+    rv: &mut v8::ReturnValue,
+) -> bool {
+    match mode {
+        "specificity" => {
+            // turbo-dom#275: the selector list's complex selectors with their Selectors 4
+            // specificity, flat as [text, a, b, c, ...]; undefined for an invalid list.
+            if let Ok(list) = turbo_dom_parser::rtdom::query::parse_for_cascade(source) {
+                let mut items: Vec<v8::Local<v8::Value>> = Vec::new();
+                for selector in list.selectors() {
+                    let (a, b, c) = selector.specificity();
+                    items.push(v8::String::new(scope, selector.text()).unwrap().into());
+                    for part in [a, b, c] {
+                        items.push(v8::Number::new(scope, f64::from(part)).into());
+                    }
+                }
+                rv.set(v8::Array::new_with_elements(scope, &items).into());
+            }
+            true
+        }
+        "media" => {
+            if let Some(text) = v8::String::new(scope, &cssom_parser::parse_media(source)) {
+                rv.set(text.into());
+            }
+            true
+        }
+        _ => false,
     }
 }
 
@@ -8401,8 +8486,8 @@ struct WorkerContextMarker;
 /// only the embedder's prelude (the window is [`SNAPSHOT_WINDOW_CONTEXT`]).
 ///
 /// Minimum opt-out hook for miaskiewicz/turbo-dom#385 landed in 0.8.0; the full
-/// `install_worker_global_scope(scope, context)` helper (DedicatedWorkerGlobalScope `self`,
-/// `importScripts`, structured-clone helpers) lands in 0.8.1.
+/// [`install_worker_global_scope`] (DedicatedWorkerGlobalScope `self`, `importScripts`,
+/// structured-clone helpers) lands in 0.8.1.
 pub fn mark_worker_context(
     scope: &mut v8::PinScope<'_, '_, ()>,
     context: v8::Local<v8::Context>,
@@ -8440,9 +8525,154 @@ fn is_worker_context(context: v8::Local<v8::Context>) -> bool {
     context.get_slot::<WorkerContextMarker>().is_some()
 }
 
+/// Install the DedicatedWorkerGlobalScope surface onto `context`'s `globalThis`:
+/// `self` as an accessor to `globalThis`, `importScripts(...urls)` (invokes the
+/// embedder's hook, or throws a `TypeError` by default), `structuredClone(value)`
+/// (V8 round-trip), `postMessage(message, transfer?)` / `close()` (invoke
+/// embedder hooks), the `EventTarget` triplet (`addEventListener` /
+/// `removeEventListener` / `dispatchEvent`), the `onmessage` / `onmessageerror`
+/// / `onerror` event-handler slots, and the DedicatedWorkerGlobalScope ->
+/// WorkerGlobalScope -> EventTarget interface brands with their member names.
+///
+/// The context is marked as a worker via [`mark_worker_context`] on the way in,
+/// so a later `install*` into the same context will not stamp the DOM template
+/// over this scope. A context that already holds a window is refused with
+/// [`WindowAlreadyInstalled`] (see [`mark_worker_context`]'s gate).
+///
+/// For embedders (turbo-surf #203) that run the binding in a Worker-shaped
+/// global scope. The hook *surface* installed here is wired by the embedder
+/// via [`set_worker_post_message_hook`], [`set_worker_close_hook`] and
+/// [`set_worker_import_scripts_hook`]; this crate owns the ECMAScript surface,
+/// never the fetch/scheduler side.
+///
+/// turbo-dom#385.
+pub fn install_worker_global_scope(
+    scope: &mut v8::PinScope<'_, '_, ()>,
+    context: v8::Local<v8::Context>,
+) -> Result<(), WindowAlreadyInstalled> {
+    mark_worker_context(scope, context)?;
+    let scope = &mut v8::ContextScope::new(scope, context);
+    worker_scope::install(scope);
+    Ok(())
+    // (The ContextScope is dropped on return, restoring the outer scope.)
+}
+
+/// Embedder hook invoked when worker-side JS calls `postMessage(message, transfer?)`.
+/// turbo-surf replaces it with the real message-port plumbing; the default is a no-op.
+///
+/// Set per context. Multiple hook registrations overwrite; `None` clears.
+pub fn set_worker_post_message_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_post_message_hook(scope, context, hook);
+}
+
+/// Embedder hook invoked when worker-side JS calls `close()`. turbo-surf uses it
+/// to terminate the worker's event loop. The default is a no-op.
+pub fn set_worker_close_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_close_hook(scope, context, hook);
+}
+
+/// Embedder hook invoked when worker-side JS calls `importScripts(...urls)`.
+/// turbo-surf wires in the real sync script loader (spec: fetch, parse, execute
+/// in globalThis). The default throws a `TypeError`, matching the behaviour of
+/// an uninitialised Worker Fetch realm.
+pub fn set_worker_import_scripts_hook(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    hook: Option<v8::Local<v8::Function>>,
+) {
+    worker_scope::set_import_scripts_hook(scope, context, hook);
+}
+
+/// Dispatch `message` to this worker-scope context as a `MessageEvent`: the
+/// embedder (turbo-surf) calls this when the outside world posts a message to
+/// the worker. Delivers to `self.onmessage` and `self.addEventListener('message', ...)`
+/// listeners in the registration order. Returns `true` if any listener was
+/// attached (not whether they threw).
+pub fn dispatch_worker_message<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    data: v8::Local<'s, v8::Value>,
+) -> bool {
+    worker_scope::dispatch_message(scope, data)
+}
+
+#[path = "worker_scope.rs"]
+mod worker_scope;
+
 pub fn install_with_html(scope: &mut v8::PinScope, html: &str) {
     // A loaded page parses `<?target data?>` like Chrome (turbo-dom#135).
     install_with_tree(scope, Tree::parse_with_processing_instructions(html));
+}
+
+thread_local! {
+    /// turbo-dom#394: embedder-supplied init scripts (CDP's
+    /// `Page.addScriptToEvaluateOnNewDocument` / Playwright `addInitScript`).
+    /// Each [`install_with_html`] runs them, in registration order, AFTER the
+    /// engine bootstrap but BEFORE the embedder executes the parser's inline
+    /// `<script>` elements.
+    static INIT_SCRIPTS: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Register an embedder init script: the next (and every later) install into a
+/// freshly-opened document runs it before the parser's inline `<script>`
+/// elements. Equivalent to CDP's `Page.addScriptToEvaluateOnNewDocument`.
+/// Surfaced by turbo-surf#240 (page.route fetch-monkey-patch missing
+/// parse-time inline-script fetches).
+pub fn add_init_script(source: impl Into<String>) {
+    INIT_SCRIPTS.with(|s| s.borrow_mut().push(source.into()));
+}
+
+/// Drop every registered init script. Call between isolated test setups or when
+/// the embedder tears down a routing policy.
+pub fn clear_init_scripts() {
+    let _ = INIT_SCRIPTS.try_with(|s| s.borrow_mut().clear());
+}
+
+/// Compile and run each registered init script in the current context. Called
+/// at the end of [`install_with_tree`] so the next parser-driven inline script
+/// already sees the patched globals (turbo-dom#394).
+///
+/// Each script is isolated in its own [`v8::TryCatch`] so a throwing init script
+/// does not leave a pending V8 exception that would leak into the next init
+/// script or into the embedder's inline parser scripts (R1 expert H4). A caught
+/// exception is reported through the window's error channel, matching the way a
+/// compile error in an `on*` handler is surfaced.
+fn run_init_scripts(scope: &mut v8::PinScope) {
+    // Skip a worker context: it has no window, and the embedder's page-oriented
+    // init script would be meaningless there.
+    if is_worker_context(scope.get_current_context()) {
+        return;
+    }
+    let sources = INIT_SCRIPTS.with(|s| s.borrow().clone());
+    for source in sources {
+        // Review R2 V8 M2: once the isolate is terminating, every v8::String /
+        // Script::compile below returns None and the loop would churn the
+        // remaining scripts to no effect (and potentially hand a terminating
+        // scope to a future hook). Break out at the top so setup reports the
+        // termination through SETUP_TERMINATED without iterating further.
+        if scope.is_execution_terminating() {
+            break;
+        }
+        let Some(code) = v8::String::new(scope, &source) else {
+            continue;
+        };
+        let catch = std::pin::pin!(v8::TryCatch::new(scope));
+        let scope = &mut catch.init();
+        let ran = v8::Script::compile(scope, code, None).and_then(|script| script.run(scope));
+        if ran.is_none() && !scope.has_terminated() {
+            if let Some(error) = scope.exception() {
+                custom_elements::report_value(scope, error);
+            }
+            scope.reset();
+        }
+    }
 }
 
 /// Setup was cut short because V8 execution was terminated while the document was being
@@ -8497,12 +8727,20 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
                     before,
                     "a snapshot install ran an engine script"
                 );
+                // turbo-dom#394: embedder init scripts run after the engine is in place
+                // but before the embedder executes the parser's inline `<script>`s.
+                run_init_scripts(scope);
                 return;
             }
-            Err(tree) => return install_split_or_full(scope, tree),
+            Err(tree) => {
+                install_split_or_full(scope, tree);
+                run_init_scripts(scope);
+                return;
+            }
         }
     }
     install_split_or_full(scope, tree);
+    run_init_scripts(scope);
 }
 
 fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {
@@ -8872,6 +9110,44 @@ fn capture_control_clone(scope: &mut v8::PinScope) -> Option<bool> {
     Some(true)
 }
 
+/// Pop `name` off `global`, capture it as slot `S`, delete the property. Silent when the
+/// bootstrap did not install it.
+fn capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    name: &str,
+) {
+    let key = v8::String::new(scope, name).unwrap();
+    if let Some(callback) = global
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        context_rehydrate::capture::<S>(scope, callback);
+    }
+    global.delete(scope, key.into());
+}
+
+/// Same as `capture_bootstrap_callback`, but reports back whether capture succeeded so the
+/// caller can short-circuit on failure.
+fn try_capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    name: &str,
+) -> bool {
+    let key = v8::String::new(scope, name).unwrap();
+    let Some(callback) = global
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    else {
+        return true;
+    };
+    if context_rehydrate::capture::<S>(scope, callback).is_none() {
+        return false;
+    }
+    global.delete(scope, key.into());
+    true
+}
+
 fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
@@ -9034,50 +9310,22 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     view_transitions::install(scope);
     selection::install(scope);
     editing::install(scope);
-    let key = v8::String::new(scope, "__captureFormDataEvent").unwrap();
-    if let Some(callback) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormDataEventDispatcher>(scope, callback);
+    capture_bootstrap_callback::<FormDataEventDispatcher>(scope, global, "__captureFormDataEvent");
+    capture_bootstrap_callback::<FormEntryListReader>(scope, global, "__captureFormEntries");
+    capture_bootstrap_callback::<FormSubmissionDispatcher>(scope, global, "__captureFormSubmission");
+    if !try_capture_bootstrap_callback::<EventRecordAccessor>(
+        scope,
+        global,
+        "__captureEventRecord",
+    ) {
+        return;
     }
-    global.delete(scope, key.into());
-    let entries = v8::String::new(scope, "__captureFormEntries").unwrap();
-    if let Some(callback) = global
-        .get(scope, entries.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormEntryListReader>(scope, callback);
-    }
-    global.delete(scope, entries.into());
-    let name = v8::String::new(scope, "__captureFormSubmission").unwrap();
-    if let Some(function) = global
-        .get(scope, name.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormSubmissionDispatcher>(scope, function);
-    }
-    global.delete(scope, name.into());
-
-    let key = v8::String::new(scope, "__captureEventRecord").unwrap();
-    if let Some(accessor) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        if context_rehydrate::capture::<EventRecordAccessor>(scope, accessor).is_none() {
-            return;
-        }
-        global.delete(scope, key.into());
-    }
-    let key = v8::String::new(scope, "__captureHostEventDispatch").unwrap();
-    if let Some(dispatcher) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        if context_rehydrate::capture::<HostEventDispatcher>(scope, dispatcher).is_none() {
-            return;
-        }
-        global.delete(scope, key.into());
+    if !try_capture_bootstrap_callback::<HostEventDispatcher>(
+        scope,
+        global,
+        "__captureHostEventDispatch",
+    ) {
+        return;
     }
     event_handlers::install(scope, None, "about:blank");
     custom_elements::install(scope);
@@ -9265,6 +9513,11 @@ pub fn reset() {
         dump_missing();
     }
     let _ = DOM.try_with(|d| *d.borrow_mut() = None);
+    // Review R1 M6: the init-script registry is per-thread state too. An
+    // embedder that teardown-resets without also calling
+    // `clear_init_scripts()` would otherwise leak scripts into the next
+    // isolate's installs.
+    let _ = INIT_SCRIPTS.try_with(|s| s.borrow_mut().clear());
 }
 
 #[cfg(test)]
@@ -11566,6 +11819,9 @@ mod html_media_events_tests;
 #[path = "html_track_tests.rs"]
 mod html_track_tests;
 #[cfg(test)]
+#[path = "init_script_tests.rs"]
+mod init_script_tests;
+#[cfg(test)]
 #[path = "interface_parity_tests.rs"]
 mod interface_parity_tests;
 #[cfg(test)]
@@ -11597,6 +11853,10 @@ mod custom_elements_collect_tests;
 #[cfg(test)]
 #[path = "html_image_srcset_tests.rs"]
 mod html_image_srcset_tests;
+
+#[cfg(test)]
+#[path = "event_target_dispatch_tests.rs"]
+mod event_target_dispatch_tests;
 
 #[cfg(test)]
 #[path = "reflected_urls_tests.rs"]

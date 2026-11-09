@@ -34,6 +34,12 @@ fn_slots!(
 );
 fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     let operation = args.get(0).to_rust_string_lossy(scope);
+    // turbo-dom#382: drain microtasks before the next listener runs in a non-Node EventTarget
+    // dispatch (IDB transaction deactivation observable). Takes no object argument.
+    if operation == "microtaskCheckpoint" {
+        scope.perform_microtask_checkpoint();
+        return;
+    }
     let Ok(object) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return;
     };
@@ -51,40 +57,11 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         return;
     }
     if operation == "aborted" {
-        let Some(context) = object.get_creation_context(scope) else {
-            return;
-        };
-        let Some(reader) = context.get_slot::<SignalReader>() else {
-            return;
-        };
-        let reader = dom_ownership::local(scope, &reader.0);
-        let receiver = v8::undefined(scope).into();
-        if let Some(value) = reader.call(scope, receiver, &[object.into()]) {
-            rv.set(value);
-        }
+        aborted_operation(scope, object, &mut rv);
         return;
     }
     if operation == "error" {
-        let Some(context) = object.get_creation_context(scope) else {
-            return;
-        };
-        let Some(getters) = context.get_slot::<ErrorGetters>() else {
-            return;
-        };
-        if getters.0.len() != 5 {
-            return;
-        }
-        let scope = std::pin::pin!(v8::TryCatch::new(scope));
-        let scope = &mut scope.init();
-        let mut values = Vec::with_capacity(5);
-        for getter in &getters.0 {
-            let getter = dom_ownership::local(scope, getter);
-            let Some(value) = getter.call(scope, object.into(), &[]) else {
-                return;
-            };
-            values.push(value);
-        }
-        rv.set(v8::Array::new_with_elements(scope, &values).into());
+        error_operation(scope, object, &mut rv);
         return;
     }
     if operation == "call" {
@@ -97,6 +74,17 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         }
         return;
     }
+    abort_slot_operation(scope, &operation, &args, object, &mut rv);
+}
+
+/// Get/set the per-object private slot for the Abort family (target / signal / controller).
+fn abort_slot_operation(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    args: &v8::FunctionCallbackArguments,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
     let family = if operation.starts_with("target") {
         "target"
     } else if operation.starts_with("signal") {
@@ -113,6 +101,56 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         rv.set(value);
     }
 }
+/// `native('aborted', signal)`: run the signal-reader attached to the
+/// current context on `signal` and return its result.
+fn aborted_operation(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let Some(context) = object.get_creation_context(scope) else {
+        return;
+    };
+    let Some(reader) = context.get_slot::<SignalReader>() else {
+        return;
+    };
+    let reader = dom_ownership::local(scope, &reader.0);
+    let receiver = v8::undefined(scope).into();
+    if let Some(value) = reader.call(scope, receiver, &[object.into()]) {
+        rv.set(value);
+    }
+}
+
+/// `native('error', error)`: read the error's five legacy getters (name,
+/// message, filename, lineno, colno, in that order) and return an Array of
+/// their values.
+fn error_operation(
+    scope: &mut v8::PinScope,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let Some(context) = object.get_creation_context(scope) else {
+        return;
+    };
+    let Some(getters) = context.get_slot::<ErrorGetters>() else {
+        return;
+    };
+    if getters.0.len() != 5 {
+        return;
+    }
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let mut values = Vec::with_capacity(5);
+    for getter in &getters.0 {
+        let getter = dom_ownership::local(scope, getter);
+        let Some(value) = getter.call(scope, object.into(), &[]) else {
+            return;
+        };
+        values.push(value);
+    }
+    rv.set(v8::Array::new_with_elements(scope, &values).into());
+}
+
 /// `native('call', event, callback, receiver, handlerArguments?)`: run one listener of
 /// `event` from the script dispatch paths and return what it returned.
 fn call_operation<'s>(
@@ -148,6 +186,11 @@ pub(super) enum Called<'s> {
 /// exception it throws is reported at the callback's window (located like Chrome 156), and the
 /// event's did-listeners-throw flag is set (turbo-dom#301). Like Chrome 156, an object
 /// whose `handleEvent` is not callable is skipped without a report.
+///
+/// turbo-dom#382: a microtask checkpoint runs after every listener invocation, so a
+/// microtask queued inside listener A (IDB transaction deactivation, Promise.resolve().then,
+/// resolved-Promise microtasks) has settled by the time listener B is invoked — like
+/// Chrome 156's "clean up after running a callback" step.
 pub(super) fn call_listener<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     event: v8::Local<v8::Object>,
@@ -837,7 +880,7 @@ mod tests {
     #[test]
     fn native_dom_snapshots_and_event_paths_bypass_guest_array_hooks() {
         fixture(
-            r#"(()=>{const node=document.createElement('div'),child=document.createElement('i');node.setAttribute('authored','value');node.append(child);document.body.append(node);const define=Object.defineProperty,constructor=Object.getOwnPropertyDescriptor(Array.prototype,'constructor'),iterator=Object.getOwnPropertyDescriptor(Array.prototype,Symbol.iterator);let hooks=0,calls=0,path;node.addEventListener('owned',e=>{calls++;path=e.composedPath();path.length=0;if(e.composedPath()[0]!==node)throw new Error('private path changed')});define(Array.prototype,'0',{configurable:true,set(){hooks++}});define(Array.prototype,'constructor',{configurable:true,get(){hooks++;throw new Error('private array species '+new Error().stack)}});define(Array.prototype,Symbol.iterator,{configurable:true,value(){hooks++;throw new Error('private array iterator')}});let snapshots;try{snapshots=node.children.item(0)===child&&node.childNodes.item(0)===child&&node.attributes.item(0).name==='authored'&&node.querySelectorAll('i').item(0)===child&&document.querySelectorAll('i').item(0)===child&&Object.keys(node.children).join()==='0';node.dispatchEvent(new Event('owned',{bubbles:true}));}finally{delete Array.prototype[0];define(Array.prototype,'constructor',constructor);define(Array.prototype,Symbol.iterator,iterator)}if(hooks!==0||calls!==1||!snapshots||path.length!==0)throw new Error('DOM array privacy '+hooks+' '+calls+' '+snapshots);return true})()"#,
+            r#"(()=>{const node=document.createElement('div'),child=document.createElement('i');node.setAttribute('authored','value');node.append(child);document.body.append(node);const define=Object.defineProperty,constructor=Object.getOwnPropertyDescriptor(Array.prototype,'constructor'),iterator=Object.getOwnPropertyDescriptor(Array.prototype,Symbol.iterator);let hooks=0,calls=0,path;node.addEventListener('owned',e=>{calls++;path=e.composedPath();let mutable=true;try{path.length=0}catch(_){mutable=false}if(mutable||!Object.isFrozen(path)||e.composedPath()[0]!==node)throw new Error('private path changed')});define(Array.prototype,'0',{configurable:true,set(){hooks++}});define(Array.prototype,'constructor',{configurable:true,get(){hooks++;throw new Error('private array species '+new Error().stack)}});define(Array.prototype,Symbol.iterator,{configurable:true,value(){hooks++;throw new Error('private array iterator')}});let snapshots;try{snapshots=node.children.item(0)===child&&node.childNodes.item(0)===child&&node.attributes.item(0).name==='authored'&&node.querySelectorAll('i').item(0)===child&&document.querySelectorAll('i').item(0)===child&&Object.keys(node.children).join()==='0';node.dispatchEvent(new Event('owned',{bubbles:true}));}finally{delete Array.prototype[0];define(Array.prototype,'constructor',constructor);define(Array.prototype,Symbol.iterator,iterator)}if(hooks!==0||calls!==1||!snapshots||path.length<1)throw new Error('DOM array privacy '+hooks+' '+calls+' '+snapshots+' '+path.length);return true})()"#,
         );
     }
     fn fixture(source: &str) {

@@ -90,15 +90,14 @@
     }
   }
   function ancestor(node, descendant) { while (descendant) { if (node === descendant) return true; descendant = parent(descendant); } return false; }
+  function childOfShared(node, shared) { while (parent(node) !== shared) node = parent(node); return node; }
   function treeCompare(a, aOffset, b, bOffset) {
     if (a === b) return aOffset < bOffset ? -1 : aOffset > bOffset ? 1 : 0;
     let shared = a; while (shared && !ancestor(shared, b)) shared = parent(shared);
     if (!shared) return 0;
-    if (shared === a) { let child = b; while (parent(child) !== shared) child = parent(child); return aOffset <= indexOf(child) ? -1 : 1; }
+    if (shared === a) { const child = childOfShared(b, shared); return aOffset <= indexOf(child) ? -1 : 1; }
     if (shared === b) return -treeCompare(b, bOffset, a, aOffset);
-    let left = a, right = b;
-    while (parent(left) !== shared) left = parent(left);
-    while (parent(right) !== shared) right = parent(right);
+    const left = childOfShared(a, shared), right = childOfShared(b, shared);
     return indexOf(left) < indexOf(right) ? -1 : 1;
   }
   function compareInScope(left, i, a, right, j, b) {
@@ -483,17 +482,19 @@
     const data = rangeState(range), collapsed = data.startContainer === data.endContainer && data.startOffset === data.endOffset;
     setSelection(state, collapsed ? focus : anchor, focus, true, cacheRange(state, range), entry.root, null);
   });
+  function readComposedRangeRoots(options) {
+    const roots = [];
+    if (options === undefined || options === null) return roots;
+    if (typeof options !== 'object' && typeof options !== 'function') throw typeFail('getComposedRanges', "The provided value is not of type 'GetComposedRangesOptions'.");
+    const list = options.shadowRoots;
+    if (list === undefined) return roots;
+    const prefix = "Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': ";
+    if (list === null || (typeof list !== 'object' && typeof list !== 'function') || typeof list[Symbol.iterator] !== 'function') throw typeFail('getComposedRanges', prefix + 'The provided value cannot be converted to a sequence.');
+    for (const root of list) { if (!isShadowRoot(root)) throw typeFail('getComposedRanges', prefix + "Failed to convert value to 'ShadowRoot'."); push(roots, root); }
+    return roots;
+  }
   operation('getComposedRanges', 0, function (options) {
-    const entry = entryOf(this), roots = [];
-    if (options !== undefined && options !== null) {
-      if (typeof options !== 'object' && typeof options !== 'function') throw typeFail('getComposedRanges', "The provided value is not of type 'GetComposedRangesOptions'.");
-      const list = options.shadowRoots;
-      if (list !== undefined) {
-        const prefix = "Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': ";
-        if (list === null || (typeof list !== 'object' && typeof list !== 'function') || typeof list[Symbol.iterator] !== 'function') throw typeFail('getComposedRanges', prefix + 'The provided value cannot be converted to a sequence.');
-        for (const root of list) { if (!isShadowRoot(root)) throw typeFail('getComposedRanges', prefix + "Failed to convert value to 'ShadowRoot'."); push(roots, root); }
-      }
-    }
+    const entry = entryOf(this), roots = readComposedRangeRoots(options);
     const state = entry.state, result = [];
     if (none(state)) return result;
     let start = anchorPoint(state), end = focusPoint(state);
@@ -609,7 +610,9 @@
     const document = currentDocument();
     return document ? documentSelection(document) : null;
   }, 'getSelection', 0), writable: true, enumerable: true, configurable: true});
-  for (const document of [g.document]) if (document && Object.hasOwn(document, 'getSelection')) delete document.getSelection;
+  (function pruneDocumentGetSelection() {
+    for (const document of [g.document]) if (document && Object.hasOwn(document, 'getSelection')) delete document.getSelection;
+  })();
 
   // ---- Caret movement (SelectionModifier) --------------------------------------------------
   const GRANULARITIES = create(null);
@@ -637,25 +640,38 @@
   const surrogate = unit => unit >= 0xD800 && unit <= 0xDFFF;
   const wordBreak = (text, index) => { const unit = code(text, index); return surrogate(unit) || lineBreak(unit) || unit === 0x5F || (!test(SPACE, text[index]) && !test(CONTROL, text[index])); };
   // Blink NextWordPosition / PreviousWordPosition finders over one text segment.
+  // -1 = this runner is not a hit; -2 = skip (punctuation without alnum); or the hit offset.
+  function nextWordMatch(text, runner) {
+    if (runner >= text.length) return -1;
+    if (lineBreak(code(text, runner))) return runner;
+    if (punct(text[runner])) return alnum(text[runner - 1]) ? runner : -2;
+    if (wordBreak(text, runner - 1)) return runner;
+    return -1;
+  }
   function nextWord(text, offset, first) {
     if (!first && offset < text.length && wordBreak(text, offset)) return offset;
     if (offset === text.length || !text.length) return -1;
     const list = boundaries(text, 'word');
     for (let runner = following(list, offset); runner !== -1; runner = following(list, runner)) {
-      if (runner < text.length && lineBreak(code(text, runner))) return runner;
-      if (runner < text.length && punct(text[runner])) { if (alnum(text[runner - 1])) return runner; continue; }
-      if (runner < text.length && wordBreak(text, runner - 1)) return runner;
+      const hit = nextWordMatch(text, runner);
+      if (hit >= 0) return hit;
     }
     return lineBreak(code(text, text.length - 1)) ? -1 : text.length;
+  }
+  function previousWordMatch(text, runner) {
+    if (lineBreak(code(text, runner))) return runner + 1;
+    if (runner >= text.length) return -1;
+    if (punct(text[runner])) return runner === 0 || alnum(text[runner - 1]) ? runner : -2;
+    if (wordBreak(text, runner)) return runner;
+    return -1;
   }
   function previousWord(text, offset, first) {
     if (!first && offset > 0 && wordBreak(text, offset - 1)) return offset;
     if (offset === 0) return -1;
     const list = boundaries(text, 'word');
     for (let runner = preceding(list, offset); runner !== -1; runner = preceding(list, runner)) {
-      if (lineBreak(code(text, runner))) return runner + 1;
-      if (runner < text.length && punct(text[runner])) { if (runner === 0 || alnum(text[runner - 1])) return runner; continue; }
-      if (runner < text.length && wordBreak(text, runner)) return runner;
+      const hit = previousWordMatch(text, runner);
+      if (hit >= 0) return hit;
     }
     return 0;
   }
@@ -745,6 +761,15 @@
   // line is a whole paragraph (no wrapping).
   let caretLayout = null;
   define(ns, 'registerSelectionLayout', {__proto__: null, configurable: true, value: hooks => { if (hooks && caretLayout === null) caretLayout = hooks; delete ns.registerSelectionLayout; }});
+  function geometricLineBoundary(from, here, next, box) {
+    let edge = from;
+    for (let position = next(from); position && position[0] === from[0]; position = next(position)) {
+      const candidate = box(position[0], position[1]);
+      if (!candidate || candidate.top >= here.bottom - 0.5 || candidate.bottom <= here.top + 0.5) break;
+      edge = position;
+    }
+    return edge;
+  }
   function geometric(layout, root, from, forward, granularity, state) {
     const texts = layout.texts;
     const box = (segment, slot) => { const position = slotPoint(layout, segment, slot); return caretLayout.caret(position.node, position.offset); };
@@ -755,15 +780,7 @@
       if (forward) return slot < texts[segment].length ? [segment, slot + 1] : segment + 1 < texts.length ? [segment + 1, 0] : null;
       return slot > 0 ? [segment, slot - 1] : segment > 0 ? [segment - 1, texts[segment - 1].length] : null;
     };
-    if (granularity === 'lineboundary') {
-      let edge = from;
-      for (let position = next(from); position && position[0] === from[0]; position = next(position)) {
-        const candidate = box(position[0], position[1]);
-        if (!candidate || candidate.top >= here.bottom - 0.5 || candidate.bottom <= here.top + 0.5) break;
-        edge = position;
-      }
-      return edge;
-    }
+    if (granularity === 'lineboundary') return geometricLineBoundary(from, here, next, box);
     const x = state.xpos !== null ? state.xpos : here.x;
     const adjacent = (start, current) => {
       for (let position = next(start); position; position = next(position)) {
@@ -1012,6 +1029,12 @@
   const controlFail = (owner, operation, message) => new Exception("Failed to execute '" + operation + "' on '" + owner + "': " + message, 'InvalidStateError');
   const controlSetFail = (owner, name, message) => new Exception("Failed to set the '" + name + "' property on '" + owner + "': " + message, 'InvalidStateError');
   const typeMessage = control => "The input element's type ('" + inputType(control) + "') does not support selection.";
+  function readSetRangeTextMode(prefix, selectMode) {
+    if (selectMode === undefined) return 'preserve';
+    const mode = string(selectMode, prefix);
+    if (mode !== 'select' && mode !== 'start' && mode !== 'end' && mode !== 'preserve') throw new TypeErrorClass(prefix + "The provided value '" + mode + "' is not a valid enum value of type SelectionMode.");
+    return mode;
+  }
   function prepareSetRangeTextArgs(control, prefix, count, replacement, start, end, selectMode, owner) {
     if (count === 0) throw new TypeErrorClass(prefix + '1 argument required, but only 0 present.');
     if (count === 2) throw new TypeErrorClass(prefix + 'Overload resolution failed.');
@@ -1019,10 +1042,7 @@
     let mode = 'preserve';
     if (count >= 3) {
       start = unsigned(start, prefix); end = unsigned(end, prefix);
-      if (selectMode !== undefined) {
-        mode = string(selectMode, prefix);
-        if (mode !== 'select' && mode !== 'start' && mode !== 'end' && mode !== 'preserve') throw new TypeErrorClass(prefix + "The provided value '" + mode + "' is not a valid enum value of type SelectionMode.");
-      }
+      mode = readSetRangeTextMode(prefix, selectMode);
     }
     if (owner === 'HTMLInputElement' && !supportsSelection(control)) throw controlFail(owner, 'setRangeText', typeMessage(control));
     const selection = current(control);

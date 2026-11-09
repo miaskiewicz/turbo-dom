@@ -48,3 +48,43 @@ fn css_supports_matches_chrome156_control() {
         found.join("\n")
     );
 }
+
+/// turbo-dom#390: four inputs that the engine's `cssSupports` / `cssSupportsProperty` once
+/// answered `true` for, but Chrome 156 rejects (oracle headless-shell 156.0.8078.47):
+/// `-moz-appearance: none` (vendor-prefixed property), and three `selector(...)` arguments
+/// that the forgiving selector grammar must still reject — a top-level list and a forgiving
+/// `:is()` / `:where()` wrapping an unknown pseudo.
+///
+/// turbo-dom#391: the `offset` shorthand must reject `/ <offset-anchor>` without a leading
+/// position or path; Chrome 156 rejects `offset: / center` and `offset: / auto`.
+#[test]
+fn css_supports_rejects_chrome156_rejections() {
+    let probe = r#"(() => {
+        const out = [];
+        // #390
+        out.push(CSS.supports('-moz-appearance', 'none'));
+        out.push(CSS.supports('-moz-appearance: none'));
+        // R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
+        // case-insensitive. Chrome rejects every `-moz-*` spelling.
+        out.push(CSS.supports('-MOZ-appearance', 'none'));
+        out.push(CSS.supports('-Moz-APPEARANCE: none'));
+        out.push(CSS.supports('selector(div, span)'));
+        out.push(CSS.supports('selector(:is(:bogus))'));
+        out.push(CSS.supports('selector(:where(:bogus, p))'));
+        // #391
+        out.push(CSS.supports('offset', '/ center'));
+        out.push(CSS.supports('offset', '/ auto'));
+        out.push(CSS.supports('offset: / center'));
+        out.push(CSS.supports('offset: / auto'));
+        return out;
+    })()"#;
+    let cases = br#"[{"html":"<!doctype html><html><head></head><body></body></html>","documentBase":"about:blank"}]"#;
+    let actual = super::interface_parity_tests::run_probe_with(probe, cases, CSS_NAMESPACE);
+    assert_eq!(
+        actual,
+        serde_json::json!([
+            false, false, false, false, false, false, false, false, false, false, false,
+        ]),
+        "Chrome 156 rejects each of these; the engine must too"
+    );
+}

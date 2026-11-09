@@ -163,6 +163,18 @@ fn invoke_implementation<'s>(
         return Some(implementation);
     }
     let prototype = args.get(2).to_object(scope)?;
+    let object = build_implementation_object(scope, receiver, state, prototype)?;
+    Some(object.into())
+}
+
+/// Build the DOMImplementation wrapper for `receiver`, attach its native record to it and
+/// cache it on the document's state.
+fn build_implementation_object<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    receiver: v8::Local<'s, v8::Object>,
+    state: v8::Local<'s, v8::Object>,
+    prototype: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Object>> {
     let template = v8::ObjectTemplate::new(scope);
     template.set_internal_field_count(1);
     let object = template.new_instance(scope)?;
@@ -180,7 +192,7 @@ fn invoke_implementation<'s>(
     if !collection_records::set(scope, receiver, state.into()) {
         return None;
     }
-    Some(object.into())
+    Some(object)
 }
 
 fn invoke_document_prop<'s>(

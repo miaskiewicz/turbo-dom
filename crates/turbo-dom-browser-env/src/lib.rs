@@ -39,9 +39,14 @@ pub mod css_snapshot;
 
 pub use turbo_dom_parser::rtdom::css_values;
 
-/// Minimum worker opt-out hook (turbo-dom#385, for turbo-surf #203). See
-/// [`browser_env::mark_worker_context`].
-pub use browser_env::{mark_worker_context, WindowAlreadyInstalled};
+/// Worker scope install (turbo-dom#385, for turbo-surf #203). See
+/// [`browser_env::install_worker_global_scope`] for the full surface and
+/// [`browser_env::mark_worker_context`] for the per-context opt-out slot.
+pub use browser_env::{
+    dispatch_worker_message, install_worker_global_scope, mark_worker_context,
+    set_worker_close_hook, set_worker_import_scripts_hook, set_worker_post_message_hook,
+    WindowAlreadyInstalled,
+};
 
 #[cfg(feature = "host-internals")]
 #[doc(hidden)]

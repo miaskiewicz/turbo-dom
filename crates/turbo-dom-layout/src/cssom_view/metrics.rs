@@ -79,6 +79,16 @@ pub fn element_geometry(
     if used.inline_fragment {
         return inline_fragment_geometry(&boxes);
     }
+    block_geometry(first, used, &boxes)
+}
+
+/// The non-inline arm of [`element_geometry`]: a block/replaced source's bounds,
+/// per-fragment rects and client/offset metrics from its border box.
+fn block_geometry(
+    first: &crate::layout_snapshot::SnapshotFragment,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+    boxes: &[&crate::layout_snapshot::SnapshotFragment],
+) -> Result<ElementGeometry, String> {
     let padding = used.padding_rect(first.rect);
     let rects: Vec<_> = boxes
         .iter()
@@ -274,6 +284,19 @@ fn offset_unsnapped(
     if used.position == crate::layout::value::Position::Fixed {
         return Ok((border.rect.x, border.rect.y, None));
     }
+    offset_from_ancestors(snapshot, styles, style, used, border.rect)
+}
+
+/// Walk `style`'s ancestor chain (skipping `display: contents`) until one of
+/// them is this element's offsetParent, and return the border origin relative
+/// to that parent. Falls back to the absolute border origin when none stops.
+fn offset_from_ancestors(
+    snapshot: &LayoutSnapshot,
+    styles: &super::scroll::SourceStyles,
+    style: &super::scroll::SourceStyle,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+    border_rect: Rect,
+) -> Result<(f32, f32, Option<SourceId>), String> {
     let mut next = style.parent;
     while let Some(parent) = next {
         let parent_style = styles
@@ -285,11 +308,11 @@ fn offset_unsnapped(
         }
         if offset_parent_stops(snapshot, parent, parent_style, style, used) {
             let (x, y) = offset_parent_origin(snapshot, parent, parent_style)?;
-            return Ok((border.rect.x - x, border.rect.y - y, Some(parent)));
+            return Ok((border_rect.x - x, border_rect.y - y, Some(parent)));
         }
         next = parent_style.parent;
     }
-    Ok((border.rect.x, border.rect.y, None))
+    Ok((border_rect.x, border_rect.y, None))
 }
 
 fn offset_parent_stops(

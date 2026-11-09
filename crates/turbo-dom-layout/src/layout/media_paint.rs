@@ -97,6 +97,35 @@ pub(crate) fn audio_panel(
     // (`(x, y, w, h)`) keeps the controls out of the audio box's getBoundingClientRect
     // too, since the clipped subtree lies under `DECORATION_ID`.
     let short = ph < HEIGHT;
+    push_horizontal_controls(&mut parts, pw, id, at, fonts);
+    if short {
+        let pill = parts.remove(0);
+        let mut clip = Fragment::new(id, x, y, w, h, shape(None, BorderEdges::default(), 0.0));
+        clip.overflow_clip = Some(super::fragment::OverflowClip {
+            x: 0.0,
+            y: 0.0,
+            width: w,
+            height: h,
+            radii: BorderRadii::ZERO,
+        });
+        clip.children = parts;
+        frag.children.push(pill);
+        frag.children.push(clip);
+        return;
+    }
+    frag.children.extend(parts);
+}
+
+/// Push the horizontal audio-panel controls onto `parts`: play button, time
+/// display, timeline, volume button and the menu dots, each gated by its
+/// width threshold (`-webkit-media-controls-*`, `audio_scan.mjs`).
+fn push_horizontal_controls(
+    parts: &mut Vec<Fragment>,
+    pw: f32,
+    id: NodeId,
+    at: impl Fn(f32, f32) -> (f32, f32),
+    fonts: &FontRegistry,
+) {
     if pw >= SHOW_PLAY {
         parts.push(play(id, at(27.05, 27.0)));
     }
@@ -105,10 +134,8 @@ pub(crate) fn audio_panel(
     } else if pw >= SHOW_CURRENT_TIME {
         parts.extend(current_time(id, at(47.0, 32.0), fonts));
     }
-    // The timeline: between the left items (play / time) and the right items (volume /
-    // menu); its position and width depend on which items are drawn (Chrome 156's
-    // `-webkit-media-controls-timeline`, see `audio_scan.mjs`). Below the `SHOW_PLAY`
-    // threshold, it starts 10px from the panel's inline start.
+    // The timeline: between the left items (play / time) and the right items
+    // (volume / menu); Chrome 156's `-webkit-media-controls-timeline`.
     let timeline_start = if pw >= SHOW_TIME_REMAINING {
         128.4
     } else if pw >= SHOW_CURRENT_TIME {
@@ -118,11 +145,6 @@ pub(crate) fn audio_panel(
     } else {
         10.0
     };
-    // The right side: menu is always drawn at `pw - 32`, volume (when shown) at
-    // `pw - 74`; the timeline ends 4px before the leftmost right-side item.
-    // Where the timeline must end (its inline end, physical left edge of the rightmost
-    // right-side item): just before the volume button when it is shown, else just before
-    // the menu's dots. The timeline takes at least 32px.
     let right_items_start = if pw >= SHOW_VOLUME {
         pw - 90.4
     } else {
@@ -142,22 +164,6 @@ pub(crate) fn audio_panel(
     for dy in [20.0, 25.0, 30.0] {
         parts.push(rounded(id, at(pw - 28.0, dy), (4.0, 4.0), Rgba::BLACK, 2.0));
     }
-    if short {
-        let pill = parts.remove(0);
-        let mut clip = Fragment::new(id, x, y, w, h, shape(None, BorderEdges::default(), 0.0));
-        clip.overflow_clip = Some(super::fragment::OverflowClip {
-            x: 0.0,
-            y: 0.0,
-            width: w,
-            height: h,
-            radii: BorderRadii::ZERO,
-        });
-        clip.children = parts;
-        frag.children.push(pill);
-        frag.children.push(clip);
-        return;
-    }
-    frag.children.extend(parts);
 }
 
 fn shape(background: Option<Rgba>, border: BorderEdges, radius: f32) -> FragmentContent {
@@ -494,7 +500,7 @@ mod tests {
         // Under `SHOW_PLAY` (100px, `audio-panel-99`): no play button, so the timeline
         // starts 10px from the inline start and ends at the menu (`pw - 32`).
         let (narrow, _) = audio("width:99px");
-        assert!(panel_texts("width:99px").is_empty());
+        assert_eq!(panel_texts("width:99px"), Vec::<String>::new());
         assert!(
             narrow
                 .iter()

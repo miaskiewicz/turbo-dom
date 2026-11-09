@@ -168,35 +168,22 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
     if grammar == "font" {
         return font(comps);
     }
-    let values = if let Some(v) = expand_box_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_logical_pair_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_logical_border_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_logical_border_grammars_2(grammar, comps) {
-        v
-    } else if let Some(v) = expand_corner_shape_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_rule_and_corner_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_rule_inset_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_rule_inset_grammars_2(grammar, comps) {
-        v
-    } else if let Some(v) = expand_composite_grammars(grammar, comps) {
-        v
-    } else if let Some(v) = expand_composite_grammars_2(grammar, comps) {
-        v
-    } else if let Some(v) = expand_composite_grammars_2b(grammar, comps) {
-        v
-    } else if let Some(v) = expand_composite_grammars_3(grammar, comps) {
-        v
-    } else {
-        // Each family helper returns `None` both for a grammar outside its family and for
-        // one it failed to parse, so a failed parse falls through to here as `None` too.
-        expand_composite_grammars_3b(grammar, comps)?
-    };
+    // Each family helper returns `None` both for a grammar outside its family and for one
+    // it failed to parse, so a failed parse falls through to the next family (and finally
+    // to the outer `None` via `?`).
+    let values = expand_box_grammars(grammar, comps)
+        .or_else(|| expand_logical_pair_grammars(grammar, comps))
+        .or_else(|| expand_logical_border_grammars(grammar, comps))
+        .or_else(|| expand_logical_border_grammars_2(grammar, comps))
+        .or_else(|| expand_corner_shape_grammars(grammar, comps))
+        .or_else(|| expand_rule_and_corner_grammars(grammar, comps))
+        .or_else(|| expand_rule_inset_grammars(grammar, comps))
+        .or_else(|| expand_rule_inset_grammars_2(grammar, comps))
+        .or_else(|| expand_composite_grammars(grammar, comps))
+        .or_else(|| expand_composite_grammars_2(grammar, comps))
+        .or_else(|| expand_composite_grammars_2b(grammar, comps))
+        .or_else(|| expand_composite_grammars_3(grammar, comps))
+        .or_else(|| expand_composite_grammars_3b(grammar, comps))?;
     Some(Parsed::Values(values))
 }
 
@@ -573,51 +560,49 @@ fn expand_rule_inset_grammars_2(
 }
 
 fn expand_composite_grammars(grammar: &str, comps: &[Comp]) -> Option<Vec<(&'static str, String)>> {
-    let values = match grammar {
-        "contain-intrinsic-size" => contain_intrinsic_size(comps)?,
-        "place-content" => place_content(comps)?,
-        "place-items" => place_items(comps)?,
-        "place-self" => place_self(comps)?,
-        "background-position" => {
-            let (x, y) = positions(comps, true)?;
-            vec![("background-position-x", x), ("background-position-y", y)]
-        }
+    match grammar {
+        "contain-intrinsic-size" => contain_intrinsic_size(comps),
+        "place-content" => place_content(comps),
+        "place-items" => place_items(comps),
+        "place-self" => place_self(comps),
+        "background-position" => positions(comps, true)
+            .map(|(x, y)| vec![("background-position-x", x), ("background-position-y", y)]),
         "mask-position" | "-webkit-mask-position" => {
             // `-webkit-mask-position` keeps the background syntax's three-value form.
-            let (x, y) = positions(comps, grammar == "-webkit-mask-position")?;
-            vec![
-                ("-webkit-mask-position-x", x),
-                ("-webkit-mask-position-y", y),
-            ]
+            positions(comps, grammar == "-webkit-mask-position").map(|(x, y)| {
+                vec![
+                    ("-webkit-mask-position-x", x),
+                    ("-webkit-mask-position-y", y),
+                ]
+            })
         }
         "animation-range" => range_pair(
             comps,
             "animation-range-start",
             "animation-range-end",
             "normal",
-        )?,
+        ),
         "timeline-trigger-activation-range" => range_pair(
             comps,
             "timeline-trigger-activation-range-start",
             "timeline-trigger-activation-range-end",
             "normal",
-        )?,
+        ),
         "timeline-trigger-active-range" => range_pair(
             comps,
             "timeline-trigger-active-range-start",
             "timeline-trigger-active-range-end",
             "auto",
-        )?,
+        ),
         "border-top" | "border-right" | "border-bottom" | "border-left" => {
-            side(comps, grammar, ["medium", "none", "currentcolor"])?
+            side(comps, grammar, ["medium", "none", "currentcolor"])
         }
         "border-block-start" | "border-block-end" | "border-inline-start" | "border-inline-end" => {
-            side(comps, grammar, [INITIAL, INITIAL, INITIAL])?
+            side(comps, grammar, [INITIAL, INITIAL, INITIAL])
         }
-        "column-rule" | "row-rule" => side(comps, grammar, ["medium", "none", "currentcolor"])?,
-        _ => return None,
-    };
-    Some(values)
+        "column-rule" | "row-rule" => side(comps, grammar, ["medium", "none", "currentcolor"]),
+        _ => None,
+    }
 }
 
 fn expand_composite_grammars_2(
@@ -738,28 +723,26 @@ fn expand_composite_grammars_3(
     grammar: &str,
     comps: &[Comp],
 ) -> Option<Vec<(&'static str, String)>> {
-    let values = match grammar {
-        "font-synthesis" => font_synthesis(comps)?,
-        "text-box" => text_box(comps)?,
-        "position-try" => position_try(comps)?,
-        "scroll-timeline" => scroll_timeline(comps)?,
-        "view-timeline" => view_timeline(comps)?,
-        "font-variant" => font_variant(comps)?,
-        "flex" => flex(comps)?,
-        "grid-area" => grid_area(comps)?,
-        "grid-row" => grid_lines(comps, "grid-row-start", "grid-row-end")?,
-        "grid-column" => grid_lines(comps, "grid-column-start", "grid-column-end")?,
-        "grid-template" => {
-            let (rows, columns, areas) = grid_template(comps)?;
+    match grammar {
+        "font-synthesis" => font_synthesis(comps),
+        "text-box" => text_box(comps),
+        "position-try" => position_try(comps),
+        "scroll-timeline" => scroll_timeline(comps),
+        "view-timeline" => view_timeline(comps),
+        "font-variant" => font_variant(comps),
+        "flex" => flex(comps),
+        "grid-area" => grid_area(comps),
+        "grid-row" => grid_lines(comps, "grid-row-start", "grid-row-end"),
+        "grid-column" => grid_lines(comps, "grid-column-start", "grid-column-end"),
+        "grid-template" => grid_template(comps).map(|(rows, columns, areas)| {
             vec![
                 ("grid-template-rows", rows),
                 ("grid-template-columns", columns),
                 ("grid-template-areas", areas),
             ]
-        }
-        _ => return None,
-    };
-    Some(values)
+        }),
+        _ => None,
+    }
 }
 
 fn expand_composite_grammars_3b(
@@ -1133,43 +1116,46 @@ pub(super) fn position(comps: &[Comp]) -> Option<(String, String)> {
             let b_x = horizontal(b).or_else(|| center(b))?;
             Some((b_x, a_y))
         }
-        [_, _, _] | [_, _, _, _] => {
-            // Keyword + offset pairs; a lone keyword takes no offset; `center` takes the axis
-            // the other keyword leaves.
-            let mut at = 0;
-            let mut x = None;
-            let mut y = None;
-            let mut center = None;
-            while at < comps.len() {
-                let keyword = comps[at].keyword(&["left", "right", "top", "bottom", "center"])?;
-                let offset = comps.get(at + 1).and_then(lp);
-                let used = if offset.is_some() && keyword != "center" {
-                    2
-                } else {
-                    1
-                };
-                let text = match offset.filter(|_| used == 2) {
-                    Some(offset) => format!("{keyword} {offset}"),
-                    None => keyword.clone(),
-                };
-                let slot = match keyword.as_str() {
-                    "left" | "right" => &mut x,
-                    "top" | "bottom" => &mut y,
-                    _ => &mut center,
-                };
-                if slot.is_some() {
-                    return None;
-                }
-                *slot = Some(text);
-                at += used;
-            }
-            match (x, y, center) {
-                (Some(x), Some(y), None) => Some((x, y)),
-                (Some(x), None, Some(center)) => Some((x, center)),
-                (None, Some(y), Some(center)) => Some((center, y)),
-                _ => None,
-            }
+        [_, _, _] | [_, _, _, _] => position_keyword_offset_pairs(comps),
+        _ => None,
+    }
+}
+
+/// Keyword + offset pairs (`left 10px top`, `center bottom 2em`). `center` takes the axis
+/// the other keyword leaves; a lone keyword takes no offset.
+fn position_keyword_offset_pairs(comps: &[Comp]) -> Option<(String, String)> {
+    let lp = |c: &Comp| c.length_percentage(true);
+    let mut at = 0;
+    let mut x = None;
+    let mut y = None;
+    let mut center = None;
+    while at < comps.len() {
+        let keyword = comps[at].keyword(&["left", "right", "top", "bottom", "center"])?;
+        let offset = comps.get(at + 1).and_then(lp);
+        let used = if offset.is_some() && keyword != "center" {
+            2
+        } else {
+            1
+        };
+        let text = match offset.filter(|_| used == 2) {
+            Some(offset) => format!("{keyword} {offset}"),
+            None => keyword.clone(),
+        };
+        let slot = match keyword.as_str() {
+            "left" | "right" => &mut x,
+            "top" | "bottom" => &mut y,
+            _ => &mut center,
+        };
+        if slot.is_some() {
+            return None;
         }
+        *slot = Some(text);
+        at += used;
+    }
+    match (x, y, center) {
+        (Some(x), Some(y), None) => Some((x, y)),
+        (Some(x), None, Some(center)) => Some((x, center)),
+        (None, Some(y), Some(center)) => Some((center, y)),
         _ => None,
     }
 }
@@ -2633,7 +2619,16 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
         _ => return None,
     };
     let (areas, tracks) = parse_grid_template_rows(rows)?;
-    // Adjacent line-name blocks merge (`[a] [b]` -> `[a b]`).
+    let merged = merge_adjacent_line_names(tracks);
+    Some((
+        merged.join(" "),
+        columns.unwrap_or_else(|| "none".into()),
+        areas_text(&areas)?,
+    ))
+}
+
+/// Merge adjacent line-name blocks (`[a] [b]` -> `[a b]`).
+fn merge_adjacent_line_names(tracks: Vec<String>) -> Vec<String> {
     let mut merged: Vec<String> = Vec::new();
     for track in tracks {
         if let (Some(last), true) = (merged.last_mut(), track.starts_with('[')) {
@@ -2644,11 +2639,7 @@ fn grid_template(comps: &[Comp]) -> Option<(String, String, String)> {
         }
         merged.push(track);
     }
-    Some((
-        merged.join(" "),
-        columns.unwrap_or_else(|| "none".into()),
-        areas_text(&areas)?,
-    ))
+    merged
 }
 
 fn grid(comps: &[Comp]) -> Option<Out> {
@@ -2860,26 +2851,32 @@ pub(super) fn path_text(text: &str) -> String {
     let mut tokens = Vec::new();
     let mut current = String::new();
     for character in inner.chars() {
-        if character.is_ascii_alphabetic() && character != 'e' && character != 'E' {
-            if !current.is_empty() {
-                tokens.push(std::mem::take(&mut current));
-            }
-            tokens.push(character.to_string());
-        } else if character.is_whitespace() || character == ',' {
-            if !current.is_empty() {
-                tokens.push(std::mem::take(&mut current));
-            }
-        } else if character == '-' && !current.is_empty() && !current.ends_with(['e', 'E']) {
-            tokens.push(std::mem::take(&mut current));
-            current.push(character);
-        } else {
-            current.push(character);
-        }
+        path_tokenize_char(character, &mut current, &mut tokens);
     }
     if !current.is_empty() {
         tokens.push(current);
     }
     format!("{}\"{}\")", &text[..start], tokens.join(" "))
+}
+
+/// Advance the SVG-path token state for one character: emit the pending token on a
+/// command letter, whitespace or `,`; emit then start fresh on a non-exponent `-`.
+fn path_tokenize_char(character: char, current: &mut String, tokens: &mut Vec<String>) {
+    if character.is_ascii_alphabetic() && character != 'e' && character != 'E' {
+        if !current.is_empty() {
+            tokens.push(std::mem::take(current));
+        }
+        tokens.push(character.to_string());
+    } else if character.is_whitespace() || character == ',' {
+        if !current.is_empty() {
+            tokens.push(std::mem::take(current));
+        }
+    } else if character == '-' && !current.is_empty() && !current.ends_with(['e', 'E']) {
+        tokens.push(std::mem::take(current));
+        current.push(character);
+    } else {
+        current.push(character);
+    }
 }
 
 /// `offset-anchor` from the part after the slash (`None` = invalid).
@@ -2982,7 +2979,9 @@ fn offset(comps: &[Comp]) -> Option<Out> {
             rotate = value;
         }
     }
-    if at != main.len() || (main.is_empty() && parts.len() == 1) {
+    // The `[/ <offset-anchor>]?` tail needs a leading position-or-path group: `offset: /
+    // center` and `offset: / auto` are rejected like `offset:` alone (turbo-dom#391).
+    if at != main.len() || main.is_empty() {
         return None;
     }
     Some(vec![
@@ -3093,26 +3092,17 @@ fn layer_step(
     last: bool,
 ) -> Option<usize> {
     let comp = &comps[at];
-    if out.image.is_none() {
-        if let Some(value) = comp.image().or_else(|| kw(comp, &["none"])) {
-            out.image = Some(value);
-            return Some(1);
-        }
+    if let Some(used) = layer_image_step(comp, out) {
+        return Some(used);
     }
     if let Step::Took(used) = layer_position_step(comps, at, out)? {
         return Some(used);
     }
-    if out.repeat.is_none() {
-        if let Some((used, value)) = repeat_style(&comps[at..]) {
-            out.repeat = Some(value);
-            return Some(used);
-        }
+    if let Some(used) = layer_repeat_step(&comps[at..], out) {
+        return Some(used);
     }
-    if !mask && out.attachment.is_none() {
-        if let Some(value) = kw(comp, &["scroll", "fixed", "local"]) {
-            out.attachment = Some(value);
-            return Some(1);
-        }
+    if let Some(used) = layer_attachment_step(comp, out, mask) {
+        return Some(used);
     }
     if let Step::Took(used) = layer_box_step(comp, out, boxes)? {
         return Some(used);
@@ -3122,6 +3112,38 @@ fn layer_step(
     } else {
         layer_color_step(comp, out, last)
     }
+}
+
+/// `<bg-image>` (or `none`): records `out.image` and consumes one component.
+fn layer_image_step(comp: &Comp, out: &mut Layer) -> Option<usize> {
+    if out.image.is_some() {
+        return None;
+    }
+    let value = comp.image().or_else(|| kw(comp, &["none"]))?;
+    out.image = Some(value);
+    Some(1)
+}
+
+/// `<repeat-style>` (one or two keywords): records `out.repeat` and reports how many
+/// components it consumed.
+fn layer_repeat_step(tail: &[Comp], out: &mut Layer) -> Option<usize> {
+    if out.repeat.is_some() {
+        return None;
+    }
+    let (used, value) = repeat_style(tail)?;
+    out.repeat = Some(value);
+    Some(used)
+}
+
+/// `<attachment>` keyword (`scroll` / `fixed` / `local`, background only): records
+/// `out.attachment` and consumes one component.
+fn layer_attachment_step(comp: &Comp, out: &mut Layer, mask: bool) -> Option<usize> {
+    if mask || out.attachment.is_some() {
+        return None;
+    }
+    let value = kw(comp, &["scroll", "fixed", "local"])?;
+    out.attachment = Some(value);
+    Some(1)
 }
 
 /// `<bg-position> [/ <bg-size>]`: `Skip` when no position starts at `at`.
@@ -3542,4 +3564,24 @@ fn timeline_trigger_item(comps: &[Comp]) -> Option<Out> {
     }
     out.extend(more);
     Some(out)
+}
+
+#[cfg(test)]
+mod offset_slash_strict_tests {
+    use super::super::components::components;
+    use super::expand;
+
+    /// turbo-dom#391: the `offset` shorthand's `[/ <offset-anchor>]?` tail needs a leading
+    /// position or path; Chrome 156 rejects `offset: / center` and `offset: / auto`
+    /// (oracle `CSS.supports('offset', '/ center') === false`, headless-shell 156.0.8078.47).
+    #[test]
+    fn offset_rejects_bare_slash_anchor() {
+        for value in ["/ center", "/ auto", "/ left top", "/ 10px"] {
+            let comps = components(value).expect("tokenizes");
+            assert!(
+                expand("offset", &comps).is_none(),
+                "offset: {value} must not be accepted (Chrome 156 rejects)"
+            );
+        }
+    }
 }

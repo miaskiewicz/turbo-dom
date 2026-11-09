@@ -25,7 +25,7 @@ fn inline_style_longhands_spell_values_like_chrome156() {
     let cases = fixture("css-longhand-cases.json");
     let control: serde_json::Value =
         serde_json::from_str(&fixture("css_longhand_chrome156.json")).unwrap();
-    assert_eq!(control["browser"], "Chrome/156.0.8078.4");
+    assert_eq!(control["browser"], "Chrome/156.0.8078.47");
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],

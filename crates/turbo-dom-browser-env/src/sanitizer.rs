@@ -387,22 +387,7 @@ fn sanitize_element(
         .as_ref()
         .is_some_and(|list| list.contains(&element))
     {
-        for child in tree.children(node) {
-            let hoisted = if tree.node_type_id(child) == 11 {
-                tree.children(child)
-            } else {
-                vec![child]
-            };
-            for child in hoisted {
-                tree.insert_before(parent, child, Some(node));
-                pending.push(Pending {
-                    node: child,
-                    parser_parent: node,
-                    parent_replaced: true,
-                });
-            }
-        }
-        tree.remove_child(parent, node);
+        replace_with_children(tree, node, parent, pending);
         return;
     }
     let rules = match &config.elements {
@@ -438,6 +423,26 @@ fn sanitize_element(
     if let Some(shadow) = tree.shadow_root(node) {
         pending.extend(children_of(tree, shadow, shadow, false));
     }
+}
+
+/// Hoist each child of `node` in front of it, queue them for a re-run, then remove `node`.
+fn replace_with_children(tree: &mut Tree, node: Handle, parent: Handle, pending: &mut Vec<Pending>) {
+    for child in tree.children(node) {
+        let hoisted = if tree.node_type_id(child) == 11 {
+            tree.children(child)
+        } else {
+            vec![child]
+        };
+        for child in hoisted {
+            tree.insert_before(parent, child, Some(node));
+            pending.push(Pending {
+                node: child,
+                parser_parent: node,
+                parent_replaced: true,
+            });
+        }
+    }
+    tree.remove_child(parent, node);
 }
 
 fn filter_attributes(
