@@ -11579,6 +11579,86 @@ mod tests {
         reset();
     }
 
+    // After `A.adoptNode(el)` moves `el` from realm B into realm A, an inline `on*`
+    // content-attribute handler SET on the adopted element must compile against A's
+    // realm, not B's: HTML "getting the current value of the event handler" uses the
+    // node document's relevant settings object. The V8 wrapper's creation context stays
+    // pinned at where the wrapper was first materialized (B), so pinning compiles to
+    // creation context mis-routes handlers after adoption (turbo-dom#478 same class).
+    #[test]
+    fn inline_handler_realm_follows_adopted_owner_document() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let parent = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, parent);
+        install_independent_html(scope, "<body></body>");
+        let child = v8::Context::new(scope, Default::default());
+        child.set_security_token(parent.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<body></body>");
+        }
+        let key = v8::String::new(scope, "child").unwrap();
+        let child_global = child.global(scope);
+        parent
+            .global(scope)
+            .set(scope, key.into(), child_global.into());
+        let src = v8::String::new(
+            scope,
+            r#"
+                globalThis.realmMarker = 'parent-initial';
+                child.realmMarker = 'child-initial';
+                // 1) Create element in CHILD realm with an inline handler bound to CHILD.
+                const el = child.document.createElement('div');
+                el.setAttribute('onclick', 'globalThis.realmMarker = "child-fired"');
+                child.document.body.appendChild(el);
+                // 2) Dispatch in CHILD. Handler should write to CHILD.realmMarker.
+                el.dispatchEvent(new child.Event('click'));
+                const afterChildDispatch = {
+                    parent: globalThis.realmMarker,
+                    child: child.realmMarker,
+                };
+                // 3) Adopt the element into PARENT, set a NEW inline handler in PARENT.
+                const adopted = document.adoptNode(el);
+                document.body.appendChild(adopted);
+                adopted.setAttribute('onclick', 'globalThis.realmMarker = "parent-after-adopt"');
+                // 4) Dispatch again. Handler must now compile in PARENT's realm and
+                //    write to PARENT.realmMarker; CHILD.realmMarker must NOT change.
+                adopted.dispatchEvent(new Event('click'));
+                JSON.stringify({
+                    afterChildDispatch,
+                    parentAfterAdopt: globalThis.realmMarker,
+                    childAfterAdopt: child.realmMarker,
+                });
+            "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, src, None).unwrap();
+        let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Sanity: pre-adoption dispatch fires in child realm, not parent.
+        assert_eq!(
+            v["afterChildDispatch"]["child"], "child-fired",
+            "pre-adoption: child handler fires in child realm: {out}"
+        );
+        assert_eq!(
+            v["afterChildDispatch"]["parent"], "parent-initial",
+            "pre-adoption: child handler does not touch parent realm: {out}"
+        );
+        // The real assertion: post-adoption the handler compiled in A, so A's global
+        // marker changed to the new source, and B's marker stayed at "child-fired".
+        assert_eq!(
+            v["parentAfterAdopt"], "parent-after-adopt",
+            "adopted handler compiled in parent (new owner) realm: {out}"
+        );
+        assert_eq!(
+            v["childAfterAdopt"], "child-fired",
+            "adopted handler must NOT write to child (prior owner) realm: {out}"
+        );
+        reset();
+    }
+
     // A cross-origin <iframe> hosts a bridged second window realm: contentWindow is a
     // distinct object with its own document, and postMessage crosses the realm boundary
     // in BOTH directions carrying the correct source/origin (the reCAPTCHA anchor↔bframe
