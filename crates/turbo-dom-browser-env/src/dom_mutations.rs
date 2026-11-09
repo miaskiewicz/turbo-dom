@@ -25,32 +25,7 @@ fn plan(
     {
         return Err("NotFoundError");
     }
-    let mut nodes = Vec::new();
-    for &node in incoming {
-        if tree.is_shadow_root(node)
-            || !matches!(tree.node_type_id(node), 1 | 3 | 4 | 7 | 8 | 10 | 11)
-        {
-            return Err("HierarchyRequestError");
-        }
-        let mut ancestor = Some(parent);
-        let mut visited = std::collections::HashSet::new();
-        while let Some(current) = ancestor {
-            if current == node || !visited.insert(current) {
-                return Err("HierarchyRequestError");
-            }
-            ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
-        }
-        let expanded = if tree.node_type_id(node) == 11 {
-            tree.children(node)
-        } else {
-            vec![node]
-        };
-        for child in expanded {
-            // A repeated argument moves its earlier occurrence to the last position.
-            nodes.retain(|&existing| existing != child);
-            nodes.push(child);
-        }
-    }
+    let nodes = expand_incoming(tree, parent, incoming)?;
     let original = tree.children(parent);
     let retained = |node: &Handle| !nodes.contains(node) && !remove.contains(node);
     let viable = reference.and_then(|reference| {
@@ -86,6 +61,43 @@ fn plan(
         remove: remove.to_vec(),
         reference: viable,
     })
+}
+
+/// Flatten each `incoming` node to its list of real children (DocumentFragment is expanded),
+/// rejecting shadow roots, unsupported node types and cycles through `parent`. A node that
+/// appears more than once is kept once in its last position.
+fn expand_incoming(
+    tree: &Tree,
+    parent: Handle,
+    incoming: &[Handle],
+) -> Result<Vec<Handle>, &'static str> {
+    let mut nodes = Vec::new();
+    for &node in incoming {
+        if tree.is_shadow_root(node)
+            || !matches!(tree.node_type_id(node), 1 | 3 | 4 | 7 | 8 | 10 | 11)
+        {
+            return Err("HierarchyRequestError");
+        }
+        let mut ancestor = Some(parent);
+        let mut visited = std::collections::HashSet::new();
+        while let Some(current) = ancestor {
+            if current == node || !visited.insert(current) {
+                return Err("HierarchyRequestError");
+            }
+            ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
+        }
+        let expanded = if tree.node_type_id(node) == 11 {
+            tree.children(node)
+        } else {
+            vec![node]
+        };
+        for child in expanded {
+            // A repeated argument moves its earlier occurrence to the last position.
+            nodes.retain(|&existing| existing != child);
+            nodes.push(child);
+        }
+    }
+    Ok(nodes)
 }
 
 /// DOM "ensure pre-insert validity" (and replace validity) for a Document parent, as Blink's
@@ -662,6 +674,17 @@ fn insert_inputs_mode<'s>(
             }
         }
     }
+    let handles = materialize_planned(scope, owner, planned);
+    insert_mode(scope, parent, &handles, reference, remove, replace_all)
+}
+
+/// Turn each planned input into its concrete `Handle`: adopted nodes come across by handle,
+/// text inputs become new text nodes in the installed document.
+fn materialize_planned<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))] owner: u64,
+    planned: Vec<Prepared<'s>>,
+) -> Vec<Handle> {
     let mut handles = Vec::new();
     for node in planned {
         match node {
@@ -672,11 +695,11 @@ fn insert_inputs_mode<'s>(
             }
             Prepared::Text(text) => {
                 // invariant: an installed DOM tree is in scope
-                handles.push(with_tree_mut(|tree| tree.create_text_node_utf16(&text)).unwrap())
+                handles.push(with_tree_mut(|tree| tree.create_text_node_utf16(&text)).unwrap());
             }
         }
     }
-    insert_mode(scope, parent, &handles, reference, remove, replace_all)
+    handles
 }
 
 #[cfg(test)]

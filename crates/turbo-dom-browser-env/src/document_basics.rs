@@ -261,18 +261,7 @@ pub fn adopt<'s>(
     };
     if source_id == target_id {
         let _source = DomScope::for_object(scope, node);
-        html_popover::attribute_node_change(scope, source_handle, None);
-        html_popover::disconnect(scope, source_handle, true);
-        element_relations::attribute_node_changed(scope, source_handle);
-        range_live::removing(scope, source_handle);
-        with_tree_mut(|tree| {
-            if let Some(owner) = tree.attribute_owner(source_handle) {
-                let _ = tree.remove_attribute_node(owner, source_handle);
-            } else if let Some(parent) = tree.parent(source_handle) {
-                tree.remove_child(parent, source_handle);
-            }
-        });
-        mutation_observers::flush(scope);
+        detach_adopted_source(scope, source_handle);
         return Ok(node);
     }
     custom_elements::adopting(scope, node);
@@ -285,18 +274,7 @@ pub fn adopt<'s>(
     };
     let (cache, styles, listeners, nonces, modes, handlers, scripts, custom_states, checked_states) = {
         let _source = DomScope::for_object(scope, node);
-        html_popover::attribute_node_change(scope, source_handle, None);
-        html_popover::disconnect(scope, source_handle, true);
-        element_relations::attribute_node_changed(scope, source_handle);
-        range_live::removing(scope, source_handle);
-        with_tree_mut(|tree| {
-            if let Some(owner) = tree.attribute_owner(source_handle) {
-                let _ = tree.remove_attribute_node(owner, source_handle);
-            } else if let Some(parent) = tree.parent(source_handle) {
-                tree.remove_child(parent, source_handle);
-            }
-        });
-        mutation_observers::flush(scope);
+        detach_adopted_source(scope, source_handle);
         let mut cache = Vec::new();
         let mut nonces = Vec::new();
         let mut scripts = Vec::new();
@@ -321,17 +299,7 @@ pub fn adopt<'s>(
                 }
             }
         });
-        let ownership = DOM.with(|state| {
-            state
-                .borrow()
-                .as_ref()
-                .and_then(|state| state.ownership.clone())
-        });
-        if let Some(ownership) = ownership {
-            for (old, _) in &mapping {
-                ownership.borrow_mut().forget(scope, old.raw());
-            }
-        }
+        forget_ownership_for_mapping(scope, &mapping);
         let styles = STYLE.with(|styles| {
             let mut styles = styles.borrow_mut();
             mapping
@@ -460,6 +428,40 @@ pub fn adopt<'s>(
     Ok(node)
 }
 
+/// Release each `(old, _)` source handle from the realm's native ownership graph.
+fn forget_ownership_for_mapping(scope: &mut v8::PinScope, mapping: &[(Handle, Handle)]) {
+    let ownership = DOM.with(|state| {
+        state
+            .borrow()
+            .as_ref()
+            .and_then(|state| state.ownership.clone())
+    });
+    if let Some(ownership) = ownership {
+        for (old, _) in mapping {
+            ownership.borrow_mut().forget(scope, old.raw());
+        }
+    }
+}
+
+/// Detach the source node from its current owner in the source document scope: pop out of
+/// popover state, notify element relations and live ranges, unhook from its parent (or from
+/// its owning attribute), and flush observers. The caller must already hold a DomScope on
+/// the source document.
+fn detach_adopted_source(scope: &mut v8::PinScope, source_handle: Handle) {
+    html_popover::attribute_node_change(scope, source_handle, None);
+    html_popover::disconnect(scope, source_handle, true);
+    element_relations::attribute_node_changed(scope, source_handle);
+    range_live::removing(scope, source_handle);
+    with_tree_mut(|tree| {
+        if let Some(owner) = tree.attribute_owner(source_handle) {
+            let _ = tree.remove_attribute_node(owner, source_handle);
+        } else if let Some(parent) = tree.parent(source_handle) {
+            tree.remove_child(parent, source_handle);
+        }
+    });
+    mutation_observers::flush(scope);
+}
+
 // Preserve native node identity and embedder state: no JS remove/insert hooks run.
 // Range adjustment follows pre-remove semantics without running JS node hooks.
 fn move_node(
@@ -497,27 +499,37 @@ fn move_node(
         return Err("HierarchyRequestError");
     }
     if tree.node_type_id(parent) == 9 {
-        if matches!(kind, 3 | 4) {
-            return Err("HierarchyRequestError");
-        }
-        if kind == 1 {
-            let children = tree.children(parent);
-            let reference =
-                child.and_then(|child| children.iter().position(|value| *value == child));
-            // Pre-move validity counts the current children, the moved element included
-            // (Chrome 156: moving the document element within its document throws).
-            if children.iter().any(|child| tree.node_type_id(*child) == 1)
-                || reference.is_some_and(|reference| {
-                    children[reference..]
-                        .iter()
-                        .any(|child| tree.node_type_id(*child) == 10)
-                })
-            {
-                return Err("HierarchyRequestError");
-            }
-        }
+        validate_move_into_document(tree, parent, kind, child)?;
     }
     Ok(child)
+}
+
+/// Validate pre-move invariants when the destination parent is a Document node.
+fn validate_move_into_document(
+    tree: &Tree,
+    parent: Handle,
+    kind: u8,
+    child: Option<Handle>,
+) -> Result<(), &'static str> {
+    if matches!(kind, 3 | 4) {
+        return Err("HierarchyRequestError");
+    }
+    if kind == 1 {
+        let children = tree.children(parent);
+        let reference = child.and_then(|child| children.iter().position(|value| *value == child));
+        // Pre-move validity counts the current children, the moved element included
+        // (Chrome 156: moving the document element within its document throws).
+        if children.iter().any(|child| tree.node_type_id(*child) == 1)
+            || reference.is_some_and(|reference| {
+                children[reference..]
+                    .iter()
+                    .any(|child| tree.node_type_id(*child) == 10)
+            })
+        {
+            return Err("HierarchyRequestError");
+        }
+    }
+    Ok(())
 }
 
 fn fragment_by_id(tree: &Tree, root: Handle, id: &[u16]) -> Option<Handle> {
@@ -539,6 +551,78 @@ fn fragment_by_id(tree: &Tree, root: Handle, id: &[u16]) -> Option<Handle> {
         pending.extend(tree.children(node).into_iter().rev());
     }
     None
+}
+
+/// Handle the `"move"` dispatch: validate the referenced nodes, call `move_node`, update
+/// live ranges, insert the moved subtree and run custom-element callbacks. On validation
+/// failure `rv` is set to the error name as the JS wrapper expects.
+fn dispatch_move_op<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: &v8::FunctionCallbackArguments<'s>,
+    node: v8::Local<'s, v8::Object>,
+    handle: Handle,
+    rv: &mut v8::ReturnValue,
+) {
+    let Ok(moved) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
+        return type_error(scope);
+    };
+    let Some(moved_handle) = handle_of(scope, moved) else {
+        return type_error(scope);
+    };
+    let mut error =
+        (dom_id_of(scope, moved) != dom_id_of(scope, node)).then_some("HierarchyRequestError");
+    let reference = if args.get(3).is_null_or_undefined() {
+        None
+    } else {
+        let Ok(child) = v8::Local::<v8::Object>::try_from(args.get(3)) else {
+            return type_error(scope);
+        };
+        let Some(child_handle) = handle_of(scope, child) else {
+            return type_error(scope);
+        };
+        if dom_id_of(scope, child) != dom_id_of(scope, node) {
+            error = error.or(Some("NotFoundError"));
+        }
+        Some(child_handle)
+    };
+    if error.is_none() {
+        match with_tree(|tree| move_node(tree, handle, moved_handle, reference)) {
+            Some(Ok(reference)) => {
+                perform_move(scope, moved, moved_handle, handle, reference);
+            }
+            Some(Err(name)) => error = Some(name),
+            None => return,
+        }
+    }
+    if let Some(error) = error {
+        // invariant: engine-built name, far below V8's string length limit
+        rv.set(v8::String::new(scope, error).unwrap().into());
+    }
+}
+
+/// Apply the validated move: update live ranges, insert the subtree, run custom-element hooks.
+fn perform_move<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    moved: v8::Local<'s, v8::Object>,
+    moved_handle: Handle,
+    handle: Handle,
+    reference: Option<Handle>,
+) {
+    range_live::removing(scope, moved_handle);
+    let index = with_tree(|tree| {
+        let children: Vec<_> = tree
+            .children(handle)
+            .into_iter()
+            .filter(|&child| child != moved_handle)
+            .collect();
+        reference
+            .and_then(|reference| children.iter().position(|&node| node == reference))
+            .unwrap_or(children.len())
+    })
+    .unwrap_or(0);
+    range_live::inserting(scope, handle, index, 1);
+    with_tree_mut(|tree| tree.insert_before(handle, moved_handle, reference));
+    custom_elements::moved(scope, moved);
 }
 
 pub fn dispatch<'s>(
@@ -633,57 +717,7 @@ pub fn dispatch<'s>(
             rv.set(state.into());
         }
         "move" if matches!(kind, 1 | 9 | 11) => {
-            let Ok(moved) = v8::Local::<v8::Object>::try_from(args.get(2)) else {
-                return type_error(scope);
-            };
-            let Some(moved_handle) = handle_of(scope, moved) else {
-                return type_error(scope);
-            };
-            let mut error = (dom_id_of(scope, moved) != dom_id_of(scope, node))
-                .then_some("HierarchyRequestError");
-            let reference = if args.get(3).is_null_or_undefined() {
-                None
-            } else {
-                let Ok(child) = v8::Local::<v8::Object>::try_from(args.get(3)) else {
-                    return type_error(scope);
-                };
-                let Some(child_handle) = handle_of(scope, child) else {
-                    return type_error(scope);
-                };
-                if dom_id_of(scope, child) != dom_id_of(scope, node) {
-                    error = error.or(Some("NotFoundError"));
-                }
-                Some(child_handle)
-            };
-            if error.is_none() {
-                match with_tree(|tree| move_node(tree, handle, moved_handle, reference)) {
-                    Some(Ok(reference)) => {
-                        range_live::removing(scope, moved_handle);
-                        let index = with_tree(|tree| {
-                            let children: Vec<_> = tree
-                                .children(handle)
-                                .into_iter()
-                                .filter(|&child| child != moved_handle)
-                                .collect();
-                            reference
-                                .and_then(|reference| {
-                                    children.iter().position(|&node| node == reference)
-                                })
-                                .unwrap_or(children.len())
-                        })
-                        .unwrap_or(0);
-                        range_live::inserting(scope, handle, index, 1);
-                        with_tree_mut(|tree| tree.insert_before(handle, moved_handle, reference));
-                        custom_elements::moved(scope, moved);
-                    }
-                    Some(Err(name)) => error = Some(name),
-                    None => return,
-                }
-            }
-            if let Some(error) = error {
-                // invariant: engine-built name, far below V8's string length limit
-                rv.set(v8::String::new(scope, error).unwrap().into());
-            }
+            dispatch_move_op(scope, &args, node, handle, &mut rv);
         }
         "isXML" if kind == 9 => {
             let xml = dom_implementation::is_xml_document(scope, node);
