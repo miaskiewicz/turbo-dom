@@ -4015,7 +4015,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // OWN accessor on each control element (testing-library's setNativeValue reads
   // getOwnPropertyDescriptor(element)) AND on the interface .prototype (React's value-tracker reads
   // node.constructor.prototype). No setPrototypeOf — avoids touching the native proto chain.
-  var currentSheetGetter;
+  var currentSheetGetter, currentSheetGetterStyle;
   var sheetTagName=__ns.domAccessor('tagName',false,'Element'),sheetConnected=__ns.domAccessor('isConnected',false,'Node'),sheetTextContent=__ns.domAccessor('textContent',false,'Node'),sheetGetAttribute=d.createElement('style').getAttribute;
   function sheetNativeAttribute(element,name){return cssApply(sheetGetAttribute,element,[name]);}
   (function(){
@@ -4674,8 +4674,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       'OES_draw_buffers_indexed','OES_texture_float_linear','WEBGL_compressed_texture_s3tc',
       'WEBGL_compressed_texture_s3tc_srgb','WEBGL_debug_renderer_info','WEBGL_debug_shaders',
       'WEBGL_lose_context','WEBGL_multi_draw','WEBGL_provoking_vertex'];
-    var mkWebGLCtx = function(canvas, isGL2){
-      var C = GLC, noop = function(){};
+    // Build the WebGL `getParameter` table for the requested context version. Moving the
+    // isGL2 branches here keeps mkWebGLCtx under the cc limit.
+    var mkWebGLParams = function(isGL2){
+      var C = GLC;
       var params = {};
       params[C.VENDOR] = 'WebKit'; params[C.RENDERER] = 'WebKit WebGL';
       params[C.VERSION] = isGL2 ? 'WebGL 2.0 (OpenGL ES 3.0 Chromium)' : 'WebGL 1.0 (OpenGL ES 2.0 Chromium)';
@@ -4701,6 +4703,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         params[C.MAX_FRAGMENT_UNIFORM_BLOCKS] = 12; params[C.MAX_ELEMENTS_INDICES] = 0x7FFFFFFF;
         params[C.MAX_ELEMENTS_VERTICES] = 0x7FFFFFFF;
       }
+      return params;
+    };
+    var mkWebGLCtx = function(canvas, isGL2){
+      var C = GLC, noop = function(){};
+      var params = mkWebGLParams(isGL2);
       var EXT = isGL2 ? GL_EXT2 : GL_EXT1;
       var gl = { canvas: canvas, _ops: [],
         drawingBufferWidth: (canvas && canvas.width) || 300, drawingBufferHeight: (canvas && canvas.height) || 150,
@@ -4827,22 +4834,34 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         // Defined on the shared element prototype and
         // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
         // report a descriptor, so a guard would wrongly skip). Caches per element.
+        // `.sheet` resolution for a <style> element (<link> takes the ternary in the caller).
+        // Returns null when inline sheets are disallowed; otherwise rebuilds the CSSOM sheet
+        // on text change and keeps it otherwise.
+        currentSheetGetterStyle=function(elt, cached){
+          if (!cssApply(inlineSheetAllowed, elt, [])) {
+            if (cached) detachSheet(cached.sheet);
+            elementSheets.set(elt, { sheet: null, text: null });
+            return null;
+          }
+          var text = cssApply(sheetTextContent, elt, []) || '';
+          if (!cached || !cached.sheet || cached.text !== text) {
+            if (cached) detachSheet(cached.sheet);
+            cached = { sheet: mkSheet(elt), text: text };
+            elementSheets.set(elt, cached);
+          }
+          return cached.sheet;
+        };
         currentSheetGetter=function(){
-            var tag = cssApply(sheetTagName,this,[]);
-            if (!tag) return null;
-            tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
-            var cached=elementSheets.get(this);
-            // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
-            if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
-            if(tag==='LINK')return cached?cached.sheet:null;
-            if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
-            var text=cssApply(sheetTextContent,this,[])||'';
-            if (!cached || !cached.sheet || cached.text!==text) {
-              if(cached)detachSheet(cached.sheet);
-              cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
-            }
-            return cached.sheet;
-          };
+          var tag = cssApply(sheetTagName, this, []);
+          if (!tag) return null;
+          tag = cssTagUpper(tag);
+          if (tag !== 'STYLE' && tag !== 'LINK') return null;
+          var cached = elementSheets.get(this);
+          // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
+          if (!computedConnected(this)) { if (cached) detachSheet(cached.sheet); elementSheets.delete(this); return null; }
+          if (tag === 'LINK') return cached ? cached.sheet : null;
+          return currentSheetGetterStyle(this, cached);
+        };
         Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
         var docProto = Object.getPrototypeOf(d) || baseProto;
         // Documents without a browsing context list their own sheets too (turbo-dom#163).
@@ -4882,20 +4901,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function __zeroRect(){ return { x:0,y:0,top:0,left:0,right:0,bottom:0,width:0,height:0,toJSON:function(){return this;} }; }
   function __nodeIndex(n){ var p=n.parentNode; if(!p) return 0; var i=0,c=p.firstChild; while(c&&c!==n){ i++; c=c.nextSibling; } return i; }
   function __ancestry(n){ var a=[]; while(n){ a.push(n); n=n.parentNode; } return a; } // node … root
+  // Resolve two boundary points once a common ancestor at (A[i] === B[j]) is found.
+  // Returns -1 (before) / 1 (after) / 0 (same child + offset).
+  function __cmpAt(A, B, i, j, oa, ob){
+    var childA = i > 0 ? A[i - 1] : null, childB = j > 0 ? B[j - 1] : null;
+    if (childA === null) return oa <= __nodeIndex(childB) ? -1 : 1;     // ca IS the common ancestor
+    if (childB === null) return __nodeIndex(childA) < ob ? -1 : 1;      // cb IS the common ancestor
+    var ia = __nodeIndex(childA), ib = __nodeIndex(childB);
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+  }
   // Compare boundary points (ca,oa) vs (cb,ob) in document order: -1 before, 0 equal, 1 after.
   function __cmp(ca,oa,cb,ob){
     if(ca===cb) return oa<ob?-1:oa>ob?1:0;
     var A=__ancestry(ca), B=__ancestry(cb);
     // walk B looking for a node whose ancestry includes it → common ancestor
-    for(var i=0;i<A.length;i++){ var j=B.indexOf(A[i]); if(j>=0){
-      var anc=A[i];
-      // child of anc on A's side (or ca itself if A[i-1])
-      var childA=i>0?A[i-1]:null, childB=j>0?B[j-1]:null;
-      if(childA===null) return oa<=__nodeIndex(childB)?-1:1;     // ca IS the common ancestor
-      if(childB===null) return __nodeIndex(childA)<ob?-1:1;       // cb IS the common ancestor
-      var ia=__nodeIndex(childA), ib=__nodeIndex(childB);
-      return ia<ib?-1:ia>ib?1:0;
-    }}
+    for(var i=0;i<A.length;i++){ var j=B.indexOf(A[i]); if(j>=0) return __cmpAt(A, B, i, j, oa, ob); }
     return 0; // disconnected
   }
   function __commonAncestor(a,b){ var A=__ancestry(a); var n=b; while(n){ if(A.indexOf(n)>=0) return n; n=n.parentNode; } return d; }
@@ -4925,7 +4945,29 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   Range.prototype.isPointInRange=function(n,o){ return this.comparePoint(n,o)===0; };
   Range.prototype.compareBoundaryPoints=function(how,other){ return __cmp(this.startContainer,this.startOffset,other.startContainer,other.startOffset); };
   Range.prototype.insertNode=function(node){ var c=this.startContainer, o=this.startOffset; if(c.nodeType===3){ var txt=c.data||''; var after=c.splitText?c.splitText(o):null; c.parentNode.insertBefore(node, after||c.nextSibling); } else { var ref=c.childNodes?c.childNodes[o]:null; c.insertBefore(node, ref||null); } };
-  Range.prototype.deleteContents=function(){ if(this.collapsed) return; var sc=this.startContainer; if(sc===this.endContainer && sc.nodeType===3){ var t=sc.data||''; if(sc.deleteData) sc.deleteData(this.startOffset, this.endOffset-this.startOffset); else sc.data=t.slice(0,this.startOffset)+t.slice(this.endOffset); this.endOffset=this.startOffset; this.endContainer=sc; return; } var ca=this.commonAncestorContainer; var kids=ca.childNodes?Array.prototype.slice.call(ca.childNodes):[]; for(var i=0;i<kids.length;i++){ var k=kids[i]; if(this.comparePoint(k,0)===0 && this.comparePoint(k, (k.nodeType===3?(k.data||'').length:(k.childNodes?k.childNodes.length:0)))===0 && k.parentNode){ k.parentNode.removeChild(k); } } this.collapse(true); };
+  // End offset of a child node (text length for CharacterData, child count for Element).
+  function rangeChildEndOffset(k){ return k.nodeType === 3 ? (k.data || '').length : (k.childNodes ? k.childNodes.length : 0); }
+  // Delete a text slice inside one Text node that owns both boundaries.
+  function rangeDeleteTextSlice(range, sc){
+    var t = sc.data || '';
+    if (sc.deleteData) sc.deleteData(range.startOffset, range.endOffset - range.startOffset);
+    else sc.data = t.slice(0, range.startOffset) + t.slice(range.endOffset);
+    range.endOffset = range.startOffset; range.endContainer = sc;
+  }
+  Range.prototype.deleteContents=function(){
+    if(this.collapsed) return;
+    var sc=this.startContainer;
+    if(sc===this.endContainer && sc.nodeType===3){ rangeDeleteTextSlice(this, sc); return; }
+    var ca=this.commonAncestorContainer;
+    var kids=ca.childNodes?Array.prototype.slice.call(ca.childNodes):[];
+    for(var i=0;i<kids.length;i++){
+      var k=kids[i];
+      if(this.comparePoint(k,0)===0 && this.comparePoint(k, rangeChildEndOffset(k))===0 && k.parentNode){
+        k.parentNode.removeChild(k);
+      }
+    }
+    this.collapse(true);
+  };
   Range.prototype.cloneContents=function(){ var f=this.document.createDocumentFragment(); return f; };
   Range.prototype.extractContents=function(){ var f=this.cloneContents(); this.deleteContents(); return f; };
   Range.prototype.surroundContents=function(node){ this.insertNode(node); };
@@ -5214,9 +5256,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         location: { origin: parentOrigin, href: (parentWin.location && parentWin.location.href) || '' },
       };
       childWin.parent = parentView; childWin.top = parentView; childWin.frameElement = hostEl || null;
-      if (hostEl) { hostEl.__realm = childWin; try { hostEl.contentWindow = childWin; hostEl.contentDocument = childDoc; } catch(e){} }
+      wireFrameHost(hostEl, childWin, childDoc);
       return childWin;
     };
+    // Attach the realm to its host <iframe> element. Native elements may refuse the
+    // contentWindow / contentDocument accessors (eager read-only), so the write is in try.
+    function wireFrameHost(hostEl, childWin, childDoc){
+      if (!hostEl) return;
+      hostEl.__realm = childWin;
+      try { hostEl.contentWindow = childWin; hostEl.contentDocument = childDoc; } catch(e){}
+    }
 
     // Wire createElement('iframe') to expose a real contentWindow/contentDocument, built
     // lazily on first access (or when src is set). Kept general so any consumer gets it;
@@ -5316,10 +5365,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var mime=$c.toLowerCase($c.trim($c.split(String(type),';',1)[0]));
       return $c.has(mediaTypes,mime)?'maybe':'';
     },'canPlayType',1),writable:true,enumerable:true,configurable:true});
-    if(typeof g.Audio==='function'){
-      var audioConstructor=__ns.makeNativeFunction(function(src){var element=d.createElement('audio');if(src!==undefined)element.src=src;return element;},'Audio',0,true,false,false);
-      audioConstructor.prototype=prototypes.HTMLAudioElement;Object.defineProperty(audioConstructor,'prototype',{writable:false});
-      Object.defineProperty(g,'Audio',{value:audioConstructor,writable:true,configurable:true});
+    installAudioConstructor();
+    function installAudioConstructor(){
+      if (typeof g.Audio !== 'function') return;
+      var audioConstructor = __ns.makeNativeFunction(function(src){ var element = d.createElement('audio'); if (src !== undefined) element.src = src; return element; }, 'Audio', 0, true, false, false);
+      audioConstructor.prototype = prototypes.HTMLAudioElement;
+      Object.defineProperty(audioConstructor, 'prototype', { writable: false });
+      Object.defineProperty(g, 'Audio', { value: audioConstructor, writable: true, configurable: true });
     }
 
     // Keep existing compatibility behavior while separating the base interfaces;
@@ -5395,7 +5447,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     Object.keys(mapMethods).forEach(function(name){var delegate=mapMethods[name];Object.defineProperty(namedMapProto,name,{value:__ns.makeNativeFunction(function(){mapOwner(this);if(arguments.length<delegate.length)throw new TypeError('Not enough arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     Object.defineProperty(namedMapProto,'length',{get:__ns.makeNativeFunction(function(){return mapEntries(this).length;},'get length',0),enumerable:true,configurable:true});
     Object.defineProperty(namedMapProto,Symbol.iterator,{value:__ns.makeNativeFunction(function(){var map=this;mapOwner(map);var index=0;return {next(){var entries=mapEntries(map);return index<entries.length?{value:entries[index++],done:false}:{value:undefined,done:true};},[Symbol.iterator](){return this;}};},'values',0),writable:true,configurable:true});
-    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=$call($wmGet,mapsByElement,owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];if(operation==='indices')return Array.from(entries,function(_,index){return index;});if(operation==='keys')return Array.from(new Set(Array.from(entries,function(entry){return entry.name;})));if(operation==='get')return attribute;if(operation==='has')return !!attribute;if(operation==='descriptor')return attribute?{value:attribute,writable:false,enumerable:index!==null,configurable:true}:undefined;if(operation==='set'||operation==='define')return attribute?true:undefined;if(operation==='delete')return attribute?false:undefined;},true);$c.set(mapRecords,map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});$c.set(mapsByElement,owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
+    // Operation dispatcher for the NamedNodeMap proxy. A `switch` lets the many kinds share
+    // one helper; without it the proxy callback blew the cc <= 12 ceiling.
+    function namedAttrsOp(operation, attribute, entries, index){
+      switch (operation) {
+        case 'indices': return Array.from(entries, function(_, i){ return i; });
+        case 'keys': return Array.from(new Set(Array.from(entries, function(entry){ return entry.name; })));
+        case 'get': return attribute;
+        case 'has': return !!attribute;
+        case 'descriptor': return attribute ? { value: attribute, writable: false, enumerable: index !== null, configurable: true } : undefined;
+        case 'set': case 'define': return attribute ? true : undefined;
+        case 'delete': return attribute ? false : undefined;
+      }
+    }
+    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=$call($wmGet,mapsByElement,owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];return namedAttrsOp(operation,attribute,entries,index);},true);$c.set(mapRecords,map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});$c.set(mapsByElement,owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
     var isShadowRoot=__ns.domAccessor('__isShadowRoot',false,'Node');
     var probe=d.createElement('div');
     __ns.cascadeProp=Object.getOwnPropertyDescriptor(probe,'__cascadeProp').value;
@@ -5454,12 +5519,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Rendering, as Chrome 156 measures it: an SVG element other than <svg> needs a non-HTML
     // parent, a non-SVG element under SVG needs a <foreignObject> parent, and no inclusive
     // ancestor may compute display: none.
+    // SVG element (other than <svg> itself) whose parent is HTML (or has no namespace):
+    // its rendering stops here per Chrome's foreign-rendered test.
+    function foreignRenderedSvgNoHost(node, parentSpace){
+      return node.namespaceURI === 'http://www.w3.org/2000/svg' && node.localName !== 'svg' && (parentSpace === null || parentSpace === 'http://www.w3.org/1999/xhtml');
+    }
+    // Non-SVG under SVG: only renders inside <foreignObject>.
+    function foreignRenderedBadForeign(node, parentSpace, parent){
+      return node.namespaceURI !== 'http://www.w3.org/2000/svg' && parentSpace === 'http://www.w3.org/2000/svg' && parent.localName !== 'foreignObject';
+    }
     var foreignRendered=function(element){
-      for(var node=element;node&&node.nodeType===1;node=node.parentNode){
-        var parent=node.parentNode,parentSpace=parent&&parent.nodeType===1?parent.namespaceURI:null;
-        if(node.namespaceURI==='http://www.w3.org/2000/svg'&&node.localName!=='svg'&&(parentSpace===null||parentSpace==='http://www.w3.org/1999/xhtml'))return false;
-        if(node.namespaceURI!=='http://www.w3.org/2000/svg'&&parentSpace==='http://www.w3.org/2000/svg'&&parent.localName!=='foreignObject')return false;
-        if(g.getComputedStyle(node).display==='none')return false;
+      for (var node = element; node && node.nodeType === 1; node = node.parentNode) {
+        var parent = node.parentNode, parentSpace = parent && parent.nodeType === 1 ? parent.namespaceURI : null;
+        if (foreignRenderedSvgNoHost(node, parentSpace)) return false;
+        if (foreignRenderedBadForeign(node, parentSpace, parent)) return false;
+        if (g.getComputedStyle(node).display === 'none') return false;
       }
       return true;
     };
@@ -5667,8 +5741,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         get:__ns.makeNativeFunction(function(){brand(this);if(flag)return reflectedApply(reflectedHasAttribute,this,[attribute]);var value=reflectedApply(reflectedGetAttribute,this,[attribute]);return value===null?'':value;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){brand(this);if(arguments.length<1)throw new TypeError("Failed to set the '"+name+"' property on '"+owner+"': 1 argument required, but only 0 present.");if(!flag){reflectedApply(reflectedSetAttribute,this,[attribute,attributeString(value)]);return;}if(value)reflectedApply(reflectedSetAttribute,this,[attribute,'']);else reflectedApply(reflectedRemoveAttribute,this,[attribute]);},'set '+name,1)});
     });
+    installMediaMuted();
+    installTextWholeText();
     // The muted IDL attribute is media state, not a reflection: it starts false.
-    if(prototypes.HTMLMediaElement&&!Object.hasOwn(prototypes.HTMLMediaElement,'muted')){
+    function installMediaMuted(){
+      if (!prototypes.HTMLMediaElement || Object.hasOwn(prototypes.HTMLMediaElement, 'muted')) return;
       var mediaMuted=new WeakMap(),mutedGet=WeakMap.prototype.get,mutedSet=WeakMap.prototype.set,mediaLocals=new Set(['audio','video']),mediaCheck=__ns.domAccessor('nodeType',false,'HTMLElement');
       var mediaBrand=function(receiver){reflectedApply(mediaCheck,receiver,[]);if(!reflectedApply(reflectedSetHas,mediaLocals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
       Object.defineProperty(prototypes.HTMLMediaElement,'muted',{configurable:true,enumerable:true,
@@ -5676,7 +5753,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         set:__ns.makeNativeFunction(function(value){mediaBrand(this);reflectedApply(mutedSet,mediaMuted,[this,!!value]);},'set muted',1)});
     }
     // Text.wholeText (turbo-dom#143): the data of the contiguous Text siblings, in tree order.
-    if(g.Text&&!Object.hasOwn(g.Text.prototype,'wholeText')){
+    function installTextWholeText(){
+      if (!g.Text || Object.hasOwn(g.Text.prototype, 'wholeText')) return;
       var wholeCheck=__ns.domAccessor('nodeType',false,'Text'),wholeType=Object.getOwnPropertyDescriptor(nodeProto,'nodeType').get,wholePrevious=Object.getOwnPropertyDescriptor(nodeProto,'previousSibling').get,wholeNext=Object.getOwnPropertyDescriptor(nodeProto,'nextSibling').get,wholeData=Object.getOwnPropertyDescriptor(g.CharacterData.prototype,'data').get;
       var isText=function(node){if(node===null)return false;var type=reflectedApply(wholeType,node,[]);return type===3||type===4;};
       Object.defineProperty(g.Text.prototype,'wholeText',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){
@@ -5707,12 +5785,81 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     // The lookup start of locate-a-namespace / locate-a-namespace-prefix, through captured natives.
     function nodeLookupStart(node){var type=$call(getType,node);return type===9?$call($N.documentElement,node):type===2?$call($N['attr.ownerElement'],node):type===1?node:$call($N.parentElement,node);}
+    // The `xmlns` declaration that defines `prefix` on `element` (null for the default
+    // namespace), returned as its value; undefined when the element declares no such thing.
+    function lookupNamespaceURIDecl(element, prefix){
+      var declaration = $call($N.getAttributeNodeNS, element, 'http://www.w3.org/2000/xmlns/', prefix === null ? 'xmlns' : prefix);
+      if (!declaration) return undefined;
+      var expectedAttrPrefix = prefix === null ? null : 'xmlns';
+      if ($call($N['attr.prefix'], declaration) !== expectedAttrPrefix) return undefined;
+      return $call($N['attr.value'], declaration) || null;
+    }
+    // Does this attribute declare `namespace` under some prefix (the attr's local name).
+    function lookupPrefixAttrMatch(self, attribute, namespace){
+      return $call($N['attr.namespaceURI'], attribute) === 'http://www.w3.org/2000/xmlns/' &&
+        $call($N['attr.prefix'], attribute) === 'xmlns' &&
+        $call($N['attr.value'], attribute) === namespace &&
+        $call(nodeOperations.lookupNamespaceURI, self, $call($N['attr.localName'], attribute)) === namespace;
+    }
+    // Cross-shadow-root order per Chrome 156: a stable WeakMap-keyed ordinal per root, OR'd
+    // with the DOCUMENT_POSITION_DISCONNECTED | IMPLEMENTATION_SPECIFIC flags (0x21 = 33).
+    function compareDocumentPositionCrossRoot(self, other){
+      var order = __ns.nodeComparisonOrder || (__ns.nodeComparisonOrder = new WeakMap());
+      var next = __ns.nodeComparisonNext || 1;
+      if (!$c.has(order, self)) $c.set(order, self, next++);
+      if (!$c.has(order, other)) $c.set(order, other, next++);
+      __ns.nodeComparisonNext = next;
+      return 33 | ($c.get(order, self) < $c.get(order, other) ? 4 : 2);
+    }
     var nodeOperations={
-      lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=nodeLookupStart(this);while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';var elementNamespace=$call($N['element.namespaceURI'],element);if(elementNamespace&&$call($N['element.prefix'],element)===prefix)return elementNamespace;var declaration=$call($N.getAttributeNodeNS,element,'http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?$call($N['attr.prefix'],declaration)===null:$call($N['attr.prefix'],declaration)==='xmlns'))return $call($N['attr.value'],declaration)||null;element=$call($N.parentElement,element);}return null;},
-      lookupPrefix(namespace){namespace=namespace==null||namespace===''?null:attributeString(namespace);if(namespace===null)return null;var element=nodeLookupStart(this);while(element){var elementPrefix=$call($N['element.prefix'],element);if(elementPrefix&&$call($N['element.namespaceURI'],element)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,elementPrefix)===namespace)return elementPrefix;var attributes=$call($N.nativeAttributes,element);for(var index=0;index<attributes.length;index++){var attribute=attributes[index];if($call($N['attr.namespaceURI'],attribute)==='http://www.w3.org/2000/xmlns/'&&$call($N['attr.prefix'],attribute)==='xmlns'&&$call($N['attr.value'],attribute)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,$call($N['attr.localName'],attribute))===namespace)return $call($N['attr.localName'],attribute);}element=$call($N.parentElement,element);}return null;},
+      lookupNamespaceURI(prefix){
+        prefix = prefix == null || prefix === '' ? null : attributeString(prefix);
+        var element = nodeLookupStart(this);
+        while (element) {
+          if (prefix === 'xml') return 'http://www.w3.org/XML/1998/namespace';
+          if (prefix === 'xmlns') return 'http://www.w3.org/2000/xmlns/';
+          var elementNamespace = $call($N['element.namespaceURI'], element);
+          if (elementNamespace && $call($N['element.prefix'], element) === prefix) return elementNamespace;
+          var decl = lookupNamespaceURIDecl(element, prefix);
+          if (decl !== undefined) return decl;
+          element = $call($N.parentElement, element);
+        }
+        return null;
+      },
+      lookupPrefix(namespace){
+        namespace = namespace == null || namespace === '' ? null : attributeString(namespace);
+        if (namespace === null) return null;
+        var element = nodeLookupStart(this);
+        while (element) {
+          var elementPrefix = $call($N['element.prefix'], element);
+          if (elementPrefix && $call($N['element.namespaceURI'], element) === namespace && $call(nodeOperations.lookupNamespaceURI, this, elementPrefix) === namespace) return elementPrefix;
+          var attributes = $call($N.nativeAttributes, element);
+          for (var index = 0; index < attributes.length; index++) {
+            var attribute = attributes[index];
+            if (lookupPrefixAttrMatch(this, attribute, namespace)) return $call($N['attr.localName'], attribute);
+          }
+          element = $call($N.parentElement, element);
+        }
+        return null;
+      },
       isDefaultNamespace(namespace){namespace=namespace==null||namespace===''?null:String(namespace);return $call(nodeOperations.lookupNamespaceURI,this,null)===namespace;},
       normalize(){var nodes=this.childNodes;for(var index=0;index<nodes.length;){var node=nodes[index];if(node.nodeType!==3){node.normalize();index++;continue;}while(index+1<nodes.length&&nodes[index+1].nodeType===3){node.data+=nodes[index+1].data;this.removeChild(nodes[index+1]);nodes=this.childNodes;}if(!node.data){this.removeChild(node);nodes=this.childNodes;}else index++;}},
-      compareDocumentPosition(other){getType.call(other);if(this===other)return 0;var root=$call($N.getRootNode,this),otherRoot=$call($N.getRootNode,other);if(root!==otherRoot){var order=__ns.nodeComparisonOrder||(__ns.nodeComparisonOrder=new WeakMap());var next=__ns.nodeComparisonNext||1;if(!$c.has(order,this))$c.set(order,this,next++);if(!$c.has(order,other))$c.set(order,other,next++);__ns.nodeComparisonNext=next;return 33|($c.get(order,this)<$c.get(order,other)?4:2);}if($call($N.contains,this,other))return 20;if($call($N.contains,other,this))return 10;var self=this,before=false,found=false;(function visit(node){if(found)return;if(node===self)before=true;if(node===other){found=true;return;}for(var child=$call($N.firstChild,node);child!==null;child=$call($N.nextSibling,child))visit(child);})(root);return before?4:2;}
+      compareDocumentPosition(other){
+        getType.call(other);
+        if (this === other) return 0;
+        var root = $call($N.getRootNode, this), otherRoot = $call($N.getRootNode, other);
+        if (root !== otherRoot) return compareDocumentPositionCrossRoot(this, other);
+        if ($call($N.contains, this, other)) return 20;
+        if ($call($N.contains, other, this)) return 10;
+        var self = this, before = false, found = false;
+        (function visit(node){
+          if (found) return;
+          if (node === self) before = true;
+          if (node === other) { found = true; return; }
+          for (var child = $call($N.firstChild, node); child !== null; child = $call($N.nextSibling, child)) visit(child);
+        })(root);
+        return before ? 4 : 2;
+      }
     };
     Object.keys(nodeOperations).forEach(function(name){var delegate=nodeOperations[name];var fn=__ns.makeNativeFunction(function(){getType.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length);Object.defineProperty(nodeProto,name,{value:fn,writable:true,configurable:true,enumerable:true});});
     var tags={DIV:'HTMLDivElement',SPAN:'HTMLSpanElement',P:'HTMLParagraphElement',INPUT:'HTMLInputElement',TEXTAREA:'HTMLTextAreaElement',SELECT:'HTMLSelectElement',OPTION:'HTMLOptionElement',BUTTON:'HTMLButtonElement',LABEL:'HTMLLabelElement',CANVAS:'HTMLCanvasElement',A:'HTMLAnchorElement',FORM:'HTMLFormElement',STYLE:'HTMLStyleElement',SCRIPT:'HTMLScriptElement',IFRAME:'HTMLIFrameElement',IMG:'HTMLImageElement',UL:'HTMLUListElement',LI:'HTMLLIElement',TABLE:'HTMLTableElement'};
