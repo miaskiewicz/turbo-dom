@@ -1689,6 +1689,24 @@ pub(super) fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
     is("break-inside", &["avoid", "avoid-page"]) || is("page-break-inside", &["avoid"])
 }
 
+/// `break-inside: avoid | avoid-column` — the multicol-flow sibling of
+/// [`break_inside_avoid_of`]. CSS Fragmentation 3 §4.1 defines `avoid` as
+/// "suppress any break at this boundary" (page + column + region) and
+/// `avoid-column` as "suppress column breaks only"; `avoid-page` is
+/// explicitly page-only and does NOT suppress a column break, so this
+/// helper omits it. Legacy `page-break-inside` is not considered: it has
+/// no `column` spelling. Review R3 M7: this replaces an inline keyword
+/// match in `multicol::kid_flags`, keeping the "which keywords count" set
+/// in one place (siblings with [`break_inside_avoid_of`]) rather than
+/// routing through [`break_rule_of`], which collapses `avoid` and
+/// `avoid-page` into one `BreakRule::Avoid`.
+pub(super) fn break_inside_column_avoid_of(s: &ComputedStyle) -> bool {
+    s.get("break-inside").is_some_and(|v| {
+        let v = v.trim();
+        v.eq_ignore_ascii_case("avoid") || v.eq_ignore_ascii_case("avoid-column")
+    })
+}
+
 /// A positive-integer property (`orphans` / `widows`): `0`, negatives and non-integers
 /// are invalid (`default`), and values past `u8::MAX` saturate rather than reset.
 fn int_prop(s: &ComputedStyle, prop: &str, default: u8) -> u8 {

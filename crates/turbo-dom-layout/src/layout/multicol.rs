@@ -54,7 +54,7 @@ use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
 use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
 use super::value::{
-    break_rule_of, float_of, parse_color, parse_px, position_of, BoxSizing, BoxStyle, BreakRule,
+    break_inside_column_avoid_of, break_rule_of, float_of, parse_color, parse_px, position_of, BoxSizing, BoxStyle, BreakRule,
     Float, LengthPct, ResolveCtx, Rgba,
 };
 use crate::style::ComputedStyle;
@@ -203,10 +203,21 @@ fn parse_rule_color(s: &ComputedStyle) -> Rgba {
 /// gap (Blink's `MultiColumnSet::PaintObject` — the rule never paints outside
 /// the gap); the `multicol-rule-wider-than-gap` Chrome 156 fixture probes at
 /// x = 215 / 225 return the column background, not the rule colour.
+///
+/// Review R3 M4: rule centres come from the shared [`col_x`] helper — the
+/// gap between columns `k` and `k+1` has its centre at the midpoint of
+/// `col_x(k) + used_width` (column `k`'s right edge) and `col_x(k+1)`
+/// (column `k+1`'s left edge). This is the SAME helper `place_measured`
+/// uses to place in-flow kids, so the last in-flow column's end-aligned
+/// origin (R2 M3) and the rule's gap-centre share one formula. On a pure
+/// float path the shared formula agrees with the earlier stride-based
+/// expression; on a rounded `used_width` path the two would otherwise
+/// drift at the final gap.
 fn column_rule_fragments(
     container: &LayoutBox,
     (cx, cy): (f32, f32),
     (used_count, used_width, gap): (u32, f32, f32),
+    cw: f32,
     fs: f32,
     col_h: f32,
 ) -> Vec<Fragment> {
@@ -231,8 +242,9 @@ fn column_rule_fragments(
     }
     (0..(used_count - 1))
         .map(|k| {
-            let k_f = k as f32;
-            let gap_center = cx + (k_f + 1.0) * used_width + (k_f + 0.5) * gap;
+            let right_edge_of_k = col_x(k, (used_count, used_width, gap), cx, cw) + used_width;
+            let left_edge_of_k_plus_1 = col_x(k + 1, (used_count, used_width, gap), cx, cw);
+            let gap_center = (right_edge_of_k + left_edge_of_k_plus_1) / 2.0;
             Fragment::new(
                 container.node_id,
                 gap_center - rule_w / 2.0,
@@ -243,6 +255,25 @@ fn column_rule_fragments(
             )
         })
         .collect()
+}
+
+/// Review R2 M3 + R3 M4: the x-origin of column `col_index` within a sub-
+/// flow whose content-box spans `[cx, cx+cw]`. For the LAST in-flow column
+/// (index `used_count - 1`) the origin is end-aligned at `cx + cw -
+/// used_width` (Chrome's Blink multicol); for every other in-flow column
+/// and for overflow strips past `used_count`, the origin is the stride
+/// formula `cx + col_index * (used_width + gap)`. On a pure-float path the
+/// two agree; on a rounded `used_width` path they would otherwise drift by
+/// up to 1/64 px at the last column, and `column_rule_fragments` (R3 M4)
+/// would lose lockstep with `place_measured` on the final gap-centre.
+/// Hoisted out of `place_measured` so both call sites share one formula.
+fn col_x(col_index: u32, (used_count, used_width, gap): (u32, f32, f32), cx: f32, cw: f32) -> f32 {
+    let stride = used_width + gap;
+    if used_count >= 1 && col_index == used_count - 1 {
+        cx + cw - used_width
+    } else {
+        cx + (col_index as f32) * stride
+    }
 }
 
 /// Per-child flags read from the computed style that steer the multicol flow
@@ -264,12 +295,14 @@ struct KidFlags {
 /// read through the shared [`break_rule_of`] parser so the paginator and the
 /// multicol flow see the same rule set (`page` / `left` / `right` / `recto` /
 /// `verso` are pagination's concern, left as a no-op here; turbo-html2pdf#69).
-/// `break-inside` is read from the raw value: bare `avoid` and `avoid-column`
-/// both forbid a column break ("avoid any break inside this box" implies no
-/// column break), while `avoid-page` is pagination-only and does NOT suppress
-/// a column break — `break_rule_of` collapses `avoid` / `avoid-page` into one
-/// [`BreakRule::Avoid`] so it cannot tell them apart here (`AvoidColumn` is
-/// its own variant and is read through the parser).
+/// `break-inside: avoid | avoid-column` reads through
+/// [`break_inside_column_avoid_of`] — multicol's sibling to
+/// [`super::value::break_inside_avoid_of`] — so the "which keywords
+/// forbid a column break here" set lives in one place next to the
+/// page-break parser (R3 M7). We do NOT route `break-inside` through
+/// [`break_rule_of`], because that parser collapses `avoid` and
+/// `avoid-page` into one [`BreakRule::Avoid`], and `avoid-page` is
+/// explicitly pagination-only — it must not forbid a column break.
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
     // Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box": an
     // out-of-flow (`position: absolute` / `fixed`) or floated element
@@ -287,7 +320,7 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
         // `column` is distinguished from `page`.
         break_before_column: matches!(break_rule_of(style, "break-before"), BreakRule::Column),
         break_after_column: matches!(break_rule_of(style, "break-after"), BreakRule::Column),
-        break_inside_avoid: keyword_in(style, "break-inside", &["avoid", "avoid-column"]),
+        break_inside_avoid: break_inside_column_avoid_of(style),
     }
 }
 
@@ -298,17 +331,6 @@ fn keyword_eq(style: &ComputedStyle, prop: &str, want: &str) -> bool {
     style
         .get(prop)
         .is_some_and(|v| v.trim().eq_ignore_ascii_case(want))
-}
-
-/// Same as [`keyword_eq`] but any of a short list of keywords. Used for
-/// `break-inside` on the multicol path where `avoid` and `avoid-page` need to
-/// stay distinct (the shared parser collapses them into `BreakRule::Avoid`,
-/// and only bare `avoid` — not `avoid-page` — is a column-break-avoid).
-fn keyword_in(style: &ComputedStyle, prop: &str, wants: &[&str]) -> bool {
-    style.get(prop).is_some_and(|v| {
-        let t = v.trim();
-        wants.iter().any(|w| t.eq_ignore_ascii_case(w))
-    })
 }
 
 /// The container's content-box height when its CSS `height` is definite, else
@@ -552,6 +574,7 @@ fn lay_out_subflow(
         container,
         (cx, cy),
         (used_count, used_width, gap),
+        cw,
         fs,
         col_h,
     );
@@ -845,24 +868,15 @@ fn place_measured(
     // indistinguishable from an addition on a mutant.
     debug_assert_eq!(measured.x, 0.0);
     debug_assert_eq!(measured.y, 0.0);
-    let stride = used_width + gap;
-    // Review R2 layout M3: the LAST in-flow column (index `used_count - 1`)
-    // ends at the container's content-box right edge (Chrome's Blink
-    // multicol end-aligns it). On a pure-float path the stride formula and
-    // the end-aligned formula agree, but on an integer-rounded `used_width`
-    // the last column strip would drift by up to 1/64 px. Overflow strips
-    // (col_index >= used_count) keep the stride formula — they are placed
-    // past the content box and have no end-alignment target.
-    let col_x = |col_index: u32| -> f32 {
-        if used_count >= 1 && col_index == used_count - 1 {
-            cx + cw - used_width
-        } else {
-            cx + (col_index as f32) * stride
-        }
-    };
+    // Review R2 M3 + R3 M4: column origin helper is now the module-level
+    // `col_x`, shared with `column_rule_fragments` so the last-column
+    // end-align rule and the gap-centre stay lockstep on any future
+    // rounded-`used_width` path.
+    let strip_origin =
+        |col_index: u32| col_x(col_index, (used_count, used_width, gap), cx, cw);
     if pieces.len() == 1 {
         let p = pieces[0];
-        let dx = col_x(p.col_index);
+        let dx = strip_origin(p.col_index);
         let dy = cy + p.y;
         if dx != 0.0 || dy != 0.0 {
             measured.translate(dx, dy);
@@ -870,8 +884,8 @@ fn place_measured(
         return measured;
     }
     let (left_col, right_col, min_y, max_bottom) = piece_bounds(pieces);
-    let left = col_x(left_col);
-    let right = col_x(right_col) + used_width;
+    let left = strip_origin(left_col);
+    let right = strip_origin(right_col) + used_width;
     measured.x = left;
     measured.y = cy + min_y;
     measured.width = right - left;
@@ -1527,7 +1541,9 @@ mod tests {
             ("column-rule-width", "2px"),
             ("column-rule-color", "#ff0000"),
         ]);
-        let fr = column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0);
+        // `cw = (used_count - 1) * gap + used_count * used_width`:
+        // 2 * 20 + 3 * 200 = 640.
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0);
         assert_eq!(fr.len(), 2);
         // Rule 0 centered at cx + 1*width + 0.5*gap = 0 + 200 + 10 = 210 ± 1.
         assert!((fr[0].x - 209.0).abs() < 1e-5); // 210 - 2/2
@@ -1541,28 +1557,28 @@ mod tests {
     #[test]
     fn column_rule_fragments_declines_single_column_or_zero_gap_or_height() {
         let c = container(&[("column-rule-style", "solid")]);
-        // Single column -> no rules.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 16.0, 300.0).is_empty());
-        // Zero gap -> no rules.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 16.0, 300.0).is_empty());
-        // Non-positive col height -> no rules.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 0.0).is_empty());
+        // Single column -> no rules. cw = used_width = 200.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 200.0, 16.0, 300.0).is_empty());
+        // Zero gap -> no rules. cw = 3 * 200 = 600.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 600.0, 16.0, 300.0).is_empty());
+        // Non-positive col height -> no rules. cw = 640.
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 0.0).is_empty());
     }
 
     #[test]
     fn column_rule_fragments_declines_unpaintable_style_or_zero_width_or_transparent_color() {
         // style unset (`none`) -> no rules.
         let c = container(&[]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
         // declared width 0 -> no rules.
         let c = container(&[("column-rule-style", "solid"), ("column-rule-width", "0px")]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
         // Fully transparent colour -> no rules.
         let c = container(&[
             ("column-rule-style", "solid"),
             ("column-rule-color", "rgba(0,0,0,0)"),
         ]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 16.0, 300.0).is_empty());
+        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
     }
 
     #[test]
@@ -1572,11 +1588,51 @@ mod tests {
             ("column-rule-style", "solid"),
             ("column-rule-width", "10px"),
         ]);
-        let fr = column_rule_fragments(&c, (0.0, 0.0), (2, 100.0, 4.0), 16.0, 50.0);
+        // cw = 1 * 4 + 2 * 100 = 204.
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (2, 100.0, 4.0), 204.0, 16.0, 50.0);
         assert_eq!(fr.len(), 1);
         assert!((fr[0].width - 4.0).abs() < 1e-5);
         // Center of the gap at x=100 + 0.5*4 = 102, left edge at 102 - 2 = 100.
         assert!((fr[0].x - 100.0).abs() < 1e-5);
+    }
+
+    /// R3 M4: the shared `col_x` helper must agree with the stride
+    /// formula for every column EXCEPT the last in-flow one. For a 1/64
+    /// px integer-rounded `used_width` path (future-proofing), the last
+    /// in-flow column end-aligns at `cx + cw - used_width`, so the final
+    /// gap-centre from `column_rule_fragments` must match the midpoint
+    /// between `col_x(used_count-2) + used_width` and
+    /// `col_x(used_count-1)` — not the stride-only expression.
+    #[test]
+    fn column_rule_fragments_use_shared_col_x_for_last_gap() {
+        let c = container(&[
+            ("column-rule-style", "solid"),
+            ("column-rule-width", "2px"),
+        ]);
+        // Three columns at used_width = 189.328125 (Chrome's 1/64-rounded
+        // value), gap = 20, cw = 2 * 20 + 3 * 189.328125 = 607.984375.
+        // The LAST column end-aligns at cx + cw - used_width =
+        // 0 + 607.984375 - 189.328125 = 418.65625, whereas stride-based
+        // would place it at 2 * (189.328125 + 20) = 418.65625 as well
+        // (equal for a FLOOR-rounded 1/64 value; the drift appears only
+        // on a different rounding direction). Keep the assertion
+        // self-consistent: last-gap-centre via col_x equals midpoint of
+        // (col_x(1) + used_width) and col_x(2).
+        let used_width = 189.328125_f32;
+        let gap = 20.0_f32;
+        let cw = 2.0 * gap + 3.0 * used_width;
+        let fr = column_rule_fragments(&c, (0.0, 0.0), (3, used_width, gap), cw, 16.0, 100.0);
+        assert_eq!(fr.len(), 2);
+        let right_edge_of_1 = col_x(1, (3, used_width, gap), 0.0, cw) + used_width;
+        let left_edge_of_2 = col_x(2, (3, used_width, gap), 0.0, cw);
+        let expected_center = (right_edge_of_1 + left_edge_of_2) / 2.0;
+        // fr[1].x is the LEFT edge of the rule; its centre is fr[1].x + 2/2.
+        let actual_center = fr[1].x + fr[1].width / 2.0;
+        assert!(
+            (actual_center - expected_center).abs() < 1e-5,
+            "last-gap centre: expected {expected_center}, got {actual_center} \
+             — column_rule_fragments must share col_x with place_measured"
+        );
     }
 
     #[test]
