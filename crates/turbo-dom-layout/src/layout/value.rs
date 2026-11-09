@@ -1518,6 +1518,7 @@ const BORDER_STYLES: [&str; 10] = [
 /// (Blink's `CalculateBorderStyleColor`): the colour darkened and lightened; a colour too
 /// dark to darken (it darkens to black) is lightened once for the dark sides and twice
 /// for the light ones.
+#[must_use]
 pub fn border_style_colour(c: Rgba, dark: bool) -> Rgba {
     let darkened = scale_colour(c, |v| (v - 0.33).max(0.0) / v);
     let too_dark = (darkened.r, darkened.g, darkened.b) == (0, 0, 0);

@@ -9,8 +9,8 @@ use std::fmt::Write;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
-    LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
+    border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
+    FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
@@ -360,8 +360,16 @@ fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 /// (miaskiewicz/turbo-dom#419). `groove` / `outset` paint the left half dark
 /// and the right half light; `ridge` / `inset` swap them. The rule is
 /// vertical, so "left" and "right" are the two vertical bands.
-fn paint_shaded_rule(_svg: &mut String, _f: &Fragment, _style: ColumnRuleStyle, _color: Rgba) {
-    // Stub: miaskiewicz/turbo-dom#419 (red commit). Filled in the next commit.
+fn paint_shaded_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
+    let left_color = border_style_colour(color, left_dark);
+    let right_color = border_style_colour(color, !left_dark);
+    let half = f.width / 2.0;
+    rect(svg, f.x, f.y, half, f.height, left_color);
+    rect(svg, f.x + half, f.y, f.width - half, f.height, right_color);
 }
 
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.

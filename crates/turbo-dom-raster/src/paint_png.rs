@@ -10,9 +10,9 @@ use tiny_skia::{
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
-    LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba, TilePattern,
-    Transform2D as BoxTransform,
+    border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
+    FragmentContent, LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba,
+    TilePattern, Transform2D as BoxTransform,
 };
 
 use std::rc::Rc;
@@ -639,13 +639,38 @@ fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
 /// `inset` swap the two (the rule is vertical, so the two "halves" are
 /// vertical bands running the rule's full height).
 fn paint_shaded_rule(
-    _pm: &mut Pixmap,
-    _f: &Fragment,
-    _style: ColumnRuleStyle,
-    _color: Rgba,
-    _xf: Transform,
+    pm: &mut Pixmap,
+    f: &Fragment,
+    style: ColumnRuleStyle,
+    color: Rgba,
+    xf: Transform,
 ) {
-    // Stub: miaskiewicz/turbo-dom#419 (red commit). Filled in the next commit.
+    // The outer `paint_column_rule` already rejects non-finite / non-positive
+    // sizes; the helper's direct contract keeps a future caller from feeding
+    // it NaN / Infinity (`is_finite` rejects both) or a zero-area fragment
+    // (nothing to paint — `fill_rect` would early-return anyway).
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    // Chrome 156: left band = darker shade for `groove` / `outset`, lighter
+    // shade for `ridge` / `inset`; right band is the other. Split at the
+    // rule's inline midpoint (`f.width / 2.0`); the right band takes the
+    // trailing pixels so that an odd-pixel rule's extra column lands on the
+    // right, mirroring Chrome's floor/ceil split.
+    let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
+    let left_color = border_style_colour(color, left_dark);
+    let right_color = border_style_colour(color, !left_dark);
+    let half = f.width / 2.0;
+    fill_rect(pm, f.x, f.y, half, f.height, left_color, xf);
+    fill_rect(
+        pm,
+        f.x + half,
+        f.y,
+        f.width - half,
+        f.height,
+        right_color,
+        xf,
+    );
 }
 
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)
