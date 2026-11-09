@@ -187,6 +187,66 @@
       "flex-start"
     ],
     [
+      "-webkit-mask",
+      "none",
+      true,
+      "none"
+    ],
+    [
+      "-webkit-box-shadow",
+      "0 0 0 1px red",
+      true,
+      "red 0px 0px 0px 1px"
+    ],
+    [
+      "-webkit-border-image",
+      "none",
+      true,
+      "none"
+    ],
+    [
+      "-webkit-column-count",
+      "2",
+      true,
+      "2"
+    ],
+    [
+      "-webkit-column-width",
+      "100px",
+      true,
+      "100px"
+    ],
+    [
+      "-webkit-column-gap",
+      "10px",
+      true,
+      "10px"
+    ],
+    [
+      "-webkit-column-rule",
+      "1px solid red",
+      true,
+      "1px solid red"
+    ],
+    [
+      "-webkit-perspective",
+      "none",
+      true,
+      "none"
+    ],
+    [
+      "-webkit-perspective-origin",
+      "center",
+      true,
+      "center center"
+    ],
+    [
+      "-webkit-backface-visibility",
+      "visible",
+      true,
+      "visible"
+    ],
+    [
       "-moz-appearance",
       "none",
       false,

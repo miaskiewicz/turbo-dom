@@ -48,6 +48,11 @@ const PREFIXED_PROPS = [
   "-webkit-animation", "-webkit-transform", "-webkit-transition", "-webkit-filter",
   "-webkit-backdrop-filter", "-webkit-border-radius", "-webkit-flex", "-webkit-flex-direction",
   "-webkit-align-items", "-webkit-justify-content",
+  // turbo-dom R1 M1: additional -webkit-* properties Chrome 156 accepts but
+  // the initial #441 probe set did not cover (css_webkit_prefix_tests.rs).
+  "-webkit-mask", "-webkit-box-shadow", "-webkit-border-image",
+  "-webkit-column-count", "-webkit-column-width", "-webkit-column-gap", "-webkit-column-rule",
+  "-webkit-perspective", "-webkit-perspective-origin", "-webkit-backface-visibility",
   "-moz-appearance", "-moz-user-select", "-moz-osx-font-smoothing",
 ];
 const PREFIXED_VALUES = {
@@ -82,6 +87,16 @@ const PREFIXED_VALUES = {
   "-webkit-flex-direction": "row",
   "-webkit-align-items": "stretch",
   "-webkit-justify-content": "flex-start",
+  "-webkit-mask": "none",
+  "-webkit-box-shadow": "0 0 0 1px red",
+  "-webkit-border-image": "none",
+  "-webkit-column-count": "2",
+  "-webkit-column-width": "100px",
+  "-webkit-column-gap": "10px",
+  "-webkit-column-rule": "1px solid red",
+  "-webkit-perspective": "none",
+  "-webkit-perspective-origin": "center",
+  "-webkit-backface-visibility": "visible",
   "-moz-appearance": "none",
   "-moz-user-select": "none",
   "-moz-osx-font-smoothing": "grayscale",

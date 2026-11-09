@@ -11,18 +11,30 @@
   // `__tsNs` silently dropped every write because the IIFE was non-strict.
   // Strict mode turns the frozen-write into a TypeError; the helper rewraps
   // either failure with a readable message.
+  // R1 L5: preserve the original error's subclass identity (so
+  // `instanceof TypeError` etc. still works downstream) and attach it as
+  // `cause` so programmatic triage can inspect the real failure. Fall back
+  // to plain Error if the original's constructor is unusable.
+  const rewrap = function (name, phase, inner) {
+    const message = (inner && inner.message) || String(inner);
+    const prefix = 'captured_intrinsics: failed to ' + phase + ' ' + name + ': ' + message;
+    let Ctor = Error;
+    try {
+      const C = inner && inner.constructor;
+      if (typeof C === 'function') Ctor = C;
+    } catch (_) { /* a hostile getter on `.constructor` falls back to Error */ }
+    let outer;
+    try { outer = new Ctor(prefix); }
+    catch (_) { outer = new Error(prefix); }
+    try { outer.cause = inner; } catch (_) { /* non-configurable `cause` on a subclass */ }
+    return outer;
+  };
   const capture = function (name, read) {
     let value;
     try { value = read(); }
-    catch (inner) {
-      const message = (inner && inner.message) || String(inner);
-      throw new Error('captured_intrinsics: failed to read ' + name + ': ' + message);
-    }
+    catch (inner) { throw rewrap(name, 'read', inner); }
     try { ns[name] = value; }
-    catch (inner) {
-      const message = (inner && inner.message) || String(inner);
-      throw new Error('captured_intrinsics: failed to assign ' + name + ' to __tsNs (frozen?): ' + message);
-    }
+    catch (inner) { throw rewrap(name, 'assign ' + 'to __tsNs (frozen?):', inner); }
     return value;
   };
   const target = g.EventTarget.prototype;

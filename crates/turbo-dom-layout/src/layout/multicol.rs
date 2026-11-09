@@ -1390,6 +1390,38 @@ mod tests {
         assert!(matches!(segs[4], Segment::SubFlow { start: 5, end: 6 }));
     }
 
+    /// Review R1 L4: `break-before: page` on a multicol kid routes through
+    /// `break_rule_of` as `BreakRule::Page` (the paginator's concern) and must
+    /// NOT be consumed by multicol as a forced column break. Same for `left` /
+    /// `right` / `recto` / `verso` (side page breaks) and the `avoid-page`
+    /// variant. value.rs §`break_rule_of` keeps column and page classes
+    /// distinct for exactly this reason (turbo-html2pdf#69).
+    #[test]
+    fn kid_flags_does_not_consume_page_break_classes_as_column_breaks() {
+        for keyword in ["page", "left", "right", "recto", "verso"] {
+            let f = kid_flags(&cs(&[("break-before", keyword)]));
+            assert!(
+                !f.break_before_column,
+                "break-before:{keyword} is a page-break class and must not fire a \
+                 column break (multicol kid)",
+            );
+            let f = kid_flags(&cs(&[("break-after", keyword)]));
+            assert!(
+                !f.break_after_column,
+                "break-after:{keyword} is a page-break class and must not fire a \
+                 column break (multicol kid)",
+            );
+        }
+        // `avoid-page` is pagination-only; it must not forbid a column break
+        // either, which the dedicated `break_inside_column_avoid_of` parser
+        // already enforces by excluding `avoid-page` from its keyword set.
+        let f = kid_flags(&cs(&[("break-inside", "avoid-page")]));
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid-page is page-only and must not forbid a column break",
+        );
+    }
+
     #[test]
     fn kid_flags_reads_all_four_properties_case_insensitively() {
         // `break-inside: avoid-column` kept separate from `column-span: all`
