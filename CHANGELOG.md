@@ -5,6 +5,45 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.2] — 2026-11-09
+
+Follow-up release addressing issues surfaced during the v0.8.1 R1-R4 adversarial reviews.
+
+- **browser-env (correctness)**: iframe inline on* handlers compile in the element's own realm,
+  not the parent realm (#478, root cause of turbo-surf#287 double-dispatch). Plus: worker
+  `dispatch_message` events carry a null prototype (#438); `structuredClone` uses V8's
+  `ValueSerializer`/`ValueDeserializer` for real HTML structured-clone semantics (#428);
+  `event_handlers::refresh` enters the element's creation context before `compile_function`.
+- **browser-env (defense in depth)**: `captured_intrinsics.js` now throws a named error for a
+  frozen `__tsNs` or a throwing intrinsic getter (#437); `worker_scope.js` compiles with a
+  `ScriptOrigin` so stack traces name the source (#435); init-script dispatch centralised in a
+  single `run_init_scripts` call site (#436); audit scan covers every sibling `.js` under
+  `src/` (#439).
+- **multicol correctness**: out-of-flow (`position: absolute/fixed`) kids are routed around the
+  column flow via a new `block::layout_multicol_out_of_flow` helper (#444); abspos kids get
+  their own CSS geometry, not the column `used_width` (#461); `column-span: all` +
+  `break-inside: avoid` normalised in `kid_flags` (#440); fragmented blocks paint
+  background/border per column fragment, not across the gap (#427). Chrome 156 cases added:
+  `abspos-in-multicol`, `fragmented-background`, `overflow-visible-extra-strips`,
+  `overflow-hidden-extra-strips` (#442).
+- **multicol fixtures**: `fragment_pieces` capped at one piece for sub-epsilon `col_h` (#426);
+  trailing zero-height kid after a full column advances col index (#443); four new raster
+  `column-rule` cases: dotted sub-pixel, thin double, wide solid, 3-col wide gap (#424 partial,
+  #457). Dotted sub-pixel painter follow-up remains open on #424.
+- **CSS**: `-webkit-*`/`-moz-*` acceptance realigned to Chrome 156 (#441); `break-*` keyword
+  table pinned via 39-row control (#422); `UA_CSS` vs `html_default_display` drift test caught
+  a real `colgroup`/`col` gap, now fixed (#445).
+- **Text metrics**: webfont DPR-2 11-19 px rounding boundary controls added for Liberation
+  Serif / Inter / Fira Code (#446).
+- **Perf**: `sweep_collected` keeps a HashSet lookup shape (#425).
+- **Review deferrals (R3)**: per-listener `composedPath()` already fresh (#423); worker-scope
+  `drainMicrotasksAcrossDispatch` CLAUDE.md note already covers `stop`/`stopImmediate` (#455);
+  R2 M3 red test strengthened (#451); `collectPath` 10 000-hop cap exercised at 9 999 and
+  10 001 (#452); `assert!(…is_empty())` rewritten for clippy 1.99+ (#453). `cargo-mutants`
+  sweep (#454) deferred to a second pass.
+- **Release ops**: `publish.yml` now attaches the napi `.node` prebuilts to the GitHub Release
+  so turbo-surf's pipeline doesn't rebuild them (#479).
+
 ## [0.8.1] — 2026-11-09
 
 ### Changed
