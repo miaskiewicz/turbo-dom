@@ -122,10 +122,17 @@ impl Styler<'_, '_> {
         source_id(self.style.tree.document, node)
     }
 
-    fn element(&self, node: Handle, parent: &ComputedStyle) -> Result<StyledElement, LiveError> {
+    /// Build the ordered declaration list: presentational attrs, quirks /
+    /// `MathML` stamps, pre-matched author rules, and finally the parsed inline
+    /// `style` attribute.
+    fn collect_declarations(
+        &self,
+        node: Handle,
+        local: &str,
+        depth: u32,
+        inline: Option<&str>,
+    ) -> Result<Vec<crate::style::MatchedDeclaration>, LiveError> {
         let tree = self.style.tree.tree;
-        let depth = (self.style.scope_depth)(node).map_err(LiveError::Embedder)?;
-        let local = tree.local_name(node).unwrap_or("");
         let mut declarations: Vec<_> = presentational_declarations_of(tree, node, local)
             .into_iter()
             .map(|declaration| author(declaration, depth, false, 0))
@@ -157,7 +164,6 @@ impl Styler<'_, '_> {
                     matched
                 }),
         );
-        let inline = self.inline_style(node);
         if let Some(inline) = inline {
             let parsed = (self.style.inline_declarations)(inline).map_err(LiveError::Embedder)?;
             declarations.extend(
@@ -166,6 +172,15 @@ impl Styler<'_, '_> {
                     .map(|declaration| author(declaration, depth, true, usize::MAX)),
             );
         }
+        Ok(declarations)
+    }
+
+    fn element(&self, node: Handle, parent: &ComputedStyle) -> Result<StyledElement, LiveError> {
+        let tree = self.style.tree.tree;
+        let depth = (self.style.scope_depth)(node).map_err(LiveError::Embedder)?;
+        let local = tree.local_name(node).unwrap_or("");
+        let inline = self.inline_style(node);
+        let declarations = self.collect_declarations(node, local, depth, inline)?;
         let mut style = resolve_matched_style(parent, &declarations);
         // Chrome's `html.css` `display: block` for known block tags
         // (miaskiewicz/turbo-dom#395): the CSS initial `display` is `inline`

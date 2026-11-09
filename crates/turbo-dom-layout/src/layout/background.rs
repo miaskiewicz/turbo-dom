@@ -367,30 +367,48 @@ fn sized_tile(props: &Props, source: &Source, origin: Rect) -> Option<(f32, f32)
     if !(tw > 0.0 && th > 0.0 && tw.is_finite() && th.is_finite()) {
         return None;
     }
-    let (round_x, round_y) = (
+    let round = (
         props.repeat.0 == Tiling::Round && origin.2 > 0.0,
         props.repeat.1 == Tiling::Round && origin.3 > 0.0,
     );
-    let auto = |side: LengthPct| matches!(props.size, Size::Lengths(..)) && side == LengthPct::Auto;
-    let (auto_w, auto_h) = match props.size {
-        Size::Lengths(w, h) => (auto(w), auto(h)),
+    let (auto_w, auto_h) = size_auto_sides(props.size);
+    apply_round_axes(&mut tw, &mut th, round, (auto_w, auto_h), origin);
+    Some((tw.max(MIN_TILE), th.max(MIN_TILE)))
+}
+
+/// Which sides of a `background-size: <length>` pair are `auto`. Only
+/// `Size::Lengths` can have an `auto` side; keyword forms never do.
+fn size_auto_sides(size: Size) -> (bool, bool) {
+    match size {
+        Size::Lengths(w, h) => (w == LengthPct::Auto, h == LengthPct::Auto),
         _ => (false, false),
-    };
+    }
+}
+
+/// Apply `background-repeat: round` to one axis (the one with room to fill):
+/// snap its tile side to a whole count and scale the perpendicular side when
+/// it is `auto` and the other axis isn't rounded.
+fn apply_round_axes(
+    tw: &mut f32,
+    th: &mut f32,
+    (round_x, round_y): (bool, bool),
+    (auto_w, auto_h): (bool, bool),
+    origin: Rect,
+) {
     if round_x {
-        let w = rounded(tw, origin.2);
+        let w = rounded(*tw, origin.2);
         if !round_y && auto_h {
-            th *= w / tw;
+            *th *= w / *tw;
         }
-        tw = w;
+        *tw = w;
     }
     if round_y {
-        let h = rounded(th, origin.3);
+        let h = rounded(*th, origin.3);
         if !round_x && auto_w {
-            tw *= h / th;
+            *tw *= h / *th;
         }
-        th = h;
+        *th = h;
     }
-    Some((tw.max(MIN_TILE), th.max(MIN_TILE)))
 }
 
 /// The fragments of one background layer of box `id`: `source` tiled over the

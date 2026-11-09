@@ -741,9 +741,7 @@ fn background_layers(
     (id, source, used): (NodeId, &ComputedStyle, &BoxStyle),
     ctx: &Ctx,
 ) {
-    use super::background::{
-        area_radius, area_rect, border_overlay, color_layer, props, Area, Source,
-    };
+    use super::background::{area_rect, props, Area};
     let image = super::boxgen::background_image(source).and_then(|name| {
         let intrinsic = super::imgsize::box_intrinsic(ctx.images.resolver, &name, source)?;
         Some(super::imgsize::placement_of(name, intrinsic))
@@ -794,50 +792,72 @@ fn background_layers(
             (origin.0 - offset, origin.1, total, origin.3)
         };
         offset += origin.2;
-        let frag = &mut out[index];
-        if let FragmentContent::Box {
-            background,
-            gradient,
-            border,
-            border_radius,
-            ..
-        } = &mut frag.content
-        {
-            let radius = area_radius(*border_radius, border, &pad, props.clip);
-            let mut layers = Vec::new();
-            if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
-                layers.push(color_layer(id, color, paint, radius));
-            }
-            // A layer's gradient resolves against its tile (miaskiewicz/turbo-dom#264).
-            let sources = gradient
-                .take()
-                .and(used.background_gradient.clone())
-                .map(Source::Gradient)
-                .into_iter()
-                .chain(image.clone().map(Source::Image));
-            // Built over the fragment's physical shape in vertical text
-            // (miaskiewicz/turbo-dom#278).
-            let rect = (frag.x, frag.y, frag.width, frag.height);
-            for source in sources {
-                layers.extend(super::block::space_layer(
-                    ctx.writing,
-                    rect,
-                    (id, &props, &source),
-                    (strip, paint, radius),
-                ));
-            }
-            if !layers.is_empty() {
-                // The border paints over the background layers.
-                layers.push(border_overlay(
-                    id,
-                    rect,
-                    std::mem::take(border),
-                    *border_radius,
-                ));
-            }
-            frag.children.extend(layers);
-        }
+        attach_part_layers(
+            out,
+            (id, used, &props),
+            ctx,
+            image.as_ref(),
+            index,
+            (&pad, paint, strip),
+        );
     }
+}
+
+/// Paint one inline-box fragment's background layers (colour + gradient +
+/// image) and border overlay in place.
+fn attach_part_layers(
+    out: &mut [Fragment],
+    (id, used, props): (NodeId, &BoxStyle, &super::background::Props),
+    ctx: &Ctx,
+    image: Option<&super::fragment::ImagePlacement>,
+    index: usize,
+    (pad, paint, strip): (&super::value::Edges, super::background::Rect, super::background::Rect),
+) {
+    use super::background::{area_radius, border_overlay, color_layer, Area, Source};
+    let frag = &mut out[index];
+    let FragmentContent::Box {
+        background,
+        gradient,
+        border,
+        border_radius,
+        ..
+    } = &mut frag.content
+    else {
+        return;
+    };
+    let radius = area_radius(*border_radius, border, pad, props.clip);
+    let mut layers = Vec::new();
+    if let Some(color) = background.take_if(|_| props.clip != Area::Border) {
+        layers.push(color_layer(id, color, paint, radius));
+    }
+    // A layer's gradient resolves against its tile (miaskiewicz/turbo-dom#264).
+    let sources = gradient
+        .take()
+        .and(used.background_gradient.clone())
+        .map(Source::Gradient)
+        .into_iter()
+        .chain(image.cloned().map(Source::Image));
+    // Built over the fragment's physical shape in vertical text
+    // (miaskiewicz/turbo-dom#278).
+    let rect = (frag.x, frag.y, frag.width, frag.height);
+    for source in sources {
+        layers.extend(super::block::space_layer(
+            ctx.writing,
+            rect,
+            (id, props, &source),
+            (strip, paint, radius),
+        ));
+    }
+    if !layers.is_empty() {
+        // The border paints over the background layers.
+        layers.push(border_overlay(
+            id,
+            rect,
+            std::mem::take(border),
+            *border_radius,
+        ));
+    }
+    frag.children.extend(layers);
 }
 
 fn skip_empty_part(part: &Fragment, value: &Open, last: bool, used: &BoxStyle) -> bool {

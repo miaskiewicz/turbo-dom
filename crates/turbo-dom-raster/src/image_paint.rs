@@ -321,22 +321,7 @@ fn data_uri_url_tokens(s: &str) -> Vec<String> {
         while j < b.len() && b[j].is_ascii_whitespace() {
             j += 1;
         }
-        let inner = if j < b.len() && (b[j] == b'"' || b[j] == b'\'') {
-            let quote = b[j];
-            j += 1;
-            let start = j;
-            // Closing quote = the same quote NOT escaped by a preceding backslash.
-            while j < b.len() && !(b[j] == quote && b[j - 1] != b'\\') {
-                j += 1;
-            }
-            &s[start..j.min(b.len())]
-        } else {
-            let start = j;
-            while j < b.len() && b[j] != b')' {
-                j += 1;
-            }
-            &s[start..j]
-        };
+        let inner = read_url_inner(s, b, &mut j);
         let name = inner.trim();
         if name.starts_with("data:") {
             out.push(name.to_string());
@@ -345,6 +330,27 @@ fn data_uri_url_tokens(s: &str) -> Vec<String> {
         i = j;
     }
     out
+}
+
+/// Advance `j` past a `url(...)` payload and return the raw inner slice.
+/// Quote-aware: closing quote is the same quote NOT escaped by a preceding
+/// backslash; unquoted form stops at the first `)`.
+fn read_url_inner<'a>(s: &'a str, b: &[u8], j: &mut usize) -> &'a str {
+    if *j < b.len() && (b[*j] == b'"' || b[*j] == b'\'') {
+        let quote = b[*j];
+        *j += 1;
+        let start = *j;
+        while *j < b.len() && !(b[*j] == quote && b[*j - 1] != b'\\') {
+            *j += 1;
+        }
+        &s[start..(*j).min(b.len())]
+    } else {
+        let start = *j;
+        while *j < b.len() && b[*j] != b')' {
+            *j += 1;
+        }
+        &s[start..*j]
+    }
 }
 
 /// The raw bytes of a `data:` URI: base64-decoded for `;base64,`, else the plain

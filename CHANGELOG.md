@@ -18,7 +18,20 @@ at the time); this file reconstructs them from history.
   deliberately left inlined at 13-15 to avoid a regression and are
   tracked for the cc <= 9 pass in 0.9.0. The JS gate
   (`complexity / js`) stays at cc <= 15 for now and will drop in a
-  follow-up PR.
+  follow-up PR. Rust lane C extracts 14 helpers across turbo-dom-layout
+  (`cssom_view::hit::process_border_box_hit`,
+  `cssom_view::metrics::{block_geometry, offset_from_ancestors}`,
+  `cssom_view::scroll::{projector_in_container_space,
+  sweep_descendant_bounds, accumulate_ancestor_scroll,
+  viewport_blocked_axes}`, `layout::background::{size_auto_sides,
+  apply_round_axes}`, `layout::inline_boxes::attach_part_layers`,
+  `layout::media_paint::push_horizontal_controls`,
+  `live::chrome_tests::{offset_metric, client_metric}`,
+  `live::style::StyledInputScope::collect_declarations`, and the
+  `form_control_size_attrs_chrome` test split) and turbo-dom-raster
+  (`image_paint::read_url_inner`, `webgl::{create_target_texture,
+  translate_programs, encode_render_pass}`); layout + raster behaviour
+  unchanged.
 
 ### Fixed
 
