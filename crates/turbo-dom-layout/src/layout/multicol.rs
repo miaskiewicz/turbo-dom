@@ -1618,7 +1618,7 @@ mod tests {
         // on a different rounding direction). Keep the assertion
         // self-consistent: last-gap-centre via col_x equals midpoint of
         // (col_x(1) + used_width) and col_x(2).
-        let used_width = 189.328125_f32;
+        let used_width = 189.328_13_f32;
         let gap = 20.0_f32;
         let cw = 2.0 * gap + 3.0 * used_width;
         let fr = column_rule_fragments(&c, (0.0, 0.0), (3, used_width, gap), cw, 16.0, 100.0);
