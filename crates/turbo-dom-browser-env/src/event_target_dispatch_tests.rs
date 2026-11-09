@@ -1635,3 +1635,158 @@ fn engine_task_scope_decrements_on_throw() {
     );
     reset();
 }
+
+/// turbo-dom#484 regression (V8-native timer path): `AbortSignal.timeout` and
+/// `AbortSignal.any` fire their abort reactions through V8's internal C++
+/// task queue — those entries never pass through the embedding's wrapped
+/// `setTimeout`, so an embedder like surf that wraps its timer runner in
+/// `__engineTaskScope` still sees the pre-#484 batched listener order for a
+/// signal produced by either static method. Fix: a bootstrap polyfill that
+/// re-routes both static methods through `globalThis.setTimeout` / the
+/// embedder's abort dispatch path, so the engine-task scope covers them and
+/// the per-listener microtask drain fires between listeners.
+///
+/// Red test: install `__engineTaskScope` + a FIFO `setTimeout` whose runner
+/// wraps each callback in `__engineTaskScope` (mirroring surf's
+/// `__runLocalTimers` → `__timerApply` → `engine_task_scope`). Register two
+/// listeners on the timeout signal, drain the queue, and assert Chrome 156's
+/// interleaved `[L0:enter, L0:microtask, L1:enter, L1:microtask, after]`
+/// order. The pre-polyfill isolate either throws (no native
+/// `AbortSignal.timeout`) or fires through V8's internal queue that the test
+/// never pumps — either way the trace never contains L0/L1/M0/M1, so the
+/// strict equality fails.
+#[test]
+fn abort_signal_timeout_polyfill_drains_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    // The embedder's `setTimeout` (surf wraps its real one in
+    // `engine_task_scope` via `__runLocalTimers`). The polyfill must call
+    // through `globalThis.setTimeout`, not some pre-captured native binding
+    // that would bypass this wrap.
+    let source = r#"(() => {
+      const queue = [];
+      globalThis.setTimeout = (fn) => {
+        queue.push(() => globalThis.__engineTaskScope(() => fn()));
+        return queue.length;
+      };
+      if (typeof AbortSignal.timeout !== 'function') {
+        return JSON.stringify({ error: 'AbortSignal.timeout missing' });
+      }
+      const sig = AbortSignal.timeout(0);
+      const trace = [];
+      sig.addEventListener('abort', () => {
+        trace.push('L0:enter');
+        Promise.resolve().then(() => trace.push('L0:microtask'));
+      });
+      sig.addEventListener('abort', () => {
+        trace.push('L1:enter');
+        Promise.resolve().then(() => trace.push('L1:microtask'));
+      });
+      while (queue.length) queue.shift()();
+      trace.push('after');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "AbortSignal.timeout polyfill script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "`AbortSignal.timeout` must route through `globalThis.setTimeout` so \
+         the embedder's engine-task scope brackets the abort dispatch (Chrome \
+         156 interleaves listener microtasks; batched `[L0,L1,M0,M1,...]` is \
+         the pre-polyfill order). Observed: {result}",
+    );
+    reset();
+}
+
+/// Companion to `abort_signal_timeout_polyfill_drains_between_listeners`:
+/// `AbortSignal.any` forwards its inputs' abort reactions. In the surf
+/// `abort_signal_any_and_timeout_match_chrome156` oracle an input is
+/// `AbortSignal.timeout(0)`, so the derived signal's listeners also need to
+/// interleave their microtasks. The polyfill forwards through a microtask so
+/// the derived dispatch runs at `listenerDepth === 0` inside the input
+/// signal's drain window — that preserves the gate's outermost-only contract
+/// while still placing the cascade inside the engine-task bracket.
+#[test]
+fn abort_signal_any_polyfill_drains_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      const queue = [];
+      globalThis.setTimeout = (fn) => {
+        queue.push(() => globalThis.__engineTaskScope(() => fn()));
+        return queue.length;
+      };
+      if (typeof AbortSignal.timeout !== 'function' || typeof AbortSignal.any !== 'function') {
+        return JSON.stringify({ error: 'AbortSignal.timeout/any missing' });
+      }
+      const timed = AbortSignal.timeout(0);
+      const any = AbortSignal.any([timed]);
+      const trace = [];
+      any.addEventListener('abort', () => {
+        trace.push('L0:enter');
+        Promise.resolve().then(() => trace.push('L0:microtask'));
+      });
+      any.addEventListener('abort', () => {
+        trace.push('L1:enter');
+        Promise.resolve().then(() => trace.push('L1:microtask'));
+      });
+      while (queue.length) queue.shift()();
+      trace.push('after');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "AbortSignal.any polyfill script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "`AbortSignal.any` must forward its input's abort so the derived \
+         signal's listeners interleave their microtasks (Chrome 156's \
+         abort_signal_any_and_timeout_match_chrome156 contract). Observed: {result}",
+    );
+    reset();
+}

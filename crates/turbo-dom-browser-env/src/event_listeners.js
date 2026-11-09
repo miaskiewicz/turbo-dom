@@ -344,6 +344,66 @@
   // Single-function signature keeps pairing impossible to forget; the
   // `finally` restores the counter on any exit (return / throw / termination).
   g.__engineTaskScope=fn=>{engineTaskDepth++;try{return fn();}finally{engineTaskDepth--;}};
+  // turbo-dom#484 regression (V8-native AbortSignal.timeout/any path): both
+  // static methods fire their abort reactions through V8's internal C++ task
+  // queue. Those entries never pass through the embedder's wrapped
+  // `setTimeout` (surf's `__runLocalTimers` -> `__timerApply` ->
+  // `engine_task_scope`), so a dispatch they enqueue reaches `afterListener`
+  // with `engineTaskDepth === 0` and the per-listener microtask drain is
+  // skipped. Chrome 156's `abort_signal_any_and_timeout_match_chrome156`
+  // oracle interleaves listener microtasks though, because the realm is at
+  // the top of the script settings stack for the native-timer entry.
+  //
+  // Polyfill: re-route both methods through `globalThis.setTimeout` (resolved
+  // at call time so the embedder's wrapped one is picked up) and the local
+  // `Controller.prototype.abort`. `AbortSignal.any` forwards each input's
+  // abort through `queueMicrotask` so the derived signal's dispatch runs at
+  // `listenerDepth === 0` inside the input signal's drain window — the gate's
+  // outermost-only contract is preserved, the engine-task bracket still
+  // covers the derived dispatch, and listener microtasks interleave.
+  //
+  // `AbortSignal` / `AbortController` / `DOMException` / `queueMicrotask` are
+  // captured now so a later page-script override cannot redirect the polyfill
+  // (the one page-visible seam remains `globalThis.setTimeout`, which the
+  // embedder OWNS — surf wraps it with `engine_task_scope`). The polyfill is
+  // installed unconditionally: V8's own `AbortSignal.timeout` fires through a
+  // path the embedder cannot bracket, so replacing it is the fix.
+  const NativeAbortController=g.AbortController;
+  const NativeAbortSignal=g.AbortSignal;
+  const NativeException=Exception;
+  if(NativeAbortSignal&&NativeAbortController){
+    const timeoutImpl=function timeout(delay){
+      const ms=+delay;
+      const controller=new NativeAbortController();
+      const signal=controller.signal;
+      const fire=()=>{
+        if(!localAborted(signal))
+          controller.abort(new NativeException('signal timed out','TimeoutError'));
+      };
+      g.setTimeout(fire,ms>=0?ms:0);
+      return signal;
+    };
+    define(NativeAbortSignal,'timeout',{value:make(timeoutImpl,'timeout',1),writable:true,configurable:true});
+    const scheduleForward=(controller,target,reason)=>{
+      g.setTimeout(()=>{if(!localAborted(target))controller.abort(reason);},0);
+    };
+    const anyImpl=function any(signals){
+      const controller=new NativeAbortController();
+      const target=controller.signal;
+      const list=slice(signals==null?[]:signals);
+      for(let index=0;index<list.length;index++){
+        const input=list[index];
+        aborted(input);
+        if(localAborted(input)){scheduleForward(controller,target,input.reason);return target;}
+      }
+      for(let index=0;index<list.length;index++){
+        const input=list[index];
+        apply(signalAdd,input,['abort',()=>scheduleForward(controller,target,input.reason),{once:true}]);
+      }
+      return target;
+    };
+    define(NativeAbortSignal,'any',{value:make(anyImpl,'any',1),writable:true,configurable:true});
+  }
   g.__captureWindowEventPhase=(event,capture)=>invoke(event,capture,capture?1:3);
   g.__captureListenerOptions=flatten;g.__captureSignalAborted=localAborted;g.__captureSignalSubscription=(signal,hook,subscribe)=>apply(subscribe?signalAdd:signalRemove,signal,['abort',hook,subscribe?{once:true}:undefined]);
 })();
