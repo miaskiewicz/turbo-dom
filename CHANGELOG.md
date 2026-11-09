@@ -56,6 +56,22 @@ at the time); this file reconstructs them from history.
   dispatch-scoped field (`dispatching` / `currentTarget` / `eventPhase` /
   `path` / `target`), so Chrome 156's per-dispatch flag semantics hold
   and the InvalidStateError throw is gone (R2 V8 M3).
+- **turbo-dom-browser-env dispatch (#456)**: the per-listener microtask
+  checkpoint now fires only at the OUTERMOST listener invocation. A
+  page-script dispatch (`dispatchEvent`, `AbortController.abort()`)
+  that runs synchronously inside another listener is nested and must
+  not flush microtasks between its own listener and its outer
+  continuation — Chrome 156's "clean up after running a callback"
+  checkpoints only when the realm sits at the top of the script
+  settings stack. #382's unconditional drain shifted the surf
+  `abort_signal_any_and_timeout_match_chrome156` probe's
+  `timeoutNestedAbort` section from the Chrome shape
+  `[inner, after-inner, inner-microtask]` to
+  `[inner, inner-microtask, after-inner]`. The fix threads a
+  `listenerDepth` counter through `invokeAt` and `invoke` (both the
+  target and the window dispatch) and runs the drain only when a
+  listener call returns with depth 0. Stacks cleanly with R3 H1's
+  save/restore of `stop` / `stopImmediate` across the drain.
 - **turbo-dom-browser-env lifecycle**: `run_init_scripts` breaks out of
   its loop as soon as `scope.is_execution_terminating()` is true after a
   script, so a terminating isolate no longer churns the remaining init
