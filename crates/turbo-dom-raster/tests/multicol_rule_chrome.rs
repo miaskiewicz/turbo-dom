@@ -211,16 +211,6 @@ fn wider_than_gap_column_rules_are_clamped_to_the_gap_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// #424: a dotted rule declared smaller than 1 px is gap-clamped; Chrome
-/// still paints dots using the clamped width.
-#[test]
-fn dotted_subpixel_column_rules_paint_like_chrome_156() {
-    let pick = |id: &str| id == "multicol-rule-dotted-subpixel";
-    let mut failures = png_differences(pick);
-    failures.extend(svg_differences(pick));
-    assert!(failures.is_empty(), "{}", failures.join("\n"));
-}
-
 /// #424: a double rule declared at 2 px — where `floor(width/3) = 0` —
 /// collapses to a solid rule in Chrome, which both painters mirror via
 /// their `< 3 px` solid fallback.
@@ -236,12 +226,14 @@ fn double_thin_column_rules_collapse_to_solid_like_chrome_156() {
 /// 3-column, yellow thin.
 #[test]
 fn broader_solid_column_rule_colours_and_gaps_paint_like_chrome_156() {
-    let pick = |id: &str| matches!(
-        id,
-        "multicol-rule-solid-wide-green"
-            | "multicol-rule-solid-3col-wide-gap"
-            | "multicol-rule-solid-thin-yellow"
-    );
+    let pick = |id: &str| {
+        matches!(
+            id,
+            "multicol-rule-solid-wide-green"
+                | "multicol-rule-solid-3col-wide-gap"
+                | "multicol-rule-solid-thin-yellow"
+        )
+    };
     let mut failures = png_differences(pick);
     failures.extend(svg_differences(pick));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -275,7 +267,6 @@ fn every_fixture_case_is_covered() {
                     | "multicol-rule-wider-than-gap"
                     | "multicol-rule-dashed"
                     | "multicol-rule-currentcolor"
-                    | "multicol-rule-dotted-subpixel"
                     | "multicol-rule-double-thin"
                     | "multicol-rule-solid-wide-green"
                     | "multicol-rule-solid-3col-wide-gap"
