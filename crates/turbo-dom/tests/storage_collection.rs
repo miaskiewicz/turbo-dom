@@ -239,7 +239,7 @@ fn the_tree_api_cannot_build_a_parent_cycle_for_collection() {
     let shadow = tree.attach_shadow(a);
     tree.append_child(shadow, a);
     assert_eq!(tree.parent(a), None);
-    assert!(tree.children(shadow).is_empty());
+    assert_eq!(tree.children(shadow).len(), 0);
     assert!(tree.collect_unreachable(&[a], budget()).is_ok());
     assert!(tree.is_live(a));
 }

@@ -637,7 +637,7 @@ mod tests {
         );
     }
 
-    /// Return the value of a `display:` declaration in a UA_CSS rule body, or `None`
+    /// Return the value of a `display:` declaration in a `UA_CSS` rule body, or `None`
     /// if the body declares no `display`.
     fn extract_display_value(body: &str) -> Option<&str> {
         for decl in body.split(';') {
