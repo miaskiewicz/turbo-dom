@@ -314,9 +314,10 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
     // column break, nor an `avoid` on a floated kid as a reason to shift
     // the surrounding in-flow content.
     let in_flow = !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
+    // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
+    let column_span_all = in_flow && keyword_eq(style, "column-span", "all");
     KidFlags {
-        // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
-        column_span_all: in_flow && keyword_eq(style, "column-span", "all"),
+        column_span_all,
         // R4 H3: break flags count only for in-flow kids.
         // BreakRule fix: route break-{before,after}: column through the shared parser so
         // `column` is distinguished from `page`.
@@ -324,7 +325,12 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
             && matches!(break_rule_of(style, "break-before"), BreakRule::Column),
         break_after_column: in_flow
             && matches!(break_rule_of(style, "break-after"), BreakRule::Column),
-        break_inside_avoid: in_flow && break_inside_column_avoid_of(style),
+        // miaskiewicz/turbo-dom#440: a span-all segment does not fragment,
+        // so `break-inside: avoid | avoid-column` on it has no multicol
+        // semantics. Clear it here so the two flags never coexist.
+        break_inside_avoid: in_flow
+            && !column_span_all
+            && break_inside_column_avoid_of(style),
     }
 }
 
@@ -1285,15 +1291,19 @@ mod tests {
 
     #[test]
     fn kid_flags_reads_all_four_properties_case_insensitively() {
+        // `break-inside: avoid-column` kept separate from `column-span: all`
+        // (#440: the two normalize to span-all-only; a dedicated test covers
+        // that normalization). This case just exercises case-insensitive
+        // parsing of each property on an in-flow kid.
         let f = kid_flags(&cs(&[
             ("column-span", "  ALL  "),
             ("break-before", "Column"),
             ("break-after", "  column "),
-            ("break-inside", "AVOID-COLUMN"),
         ]));
         assert!(f.column_span_all);
         assert!(f.break_before_column);
         assert!(f.break_after_column);
+        let f = kid_flags(&cs(&[("break-inside", "AVOID-COLUMN")]));
         assert!(f.break_inside_avoid);
     }
 
