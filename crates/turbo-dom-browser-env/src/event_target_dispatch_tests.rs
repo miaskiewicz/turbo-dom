@@ -279,10 +279,22 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     // One non-Node EventTarget with one listener. Listener queues a
     // microtask that re-dispatches the same event object. If the
     // microtask throws InvalidStateError the re-dispatch's count
     // stays at 1; otherwise we see 2.
+    //
+    // turbo-dom#484: the per-listener microtask drain only fires inside
+    // a HOST-initiated dispatch (routed through `__captureHostEventDispatch`),
+    // because Chrome 156's "clean up after running a callback" checkpoint
+    // only runs when the realm is at the top of the script settings stack.
+    // The outer dispatch therefore goes through `__hostDispatchTarget` so
+    // the drain-state save/restore invariants this test asserts are
+    // actually exercised. The inner (microtask-driven) re-dispatch stays
+    // as page-script `target.dispatchEvent`: it's nested inside the host
+    // bracket and the invariant we probe is the drain's own save/restore.
     let source = r#"(() => {
       const target = new EventTarget();
       // The target has a parent hook so dispatchTarget routes through
@@ -316,10 +328,11 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
           });
         }
       });
-      target.dispatchEvent(new Event('ping'));
+      globalThis.__hostDispatchTarget(new Event('ping'), target);
       // The microtask drains inside the dispatch's per-listener finally
-      // (turbo-dom#382). After dispatchTarget returns, the microtask has
-      // already run — count reflects whether it was allowed through.
+      // (turbo-dom#382, host-dispatch only since #484). After the host
+      // dispatch returns, the microtask has already run — count reflects
+      // whether it was allowed through.
       return JSON.stringify({ count, syncError, asyncError, ran, syncTried });
     })()"#;
     super::crate_surface::run_engine_script(
@@ -467,14 +480,15 @@ fn page_script_dispatch_does_not_checkpoint_between_listeners() {
             )
         })
         .to_rust_string_lossy(scope);
-    // Chrome 156: listener B observes `microFlag === 'pending'` because the
-    // per-listener microtask checkpoint doesn't run for page-script dispatches.
-    // The microtask fires only AFTER the dispatch unwinds to the calling
-    // script's natural yield. Pre-fix: B saw 'ran' because #382's drain fired
-    // unconditionally at the outer listener boundary.
+    // Chrome 156: no microtask checkpoint runs for page-script dispatch, so
+    // both listeners and `after-dispatch` observe `microFlag === 'pending'`.
+    // The microtask fires only after the sync script yields — which happens
+    // after `JSON.stringify(trace)` is computed, so the 'microtask' entry
+    // never appears in this trace. Pre-fix the drain fired between A and B
+    // and again at B's exit, so B and after-dispatch saw 'ran' and the
+    // 'microtask' entry landed before 'B:ran'.
     assert_eq!(
-        result,
-        r#"["A:pending","B:pending","microtask","after-dispatch:ran"]"#,
+        result, r#"["A:pending","B:pending","after-dispatch:pending"]"#,
         "page-script dispatchEvent must not checkpoint microtasks between \
          its own listeners (turbo-dom#484: the #382 drain is a HOST-dispatch \
          observable only; a page-script dispatch keeps A's queued microtask \
@@ -499,11 +513,19 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: use host dispatch for the outer so the per-listener
+    // microtask drain path this test probes is exercised (page-script
+    // dispatch no longer drains since #484 — see `page_script_dispatch_
+    // does_not_checkpoint_between_listeners`). The microtask-driven inner
+    // re-dispatch stays page-script, nested inside the host bracket.
+    //
     // Review R4 M4: tighten the R3 H1 assertion. The earlier version only
     // checked `!has_parent_bubble` — a test that passes for both correct
     // behaviour AND the R4 H1 leak (outer stop leaking INTO the inner
@@ -540,7 +562,7 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
       child.addEventListener('ping', (event) => {
         trace.push('child-target:' + event.eventPhase);
       });
-      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), child);
       return JSON.stringify(trace);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -616,11 +638,15 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch goes through `__hostDispatchTarget` so
+    // the per-listener microtask drain (where R4 H1's clear operates) runs.
     // Three-level chain child -> mid -> parent. Outer dispatches the SAME
     // event the inner will re-dispatch; the only listener that stops
     // propagation lives on mid (a `pingOnce` guard keeps it from recursing
@@ -673,7 +699,7 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
       parent.addEventListener('ping', (event) => {
         trace.push('depth=' + depth + ':parent-bubble:' + event.eventPhase);
       });
-      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), child);
       return JSON.stringify(trace);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -796,11 +822,15 @@ fn microtask_re_dispatch_preserves_outer_default_prevented() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the
+    // per-listener drain (where defaultPrevented's save/restore sits) runs.
     // Plain EventTarget with no parent hook triggers `dispatchSingle`, which
     // still routes callListener through `afterListener` (the drain path).
     // The outer listener queues a microtask whose inner dispatch's listener
@@ -822,7 +852,8 @@ fn microtask_re_dispatch_preserves_outer_default_prevented() {
         }
       });
       const event = new Event('e', { cancelable: true, bubbles: false });
-      out.outerReturn = target.dispatchEvent(event);
+      globalThis.__hostDispatchTarget(event, target);
+      out.outerReturn = !event.defaultPrevented;
       return JSON.stringify(out);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -883,11 +914,15 @@ fn microtask_re_dispatch_preserves_outer_own_default_prevented() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the
+    // per-listener drain (where defaultPrevented's save/restore sits) runs.
     let source = r#"(() => {
       const target = new EventTarget();
       let step = 0;
@@ -903,7 +938,8 @@ fn microtask_re_dispatch_preserves_outer_own_default_prevented() {
         }
       });
       const event = new Event('e', { cancelable: true, bubbles: false });
-      out.outerReturn = target.dispatchEvent(event);
+      globalThis.__hostDispatchTarget(event, target);
+      out.outerReturn = !event.defaultPrevented;
       return JSON.stringify(out);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();

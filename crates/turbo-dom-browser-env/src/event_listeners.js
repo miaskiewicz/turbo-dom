@@ -116,8 +116,24 @@
   // `afterListener` decrements it and drains microtasks only when the
   // current listener call was the outermost one. Keeping the check in a
   // helper keeps the hot `invokeAt` / `invoke` loops at cc <= 15.
-  let listenerDepth=0;
-  function afterListener(record){record.passive=false;if(--listenerDepth===0)drainMicrotasksAcrossDispatch(record);}
+  //
+  // turbo-dom#484: the drain also gates on `hostDispatchDepth > 0` — i.e.
+  // the outermost `dispatchTarget` on the stack was fired by the engine
+  // (routed through `__captureHostEventDispatch`), not by page script.
+  // #382's "clean up after running a callback" checkpoint models Chrome's
+  // HTML spec behaviour: the checkpoint runs when the realm is at the top
+  // of the script settings stack — i.e. an engine-fired event where
+  // between-listener calls return the stack to pure-engine. A page-script
+  // `target.dispatchEvent(...)` or `controller.abort()` (which calls
+  // `dispatchTarget('abort', signal, true)` internally — host=true sets
+  // isTrusted but the call originates from JS) leaves active script on
+  // the stack, so Chrome never checkpoints between its listeners (surf
+  // abort-bridge oracle `official_abort_bridge_keeps_chrome_state_and_
+  // unadapted_reaction_order`: the `signal` listener's queued microtask
+  // fires AFTER the `dependent` listener in the same dispatch, not
+  // between them).
+  let listenerDepth=0,hostDispatchDepth=0;
+  function afterListener(record){record.passive=false;if(--listenerDepth===0&&hostDispatchDepth>0)drainMicrotasksAcrossDispatch(record);}
   // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
   // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
   // true, so a microtask that synchronously re-dispatches the same event
@@ -289,7 +305,17 @@
   }
   method(g,'addEventListener',add,2);method(g,'removeEventListener',removeListener,2);method(g,'dispatchEvent',function(event){if(this!==g)throw new ErrorType('Illegal invocation');if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatch(event);},1);
   for(const name of ['addEventListener','removeEventListener','dispatchEvent'])ns.windowEventCallbacks[name]=g[name];
-  g.__captureHostEventDispatch=(event,target)=>target===g?dispatch(event,true):native('targetGet',target)?dispatchTarget(event,target,true):oldHost(event,target);
+  // turbo-dom#484: mark the host-initiated entry so the per-listener microtask
+  // drain fires only inside this bracket. A nested page-script dispatch that
+  // runs inside a host-dispatched listener stays inside the bracket (correct —
+  // it still follows an engine-fired callback), but an outer page-script
+  // dispatch (`controller.abort()`, `target.dispatchEvent(...)`) never enters
+  // the bracket and so never drains between its listeners.
+  g.__captureHostEventDispatch=(event,target)=>{
+    hostDispatchDepth++;
+    try{return target===g?dispatch(event,true):native('targetGet',target)?dispatchTarget(event,target,true):oldHost(event,target);}
+    finally{hostDispatchDepth--;}
+  };
   g.__captureWindowEventPhase=(event,capture)=>invoke(event,capture,capture?1:3);
   g.__captureListenerOptions=flatten;g.__captureSignalAborted=localAborted;g.__captureSignalSubscription=(signal,hook,subscribe)=>apply(subscribe?signalAdd:signalRemove,signal,['abort',hook,subscribe?{once:true}:undefined]);
 })();
