@@ -101,6 +101,37 @@ fn field<'s>(
     let key = v8::String::new(scope, name)?;
     object.get(scope, key.into())
 }
+/// Review R2 V8 M6: cancel/restore the isolate's execution-terminating flag
+/// as a scope-guard. The restore runs in [`Drop`], so it is panic-safe and
+/// cannot be bypassed by a future early return / `?` inside the guarded
+/// block. A no-op when the scope was not terminating at construction.
+struct TerminationRestore<'a, 'p, 's> {
+    scope: &'a mut v8::PinScope<'p, 's>,
+    was_terminating: bool,
+}
+impl<'a, 'p, 's> TerminationRestore<'a, 'p, 's> {
+    fn cancel(scope: &'a mut v8::PinScope<'p, 's>) -> Self {
+        let was_terminating = scope.is_execution_terminating();
+        if was_terminating {
+            scope.cancel_terminate_execution();
+        }
+        TerminationRestore {
+            scope,
+            was_terminating,
+        }
+    }
+    fn scope(&mut self) -> &mut v8::PinScope<'p, 's> {
+        self.scope
+    }
+}
+impl Drop for TerminationRestore<'_, '_, '_> {
+    fn drop(&mut self) {
+        if self.was_terminating {
+            self.scope.terminate_execution();
+        }
+    }
+}
+
 pub(super) fn install_policy(
     scope: &mut v8::PinScope,
     callback: v8::Local<v8::Function>,
@@ -112,36 +143,33 @@ pub(super) fn install_policy(
     // interrupted" and aborts the frame bootstrap. The install is race-safe to
     // retry, so clear the pending termination for the duration of the write and
     // restore it before returning — the embedder's next guest-JS call still aborts.
-    let was_terminating = scope.is_execution_terminating();
-    if was_terminating {
-        scope.cancel_terminate_execution();
-    }
-    let result = (|| -> Option<()> {
-        // Review R1 M3: the realm global and the Trusted Types `factory` /
-        // `state` records are plain `v8::Object`s installed by
-        // `install_global`, which is called once from the engine side with no
-        // guest JS running — nothing between installation and here can swap
-        // them for a Proxy or stamp a `v8::PrivateName` interceptor. The
-        // `get_private` / `set` calls below therefore hit native slots only,
-        // never guest JS, and the cancel/restore window around them cannot
-        // leak a window where a `is_execution_terminating()` observer under
-        // user control sees "no termination pending".
-        let global = scope.get_current_context().global(scope);
-        debug_assert!(
-            !global.is_proxy(),
-            "trusted_types::install_policy: realm global is a Proxy; a user-controlled \
-             private-name interceptor could observe the cancel/restore window"
-        );
-        let record = private_record(scope, global)?;
-        let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
-        let state = private_record(scope, factory)?;
-        let name = v8::String::new(scope, "authorize")?;
-        (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
-    })();
-    if was_terminating {
-        scope.terminate_execution();
-    }
-    result
+    //
+    // Review R2 V8 M6: the cancel/restore pair is a scope-guard
+    // (`TerminationRestore`). Its `Drop` runs the restore even on an early
+    // `None` / `?` return or a panic from a nested call, closing a class of
+    // future failures where a new branch inside the guarded block would
+    // forget to restore manually.
+    let mut guard = TerminationRestore::cancel(scope);
+    let scope = guard.scope();
+    // Review R1 M3: the realm global and the Trusted Types `factory` /
+    // `state` records are plain `v8::Object`s installed by `install_global`,
+    // which is called once from the engine side with no guest JS running —
+    // nothing between installation and here can swap them for a Proxy or
+    // stamp a `v8::PrivateName` interceptor. The `get_private` / `set` calls
+    // below therefore hit native slots only, never guest JS. Review R2 V8
+    // H1: the state object's prototype is null, so `state.set('authorize',
+    // callback)` cannot walk into an `Object.prototype` setter either.
+    let global = scope.get_current_context().global(scope);
+    debug_assert!(
+        !global.is_proxy(),
+        "trusted_types::install_policy: realm global is a Proxy; a user-controlled \
+         private-name interceptor could observe the cancel/restore window"
+    );
+    let record = private_record(scope, global)?;
+    let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
+    let state = private_record(scope, factory)?;
+    let name = v8::String::new(scope, "authorize")?;
+    (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
 }
 pub(super) fn convert<'s>(
     scope: &mut v8::PinScope<'s, '_>,

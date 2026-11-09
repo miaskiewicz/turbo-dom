@@ -8567,6 +8567,14 @@ fn run_init_scripts(scope: &mut v8::PinScope) {
     }
     let sources = INIT_SCRIPTS.with(|s| s.borrow().clone());
     for source in sources {
+        // Review R2 V8 M2: once the isolate is terminating, every v8::String /
+        // Script::compile below returns None and the loop would churn the
+        // remaining scripts to no effect (and potentially hand a terminating
+        // scope to a future hook). Break out at the top so setup reports the
+        // termination through SETUP_TERMINATED without iterating further.
+        if scope.is_execution_terminating() {
+            break;
+        }
         let Some(code) = v8::String::new(scope, &source) else {
             continue;
         };
