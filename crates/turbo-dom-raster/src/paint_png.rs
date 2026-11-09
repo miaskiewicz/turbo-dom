@@ -3754,4 +3754,67 @@ mod exact_tests {
             );
         }
     }
+
+    // v0.8.2 raster-cov: `paint_round_border` guards `ring.finish()` against
+    // returning `None` — tiny-skia's `PathBuilder::finish()` returns `None`
+    // when the collected points reject a bounding rect, which happens as
+    // soon as any point is non-finite. `fragment_finite_positive` keeps
+    // width / height finite, but `f.x` / `f.y` are not checked (every
+    // painter but this one feeds them to tiny-skia primitives that silently
+    // reject non-finite inputs; the round-border ring runs through
+    // `PathBuilder` so the None branch IS reachable on a non-finite
+    // position). Assert the painter no-ops: without the `else { return; }`
+    // the `pm.fill_path(&ring, …)` below would be fed a path that was
+    // never constructed, so this test pins the guard rather than the
+    // branch alone.
+    #[test]
+    fn paint_round_border_is_a_no_op_on_a_non_finite_position() {
+        let id = Transform::identity();
+        let side = BorderSide {
+            width: 2,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side,
+            right: side,
+            bottom: side,
+            left: side,
+        };
+        let radii = BorderRadii::ZERO;
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [
+                Fragment::new(
+                    NodeId(0),
+                    bad,
+                    1.0,
+                    10.0,
+                    10.0,
+                    FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                        id: 1,
+                        inline: false,
+                    }),
+                ),
+                Fragment::new(
+                    NodeId(0),
+                    1.0,
+                    bad,
+                    10.0,
+                    10.0,
+                    FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                        id: 1,
+                        inline: false,
+                    }),
+                ),
+            ] {
+                let mut pm = white(20, 20);
+                paint_round_border(&mut pm, &f, &border, &radii, id);
+                assert!(
+                    is_blank(&pm),
+                    "non-finite ({bad}) position {},{} must paint nothing",
+                    f.x,
+                    f.y
+                );
+            }
+        }
+    }
 }
