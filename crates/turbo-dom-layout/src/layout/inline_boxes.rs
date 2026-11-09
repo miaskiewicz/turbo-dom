@@ -811,7 +811,11 @@ fn attach_part_layers(
     ctx: &Ctx,
     image: Option<&super::fragment::ImagePlacement>,
     index: usize,
-    (pad, paint, strip): (&super::value::Edges, super::background::Rect, super::background::Rect),
+    (pad, paint, strip): (
+        &super::value::Edges,
+        super::background::Rect,
+        super::background::Rect,
+    ),
 ) {
     use super::background::{area_radius, border_overlay, color_layer, Area, Source};
     let frag = &mut out[index];

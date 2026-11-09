@@ -426,7 +426,12 @@ fn sanitize_element(
 }
 
 /// Hoist each child of `node` in front of it, queue them for a re-run, then remove `node`.
-fn replace_with_children(tree: &mut Tree, node: Handle, parent: Handle, pending: &mut Vec<Pending>) {
+fn replace_with_children(
+    tree: &mut Tree,
+    node: Handle,
+    parent: Handle,
+    pending: &mut Vec<Pending>,
+) {
     for child in tree.children(node) {
         let hoisted = if tree.node_type_id(child) == 11 {
             tree.children(child)

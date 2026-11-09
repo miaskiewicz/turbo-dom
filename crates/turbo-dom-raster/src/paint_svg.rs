@@ -1886,7 +1886,10 @@ mod tests {
                 b: 0,
                 a: 0,
             };
-            let body_t = body(&rule(1.0, 1.0, 4.0, 8.0, style, transparent), &HashMap::new());
+            let body_t = body(
+                &rule(1.0, 1.0, 4.0, 8.0, style, transparent),
+                &HashMap::new(),
+            );
             assert!(
                 body_t.is_empty(),
                 "alpha 0 must emit no rule markup ({style:?}): {body_t}"

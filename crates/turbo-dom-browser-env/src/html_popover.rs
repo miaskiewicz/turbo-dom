@@ -811,9 +811,7 @@ fn visit_function<'i, 't>(
         if after_colon && name.eq_ignore_ascii_case("popover-open") {
             return Err(input.new_custom_error(()));
         }
-        if after_colon
-            && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where"))
-        {
+        if after_colon && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")) {
             return input.parse_nested_block(|nested| forgiving_list(nested, ranges));
         }
     }

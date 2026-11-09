@@ -324,8 +324,7 @@ fn js_assignment_after_set_attribute_wins_over_content_attribute_body() {
         .unwrap()
         .to_rust_string_lossy(scope);
     assert_eq!(
-        value,
-        r#"{"seen":["B2"],"attr":"seen.push(\"A\")"}"#,
+        value, r#"{"seen":["B2"],"attr":"seen.push(\"A\")"}"#,
         "JS assignment fires (not the content-attribute body), attribute survives",
     );
     reset();

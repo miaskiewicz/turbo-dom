@@ -1158,12 +1158,8 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "defined" => Pseudo::Defined,
         "fullscreen" | "-webkit-full-screen" => Pseudo::Fullscreen,
         "-webkit-full-screen-ancestor" => Pseudo::FullscreenAncestor,
-        "nth-child" | "nth-last-child" => {
-            parse_nth_child_pseudo(name, arg.unwrap_or(""))
-        }
-        "nth-of-type" | "nth-last-of-type" => {
-            parse_nth_of_type_pseudo(name, arg.unwrap_or(""))
-        }
+        "nth-child" | "nth-last-child" => parse_nth_child_pseudo(name, arg.unwrap_or("")),
+        "nth-of-type" | "nth-last-of-type" => parse_nth_of_type_pseudo(name, arg.unwrap_or("")),
         "is" => Pseudo::Is(parse_forgiving_list(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_forgiving_list(arg.unwrap_or(""))),
         // the unforgiving lists reject an empty item (`:not(p, )`; Chrome: SyntaxError)

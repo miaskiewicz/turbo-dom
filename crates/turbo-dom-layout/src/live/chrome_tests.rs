@@ -508,9 +508,7 @@ fn offset_metric(
     Some(match key {
         "offsetLeft" => metrics::offset_position(snapshot, styles, id).map(|p| f64::from(p.left)),
         "offsetTop" => metrics::offset_position(snapshot, styles, id).map(|p| f64::from(p.top)),
-        "offsetWidth" => {
-            metrics::element_geometry(snapshot, id).map(|g| f64::from(g.offset.width))
-        }
+        "offsetWidth" => metrics::element_geometry(snapshot, id).map(|g| f64::from(g.offset.width)),
         "offsetHeight" => {
             metrics::element_geometry(snapshot, id).map(|g| f64::from(g.offset.height))
         }

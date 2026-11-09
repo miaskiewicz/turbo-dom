@@ -2992,11 +2992,7 @@ fn el_set_attribute<'s>(
 /// When an `<input>` becomes a checkbox/radio (React sets `type` via setAttribute after
 /// createElement), strip the value-change tracker: those inputs track `checked`, not `value`,
 /// so a value-tracker would mis-detect changes and break onChange.
-fn maybe_strip_value_tracker(
-    scope: &mut v8::PinScope,
-    this: v8::Local<v8::Object>,
-    value: &str,
-) {
+fn maybe_strip_value_tracker(scope: &mut v8::PinScope, this: v8::Local<v8::Object>, value: &str) {
     let v = value.to_ascii_lowercase();
     if v != "checkbox" && v != "radio" {
         return;
@@ -6102,7 +6098,9 @@ fn form_controls_native(
                 rv.set(value);
             }
         }
-        "active" | "submit" => form_submission_active_or_submit(scope, &operation, node, &args, &mut rv),
+        "active" | "submit" => {
+            form_submission_active_or_submit(scope, &operation, node, &args, &mut rv)
+        }
         "action-url" | "submitter-action-url" => {
             let document_url = event_handlers::document_url();
             let raw = with_tree(|tree| {
@@ -9312,12 +9310,13 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     editing::install(scope);
     capture_bootstrap_callback::<FormDataEventDispatcher>(scope, global, "__captureFormDataEvent");
     capture_bootstrap_callback::<FormEntryListReader>(scope, global, "__captureFormEntries");
-    capture_bootstrap_callback::<FormSubmissionDispatcher>(scope, global, "__captureFormSubmission");
-    if !try_capture_bootstrap_callback::<EventRecordAccessor>(
+    capture_bootstrap_callback::<FormSubmissionDispatcher>(
         scope,
         global,
-        "__captureEventRecord",
-    ) {
+        "__captureFormSubmission",
+    );
+    if !try_capture_bootstrap_callback::<EventRecordAccessor>(scope, global, "__captureEventRecord")
+    {
         return;
     }
     if !try_capture_bootstrap_callback::<HostEventDispatcher>(

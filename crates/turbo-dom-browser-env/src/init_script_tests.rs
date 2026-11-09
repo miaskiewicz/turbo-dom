@@ -179,8 +179,7 @@ fn init_script_exceptions_are_reported_and_isolated_from_later_scripts() {
     // The throw must be reported to the window's error channel. Without the
     // TryCatch isolation added for R1 H4, the exception escapes to V8 without
     // a report and `__initErrors` stays empty.
-    let errors = eval_string(scope, "JSON.stringify(globalThis.__initErrors)")
-        .unwrap_or_default();
+    let errors = eval_string(scope, "JSON.stringify(globalThis.__initErrors)").unwrap_or_default();
     assert!(
         errors.contains("init2-boom"),
         "init-script throw was reported to window error channel (got {errors:?})",

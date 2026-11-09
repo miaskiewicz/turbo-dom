@@ -3163,7 +3163,11 @@ mod exact_tests {
                 a: 0,
             };
             assert!(
-                is_blank(&drawn(&rule(1.0, 1.0, 4.0, 8.0, style, transparent), 10, 10)),
+                is_blank(&drawn(
+                    &rule(1.0, 1.0, 4.0, 8.0, style, transparent),
+                    10,
+                    10
+                )),
                 "alpha 0 must paint nothing ({style:?})"
             );
             // Zero width.
@@ -3186,7 +3190,11 @@ mod exact_tests {
     // rule would be blank) — the test asserts the full rect is filled.
     #[test]
     fn paint_column_rule_thin_double_paints_a_single_solid_band() {
-        let got = drawn(&rule(1.0, 1.0, 2.0, 6.0, ColumnRuleStyle::Double, RED), 10, 10);
+        let got = drawn(
+            &rule(1.0, 1.0, 2.0, 6.0, ColumnRuleStyle::Double, RED),
+            10,
+            10,
+        );
         for y in 1..7 {
             for x in 1..3 {
                 let c = got.pixel(x, y).unwrap();
@@ -3242,10 +3250,7 @@ mod exact_tests {
         );
         paint_dotted_rule(&mut pm, &f, RED, id);
         paint_dashed_rule(&mut pm, &f, RED, id);
-        assert!(
-            is_blank(&pm),
-            "zero-width helpers must not paint or loop"
-        );
+        assert!(is_blank(&pm), "zero-width helpers must not paint or loop");
     }
 
     #[test]

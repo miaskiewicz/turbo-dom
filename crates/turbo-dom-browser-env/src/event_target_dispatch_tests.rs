@@ -469,7 +469,9 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
         .unwrap_or_else(|| {
             panic!(
                 "re-dispatch stopPropagation script failed: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
@@ -506,9 +508,7 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
     let has_microtask_start = array
         .iter()
         .any(|v| v.as_str().unwrap() == "microtask-start");
-    let has_microtask_end = array
-        .iter()
-        .any(|v| v.as_str().unwrap() == "microtask-end");
+    let has_microtask_end = array.iter().any(|v| v.as_str().unwrap() == "microtask-end");
     assert!(
         has_microtask_start && has_microtask_end,
         "the microtask must have started and completed. Trace: {trace}",
@@ -602,13 +602,18 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
         .unwrap_or_else(|| {
             panic!(
                 "nested re-dispatch stop-state script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
     let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
     let array = trace.as_array().unwrap();
-    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
     let has = |needle: &str| strs.iter().any(|s| s == needle);
     // Outer (depth=0) stop assertions: parent-capture fires BEFORE mid
     // (chain is parent -> mid -> child, capture walks top to target).
@@ -926,13 +931,18 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
         .unwrap_or_else(|| {
             panic!(
                 "trusted-leak script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
     let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
     let array = trace.as_array().unwrap();
-    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
     let has = |needle: &str| strs.iter().any(|s| s == needle);
     // Outer AT_TARGET listener on child must see trusted (the host set it).
     assert!(

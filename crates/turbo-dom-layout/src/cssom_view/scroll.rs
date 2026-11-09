@@ -489,12 +489,8 @@ pub fn scroll_translation(
     } else {
         Some(fragment.source_ancestors.len())
     };
-    let mut translation = accumulate_ancestor_scroll(
-        snapshot,
-        offsets,
-        &fragment.source_ancestors,
-        containing,
-    )?;
+    let mut translation =
+        accumulate_ancestor_scroll(snapshot, offsets, &fragment.source_ancestors, containing)?;
     // The initial containing block scrolls with the identity viewport matrix.
     translation[0] += viewport[0] as f32;
     translation[1] += viewport[1] as f32;

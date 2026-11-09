@@ -573,8 +573,9 @@ fn element_kind(
         "table-row" => Some(Kind::Row),
         "table" => Some(Kind::Table),
         "inline-block" | "inline-flex" | "inline-grid" | "inline-table" | "table-row-group"
-        | "table-header-group" | "table-footer-group" | "table-column"
-        | "table-column-group" => Some(Kind::Silent),
+        | "table-header-group" | "table-footer-group" | "table-column" | "table-column-group" => {
+            Some(Kind::Silent)
+        }
         _ => Some(Kind::Block {
             body: name == "body",
             extra: tree.namespace_id(node) == 0 && name == "p",

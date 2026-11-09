@@ -54,8 +54,8 @@ use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
 use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
 use super::value::{
-    break_inside_column_avoid_of, break_rule_of, float_of, parse_color, parse_px, position_of, BoxSizing, BoxStyle, BreakRule,
-    Float, LengthPct, ResolveCtx, Rgba,
+    break_inside_column_avoid_of, break_rule_of, float_of, parse_color, parse_px, position_of,
+    BoxSizing, BoxStyle, BreakRule, Float, LengthPct, ResolveCtx, Rgba,
 };
 use crate::style::ComputedStyle;
 
@@ -876,8 +876,7 @@ fn place_measured(
     // `col_x`, shared with `column_rule_fragments` so the last-column
     // end-align rule and the gap-centre stay lockstep on any future
     // rounded-`used_width` path.
-    let strip_origin =
-        |col_index: u32| col_x(col_index, (used_count, used_width, gap), cx, cw);
+    let strip_origin = |col_index: u32| col_x(col_index, (used_count, used_width, gap), cx, cw);
     if pieces.len() == 1 {
         let p = pieces[0];
         let dx = strip_origin(p.col_index);
@@ -1452,7 +1451,10 @@ mod tests {
         // not a new page) and a page break must NOT be mistaken for one (it
         // leaves multicol alone — pagination handles it).
         let col = kid_flags(&cs(&[("break-before", "column")]));
-        assert!(col.break_before_column, "break-before:column → column break");
+        assert!(
+            col.break_before_column,
+            "break-before:column → column break"
+        );
         let page = kid_flags(&cs(&[("break-before", "page")]));
         assert!(
             !page.break_before_column,
@@ -1649,27 +1651,39 @@ mod tests {
     fn column_rule_fragments_declines_single_column_or_zero_gap_or_height() {
         let c = container(&[("column-rule-style", "solid")]);
         // Single column -> no rules. cw = used_width = 200.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 200.0, 16.0, 300.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (1, 200.0, 20.0), 200.0, 16.0, 300.0).is_empty()
+        );
         // Zero gap -> no rules. cw = 3 * 200 = 600.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 600.0, 16.0, 300.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 0.0), 600.0, 16.0, 300.0).is_empty()
+        );
         // Non-positive col height -> no rules. cw = 640.
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 0.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 0.0).is_empty()
+        );
     }
 
     #[test]
     fn column_rule_fragments_declines_unpaintable_style_or_zero_width_or_transparent_color() {
         // style unset (`none`) -> no rules.
         let c = container(&[]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty()
+        );
         // declared width 0 -> no rules.
         let c = container(&[("column-rule-style", "solid"), ("column-rule-width", "0px")]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty()
+        );
         // Fully transparent colour -> no rules.
         let c = container(&[
             ("column-rule-style", "solid"),
             ("column-rule-color", "rgba(0,0,0,0)"),
         ]);
-        assert!(column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty());
+        assert!(
+            column_rule_fragments(&c, (0.0, 0.0), (3, 200.0, 20.0), 640.0, 16.0, 300.0).is_empty()
+        );
     }
 
     #[test]
@@ -1696,10 +1710,7 @@ mod tests {
     /// `col_x(used_count-1)` — not the stride-only expression.
     #[test]
     fn column_rule_fragments_use_shared_col_x_for_last_gap() {
-        let c = container(&[
-            ("column-rule-style", "solid"),
-            ("column-rule-width", "2px"),
-        ]);
+        let c = container(&[("column-rule-style", "solid"), ("column-rule-width", "2px")]);
         // Three columns at used_width = 189.328125 (Chrome's 1/64-rounded
         // value), gap = 20, cw = 2 * 20 + 3 * 189.328125 = 607.984375.
         // The LAST column end-aligns at cx + cw - used_width =
@@ -1825,7 +1836,14 @@ mod tests {
             y: 0.0,
             height: 50.0,
         }];
-        let got = place_measured(bx(used_width, 50.0), &p, (3, used_width, 16.0), 600.0, 0.0, 0.0);
+        let got = place_measured(
+            bx(used_width, 50.0),
+            &p,
+            (3, used_width, 16.0),
+            600.0,
+            0.0,
+            0.0,
+        );
         // Chrome's actual column-2 x: 600 - 12117/64 = 410.671875.
         let want_last = 600.0 - used_width;
         assert!(
@@ -1839,7 +1857,14 @@ mod tests {
             y: 0.0,
             height: 50.0,
         }];
-        let got = place_measured(bx(used_width, 50.0), &p, (3, used_width, 16.0), 600.0, 0.0, 0.0);
+        let got = place_measured(
+            bx(used_width, 50.0),
+            &p,
+            (3, used_width, 16.0),
+            600.0,
+            0.0,
+            0.0,
+        );
         // Column 1: 0 + 1 * (used_width + 16) = used_width + 16.
         let want_col1 = used_width + 16.0;
         assert!(

@@ -741,7 +741,11 @@ fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
         return rgb_hsl_from_valid(inner, commas);
     }
-    if name.starts_with("hsl") && inner.first().is_some_and(|comp| !hsl_hue_valid(comp, commas)) {
+    if name.starts_with("hsl")
+        && inner
+            .first()
+            .is_some_and(|comp| !hsl_hue_valid(comp, commas))
+    {
         return false;
     }
     if commas > 0 {

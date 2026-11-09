@@ -691,10 +691,7 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
             .is_some()
         {
             let (w, _) = border(&snapshot, *h);
-            assert_eq!(
-                w, 30.0,
-                "{id}: inline override must apply (width = 30 px)",
-            );
+            assert_eq!(w, 30.0, "{id}: inline override must apply (width = 30 px)",);
         }
     }
 }
@@ -727,7 +724,11 @@ fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
             Ok(out)
         })
         .unwrap();
-    assert_eq!(display_of(&resolved[0]), Display::InlineBlock, "input: plain");
+    assert_eq!(
+        display_of(&resolved[0]),
+        Display::InlineBlock,
+        "input: plain"
+    );
     assert_eq!(
         display_of(&resolved[1]),
         Display::None,

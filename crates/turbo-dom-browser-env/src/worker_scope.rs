@@ -488,11 +488,8 @@ mod tests {
         // `(setter, trigger)` — trigger is the JS that invokes the worker-scope
         // API the hook backs. `importScripts` throws by default, so the
         // trigger wraps it.
-        type Setter = fn(
-            &mut v8::PinScope,
-            v8::Local<v8::Context>,
-            Option<v8::Local<v8::Function>>,
-        );
+        type Setter =
+            fn(&mut v8::PinScope, v8::Local<v8::Context>, Option<v8::Local<v8::Function>>);
         let cases: &[(Setter, &str)] = &[
             (
                 browser_env::set_worker_post_message_hook,

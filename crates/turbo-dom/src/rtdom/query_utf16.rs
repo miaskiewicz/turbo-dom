@@ -599,9 +599,7 @@ fn parse_compound_parts(source: &[u16], index: &mut usize, compound: &mut Compou
             }
             91 => {
                 *index += 1;
-                compound
-                    .attrs
-                    .push(attr(balanced(source, index, 91, 93)));
+                compound.attrs.push(attr(balanced(source, index, 91, 93)));
             }
             58 => {
                 *index += 1;
