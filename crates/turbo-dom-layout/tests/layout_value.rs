@@ -420,6 +420,8 @@ fn forced_side_breaks_and_legacy_page_break_aliases_are_page_breaks() {
     // blocks): `break-before: left/right/recto/verso`, `page-break-before: always`,
     // `page-break-after: right` and `break-before: PAGE` each print 2 pages. The
     // CSS Fragmentation 4 `always` value is NOT supported by Chrome 156 (1 page).
+    // `column` is NOT a page break (it is a column break — see
+    // `column_and_avoid_column_are_their_own_class` below; turbo-html2pdf#69).
     for v in ["left", "right", "recto", "verso", "page", "PAGE", "Right"] {
         assert_eq!(
             resolve(&[("break-before", v)]).break_before,
@@ -480,6 +482,49 @@ fn break_inside_avoid_page_and_legacy_page_break_inside_avoid() {
 }
 
 #[test]
+fn column_and_avoid_column_are_their_own_class() {
+    // turbo-html2pdf#69. `break-{before,after}: column` is a COLUMN break, not a
+    // page break: the paginator must not treat it as `break-before: page` or it
+    // injects an unwanted page break at a column boundary. `break-inside:
+    // avoid-column` is likewise its own value, kept distinct from `avoid-page`
+    // so downstream (multicol vs paginator) each reads the class that applies.
+    for v in ["column", "COLUMN", "  Column  "] {
+        assert_eq!(
+            resolve(&[("break-before", v)]).break_before,
+            BreakRule::Column,
+            "break-before:{v}"
+        );
+        assert_eq!(
+            resolve(&[("break-after", v)]).break_after,
+            BreakRule::Column,
+            "break-after:{v}"
+        );
+    }
+    for v in ["avoid-column", "AVOID-COLUMN", "  avoid-column "] {
+        assert_eq!(
+            resolve(&[("break-before", v)]).break_before,
+            BreakRule::AvoidColumn,
+            "break-before:{v}"
+        );
+    }
+    // `avoid-column` on `break-inside` is specifically a COLUMN-class avoid and
+    // does NOT trigger the paginator's page-avoid bool (that stays `avoid` /
+    // `avoid-page` / legacy `page-break-inside: avoid`, see
+    // `break_inside_avoid_page_and_legacy_page_break_inside_avoid`).
+    assert!(!resolve(&[("break-inside", "avoid-column")]).break_inside_avoid);
+    // `region` / `avoid-region` are not implemented (v0.8.2 follow-up #422) and
+    // stay `Auto` so the paginator never force-breaks on them.
+    assert_eq!(
+        resolve(&[("break-before", "region")]).break_before,
+        BreakRule::Auto
+    );
+    assert_eq!(
+        resolve(&[("break-before", "avoid-region")]).break_before,
+        BreakRule::Auto
+    );
+}
+
+#[test]
 fn breaks_orphans_widows_background() {
     assert_eq!(
         resolve(&[("break-before", "avoid")]).break_before,
@@ -491,7 +536,7 @@ fn breaks_orphans_widows_background() {
     );
     assert_eq!(
         resolve(&[("break-after", "column")]).break_after,
-        BreakRule::Page
+        BreakRule::Column
     );
     assert_eq!(
         resolve(&[("break-after", "auto")]).break_after,

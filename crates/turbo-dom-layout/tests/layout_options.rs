@@ -256,6 +256,45 @@ fn table_rows_and_row_groups_carry_forced_breaks() {
 }
 
 #[test]
+fn table_rows_carry_column_breaks_distinct_from_page_breaks() {
+    // turbo-html2pdf#69. `break-{before,after}: column` must reach the
+    // paginator (via `BreakMeta`) as `BreakRule::Column`, not `Page`: the
+    // paginator honours a column break by letting multicol open a new
+    // column and leaves the page alone. Before the fix the parser
+    // collapsed both into `Page`, so the paginator injected an unwanted
+    // page break at every column boundary.
+    let forced = |html: &str| -> Vec<(String, BreakRule, BreakRule)> {
+        row_breaks(html)
+            .into_iter()
+            .map(|(id, m)| (id, m.break_before, m.break_after))
+            .collect()
+    };
+    let s = |id: &str| id.to_string();
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-before:column'><td>b</td></tr></table></body>"),
+        [
+            (s("a"), BreakRule::Auto, BreakRule::Auto),
+            (s("b"), BreakRule::Column, BreakRule::Auto)
+        ]
+    );
+    assert_eq!(
+        forced("<body><table><tr id=a style='break-after:column'><td>a</td></tr><tr id=b><td>b</td></tr></table></body>"),
+        [
+            (s("a"), BreakRule::Auto, BreakRule::Column),
+            (s("b"), BreakRule::Auto, BreakRule::Auto)
+        ]
+    );
+    // `avoid-column` likewise reaches the paginator as its own class.
+    assert_eq!(
+        forced("<body><table><tr id=a><td>a</td></tr><tr id=b style='break-before:avoid-column'><td>b</td></tr></table></body>"),
+        [
+            (s("a"), BreakRule::Auto, BreakRule::Auto),
+            (s("b"), BreakRule::AvoidColumn, BreakRule::Auto)
+        ]
+    );
+}
+
+#[test]
 fn a_row_groups_break_before_avoid_reaches_its_first_row() {
     // Chrome 156 --print-to-pdf: with `break-before: avoid` (or the legacy
     // `page-break-before: avoid`) on the second <tbody>, the last row of the first
