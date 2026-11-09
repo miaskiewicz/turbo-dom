@@ -9,8 +9,8 @@ use std::fmt::Write;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
-    LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
+    border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
+    FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
@@ -257,6 +257,10 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
         ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
         ColumnRuleStyle::Dashed => paint_dashed_rule(svg, f, color),
         ColumnRuleStyle::Double => paint_double_rule(svg, f, color),
+        ColumnRuleStyle::Groove
+        | ColumnRuleStyle::Ridge
+        | ColumnRuleStyle::Inset
+        | ColumnRuleStyle::Outset => paint_shaded_rule(svg, f, style, color),
     }
 }
 
@@ -349,6 +353,23 @@ fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let band = (f.width / 3.0).floor();
     rect(svg, f.x, f.y, band, f.height, color);
     rect(svg, f.x + f.width - band, f.y, band, f.height, color);
+}
+
+/// SVG counterpart to [`crate::paint_png::paint_shaded_rule`] — the two halves
+/// of a 3-D column rule, shaded through [`border_style_colour`]
+/// (miaskiewicz/turbo-dom#419). `groove` / `outset` paint the left half dark
+/// and the right half light; `ridge` / `inset` swap them. The rule is
+/// vertical, so "left" and "right" are the two vertical bands.
+fn paint_shaded_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
+    let left_color = border_style_colour(color, left_dark);
+    let right_color = border_style_colour(color, !left_dark);
+    let half = f.width / 2.0;
+    rect(svg, f.x, f.y, half, f.height, left_color);
+    rect(svg, f.x + half, f.y, f.width - half, f.height, right_color);
 }
 
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.

@@ -171,15 +171,19 @@ fn parse_rule_width(s: &ComputedStyle, fs: f32) -> f32 {
     .max(0.0)
 }
 
-/// The used `column-rule-style` as one of the four [`ColumnRuleStyle`] variants
-/// this PR paints, or `None` for `none` / `hidden` / an unsupported keyword
-/// (`groove` / `ridge` / `inset` / `outset`: deferred, miaskiewicz/turbo-dom#419).
+/// The used `column-rule-style` as one of the paintable [`ColumnRuleStyle`]
+/// variants, or `None` for `none` / `hidden` / an unknown keyword.
+/// `groove` / `ridge` / `inset` / `outset` ship since miaskiewicz/turbo-dom#419.
 fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
     match s.get("column-rule-style").map_or("none", str::trim) {
         "solid" => Some(ColumnRuleStyle::Solid),
         "dotted" => Some(ColumnRuleStyle::Dotted),
         "dashed" => Some(ColumnRuleStyle::Dashed),
         "double" => Some(ColumnRuleStyle::Double),
+        "groove" => Some(ColumnRuleStyle::Groove),
+        "ridge" => Some(ColumnRuleStyle::Ridge),
+        "inset" => Some(ColumnRuleStyle::Inset),
+        "outset" => Some(ColumnRuleStyle::Outset),
         _ => None,
     }
 }
@@ -1825,11 +1829,26 @@ mod tests {
             parse_rule_style(&cs(&[("column-rule-style", "double")])),
             Some(ColumnRuleStyle::Double)
         );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "groove")])),
+            Some(ColumnRuleStyle::Groove)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "ridge")])),
+            Some(ColumnRuleStyle::Ridge)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "inset")])),
+            Some(ColumnRuleStyle::Inset)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "outset")])),
+            Some(ColumnRuleStyle::Outset)
+        );
         // Default (unset) is `none` and returns None (no rule painted).
         assert_eq!(parse_rule_style(&cs(&[])), None);
-        // Deferred keywords (`groove` / `ridge` / `inset` / `outset`) and
-        // `hidden` all come back as `None` (miaskiewicz/turbo-dom#419).
-        for k in ["hidden", "groove", "ridge", "inset", "outset", "wat"] {
+        // `hidden` and unknown keywords come back as `None`.
+        for k in ["hidden", "wat"] {
             assert_eq!(parse_rule_style(&cs(&[("column-rule-style", k)])), None);
         }
     }

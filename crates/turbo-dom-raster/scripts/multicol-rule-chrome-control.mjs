@@ -303,6 +303,120 @@ const CASES = [
       [10, 10],
     ],
   },
+  // #419: `column-rule-style: groove` at 6px in a 20px gap. Chrome 156 splits
+  // the rule into two equal halves along the inline axis: the left half
+  // paints `border_style_colour(color, dark=true)` (the darker shade), the
+  // right half the lighter shade. Content-box 20..420, gap 210..230 centre
+  // 220, rule 6px at 217..223: pixels 217..219 dark, 220..222 light.
+  {
+    id: "multicol-rule-groove-6px",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:6px groove #884400">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left half — darker shade.
+      [217, 40],
+      [218, 40],
+      [219, 40],
+      // Right half — lighter shade.
+      [220, 40],
+      [221, 40],
+      [222, 40],
+      // Edges — cyan backdrop.
+      [216, 40],
+      [223, 40],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  // #419: `ridge` is `groove` with the two shades swapped (left light,
+  // right dark). Same layout as the groove case.
+  {
+    id: "multicol-rule-ridge-6px",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:6px ridge #884400">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left half — lighter shade.
+      [217, 40],
+      [218, 40],
+      [219, 40],
+      // Right half — darker shade.
+      [220, 40],
+      [221, 40],
+      [222, 40],
+      // Edges — cyan backdrop.
+      [216, 40],
+      [223, 40],
+      [50, 40],
+      [10, 10],
+    ],
+  },
+  // #419: `inset` for a vertical rule paints like `ridge` in Chrome 156 —
+  // left half light, right half dark.
+  {
+    id: "multicol-rule-inset-6px",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:6px inset #884400">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left half — lighter shade.
+      [217, 40],
+      [218, 40],
+      [219, 40],
+      // Right half — darker shade.
+      [220, 40],
+      [221, 40],
+      [222, 40],
+      [216, 40],
+      [223, 40],
+      [50, 40],
+      [10, 10],
+    ],
+  },
+  // #419: `outset` for a vertical rule paints like `groove` in Chrome 156 —
+  // left half dark, right half light.
+  {
+    id: "multicol-rule-outset-6px",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:6px outset #884400">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left half — darker shade.
+      [217, 40],
+      [218, 40],
+      [219, 40],
+      // Right half — lighter shade.
+      [220, 40],
+      [221, 40],
+      [222, 40],
+      [216, 40],
+      [223, 40],
+      [50, 40],
+      [10, 10],
+    ],
+  },
+  // #419: `groove` at 4 px — Chrome still halves the rule. Content-box
+  // 20..420, gap 210..230 centre 220, rule 4px at 218..222: pixels
+  // 218..219 dark, 220..221 light.
+  {
+    id: "multicol-rule-groove-4px",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:20px;column-rule:4px groove #884400">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left half — darker shade.
+      [218, 40],
+      [219, 40],
+      // Right half — lighter shade.
+      [220, 40],
+      [221, 40],
+      [50, 40],
+      [10, 10],
+    ],
+  },
   // #457: thin 2px solid yellow with a 6 px gap — aligned so the rule
   // sits on an integer pixel boundary (col-width 197, col0 20..217,
   // gap 217..223 centre 220, rule 2px at 219..221 → pixel 220 fully

@@ -274,8 +274,10 @@ package or publish workflow.
   gap (Blink's multicol painter never paints outside the gap), height = the balanced
   column content height; `currentcolor` resolves to the container's `color`. Painted
   by turbo-dom-raster for styles `none` / `solid` / `dotted` / `dashed` / `double`
-  (raster `multicol_rule_chrome156.json`); `groove` / `ridge` / `inset` / `outset` are
-  deferred. Since turbo-dom#398 PR-E a child with `column-span: all` breaks the
+  and — since turbo-dom#419 — `groove` / `ridge` / `inset` / `outset` as two
+  equal-width shaded halves of the rule's inline axis (`groove`/`outset` =
+  left dark + right light, `ridge`/`inset` swap them) via
+  `layout::value::border_style_colour` (raster `multicol_rule_chrome156.json`). Since turbo-dom#398 PR-E a child with `column-span: all` breaks the
   flow: pre-span and post-span runs each become their own sub-flow balanced
   over `used_count` columns, and the span-all child places at the
   container's full content inline size (CSS Multicol 1 §6). `column-span: all`
