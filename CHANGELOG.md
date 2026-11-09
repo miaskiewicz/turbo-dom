@@ -9,6 +9,19 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-layout break-before/after/inside: column**: `break_rule_of` in
+  `layout/value.rs` collapsed `page` / `column` / `left` / `right` / `recto` /
+  `verso` into a single `BreakRule::Page`, so `break-before: column` reached
+  the paginator as a page break (turbo-html2pdf PR #69). `BreakRule` gains
+  `Column` and `AvoidColumn` variants; the parser now routes `column` to
+  `Column`, `avoid-column` to `AvoidColumn`, and leaves `avoid` / `avoid-page`
+  as `Avoid` (page-class) and the pagination side keywords as `Page` — so
+  `BreakMeta.break_before` / `break_after` carry the correct class to the
+  paginator and the multicol flow reads the same parser (`kid_flags`). This
+  unblocks turbo-html2pdf PR #69 HIGH-2 (column vs page break parity with
+  Chrome 156). `region` / `avoid-region` stay rejected (v0.8.2 follow-up
+  #422). Table-row break merging promotes `Column` and `AvoidColumn` the
+  same way the row rule merges `Page` and `Avoid` (CSS Fragmentation 3 §3.1).
 - **turbo-dom-browser-env event dispatch (#423)**: per-level `composedPath()`
   on a non-Node EventTarget is now immutable. `record.path` is frozen at
   every `invokeAt` and at the dispatch init/finally boundaries, and

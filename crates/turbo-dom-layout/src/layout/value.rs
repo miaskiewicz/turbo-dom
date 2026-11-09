@@ -128,13 +128,26 @@ pub enum VAlign {
     Bottom,
 }
 
-/// CSS fragmentation rule (`break-before`/`break-after`/`break-inside`).
+/// CSS fragmentation rule (`break-before`/`break-after`/`break-inside`;
+/// CSS Fragmentation 3 §3). The paginator reads `Page`/`Avoid` for page-class
+/// breaks; the multicol flow (`layout::multicol`) reads `Column`/`AvoidColumn`
+/// for column-class breaks. `Avoid` is the backward-compat spelling for
+/// `avoid` / `avoid-page` (§3.2 "avoid"): with no explicit `avoid-column`,
+/// a plain `avoid` forbids any break at this boundary, so multicol treats it
+/// as a column-avoid too (miaskiewicz/turbo-dom#398 PR-E's `kid_flags`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BreakRule {
     #[default]
     Auto,
+    /// `avoid` / `avoid-page`: forbid a page break at this boundary.
     Avoid,
+    /// `avoid-column`: forbid a column break at this boundary.
+    AvoidColumn,
+    /// `page` / `left` / `right` / `recto` / `verso` (and legacy
+    /// `page-break-*: always|left|right`): force a page break here.
     Page,
+    /// `column`: force a column break here.
+    Column,
 }
 
 /// An RGBA color, 8 bits per channel.
@@ -1601,15 +1614,21 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
 
 /// A `break-before` / `break-after` value, falling back to its legacy
 /// `page-break-*` alias when the standard property is unset (CSS Fragmentation 3
-/// §3.4). Chrome 156 forces a page break for `page`, `column`, `left`, `right`,
-/// `recto` and `verso` (it prints no blank page for the side values), and for the
-/// legacy `always`/`left`/`right`; the Fragmentation 4 `always` it does not support
-/// (miaskiewicz/turbo-dom#204). Keywords are ASCII case-insensitive.
+/// §3.4). Chrome 156 forces a page break for `page`, `left`, `right`, `recto`
+/// and `verso` (no blank page for the side values), a column break for `column`,
+/// and page breaks for the legacy `always` / `left` / `right`; the Fragmentation
+/// 4 `always` is not supported (miaskiewicz/turbo-dom#204). Column and page
+/// classes stay distinct so the paginator (turbo-html2pdf) and the multicol
+/// flow each honor their own (turbo-html2pdf#69 — the paginator must not treat
+/// `break-{before,after}: column` as a page break). Keywords are ASCII
+/// case-insensitive. `region` / `avoid-region` stay rejected (not implemented).
 pub(super) fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     if let Some(v) = s.get(prop) {
         return match v.trim().to_ascii_lowercase().as_str() {
             "avoid" | "avoid-page" => BreakRule::Avoid,
-            "page" | "column" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            "avoid-column" => BreakRule::AvoidColumn,
+            "page" | "left" | "right" | "recto" | "verso" => BreakRule::Page,
+            "column" => BreakRule::Column,
             _ => BreakRule::Auto,
         };
     }

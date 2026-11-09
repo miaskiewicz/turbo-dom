@@ -53,7 +53,10 @@
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
 use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
-use super::value::{parse_color, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, Rgba};
+use super::value::{
+    break_rule_of, parse_color, parse_px, BoxSizing, BoxStyle, BreakRule, LengthPct, ResolveCtx,
+    Rgba,
+};
 use crate::style::ComputedStyle;
 
 /// CSS Multicol 1 §5.1: `column-gap: normal` is `1em`. Chrome 156 uses the font
@@ -258,31 +261,37 @@ struct KidFlags {
 /// Read the flags of one kid's computed style. Keywords are ASCII
 /// case-insensitive (CSS 2.2 §4.1.1). `column-span: all` is the only non-
 /// `none` value; `break-{before,after}: column` is the forced column break
-/// (`page` / `left` / `right` / `recto` / `verso` are pagination's concern,
-/// left as a no-op here); `break-inside: avoid` and `avoid-column` are the
-/// same thing for multicol ("avoid any break inside this box" implies no
-/// column break either).
+/// read through the shared [`break_rule_of`] parser so the paginator and the
+/// multicol flow see the same rule set (`page` / `left` / `right` / `recto` /
+/// `verso` are pagination's concern, left as a no-op here; turbo-html2pdf#69).
+/// `break-inside` is read from the raw value: bare `avoid` and `avoid-column`
+/// both forbid a column break ("avoid any break inside this box" implies no
+/// column break), while `avoid-page` is pagination-only and does NOT suppress
+/// a column break — `break_rule_of` collapses `avoid` / `avoid-page` into one
+/// [`BreakRule::Avoid`] so it cannot tell them apart here (`AvoidColumn` is
+/// its own variant and is read through the parser).
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
     KidFlags {
         column_span_all: keyword_eq(style, "column-span", "all"),
-        break_before_column: keyword_eq(style, "break-before", "column"),
-        break_after_column: keyword_eq(style, "break-after", "column"),
+        break_before_column: matches!(break_rule_of(style, "break-before"), BreakRule::Column),
+        break_after_column: matches!(break_rule_of(style, "break-after"), BreakRule::Column),
         break_inside_avoid: keyword_in(style, "break-inside", &["avoid", "avoid-column"]),
     }
 }
 
 /// Trim-and-ASCII-lowercase compare one keyword value: the way the cascade's
 /// shorthands expand a longhand with surrounding whitespace and the way
-/// `break-*` / `column-span` are specified (`all`, `column`, `avoid`,
-/// `avoid-column`, …).
+/// `column-span` is specified (`all`).
 fn keyword_eq(style: &ComputedStyle, prop: &str, want: &str) -> bool {
     style
         .get(prop)
         .is_some_and(|v| v.trim().eq_ignore_ascii_case(want))
 }
 
-/// Same as [`keyword_eq`] but any of a short list of keywords (`break-inside`
-/// accepts both `avoid` and `avoid-column` for the multicol-break purpose).
+/// Same as [`keyword_eq`] but any of a short list of keywords. Used for
+/// `break-inside` on the multicol path where `avoid` and `avoid-page` need to
+/// stay distinct (the shared parser collapses them into `BreakRule::Avoid`,
+/// and only bare `avoid` — not `avoid-page` — is a column-break-avoid).
 fn keyword_in(style: &ComputedStyle, prop: &str, wants: &[&str]) -> bool {
     style.get(prop).is_some_and(|v| {
         let t = v.trim();
@@ -1239,6 +1248,40 @@ mod tests {
         // multicol as `avoid-column`).
         let f = kid_flags(&cs(&[("break-inside", "avoid")]));
         assert!(f.break_inside_avoid);
+    }
+
+    #[test]
+    fn kid_flags_distinguishes_column_from_page_breaks() {
+        // turbo-html2pdf#69. Before the fix `break_rule_of` collapsed
+        // `break-before: column` into `BreakRule::Page`, so the paginator
+        // injected an unwanted page break at every column boundary. The
+        // multicol flow now reads the SAME parser the paginator reads, so a
+        // column break here must stay a column break (it opens a new column,
+        // not a new page) and a page break must NOT be mistaken for one (it
+        // leaves multicol alone — pagination handles it).
+        let col = kid_flags(&cs(&[("break-before", "column")]));
+        assert!(col.break_before_column, "break-before:column → column break");
+        let page = kid_flags(&cs(&[("break-before", "page")]));
+        assert!(
+            !page.break_before_column,
+            "break-before:page must NOT be a column break (it is a page break)"
+        );
+        let col = kid_flags(&cs(&[("break-after", "column")]));
+        assert!(col.break_after_column, "break-after:column → column break");
+        let page = kid_flags(&cs(&[("break-after", "page")]));
+        assert!(
+            !page.break_after_column,
+            "break-after:page must NOT be a column break (it is a page break)"
+        );
+        // `break-inside: avoid-column` is a column-break-avoid in multicol;
+        // `avoid-page` is pagination's concern and stays off here.
+        let avc = kid_flags(&cs(&[("break-inside", "avoid-column")]));
+        assert!(avc.break_inside_avoid, "break-inside:avoid-column → avoid");
+        let avp = kid_flags(&cs(&[("break-inside", "avoid-page")]));
+        assert!(
+            !avp.break_inside_avoid,
+            "break-inside:avoid-page must NOT be a column-break-avoid"
+        );
     }
 
     #[test]
