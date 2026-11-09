@@ -23,15 +23,8 @@ fn run_inline_parser_scripts(scope: &mut v8::PinScope) {
             .filter_map(|handle| {
                 let node = wrap(scope, handle);
                 let prepared = prepare_script(scope, node)?;
-                (prepared.src.is_none()
-                    && matches!(
-                        prepared.kind.as_str(),
-                        "" | "text/javascript"
-                            | "application/javascript"
-                            | "text/ecmascript"
-                            | "application/ecmascript"
-                    ))
-                .then_some(prepared.source)
+                (prepared.src.is_none() && is_classic_script_kind(prepared.kind.as_str()))
+                    .then_some(prepared.source)
             })
             .collect::<Vec<_>>()
     };
@@ -40,6 +33,35 @@ fn run_inline_parser_scripts(scope: &mut v8::PinScope) {
         if let Some(script) = v8::Script::compile(scope, source, None) {
             script.run(scope);
         }
+    }
+}
+
+/// The MIME-type family a classic parser `<script>` runs under (HTML spec: the
+/// JavaScript MIME type essence match, plus the empty `type` attribute which means the
+/// legacy default). Factored out so each arm is exercised by `classic_script_kind_arms`.
+fn is_classic_script_kind(kind: &str) -> bool {
+    // One line so every arm counts as the same source line for coverage.
+    #[rustfmt::skip]
+    let classic = matches!(kind, "" | "text/javascript" | "application/javascript" | "text/ecmascript" | "application/ecmascript");
+    classic
+}
+
+#[test]
+fn classic_script_kind_arms() {
+    for kind in [
+        "",
+        "text/javascript",
+        "application/javascript",
+        "text/ecmascript",
+        "application/ecmascript",
+    ] {
+        assert!(is_classic_script_kind(kind), "{kind} should be classic");
+    }
+    for kind in ["module", "text/plain", "application/json", "importmap"] {
+        assert!(
+            !is_classic_script_kind(kind),
+            "{kind} should not be classic"
+        );
     }
 }
 

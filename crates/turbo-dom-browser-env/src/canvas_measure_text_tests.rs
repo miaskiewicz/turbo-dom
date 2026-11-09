@@ -53,6 +53,19 @@ fn compare(label: &str, keys: &[Value], actual: &Value, expected: &Value, out: &
     }
 }
 
+#[test]
+fn compare_records_a_mismatch() {
+    let mut out = Vec::new();
+    compare(
+        "unit",
+        &[Value::String("width".into())],
+        &Value::Array(vec![serde_json::json!(1.0)]),
+        &Value::Array(vec![serde_json::json!(2.0)]),
+        &mut out,
+    );
+    assert_eq!(out, vec!["unit \"width\": got 1.0, Chrome 2.0".to_string()]);
+}
+
 /// Width (Blink's word-by-word 16.16 advances), the ink box, the font box, and the
 /// baselines for each canvas `font`, then the textAlign / textBaseline offsets; the
 /// `emHeight*` fields are not exposed by Chrome 156 (undefined).

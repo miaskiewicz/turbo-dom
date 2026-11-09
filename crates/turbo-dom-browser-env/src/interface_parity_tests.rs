@@ -76,11 +76,10 @@ pub(super) fn run_probe_with(probe: &str, cases: &[u8], setup: &str) -> serde_js
     let step = v8::Script::compile(scope, step, None).unwrap();
     while promise.state() == v8::PromiseState::Pending {
         scope.perform_microtask_checkpoint();
-        if promise.state() != v8::PromiseState::Pending {
-            break;
+        if promise.state() == v8::PromiseState::Pending {
+            let ran = step.run(scope).expect("a task does not throw");
+            assert!(ran.is_true(), "the probe waits on nothing");
         }
-        let ran = step.run(scope).expect("a task does not throw");
-        assert!(ran.is_true(), "the probe waits on nothing");
     }
     let value = promise.result(scope).to_rust_string_lossy(scope);
     assert_eq!(promise.state(), v8::PromiseState::Fulfilled, "{value}");
