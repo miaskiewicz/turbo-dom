@@ -1047,8 +1047,7 @@ fn collect_path_fires_at_9999_hops_and_throws_at_10001_hops() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result,
-        r#"{"deepSaw":true,"below":9999,"overError":"TypeError","over":10001}"#,
+        result, r#"{"deepSaw":true,"below":9999,"overError":"TypeError","over":10001}"#,
         "9 999-hop chain fires deepest listener; 10 001-hop chain throws TypeError",
     );
     reset();
