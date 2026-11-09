@@ -99,11 +99,14 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
     // `select` / `textarea` here default to `inline-block`; `input[type=hidden]`
     // is attribute-driven and handled per-element at the call site (see
     // `live::style`).
+    // Chrome 156: `summary { display: list-item; counter-increment: list-item 0;
+    //                        list-style: disclosure-closed inside }` — the
+    // disclosure triangle for `<details>` paints only when summary is a
+    // list-item. Groups with the same default land on one arm each (the
+    // match-same-arms lint folds them for us); the specific keyword lives
+    // in the branch name so a future reader can grep for it.
     match tag {
-        "li" => Some("list-item"),
-        // Chrome 156: `summary { display: list-item; counter-increment: list-item 0;
-        //                        list-style: disclosure-closed inside }`.
-        "summary" => Some("list-item"),
+        "li" | "summary" => Some("list-item"),
         "table" => Some("table"),
         "thead" => Some("table-header-group"),
         "tbody" => Some("table-row-group"),
@@ -113,17 +116,22 @@ pub fn html_default_display(tag: &str) -> Option<&'static str> {
         "td" | "th" => Some("table-cell"),
         "colgroup" => Some("table-column-group"),
         "col" => Some("table-column"),
-        "input" | "textarea" | "select" | "button" | "progress" | "meter" => Some("inline-block"),
-        "template" | "datalist" => Some("none"),
-        "marquee" => Some("inline-block"),
+        // Form controls + `<marquee>` share `inline-block` as the honest
+        // default; `<marquee>` is grouped here so clippy's match-same-arms
+        // is clean.
+        "input" | "textarea" | "select" | "button" | "progress" | "meter" | "marquee" => {
+            Some("inline-block")
+        }
+        // Hidden-by-default tags.
+        "template" | "datalist" | "rp" => Some("none"),
         "slot" => Some("contents"),
         // Ruby family (Chrome 156 html.css): the containers render as
-        // ruby-text / ruby-text-container; `<rp>` is `display: none`.
-        // Full ruby layout is a future consumer; the honest fallback still
-        // keeps a width/height inline override applying to the border box.
+        // ruby-text / ruby-text-container; `<rp>` is handled above as
+        // `display: none`. Full ruby layout is a future consumer; the
+        // honest fallback still keeps a width/height inline override
+        // applying to the border box.
         "rt" => Some("ruby-text"),
         "rtc" => Some("ruby-text-container"),
-        "rp" => Some("none"),
         _ => None,
     }
 }

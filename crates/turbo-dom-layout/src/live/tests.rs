@@ -659,7 +659,7 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
     let overrides: Vec<(Handle, &str)> = handles.iter().map(|(_, h, _)| (*h, decl)).collect();
     // Pull every target's resolved style back through the StyledNode tree hook.
     let targets: Vec<Handle> = handles.iter().map(|(_, h, _)| *h).collect();
-    let (snapshot, styles) = styled
+    let (snapshot, resolved) = styled
         .run(&[], &overrides, &|_| Ok(0), |nodes| {
             let mut out = Vec::new();
             for h in &targets {
@@ -669,7 +669,7 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
             Ok(out)
         })
         .unwrap();
-    for ((id, h, want), style) in handles.iter().zip(styles.iter()) {
+    for ((id, h, want), style) in handles.iter().zip(resolved.iter()) {
         // R2 M5: the Display variant must be exactly what the Chrome keyword
         // resolved to — a regression that drops the match arm for a new
         // `table-*` keyword would re-land on Block and fail loudly here.
@@ -700,7 +700,7 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
 }
 
 /// Review R2 layout H1: Chrome's UA has `input[type=hidden] { display: none }`.
-/// ensure_default_display is tag-only and gave every `<input>` `inline-block`,
+/// `ensure_default_display` is tag-only and gave every `<input>` `inline-block`,
 /// so a surf-level `<input type=hidden>` under the live-input path (no UA
 /// origin) rendered its default text-field box. Honour the attribute.
 #[test]
@@ -718,7 +718,7 @@ fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
         .iter()
         .map(|id| styled.el(id))
         .collect();
-    let (_, styles) = styled
+    let (_, resolved) = styled
         .run(&[], &[], &|_| Ok(0), |nodes| {
             let mut out = Vec::new();
             for h in &targets {
@@ -727,19 +727,19 @@ fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
             Ok(out)
         })
         .unwrap();
-    assert_eq!(display_of(&styles[0]), Display::InlineBlock, "input: plain");
+    assert_eq!(display_of(&resolved[0]), Display::InlineBlock, "input: plain");
     assert_eq!(
-        display_of(&styles[1]),
+        display_of(&resolved[1]),
         Display::None,
         "input[type=hidden]: display must be none"
     );
     assert_eq!(
-        display_of(&styles[2]),
+        display_of(&resolved[2]),
         Display::None,
         "input[TYPE=Hidden]: attribute match is case-insensitive"
     );
     assert_eq!(
-        display_of(&styles[3]),
+        display_of(&resolved[3]),
         Display::InlineBlock,
         "input[type=text]: unchanged"
     );

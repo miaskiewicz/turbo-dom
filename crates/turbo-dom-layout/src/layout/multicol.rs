@@ -1627,14 +1627,19 @@ mod tests {
         // 410.65625`. End-align formula gives `600 - 189.328125 =
         // 410.671875` — Chrome's actual column-2 x. The fix must land on
         // 410.671875, not 410.65625.
+        // used_width = 12117 / 64 (Chrome 1/64 px grid, exactly representable
+        // in f32). Division keeps clippy's excessive-precision lint happy.
+        let used_width: f32 = 12117.0 / 64.0;
         let p = [ColPiece {
             col_index: 2,
             y: 0.0,
             height: 50.0,
         }];
-        let got = place_measured(bx(189.328125, 50.0), &p, (3, 189.328125, 16.0), 600.0, 0.0, 0.0);
+        let got = place_measured(bx(used_width, 50.0), &p, (3, used_width, 16.0), 600.0, 0.0, 0.0);
+        // Chrome's actual column-2 x: 600 - 12117/64 = 410.671875.
+        let want_last = 600.0 - used_width;
         assert!(
-            (got.x - 410.671875).abs() < 1e-5,
+            (got.x - want_last).abs() < 1e-5,
             "last column must end-align to cw - used_width (got {})",
             got.x
         );
@@ -1644,9 +1649,11 @@ mod tests {
             y: 0.0,
             height: 50.0,
         }];
-        let got = place_measured(bx(189.328125, 50.0), &p, (3, 189.328125, 16.0), 600.0, 0.0, 0.0);
+        let got = place_measured(bx(used_width, 50.0), &p, (3, used_width, 16.0), 600.0, 0.0, 0.0);
+        // Column 1: 0 + 1 * (used_width + 16) = used_width + 16.
+        let want_col1 = used_width + 16.0;
         assert!(
-            (got.x - 205.328125).abs() < 1e-5,
+            (got.x - want_col1).abs() < 1e-5,
             "non-last column uses stride (got {})",
             got.x
         );
