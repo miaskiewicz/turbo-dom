@@ -14,6 +14,7 @@ use turbo_dom_layout::{
 };
 
 use crate::image_paint::{self, DecodedAssets};
+use crate::paint_png::fragment_finite_positive;
 use crate::rrect::{self, Seg};
 use crate::tile_cell::TileCell;
 
@@ -361,6 +362,9 @@ const MAX_LISTED_TILES: usize = 4096;
 /// off the pixel grid) are written one by one when there are at most
 /// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
 fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let area = (f.x, f.y, f.width, f.height);
     let Some(first) = pattern.tiles(area).next() else {
         return;
@@ -535,6 +539,9 @@ fn paint_image(
     placement: &turbo_dom_layout::ImagePlacement,
     images: &DecodedAssets,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let decoded = images.get(&placement.name);
     let key = decoded.map(|img| {
         let size = (f.width.to_bits(), f.height.to_bits());
@@ -625,6 +632,9 @@ fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
 /// edge). `blur` 0 emits an unfiltered offset rect. The filter id is the document
 /// offset, unique (round-1 review of 0.7.0, finding 8: it was the box origin).
 fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, sh: &BoxShadow) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let spread = sh.spread as f32;
     let x = f.x + sh.offset_x as f32 - spread;
     let y = f.y + sh.offset_y as f32 - spread;
@@ -664,6 +674,9 @@ fn paint_inset_shadow(
     border_radius: &BorderRadii,
     shadow: Option<&BoxShadow>,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
@@ -718,7 +731,12 @@ fn paint_inset_shadow(
 /// box rect (rounded by `border_radius`). The gradient id is the document offset,
 /// unique.
 fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g: &CssGradient) {
-    if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
+    if !fragment_finite_positive(f)
+        || f.width < 0.5
+        || f.height < 0.5
+        || g.stops.len() < 2
+        || g.stops.iter().any(|s| !s.pos.is_finite())
+    {
         return;
     }
     let (w, h) = (f.width, f.height);
@@ -775,6 +793,9 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let side = |s: &BorderSide| {
         s.color
             .filter(|_| s.width > 0)
@@ -814,6 +835,9 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
 /// when every painted side has one colour, else each side's part of it through a
 /// `<clipPath>` of its region ([`rrect::side_region`]). Clip ids are document offsets.
 fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &BorderRadii) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let rect = (f.x, f.y, f.width, f.height);
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut d = path_data(&rrect::outline(rect, radii));
@@ -2094,6 +2118,159 @@ mod tests {
                 svg.matches(&format!("url(#{id})")).count(),
                 1,
                 "{id}: {svg}"
+            );
+        }
+    }
+
+    // v0.8.2 R2 M1: every public SVG painter that reads `f.width` / `f.height`
+    // must no-op on a non-finite fragment. Unlike the raster side (where
+    // tiny-skia's own `Rect::from_xywh` rejects NaN / Inf), the SVG painter
+    // formats coordinates directly into attributes — a non-finite size would
+    // emit `width="NaN"` / `x="NaN"` / `cx="NaN"` into the document, which
+    // is why this guard is load-bearing on the SVG path. Call each painter
+    // with NaN / Infinity width (and height) and assert nothing emitted.
+    #[test]
+    fn non_rule_svg_painters_are_a_no_op_on_non_finite_fragments() {
+        let mk = |w: f32, h: f32| {
+            Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                w,
+                h,
+                FragmentContent::Marker(MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            )
+        };
+        let placement = ImagePlacement {
+            name: "missing".to_string(),
+            intrinsic_w: 4,
+            intrinsic_h: 4,
+            has_alpha: true,
+            tint: None,
+            orientation: Orientation::IDENTITY,
+        };
+        let border = BorderEdges {
+            top: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            right: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            bottom: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            left: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+        };
+        let shadow_cfg = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: RED,
+            inset: false,
+        };
+        let inset_shadow_cfg = BoxShadow {
+            inset: true,
+            ..shadow_cfg
+        };
+        let gradient = CssGradient {
+            angle_deg: 0.0,
+            stops: vec![
+                GradientStop {
+                    color: RED,
+                    pos: 0.0,
+                },
+                GradientStop {
+                    color: WHITE,
+                    pos: 1.0,
+                },
+            ],
+        };
+        let pattern = turbo_dom_layout::TilePattern {
+            tile: Box::new(FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: false,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 1.0,
+            tile_height: 1.0,
+            step_x: 1.0,
+            step_y: 1.0,
+        };
+        let radii = BorderRadii::uniform(2.0);
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [mk(bad, 4.0), mk(4.0, bad)] {
+                let mut buf = String::new();
+                let images = HashMap::new();
+                paint_image(&mut buf, &f, &placement, &images);
+                paint_border(&mut buf, &f, &border);
+                paint_box_shadow(&mut buf, &f, &BorderRadii::ZERO, &shadow_cfg);
+                paint_inset_shadow(
+                    &mut buf,
+                    &f,
+                    &border,
+                    &BorderRadii::ZERO,
+                    Some(&inset_shadow_cfg),
+                );
+                paint_gradient(&mut buf, &f, &BorderRadii::ZERO, &gradient);
+                paint_round_border(&mut buf, &f, &border, &radii);
+                paint_tiles(&mut buf, &f, &pattern, &images);
+                assert!(
+                    buf.is_empty(),
+                    "non-finite ({bad}) size {}x{} must emit no markup, got: {buf}",
+                    f.width,
+                    f.height
+                );
+            }
+        }
+    }
+
+    // v0.8.2 R2 M1: `paint_gradient` additionally rejects a gradient whose
+    // stops include a non-finite position. Without it a `NaN` / `Infinity`
+    // would reach the `<stop offset="…"/>` serializer and produce
+    // `offset="NaN"` in the document.
+    #[test]
+    fn paint_gradient_svg_rejects_non_finite_stop_positions() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut buf = String::new();
+            let gradient = CssGradient {
+                angle_deg: 0.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: bad,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            };
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                10.0,
+                10.0,
+                FragmentContent::Marker(MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            );
+            paint_gradient(&mut buf, &f, &BorderRadii::ZERO, &gradient);
+            assert!(
+                buf.is_empty(),
+                "non-finite ({bad}) stop position must emit no markup, got: {buf}"
             );
         }
     }

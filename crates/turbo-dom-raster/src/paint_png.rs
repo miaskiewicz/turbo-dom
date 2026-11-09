@@ -29,6 +29,21 @@ const IMAGE_PLACEHOLDER: Rgba = Rgba {
     a: 255,
 };
 
+/// Shared painter guard (v0.8.2 R2 M1, extending R1's column-rule guards to every
+/// painter): reject a fragment whose size is not finite and positive. A `NaN` or
+/// `Infinity` width / height slips past `w <= 0.0` (every `NaN` comparison is
+/// false and `Infinity > 0.0`); tiny-skia's own `Rect::from_xywh` + `PathBuilder`
+/// contracts silently no-op on non-finite inputs in most paths, but relying on
+/// a 3rd-party contract leaves `paint_box_shadow`'s `sw = f.width + 2.0 * spread`
+/// → `Inf + Inf = Inf` / `-Inf + Inf = NaN` and the SVG painter (which formats
+/// coordinates directly into attributes) emitting `width="NaN"` / `x="NaN"` into
+/// the document. Every public-entry painter that reads `f.width` / `f.height`
+/// calls this first.
+#[inline]
+pub(crate) fn fragment_finite_positive(f: &Fragment) -> bool {
+    f.width.is_finite() && f.height.is_finite() && f.width > 0.0 && f.height > 0.0
+}
+
 /// Paint `galley` into a `width × height` PNG over a `bg` canvas fill (the
 /// propagated root/body background). `Err` only on a zero/oversized canvas or a
 /// PNG-encode failure.
@@ -623,6 +638,9 @@ fn paint_tiles(
     images: &DecodedAssets,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(region) = visible_region(f, xf, (pm.width(), pm.height())) else {
         return;
     };
@@ -914,6 +932,9 @@ fn paint_image(
     images: &DecodedAssets,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly.
@@ -1013,6 +1034,9 @@ fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Trans
 /// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
 /// right bands first, then the top and bottom ones mitred on the corner diagonals.
 fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let side = |s: &BorderSide| {
         s.color
             .filter(|_| s.width > 0)
@@ -1104,6 +1128,9 @@ fn paint_box_shadow(
     sh: &BoxShadow,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let spread = sh.spread as f32;
     let sx = f.x + sh.offset_x as f32 - spread;
     let sy = f.y + sh.offset_y as f32 - spread;
@@ -1141,6 +1168,9 @@ fn paint_inset_shadow(
     shadow: Option<&BoxShadow>,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
@@ -1360,7 +1390,12 @@ fn paint_gradient(
     g: &CssGradient,
     xf: Transform,
 ) {
-    if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
+    if !fragment_finite_positive(f)
+        || f.width < 0.5
+        || f.height < 0.5
+        || g.stops.len() < 2
+        || g.stops.iter().any(|s| !s.pos.is_finite())
+    {
         return;
     }
     let (w, h) = (f.width, f.height);
@@ -1464,6 +1499,9 @@ fn paint_round_border(
     radii: &BorderRadii,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let rect = (f.x, f.y, f.width, f.height);
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut ring = PathBuilder::new();
@@ -3512,5 +3550,208 @@ mod exact_tests {
             (10..30).any(|x| (10..20).any(|y| got.pixel(x, y).unwrap().red() < 128)),
             "the glyphs paint inside the region"
         );
+    }
+
+    // v0.8.2 R2 M1: the shared `fragment_finite_positive` guard the non-rule
+    // painters all call. A mutation that weakens any of its four clauses
+    // (`is_finite` on width / height, `> 0.0` on width / height) would let a
+    // non-finite or non-positive fragment through, so pin each clause here
+    // independently of the painter tests below.
+    #[test]
+    fn fragment_finite_positive_rejects_non_finite_and_non_positive_sizes() {
+        let ok = Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            4.0,
+            8.0,
+            FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                id: 1,
+                inline: false,
+            }),
+        );
+        assert!(fragment_finite_positive(&ok));
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut f = ok.clone();
+            f.width = bad;
+            assert!(!fragment_finite_positive(&f), "non-finite width ({bad})");
+            let mut f = ok.clone();
+            f.height = bad;
+            assert!(!fragment_finite_positive(&f), "non-finite height ({bad})");
+        }
+        for &non_positive in &[0.0_f32, -1.0_f32, -0.0_f32] {
+            let mut f = ok.clone();
+            f.width = non_positive;
+            assert!(
+                !fragment_finite_positive(&f),
+                "non-positive width ({non_positive})"
+            );
+            let mut f = ok.clone();
+            f.height = non_positive;
+            assert!(
+                !fragment_finite_positive(&f),
+                "non-positive height ({non_positive})"
+            );
+        }
+    }
+
+    // v0.8.2 R2 M1: every public painter that reads `f.width` / `f.height`
+    // must no-op on a non-finite fragment. tiny-skia's own
+    // `Rect::from_xywh` / `PathBuilder` silently reject NaN / Inf inputs in
+    // most paths, but `paint_box_shadow` computes `sw = f.width + 2 * spread`
+    // (`Inf + Inf = Inf`, `-Inf + Inf = NaN`) before any tiny-skia call, and
+    // we don't want to lean on a 3rd-party contract. Call each painter
+    // directly with NaN / Infinity width (and height) and assert nothing
+    // painted.
+    #[test]
+    fn non_rule_painters_are_a_no_op_on_non_finite_fragments() {
+        use turbo_dom_layout::image::Orientation;
+        let id = Transform::identity();
+        let mk = |w: f32, h: f32| {
+            Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                w,
+                h,
+                FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            )
+        };
+        let placement = turbo_dom_layout::ImagePlacement {
+            name: "missing".to_string(),
+            intrinsic_w: 4,
+            intrinsic_h: 4,
+            has_alpha: true,
+            tint: None,
+            orientation: Orientation::IDENTITY,
+        };
+        let border = BorderEdges {
+            top: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            right: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            bottom: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            left: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+        };
+        let shadow_cfg = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: BLUE,
+            inset: false,
+        };
+        let inset_shadow = BoxShadow {
+            inset: true,
+            ..shadow_cfg
+        };
+        let gradient = CssGradient {
+            angle_deg: 0.0,
+            stops: vec![
+                GradientStop {
+                    color: RED,
+                    pos: 0.0,
+                },
+                GradientStop {
+                    color: BLUE,
+                    pos: 1.0,
+                },
+            ],
+        };
+        let pattern = TilePattern {
+            tile: Box::new(FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                id: 1,
+                inline: false,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 1.0,
+            tile_height: 1.0,
+            step_x: 1.0,
+            step_y: 1.0,
+        };
+        let radii = BorderRadii::uniform(2.0);
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [mk(bad, 4.0), mk(4.0, bad)] {
+                let mut pm = white(20, 20);
+                let images = HashMap::new();
+                paint_image(&mut pm, &f, &placement, &images, id);
+                paint_border(&mut pm, &f, &border, id);
+                paint_box_shadow(&mut pm, &f, &BorderRadii::ZERO, &shadow_cfg, id);
+                paint_inset_shadow(
+                    &mut pm,
+                    &f,
+                    &border,
+                    &BorderRadii::ZERO,
+                    Some(&inset_shadow),
+                    id,
+                );
+                paint_gradient(&mut pm, &f, &BorderRadii::ZERO, &gradient, id);
+                paint_round_border(&mut pm, &f, &border, &radii, id);
+                paint_tiles(&mut pm, &f, &pattern, &images, id);
+                assert!(
+                    is_blank(&pm),
+                    "non-finite ({bad}) size {}x{} must paint nothing",
+                    f.width,
+                    f.height
+                );
+            }
+        }
+    }
+
+    // v0.8.2 R2 M1: `paint_gradient` additionally rejects a gradient whose
+    // stops include a non-finite position, matching the painter's documented
+    // contract (a `NaN` / `Infinity` `pos` would round-trip through `clamp`
+    // or feed tiny-skia's `GradientStop::new` an undefined offset). The
+    // outer finite-size guard is already covered above; this test pins the
+    // stop-position clause specifically.
+    #[test]
+    fn paint_gradient_rejects_non_finite_stop_positions() {
+        let id = Transform::identity();
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut pm = white(20, 20);
+            let gradient = CssGradient {
+                angle_deg: 0.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: bad,
+                    },
+                    GradientStop {
+                        color: BLUE,
+                        pos: 1.0,
+                    },
+                ],
+            };
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                10.0,
+                10.0,
+                FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            );
+            paint_gradient(&mut pm, &f, &BorderRadii::ZERO, &gradient, id);
+            assert!(
+                is_blank(&pm),
+                "non-finite ({bad}) stop position must paint nothing"
+            );
+        }
     }
 }
