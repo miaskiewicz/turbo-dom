@@ -109,15 +109,30 @@ function tokReadUrlEscape(text, state) {
   if (state.i < n) { const value = text[state.i]; state.i++; return value; }
   return '\ufffd';
 }
+// Handle a single body char `d` at state.i: either append-decoded text or return a
+// terminating/error result (`stop: true` ends the loop; `err: true` rejects the url).
+function tokReadUrlBodyStep(text, state, n, d) {
+  if (/\s/.test(d)) {
+    while (state.i < n && /\s/.test(text[state.i])) state.i++;
+    if (state.i < n && text[state.i] !== ')') return { err: true };
+    return { stop: true };
+  }
+  if (d === '"' || d === "'" || d === '(') return { err: true };
+  if (d === '\\') {
+    const escaped = tokReadUrlEscape(text, state);
+    return escaped === null ? { err: true } : { add: escaped };
+  }
+  state.i++;
+  return { add: d };
+}
 function tokReadUrlBody(text, state) {
   const n = text.length;
   let value = '';
   while (state.i < n && text[state.i] !== ')') {
-    const d = text[state.i];
-    if (/\s/.test(d)) { while (state.i < n && /\s/.test(text[state.i])) state.i++; if (state.i < n && text[state.i] !== ')') return null; break; }
-    if (d === '"' || d === "'" || d === '(') return null;
-    if (d === '\\') { const escaped = tokReadUrlEscape(text, state); if (escaped === null) return null; value += escaped; continue; }
-    value += d; state.i++;
+    const r = tokReadUrlBodyStep(text, state, n, text[state.i]);
+    if (r.err) return null;
+    if (r.stop) break;
+    value += r.add;
   }
   if (state.i < n) state.i++;
   return { type: 'url', value };
@@ -397,6 +412,17 @@ function argumentsType(inner) {
   }
   return total;
 }
+// The comma-separated legacy syntax: `rgb(r, g, b)` or `rgb(r, g, b, a)`.
+function rgbHslLegacyValid(inner, commasCount) {
+  return (commasCount === 2 || commasCount === 3)
+    && inner.length === 2 * commasCount + 1
+    && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
+}
+// Modern slash-separated or three-channel body.
+function rgbHslModernValid(inner) {
+  const slash = inner.findIndex((c) => c.kind === 'slash');
+  return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
+}
 function rgbHslValid(name, inner) {
   const commasCount = inner.filter((c) => c.kind === 'comma').length;
   // Relative color syntax: `from <color>`, three channels, then `/ alpha`.
@@ -404,9 +430,7 @@ function rgbHslValid(name, inner) {
   // A hue: a number, an angle, `none` (modern syntax) or a math function of those.
   const hue = (c) => c.kind === 'number' || (c.kind === 'dimension' && unitCategory(c.unit) === 2) || (commasCount === 0 && isIdent(c, ['none'])) || (isMath(c) && ['number', 'unit2', 'unknown'].includes(mathType(c)));
   if (name.startsWith('hsl') && inner.length && !hue(inner[0])) return false;
-  if (commasCount) return (commasCount === 2 || commasCount === 3) && inner.length === 2 * commasCount + 1 && inner.every((c, index) => (c.kind === 'comma') === (index % 2 === 1));
-  const slash = inner.findIndex((c) => c.kind === 'slash');
-  return slash < 0 ? inner.length === 3 : slash === 3 && inner.length === 5;
+  return commasCount ? rgbHslLegacyValid(inner, commasCount) : rgbHslModernValid(inner);
 }
 function linearValid(inner) {
   // Each stop: a number output and at most two percentage positions.
@@ -426,14 +450,20 @@ function cubicBezierValid(inner) {
   return args.length === 4 && args.every((arg, index) => arg.length === 1 && arg[0].kind === 'number' && (index % 2 === 1 || (arg[0].value >= 0 && arg[0].value <= 1)));
 }
 const COLOR_FN_NAMES = new Set(['rgb', 'rgba', 'hsl', 'hsla']);
+// `min()` / `max()` / `clamp()` / `abs()` / `sign()`: each with its own arity + argument
+// structure check.
+function mathFunctionValid(name, inner) {
+  if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
+  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
+  return !inner.some(isComma) && checkedSum(inner) !== null;
+}
+const MATH_MULTI_ARG = new Set(['min', 'max', 'clamp', 'abs', 'sign']);
 /**
  * Structural checks Chrome makes before keeping a function.
  */
 function functionValid(name, inner) {
   if (name === 'calc') return checkedSum(inner) !== null;
-  if (name === 'min' || name === 'max') return !argumentsOf(inner).some(isNone) && argumentsType(inner) !== null;
-  if (name === 'clamp') { const args = argumentsOf(inner); return args.length === 3 && !isNone(args[1]) && argumentsType(inner) !== null; }
-  if (name === 'abs' || name === 'sign') return !inner.some(isComma) && checkedSum(inner) !== null;
+  if (MATH_MULTI_ARG.has(name)) return mathFunctionValid(name, inner);
   if (COLOR_FN_NAMES.has(name)) return rgbHslValid(name, inner);
   if (name === 'linear') return linearValid(inner);
   if (name === 'steps') return stepsValid(inner);
@@ -559,11 +589,17 @@ function arcRadii(rest, parts) {
   parts.radii = values.join(' ');
   return values.length && values.length + 1;
 }
+// Map an arc-part keyword to its grouping flag (sweep / size), or null when it is not a flag.
+function arcFlag(word) {
+  if (word === 'cw' || word === 'ccw') return 'sweep';
+  if (word === 'large' || word === 'small') return 'size';
+  return null;
+}
 /** One arc part at the front of `rest` into `parts`: the components it used, or 0. */
 function arcPart(rest, parts) {
   const word = ident(rest[0]);
   if (word === 'of' && parts.radii === undefined) return arcRadii(rest, parts);
-  const flag = (word === 'cw' || word === 'ccw') ? 'sweep' : (word === 'large' || word === 'small') ? 'size' : null;
+  const flag = arcFlag(word);
   if (flag && parts[flag] === undefined) { parts[flag] = word; return 1; }
   if (word === 'rotate' && parts.rotate === undefined && rest[1] && angleStrict(rest[1]) !== null) { parts.rotate = rest[1]; return 2; }
   return 0;
@@ -607,19 +643,25 @@ function shapeCommand(comps) {
   if (text === null || text === undefined) return null;
   return text ? `${name} ${text}` : name;
 }
+// Parse the first item of a `shape()` body: its optional fill rule and `from <position>`.
+// Returns { rule, from } or null when Chrome rejects the head.
+function shapeHead(headIn) {
+  let head = headIn;
+  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
+  if (rule) head = head.slice(1);
+  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
+  return from === null ? null : { rule, from };
+}
 /** A `shape()` function in Chrome's spelling, or null when Chrome rejects it. */
 function shapeText(comp) {
   const items = split(innerOf(comp), isComma);
   // One trailing comma is dropped.
   if (items.length > 2 && !items[items.length - 1].length) items.pop();
-  let head = items[0];
-  const rule = head.length && isIdent(head[0], ['nonzero', 'evenodd']) ? ident(head[0]) : null;
-  if (rule) head = head.slice(1);
-  const from = head.length && isIdent(head[0], ['from']) ? shapePositionText(head.slice(1)) : null;
-  if (from === null || items.length < 2) return null;
-  const parts = [`from ${from}`];
+  const head = shapeHead(items[0]);
+  if (head === null || items.length < 2) return null;
+  const parts = [`from ${head.from}`];
   for (const item of items.slice(1)) { const command = shapeCommand(item); if (command === null) return null; parts.push(command); }
-  return `shape(${rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
+  return `shape(${head.rule === 'evenodd' ? 'evenodd ' : ''}${parts.join(', ')})`;
 }
 /** `shape() || <box>` (`fallback` left out), or null when `comps` hold no valid shape(). */
 function shapeWithBox(comps, boxes, fallback) {
@@ -657,6 +699,14 @@ function treeOperand(comp) {
   if (comp.text.startsWith('calc(')) return treeSum(components(comp.text.slice(5, -1)));
   return { kind: 'function', text: comp.text };
 }
+// Fold one term of a sum (its sign, its expression) into the running literals + rest.
+function treeSumFold(expr, literals, rest, negative) {
+  if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
+  else if (expr.kind === 'sum') {
+    addTerms(literals, expr.literals, negative);
+    for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]);
+  } else rest.push([negative, expr]);
+}
 /** A checked `calc()` sum: operands at even positions, operators between them. */
 function treeSum(comps) {
   const literals = [], rest = [];
@@ -664,10 +714,7 @@ function treeSum(comps) {
   for (let index = 1; index <= comps.length; index += 2) {
     const next = comps[index];
     if (next && !(next.kind === 'delim' && (next.value === '+' || next.value === '-'))) continue;
-    const expr = treeProduct(comps.slice(start, index));
-    if (expr.kind === 'literal') addTerms(literals, expr.terms, negative);
-    else if (expr.kind === 'sum') { addTerms(literals, expr.literals, negative); for (const [minus, term] of expr.rest) rest.push([minus !== negative, term]); }
-    else rest.push([negative, expr]);
+    treeSumFold(treeProduct(comps.slice(start, index)), literals, rest, negative);
     negative = !!next && next.value === '-';
     start = index + 1;
   }
@@ -699,21 +746,28 @@ function treeProduct(comps) {
   return { kind: 'product', coefficient, factors };
 }
 const literalText = (terms) => calcText(terms.map((term) => [...term])).slice(5, -1);
+// Render a tree-counting sum's body (the literal terms plus each signed `rest` term).
+function treeSumBody(expr) {
+  let body = expr.literals.length ? literalText(expr.literals) : '';
+  // The first term is never subtracted.
+  for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
+  return body;
+}
+// Render a tree-counting product's body (the coefficient plus each factor with `*` / `/`).
+function treeProductBody(expr) {
+  const [unit, value] = expr.coefficient;
+  // A unitless 1 is left out before a multiplied factor.
+  let body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
+  for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
+  return body;
+}
 /** `calc()`'s text without the wrapper; `(...)` around a nested sum or product. */
 function treeText(expr, grouped) {
   if (expr.kind === 'function') return expr.text;
   let body;
   if (expr.kind === 'literal') body = literalText(expr.terms);
-  else if (expr.kind === 'sum') {
-    body = expr.literals.length ? literalText(expr.literals) : '';
-    // The first term is never subtracted.
-    for (const [minus, term] of expr.rest) body += (body ? (minus ? ' - ' : ' + ') : '') + treeText(term, true);
-  } else {
-    const [unit, value] = expr.coefficient;
-    // A unitless 1 is left out before a multiplied factor.
-    body = unit === '' && value === 1 && !expr.factors[0][0] ? '' : literalText([[unit, value]]);
-    for (const [divisor, factor] of expr.factors) body += (body ? (divisor ? ' / ' : ' * ') : '') + treeText(factor, true);
-  }
+  else if (expr.kind === 'sum') body = treeSumBody(expr);
+  else body = treeProductBody(expr);
   return grouped ? `(${body})` : body;
 }
 /** `calc(<sum>)` holding a tree-counting function: a lone function without the wrapper. */
@@ -755,41 +809,65 @@ function hexColor(hex) {
   else return null;
   return rgbText(pairs.slice(0, 3), pairs.length > 3 ? pairs[3] / 255 : 1);
 }
-/** `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax. */
-function colorFunction(name, inner) {
-  // functionValid admitted three channels and an optional alpha, or the relative syntax (kept as written).
-  const values = inner.filter((c) => c.kind !== 'comma' && c.kind !== 'slash');
-  if (values.length > 4) return null;
-  const parts = values.slice(0, 3), alphaPart = values[3] ?? null;
+// A channel accessor pair ({num, pct}) over `inner`'s value components. Shared between the
+// alpha reader, rgb-channel reader, and hsl's hue/sat/light readers.
+function colorChannelReaders() {
   // A channel: a literal, `none` (zero) or a math function that computes to one.
   const computed = (c, unit) => {
     if (isIdent(c, ['none'])) return 0;
     const term = mathValue(c);
     return term && term[0] === unit ? term[1] : null;
   };
-  const num = (c) => (c.kind === 'number' ? c.value : computed(c, ''));
-  const pct = (c) => (c.kind === 'percentage' ? c.value : computed(c, '%'));
-  let alpha = 1;
-  if (alphaPart !== null) { const n = num(alphaPart); const p = pct(alphaPart); if (n !== null) alpha = n; else if (p !== null) alpha = p / 100; else return null; }
-  let channels;
-  if (name.startsWith('rgb')) {
-    channels = parts.map((c) => { const n = num(c); if (n !== null) return n; const p = pct(c); return p === null ? null : p * 2.55; });
-    if (channels.some((c) => c === null)) return null;
-  } else {
-    const h = parts[0];
-    let hue;
-    const turns = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
-    // functionValid admitted a number, an angle, `none` or a math function hue.
-    if (h.kind === 'number') hue = h.value; else if (h.kind === 'dimension') hue = h.value * turns[h.unit]; else hue = computed(h, '') ?? computed(h, 'deg');
-    if (hue === null) return null;
-    const sat = pct(parts[1]), light = pct(parts[2]);
-    if (sat === null || light === null) return null;
-    const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
-    const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
-    const channel = (t) => { t = ((t % 1) + 1) % 1; return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p); };
-    channels = [channel(H + 1 / 3), channel(H), channel(H - 1 / 3)];
-  }
-  return rgbText(channels, alpha);
+  return {
+    computed,
+    num: (c) => (c.kind === 'number' ? c.value : computed(c, '')),
+    pct: (c) => (c.kind === 'percentage' ? c.value : computed(c, '%')),
+  };
+}
+function colorAlpha(alphaPart, readers) {
+  if (alphaPart === null) return 1;
+  const n = readers.num(alphaPart);
+  if (n !== null) return n;
+  const p = readers.pct(alphaPart);
+  return p === null ? null : p / 100;
+}
+function rgbChannels(parts, readers) {
+  const channels = parts.map((c) => {
+    const n = readers.num(c);
+    if (n !== null) return n;
+    const p = readers.pct(c);
+    return p === null ? null : p * 2.55;
+  });
+  return channels.some((c) => c === null) ? null : channels;
+}
+const HUE_TURNS = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
+function hslHue(h, readers) {
+  // functionValid admitted a number, an angle, `none` or a math function hue.
+  if (h.kind === 'number') return h.value;
+  if (h.kind === 'dimension') return h.value * HUE_TURNS[h.unit];
+  return readers.computed(h, '') ?? readers.computed(h, 'deg');
+}
+function hslChannels(parts, readers) {
+  const hue = hslHue(parts[0], readers);
+  if (hue === null) return null;
+  const sat = readers.pct(parts[1]), light = readers.pct(parts[2]);
+  if (sat === null || light === null) return null;
+  const S = sat / 100, L = light / 100, H = (((hue % 360) + 360) % 360) / 360;
+  const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
+  const channel = (t) => { t = ((t % 1) + 1) % 1; return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p); };
+  return [channel(H + 1 / 3), channel(H), channel(H - 1 / 3)];
+}
+/** `rgb()` / `hsl()` in the legacy (commas) or modern (spaces, `/ alpha`) syntax. */
+function colorFunction(name, inner) {
+  // functionValid admitted three channels and an optional alpha, or the relative syntax (kept as written).
+  const values = inner.filter((c) => c.kind !== 'comma' && c.kind !== 'slash');
+  if (values.length > 4) return null;
+  const parts = values.slice(0, 3), alphaPart = values[3] ?? null;
+  const readers = colorChannelReaders();
+  const alpha = colorAlpha(alphaPart, readers);
+  if (alpha === null) return null;
+  const channels = name.startsWith('rgb') ? rgbChannels(parts, readers) : hslChannels(parts, readers);
+  return channels === null ? null : rgbText(channels, alpha);
 }
 /** `lab()` / `lch()` / `oklab()` / `oklch()`: a percentage lightness spelled as a number. */
 function labFunction(name, inner) {
