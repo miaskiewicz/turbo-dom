@@ -334,37 +334,10 @@ fn keyframe_value(property: &str, value: &str) -> Option<String> {
     if property == "line-height" && negative(value) {
         return None;
     }
-    let id = PropertyId::from(lightningcss::values::string::CowArcStr::from(
-        property.to_owned(),
-    ));
-    let native = !matches!(id, PropertyId::Custom(_));
-    if native {
-        let mut input = ParserInput::new(value);
-        let mut parser = Parser::new(&mut input);
-        let parsed = parser.parse_entirely(|input| {
-            Property::parse(id, input, &ParserOptions::default())
-                .map_err(|_| input.new_custom_error::<(), ()>(()))
-        });
-        match parsed {
-            Ok(Property::Unparsed(unparsed)) => {
-                let deferred = unparsed.value.0.iter().any(|token| {
-                    matches!(
-                        token,
-                        lightningcss::properties::custom::TokenOrValue::Var(_)
-                            | lightningcss::properties::custom::TokenOrValue::Env(_)
-                    )
-                });
-                if !deferred {
-                    return None;
-                }
-            }
-            Ok(_) => {
-                if let Some(text) = shorthand_text(property, value) {
-                    return Some(text);
-                }
-            }
-            Err(_) => return None,
-        }
+    match native_keyframe_value(property, value)? {
+        NativeKeyframeOutcome::Reject => return None,
+        NativeKeyframeOutcome::Shorthand(text) => return Some(text),
+        NativeKeyframeOutcome::Fallback => {}
     }
     let zero_length = length_property(property);
     let mut input = ParserInput::new(value);
@@ -372,6 +345,55 @@ fn keyframe_value(property: &str, value: &str) -> Option<String> {
     let mut out = String::new();
     serialize_tokens(&mut parser, &mut out, zero_length);
     Some(out)
+}
+
+/// Outcome of parsing a native (non-custom) property through lightningcss for a keyframe.
+enum NativeKeyframeOutcome {
+    /// Drop the keyframe member (parse error, or unsupported unparsed form).
+    Reject,
+    /// Chrome keeps the shorthand's canonical text.
+    Shorthand(String),
+    /// Fall through to the token-serialization path.
+    Fallback,
+}
+
+/// Parse `value` through lightningcss for a native CSS property and classify the result.
+/// Returns `None` for a custom property (`--foo`), which the caller handles before this point.
+fn native_keyframe_value(property: &str, value: &str) -> Option<NativeKeyframeOutcome> {
+    let id = PropertyId::from(lightningcss::values::string::CowArcStr::from(
+        property.to_owned(),
+    ));
+    if matches!(id, PropertyId::Custom(_)) {
+        return Some(NativeKeyframeOutcome::Fallback);
+    }
+    let mut input = ParserInput::new(value);
+    let mut parser = Parser::new(&mut input);
+    let parsed = parser.parse_entirely(|input| {
+        Property::parse(id, input, &ParserOptions::default())
+            .map_err(|_| input.new_custom_error::<(), ()>(()))
+    });
+    match parsed {
+        Ok(Property::Unparsed(unparsed)) => {
+            let deferred = unparsed.value.0.iter().any(|token| {
+                matches!(
+                    token,
+                    lightningcss::properties::custom::TokenOrValue::Var(_)
+                        | lightningcss::properties::custom::TokenOrValue::Env(_)
+                )
+            });
+            if !deferred {
+                return Some(NativeKeyframeOutcome::Reject);
+            }
+            Some(NativeKeyframeOutcome::Fallback)
+        }
+        Ok(_) => {
+            if let Some(text) = shorthand_text(property, value) {
+                return Some(NativeKeyframeOutcome::Shorthand(text));
+            }
+            Some(NativeKeyframeOutcome::Fallback)
+        }
+        Err(_) => Some(NativeKeyframeOutcome::Reject),
+    }
 }
 
 /// One LENGTH_ONLY row: (name, keyword values, non-negative, percentages allowed).

@@ -74,6 +74,17 @@ fn records(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv
         }
         return;
     }
+    abort_slot_operation(scope, &operation, &args, object, &mut rv);
+}
+
+/// Get/set the per-object private slot for the Abort family (target / signal / controller).
+fn abort_slot_operation(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    args: &v8::FunctionCallbackArguments,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
     let family = if operation.starts_with("target") {
         "target"
     } else if operation.starts_with("signal") {

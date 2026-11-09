@@ -524,70 +524,97 @@ impl ReactionScope<'_> {
             else {
                 continue;
             };
-            loop {
-                if scope.is_execution_terminating() {
-                    return;
-                }
-                let Some(index) = queue
-                    .get_index(scope, 0)
-                    .and_then(|value| value.uint32_value(scope))
-                    .filter(|index| *index < queue.length())
-                else {
-                    break;
-                };
-                // Advance before guest code: reentrant delivery shares the cursor.
-                let next = v8::Integer::new_from_unsigned(scope, index + 1);
-                let key = v8::String::new(scope, "0").unwrap();
-                queue.create_data_property(scope, key.into(), next.into());
-                let Some(record) = queue
-                    .get_index(scope, index)
-                    .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-                else {
-                    continue;
-                };
-                let Some(function) = record
-                    .get_index(scope, 0)
-                    .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-                else {
-                    continue;
-                };
-                let inactive_definition = [2, 3].into_iter().any(|index| {
-                    record
-                        .get_index(scope, index)
-                        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-                        .is_some_and(|value| !object_active(scope, value))
-                });
-                if inactive_definition || !object_active(scope, function.into()) {
-                    continue;
-                }
-                let Some(arguments) = record
-                    .get_index(scope, 1)
-                    .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-                else {
-                    continue;
-                };
-                let values = (0..arguments.length())
-                    .filter_map(|index| arguments.get_index(scope, index))
-                    .collect::<Vec<_>>();
-                let Some(context) = function.get_creation_context(scope) else {
-                    continue;
-                };
-                let scope = &mut v8::ContextScope::new(scope, context);
-                let caught = std::pin::pin!(v8::TryCatch::new(scope));
-                let scope = &mut caught.init();
-                if function.call(scope, node, &values).is_none() {
-                    if scope.has_terminated() {
-                        scope.rethrow();
-                        return;
-                    }
-                    if let Some(error) = scope.exception() {
-                        scope.reset();
-                        report_value(scope, error);
-                    }
-                }
+            if !drain_node_queue(scope, node, queue) {
+                return;
             }
         }
     }
+}
+
+/// Drain one node's pending-reactions queue. Returns false if execution has terminated
+/// mid-drain and the caller must unwind.
+fn drain_node_queue(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Value>,
+    queue: v8::Local<v8::Array>,
+) -> bool {
+    loop {
+        if scope.is_execution_terminating() {
+            return false;
+        }
+        let Some(index) = queue
+            .get_index(scope, 0)
+            .and_then(|value| value.uint32_value(scope))
+            .filter(|index| *index < queue.length())
+        else {
+            return true;
+        };
+        // Advance before guest code: reentrant delivery shares the cursor.
+        let next = v8::Integer::new_from_unsigned(scope, index + 1);
+        let zero = v8::String::new(scope, "0").unwrap();
+        queue.create_data_property(scope, zero.into(), next.into());
+        if !invoke_reaction_record(scope, node, queue, index) {
+            return false;
+        }
+    }
+}
+
+/// Invoke the record at `index` in a node's reactions queue. Returns false only if the
+/// callback is non-terminating but the isolate was terminated by it; true otherwise, including
+/// when the record is skipped.
+fn invoke_reaction_record(
+    scope: &mut v8::PinScope,
+    node: v8::Local<v8::Value>,
+    queue: v8::Local<v8::Array>,
+    index: u32,
+) -> bool {
+    let Some(record) = queue
+        .get_index(scope, index)
+        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+    else {
+        return true;
+    };
+    let Some(function) = record
+        .get_index(scope, 0)
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    else {
+        return true;
+    };
+    let inactive_definition = [2, 3].into_iter().any(|index| {
+        record
+            .get_index(scope, index)
+            .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+            .is_some_and(|value| !object_active(scope, value))
+    });
+    if inactive_definition || !object_active(scope, function.into()) {
+        return true;
+    }
+    let Some(arguments) = record
+        .get_index(scope, 1)
+        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+    else {
+        return true;
+    };
+    let values = (0..arguments.length())
+        .filter_map(|index| arguments.get_index(scope, index))
+        .collect::<Vec<_>>();
+    let Some(context) = function.get_creation_context(scope) else {
+        return true;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let caught = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut caught.init();
+    if function.call(scope, node, &values).is_none() {
+        if scope.has_terminated() {
+            scope.rethrow();
+            return false;
+        }
+        if let Some(error) = scope.exception() {
+            scope.reset();
+            report_value(scope, error);
+        }
+    }
+    true
 }
 pub(super) fn mutation(scope: &mut v8::PinScope, event: v8::Local<v8::Object>) {
     if scope.get_slot::<DefinitionsActive>().is_none() {

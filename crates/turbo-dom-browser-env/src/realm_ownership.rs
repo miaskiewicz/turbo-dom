@@ -228,6 +228,19 @@ impl DocumentGraph {
         let owner = self.context.to_local(scope)?;
         let scope = &mut v8::ContextScope::new(scope, owner);
         let document = self.document.to_local(scope)?;
+        self.evict_gone(scope)?;
+        let moves = self.pending_moves(scope, &root);
+        self.fresh.clear();
+        let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
+        let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
+        for (id, target, wrapper) in moves {
+            self.apply_move(scope, document, id, target, wrapper, owner_key, refs_key)?;
+        }
+        Some(())
+    }
+
+    /// Evict every placed wrapper whose JS object has been collected (no longer in wrappers).
+    fn evict_gone(&mut self, scope: &mut v8::PinScope) -> Option<()> {
         let gone = self
             .placed
             .keys()
@@ -239,7 +252,17 @@ impl DocumentGraph {
                 self.leave(scope, old, id)?;
             }
         }
-        let mut moves: Vec<(u32, u32, v8::Local<v8::Object>)> = Vec::new();
+        Some(())
+    }
+
+    /// Build the list of wrappers whose component root has changed since the last reconcile
+    /// (or that are new this cycle).
+    fn pending_moves<'s>(
+        &self,
+        scope: &mut v8::PinScope<'s, '_>,
+        root: &impl Fn(u32) -> u32,
+    ) -> Vec<(u32, u32, v8::Local<'s, v8::Object>)> {
+        let mut moves = Vec::new();
         for (id, weak) in &self.wrappers {
             let target = root(*id);
             if self.placed.get(id) == Some(&target) && !self.fresh.contains(id) {
@@ -249,13 +272,7 @@ impl DocumentGraph {
                 moves.push((*id, target, wrapper));
             }
         }
-        self.fresh.clear();
-        let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
-        let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
-        for (id, target, wrapper) in moves {
-            self.apply_move(scope, document, id, target, wrapper, owner_key, refs_key)?;
-        }
-        Some(())
+        moves
     }
 
     fn apply_move<'s>(

@@ -218,35 +218,52 @@ fn rendered_up_to_dialog(
     let mut child = None;
     let mut current = Some(node);
     while let Some(element) = current {
-        if tree.node_type_id(element) == 1 {
-            if tree.namespace_id(element) == 0 && tree.has_attribute(element, "inert") {
-                return false;
-            }
-            if suppressed(tree, element, policy) {
-                return false;
-            }
-            if element != node
-                && html(tree, element, "dialog")
-                && element != dialog
-                && !tree.has_attribute(element, "open")
-            {
-                return false;
-            }
-            if html(tree, element, "details") && !tree.has_attribute(element, "open") {
-                let summary = tree
-                    .children(element)
-                    .into_iter()
-                    .find(|&candidate| html(tree, candidate, "summary"));
-                if child.is_some() && child != summary {
-                    return false;
-                }
-            }
+        if tree.node_type_id(element) == 1
+            && !element_rendered_up_to_dialog(tree, element, node, dialog, child, policy)
+        {
+            return false;
         }
         if element == dialog {
             break;
         }
         child = Some(element);
         current = tree.parent(element).or_else(|| tree.shadow_host(element));
+    }
+    true
+}
+
+/// Per-element gate for `rendered_up_to_dialog`. Returns false when `element` blocks the walk
+/// (inert ancestor, suppressed style, intervening closed modal dialog, closed `<details>` whose
+/// walk entered a non-summary child).
+fn element_rendered_up_to_dialog(
+    tree: &Tree,
+    element: Handle,
+    node: Handle,
+    dialog: Handle,
+    child: Option<Handle>,
+    policy: &turbo_dom_parser::rtdom::cascade::StylePolicy,
+) -> bool {
+    if tree.namespace_id(element) == 0 && tree.has_attribute(element, "inert") {
+        return false;
+    }
+    if suppressed(tree, element, policy) {
+        return false;
+    }
+    if element != node
+        && html(tree, element, "dialog")
+        && element != dialog
+        && !tree.has_attribute(element, "open")
+    {
+        return false;
+    }
+    if html(tree, element, "details") && !tree.has_attribute(element, "open") {
+        let summary = tree
+            .children(element)
+            .into_iter()
+            .find(|&candidate| html(tree, candidate, "summary"));
+        if child.is_some() && child != summary {
+            return false;
+        }
     }
     true
 }

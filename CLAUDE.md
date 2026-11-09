@@ -40,7 +40,7 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
 python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
 python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
 python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
-npm run complexity:rust   # cc-check --max 15 over every tracked .rs file (needs cc-check on PATH, below)
+npm run complexity:rust   # cc-check --max 12 over every tracked .rs file (needs cc-check on PATH, below)
 npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
 ```
 
@@ -105,9 +105,12 @@ on CI where wall-clock would flake). It's `#[ignore]`'d and run ALONE in its own
 (`cargo test -p turbo-dom churn_alloc_gate -- --ignored`) because `CountingAlloc` is a process-
 global allocator that a parallel test would pollute. Don't loosen either threshold to pass a change.
 
-**Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
-Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
-baseline, no per-function allow-list (turbo-html2pdf's own crates stay at its stricter cc < 6).
+**Complexity gates (CI jobs `complexity / rust (cc <= 12)` and `complexity / js (cc <= 15)`).**
+Every Rust function's cyclomatic complexity must be <= 12 and every JS function's <= 15 — one
+limit per language for the whole repo, no baseline, no per-function allow-list (turbo-html2pdf's
+own crates stay at its stricter cc < 6). 0.8.1 lowered the Rust ceiling 15 -> 12 (turbo-dom#379
+rust half); the JS gate will drop to 12 in a follow-up, and a further step to cc <= 9 is tracked
+for 0.9.0.
 The JS gate excludes 17 named files (`.oxlintrc.complexity.json` `ignorePatterns`) that cannot
 be refactored: the vendored `xpath_provider/xpath.js` (byte-identical to upstream, SHA-256
 pinned in its README) and 16 browser-env `*_probe.js` Chrome-control fixtures whose control
@@ -126,10 +129,12 @@ drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by
 `ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
 SHA-256), and so are 16 named Chrome-control `*_probe.js` files whose control JSON pins the
 probe's SHA-256 (editing one invalidates its recorded Chrome output; new probes stay gated).
-0.8.1 lowers the limit to cc <= 9 (turbo-dom#379). **0.8.0 flips both
-jobs blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS
-counts to zero, and the workflow drops `continue-on-error` on both jobs so a new
-cc > 15 function fails CI and blocks `publish.yml` like any other required check. The
+0.8.1 lowers the Rust limit to cc <= 12 (turbo-dom#379 rust half); the JS gate will drop to 12
+in a follow-up, and a further step to cc <= 9 is tracked for 0.9.0. **0.8.0 flips both jobs
+blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS counts
+to zero, and the workflow drops `continue-on-error` on both jobs so a new over-ceiling function
+(cc > 12 in Rust, cc > 15 in JS) fails CI and blocks `publish.yml` like any other required
+check. The
 report-only phase that carried 0.6.0 and 0.7.0 (59 Rust / 228 JS functions above the
 limit, measured 2026-10-28; `docs/CONSOLIDATION.md` "Complexity") is over. Don't add new
 ones, and never raise the limit to turn the jobs green.

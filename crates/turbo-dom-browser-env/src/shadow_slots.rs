@@ -309,67 +309,96 @@ pub(super) fn refresh(scope: &mut v8::PinScope) {
     roots.sort_unstable_by_key(|node| node.raw());
     // Nothing in this loop runs script, so a termination is never raised inside it.
     for root in roots {
-        if !with_tree(|tree| tree.is_live(root)).unwrap_or(false) {
-            continue;
-        }
-        let object = wrap(scope, root);
-        let context = object
-            .get_creation_context(scope)
-            .expect("wrappers have a creation context");
-        let scope = &mut v8::ContextScope::new(scope, context);
-        let old = previous(scope, object);
-        // Chrome 156 signals nothing when a slot enters a manual-assignment root, even with
-        // nodes already assigned to it (turbo-dom#133); a named root signals the new slot.
-        let manual_root = manual(scope, root);
-        let handles = with_tree(|tree| slots(tree, root)).unwrap_or_default();
-        let mut rows = Vec::new();
-        let mut current = Vec::new();
-        for handle in handles {
-            let object = wrap(scope, handle);
-            let nodes = assigned(scope, handle);
-            let before = old
+        refresh_root(scope, root);
+    }
+}
+
+/// Recompute the distribution of a single shadow root and signal the slotchange events that
+/// the change implies.
+fn refresh_root(scope: &mut v8::PinScope, root: Handle) {
+    if !with_tree(|tree| tree.is_live(root)).unwrap_or(false) {
+        return;
+    }
+    let object = wrap(scope, root);
+    let context = object
+        .get_creation_context(scope)
+        .expect("wrappers have a creation context");
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let old = previous(scope, object);
+    // Chrome 156 signals nothing when a slot enters a manual-assignment root, even with
+    // nodes already assigned to it (turbo-dom#133); a named root signals the new slot.
+    let manual_root = manual(scope, root);
+    let handles = with_tree(|tree| slots(tree, root)).unwrap_or_default();
+    let mut rows = Vec::new();
+    let mut current = Vec::new();
+    for handle in handles {
+        let slot_object = wrap(scope, handle);
+        let nodes = assigned(scope, handle);
+        signal_if_changed(scope, slot_object, &nodes, &old, manual_root);
+        let nodes_array = array(scope, &nodes);
+        let row = v8::Array::new_with_elements(scope, &[slot_object.into(), nodes_array.into()]);
+        rows.push(row.into());
+        current.push(slot_object);
+    }
+    signal_removed_slots(scope, &old, &current, manual_root);
+    let rows = v8::Array::new_with_elements(scope, &rows);
+    let private = key(scope, "distribution");
+    object.set_private(scope, private, rows.into());
+}
+
+/// Fire slotchange on `slot_object` when its assigned-nodes list for the current refresh
+/// differs from the previous distribution (named roots only).
+fn signal_if_changed<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    slot_object: v8::Local<'s, v8::Object>,
+    nodes: &[v8::Local<'s, v8::Object>],
+    old: &[(v8::Local<'s, v8::Object>, v8::Local<'s, v8::Array>)],
+    manual_root: bool,
+) {
+    let before = old
+        .iter()
+        .find(|(slot, _)| slot.strict_equals(slot_object.into()))
+        .map(|(_, nodes)| *nodes);
+    let equal = before.is_some_and(|before| {
+        before.length() as usize == nodes.len()
+            && nodes.iter().enumerate().all(|(index, node)| {
+                before
+                    .get_index(scope, index as u32)
+                    .is_some_and(|old| old.strict_equals((*node).into()))
+            })
+    });
+    if !equal
+        && !(manual_root && before.is_none())
+        && (!nodes.is_empty() || before.is_some_and(|nodes| nodes.length() != 0))
+    {
+        mutation_observers::signal_slot(scope, slot_object);
+    }
+}
+
+/// Fire slotchange on each slot that had nodes in the previous distribution but is no longer
+/// among the shadow root's current slots.
+fn signal_removed_slots<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    old: &[(v8::Local<'s, v8::Object>, v8::Local<'s, v8::Array>)],
+    current: &[v8::Local<'s, v8::Object>],
+    manual_root: bool,
+) {
+    for (slot, nodes) in old {
+        // A slot leaving a manual root signals when assign() recorded nodes for it, even
+        // ones this root never slotted (Chrome 156, turbo-dom#133).
+        let recorded = manual_root && {
+            let private = key(scope, "assigned");
+            slot.get_private(scope, private)
+                .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+                .is_some_and(|records| records.length() != 0)
+        };
+        if (nodes.length() != 0 || recorded)
+            && !current
                 .iter()
-                .find(|(slot, _)| slot.strict_equals(object.into()))
-                .map(|(_, nodes)| *nodes);
-            let equal = before.is_some_and(|before| {
-                before.length() as usize == nodes.len()
-                    && nodes.iter().enumerate().all(|(index, node)| {
-                        before
-                            .get_index(scope, index as u32)
-                            .is_some_and(|old| old.strict_equals((*node).into()))
-                    })
-            });
-            if !equal
-                && !(manual_root && before.is_none())
-                && (!nodes.is_empty() || before.is_some_and(|nodes| nodes.length() != 0))
-            {
-                mutation_observers::signal_slot(scope, object);
-            }
-            let nodes = array(scope, &nodes);
-            let row = v8::Array::new_with_elements(scope, &[object.into(), nodes.into()]);
-            rows.push(row.into());
-            current.push(object);
+                .any(|current| current.strict_equals((*slot).into()))
+        {
+            mutation_observers::signal_slot(scope, *slot);
         }
-        for (slot, nodes) in old {
-            // A slot leaving a manual root signals when assign() recorded nodes for it, even
-            // ones this root never slotted (Chrome 156, turbo-dom#133).
-            let recorded = manual_root && {
-                let private = key(scope, "assigned");
-                slot.get_private(scope, private)
-                    .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-                    .is_some_and(|records| records.length() != 0)
-            };
-            if (nodes.length() != 0 || recorded)
-                && !current
-                    .iter()
-                    .any(|current| current.strict_equals(slot.into()))
-            {
-                mutation_observers::signal_slot(scope, slot);
-            }
-        }
-        let rows = v8::Array::new_with_elements(scope, &rows);
-        let private = key(scope, "distribution");
-        object.set_private(scope, private, rows.into());
     }
 }
 pub(super) fn mutation(scope: &mut v8::PinScope, event: &MutationEvent) {
@@ -445,58 +474,10 @@ fn assign<'s>(
     };
     let reverse = key(scope, "manual-slot");
     let private = key(scope, "assigned");
-    let previous = slot
-        .get_private(scope, private)
-        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok());
-    if let Some(previous) = previous {
-        for index in 0..previous.length() {
-            let node = previous
-                .get_index(scope, index)
-                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-                .expect("assigned records hold nodes");
-            if !nodes
-                .iter()
-                .any(|retained| retained.strict_equals(node.into()))
-                && node
-                    .get_private(scope, reverse)
-                    .is_some_and(|owner| owner.strict_equals(slot.into()))
-            {
-                node.delete_private(scope, reverse);
-            }
-        }
-    }
+    release_dropped_nodes(scope, slot, &nodes, reverse, private);
     let mut affected = vec![dom_id_of(scope, slot)];
     for node in &nodes {
-        if let Some(old) = node
-            .get_private(scope, reverse)
-            .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-        {
-            if !old.strict_equals(slot.into()) {
-                let owner = dom_id_of(scope, old);
-                if !affected.contains(&owner) {
-                    affected.push(owner);
-                }
-                if let Some(previous) = old
-                    .get_private(scope, private)
-                    .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-                {
-                    let mut retained = Vec::new();
-                    for index in 0..previous.length() {
-                        if let Some(value) = previous.get_index(scope, index) {
-                            if !value.strict_equals((*node).into()) {
-                                retained.push(value);
-                            }
-                        }
-                    }
-                    let context = old
-                        .get_creation_context(scope)
-                        .expect("slot wrapper context");
-                    let scope = &mut v8::ContextScope::new(scope, context);
-                    let next = v8::Array::new_with_elements(scope, &retained);
-                    old.set_private(scope, private, next.into());
-                }
-            }
-        }
+        retake_from_other_slot(scope, slot, *node, reverse, private, &mut affected);
         node.set_private(scope, reverse, slot.into());
     }
     let context = slot
@@ -512,6 +493,83 @@ fn assign<'s>(
         refresh(scope);
     }
 }
+/// Drop the manual-slot reverse pointer from each previously-assigned node the new call
+/// no longer names.
+fn release_dropped_nodes<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    slot: v8::Local<'s, v8::Object>,
+    nodes: &[v8::Local<'s, v8::Object>],
+    reverse: v8::Local<'s, v8::Private>,
+    private: v8::Local<'s, v8::Private>,
+) {
+    let previous = slot
+        .get_private(scope, private)
+        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok());
+    let Some(previous) = previous else {
+        return;
+    };
+    for index in 0..previous.length() {
+        let node = previous
+            .get_index(scope, index)
+            .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+            .expect("assigned records hold nodes");
+        if !nodes
+            .iter()
+            .any(|retained| retained.strict_equals(node.into()))
+            && node
+                .get_private(scope, reverse)
+                .is_some_and(|owner| owner.strict_equals(slot.into()))
+        {
+            node.delete_private(scope, reverse);
+        }
+    }
+}
+
+/// If `node` is already recorded on some other slot, drop it from that slot's assigned list
+/// and remember that root as affected so refresh() runs on it later.
+fn retake_from_other_slot<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    slot: v8::Local<'s, v8::Object>,
+    node: v8::Local<'s, v8::Object>,
+    reverse: v8::Local<'s, v8::Private>,
+    private: v8::Local<'s, v8::Private>,
+    affected: &mut Vec<u64>,
+) {
+    let Some(old) = node
+        .get_private(scope, reverse)
+        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+    else {
+        return;
+    };
+    if old.strict_equals(slot.into()) {
+        return;
+    }
+    let owner = dom_id_of(scope, old);
+    if !affected.contains(&owner) {
+        affected.push(owner);
+    }
+    let Some(previous) = old
+        .get_private(scope, private)
+        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
+    else {
+        return;
+    };
+    let mut retained = Vec::new();
+    for index in 0..previous.length() {
+        if let Some(value) = previous.get_index(scope, index) {
+            if !value.strict_equals(node.into()) {
+                retained.push(value);
+            }
+        }
+    }
+    let context = old
+        .get_creation_context(scope)
+        .expect("slot wrapper context");
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let next = v8::Array::new_with_elements(scope, &retained);
+    old.set_private(scope, private, next.into());
+}
+
 fn illegal(scope: &mut v8::PinScope) {
     let text = v8::String::new(scope, "Illegal invocation").unwrap();
     let error = v8::Exception::type_error(scope, text);

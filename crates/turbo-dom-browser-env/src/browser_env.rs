@@ -2984,21 +2984,27 @@ fn el_set_attribute<'s>(
                 .insert(h, units.clone());
         });
     }
-
-    // When an <input> becomes a checkbox/radio (React sets `type` via setAttribute after createElement),
-    // strip the value-change tracker: those inputs track `checked`, not `value`, so a value-tracker
-    // would mis-detect changes and break onChange. Removing the own `value`/`_valueTracker` lets the
-    // framework use its checked path (we keep the own `checked` accessor).
     if key == "type" {
-        let v = value.to_ascii_lowercase();
-        if v == "checkbox" || v == "radio" {
-            let this = args.this();
-            for k in ["value", "_valueTracker"] {
-                if let Some(key) = v8::String::new(scope, k) {
-                    if this.has_own_property(scope, key.into()).unwrap_or(false) {
-                        this.delete(scope, key.into());
-                    }
-                }
+        maybe_strip_value_tracker(scope, args.this(), &value);
+    }
+}
+
+/// When an `<input>` becomes a checkbox/radio (React sets `type` via setAttribute after
+/// createElement), strip the value-change tracker: those inputs track `checked`, not `value`,
+/// so a value-tracker would mis-detect changes and break onChange.
+fn maybe_strip_value_tracker(
+    scope: &mut v8::PinScope,
+    this: v8::Local<v8::Object>,
+    value: &str,
+) {
+    let v = value.to_ascii_lowercase();
+    if v != "checkbox" && v != "radio" {
+        return;
+    }
+    for k in ["value", "_valueTracker"] {
+        if let Some(key) = v8::String::new(scope, k) {
+            if this.has_own_property(scope, key.into()).unwrap_or(false) {
+                this.delete(scope, key.into());
             }
         }
     }
@@ -5105,6 +5111,39 @@ fn run_dispatch_phases(
     fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
     set_targets: &dyn Fn(&mut v8::PinScope, usize),
 ) {
+    let reached_target = run_capture_phase(
+        scope,
+        record,
+        event_obj,
+        path_entries,
+        terminated,
+        fire,
+        set_targets,
+    );
+    run_bubble_phase(
+        scope,
+        record,
+        event_obj,
+        path_entries,
+        bubbles,
+        reached_target,
+        terminated,
+        fire,
+        set_targets,
+    );
+}
+
+/// Capture phase: fire listeners from the outermost ancestor toward the target. Returns
+/// whether the target was actually reached (`stop` or termination can short-circuit).
+fn run_capture_phase(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    event_obj: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    terminated: &std::cell::Cell<bool>,
+    fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) -> bool {
     let mut reached_target = false;
     for index in (0..path_entries.len()).rev() {
         let entry = path_entries[index];
@@ -5120,6 +5159,23 @@ fn run_dispatch_phases(
             }
         }
     }
+    reached_target
+}
+
+/// Bubble phase: fire listeners from the target back out. Non-adjusted ancestors are visited
+/// only when the event bubbles.
+#[allow(clippy::too_many_arguments)]
+fn run_bubble_phase(
+    scope: &mut v8::PinScope,
+    record: v8::Local<v8::Object>,
+    event_obj: v8::Local<v8::Object>,
+    path_entries: &[EventPathEntry],
+    bubbles: bool,
+    reached_target: bool,
+    terminated: &std::cell::Cell<bool>,
+    fire: &mut dyn FnMut(&mut v8::PinScope, Handle, bool, bool) -> bool,
+    set_targets: &dyn Fn(&mut v8::PinScope, usize),
+) {
     for (index, entry) in path_entries.iter().copied().enumerate() {
         if terminated.get() || !reached_target || get_bool_prop(scope, record, "stop") {
             break;
@@ -5913,6 +5969,38 @@ fn form_controls_private(
     }
 }
 
+/// Dispatch "active" / "submit" from `form_controls_native`: call the installed
+/// submission handler, or fall back to the standalone behaviour when none is installed.
+fn form_submission_active_or_submit(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    node: v8::Local<v8::Object>,
+    args: &v8::FunctionCallbackArguments,
+    rv: &mut v8::ReturnValue,
+) {
+    let callback = DOM.with(|dom| {
+        dom.borrow().as_ref().and_then(|dom| {
+            dom.form_submission_handler
+                .as_ref()
+                .and_then(|callback| callback.to_local(scope))
+        })
+    });
+    let Some(callback) = callback else {
+        // Standalone bindings still support validation and canceled submit events.
+        rv.set(v8::Boolean::new(scope, operation == "active").into());
+        return;
+    };
+    let Some(context) = callback.get_creation_context(scope) else {
+        return;
+    };
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let receiver = v8::undefined(scope);
+    let values = [args.get(0), node.into(), args.get(2), args.get(3)];
+    if let Some(value) = callback.call(scope, receiver.into(), &values) {
+        rv.set(value);
+    }
+}
+
 fn form_controls_native(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -6014,29 +6102,7 @@ fn form_controls_native(
                 rv.set(value);
             }
         }
-        "active" | "submit" => {
-            let callback = DOM.with(|dom| {
-                dom.borrow().as_ref().and_then(|dom| {
-                    dom.form_submission_handler
-                        .as_ref()
-                        .and_then(|callback| callback.to_local(scope))
-                })
-            });
-            let Some(callback) = callback else {
-                // Standalone bindings still support validation and canceled submit events.
-                rv.set(v8::Boolean::new(scope, operation == "active").into());
-                return;
-            };
-            let Some(context) = callback.get_creation_context(scope) else {
-                return;
-            };
-            let scope = &mut v8::ContextScope::new(scope, context);
-            let receiver = v8::undefined(scope);
-            let values = [args.get(0), node.into(), args.get(2), args.get(3)];
-            if let Some(value) = callback.call(scope, receiver.into(), &values) {
-                rv.set(value);
-            }
-        }
+        "active" | "submit" => form_submission_active_or_submit(scope, &operation, node, &args, &mut rv),
         "action-url" | "submitter-action-url" => {
             let document_url = event_handlers::document_url();
             let raw = with_tree(|tree| {
@@ -6982,27 +7048,11 @@ fn parse_css_native(
         rv.set_bool(cssom_parser::is_supported_property(&source));
         return;
     }
-    if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "specificity" {
-        // turbo-dom#275: the selector list's complex selectors with their Selectors 4
-        // specificity, flat as [text, a, b, c, ...]; undefined for an invalid list.
-        if let Ok(list) = turbo_dom_parser::rtdom::query::parse_for_cascade(&source) {
-            let mut items: Vec<v8::Local<v8::Value>> = Vec::new();
-            for selector in list.selectors() {
-                let (a, b, c) = selector.specificity();
-                items.push(v8::String::new(scope, selector.text()).unwrap().into());
-                for part in [a, b, c] {
-                    items.push(v8::Number::new(scope, f64::from(part)).into());
-                }
-            }
-            rv.set(v8::Array::new_with_elements(scope, &items).into());
+    if args.get(1).is_string() {
+        let mode = args.get(1).to_rust_string_lossy(scope);
+        if parse_css_string_mode(scope, &source, &mode, &mut rv) {
+            return;
         }
-        return;
-    }
-    if args.get(1).is_string() && args.get(1).to_rust_string_lossy(scope) == "media" {
-        if let Some(text) = v8::String::new(scope, &cssom_parser::parse_media(&source)) {
-            rv.set(text.into());
-        }
-        return;
     }
     if args.get(2).is_true() {
         let parsed = cssom_parser::parse_one(&source);
@@ -7016,6 +7066,41 @@ fn parse_css_native(
     let parsed = cssom_parser::parse(&source);
     if let Some(text) = v8::String::new(scope, &parsed) {
         rv.set(text.into());
+    }
+}
+
+/// Handle the string-mode branches of `parse_css_native` (`"specificity"`, `"media"`). Returns
+/// true when the mode was recognized and already handled.
+fn parse_css_string_mode(
+    scope: &mut v8::PinScope,
+    source: &str,
+    mode: &str,
+    rv: &mut v8::ReturnValue,
+) -> bool {
+    match mode {
+        "specificity" => {
+            // turbo-dom#275: the selector list's complex selectors with their Selectors 4
+            // specificity, flat as [text, a, b, c, ...]; undefined for an invalid list.
+            if let Ok(list) = turbo_dom_parser::rtdom::query::parse_for_cascade(source) {
+                let mut items: Vec<v8::Local<v8::Value>> = Vec::new();
+                for selector in list.selectors() {
+                    let (a, b, c) = selector.specificity();
+                    items.push(v8::String::new(scope, selector.text()).unwrap().into());
+                    for part in [a, b, c] {
+                        items.push(v8::Number::new(scope, f64::from(part)).into());
+                    }
+                }
+                rv.set(v8::Array::new_with_elements(scope, &items).into());
+            }
+            true
+        }
+        "media" => {
+            if let Some(text) = v8::String::new(scope, &cssom_parser::parse_media(source)) {
+                rv.set(text.into());
+            }
+            true
+        }
+        _ => false,
     }
 }
 
@@ -9025,6 +9110,44 @@ fn capture_control_clone(scope: &mut v8::PinScope) -> Option<bool> {
     Some(true)
 }
 
+/// Pop `name` off `global`, capture it as slot `S`, delete the property. Silent when the
+/// bootstrap did not install it.
+fn capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    name: &str,
+) {
+    let key = v8::String::new(scope, name).unwrap();
+    if let Some(callback) = global
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    {
+        context_rehydrate::capture::<S>(scope, callback);
+    }
+    global.delete(scope, key.into());
+}
+
+/// Same as `capture_bootstrap_callback`, but reports back whether capture succeeded so the
+/// caller can short-circuit on failure.
+fn try_capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    name: &str,
+) -> bool {
+    let key = v8::String::new(scope, name).unwrap();
+    let Some(callback) = global
+        .get(scope, key.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    else {
+        return true;
+    };
+    if context_rehydrate::capture::<S>(scope, callback).is_none() {
+        return false;
+    }
+    global.delete(scope, key.into());
+    true
+}
+
 fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
@@ -9187,50 +9310,22 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     view_transitions::install(scope);
     selection::install(scope);
     editing::install(scope);
-    let key = v8::String::new(scope, "__captureFormDataEvent").unwrap();
-    if let Some(callback) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormDataEventDispatcher>(scope, callback);
+    capture_bootstrap_callback::<FormDataEventDispatcher>(scope, global, "__captureFormDataEvent");
+    capture_bootstrap_callback::<FormEntryListReader>(scope, global, "__captureFormEntries");
+    capture_bootstrap_callback::<FormSubmissionDispatcher>(scope, global, "__captureFormSubmission");
+    if !try_capture_bootstrap_callback::<EventRecordAccessor>(
+        scope,
+        global,
+        "__captureEventRecord",
+    ) {
+        return;
     }
-    global.delete(scope, key.into());
-    let entries = v8::String::new(scope, "__captureFormEntries").unwrap();
-    if let Some(callback) = global
-        .get(scope, entries.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormEntryListReader>(scope, callback);
-    }
-    global.delete(scope, entries.into());
-    let name = v8::String::new(scope, "__captureFormSubmission").unwrap();
-    if let Some(function) = global
-        .get(scope, name.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        context_rehydrate::capture::<FormSubmissionDispatcher>(scope, function);
-    }
-    global.delete(scope, name.into());
-
-    let key = v8::String::new(scope, "__captureEventRecord").unwrap();
-    if let Some(accessor) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        if context_rehydrate::capture::<EventRecordAccessor>(scope, accessor).is_none() {
-            return;
-        }
-        global.delete(scope, key.into());
-    }
-    let key = v8::String::new(scope, "__captureHostEventDispatch").unwrap();
-    if let Some(dispatcher) = global
-        .get(scope, key.into())
-        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
-    {
-        if context_rehydrate::capture::<HostEventDispatcher>(scope, dispatcher).is_none() {
-            return;
-        }
-        global.delete(scope, key.into());
+    if !try_capture_bootstrap_callback::<HostEventDispatcher>(
+        scope,
+        global,
+        "__captureHostEventDispatch",
+    ) {
+        return;
     }
     event_handlers::install(scope, None, "about:blank");
     custom_elements::install(scope);

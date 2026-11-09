@@ -172,33 +172,7 @@ fn dispatch(
         return;
     };
     let operation = args.get(0).to_rust_string_lossy(scope);
-    for family in ["expression", "result", "evaluator"] {
-        if operation == format!("{family}Get") || operation == format!("{family}Set") {
-            let key = record_key(scope, family);
-            if operation.ends_with("Set") {
-                object.set_private(scope, key, args.get(2));
-            }
-            if let Some(value) = object.get_private(scope, key) {
-                rv.set(value);
-            }
-            return;
-        }
-    }
-    if operation == "interfaces" || operation == "registerInterfaces" {
-        let owner = dom_id_of(scope, object);
-        let context = DOM_CONTEXTS.with(|contexts| contexts.borrow().get(&owner).cloned());
-        if let Some(context) = context {
-            let context = dom_ownership::local(scope, &context);
-            let scope = &mut v8::ContextScope::new(scope, context);
-            let global = context.global(scope);
-            let key = record_key(scope, "interfaces");
-            if operation == "registerInterfaces" {
-                global.set_private(scope, key, args.get(2));
-            }
-            if let Some(value) = global.get_private(scope, key) {
-                rv.set(value);
-            }
-        }
+    if dispatch_record_ops(scope, &operation, &args, object, &mut rv) {
         return;
     }
     let _dom = DomScope::for_object(scope, object);
@@ -236,6 +210,47 @@ fn dispatch(
     set_prop(scope, result, "nodes", nodes.into());
     rv.set(result.into());
 }
+/// Handle the per-object private-slot family operations (expression / result / evaluator /
+/// interfaces). Returns true when the operation was recognized and already handled.
+fn dispatch_record_ops(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    args: &v8::FunctionCallbackArguments,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) -> bool {
+    for family in ["expression", "result", "evaluator"] {
+        if operation == format!("{family}Get") || operation == format!("{family}Set") {
+            let key = record_key(scope, family);
+            if operation.ends_with("Set") {
+                object.set_private(scope, key, args.get(2));
+            }
+            if let Some(value) = object.get_private(scope, key) {
+                rv.set(value);
+            }
+            return true;
+        }
+    }
+    if operation == "interfaces" || operation == "registerInterfaces" {
+        let owner = dom_id_of(scope, object);
+        let context = DOM_CONTEXTS.with(|contexts| contexts.borrow().get(&owner).cloned());
+        if let Some(context) = context {
+            let context = dom_ownership::local(scope, &context);
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let global = context.global(scope);
+            let key = record_key(scope, "interfaces");
+            if operation == "registerInterfaces" {
+                global.set_private(scope, key, args.get(2));
+            }
+            if let Some(value) = global.get_private(scope, key) {
+                rv.set(value);
+            }
+        }
+        return true;
+    }
+    false
+}
+
 pub(super) fn install(scope: &mut v8::PinScope) {
     // Keep provider intrinsics and snapshots separate from mutable page builtins.
     // Only native facade callables are exported; this context is never page-visible.
