@@ -327,7 +327,9 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
         .unwrap_or_else(|| {
             panic!(
                 "re-dispatch script failed: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
@@ -396,7 +398,9 @@ fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
         .unwrap_or_else(|| {
             panic!(
                 "nested dispatch script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);

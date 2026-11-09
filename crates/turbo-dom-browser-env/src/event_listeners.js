@@ -101,6 +101,23 @@
     for(let i=0;i<path.length;i++){const s=native('targetGet',path[i]);if(!s)continue;const list=s.listeners;for(let j=0;j<list.length;j++){const l=list[j];if(!l.removed&&l.type===type)return true;}}
     return false;
   }
+  // Per-listener microtask drain is the OUTERMOST dispatch's job only.
+  // The HTML spec's "clean up after running a callback" checkpoints
+  // microtasks only when the realm is at the top of the script
+  // settings stack — a page-script dispatch (`dispatchEvent`,
+  // `AbortController.abort()`) that runs INSIDE another listener is
+  // nested and never checkpoints between its own listeners. Chrome 156
+  // matches: the surf abort_signal_any probe's `timeoutNestedAbort`
+  // records `inner, after-inner, inner-microtask` — the inner
+  // listener's microtask fires only after its outer continuation
+  // (turbo-dom#456).
+  //
+  // `listenerDepth` tracks how deeply this dispatch is reentered;
+  // `afterListener` decrements it and drains microtasks only when the
+  // current listener call was the outermost one. Keeping the check in a
+  // helper keeps the hot `invokeAt` / `invoke` loops at cc <= 15.
+  let listenerDepth=0;
+  function afterListener(record){record.passive=false;if(--listenerDepth===0)drainMicrotasksAcrossDispatch(record);}
   // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
   // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
   // true, so a microtask that synchronously re-dispatches the same event
@@ -141,7 +158,8 @@
       if(listener.signal&&aborted(listener.signal))continue;
       if(listener.once)targetRemove(level,state,listener);
       record.passive=listener.passive;
-      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;drainMicrotasksAcrossDispatch(record);}
+      listenerDepth++;
+      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{afterListener(record);}
     }
   }
   // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at
@@ -181,7 +199,8 @@
   function invoke(event,capture,phase){
     const state=readEvent(event),records=slice(get(state.type)||[]);state.currentTarget=g;state.eventPhase=phase;
     for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal))continue;if(record.once)remove(record);state.passive=record.passive;
-      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{state.passive=false;}
+      listenerDepth++;
+      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{listenerDepth--;state.passive=false;}
     }
   }
   function dispatch(event,host=false){
