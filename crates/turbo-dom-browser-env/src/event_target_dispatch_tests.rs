@@ -737,11 +737,17 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
         "depth=0:mid-capture must fire (and calls stopPropagation). \
          Trace: {trace}",
     );
+    // Review R4 (#433 follow-up): stopPropagation called from an ANCESTOR
+    // capture listener (`mid`, the immediate parent of `child`) DOES
+    // suppress AT_TARGET on the target — Chrome 156 stops dispatch before
+    // AT_TARGET when `record.stop` is set after the capture walk. The
+    // earlier assertion (`child-target MUST fire`) was written against
+    // the pre-#433 buggy dispatchMulti.
     assert!(
-        has("depth=0:child-target:2"),
-        "depth=0:child-target MUST fire — stopPropagation on a multi-level \
-         path does NOT block AT_TARGET's own level (only \
-         stopImmediatePropagation does). Trace: {trace}",
+        !has("depth=0:child-target:2"),
+        "depth=0:child-target MUST NOT fire — mid's capture called \
+         stopPropagation, which suppresses the target's AT_TARGET per \
+         #433. Trace: {trace}",
     );
     assert!(
         !has("depth=0:mid-bubble:3"),
