@@ -337,3 +337,108 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
     );
     reset();
 }
+
+/// Review R3 H1: `drainMicrotasksAcrossDispatch` saves and restores the
+/// dispatch-scoped fields (`dispatching` / `currentTarget` / `eventPhase` /
+/// `path` / `target`) but not `stop` / `stopImmediate`. A listener on an
+/// intermediate target that calls `event.stopPropagation()` and queues a
+/// microtask which re-dispatches the same event would see the inner
+/// dispatch's `finally` reset `record.stop=false`, and the outer bubble
+/// phase run even though the listener asked to stop propagation.
+///
+/// Set-up: a three-level non-Node chain `child -> mid -> parent`. A
+/// capture-phase listener on `mid` calls `stopPropagation()` and queues a
+/// microtask that re-dispatches the same event on `child`; a bubble-phase
+/// listener on `parent` increments a counter. With the fix in place
+/// (`stop` / `stopImmediate` are included in the save/restore set) the
+/// outer bubble on `parent` never runs for the OUTER dispatch — it only
+/// runs for the inner, nested dispatch (one invocation).
+#[test]
+fn microtask_re_dispatch_preserves_outer_stop_propagation() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    // child -> mid -> parent. The capture listener on `mid` stops propagation
+    // and queues a microtask that re-dispatches the same event on `child`.
+    // The parent-bubble listener must run only for the INNER re-dispatch
+    // (because the inner dispatch's own stopPropagation is independent); the
+    // outer dispatch's bubble must be suppressed by the stopPropagation.
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let queued = false;
+      // Capture-phase listener on `mid`: stops propagation on the OUTER
+      // dispatch and (once) queues a microtask that re-dispatches the same
+      // event object on `child`. The inner dispatch re-runs all three
+      // levels; the outer dispatch's bubble on `parent` must not fire.
+      mid.addEventListener('ping', (event) => {
+        trace.push('mid-capture:' + event.eventPhase);
+        event.stopPropagation();
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('microtask-start');
+            child.dispatchEvent(event);
+            trace.push('microtask-end');
+          });
+        }
+      }, { capture: true });
+      // Bubble listener on `parent`: should only fire during the INNER
+      // nested re-dispatch (it was not stopped there). Never during the
+      // outer dispatch, because `mid`'s capture called stopPropagation().
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-bubble:' + event.eventPhase);
+      });
+      // Target-phase listener on `child`: fires both times (outer + inner),
+      // but the outer never reaches `mid`'s bubble / `parent`'s bubble
+      // because `mid`'s capture listener stopped propagation first.
+      child.addEventListener('ping', (event) => {
+        trace.push('child-target:' + event.eventPhase);
+      });
+      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      return JSON.stringify(trace);
+    })()"#;
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "re-dispatch stopPropagation script failed: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // Outer dispatch traces: parent-capture skipped (no listener), mid-capture
+    // fires + stopPropagation, then nothing else for the outer dispatch (no
+    // child-target because stopPropagation also blocks phase 2 — wait, no,
+    // stopPropagation only stops subsequent phases, AT_TARGET still runs if
+    // we are already there; BUT mid-capture is PHASE 1, so phase 2 at child
+    // DOES run after capture phase reaches target. So child-target fires in
+    // phase 2. Then bubble is suppressed → no parent-bubble, no mid-bubble.
+    // Microtask drains after outer finishes: mid-capture again, stops; then
+    // child-target in phase 2; then bubble suppressed too. So parent-bubble
+    // never fires in either dispatch.
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let has_parent_bubble = array
+        .iter()
+        .any(|v| v.as_str().unwrap().starts_with("parent-bubble"));
+    assert!(
+        !has_parent_bubble,
+        "parent-bubble must not fire: stopPropagation called on mid should \
+         suppress bubble on both outer and inner dispatches. Trace: {trace}",
+    );
+    reset();
+}
