@@ -17,15 +17,15 @@ function escapeAttr(s) {
   return s.replace(/&/g, '&amp;').replace(/ /g, '&nbsp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// An element: its tag (HTML / SVG / MathML elements serialize their local name, other
-// namespaces the qualified name; a createElementNS prefix is kept on all of them — Chrome
-// 156: <h:br>, <svg:g>), attributes and children. Only HTML elements can be void or
-// <template>, keyed on the local name.
-function serializeElement(node, out) {
-  const ns = node.__ns, html = ns === '', local = node.localName;
-  const tag = node.__prefix !== undefined ? `${node.__prefix}:${local}`
-    : html || ns === 'svg' || ns === 'math' ? local : node.tagName;
-  out.push('<' + tag);
+// The element tag (HTML / SVG / MathML elements serialize their local name, other
+// namespaces the qualified name; a createElementNS prefix is kept on all of them —
+// Chrome 156: <h:br>, <svg:g>).
+function elementTag(node, html) {
+  if (node.__prefix !== undefined) return `${node.__prefix}:${node.localName}`;
+  const ns = node.__ns;
+  return html || ns === 'svg' || ns === 'math' ? node.localName : node.tagName;
+}
+function serializeAttrs(node, out) {
   // __attrs is lazy: buffer-backed elements leave it undefined (store __attrIdx).
   // Build from the SoA on first touch, matching every other __attrs read site.
   const attrs = node.__attrs ?? (node.__attrs = node.__buildAttrs());
@@ -33,13 +33,19 @@ function serializeElement(node, out) {
     const name = a.prefix ? `${a.prefix}:${a.name}` : a.name;
     out.push(` ${name}="${escapeAttr(a.value)}"`);
   }
+}
+// An element: its tag, attributes and children. Only HTML elements can be void or
+// <template>, keyed on the local name.
+function serializeElement(node, out) {
+  const html = node.__ns === '';
+  const local = node.localName;
+  const tag = elementTag(node, html);
+  out.push('<' + tag);
+  serializeAttrs(node, out);
   out.push('>');
   if (html && VOID.has(local)) return;
-  if (html && local === 'template' && node.content) {
-    serializeChildren(node.content, out);
-  } else {
-    serializeChildren(node, out);
-  }
+  const kidsHost = html && local === 'template' && node.content ? node.content : node;
+  serializeChildren(kidsHost, out);
   out.push(`</${tag}>`);
 }
 
