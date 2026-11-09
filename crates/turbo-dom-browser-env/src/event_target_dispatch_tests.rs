@@ -172,13 +172,99 @@ fn collect_path_reaches_ancestors_beyond_the_old_100_hop_cap() {
         .unwrap_or_else(|| {
             panic!(
                 "deep-chain dispatch script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
         result, r#"{"deepSaw":true,"depth":150}"#,
         "deepest ancestor saw the bubbled event (no silent truncation at 100)",
+    );
+    reset();
+}
+
+/// turbo-dom#423: a per-level `composedPath()` must be immutable — a listener that stashes
+/// the returned array into a closure must still read `[its own currentTarget]` after a
+/// later listener up the parent chain runs. The pre-#423 implementation reassigned
+/// `record.path = [level]` per invocation; the fix freezes each invocation's path so an
+/// internal re-reader or an external caller cannot observe a cross-listener mutation.
+#[test]
+fn per_level_composed_path_is_frozen_per_invocation() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    // A -> B -> C parent chain. Listener on A (AT_TARGET) stashes composedPath into a
+    // closure; listener on C (bubble) re-reads the stashed array and its own composedPath
+    // and asserts: stashed is frozen, stashed is still [A], attempting to push to either
+    // array throws (strict-mode on frozen target).
+    let source = r#"(() => {
+      const a = new EventTarget(), b = new EventTarget(), c = new EventTarget();
+      globalThis.__testSetParent(a, () => b);
+      globalThis.__testSetParent(b, () => c);
+      let stashed = null;
+      a.addEventListener('x', (event) => { stashed = event.composedPath(); });
+      const observed = {};
+      c.addEventListener('x', (event) => {
+        const own = event.composedPath();
+        observed.stashedFrozen = Object.isFrozen(stashed);
+        observed.ownFrozen = Object.isFrozen(own);
+        observed.stashedLen = stashed.length;
+        observed.stashedIsA = stashed[0] === a;
+        observed.ownLen = own.length;
+        observed.ownIsC = own[0] === c;
+        try { stashed.push('nope'); observed.stashedMutable = true; }
+        catch (_) { observed.stashedMutable = false; }
+      });
+      a.dispatchEvent(new Event('x', { bubbles: true }));
+      return JSON.stringify(observed);
+    })()"#;
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "per-level composedPath script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let actual: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        actual["stashedFrozen"],
+        serde_json::Value::Bool(true),
+        "listener A's stashed composedPath() must be frozen (immutable per invocation)"
+    );
+    assert_eq!(
+        actual["ownFrozen"],
+        serde_json::Value::Bool(true),
+        "listener C's own composedPath() must be frozen"
+    );
+    assert_eq!(actual["stashedLen"], serde_json::json!(1));
+    assert_eq!(
+        actual["stashedIsA"],
+        serde_json::Value::Bool(true),
+        "stashed path's first element must still be A after bubble reaches C"
+    );
+    assert_eq!(actual["ownLen"], serde_json::json!(1));
+    assert_eq!(actual["ownIsC"], serde_json::Value::Bool(true));
+    assert_eq!(
+        actual["stashedMutable"],
+        serde_json::Value::Bool(false),
+        "frozen array must reject .push() (strict-mode throw)"
     );
     reset();
 }
