@@ -691,7 +691,7 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
             .is_some()
         {
             let (w, _) = border(&snapshot, *h);
-            assert_eq!(w, 30.0, "{id}: inline override must apply (width = 30 px)",);
+            assert_eq!(w, 30.0, "{id}: inline override must apply (width = 30 px)");
         }
     }
 }
