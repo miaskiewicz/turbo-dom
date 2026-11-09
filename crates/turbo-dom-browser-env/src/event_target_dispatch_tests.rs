@@ -1046,3 +1046,106 @@ fn collect_path_fires_at_9999_hops_and_throws_at_10001_hops() {
     );
     reset();
 }
+
+/// turbo-dom#483: `drainMicrotasksAcrossDispatch` added `currentTarget` / `eventPhase` /
+/// `path` to the SAVE set (R3 H1) but did NOT CLEAR them before the
+/// `microtaskCheckpoint`. A Promise continuation that runs inside the drain window
+/// (e.g. awaited from a listener on a MessagePort host-dispatch) therefore sees the
+/// listener-scoped mid-dispatch state on the Event instance instead of Chrome's
+/// post-dispatch null/0/[] trio. Fix: clear the three fields after saving but before
+/// the checkpoint, so microtask continuations observe the between-dispatch sentinel
+/// values; restore on finally so the outer dispatch resumes unchanged.
+#[test]
+fn microtask_continuation_sees_post_dispatch_sentinel_fields() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    // Dispatch a host-dispatch event on a plain EventTarget. Inside the (sole) listener,
+    // queue a microtask (Promise.resolve().then) that reads the event's dispatch-scoped
+    // fields. With R3 H1's bug, the microtask runs inside the per-listener drain window
+    // with `currentTarget === target`, `eventPhase === 2` (AT_TARGET), and
+    // `composedPath() === [target]` because those fields are saved-and-restored but not
+    // cleared. Chrome 156 clears them so a microtask continuation sees post-dispatch
+    // state (null / 0 / []).
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const seen = {};
+      target.addEventListener('ping', (event) => {
+        seen.listener = {
+          currentIsTarget: event.currentTarget === target,
+          phase: event.eventPhase,
+          pathLen: event.composedPath().length,
+        };
+        Promise.resolve().then(() => {
+          seen.micro = {
+            currentTarget: event.currentTarget,
+            phase: event.eventPhase,
+            pathLen: event.composedPath().length,
+          };
+        });
+      });
+      target.dispatchEvent(new Event('ping'));
+      return JSON.stringify(seen);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "#483 drain-sentinel script failed: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+    // Sanity: the listener itself saw AT_TARGET / currentTarget / path=[target] —
+    // this guards against a mutant that just silences the listener.
+    let listener = &value["listener"];
+    assert_eq!(
+        listener["currentIsTarget"].as_bool(),
+        Some(true),
+        "listener must observe its own currentTarget. Result: {value}",
+    );
+    assert_eq!(
+        listener["phase"].as_u64(),
+        Some(2),
+        "listener must observe eventPhase === AT_TARGET (2). Result: {value}",
+    );
+    assert_eq!(
+        listener["pathLen"].as_u64(),
+        Some(1),
+        "listener must observe composedPath() === [target]. Result: {value}",
+    );
+    // The microtask (which runs inside drainMicrotasksAcrossDispatch) must see the
+    // post-dispatch sentinel trio: currentTarget === null, eventPhase === 0,
+    // composedPath() === []. With #483's bug (save-and-restore only, no clear),
+    // every one of these fails: currentTarget is the EventTarget, phase is 2,
+    // pathLen is 1 — so each assertion distinguishes the fix from a one-line
+    // revert of any single cleared field.
+    let micro = &value["micro"];
+    assert!(
+        micro["currentTarget"].is_null(),
+        "microtask continuation must see event.currentTarget === null \
+         (post-dispatch sentinel). Result: {value}",
+    );
+    assert_eq!(
+        micro["phase"].as_u64(),
+        Some(0),
+        "microtask continuation must see event.eventPhase === 0 (NONE). \
+         Result: {value}",
+    );
+    assert_eq!(
+        micro["pathLen"].as_u64(),
+        Some(0),
+        "microtask continuation must see event.composedPath() === [] \
+         (post-dispatch sentinel). Result: {value}",
+    );
+    reset();
+}

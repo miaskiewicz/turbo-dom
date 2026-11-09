@@ -195,6 +195,13 @@
     record.dispatching=false;
     record.stop=false;
     record.stopImmediate=false;
+    // #483: a microtask that reads the event (e.g. an awaited Promise resolved from a
+    // listener) must see the event as "no longer being dispatched" — Chrome 156 clears
+    // currentTarget / eventPhase / path before the checkpoint so reads inside the drain
+    // window observe the post-dispatch null/0/[] trio. Restored in the finally.
+    record.currentTarget=null;
+    record.eventPhase=0;
+    record.path=objectFreeze([]);
     try{native('microtaskCheckpoint');}
     finally{
       record.dispatching=savedDispatching;
