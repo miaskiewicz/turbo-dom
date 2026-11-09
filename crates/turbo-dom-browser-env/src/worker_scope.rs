@@ -23,9 +23,80 @@ const WORKER_BOOTSTRAP: &str = include_str!("worker_scope.js");
 
 /// Install the worker surface onto the current context's `globalThis`.
 pub(super) fn install(scope: &mut v8::PinScope) {
+    // turbo-dom#428: expose a native `__turboDomStructuredClone` BEFORE the JS
+    // bootstrap runs so the bootstrap can capture it, delete it from the
+    // global, and freeze a reference inside the namespace. This routes
+    // `structuredClone` through V8's own ValueSerializer / ValueDeserializer
+    // so Date / Map / Set / RegExp / BigInt / typed arrays / cycles
+    // round-trip faithfully with HTML-spec semantics.
+    let context = scope.get_current_context();
+    let global = context.global(scope);
+    super::bind_method(scope, global, "__turboDomStructuredClone", structured_clone);
     let code = v8::String::new(scope, WORKER_BOOTSTRAP).unwrap();
     if let Some(script) = v8::Script::compile(scope, code, None) {
         let _ = script.run(scope);
+    }
+}
+
+/// A `ValueSerializerImpl` that rethrows cloneability failures as
+/// `DataCloneError` (matching HTML spec and Chrome worker behaviour).
+struct StructuredCloneSerializerDelegate;
+
+impl v8::ValueSerializerImpl for StructuredCloneSerializerDelegate {
+    fn throw_data_clone_error<'s>(
+        &self,
+        scope: &mut v8::PinScope<'s, '_>,
+        message: v8::Local<'s, v8::String>,
+    ) {
+        let exc = v8::Exception::error(scope, message);
+        if let Ok(obj) = v8::Local::<v8::Object>::try_from(exc) {
+            // invariants: engine-built strings, well below V8's limits
+            let key = v8::String::new(scope, "name").unwrap();
+            let name = v8::String::new(scope, "DataCloneError").unwrap();
+            obj.set(scope, key.into(), name.into());
+        }
+        scope.throw_exception(exc);
+    }
+}
+
+/// A `ValueDeserializerImpl` with default behaviour (no host objects, no
+/// transferables — structured clone of an in-process payload only).
+struct StructuredCloneDeserializerDelegate;
+
+impl v8::ValueDeserializerImpl for StructuredCloneDeserializerDelegate {}
+
+/// `__turboDomStructuredClone(value)` — a V8-backed structured clone of
+/// `value`. Throws `DataCloneError` for values the HTML spec declines
+/// (functions, Symbols, WeakMap, etc.). Transferables are not supported
+/// (callers that need them route through the message-port path).
+fn structured_clone<'a, 'i>(
+    scope: &mut v8::PinScope<'a, 'i>,
+    args: v8::FunctionCallbackArguments<'a>,
+    mut rv: v8::ReturnValue<'a>,
+) {
+    let value = args.get(0);
+    let context = scope.get_current_context();
+    use v8::ValueDeserializerHelper;
+    use v8::ValueSerializerHelper;
+    let bytes = {
+        let serializer =
+            v8::ValueSerializer::new(scope, Box::new(StructuredCloneSerializerDelegate));
+        serializer.write_header();
+        match serializer.write_value(context, value) {
+            Some(true) => serializer.release(),
+            // Exception (DataCloneError) or false: either way the serializer's
+            // throw_data_clone_error has already scheduled the exception; just
+            // return so V8 propagates it.
+            _ => return,
+        }
+    };
+    let deserializer =
+        v8::ValueDeserializer::new(scope, Box::new(StructuredCloneDeserializerDelegate), &bytes);
+    if deserializer.read_header(context) != Some(true) {
+        return;
+    }
+    if let Some(cloned) = deserializer.read_value(context) {
+        rv.set(cloned);
     }
 }
 
@@ -476,14 +547,12 @@ mod tests {
 
     #[test]
     fn structured_clone_throws_on_unsupported_inputs() {
-        // Review R1 M5: the JSON round-trip stub silently dropped Date /
-        // Map / Set / typed arrays / BigInt / undefined / Infinity / NaN
-        // and threw on cycles with a misleading SyntaxError. A feature
-        // detection `typeof structuredClone === 'function'` succeeded but
-        // the behaviour differed. The stub now throws a DataCloneError
-        // with a clear message for anything it cannot faithfully round-
-        // trip, so a page's feature detection fails cleanly (follow-up
-        // issue for real structured-clone semantics).
+        // turbo-dom#428: the real structured-clone implementation (V8
+        // ValueSerializer / ValueDeserializer) accepts Date, Map, Set,
+        // BigInt, Infinity, NaN, `undefined` (as a property value) and
+        // cyclic object graphs; it still throws `DataCloneError` for
+        // genuinely non-cloneable values — functions, symbols, WeakMap,
+        // WeakSet, Promise, Proxy-wrapped instances of host objects.
         browser_env::tests::init_v8();
         let isolate = &mut browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
@@ -500,14 +569,11 @@ mod tests {
             "ok",
         );
         for src in [
-            "structuredClone(new Date(0))",
-            "structuredClone(new Map())",
-            "structuredClone(new Set())",
-            "structuredClone(1n)",
-            "structuredClone({ x: undefined })",
-            "const o = {}; o.self = o; structuredClone(o)",
-            "structuredClone(Infinity)",
-            "structuredClone(NaN)",
+            "structuredClone(() => {})",
+            "structuredClone(Symbol('s'))",
+            "structuredClone(new WeakMap())",
+            "structuredClone(new WeakSet())",
+            "structuredClone(Promise.resolve())",
         ] {
             assert_eq!(
                 eval(
