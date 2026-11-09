@@ -16,17 +16,23 @@
   const string=value=>{if(typeof value==='symbol')throw new TypeErrorValue('Cannot convert a Symbol to a string');return StringValue(value);};
   const state=observer=>{const value=get(states,observer);if(!value)throw new TypeErrorValue('Illegal invocation');return value;};
   const contains=(rows,value)=>{for(let index=0;index<rows.length;index++)if(rows[index]===value)return true;return false;};
+  function listIndexOf(key){const index=NumberValue(key);return index>=0&&index<4294967295&&StringValue(index)===key&&index%1===0?index:-1;}
+  function listIndices(rows){const keys=[];for(let index=0;index<rows.length;index++)append(keys,index);return keys;}
+  function listAt(rows,index,operation){
+    if(operation==='get')return rows[index];
+    if(operation==='has')return true;
+    if(operation==='descriptor')return {__proto__:null,value:rows[index],writable:false,enumerable:true,configurable:true};
+    if(operation==='delete')return false;
+    if(operation==='set'||operation==='define')return true;
+    return undefined;
+  }
   function list(rows) {
     const object=named(listPrototype,function(operation,key){
-      const index=NumberValue(key),indexed=index>=0&&index<4294967295&&StringValue(index)===key&&index%1===0;
-      if(operation==='indices'){const keys=[];for(let index=0;index<rows.length;index++)append(keys,index);return keys;}
+      if(operation==='indices')return listIndices(rows);
       if(operation==='keys')return [];
-      if(!indexed||index>=rows.length)return undefined;
-      if(operation==='get')return rows[index];
-      if(operation==='has')return true;
-      if(operation==='descriptor')return {__proto__:null,value:rows[index],writable:false,enumerable:true,configurable:true};
-      if(operation==='delete')return false;
-      if(operation==='set'||operation==='define')return true;
+      const index=listIndexOf(key);
+      if(index<0||index>=rows.length)return undefined;
+      return listAt(rows,index,operation);
     },true);
     native('record',object,{__proto__:null,kind:'NodeList',read:()=>rows});
     return object;

@@ -109,17 +109,20 @@
   const spaces = [['HTMLElement', html], ['SVGElement', 'http://www.w3.org/2000/svg'], ['MathMLElement', 'http://www.w3.org/1998/Math/MathML']];
   const inSpace = (receiver, space) => { check(receiver, [1]); if (apply(namespace, receiver, []) !== space) throw new TypeError('Illegal invocation'); };
   const localName = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
-  for (const [name, space] of spaces) {
-    const proto = g[name].prototype;
-    property(proto, 'dataset', function () { inSpace(this, space); return apply(dataset, this, []); });
-    property(proto, 'nonce', function () { inSpace(this, space); return native('nonce', this); }, function (value) { inSpace(this, space); native('setNonce', this, string(value)); });
-    property(proto, 'tabIndex', function () {
-      inSpace(this, space);
-      const fallback = space === html ? (focusableTags[apply(tag, this, [])] === 1 ? 0 : -1) : space === spaces[1][1] && apply(localName, this, []) === 'a' ? 0 : -1;
-      const value = apply(getAttribute, this, ['tabindex']); const found = value == null ? null : /^[\t\n\f\r ]*([+-]?[0-9]+)/.exec(value);
-      if (!found) return fallback; const number = Number(found[1]); return number >= -2147483648 && number <= 2147483647 ? number : fallback;
-    }, function (value) { inSpace(this, space); apply(setAttribute, this, ['tabindex', String((+value) >> 0)]); });
+  function installHtmlOrSvgMixin() {
+    for (const [name, space] of spaces) {
+      const proto = g[name].prototype;
+      property(proto, 'dataset', function () { inSpace(this, space); return apply(dataset, this, []); });
+      property(proto, 'nonce', function () { inSpace(this, space); return native('nonce', this); }, function (value) { inSpace(this, space); native('setNonce', this, string(value)); });
+      property(proto, 'tabIndex', function () {
+        inSpace(this, space);
+        const fallback = space === html ? (focusableTags[apply(tag, this, [])] === 1 ? 0 : -1) : space === spaces[1][1] && apply(localName, this, []) === 'a' ? 0 : -1;
+        const value = apply(getAttribute, this, ['tabindex']); const found = value == null ? null : /^[\t\n\f\r ]*([+-]?[0-9]+)/.exec(value);
+        if (!found) return fallback; const number = Number(found[1]); return number >= -2147483648 && number <= 2147483647 ? number : fallback;
+      }, function (value) { inSpace(this, space); apply(setAttribute, this, ['tabindex', String((+value) >> 0)]); });
+    }
   }
+  installHtmlOrSvgMixin();
   const uint = value => (+value) >>> 0;
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
   const range = (value, offset) => { if (offset > value.length) throw new ns.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
@@ -203,17 +206,31 @@
       if (writes(operation)) return true;
       return undefined;
     };
+    // Collection-wide lookups (indices, keys) short-circuit the supported-key test.
+    const wholeCollectionAnswer = (operation, rows, hiddenNames) => {
+      if (operation === 'indices') return indicesOf(rows);
+      if (operation === 'keys') return namesOf(rows, hiddenNames);
+      return undefined;
+    };
+    // An indexed setter (HTMLOptionsCollection) owns every index, supported or not, and runs
+    // BEFORE list(). readonlyIndices runs AFTER list() but still returns true without a lookup.
+    // A define also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
+    const indexedWriteShortCircuit = (indexed, operation, key, value, throws, phase) => {
+      if (!indexed || !options || !writes(operation)) return undefined;
+      if (phase === 'before' && options.setIndex) return { done: options.setIndex(Number(key), value, operation === 'define', throws === true) };
+      if (phase === 'after' && options.readonlyIndices) return { done: true };
+      return undefined;
+    };
     const object = ns.makeNamedObject(proto, function (operation, key, value, throws) {
       const indexed = test(/^(0|[1-9][0-9]*)$/, key) && Number(key) < 4294967295;
-      // An indexed setter (HTMLOptionsCollection) owns every index, supported or not. A define
-      // also carries V8's should-throw mode (Object.defineProperty vs Reflect.defineProperty).
-      if(indexed&&options&&options.setIndex&&writes(operation))return options.setIndex(Number(key),value,operation==='define',throws===true);
+      const before = indexedWriteShortCircuit(indexed, operation, key, value, throws, 'before');
+      if (before) return before.done;
       const rows = list();
-      if(indexed&&options&&options.readonlyIndices&&writes(operation))return true;
+      const after = indexedWriteShortCircuit(indexed, operation, key, value, throws, 'after');
+      if (after) return after.done;
       const hiddenNames=!!(options&&options.hiddenNames);
+      if (operation === 'indices' || operation === 'keys') return wholeCollectionAnswer(operation, rows, hiddenNames);
       const supported = supportedKey(indexed,key,rows,operation,hiddenNames);
-      if (operation === 'indices') return indicesOf(rows);
-      if (operation === 'keys') return namesOf(rows,hiddenNames);
       if (!supported) return undefined;
       return supportedAnswer(operation,indexed,key,rows);
     }, true);

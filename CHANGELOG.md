@@ -14,6 +14,23 @@ at the time); this file reconstructs them from history.
   hot-path fns deferred to v0.9.0 — see #462 (selectors.mjs match-time
   family), #463 (dom.mjs hot-path methods), #464 (collections.mjs
   live-collection `get` + events.mjs `dispatchEvent`).
+- **turbo-dom-browser-env JS cc 15 -> 12 small-tail (#379 JS lane E)**.
+  Mechanical, behaviour-preserving extracts in 15 browser-env `*.js`
+  files — `custom_elements.js` (2 fns), `document_basics.js` (2),
+  `edit_context.js`, `element_internals.js`, `element_tokens.js`,
+  `event_listeners.js`, `file_inputs.js`, `form_collections.js`,
+  `form_outputs.js`, `html_dialog.js`, `html_media.js`,
+  `html_popover.js`, `mutation_observers.js`, `select_element.js`,
+  `view_transitions.js` — split each cc 13-15 function into a
+  top-level helper plus the original caller, both at cc <= 12. All
+  three candidate non-pinned probes (`editing_probe.js`,
+  `form_reflection_probe.js`, `patched_builtins_members_probe.js`)
+  turned out to have `probeSha256` pins in their Chrome control
+  JSONs, so they were skipped. Non-hot paths only; the 739 + 9 test
+  cases in `cargo test -p turbo-dom-browser-env --features
+  test-support` all pass with no behaviour change. The JS gate
+  (`complexity / js`) still reads cc <= 15 at the integrator; the
+  per-lane PRs drive the counts to 12 ahead of the ceiling flip.
 
 ### Fixed
 

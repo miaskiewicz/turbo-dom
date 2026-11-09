@@ -178,6 +178,12 @@
   const htmlBrand = lookup(g.HTMLElement.prototype, 'hidden');
   const brandElement = receiver => { if (htmlBrand && htmlBrand.get) apply(htmlBrand.get, receiver, []); else if (!(receiver instanceof g.HTMLElement)) throw new ErrorType('Illegal invocation'); };
   const setError = message => new Exception("Failed to set the 'editContext' property on 'HTMLElement': " + message, 'NotSupportedError');
+  function validateEditContextHost(host, context) {
+    const name = apply(localOf, host, []);
+    if (apply(namespaceOf, host, []) !== HTML || !(hostNames[name] || validCustomName(name))) throw setError('This element does not support EditContext');
+    const state = wget(states, context);
+    if (state.element !== null && state.element !== host) throw setError('An EditContext can be only be associated with a single element');
+  }
   define(g.HTMLElement.prototype, 'editContext', {
     __proto__: null, enumerable: true, configurable: true,
     get: make(function () { brandElement(this); const c = wget(attachments, this); return c === undefined ? null : c; }, 'get editContext', 0),
@@ -185,12 +191,7 @@
       brandElement(this);
       if (value !== null && value !== undefined && !isEditContext(value)) throw new ErrorType("Failed to set the 'editContext' property on 'HTMLElement': Failed to convert value to 'EditContext'.");
       const context = value === undefined ? null : value;
-      if (context !== null) {
-        const name = apply(localOf, this, []);
-        if (apply(namespaceOf, this, []) !== HTML || !(hostNames[name] || validCustomName(name))) throw setError('This element does not support EditContext');
-        const state = wget(states, context);
-        if (state.element !== null && state.element !== this) throw setError('An EditContext can be only be associated with a single element');
-      }
+      if (context !== null) validateEditContextHost(this, context);
       const previous = wget(attachments, this);
       if (previous !== undefined) { wget(states, previous).element = null; wdelete(attachments, this); }
       if (context !== null) { wget(states, context).element = this; wset(attachments, this, context); }

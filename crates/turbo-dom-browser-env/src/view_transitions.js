@@ -168,6 +168,24 @@
     settleFinished(record);
   }
 
+  function readOptionsTypes(result, types, member) {
+    if (types === undefined || types === null) return;
+    const sequence = member + "types' property from 'ViewTransitionOptions': ";
+    const method = typeof types === 'object' || typeof types === 'function' ? types[iteratorKey] : undefined;
+    if (typeof method !== 'function') throw new ErrorType(sequence + 'The provided value cannot be converted to a sequence.');
+    const iterator = apply(method, types, []);
+    const next = iterator.next;
+    for (;;) {
+      const step = apply(next, iterator, []);
+      if (step.done) break;
+      result.types[result.types.length] = string(step.value, sequence);
+    }
+  }
+  function readOptionsUpdate(result, update, member) {
+    if (update === undefined || update === null) return;
+    if (typeof update !== 'function') throw new ErrorType(member + "update' property from 'ViewTransitionOptions': The given value is not a function.");
+    result.callback = update;
+  }
   // (ViewTransitionUpdateCallback or ViewTransitionOptions), with sequence<DOMString>? types.
   function options(value, owner) {
     const prefix = "Failed to execute 'startViewTransition' on '" + owner + "': ";
@@ -177,24 +195,8 @@
     if (typeof value === 'function') { result.callback = value; return result; }
     if (typeof value !== 'object') throw new ErrorType(prefix + 'Overload resolution failed.');
     const member = prefix + "Failed to read the '";
-    const types = value.types;
-    if (types !== undefined && types !== null) {
-      const sequence = member + "types' property from 'ViewTransitionOptions': ";
-      const method = typeof types === 'object' || typeof types === 'function' ? types[iteratorKey] : undefined;
-      if (typeof method !== 'function') throw new ErrorType(sequence + 'The provided value cannot be converted to a sequence.');
-      const iterator = apply(method, types, []);
-      const next = iterator.next;
-      for (;;) {
-        const step = apply(next, iterator, []);
-        if (step.done) break;
-        result.types[result.types.length] = string(step.value, sequence);
-      }
-    }
-    const update = value.update;
-    if (update !== undefined && update !== null) {
-      if (typeof update !== 'function') throw new ErrorType(member + "update' property from 'ViewTransitionOptions': The given value is not a function.");
-      result.callback = update;
-    }
+    readOptionsTypes(result, value.types, member);
+    readOptionsUpdate(result, value.update, member);
     return result;
   }
 

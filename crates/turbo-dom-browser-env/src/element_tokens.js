@@ -47,6 +47,14 @@
   Object.defineProperty(proto,Symbol.iterator,{value:proto.values,writable:true,configurable:true});
   Object.defineProperty(proto,'length',{get:make(function(){return tokens(this).length;},'get length',0),enumerable:true,configurable:true});
   Object.defineProperty(proto,'value',{get:make(function(){return raw(this);},'get value',0),set:make(function(value){const state=record(this);apply(setAttribute,state.owner,[state.attribute,string(value)]);},'set value',1),enumerable:true,configurable:true});
+  function tokenListAnswer(operation,values,index,exists){
+    if(operation==='get')return exists?values[index]:undefined;
+    if(operation==='has')return exists;
+    if(operation==='descriptor')return exists?{value:values[index],writable:false,enumerable:true,configurable:true}:undefined;
+    if(operation==='set'||operation==='define')return exists?true:undefined;
+    if(operation==='delete')return exists?false:undefined;
+    return undefined;
+  }
   // [owner, IDL name, content attribute, receiver check, supported tokens]: an array of the
   // lowercase supported tokens, null for a list without any (supports() throws), undefined for
   // the lists whose supported tokens the supports() method above knows by attribute.
@@ -56,7 +64,13 @@
   for (const [owner,name,attribute,check] of lists) tokenList(owner,name,attribute,check,undefined);
   function tokenList(owner,name,attribute,check,supported) {
     const read = function(){apply(check,this,[]);let shared=getRecord(this);if(!shared){shared=create(null);shared.kind='Element';setRecord(this,shared);}if(!hasOwn(shared,'tokenLists'))define(shared,'tokenLists',{value:create(null),writable:true});const cache=shared.tokenLists;if(cache[attribute])return cache[attribute];const owner=this;
-      const list=named(proto,function(operation,key){const values=tokens(list),index=arrayIndex(key),exists=index!==null&&index<values.length;if(operation==='indices'){const out=[];for(let i=0;i<values.length;i++)add(out,i);return out;}if(operation==='keys')return [];if(operation==='get')return exists?values[index]:undefined;if(operation==='has')return exists;if(operation==='descriptor')return exists?{value:values[index],writable:false,enumerable:true,configurable:true}:undefined;if(operation==='set'||operation==='define')return exists?true:undefined;if(operation==='delete')return exists?false:undefined;},true);
+      const list=named(proto,function(operation,key){
+          const values=tokens(list);
+          if(operation==='indices'){const out=[];for(let i=0;i<values.length;i++)add(out,i);return out;}
+          if(operation==='keys')return [];
+          const index=arrayIndex(key),exists=index!==null&&index<values.length;
+          return tokenListAnswer(operation,values,index,exists);
+        },true);
       const state=create(null);state.kind='DOMTokenList';state.owner=owner;state.attribute=attribute;state.supported=supported;setRecord(list,state);cache[attribute]=list;return list;};
     Object.defineProperty(owner,name,{get:make(read,'get '+name,0),set:make(function(value){const list=apply(read,this,[]);set(list,'value',value,list);},'set '+name,1),enumerable:true,configurable:true});
   }

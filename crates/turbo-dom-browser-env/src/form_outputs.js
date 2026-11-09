@@ -32,19 +32,33 @@
     }
     return exponent;
   }
+  // Parses the integer digits (or a leading-dot float with implicit 0 integer) at `index`;
+  // returns `{index, integer}` or `null` if there are no digits to start a number.
+  function parseInteger(value, at, index) {
+    if (at(index) === 46 && digit(at(index + 1))) return { index, integer: '0' };
+    if (!digit(at(index))) return null;
+    const start = index;
+    index = digitsEnd(at, index);
+    return { index, integer: apply(sliceText, value, [start, index]) };
+  }
+  function parseFraction(value, at, index) {
+    if (at(index) !== 46 || (!digit(at(index + 1)) && at(index + 1) !== 101 && at(index + 1) !== 69)) return { index, fraction: '' };
+    index++;
+    const start = index;
+    index = digitsEnd(at, index);
+    return { index, fraction: apply(sliceText, value, [start, index]) };
+  }
   function parse(value, fallback) {
     if (value === null) return fallback;
-    let index = 0, sign = '', integer = '', fraction = '';
+    let index = 0, sign = '';
     const length = value.length, at = position => position < length ? charCode(value, position) : -1;
     index = skipWhitespace(at, index);
     if (at(index) === 45) { sign = '-'; index++; } else if (at(index) === 43) index++;
-    if (at(index) === 46 && digit(at(index + 1))) integer = '0';
-    else if (!digit(at(index))) return fallback;
-    else { const start = index; index = digitsEnd(at, index); integer = apply(sliceText, value, [start, index]); }
-    if (at(index) === 46 && (digit(at(index + 1)) || at(index + 1) === 101 || at(index + 1) === 69)) {
-      index++; const start = index; index = digitsEnd(at, index); fraction = apply(sliceText, value, [start, index]);
-    }
-    const exponent = exponentPart(value, at, index);
+    const integerResult = parseInteger(value, at, index);
+    if (integerResult === null) return fallback;
+    const { index: afterInteger, integer } = integerResult;
+    const { index: afterFraction, fraction } = parseFraction(value, at, afterInteger);
+    const exponent = exponentPart(value, at, afterFraction);
     const number = NumberValue(sign + integer + (fraction ? '.' + fraction : '') + exponent);
     if (!finite(number)) return fallback;
     return number === 0 ? 0 : number;

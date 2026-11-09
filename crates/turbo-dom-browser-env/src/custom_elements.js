@@ -461,12 +461,7 @@
           });
       }
   }
-  method("define", 2, function (name, constructor, options) {
-    const record = state(this);
-    if (arguments.length < 2) throw new TypeErrorValue("Two arguments required");
-    name = string(name);
-    if (!constructible(constructor)) throw new TypeErrorValue("The value is not a constructor");
-    const extension = definitionExtension(options);
+  function validateDefineArgs(record, name, constructor, extension) {
     if (!valid(name)) throw new Exception("Invalid custom element name", "SyntaxError");
     if (
       mhas(record.definitions, name) ||
@@ -474,33 +469,43 @@
       nativeDefining(this)
     )
       throw new Exception("Duplicate custom element definition", "NotSupportedError");
-    const localName = extension === undefined ? name : extension;
     if (extension !== undefined && (valid(extension) || !apply(setHas, knownTags, [extension])))
       throw new Exception("Invalid extension", "NotSupportedError");
-    const definition = nativeDefining(this, () => {
-      const object = constructor.prototype;
-      if (object === null || (typeof object !== "object" && typeof object !== "function"))
-        throw new TypeErrorValue("Invalid constructor prototype");
-      const callbacks = lifecycleCallbacks(object);
-      const observed = callbacks.attributeChangedCallback ? observedAttributes(constructor) : [];
-      const disabledValue = constructor.disabledFeatures;
-      let disabledFeatures = [];
-      if (disabledValue !== undefined)
-        disabledFeatures = apply(arrayFrom, ArrayValue, [disabledValue, string]);
-      const formAssociated = !!constructor.formAssociated;
-      if (formAssociated) formAssociatedCallbacks(object, callbacks);
-      return {
-        disabledFeatures,
-        formAssociated,
-        name,
-        local: localName,
-        constructor,
-        prototype: object,
-        callbacks,
-        observed,
-        registry: this,
-      };
-    });
+  }
+  function buildDefinition(registryObject, constructor, name, localName) {
+    const object = constructor.prototype;
+    if (object === null || (typeof object !== "object" && typeof object !== "function"))
+      throw new TypeErrorValue("Invalid constructor prototype");
+    const callbacks = lifecycleCallbacks(object);
+    const observed = callbacks.attributeChangedCallback ? observedAttributes(constructor) : [];
+    const disabledValue = constructor.disabledFeatures;
+    let disabledFeatures = [];
+    if (disabledValue !== undefined)
+      disabledFeatures = apply(arrayFrom, ArrayValue, [disabledValue, string]);
+    const formAssociated = !!constructor.formAssociated;
+    if (formAssociated) formAssociatedCallbacks(object, callbacks);
+    return {
+      disabledFeatures,
+      formAssociated,
+      name,
+      local: localName,
+      constructor,
+      prototype: object,
+      callbacks,
+      observed,
+      registry: registryObject,
+    };
+  }
+  method("define", 2, function (name, constructor, options) {
+    const record = state(this);
+    if (arguments.length < 2) throw new TypeErrorValue("Two arguments required");
+    name = string(name);
+    if (!constructible(constructor)) throw new TypeErrorValue("The value is not a constructor");
+    const extension = definitionExtension(options);
+    apply(validateDefineArgs, this, [record, name, constructor, extension]);
+    const localName = extension === undefined ? name : extension;
+    const registryObject = this;
+    const definition = nativeDefining(this, () => buildDefinition(registryObject, constructor, name, localName));
     mset(record.definitions, name, definition);
     wset(record.constructors, constructor, definition);
     if (this === registry) wset(constructors, constructor, definition);
@@ -615,21 +620,36 @@
   }
   const replacements = new MapValue(),
     originals = htmlInterfaces();
+  function resolveInterfaceDefinition(target, existing, name, expected) {
+    const definition =
+      existing === undefined
+        ? wget(constructors, target)
+        : wget(elementStates, existing)?.definition;
+    if (!definition || definition.constructor !== target)
+      throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
+    const required =
+      definition.local === definition.name
+        ? htmlPrototype
+        : getPrototype(apply(create, contextDocument, [definition.local]));
+    if (required !== expected)
+      throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
+    return definition;
+  }
+  function recordNewInterfaceNode(node, definition) {
+    if (definition.local !== definition.name) nativePrivate(node, definition.name);
+    wset(elementStates, node, {
+      definition,
+      status: "custom",
+      owner: contextDocument,
+      connected: false,
+    });
+    nativeState(node, "custom");
+    if (initializeInternals) initializeInternals(node, definition);
+  }
   for (const [name, old] of originals) {
     const expected = old.prototype;
     const replacement = nativeConstructor((target, prototype, existing) => {
-      const definition =
-        existing === undefined
-          ? wget(constructors, target)
-          : wget(elementStates, existing)?.definition;
-      if (!definition || definition.constructor !== target)
-        throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
-      const required =
-        definition.local === definition.name
-          ? htmlPrototype
-          : getPrototype(apply(create, contextDocument, [definition.local]));
-      if (required !== expected)
-        throw new TypeErrorValue("Failed to construct '" + name + "': Illegal constructor");
+      const definition = resolveInterfaceDefinition(target, existing, name, expected);
       const node =
         existing === undefined ? apply(create, contextDocument, [definition.local]) : existing;
       setPrototype(
@@ -638,17 +658,7 @@
           ? prototype
           : expected,
       );
-      if (existing === undefined) {
-        if (definition.local !== definition.name) nativePrivate(node, definition.name);
-        wset(elementStates, node, {
-          definition,
-          status: "custom",
-          owner: contextDocument,
-          connected: false,
-        });
-        nativeState(node, "custom");
-        if (initializeInternals) initializeInternals(node, definition);
-      }
+      if (existing === undefined) recordNewInterfaceNode(node, definition);
       return node;
     }, name);
     define(replacement, "prototype", { value: expected, writable: false });
