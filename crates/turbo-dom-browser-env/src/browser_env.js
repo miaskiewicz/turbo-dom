@@ -235,11 +235,20 @@
   // A child iframe document's root element is its own root (turbo-dom#299).
   function computedFontRoot(element,parent,root){return !parent&&computedFrameRoot(element)===element?element:root;}
   function fontRaw(decl,name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
+  // Resolve a parsed `<number><unit>` against the surrounding `base` / `rem` lengths.
+  // Hoisted out of fontLength.term so the inner closure stays a small dispatcher.
+  function fontTermResolve(unit,number,base,rem,scalar){
+    if(unit==='em')return base===null?null:number*base;
+    if(unit==='rem')return rem===null?null:number*rem;
+    if(unit==='%')return base===null?null:number*base/100;
+    if(unit)return number*fontUnitScale[unit];
+    return scalar||number===0?number:null;
+  }
   function fontLength(value,base,rem,typedLine){
     function term(text,scalar){
       var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
       var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
-      var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
+      var resolved=fontTermResolve(unit,number,base,rem,scalar);
       return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
     }
     function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
@@ -285,21 +294,39 @@
     if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
     $c.push(shorthand, sizeText);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);return $c.join(shorthand, ' ');
   }
+  // The default `initial` FontState for an element whose font context is `context`
+  // (or a disconnected element, when `context` is null). Allocated once per
+  // computedFonts call, same as the inline literal it replaces.
+  function computedFontsInitial(context){
+    var initialFamily=context?context[0]:'';
+    var initialSize=context?context[1]:16;
+    return new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
+  }
+  // A named helper beats the per-call closure the $c.map used to allocate for every
+  // computedFonts call (same body, hoisted so the family mapper is reused).
+  var computedFontGenericFamily=/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/;
+  function computedFontsFamilyName(part){
+    var name=$c.trim(part),key=fontLower(name);
+    return $c.test(computedFontGenericFamily, key)?key:name;
+  }
+  // Resolve [parent, root] for `element`'s font context. A pseudo-element's parent
+  // is its originating element (its root clears so inheritance restarts, Chrome).
+  function computedFontsParentRoot(element,context,pseudo){
+    var parent=context&&context[2],root=context&&context[3];
+    if(pseudo&&context)return [element,null];
+    return [parent,computedFontRoot(element,parent,root)];
+  }
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
-    var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
-    // A pseudo-element's parent is its originating element (or its parent pseudo-element).
-    if(pseudo&&context){parent=element;root=null;}
-    else root=computedFontRoot(element,parent,root);
-    var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
+    var context=computedFontContext(element),pr=computedFontsParentRoot(element,context,pseudo),parent=pr[0],root=pr[1];
+    var initial=computedFontsInitial(context),initialSize=initial.size;
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
-    var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
     inherited=inherited||initial;
     var rootSize=inherited.rootSize===undefined?initialSize:inherited.rootSize;
     var sizeValue=fontRaw(decl,'font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=computedFontSize(sizeValue,inherited,rootSize,initialSize);
     var family=fontRaw(decl,'font-family',inherited.family,initial.family),style=fontRaw(decl,'font-style',inherited.style,initial.style),weight=cssFontString(fontRaw(decl,'font-weight',inherited.weight,initial.weight));
     style=fontKeyword(style,/^(normal|italic|oblique)$/);
     weight=fontKeyword(weight,/^(normal|bold|bolder|lighter)$/);
-    family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
+    family=$c.join($c.map(cssParts(family,','), computedFontsFamilyName), ', ');
     weight=computedFontWeight(weight,inherited.weight);
     var stretch=fontRaw(decl,'font-stretch',inherited.stretch,initial.stretch);
     stretch=fontStretchValues[fontLower(stretch)]||stretch;
@@ -360,12 +387,17 @@
   // empty declaration (invalid, or a form Chrome computes no style for), else the
   // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
   // `picker(select)`).
+  // `scroll-button(direction)` — direction is `*` or a scroll keyword.
+  function computedPseudoDirection(name,argument,word){
+    var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';
+    return scrollButtonDirections[direction]?name+'('+direction+')':null;
+  }
   // A functional pseudo-element argument: `name(` ... `)` per its kind.
   function computedPseudoFunctional(name,rest,ident,colons){
     var kind=computedPseudoFunctions[name];
     if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
     var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
-    if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+    if(kind==='direction')return computedPseudoDirection(name,argument,word);
     if(!word||word.length!==argument.length)return null;
     if(kind==='select')return word.name==='select'?name+'(select)':null;
     return name+'('+argument+')';
@@ -569,6 +601,14 @@
   // The parent a connected element's snapshot inherits unset properties from (null at the
   // root), or undefined for snapshots without defaults (pseudo-elements, disconnected).
   function defaultsParentOf(el, pseudo, connected, parent){ return connected && !pseudo && el ? parent : undefined; }
+  // `border-<side>-width` reads 0px when the matching style is none/hidden (Chrome).
+  function computedDefaultBorderWidth(record, name, entry){
+    return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
+  }
+  // `auto` top/right/bottom/left reads '' when position is not `static` (used value).
+  function computedDefaultSideAuto(record, name, entry){
+    return entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static';
+  }
   // The computed value of `name` for a connected element's snapshot no declaration set, or ''.
   function computedDefault(record, name){
     var entry = computedInitialValues[name];
@@ -579,8 +619,8 @@
     if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name);
     if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, new computedSnapshotMap())), name);
     if (entry[0] === 'currentcolor') return propertyValue(record, 'color');
-    if ($c.test(/^border-[a-z]+-width$/, name)) return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
-    if (entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static') return '';
+    if ($c.test(/^border-[a-z]+-width$/, name)) return computedDefaultBorderWidth(record, name, entry);
+    if (computedDefaultSideAuto(record, name, entry)) return '';
     return entry[0];
   }
   // CSS-wide keywords compute to the value they select (turbo-dom#317; computed_defaults case
@@ -590,6 +630,13 @@
   // inherits, revert -> html.css's value, i.e. the lazy default (setProp already applied a UA
   // table's). A border width resolved here is 0px while its side's style is none / hidden.
   var wideKeywordInitials = { __proto__: null, width: ['auto', false], height: ['auto', false] };
+  // The value `inherit` / `initial` resolves to (currentcolor -> the element's `color`),
+  // or undefined for any other key (which the caller skips).
+  function wideKeywordValue(key, entry, parentRecord, decl, name){
+    if (key === 'inherit' && parentRecord) return propertyValue(parentRecord, name);
+    if (key === 'inherit' || key === 'initial') return entry[0] === 'currentcolor' ? decl.color : entry[0];
+    return undefined;
+  }
   function resolveWideKeywords(decl, parentRecord, setProp, drop){
     var widths = [];
     $c.forEach($O.keys(decl), function(name){
@@ -598,10 +645,9 @@
       var key = $c.toLowerCase($c.trim(value));
       if (key === 'revert') { drop(name); return; }
       if (key === 'unset') key = entry[1] ? 'inherit' : 'initial';
-      if (key === 'inherit' && parentRecord) value = propertyValue(parentRecord, name);
-      else if (key === 'inherit' || key === 'initial') value = entry[0] === 'currentcolor' ? decl.color : entry[0];
-      else return;
-      setProp(name, value);
+      var resolved = wideKeywordValue(key, entry, parentRecord, decl, name);
+      if (resolved === undefined) return;
+      setProp(name, resolved);
       if ($c.test(/^border-[a-z]+-width$/, name)) $c.push(widths, name);
     });
     $c.forEach(widths, function(name){
@@ -618,6 +664,10 @@
   // rendered box reads its declared value (or "": no used value to report, the null return).
   var usedReplacedTags = { __proto__: null, IMG: 1, CANVAS: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, EMBED: 1, OBJECT: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, BUTTON: 1 };
   var usedSvgBoxes = { __proto__: null, rect: 1, image: 1, foreignObject: 1 };
+  // The index into the `[bw, bh, cw, ch]` tuple for `name` at the current `box-sizing`.
+  function computedUsedBoxIndex(record, name){
+    return (name === 'height' ? 1 : 0) + (propertyValue(record, 'box-sizing') === 'border-box' ? 0 : 2);
+  }
   function computedUsedSize(record, name){
     var el = record.defaultsOf;
     if ((name !== 'width' && name !== 'height') || !el) return null;
@@ -626,7 +676,7 @@
     var provider = __ns.layoutUsedSize;
     if (typeof provider !== 'function') return null;
     var value = NaN;
-    try { var box = provider(el); value = box ? cssFontNumber(box[(name === 'height' ? 1 : 0) + (propertyValue(record, 'box-sizing') === 'border-box' ? 0 : 2)]) : NaN; } catch(e){}
+    try { var box = provider(el); value = box ? cssFontNumber(box[computedUsedBoxIndex(record, name)]) : NaN; } catch(e){}
     if (cssFontFinite(value)) return computedUsedPixels(value);
     return declared ? declared.text : 'auto';
   }
@@ -667,6 +717,13 @@
   // ordinary UA declaration, the rest are !important and beat every author declaration.
   var fullscreenUserAgent = { 'object-fit': 'contain' };
   var fullscreenImportant = { 'position': 'fixed', 'inset': '0px', 'margin': '0px', 'box-sizing': 'border-box', 'min-width': '0px', 'max-width': 'none', 'min-height': '0px', 'max-height': 'none', 'width': '100%', 'height': '100%', 'transform': 'none' };
+  // +1 for a bracket open, -1 for a bracket close, 0 for anything else. Hoisted and
+  // allocation-free — V8 inlines it into the character loop of selectorListItems.
+  function selectorListItemsBracket(c){
+    if (c === '(' || c === '[') return 1;
+    if (c === ')' || c === ']') return -1;
+    return 0;
+  }
   // Split a selector list at its top-level commas (outside (), [] and strings).
   function selectorListItems(text){
     var items = [], depth = 0, quote = '', start = 0;
@@ -675,9 +732,11 @@
       if (c === '\\') { i++; continue; }
       if (quote) { if (c === quote) quote = ''; continue; }
       if (c === '"' || c === "'") quote = c;
-      else if (c === '(' || c === '[') depth++;
-      else if (c === ')' || c === ']') depth--;
-      else if (c === ',' && depth === 0) { $c.push(items, $c.slice(text, start, i)); start = i + 1; }
+      else {
+        var bracket = selectorListItemsBracket(c);
+        if (bracket) depth += bracket;
+        else if (c === ',' && depth === 0) { $c.push(items, $c.slice(text, start, i)); start = i + 1; }
+      }
     }
     $c.push(items, $c.slice(text, start));
     return items;
@@ -2426,12 +2485,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     var UNITS = { px: 1, em: 16, rem: 16, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, in: 96, pt: 4 / 3, pc: 16 };
     var RESOLUTION = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 2.54 / 96 };
+    // Ratio literal `a / b` (default denominator `1`) as [[num, denom], serialization] or null.
+    function parseRatio(text){
+      var ratio = /^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?$/.exec(text);
+      if (!ratio) return null;
+      var denom = ratio[2] === undefined ? 1 : +ratio[2];
+      var denomSer = ratio[2] === undefined ? '1' : ratio[2];
+      return [[+ratio[1], denom], ratio[1] + ' / ' + denomSer];
+    }
     // A value token of `kind` as [number (or ratio pair), serialization], or null when invalid.
     function parseValue(kind, text){
-      if (kind === 'ratio') {
-        var ratio = /^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?$/.exec(text);
-        return ratio ? [[+ratio[1], ratio[2] === undefined ? 1 : +ratio[2]], ratio[1] + ' / ' + (ratio[2] === undefined ? '1' : ratio[2])] : null;
-      }
+      if (kind === 'ratio') return parseRatio(text);
       var match = /^(-?(?:\d+\.?\d*|\.\d+))([a-z]*)$/.exec(text);
       if (!match) return null;
       var table = kind === 'length' ? UNITS : kind === 'resolution' ? RESOLUTION : null;
@@ -2461,6 +2525,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var range = RANGES[name];
       return range ? { ser: '(' + name + ')', test: function(){ var current = range[1](); return range[0] === 'ratio' ? current[0] !== 0 : current !== 0 && current === current; } } : null;
     }
+    // One `<name> <op> <value>` (or `<value> <op> <name>`) pair inside a range feature.
+    // Rewrites parts[valueAt] with the canonical serialization and appends a [op, value]
+    // check to `checks`. Returns false when the operand fails to parse.
+    function rangeFeatureCheck(parts, index, nameAt, range, checks){
+      var valueAt = index - 1 === nameAt ? index + 1 : index - 1;
+      var value = parseValue(range[0], parts[valueAt]);
+      if (!value || !TEST[parts[index]]) return false;
+      parts[valueAt] = value[1];
+      checks.push([valueAt > nameAt ? parts[index] : FLIP[parts[index]], value[0]]);
+      return true;
+    }
     // `(width >= 600px)` / `(400px <= width <= 1100px)` range syntax.
     function rangeFeature(text){
       var parts = text.split(/\s*(<=|>=|<|>|=)\s*/);
@@ -2469,10 +2544,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if (nameAt < 0 || parts.length === 5 && nameAt !== 2) return null;
       var range = RANGES[parts[nameAt]], checks = [];
       for (var index = 1; index < parts.length; index += 2) {
-        var valueAt = index - 1 === nameAt ? index + 1 : index - 1, value = parseValue(range[0], parts[valueAt]);
-        if (!value || !TEST[parts[index]]) return null;
-        parts[valueAt] = value[1];
-        checks.push([valueAt > nameAt ? parts[index] : FLIP[parts[index]], value[0]]);
+        if (!rangeFeatureCheck(parts, index, nameAt, range, checks)) return null;
       }
       return { ser: '(' + parts.join(' ') + ')', test: function(){ var current = range[1](); return checks.every(function(check){ return TEST[check[0]](compare(range[0], current, check[1])); }); } };
     }
@@ -2482,17 +2554,31 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       return /[<>=]/.test(text) ? rangeFeature(text) : booleanFeature(text);
     }
     // Top-level tokens: words and balanced `( … )` groups.
-    function tokens(text){
-      var out = [], depth = 0, start = -1;
-      for (var index = 0; index < text.length; index++) {
-        var c = text[index];
-        if (c === '(') { if (depth++ === 0) { if (start >= 0) out.push(text.slice(start, index)); start = index; } }
-        else if (c === ')') { if (--depth < 0) return null; if (depth === 0) { out.push(text.slice(start, index + 1)); start = -1; } }
-        else if (depth === 0 && /\s/.test(c)) { if (start >= 0) out.push(text.slice(start, index)); start = -1; }
-        else if (start < 0) start = index;
+    // The inner loop body returns the new `start` on success, or -1 to signal an
+    // unbalanced `)` which makes `tokens` return null. `state` carries { depth, start }.
+    function tokensStep(text, index, c, state){
+      if (c === '(') {
+        if (state.depth++ === 0) { if (state.start >= 0) state.out.push(text.slice(state.start, index)); state.start = index; }
+        return true;
       }
-      if (start >= 0) out.push(text.slice(start));
-      return depth === 0 ? out : null;
+      if (c === ')') {
+        if (--state.depth < 0) return false;
+        if (state.depth === 0) { state.out.push(text.slice(state.start, index + 1)); state.start = -1; }
+        return true;
+      }
+      if (state.depth === 0 && /\s/.test(c)) {
+        if (state.start >= 0) state.out.push(text.slice(state.start, index));
+        state.start = -1;
+      } else if (state.start < 0) state.start = index;
+      return true;
+    }
+    function tokens(text){
+      var state = { out: [], depth: 0, start: -1 };
+      for (var index = 0; index < text.length; index++) {
+        if (!tokensStep(text, index, text[index], state)) return null;
+      }
+      if (state.start >= 0) state.out.push(text.slice(state.start));
+      return state.depth === 0 ? state.out : null;
     }
     function group(token){
       if (!token || token[0] !== '(') return null;
