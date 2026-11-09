@@ -1,0 +1,49 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "event-defaultprevented-chrome156-probe.js",
+  "probeSha256": "b8cabce70318112d6d44445b9a88c39c4cacb599e94f93bd220eea9b592470b1",
+  "collectorSha256": "10dac424e7a7f56dbdb58706ac9968e21a31947edd6fea76ed0bd780d2a0991c",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "listenerQueuesMicrotask": {
+      "outerListenerDefaultPreventedWhenFiring": false,
+      "outerReturn": true,
+      "outerDefaultPreventedImmediatelyAfterOuter": false,
+      "microstartDefaultPrevented": false,
+      "innerListenerDefaultPreventedBeforePrevent": false,
+      "innerListenerDefaultPreventedAfterPrevent": true,
+      "innerReturn": false,
+      "innerDefaultPreventedAfter": true,
+      "outerDefaultPreventedAfterMicrotasksDrained": true
+    },
+    "outerListenerAlsoPrevents": {
+      "outerListenerPreventedDefaultPrevented": true,
+      "outerReturn": false,
+      "outerDefaultPreventedImmediatelyAfterOuter": true,
+      "microstartDefaultPrevented": true,
+      "innerReturn": false,
+      "innerDefaultPreventedAfter": true,
+      "outerDefaultPreventedAfterMicrotasksDrained": true
+    },
+    "microtaskPreventsBeforeRedispatch": {
+      "outerReturn": true,
+      "outerDefaultPreventedImmediatelyAfterOuter": false,
+      "microstartDefaultPreventedAfterPreemptiveCall": true,
+      "innerReturn": false,
+      "innerDefaultPreventedAfter": true,
+      "outerDefaultPreventedAfterMicrotasksDrained": true
+    }
+  }
+}
