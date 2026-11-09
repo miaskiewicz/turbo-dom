@@ -391,7 +391,17 @@ pub(crate) fn layout_multicol(
     let fs = bs.font_size;
     let tracks = resolve_tracks(&container.style, cw, fs);
     let container_h = definite_container_height(bs);
-    let flags: Vec<KidFlags> = kids.iter().map(|k| kid_flags(&k.style)).collect();
+    // miaskiewicz/turbo-dom#444: partition kids. Out-of-flow (position:
+    // absolute/fixed) and floated kids are NOT in the column flow (CSS
+    // Multicol 1 §6.1); they do not consume column space and lay out
+    // against their own containing block. Floats inside a column still
+    // participate in that column's inline layout — but a float declared
+    // DIRECTLY on a multicol kid is treated like an abspos here (R2 L5).
+    let (in_flow_kids, oof_kids): (Vec<&LayoutBox>, Vec<&LayoutBox>) = kids
+        .iter()
+        .partition(|k| !is_out_of_flow_kid(&k.style));
+    let in_flow_owned: Vec<LayoutBox> = in_flow_kids.into_iter().cloned().collect();
+    let flags: Vec<KidFlags> = in_flow_owned.iter().map(|k| kid_flags(&k.style)).collect();
     let segments = partition_segments(&flags);
     // The container's definite height caps the balanced `col_h` only when
     // the container has a single sub-flow (no span-all child). A sub-flow
@@ -405,7 +415,7 @@ pub(crate) fn layout_multicol(
     for seg in &segments {
         let seg_out = lay_out_segment(
             seg,
-            kids,
+            &in_flow_owned,
             &flags,
             container,
             tracks,
@@ -422,7 +432,25 @@ pub(crate) fn layout_multicol(
     // A definite container height wins; otherwise the box grows to hold all
     // the sub-flows and span-all slabs.
     let content_h = container_h.unwrap_or(y_cursor);
+    // miaskiewicz/turbo-dom#444 / #461: lay out out-of-flow kids at the
+    // multicol content-box origin as their static-position fallback.
+    // `block::layout_multicol_out_of_flow` resolves their used `width`
+    // and `height` from their own CSS declarations (not `used_width`)
+    // so an abspos kid with an 80x50 box inside a 2-column 400px
+    // multicol places at its CSS geometry, never the column strip.
+    for kid in &oof_kids {
+        let frag = block::layout_multicol_out_of_flow(kid, (cx, cy), cw, fs, ctx);
+        placed.push(frag);
+    }
     (placed, content_h)
+}
+
+/// Whether a multicol kid is laid out out-of-flow for column purposes:
+/// `position: absolute` / `fixed`, or a direct float. Mirrors the
+/// `in_flow` gate in `kid_flags` so partitioning and flag-clearing stay
+/// in lockstep (R2 L5).
+fn is_out_of_flow_kid(style: &ComputedStyle) -> bool {
+    position_of(style).is_out_of_flow() || float_of(style) != Float::None
 }
 
 /// A contiguous slice of children the layout handles as one unit: either a
