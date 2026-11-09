@@ -138,6 +138,18 @@
   // (restored to the saved values once the inner dispatch's finally has
   // reset them — which is its right: a re-dispatched event's stopping
   // state is its own, not the outer's).
+  //
+  // Review R4 H1: the save-set alone is not enough — the drain must also
+  // CLEAR `stop`/`stopImmediate` BEFORE the checkpoint so a nested
+  // re-dispatch (from a microtask) starts fresh. `dispatchTarget`'s entry
+  // writes `dispatching` / `trusted` / `target` / `currentTarget` /
+  // `eventPhase` / `path` but not `stop` / `stopImmediate`; it relies on
+  // the previous dispatch's finally to have reset them. Without the
+  // clear, an inner `dispatchMulti` enters with the outer's
+  // `record.stop = true` and bails on its capture loop's first
+  // `if (record.stop || record.stopImmediate) return;` — AT_TARGET and
+  // bubble never run either, because `dispatchMulti` returns from the
+  // capture loop, not per-phase.
   function drainMicrotasksAcrossDispatch(record){
     const savedDispatching=record.dispatching;
     const savedCurrent=record.currentTarget;
@@ -147,6 +159,8 @@
     const savedStop=record.stop;
     const savedStopImmediate=record.stopImmediate;
     record.dispatching=false;
+    record.stop=false;
+    record.stopImmediate=false;
     try{native('microtaskCheckpoint');}
     finally{
       record.dispatching=savedDispatching;
