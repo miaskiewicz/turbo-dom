@@ -53,7 +53,10 @@
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
 use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
-use super::value::{parse_color, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, Rgba};
+use super::value::{
+    float_of, parse_color, parse_px, position_of, BoxSizing, BoxStyle, Float, LengthPct,
+    ResolveCtx, Rgba,
+};
 use crate::style::ComputedStyle;
 
 /// CSS Multicol 1 §5.1: `column-gap: normal` is `1em`. Chrome 156 uses the font
@@ -263,8 +266,17 @@ struct KidFlags {
 /// same thing for multicol ("avoid any break inside this box" implies no
 /// column break either).
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
+    // Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box": an
+    // out-of-flow (`position: absolute` / `fixed`) or floated element
+    // "cannot be column-span-all". Chrome 156 obeys. Gate `column-span: all`
+    // on the box being in-flow, so a kid with `column-span: all;
+    // position: absolute` stays in its multicol sub-flow and the spec's
+    // "ignored" value does not stretch the box to the container inline
+    // size.
+    let span_all_allowed =
+        !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
     KidFlags {
-        column_span_all: keyword_eq(style, "column-span", "all"),
+        column_span_all: span_all_allowed && keyword_eq(style, "column-span", "all"),
         break_before_column: keyword_eq(style, "break-before", "column"),
         break_after_column: keyword_eq(style, "break-after", "column"),
         break_inside_avoid: keyword_in(style, "break-inside", &["avoid", "avoid-column"]),
@@ -510,7 +522,23 @@ fn lay_out_subflow(
         .map(|k| measure_kid(k, used_width, fs, ctx))
         .collect();
     let col_h = capped(section_col_h(&measured, flags, used_count), col_h_cap);
-    let mut out = flow_section(measured, flags, col_h, used_width, gap, cx, cy);
+    // Review R2 layout M3: Chrome places the last column at `container_end -
+    // used_width` (end-aligned), not at `(used_count - 1) * stride`. With
+    // integer-grid rounding they differ by up to 1/64 px. The engine does
+    // not truncate `used_width` to the LayoutUnit grid, but if a future
+    // change ever rounds `used_width` the stride-based formula would
+    // accumulate drift across columns. Thread the container's cw through so
+    // `place_measured` can end-align the last column exactly.
+    let cw = (used_count.saturating_sub(1) as f32) * gap + (used_count as f32) * used_width;
+    let mut out = flow_section(
+        measured,
+        flags,
+        col_h,
+        (used_count, used_width, gap),
+        cw,
+        cx,
+        cy,
+    );
     let rules = column_rule_fragments(
         container,
         (cx, cy),
@@ -669,12 +697,13 @@ struct ColPiece {
 /// column at the kid's start, `break-inside: avoid` / `avoid-column` pushes
 /// a kid that would fragment to a fresh column (when it fits in one), and
 /// `break-after: column` forces a new column after the kid.
+#[allow(clippy::too_many_arguments)]
 fn flow_section(
     measured: Vec<Fragment>,
     flags: &[KidFlags],
     col_h: f32,
-    used_width: f32,
-    gap: f32,
+    (used_count, used_width, gap): (u32, f32, f32),
+    cw: f32,
     cx: f32,
     cy: f32,
 ) -> Vec<Fragment> {
@@ -685,7 +714,14 @@ fn flow_section(
         let f = flags[i];
         apply_pre_break(f, col_h, frag.height, &mut col_index, &mut col_cursor);
         let pieces = fragment_pieces(frag.height, col_h, &mut col_index, &mut col_cursor);
-        out.push(place_measured(frag, &pieces, used_width, gap, cx, cy));
+        out.push(place_measured(
+            frag,
+            &pieces,
+            (used_count, used_width, gap),
+            cw,
+            cx,
+            cy,
+        ));
         if f.break_after_column {
             col_index += 1;
             col_cursor = 0.0;
@@ -785,11 +821,12 @@ fn fragment_pieces(
 /// paint of a fragmented block is a future followup; no case in the Chrome
 /// 156 oracle paints a fragmented block's background, so PR-C2 / PR-E both
 /// pass with the union rect.
+#[allow(clippy::too_many_arguments)]
 fn place_measured(
     mut measured: Fragment,
     pieces: &[ColPiece],
-    used_width: f32,
-    gap: f32,
+    (used_count, used_width, gap): (u32, f32, f32),
+    cw: f32,
     cx: f32,
     cy: f32,
 ) -> Fragment {
@@ -800,9 +837,23 @@ fn place_measured(
     debug_assert_eq!(measured.x, 0.0);
     debug_assert_eq!(measured.y, 0.0);
     let stride = used_width + gap;
+    // Review R2 layout M3: the LAST in-flow column (index `used_count - 1`)
+    // ends at the container's content-box right edge (Chrome's Blink
+    // multicol end-aligns it). On a pure-float path the stride formula and
+    // the end-aligned formula agree, but on an integer-rounded `used_width`
+    // the last column strip would drift by up to 1/64 px. Overflow strips
+    // (col_index >= used_count) keep the stride formula — they are placed
+    // past the content box and have no end-alignment target.
+    let col_x = |col_index: u32| -> f32 {
+        if used_count >= 1 && col_index == used_count - 1 {
+            cx + cw - used_width
+        } else {
+            cx + (col_index as f32) * stride
+        }
+    };
     if pieces.len() == 1 {
         let p = pieces[0];
-        let dx = cx + p.col_index as f32 * stride;
+        let dx = col_x(p.col_index);
         let dy = cy + p.y;
         if dx != 0.0 || dy != 0.0 {
             measured.translate(dx, dy);
@@ -810,8 +861,8 @@ fn place_measured(
         return measured;
     }
     let (left_col, right_col, min_y, max_bottom) = piece_bounds(pieces);
-    let left = cx + left_col as f32 * stride;
-    let right = cx + right_col as f32 * stride + used_width;
+    let left = col_x(left_col);
+    let right = col_x(right_col) + used_width;
     measured.x = left;
     measured.y = cy + min_y;
     measured.width = right - left;
@@ -1220,6 +1271,42 @@ mod tests {
         assert!(f.break_inside_avoid);
     }
 
+    /// Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box" says an
+    /// out-of-flow or floated kid cannot be column-span-all; Chrome 156
+    /// honours it. Gate the flag on the box being in-flow — a kid with
+    /// `position: absolute` / `position: fixed` / `float: left|right` and
+    /// `column-span: all` must NOT be treated as span-all.
+    #[test]
+    fn kid_flags_rejects_column_span_all_on_out_of_flow_or_floated_boxes() {
+        // Baseline: an in-flow kid with `column-span: all` is span-all.
+        let f = kid_flags(&cs(&[("column-span", "all")]));
+        assert!(f.column_span_all);
+        // Out-of-flow kid: the flag is ignored.
+        for position in ["absolute", "fixed"] {
+            let f = kid_flags(&cs(&[("column-span", "all"), ("position", position)]));
+            assert!(
+                !f.column_span_all,
+                "position:{position}: column-span-all must be ignored",
+            );
+        }
+        // Floated kid: ignored.
+        for float_value in ["left", "right"] {
+            let f = kid_flags(&cs(&[("column-span", "all"), ("float", float_value)]));
+            assert!(
+                !f.column_span_all,
+                "float:{float_value}: column-span-all must be ignored",
+            );
+        }
+        // `position: relative` / `sticky` are in-flow — still span-all.
+        for position in ["relative", "sticky", "static"] {
+            let f = kid_flags(&cs(&[("column-span", "all"), ("position", position)]));
+            assert!(
+                f.column_span_all,
+                "position:{position}: column-span-all must stay",
+            );
+        }
+    }
+
     #[test]
     fn kid_flags_rejects_unrelated_keywords() {
         // `break-before: page` / `avoid-page` / `avoid` are not a column
@@ -1494,12 +1581,75 @@ mod tests {
             y: 45.0,
             height: 60.0,
         }];
-        let got = place_measured(bx(200.0, 60.0), &p, 200.0, 20.0, 10.0, 30.0);
-        // dx = cx + col * stride = 10 + 2 * (200 + 20) = 450. dy = cy + y = 30 + 45 = 75.
-        assert!((got.x - 450.0).abs() < 1e-5);
+        // cw = 3*200 + 2*20 = 640 (gap-consistent). Last column (2) is
+        // end-aligned at cw - used_width = 440. Pre-R2 M3 the formula was
+        // `col * stride = 2 * 220 = 440`; same value because used_width is
+        // not integer-truncated here. Under the end-align formula the
+        // answer stays 440.
+        let got = place_measured(bx(200.0, 60.0), &p, (3, 200.0, 20.0), 640.0, 0.0, 30.0);
+        assert!((got.x - 440.0).abs() < 1e-5, "x = {}", got.x);
         assert!((got.y - 75.0).abs() < 1e-5);
         assert!((got.width - 200.0).abs() < 1e-5);
         assert!((got.height - 60.0).abs() < 1e-5);
+    }
+
+    /// Review R2 layout M3: the last column is end-aligned at
+    /// `cw - used_width` (Chrome's Blink multicol). On a pure-float path
+    /// the formula agrees with `col * stride`, but if a future change
+    /// rounds `used_width` to Chrome's 1/64 px `LayoutUnit` grid, the
+    /// stride formula would drift by up to 1/64 px. Pin the end-align
+    /// behaviour so a `used_width` rounded down still lands the last
+    /// column flush with the content-box right edge.
+    #[test]
+    fn place_measured_end_aligns_the_last_column_on_a_rounded_used_width() {
+        use super::super::fragment::{BorderRadii, NodeId};
+        use super::super::value::BorderEdges;
+        let bx = |w, h| {
+            super::super::fragment::Fragment::new(
+                NodeId(42),
+                0.0,
+                0.0,
+                w,
+                h,
+                super::super::fragment::FragmentContent::Box {
+                    background: None,
+                    border: BorderEdges::default(),
+                    border_radius: BorderRadii::ZERO,
+                    shadow: None,
+                    gradient: None,
+                    transform: None,
+                },
+            )
+        };
+        // Simulate Chrome's LayoutUnit truncation: cw = 600, gap = 16,
+        // used_count = 3, used_width rounded down to 189.328125 (12117/64).
+        // Stride formula for col 2 would give `2 * (189.328125 + 16) =
+        // 410.65625`. End-align formula gives `600 - 189.328125 =
+        // 410.671875` — Chrome's actual column-2 x. The fix must land on
+        // 410.671875, not 410.65625.
+        let p = [ColPiece {
+            col_index: 2,
+            y: 0.0,
+            height: 50.0,
+        }];
+        let got = place_measured(bx(189.328125, 50.0), &p, (3, 189.328125, 16.0), 600.0, 0.0, 0.0);
+        assert!(
+            (got.x - 410.671875).abs() < 1e-5,
+            "last column must end-align to cw - used_width (got {})",
+            got.x
+        );
+        // Other columns still use stride placement.
+        let p = [ColPiece {
+            col_index: 1,
+            y: 0.0,
+            height: 50.0,
+        }];
+        let got = place_measured(bx(189.328125, 50.0), &p, (3, 189.328125, 16.0), 600.0, 0.0, 0.0);
+        assert!(
+            (got.x - 205.328125).abs() < 1e-5,
+            "non-last column uses stride (got {})",
+            got.x
+        );
     }
 
     #[test]
@@ -1543,10 +1693,14 @@ mod tests {
                 height: 40.0,
             },
         ];
-        let got = place_measured(bx(200.0, 120.0), &p, 200.0, 0.0, 100.0, 50.0);
-        // left_col=1, right_col=3, min_y=5, max_bottom=max(60,35,60)=60.
-        // x = cx + 1 * 200 = 300. y = cy + 5 = 55. width = (3 * 200 + 200) - 200 = 600.
-        // height = 60 - 5 = 55.
+        // used_count = 4 so the right_col (3) is the last — end-aligned at
+        // `cx + cw - used_width = 100 + 800 - 200 = 700`; adding used_width
+        // gives the same right edge the old stride formula produced
+        // (`cx + 3*stride + used_width = 900`). left_col=1 is non-last.
+        let got = place_measured(bx(200.0, 120.0), &p, (4, 200.0, 0.0), 800.0, 100.0, 50.0);
+        // left_col=1 at stride placement: 100 + 1 * 200 = 300.
+        // right_col=3 end-aligned: 100 + 800 - 200 = 700; + used_width = 900.
+        // width = 900 - 300 = 600. y = cy + min_y = 50 + 5 = 55.
         assert!((got.x - 300.0).abs() < 1e-5);
         assert!((got.y - 55.0).abs() < 1e-5);
         assert!((got.width - 600.0).abs() < 1e-5);

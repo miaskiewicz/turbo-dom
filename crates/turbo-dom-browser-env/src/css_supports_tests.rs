@@ -64,6 +64,10 @@ fn css_supports_rejects_chrome156_rejections() {
         // #390
         out.push(CSS.supports('-moz-appearance', 'none'));
         out.push(CSS.supports('-moz-appearance: none'));
+        // R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
+        // case-insensitive. Chrome rejects every `-moz-*` spelling.
+        out.push(CSS.supports('-MOZ-appearance', 'none'));
+        out.push(CSS.supports('-Moz-APPEARANCE: none'));
         out.push(CSS.supports('selector(div, span)'));
         out.push(CSS.supports('selector(:is(:bogus))'));
         out.push(CSS.supports('selector(:where(:bogus, p))'));
@@ -78,7 +82,9 @@ fn css_supports_rejects_chrome156_rejections() {
     let actual = super::interface_parity_tests::run_probe_with(probe, cases, CSS_NAMESPACE);
     assert_eq!(
         actual,
-        serde_json::json!([false, false, false, false, false, false, false, false, false]),
+        serde_json::json!([
+            false, false, false, false, false, false, false, false, false, false, false,
+        ]),
         "Chrome 156 rejects each of these; the engine must too"
     );
 }
