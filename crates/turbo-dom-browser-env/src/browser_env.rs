@@ -11483,6 +11483,69 @@ mod tests {
         reset();
     }
 
+    // An iframe document's inline `on*` content-attribute handler must compile in the
+    // IFRAME's own realm, not the parent realm that happened to trigger the compile
+    // (Chrome 156: the body's globals, `this` binding and `window` reference the iframe
+    // window). turbo-dom#478 / turbo-surf#287: parent-realm dispatch on a script element in
+    // an independent child context was compiling the handler against the parent realm, so
+    // `globalThis.x = 1` landed on the parent's `x` and the iframe's stayed 0.
+    #[test]
+    fn inline_handler_compiles_in_element_owning_realm() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let parent = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, parent);
+        install(scope);
+        let child = v8::Context::new(scope, Default::default());
+        child.set_security_token(parent.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(
+                scope,
+                "<body><div id=target onload='globalThis.realmMarker=\"child\"; globalThis.hits=(globalThis.hits||0)+1;'></div></body>",
+            );
+        }
+        let key = v8::String::new(scope, "child").unwrap();
+        let child_global = child.global(scope);
+        parent
+            .global(scope)
+            .set(scope, key.into(), child_global.into());
+        let src = v8::String::new(
+            scope,
+            r#"
+                globalThis.realmMarker = 'parent';
+                globalThis.hits = 0;
+                const node = child.document.getElementById('target');
+                // Borrow the PARENT realm's EventTarget.prototype.dispatchEvent and invoke it on a
+                // CHILD-owned element. This forces refresh() to run with scope.get_current_context()
+                // == parent, which (before the fix) compiled the inline onload in the parent realm.
+                EventTarget.prototype.dispatchEvent.call(node, new child.Event('load'));
+                JSON.stringify({
+                    parentRealm: globalThis.realmMarker,
+                    childRealm: child.realmMarker,
+                    parentHits: globalThis.hits,
+                    childHits: child.hits,
+                });
+            "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, src, None).unwrap();
+        let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(
+            v["childRealm"], "child",
+            "inline handler must assign to iframe's global: {out}"
+        );
+        assert_eq!(
+            v["parentRealm"], "parent",
+            "inline handler must NOT reach parent's global: {out}"
+        );
+        assert_eq!(v["childHits"], 1, "handler fired exactly once on child: {out}");
+        assert_eq!(v["parentHits"], 0, "parent hits stay zero: {out}");
+        reset();
+    }
+
     // A cross-origin <iframe> hosts a bridged second window realm: contentWindow is a
     // distinct object with its own document, and postMessage crosses the realm boundary
     // in BOTH directions carrying the correct source/origin (the reCAPTCHA anchor↔bframe
