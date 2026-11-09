@@ -14,9 +14,9 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
 };
+use turbo_dom_layout::test_support::fixture_fonts;
 use turbo_dom_layout::test_support::literal;
 use turbo_dom_layout::test_support::literal::parse_html;
-use turbo_dom_layout::test_support::fixture_fonts;
 use turbo_dom_layout::{build_cascade, Diagnostics, FontFace, FontRegistry, ImageCtx, NoImages};
 
 fn control() -> serde_json::Value {
@@ -240,12 +240,7 @@ fn an_inline_box_with_a_web_face_takes_chromes_content_height() {
 /// Inline-box content height of an `x` glyph in `family` at `size` px laid out
 /// at device scale `scale`. Mirrors [`inline_box_content_height`] but names the
 /// CSS family so it can walk `fixture_fonts()` by generic.
-fn inline_box_content_height_in(
-    fonts: &FontRegistry,
-    family: &str,
-    size: f32,
-    scale: f32,
-) -> f32 {
+fn inline_box_content_height_in(fonts: &FontRegistry, family: &str, size: f32, scale: f32) -> f32 {
     let nodes = parse_html(&format!(
         "<div><span style='font-family:\"{family}\";font-size:{size}px;white-space:nowrap'>x</span></div>"
     ))
