@@ -458,3 +458,44 @@ fn overflow_hidden_extra_strips_matches_chrome_156() {
     );
     assert_matches_chrome("overflow-hidden-extra-strips", case);
 }
+
+// --------------------------------------------------------------------------
+// v0.8.2 R1 adversarial L4: a sub-pixel `column-rule-width` (< 1px) is
+// kept as the DECLARED width in the emitted `FragmentContent::ColumnRule`
+// fragment; the painter's `max(1.0)` floor applies only to the stamped
+// dot diameter, never to gap allocation. If the layout ever clamped the
+// fragment width to 1.0 the rule would eat into the surrounding column
+// gap and `getBoundingClientRect` on a column-fragmented child would
+// drift by the clamp. This test pins the fragment-width contract.
+// --------------------------------------------------------------------------
+
+fn collect_rule_widths(f: &Fragment) -> Vec<f32> {
+    let mut out = Vec::new();
+    if matches!(f.content, FragmentContent::ColumnRule { .. }) {
+        out.push(f.width);
+    }
+    for c in &f.children {
+        out.extend(collect_rule_widths(c));
+    }
+    out
+}
+
+#[test]
+fn sub_pixel_column_rule_keeps_declared_width_in_the_fragment() {
+    let html = r#"<!doctype html><html><body><div style="column-count:2;column-gap:20px;column-rule-style:solid;column-rule-width:0.5px;column-rule-color:#f00;width:200px;height:100px"><p>aaa</p><p>bbb</p></div></body></html>"#;
+    let fonts = fixture_fonts();
+    let mut diags = Diagnostics::default();
+    let galley =
+        turbo_dom_layout::layout_html(html, "", 1280.0, &fonts, &mut diags).expect("layout_html");
+    let widths = collect_rule_widths(&galley);
+    assert!(
+        !widths.is_empty(),
+        "expected at least one ColumnRule fragment, got none"
+    );
+    for w in &widths {
+        assert_eq!(
+            *w, 0.5_f32,
+            "column-rule fragment width must stay the declared 0.5px (not the painter's 1.0 floor); widths = {widths:?}"
+        );
+    }
+}

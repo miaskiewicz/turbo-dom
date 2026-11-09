@@ -422,7 +422,17 @@ fn paint_column_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+    // v0.8.2 R1 M1 + L1: reject non-finite sizes too — `f.width <= 0.0`
+    // alone is false for `NaN` (every comparison with NaN is false) and
+    // `f.width <= 0.0` is false for `Infinity`, so a NaN would cascade
+    // into `cx = NaN / 2.0 = NaN` and `period = 2 * NaN = NaN`, feeding
+    // tiny-skia NaN coordinates.
+    if color.a == 0
+        || !f.width.is_finite()
+        || !f.height.is_finite()
+        || f.width <= 0.0
+        || f.height <= 0.0
+    {
         return;
     }
     match style {
@@ -453,8 +463,9 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     // fragment must paint nothing, and `max(1.0)` would otherwise coerce it
     // into the sub-pixel fallback below. (The outer `paint_column_rule`
     // already guards, but the helper's direct contract keeps the loop
-    // protection pinned.)
-    if f.width <= 0.0 {
+    // protection pinned.) R1 M1: `is_finite()` also rejects `NaN` and
+    // `Infinity`, which comparisons never catch.
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 {
         return;
     }
     let diameter = f.width.max(1.0);
@@ -493,16 +504,35 @@ fn paint_dotted_rule_stroked(
     color: Rgba,
     xf: Transform,
 ) {
+    // R1 M1: non-finite inputs (NaN / Infinity) escape every `<`/`<=`
+    // comparison — reject them so `y_top + height = NaN` never leaks
+    // into the loop and `end = y_top + Infinity = Infinity` never runs
+    // the dash loop forever.
+    if !cx.is_finite()
+        || !y_top.is_finite()
+        || !height.is_finite()
+        || !diameter.is_finite()
+        || height <= 0.0
+        || diameter <= 0.0
+    {
+        return;
+    }
     let px_left = cx.floor();
     let end = y_top + height;
     // Leading cap: one px above the first dash (Blink's round line-cap).
+    // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
+    // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
+    // leak past `end` — Blink's round cap collapses with the rule
+    // height, and the probe on a 0.3 px rule never paints a full pixel.
     if y_top < end {
-        fill_rect(pm, px_left, y_top, diameter, diameter, color, xf);
+        let cap_h = (end - y_top).min(diameter);
+        fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
     }
     // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
     let mut y = y_top + diameter;
     while y < end {
-        fill_rect(pm, px_left, y, diameter, diameter, color, xf);
+        let dash_h = (end - y).min(diameter);
+        fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
         y += 2.0 * diameter;
     }
 }
@@ -531,6 +561,13 @@ fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
 /// Stamp dashes of length `2 * width` down the rule, period `3 * width` (Blink's
 /// `kDashedStroke`: a `width` gap between each dash).
 fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    // R1 M1: reject non-finite sizes — `period <= 0.0` is false for
+    // `NaN` and `Infinity`, which would otherwise step the loop at
+    // undefined coordinates (`dash_top += NaN` never terminates
+    // `dash_top < end`).
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     let width = f.width;
     let dash = 2.0 * width;
     let gap = width;
@@ -553,11 +590,24 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
 /// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
 /// painter falls back to one solid band so a thin double rule still shows.
 fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    let band = (f.width / 3.0).floor().max(1.0);
+    // R1 M1 + L1: reject `NaN` / `Infinity` — `f.width < 3.0` is false
+    // for either, so without this guard an `Infinity` width would run
+    // the two-band path with Inf band widths, and a NaN would make
+    // `f.width - band = NaN`.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
+    // R1 L2: the thin-double fallback below handles every `f.width < 3.0`
+    // case, so from here on `f.width >= 3.0`, which forces
+    // `(f.width / 3.0).floor() >= 1.0` — the earlier `.max(1.0)` was a
+    // dead branch unreachable after the short-circuit. Computing `band`
+    // AFTER the fallback also avoids a wasted divide + floor on the
+    // thin path. Proof: f.width >= 3.0 && floor(x) <= x => floor(f.width / 3.0) >= 1.0.
     if f.width < 3.0 {
         fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
         return;
     }
+    let band = (f.width / 3.0).floor();
     fill_rect(pm, f.x, f.y, band, f.height, color, xf);
     fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
 }
@@ -3305,6 +3355,102 @@ mod exact_tests {
         paint_dotted_rule(&mut pm, &f, RED, id);
         paint_dashed_rule(&mut pm, &f, RED, id);
         assert!(is_blank(&pm), "zero-width helpers must not paint or loop");
+    }
+
+    // v0.8.2 R1 adversarial M1 + L1: a `NaN` or `Infinity` width / height
+    // slips past the `f.width <= 0.0 || f.height <= 0.0` guard because every
+    // comparison with `NaN` is false and `Infinity > 0.0`. Without the
+    // non-finite guard the painter would compute `cx = NaN / 2.0 = NaN`,
+    // feed NaN coordinates to tiny-skia (undefined output) and — for the
+    // dotted / dashed loops — compute `period = 2 * NaN = NaN` so
+    // `cy += NaN` leaves `cy < end` undefined, or `period = 2 * Infinity`
+    // so the loop body can still run once with NaN/Inf coordinates. The
+    // guard must reject both.
+    #[test]
+    fn paint_column_rule_is_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for style in [
+                ColumnRuleStyle::Solid,
+                ColumnRuleStyle::Dotted,
+                ColumnRuleStyle::Dashed,
+                ColumnRuleStyle::Double,
+            ] {
+                assert!(
+                    is_blank(&drawn(&rule(1.0, 1.0, bad, 8.0, style, RED), 10, 10)),
+                    "non-finite width must paint nothing ({style:?}, {bad})"
+                );
+                assert!(
+                    is_blank(&drawn(&rule(1.0, 1.0, 4.0, bad, style, RED), 10, 10)),
+                    "non-finite height must paint nothing ({style:?}, {bad})"
+                );
+            }
+        }
+    }
+
+    // The rule-painter HELPERS (`paint_dotted_rule`, `paint_dashed_rule`,
+    // `paint_double_rule`, `paint_dotted_rule_stroked`) each sit on a direct
+    // contract — a mutation that weakens `paint_column_rule`'s guard must
+    // not reach into the helper's own math. Call each helper directly with
+    // a `NaN` / `Infinity` width to pin that contract.
+    #[test]
+    fn rule_helpers_are_a_no_op_on_non_finite_fragments() {
+        let id = Transform::identity();
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut pm = white(10, 10);
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                bad,
+                8.0,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            paint_dotted_rule(&mut pm, &f, RED, id);
+            paint_dashed_rule(&mut pm, &f, RED, id);
+            paint_double_rule(&mut pm, &f, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, 1.0, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, 8.0, bad, RED, id);
+            assert!(
+                is_blank(&pm),
+                "non-finite width/height helpers must not paint or loop ({bad})"
+            );
+        }
+    }
+
+    // v0.8.2 R1 adversarial L3: `paint_dotted_rule_stroked`'s leading cap
+    // stamps a `diameter`-tall rect even when the fragment itself is
+    // shorter than `diameter` (e.g. `f.height = 0.3`). The cap would then
+    // paint pixels past `y_top + f.height`, leaking outside the fragment.
+    // The clamped version stamps `(end - y_top).min(diameter)` so the
+    // over-paint vanishes. Probe: a cap at integer `y=1` with
+    // `height = 0.3` paints pixel (5,1) with ~30% alpha; leaving the pixel
+    // mostly white rather than full red.
+    #[test]
+    fn paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments() {
+        let mut pm = white(10, 10);
+        let id = Transform::identity();
+        // cx=5.5, y_top=1.0, height=0.3, diameter=1.0.
+        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, 1.0, RED, id);
+        let c = pm.pixel(5, 1).unwrap();
+        assert!(
+            c.green() > 100 && c.blue() > 100,
+            "pixel (5,1) must stay largely white when f.height < diameter; got rgb=({},{},{})",
+            c.red(),
+            c.green(),
+            c.blue()
+        );
+        // And no pixel below the fragment (y >= 2) gains any red.
+        for y in 2..10 {
+            let c = pm.pixel(5, y).unwrap();
+            assert_eq!(
+                [c.red(), c.green(), c.blue()],
+                [255, 255, 255],
+                "pixel (5,{y}) must stay white"
+            );
+        }
     }
 
     #[test]
