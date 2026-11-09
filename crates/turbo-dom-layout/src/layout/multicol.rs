@@ -1555,6 +1555,25 @@ mod tests {
     }
 
     #[test]
+    fn fragment_pieces_caps_output_for_subeps_col_height() {
+        // turbo-dom#426. `col_h` below `FRAG_EPS` can't admit a real piece
+        // (the "fits" branch needs `remaining <= available + FRAG_EPS` and
+        // the "advance" branch only fires once the cursor has moved off 0),
+        // so without a cap the loop fills column after column with the same
+        // ~col_h slice — ceil(item_h / col_h) pieces. Treating a sub-eps
+        // column like a non-positive one (one piece, caller owns the paint)
+        // closes the DoS window and matches the existing `col_h <= 0.0`
+        // policy. 100 / 0.3 would otherwise emit > 300 pieces.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(100.0, 0.3, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 0);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn fragment_pieces_single_piece_for_non_positive_col_height() {
         let mut ci: u32 = 0;
         let mut cc: f32 = 0.0;
