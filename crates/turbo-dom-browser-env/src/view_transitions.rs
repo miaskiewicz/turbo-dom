@@ -305,16 +305,8 @@ fn collect_capture_names(
         if display == Display::None {
             continue;
         }
-        if let Some(parent) = parent
-            .filter(|&parent| html(tree, parent, "details") && !tree.has_attribute(parent, "open"))
-        {
-            let summary = tree
-                .children(parent)
-                .into_iter()
-                .find(|&candidate| html(tree, candidate, "summary"));
-            if summary != Some(node) {
-                continue;
-            }
+        if skip_as_closed_details_child(tree, node, parent) {
+            continue;
         }
         if display != Display::Contents {
             let mut name = get_property_value(&style, "view-transition-name")
@@ -336,6 +328,21 @@ fn collect_capture_names(
         }
     }
     ""
+}
+
+/// True when `node` sits inside a closed `<details>` and is NOT its `<summary>` child.
+fn skip_as_closed_details_child(tree: &Tree, node: Handle, parent: Option<Handle>) -> bool {
+    let Some(parent) = parent else {
+        return false;
+    };
+    if !html(tree, parent, "details") || tree.has_attribute(parent, "open") {
+        return false;
+    }
+    let summary = tree
+        .children(parent)
+        .into_iter()
+        .find(|&candidate| html(tree, candidate, "summary"));
+    summary != Some(node)
 }
 
 fn set_active(node: Handle, types: Option<Vec<String>>) {
@@ -481,29 +488,9 @@ fn pseudo_ranges<'i, 't>(
                 colon = None;
                 double_colon = false;
             }
-            Token::Function(ref name)
-                if colon.is_some() && name.eq_ignore_ascii_case("active-view-transition") =>
-            {
-                return Err(input.new_custom_error(()));
-            }
-            Token::Function(ref name)
-                if colon.is_some() && name.eq_ignore_ascii_case("active-view-transition-type") =>
-            {
-                let start = colon.take().unwrap_or(position);
-                let types = input.parse_nested_block(|nested| type_list(nested))?;
-                ranges.push((start, input.position().byte_index(), Pseudo::Types(types)));
-            }
-            Token::Function(ref name)
-                if colon.is_some()
-                    && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")) =>
-            {
-                colon = None;
-                input.parse_nested_block(|nested| forgiving_list(nested, ranges))?;
-            }
             Token::Function(_) | Token::ParenthesisBlock => {
-                colon = None;
+                visit_function_token(input, &token, ranges, position, &mut colon)?;
                 double_colon = false;
-                input.parse_nested_block(|nested| pseudo_ranges(nested, ranges))?;
             }
             Token::Comment(_) => (),
             _ => {
@@ -513,6 +500,38 @@ fn pseudo_ranges<'i, 't>(
         }
     }
     Ok(())
+}
+
+/// Recurse into a function or parenthesis block for `pseudo_ranges`. Handles the view-transition
+/// pseudo-functions (`active-view-transition`, `active-view-transition-type`), the forgiving
+/// `:is()` / `:where()` lists, and ordinary nested selector contexts.
+fn visit_function_token<'i, 't>(
+    input: &mut cssparser::Parser<'i, 't>,
+    token: &cssparser::Token<'i>,
+    ranges: &mut Vec<(usize, usize, Pseudo)>,
+    position: usize,
+    colon: &mut Option<usize>,
+) -> Result<(), cssparser::ParseError<'i, ()>> {
+    use cssparser::Token;
+    if let Token::Function(ref name) = *token {
+        if colon.is_some() && name.eq_ignore_ascii_case("active-view-transition") {
+            return Err(input.new_custom_error(()));
+        }
+        if colon.is_some() && name.eq_ignore_ascii_case("active-view-transition-type") {
+            let start = colon.take().unwrap_or(position);
+            let types = input.parse_nested_block(type_list)?;
+            ranges.push((start, input.position().byte_index(), Pseudo::Types(types)));
+            return Ok(());
+        }
+        if colon.is_some()
+            && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where"))
+        {
+            *colon = None;
+            return input.parse_nested_block(|nested| forgiving_list(nested, ranges));
+        }
+    }
+    *colon = None;
+    input.parse_nested_block(|nested| pseudo_ranges(nested, ranges))
 }
 
 /// Whether [`selector`] can change `source` or throw on it: it names an active view
