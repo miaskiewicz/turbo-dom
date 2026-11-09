@@ -323,3 +323,108 @@ fn every_weakset_bookkeeping_site_uses_captured_intrinsics() {
     assert_eq!(result.to_rust_string_lossy(catch), "ok");
     reset();
 }
+
+/// turbo-dom#449: page JS that patches `Promise[Symbol.species]` (and every other
+/// well-known species getter) BEFORE an iframe is created must not poison the
+/// `iframe.contentWindow` build path — the engine's `@@species` reads on this path
+/// must dispatch through bootstrap-captured references, not live reads that a page
+/// can replace. Same capture-at-install-time pattern as #172 / #396 (turbo-surf#245:
+/// the surf-level repros `page_patched_intrinsics_do_not_break_loading_or_append_child`
+/// and `page_patched_intrinsics_full_set_like_chrome156` panic at `headIframe` with
+/// `patched get Promise.@@Symbol(Symbol.species)` without this capture).
+///
+/// The audit (1) poisons every `@@species` getter on the constructors whose
+/// derived-class protocols V8 may consult (Array, Promise, Map, Set, WeakMap,
+/// WeakSet, RegExp, ArrayBuffer) and asserts the content Window still builds
+/// without reaching a single one, and (2) asserts the bootstrap exposes the
+/// captured species constructors on `__ns` (`__tsNs`), so a consumer (surf's
+/// iframe install path) can reach them without ever touching live `Promise`.
+#[test]
+fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><body></body>");
+    let code = v8::String::new(
+        scope,
+        r#"(()=>{
+      const gopd=Object.getOwnPropertyDescriptor,def=Object.defineProperty;
+      // Pre-make the iframe BEFORE patching, like turbo-surf#245 does: the install
+      // path under test is `iframe.contentWindow` on an already-constructed element.
+      const f=document.createElement('iframe');
+      const saved=[];let hooks=0;const trips=[];
+      const thrower=(label)=>function(){hooks++;trips.push(label);throw new Error('patched '+label)};
+      // The `species` getters must each report with the constructor's name so a
+      // reader can identify which one the install path reached live.
+      const ctors=[['Array',Array],['Promise',Promise],['Map',Map],['Set',Set],
+                   ['WeakMap',WeakMap],['WeakSet',WeakSet],['RegExp',RegExp],['ArrayBuffer',ArrayBuffer]];
+      for(const [name,C] of ctors){
+        const desc=gopd(C,Symbol.species);
+        if(!desc||!desc.configurable)continue;
+        saved.push([C,Symbol.species,desc]);
+        def(C,Symbol.species,{configurable:true,enumerable:desc.enumerable,
+          get:thrower('get '+name+'.@@Symbol(Symbol.species)')});
+      }
+      // Replace `Promise.prototype.then`/`.catch`/`.finally` (so `.then()` falls off
+      // V8's fast path and reads `Promise[@@species]` live) and the array / promise
+      // species-reading members on their prototypes.
+      const targets=[[Array.prototype,'Array.prototype',['concat','filter','map','slice','splice']],
+                     [Promise.prototype,'Promise.prototype',['then','catch','finally']]];
+      for(const [o,label,members] of targets){
+        for(const k of members){
+          const d=gopd(o,k);if(!d||!d.configurable||typeof d.value!=='function')continue;
+          saved.push([o,k,d]);
+          def(o,k,{value:thrower(label+'.'+k),writable:true,configurable:true,enumerable:d.enumerable});
+        }
+      }
+      const out={};
+      try{
+        document.body.appendChild(f);
+        const w=f.contentWindow;
+        out.contentWindow=!!(w && w.document);
+        // The captured-species namespace must expose each species constructor so
+        // a consumer can reach them without a live `Promise[@@species]` read.
+        const ns=globalThis.__tsNs;
+        out.exposes={
+          PromiseSpecies: ns && ns.PromiseSpecies === Promise,
+          ArraySpecies: ns && ns.ArraySpecies === Array,
+          MapSpecies: ns && ns.MapSpecies === Map,
+          SetSpecies: ns && ns.SetSpecies === Set,
+          WeakMapSpecies: ns && ns.WeakMapSpecies === WeakMap,
+          WeakSetSpecies: ns && ns.WeakSetSpecies === WeakSet,
+          RegExpSpecies: ns && ns.RegExpSpecies === RegExp,
+          ArrayBufferSpecies: ns && ns.ArrayBufferSpecies === ArrayBuffer,
+        };
+      }catch(e){out.err=String(e.message||e)}
+      finally{for(let i=saved.length-1;i>=0;i--){const [o,k,d]=saved[i];def(o,k,d)}}
+      out.hooks=hooks;
+      out.trips=trips;
+      return JSON.stringify(out);
+    })()"#,
+    )
+    .unwrap();
+    v8::tc_scope!(let catch, scope);
+    let result = v8::Script::compile(catch, code, None)
+        .and_then(|script| script.run(catch))
+        .unwrap_or_else(|| panic!("{}", thrown(catch.exception(), catch)));
+    let got = result.to_rust_string_lossy(catch);
+    assert!(
+        got.contains("\"contentWindow\":true") && got.contains("\"hooks\":0"),
+        "#449: iframe contentWindow must build without reading live species — got {got}"
+    );
+    assert!(
+        got.contains("\"PromiseSpecies\":true")
+            && got.contains("\"ArraySpecies\":true")
+            && got.contains("\"MapSpecies\":true")
+            && got.contains("\"SetSpecies\":true")
+            && got.contains("\"WeakMapSpecies\":true")
+            && got.contains("\"WeakSetSpecies\":true")
+            && got.contains("\"RegExpSpecies\":true")
+            && got.contains("\"ArrayBufferSpecies\":true"),
+        "#449: the bootstrap must expose every `@@species` on `__tsNs` (<ctor>Species) \
+         so consumers can dispatch through a captured reference — got {got}"
+    );
+    reset();
+}
