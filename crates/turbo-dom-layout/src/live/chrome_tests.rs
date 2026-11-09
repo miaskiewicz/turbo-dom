@@ -483,25 +483,54 @@ fn metric(
     (_, snapshot, styles): Laid,
     id: crate::layout_snapshot::SourceId,
 ) -> Result<f64, String> {
-    let geometry = || metrics::element_geometry(snapshot, id);
-    let position = || metrics::offset_position(snapshot, styles, id);
-    let scroll = || crate::cssom_view::scroll::scroll_metrics(snapshot, styles, id);
+    if let Some(value) = offset_metric(key, snapshot, styles, id) {
+        return value;
+    }
+    if let Some(value) = client_metric(key, snapshot, id) {
+        return value;
+    }
+    let scroll = crate::cssom_view::scroll::scroll_metrics(snapshot, styles, id)?;
     Ok(match key {
-        "offsetLeft" => f64::from(position()?.left),
-        "offsetTop" => f64::from(position()?.top),
-        "offsetWidth" => f64::from(geometry()?.offset.width),
-        "offsetHeight" => f64::from(geometry()?.offset.height),
-        "clientLeft" => f64::from(geometry()?.client.left),
-        "clientTop" => f64::from(geometry()?.client.top),
-        "clientWidth" => f64::from(geometry()?.client.width),
-        "clientHeight" => f64::from(geometry()?.client.height),
-        "scrollWidth" => f64::from(scroll()?.width),
-        "scrollHeight" => f64::from(scroll()?.height),
+        "scrollWidth" => f64::from(scroll.width),
+        "scrollHeight" => f64::from(scroll.height),
         // The offset Chrome clamps the set `scrollLeft` into (`min_x ..= max_x`).
-        _ => {
-            let s = scroll()?;
-            scrolled(case, cid).clamp(s.min_x, s.max_x)
+        _ => scrolled(case, cid).clamp(scroll.min_x, scroll.max_x),
+    })
+}
+
+/// `offsetLeft` / `offsetTop` / `offsetWidth` / `offsetHeight`.
+fn offset_metric(
+    key: &str,
+    snapshot: &crate::layout_snapshot::LayoutSnapshot,
+    styles: &crate::cssom_view::scroll::SourceStyles,
+    id: crate::layout_snapshot::SourceId,
+) -> Option<Result<f64, String>> {
+    Some(match key {
+        "offsetLeft" => metrics::offset_position(snapshot, styles, id).map(|p| f64::from(p.left)),
+        "offsetTop" => metrics::offset_position(snapshot, styles, id).map(|p| f64::from(p.top)),
+        "offsetWidth" => {
+            metrics::element_geometry(snapshot, id).map(|g| f64::from(g.offset.width))
         }
+        "offsetHeight" => {
+            metrics::element_geometry(snapshot, id).map(|g| f64::from(g.offset.height))
+        }
+        _ => return None,
+    })
+}
+
+/// `clientLeft` / `clientTop` / `clientWidth` / `clientHeight`.
+fn client_metric(
+    key: &str,
+    snapshot: &crate::layout_snapshot::LayoutSnapshot,
+    id: crate::layout_snapshot::SourceId,
+) -> Option<Result<f64, String>> {
+    let geometry = || metrics::element_geometry(snapshot, id);
+    Some(match key {
+        "clientLeft" => geometry().map(|g| f64::from(g.client.left)),
+        "clientTop" => geometry().map(|g| f64::from(g.client.top)),
+        "clientWidth" => geometry().map(|g| f64::from(g.client.width)),
+        "clientHeight" => geometry().map(|g| f64::from(g.client.height)),
+        _ => return None,
     })
 }
 

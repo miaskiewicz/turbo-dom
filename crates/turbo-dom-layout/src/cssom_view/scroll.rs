@@ -251,7 +251,71 @@ pub fn scroll_metrics(
             "native scroll degenerate-container relative transform provenance pending".into(),
         );
     }
-    let projected = |fragment: &crate::layout_snapshot::SnapshotFragment| {
+    let projected = projector_in_container_space(matrix, determinant);
+    let scroll_container = permits_scroll(x) || permits_scroll(y);
+    let (left, right, bottom) = sweep_descendant_bounds(
+        snapshot,
+        styles,
+        id,
+        source,
+        used,
+        padding,
+        &projected,
+        scroll_container,
+    );
+    build_scroll_metrics(rtl, left, right, bottom, padding, x, y)
+}
+
+/// Walk `source`'s scroll-eligible descendants and accumulate the scrollable
+/// `[left, right, bottom]` extent in the container's own space.
+#[allow(clippy::too_many_arguments)]
+fn sweep_descendant_bounds<F>(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+    source: &crate::layout_snapshot::SnapshotSource,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+    padding: crate::layout_snapshot::Rect,
+    projected: &F,
+    scroll_container: bool,
+) -> (f32, f32, f32)
+where
+    F: Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32),
+{
+    let mut right = padding.x + padding.width;
+    let mut left = padding.x;
+    let mut bottom = padding.y + padding.height;
+    for &index in &source.descendant_fragment_indices {
+        let fragment = &snapshot.fragments()[index];
+        if !is_scroll_fragment(fragment, styles, id) {
+            continue;
+        }
+        let (blocked_x, blocked_y) = clip_blockers(fragment, styles, id);
+        extend_scroll_bounds(
+            snapshot,
+            fragment,
+            id,
+            used,
+            projected,
+            scroll_container,
+            blocked_x,
+            blocked_y,
+            &mut right,
+            &mut left,
+            &mut bottom,
+        );
+    }
+    (left, right, bottom)
+}
+
+/// Return a closure that projects a fragment's world-space quad into the
+/// container's own coordinate space via the inverse of `matrix` and reports
+/// its `[max_x, max_y]` corner plus `min_x` corner.
+fn projector_in_container_space(
+    matrix: [f64; 6],
+    determinant: f64,
+) -> impl Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32) {
+    move |fragment: &crate::layout_snapshot::SnapshotFragment| {
         let points = fragment.quad.map(|point| {
             let x = f64::from(point.x) - matrix[4];
             let y = f64::from(point.y) - matrix[5];
@@ -276,32 +340,7 @@ pub fn scroll_metrics(
                 .map(|point| point[0])
                 .fold(f32::INFINITY, f32::min),
         )
-    };
-    let scroll_container = permits_scroll(x) || permits_scroll(y);
-    let mut right = padding.x + padding.width;
-    let mut left = padding.x;
-    let mut bottom = padding.y + padding.height;
-    for &index in &source.descendant_fragment_indices {
-        let fragment = &snapshot.fragments()[index];
-        if !is_scroll_fragment(fragment, styles, id) {
-            continue;
-        }
-        let (blocked_x, blocked_y) = clip_blockers(fragment, styles, id);
-        extend_scroll_bounds(
-            snapshot,
-            fragment,
-            id,
-            used,
-            &projected,
-            scroll_container,
-            blocked_x,
-            blocked_y,
-            &mut right,
-            &mut left,
-            &mut bottom,
-        );
     }
-    build_scroll_metrics(rtl, left, right, bottom, padding, x, y)
 }
 
 fn build_scroll_metrics(
@@ -450,8 +489,37 @@ pub fn scroll_translation(
     } else {
         Some(fragment.source_ancestors.len())
     };
-    let mut translation = [0.0; 2];
-    for (i, ancestor) in fragment.source_ancestors.iter().enumerate() {
+    let mut translation = accumulate_ancestor_scroll(
+        snapshot,
+        offsets,
+        &fragment.source_ancestors,
+        containing,
+    )?;
+    // The initial containing block scrolls with the identity viewport matrix.
+    translation[0] += viewport[0] as f32;
+    translation[1] += viewport[1] as f32;
+    // Sticky boxes move against the scroll (#295).
+    let [x, y] = sticky_translation(
+        snapshot,
+        styles,
+        (id, &fragment.source_ancestors, containing),
+        offsets,
+    )?;
+    Ok([translation[0] - x, translation[1] - y])
+}
+
+/// Accumulate scroll offsets from each eligible source ancestor, transformed
+/// through that ancestor's own border-box world matrix. `containing` bounds the
+/// walk: ancestors past it don't contribute (they sit outside the containing
+/// block's scroll chain).
+fn accumulate_ancestor_scroll(
+    snapshot: &LayoutSnapshot,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    source_ancestors: &[SourceId],
+    containing: Option<usize>,
+) -> Result<[f32; 2], String> {
+    let mut translation = [0.0_f32; 2];
+    for (i, ancestor) in source_ancestors.iter().enumerate() {
         if containing.is_none_or(|index| i > index) {
             continue;
         }
@@ -474,17 +542,7 @@ pub fn scroll_translation(
         translation[0] += matrix[0] * offset[0] as f32 + matrix[2] * offset[1] as f32;
         translation[1] += matrix[1] * offset[0] as f32 + matrix[3] * offset[1] as f32;
     }
-    // The initial containing block scrolls with the identity viewport matrix.
-    translation[0] += viewport[0] as f32;
-    translation[1] += viewport[1] as f32;
-    // Sticky boxes move against the scroll (#295).
-    let [x, y] = sticky_translation(
-        snapshot,
-        styles,
-        (id, &fragment.source_ancestors, containing),
-        offsets,
-    )?;
-    Ok([translation[0] - x, translation[1] - y])
+    Ok(translation)
 }
 
 /// How far `id`'s own `position: sticky` offset (CSS Position 3 §3.4) under the scroll
@@ -711,19 +769,7 @@ fn extend_viewport_bounds(
     {
         return;
     }
-    let mut blocked = [false; 2];
-    for ancestor in &fragment.source_ancestors {
-        if *ancestor == own || is_root(styles, *ancestor) || propagated_body(styles, *ancestor) {
-            continue;
-        }
-        if let Some(entry) = styles.get(ancestor) {
-            if has_value(&entry.style, "display", "contents") {
-                continue;
-            }
-            blocked[0] |= clips(overflow(&entry.style, "overflow-x"));
-            blocked[1] |= clips(overflow(&entry.style, "overflow-y"));
-        }
-    }
+    let blocked = viewport_blocked_axes(fragment, styles, own);
     let quad = |axis: usize| {
         fragment
             .quad
@@ -770,6 +816,30 @@ fn extend_viewport_bounds(
     if !blocked[1] {
         *bottom = bottom.max(quad(1) + flow[1]);
     }
+}
+
+/// Which axes a clipping ancestor (overflow-x/y that clips) blocks between
+/// `own` and the viewport. Skips `own`, the root, and the propagated body,
+/// and `display: contents` ancestors.
+fn viewport_blocked_axes(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    styles: &SourceStyles,
+    own: SourceId,
+) -> [bool; 2] {
+    let mut blocked = [false; 2];
+    for ancestor in &fragment.source_ancestors {
+        if *ancestor == own || is_root(styles, *ancestor) || propagated_body(styles, *ancestor) {
+            continue;
+        }
+        if let Some(entry) = styles.get(ancestor) {
+            if has_value(&entry.style, "display", "contents") {
+                continue;
+            }
+            blocked[0] |= clips(overflow(&entry.style, "overflow-x"));
+            blocked[1] |= clips(overflow(&entry.style, "overflow-y"));
+        }
+    }
+    blocked
 }
 
 /// Viewport scrollable overflow: the initial containing block plus every

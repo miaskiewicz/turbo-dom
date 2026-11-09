@@ -953,7 +953,35 @@ fn render(gpu: &Gpu, width: u32, height: u32, state: &State) -> Result<Vec<u8>, 
     let device = &gpu.device;
     device.push_error_scope(wgpu::ErrorFilter::Validation);
 
-    let tex = device.create_texture(&wgpu::TextureDescriptor {
+    let tex = create_target_texture(device, width, height);
+    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+
+    let translated = translate_programs(state)?;
+
+    // Build the per-draw GPU resources.
+    let mut built: Vec<BuiltDraw> = Vec::with_capacity(state.draws.len());
+    for d in &state.draws {
+        let t = &translated[&d.program];
+        built.push(build_draw(device, state, d, t)?);
+    }
+
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    encode_render_pass(&mut encoder, &view, state, &built);
+
+    let rgba = readback(gpu, &mut encoder, &tex, width, height);
+    gpu.queue.submit(Some(encoder.finish()));
+    let rgba = rgba(gpu)?;
+
+    if let Some(err) = pollster::block_on(device.pop_error_scope()) {
+        return Err(format!("gpu validation: {err}"));
+    }
+    Ok(rgba)
+}
+
+/// The offscreen render target used for the WebGL replay.
+fn create_target_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
         label: Some("webgl target"),
         size: wgpu::Extent3d {
             width,
@@ -966,10 +994,11 @@ fn render(gpu: &Gpu, width: u32, height: u32, state: &State) -> Result<Vec<u8>, 
         format: TEX_FORMAT,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
-    });
-    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    })
+}
 
-    // Translate every program used by a draw (once each).
+/// Translate every program used by a draw (once each).
+fn translate_programs(state: &State) -> Result<HashMap<i64, TranslatedProgram>, String> {
     let mut translated: HashMap<i64, TranslatedProgram> = HashMap::new();
     for d in &state.draws {
         if translated.contains_key(&d.program) {
@@ -991,64 +1020,52 @@ fn render(gpu: &Gpu, width: u32, height: u32, state: &State) -> Result<Vec<u8>, 
             .ok_or_else(|| "shader translation failed".to_string())?;
         translated.insert(d.program, t);
     }
+    Ok(translated)
+}
 
-    // Build the per-draw GPU resources.
-    let mut built: Vec<BuiltDraw> = Vec::with_capacity(state.draws.len());
-    for d in &state.draws {
-        let t = &translated[&d.program];
-        built.push(build_draw(device, state, d, t)?);
-    }
-
+/// Record one clear + draws render pass.
+fn encode_render_pass(
+    encoder: &mut wgpu::CommandEncoder,
+    view: &wgpu::TextureView,
+    state: &State,
+    built: &[BuiltDraw],
+) {
     let clear = wgpu::Color {
         r: f64::from(state.clear_color[0]),
         g: f64::from(state.clear_color[1]),
         b: f64::from(state.clear_color[2]),
         a: f64::from(state.clear_color[3]),
     };
-
-    let mut encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("webgl"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(clear),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-        for b in &built {
-            pass.set_pipeline(&b.pipeline);
-            if let Some(bg) = &b.bind_group {
-                pass.set_bind_group(0, bg, &[]);
+    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("webgl"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(clear),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+    });
+    for b in built {
+        pass.set_pipeline(&b.pipeline);
+        if let Some(bg) = &b.bind_group {
+            pass.set_bind_group(0, bg, &[]);
+        }
+        for (slot, buf, start) in &b.vertex_buffers {
+            pass.set_vertex_buffer(*slot, buf.slice(*start..));
+        }
+        match &b.index {
+            Some((ibuf, fmt, n)) => {
+                pass.set_index_buffer(ibuf.slice(..), *fmt);
+                pass.draw_indexed(0..*n, 0, 0..1);
             }
-            for (slot, buf, start) in &b.vertex_buffers {
-                pass.set_vertex_buffer(*slot, buf.slice(*start..));
-            }
-            match &b.index {
-                Some((ibuf, fmt, n)) => {
-                    pass.set_index_buffer(ibuf.slice(..), *fmt);
-                    pass.draw_indexed(0..*n, 0, 0..1);
-                }
-                None => pass.draw(b.vertex_range.clone(), 0..1),
-            }
+            None => pass.draw(b.vertex_range.clone(), 0..1),
         }
     }
-
-    let rgba = readback(gpu, &mut encoder, &tex, width, height);
-    gpu.queue.submit(Some(encoder.finish()));
-    let rgba = rgba(gpu)?;
-
-    if let Some(err) = pollster::block_on(device.pop_error_scope()) {
-        return Err(format!("gpu validation: {err}"));
-    }
-    Ok(rgba)
 }
 
 /// GPU resources for a single draw.

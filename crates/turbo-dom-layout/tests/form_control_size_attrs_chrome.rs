@@ -53,10 +53,36 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
     };
     let last = fixture["values"].as_array().unwrap().len() - 1;
     let mut failures = Vec::new();
+    let compared = check_default_agreement(last, &ours, &chrome, &mut failures);
+    assert_eq!(compared, 15);
+    // And every textarea / text input box is Chrome's (#263). The 187x38 vs 182x36 default
+    // textarea was the control's: Chrome sized it in the host's UA monospace (the fixture
+    // face now set on the controls), and boxes after the saturating list box were garbage.
+    let mut absolute = check_absolute_boxes(last, &ours, &chrome, &mut failures);
+    assert_eq!(absolute, 18);
+    check_mono_boxes(&ours, &chrome, &mut absolute, &mut failures);
+    assert_eq!(absolute, 22);
+    let menu_lists = check_select_menu_classification(last, &ours, &chrome, &mut failures);
+    assert_eq!(menu_lists, 6);
+    assert!(
+        failures.is_empty(),
+        "{} differences from Chrome 156:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
+
+/// Each in-range value matches the default's "is the default" classification
+/// (textarea rows/cols past i32 or input size past i32 falls back to defaults).
+fn check_default_agreement(
+    last: usize,
+    ours: &dyn Fn(&str) -> (f32, f32),
+    chrome: &dyn Fn(&str) -> (f32, f32),
+    failures: &mut Vec<String>,
+) -> usize {
     let mut compared = 0;
     for kind in ["rows", "cols", "size"] {
         let default = format!("{kind}-{last}");
-        // Text inputs: only the width carries `size`.
         let axis = |(w, h): (f32, f32)| if kind == "size" { (w, 0.0) } else { (w, h) };
         // The in-range value is not the default in Chrome.
         assert_ne!(axis(chrome(&format!("{kind}-0"))), axis(chrome(&default)));
@@ -74,10 +100,16 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
             }
         }
     }
-    assert_eq!(compared, 15);
-    // And every textarea / text input box is Chrome's (#263). The 187x38 vs 182x36 default
-    // textarea was the control's: Chrome sized it in the host's UA monospace (the fixture
-    // face now set on the controls), and boxes after the saturating list box were garbage.
+    compared
+}
+
+/// Every textarea / text input box's absolute dimensions equal Chrome's.
+fn check_absolute_boxes(
+    last: usize,
+    ours: &dyn Fn(&str) -> (f32, f32),
+    chrome: &dyn Fn(&str) -> (f32, f32),
+    failures: &mut Vec<String>,
+) -> usize {
     let mut absolute = 0;
     for kind in ["rows", "cols", "size"] {
         for i in 0..=last {
@@ -90,9 +122,17 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
             }
         }
     }
-    assert_eq!(absolute, 18);
-    // A default (monospace, 13.333px) textarea in the fixture Fira Code: default rows and
-    // cols and a few sizes, exact boxes.
+    absolute
+}
+
+/// A default (monospace, 13.333px) textarea in the fixture Fira Code: default
+/// rows and cols and a few sizes, exact boxes.
+fn check_mono_boxes(
+    ours: &dyn Fn(&str) -> (f32, f32),
+    chrome: &dyn Fn(&str) -> (f32, f32),
+    absolute: &mut usize,
+    failures: &mut Vec<String>,
+) {
     for cid in [
         "mono-default",
         "mono-rows-5",
@@ -100,17 +140,24 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
         "mono-rows-3-cols-10",
     ] {
         let (o, c) = (ours(cid), chrome(cid));
-        absolute += 1;
+        *absolute += 1;
         if (o.0 - c.0).abs() > 0.01 || (o.1 - c.1).abs() > 0.01 {
             failures.push(format!("{cid}: box {o:?}, Chrome {c:?}"));
         }
     }
-    assert_eq!(absolute, 22);
+}
+
+/// A `<select>`'s menu-list vs list-box classification (by height) agrees
+/// with Chrome's (`select size` keeps the unsigned range).
+fn check_select_menu_classification(
+    last: usize,
+    ours: &dyn Fn(&str) -> (f32, f32),
+    chrome: &dyn Fn(&str) -> (f32, f32),
+    failures: &mut Vec<String>,
+) -> usize {
     let mut menu_lists = 0;
     for i in 0..=last {
         let cid = format!("select-{i}");
-        // A menu list is one line; a list box is taller (Chrome caps its huge height), and
-        // `select size` keeps the unsigned range in Chrome.
         let (ours_menu, chrome_menu) = (ours(&cid).1 < 30.0, chrome(&cid).1 < 30.0);
         menu_lists += 1;
         if ours_menu != chrome_menu {
@@ -119,11 +166,5 @@ fn size_attributes_past_i32_are_the_default_like_chrome_156() {
             ));
         }
     }
-    assert_eq!(menu_lists, 6);
-    assert!(
-        failures.is_empty(),
-        "{} differences from Chrome 156:\n{}",
-        failures.len(),
-        failures.join("\n")
-    );
+    menu_lists
 }
