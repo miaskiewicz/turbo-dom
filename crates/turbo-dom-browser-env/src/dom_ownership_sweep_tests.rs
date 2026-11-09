@@ -19,10 +19,35 @@ fn sweep_collected_uses_hashset_lookups() {
         .or_else(|| fn_src.find("\nfn "))
         .unwrap_or(fn_src.len().min(4096));
     let body = &fn_src[..end];
-    assert!(
-        body.contains("HashSet"),
-        "sweep_collected lost its HashSet lookup — stale-set membership is O(n*m) again:\n{body}",
-    );
+    // Both lookup-side collections (`stale_set` and `other_dom_ids`) must
+    // be declared as `HashSet<_>`. A mutant that converts even one to
+    // `Vec<_>` re-introduces O(n) membership on the inner loop; a mutant
+    // that converts BOTH must still fail. Match the full `let <name>: … HashSet`
+    // prefix so the check cannot be satisfied by an unrelated `HashSet`
+    // token elsewhere in the body (e.g. in a comment or a different binding).
+    for binding in ["stale_set", "other_dom_ids"] {
+        let needle_hashset = format!("let {binding}: ");
+        let pos = body.find(&needle_hashset).unwrap_or_else(|| {
+            panic!("sweep_collected lost the `let {binding}: ...` binding:\n{body}")
+        });
+        // The type annotation ends at `=`; scan from there back to ensure
+        // `HashSet` appears in the TYPE, not merely somewhere later in body.
+        let tail = &body[pos..];
+        let eq = tail
+            .find('=')
+            .unwrap_or_else(|| panic!("binding {binding} missing `=` in its let:\n{body}"));
+        let type_annotation = &tail[..eq];
+        assert!(
+            type_annotation.contains("HashSet"),
+            "sweep_collected: `{binding}` is no longer a HashSet (annotation=`{type_annotation}`). \
+             Stale-set membership is O(n*m) again:\n{body}",
+        );
+        assert!(
+            !type_annotation.contains("Vec<"),
+            "sweep_collected: `{binding}` regressed to a Vec<_> (annotation=`{type_annotation}`). \
+             Inner-loop membership is now O(n):\n{body}",
+        );
+    }
     // Guard against an accidental `Vec`-based `contains` on the hot-path id check.
     assert!(
         !body.contains(".iter().any("),
