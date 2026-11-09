@@ -3007,20 +3007,25 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     while(i+1<text.length&&$c.test(/\s/,text[i+1]))i++;
     return {skipTo:i,insert:out};
   }
+  // Neutral-state step (not already inside a comment / quoted string). Returns the new
+  // value of `i`; appends to `out.val` and may flip `state.comment` / `state.quote`.
+  function cssPreludeStepNeutral(state, text, i, c, next, out){
+    if (c === '\\') { out.val += c; if (next !== undefined) out.val += text[++i]; return i; }
+    if (c === '/' && next === '*') { state.comment = true; return i + 1; }
+    if (c === '"' || c === "'") { state.quote = c; out.val += c; return i; }
+    if (out.commas && c === ',') { var step = cssPreludeComma(text, i); out.val = $c.replace(out.val, /\s*$/, '') + step.insert; return step.skipTo; }
+    out.val += c; return i;
+  }
   function cssPrelude(text,commas){
-    var out='';
-    var state={quote:'',escaped:false,comment:false};
-    for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined;
-      if(state.comment){if(c==='*'&&next==='/'){state.comment=false;i++;}continue;}
-      if(state.quote){out+=c;cssPartsQuoteStep(state,c);continue;}
-      if(c==='\\'){out+=c;if(next!==undefined)out+=text[++i];continue;}
-      if(c==='/'&&next==='*'){state.comment=true;i++;continue;}
-      if(c==='"'||c==="'"){state.quote=c;out+=c;continue;}
-      if(commas&&c===','){var step=cssPreludeComma(text,i);out=$c.replace(out,/\s*$/,'')+step.insert;i=step.skipTo;}
-      else out+=c;
+    var state = { quote:'', escaped:false, comment:false };
+    var out = { val:'', commas:commas };
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i], next = i + 1 < text.length ? text[i + 1] : undefined;
+      if (state.comment) { if (c === '*' && next === '/') { state.comment = false; i++; } continue; }
+      if (state.quote) { out.val += c; cssPartsQuoteStep(state, c); continue; }
+      i = cssPreludeStepNeutral(state, text, i, c, next, out);
     }
-    return $c.trim(out);
+    return $c.trim(out.val);
   }
   var declarationRecords=cssMap('declaration'),inlineDeclarations=cssMap('inlineDeclaration'),cssPropertyCache=new Map();
   function declarationRecord(style){var record=$c.get(declarationRecords,style);if(!record)throw new TypeError('Illegal invocation');if(record.owner){var text=$c.call(appliedInlineRead,record.owner);if(text!==record.source){record.source=text;parseDeclaration(record,text);}}if(record.refresh){var fresh=$c.get(declarationRecords,record.refresh());if(fresh){record.values=fresh.values;record.names=fresh.names;record.fontState=fresh.fontState;record.defaultsOf=fresh.defaultsOf;record.defaultsParent=fresh.defaultsParent;}}return record;}
@@ -3060,7 +3065,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
-  function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
+  // Accept / reject a legacy-parsed property name before its value is classified.
+  function parseLegacyNameKnown(record, name){ return record.fontFace || $c.startsWith(name, '--') || knownProperty(name); }
+  // Accept / reject the value through Typed OM once the !important suffix is stripped.
+  function parseLegacyTypedValid(record, name, value){
+    if (record.fontFace || $c.startsWith(name, '--') || !__ns.typedOmValid) return true;
+    return __ns.typedOmValid(name, value);
+  }
+  function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!parseLegacyNameKnown(record,name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!parseLegacyTypedValid(record,name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
   function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)bumpCssomEpoch();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
@@ -3148,16 +3160,26 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return out+'}';
   }
+  // Serialize a style rule (type 1) or an @import (type 5) — selector/prelude + the body text.
+  function cssRuleTextStyle(record){
+    var text = declarationText(declarationRecord(record.style));
+    return (record.type === 1 ? record.selectorText : record.prelude) + ' {' + (text ? ' ' + text + ' ' : ' ') + '}';
+  }
+  // Serialize a grouping rule (@media / @supports / @container / …) or @keyframes (type 7),
+  // listing one child rule per line like Chrome 156 (turbo-dom#134).
+  function cssRuleTextGrouping(record){
+    var rules = cssItems(record.cssRules);
+    var out = (record.kind ? groupPrelude(record) : record.prelude) + (record.type === 7 ? ' { \n' : ' {\n');
+    for (var index = 0; index < rules.length; index++) out += '  ' + cssRuleText(cssRuleRecord(rules[index])) + '\n';
+    return out + '}';
+  }
   function cssRuleText(record){
-    if(record.kind==='nested-declarations'){return declarationText(declarationRecord(record.style));}
-    if(record.type===1&&record.cssRules&&cssItems(record.cssRules).length)return nestedStyleRuleText(record);
-    if(record.type===1||record.type===5){
-      var text=declarationText(declarationRecord(record.style));
-      return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';
-    }
-    // Chrome 156: grouping rules and @keyframes list one child rule per line (turbo-dom#134).
-    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=(record.kind?groupPrelude(record):record.prelude)+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
-    return record.cssText;}
+    if (record.kind === 'nested-declarations') return declarationText(declarationRecord(record.style));
+    if (record.type === 1 && record.cssRules && cssItems(record.cssRules).length) return nestedStyleRuleText(record);
+    if (record.type === 1 || record.type === 5) return cssRuleTextStyle(record);
+    if ((record.grouping || record.type === 7) && record.cssRules) return cssRuleTextGrouping(record);
+    return record.cssText;
+  }
   __ns.readCssRuleText=function(rule){return cssRuleText(cssRuleRecord(rule));};
   cssRuleMember('CSSRule','cssText',function(){return cssRuleText(cssRuleRecord(this));},function(value){cssRuleRecord(this);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');String(value);});
   cssRuleMember('CSSStyleRule','selectorText',function(){return cssRuleRecord(this,1).selectorText;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');var parsed=parseCssRules(String(value)+' {}',record.parentStyleSheet,record.parentRule);if(parsed.length===1&&cssRuleRecord(parsed[0]).type===1)record.selectorText=cssRuleRecord(parsed[0],1).selectorText;});
@@ -3200,37 +3222,45 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // rule is a grouping rule too; insertRule / deleteRule reuse insertGroupRule /
   // deleteGroupRule, with the parent record coming from the style rule's own cssRuleStates entry.
   cssRuleMember('CSSStyleRule','cssRules',function(){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();return record.cssRules;});
+  // A bare declaration body becomes a CSSNestedDeclarations rule under the host style rule
+  // (Chrome 156; turbo-dom#358). Returns the inserted index.
+  function insertNestedDeclarations(ownerRule, record, list, text, i){
+    var declText = $c.trim(text);
+    if (declText[declText.length - 1] !== ';') declText += ';';
+    var nested = { type:0, parentStyleSheet:record.parentStyleSheet, parentRule:ownerRule, prelude:'', kind:'nested-declarations', cssText:declText };
+    nested.style = cssDeclaration(declText, null, nested);
+    var nestedRule = finishCssRule(nested);
+    cssRuleRecord(nestedRule).effectiveSelector = record.effectiveSelector || record.selectorText;
+    $c.splice(list, i, 0, nestedRule);
+    invalidateComputedStyles();
+    return i;
+  }
+  // Rewrite a nested style rule's selector through the same normalization as parseCssRules
+  // (prepend '& ' to a selector that doesn't start with '&').
+  function nestedInsertRuleText(text, source){
+    if (source === null) return text;
+    var braceOpen = $c.indexOf(source, '{');
+    if (braceOpen > 0 && source[0] !== '@') {
+      var preludePart = $c.trim($c.slice(source, 0, braceOpen)), rest = $c.slice(source, braceOpen);
+      return nestedSelectorList(preludePart) + ' ' + rest;
+    }
+    return source;
+  }
+  // After insertGroupRule returns, stamp the inserted rule's effectiveSelector.
+  function finishInsertedNestedRule(record, inserted){
+    if (!inserted) return;
+    var ir = cssRuleRecord(inserted);
+    if (ir.type === 1) ir.effectiveSelector = nestedCascadeSelector(ir.selectorText, record.effectiveSelector || record.selectorText);
+  }
   cssMethod(g.CSSStyleRule.prototype,'insertRule',1,function(text,index){
     var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();
     if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");
     text=cssString(text);var i=index===undefined?0:Number(index)>>>0,list=cssItems(record.cssRules);
     if(i>list.length)throw new __ns.DOMException("Failed to execute 'insertRule' on 'CSSStyleRule': the index "+i+" must be less than or equal to the length of the rule list.",'IndexSizeError');
-    // A bare declaration becomes a CSSNestedDeclarations (Chrome 156).
-    if(!$c.test(/[{}]/,text)){
-      var declText=$c.trim(text);if(declText[declText.length-1]!==';')declText+=';';
-      var nested={type:0,parentStyleSheet:record.parentStyleSheet,parentRule:this,prelude:'',kind:'nested-declarations',cssText:declText};
-      nested.style=cssDeclaration(declText,null,nested);
-      var nestedRule=finishCssRule(nested);
-      cssRuleRecord(nestedRule).effectiveSelector=record.effectiveSelector||record.selectorText;
-      $c.splice(list,i,0,nestedRule);invalidateComputedStyles();return i;
-    }
-    // Nested style rule context: prepend '& ' to a selector that doesn't start with '&',
-    // through the same normalization as parseCssRules.
-    var source=cssNativeParse(text,false,true);
-    if(source!==null){
-      var braceOpen=$c.indexOf(source,'{');
-      if(braceOpen>0&&source[0]!=='@'){
-        var preludePart=$c.trim($c.slice(source,0,braceOpen)),rest=$c.slice(source,braceOpen);
-        text=nestedSelectorList(preludePart)+' '+rest;
-      } else if(source!==null) text=source;
-    }
+    if(!$c.test(/[{}]/,text))return insertNestedDeclarations(this,record,list,text,i);
+    text=nestedInsertRuleText(text,cssNativeParse(text,false,true));
     var position=insertGroupRule(this,record,text,index,'CSSStyleRule');
-    // Compute effectiveSelector for the just-inserted nested rule.
-    var inserted=cssItems(record.cssRules)[position];
-    if(inserted){
-      var ir=cssRuleRecord(inserted);
-      if(ir.type===1)ir.effectiveSelector=nestedCascadeSelector(ir.selectorText,record.effectiveSelector||record.selectorText);
-    }
+    finishInsertedNestedRule(record,cssItems(record.cssRules)[position]);
     return position;
   });
   cssMethod(g.CSSStyleRule.prototype,'deleteRule',1,function(index){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index,'CSSStyleRule');});
@@ -3438,15 +3468,28 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
     else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}
   }
+  // One brace/semicolon dispatch step for parseCssRules. `state` holds the running
+  // depth / open-brace position / block start (all three change per rule boundary).
+  function parseCssRulesStep(out, text, i, c, state, sheet, parent){
+    if (c === '{') { if (state.depth++ === 0) state.open = i; return; }
+    if (c === '}' && state.depth > 0 && --state.depth === 0) {
+      cssPushBlockRule(out, text, state.start, state.open, i, sheet, parent);
+      state.start = i + 1; return;
+    }
+    if (c === ';' && state.depth === 0) {
+      cssPushStatementRule(out, $c.trim($c.slice(text, state.start, i)), sheet, parent);
+      state.start = i + 1;
+    }
+  }
   var parseCssRules = function(text, sheet, parent, validated){
-    text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
-    var out=cssList(), start=0, depth=0, scan=new CssRuleScan(), open=-1;
-    for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined,skip=cssScanSkip(scan,c,next);
-      if(skip){i+=skip-1;continue;}
-      if(c==='{' ){if(depth++===0)open=i;}
-      else if(c==='}'&&depth>0&&--depth===0){cssPushBlockRule(out,text,start,open,i,sheet,parent);start=i+1;}
-      else if(c===';'&&depth===0){cssPushStatementRule(out,$c.trim($c.slice(text,start,i)),sheet,parent);start=i+1;}
+    text = String(text);
+    if (!validated && typeof cssNativeParse === 'function') text = cssNativeParse(text);
+    var out = cssList(), state = { depth: 0, open: -1, start: 0 }, scan = new CssRuleScan();
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i], next = i + 1 < text.length ? text[i + 1] : undefined;
+      var skip = cssScanSkip(scan, c, next);
+      if (skip) { i += skip - 1; continue; }
+      parseCssRulesStep(out, text, i, c, state, sheet, parent);
     }
     return out;
   };
@@ -3564,6 +3607,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // declaration write happened and its @media answers hold. Only a sheet of unlayered rules
   // without @import is kept: a layer joins the build's layer tree, an import the build's seen set.
   var computedSheetCache=new computedSnapshotMap();
+  // Can this sheet's entries be reused on the next cascade: no volatile reads, no new
+  // @layer joins, no @import, every entry still in the active layer tree.
+  function computedSheetKeepable(went, layers, layersBefore, rules, list){
+    if (went || layers.children.length !== layersBefore) return false;
+    for (var at = 0; at < rules.length; at++) if (cssRuleRecord(rules[at]).type === 3) return false;
+    for (var index = 0; index < list.length; index++) if (list[index].layer !== layers) return false;
+    return true;
+  }
   function computedOneSheetEntries(sheet,el,layers,seen){
     if($c.has(seen,sheet))return [];
     var kept=computedSnapshotGet(computedSheetCache,sheet);
@@ -3573,9 +3624,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     computedMediaReads=media;computedVolatile=false;
     try{list=appliedSheetEntries(sheet,el,layers,undefined,seen);}
     finally{var went=computedVolatile;computedMediaReads=outer;computedVolatile=volatile||went;computedMergeMedia(media);}
-    var keep=!went&&layers.children.length===layersBefore,rules=cssItems(sheetRecord(sheet).rules);
-    for(var at=0;keep&&at<rules.length;at++)if(cssRuleRecord(rules[at]).type===3)keep=false;
-    for(var index=0;keep&&index<list.length;index++)if(list[index].layer!==layers)keep=false;
+    var keep=computedSheetKeepable(went,layers,layersBefore,cssItems(sheetRecord(sheet).rules),list);
     computedSnapshotSet(computedSheetCache,sheet,keep?{__proto__:null,epoch:structure,media:media,list:list}:null);
     return list;
   }
@@ -3771,6 +3820,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // (turbo-dom#276), or null. A selector with :scope binds it to the scoping root; & stands
   // for :where(:scope); any other selector is relative to the root (its descendants, with no
   // added specificity). Proximity counts the generations from the root to `el`.
+  // Does `item` select `el` from scoping root `root`? A `:scope`-naming selector uses the
+  // scope-aware matcher; otherwise ordinary matches apply, but a bare `:scope` (root === el)
+  // is not one of its descendants. Hoisted; returns a boolean — no per-call allocation.
+  function cssScopedMatchItem(root, el, item){
+    if ($c.test(/:scope\b/i, item)) return cssScopeSelects(root, el, item);
+    return root !== el && computedNativeMatches(el, item);
+  }
   function cssScopedMatch(el,entry){
     var scopes=entry.scopes,frame=scopes[scopes.length-1],best=null;
     for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index]))return null;
@@ -3778,9 +3834,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     for(var root=el,hops=0;root;root=cssParentElement(root),hops++){
       if(!cssScopeRootMatches(frame,root)||cssScopeLimited(el,frame,root))continue;
       for(var at=0;at<items.length;at+=4){
-        var item=items[at],value=cssSpecificityAt(items,at);
+        var value=cssSpecificityAt(items,at);
         if(best&&value<=best[0])continue;
-        if($c.test(/:scope\b/i,item)?cssScopeSelects(root,el,item):root!==el&&computedNativeMatches(el,item))best=[value,hops];
+        if(cssScopedMatchItem(root,el,items[at]))best=[value,hops];
       }
     }
     return best;
@@ -3795,6 +3851,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
   // pseudo-element of it), or null. A rule under a conditional @media makes the computation
   // volatile when its selector matches.
+  // Build the EntryMatch (or null) after a matched entry has been decided. The @media=2
+  // entry is one that cannot match in any state (dropped); every other matched entry
+  // under a conditional @media bumps computedVolatile. Allocation-free aside from the
+  // EntryMatch, which existed on the hot path before the refactor.
+  function appliedEntryMatchFinish(entry, matched, specificity, proximity, order){
+    if (matched && entry.media && !computedMediaReads) computedVolatile = true;
+    return matched && entry.media !== 2 ? new EntryMatch(entry, specificity, proximity, order) : null;
+  }
   function appliedEntryMatch(el,entry,pseudo,order){
     if(noteRuleProbe)noteRuleProbe();
     // A nested rule's cascade selector resolves `&` and nesting scope; see nestedCascadeSelector.
@@ -3802,8 +3866,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
-    if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
-    return matched&&entry.media!==2?new EntryMatch(entry,specificity,proximity,order):null;
+    return appliedEntryMatchFinish(entry, matched, specificity, proximity, order);
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
   // scoping root, then earlier.
