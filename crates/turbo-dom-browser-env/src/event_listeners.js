@@ -150,6 +150,15 @@
   // `if (record.stop || record.stopImmediate) return;` — AT_TARGET and
   // bubble never run either, because `dispatchMulti` returns from the
   // capture loop, not per-phase.
+  //
+  // Review R4 H2: `record.trusted` is dispatch-scoped too —
+  // `dispatchTarget`'s entry writes it from the `host` parameter but no
+  // finally restores it. A trusted outer whose microtask re-dispatches
+  // the same event (non-host) therefore flips the shared record's
+  // `trusted` to false and leaves it false; the outer's subsequent
+  // bubble listeners see `event.isTrusted === false`. Save `trusted`
+  // alongside stop/stopImmediate. (No pre-checkpoint clear needed: the
+  // inner's own `dispatchTarget` entry overwrites it anyway.)
   function drainMicrotasksAcrossDispatch(record){
     const savedDispatching=record.dispatching;
     const savedCurrent=record.currentTarget;
@@ -158,6 +167,7 @@
     const savedTarget=record.target;
     const savedStop=record.stop;
     const savedStopImmediate=record.stopImmediate;
+    const savedTrusted=record.trusted;
     record.dispatching=false;
     record.stop=false;
     record.stopImmediate=false;
@@ -170,6 +180,7 @@
       record.target=savedTarget;
       record.stop=savedStop;
       record.stopImmediate=savedStopImmediate;
+      record.trusted=savedTrusted;
     }
   }
   // Run every listener of `event` on `level` whose capture flag matches `captureFilter`
