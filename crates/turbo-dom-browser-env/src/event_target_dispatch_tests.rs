@@ -172,7 +172,9 @@ fn collect_path_reaches_ancestors_beyond_the_old_100_hop_cap() {
         .unwrap_or_else(|| {
             panic!(
                 "deep-chain dispatch script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
@@ -234,21 +236,35 @@ fn per_level_composed_path_is_frozen_per_invocation() {
         .unwrap_or_else(|| {
             panic!(
                 "per-level composedPath script: {:?}",
-                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
             )
         })
         .to_rust_string_lossy(scope);
     let actual: serde_json::Value = serde_json::from_str(&result).unwrap();
-    assert_eq!(actual["stashedFrozen"], serde_json::Value::Bool(true),
-        "listener A's stashed composedPath() must be frozen (immutable per invocation)");
-    assert_eq!(actual["ownFrozen"], serde_json::Value::Bool(true),
-        "listener C's own composedPath() must be frozen");
+    assert_eq!(
+        actual["stashedFrozen"],
+        serde_json::Value::Bool(true),
+        "listener A's stashed composedPath() must be frozen (immutable per invocation)"
+    );
+    assert_eq!(
+        actual["ownFrozen"],
+        serde_json::Value::Bool(true),
+        "listener C's own composedPath() must be frozen"
+    );
     assert_eq!(actual["stashedLen"], serde_json::json!(1));
-    assert_eq!(actual["stashedIsA"], serde_json::Value::Bool(true),
-        "stashed path's first element must still be A after bubble reaches C");
+    assert_eq!(
+        actual["stashedIsA"],
+        serde_json::Value::Bool(true),
+        "stashed path's first element must still be A after bubble reaches C"
+    );
     assert_eq!(actual["ownLen"], serde_json::json!(1));
     assert_eq!(actual["ownIsC"], serde_json::Value::Bool(true));
-    assert_eq!(actual["stashedMutable"], serde_json::Value::Bool(false),
-        "frozen array must reject .push() (strict-mode throw)");
+    assert_eq!(
+        actual["stashedMutable"],
+        serde_json::Value::Bool(false),
+        "frozen array must reject .push() (strict-mode throw)"
+    );
     reset();
 }
