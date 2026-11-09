@@ -676,6 +676,183 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
     reset();
 }
 
+/// turbo-dom#450: `record.defaultPrevented` leaks across a microtask-driven
+/// nested re-dispatch. The per-listener microtask drain
+/// (`drainMicrotasksAcrossDispatch`) saves and restores every other
+/// dispatch-scoped field (dispatching / currentTarget / eventPhase / path /
+/// target / stop / stopImmediate / trusted), but not `defaultPrevented`.
+/// A microtask that re-dispatches the same cancelable event and whose
+/// inner listener calls `event.preventDefault()` mutates the shared
+/// record's `defaultPrevented = true`; the drain's finally does not
+/// restore it, and the outer `dispatchTarget`'s own `finally` only
+/// resets `stop` / `stopImmediate` / `passive`. The outer dispatch's
+/// `return !record.defaultPrevented` then falsely reports canceled,
+/// even though no outer listener called `preventDefault()`.
+///
+/// Chrome 156 control
+/// (`src/event_defaultprevented_chrome156.json` scenario
+/// `listenerQueuesMicrotask`): outer dispatch returns `true`, the
+/// microtask's inner dispatch returns `false`. Chrome's checkpoint
+/// runs the microtask AFTER the outer dispatch completes, so the
+/// outer's return is independent of the inner's `preventDefault`.
+///
+/// Fix: add `defaultPrevented` to `drainMicrotasksAcrossDispatch`'s
+/// save-set (same shape as R3 H1's `stop` / `stopImmediate` and R4 H2's
+/// `trusted`). The outer's own `preventDefault` taken BEFORE the drain
+/// is preserved; the inner's `preventDefault` stays confined to the
+/// inner dispatch's return.
+#[test]
+fn microtask_re_dispatch_preserves_outer_default_prevented() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Plain EventTarget with no parent hook triggers `dispatchSingle`, which
+    // still routes callListener through `afterListener` (the drain path).
+    // The outer listener queues a microtask whose inner dispatch's listener
+    // calls preventDefault. No outer listener calls preventDefault, so the
+    // outer `dispatchEvent` MUST return true.
+    let source = r#"(() => {
+      const target = new EventTarget();
+      let step = 0;
+      const out = {};
+      target.addEventListener('e', (event) => {
+        step++;
+        if (step === 1) {
+          Promise.resolve().then(() => {
+            out.innerReturn = target.dispatchEvent(event);
+            out.innerDefaultPreventedAfter = event.defaultPrevented;
+          });
+        } else {
+          event.preventDefault();
+        }
+      });
+      const event = new Event('e', { cancelable: true, bubbles: false });
+      out.outerReturn = target.dispatchEvent(event);
+      return JSON.stringify(out);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "defaultPrevented-leak script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let observed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        observed["outerReturn"],
+        serde_json::Value::Bool(true),
+        "outer dispatchEvent MUST return true — no outer listener called \
+         preventDefault; the microtask's inner dispatch's preventDefault \
+         must not leak into the outer's return value (Chrome 156 \
+         scenario `listenerQueuesMicrotask`.outerReturn = true). \
+         Observed: {observed}",
+    );
+    assert_eq!(
+        observed["innerReturn"],
+        serde_json::Value::Bool(false),
+        "inner dispatchEvent MUST return false — the inner listener \
+         called preventDefault (Chrome 156 innerReturn = false). \
+         Observed: {observed}",
+    );
+    assert_eq!(
+        observed["innerDefaultPreventedAfter"],
+        serde_json::Value::Bool(true),
+        "inside the microtask, after the inner dispatch returns, \
+         event.defaultPrevented MUST be true (the inner's \
+         preventDefault stuck). Observed: {observed}",
+    );
+    reset();
+}
+
+/// turbo-dom#450 — companion to the leak test: an outer listener that DID
+/// call `preventDefault` before queueing the microtask must still see its
+/// own preventDefault in the outer's return. The save/restore pattern
+/// preserves `defaultPrevented = true` when it was set before the drain,
+/// and restores `true` (its pre-drain value) after the drain — so the
+/// inner's additional `preventDefault` is a no-op for the outer return
+/// (which is already false), and an outer-cancelled dispatch cannot
+/// silently flip back to uncancelled just because its microtask
+/// re-dispatched.
+#[test]
+fn microtask_re_dispatch_preserves_outer_own_default_prevented() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = r#"(() => {
+      const target = new EventTarget();
+      let step = 0;
+      const out = {};
+      target.addEventListener('e', (event) => {
+        step++;
+        if (step === 1) {
+          // Outer: cancel the outer dispatch FIRST, then queue the microtask.
+          event.preventDefault();
+          Promise.resolve().then(() => {
+            out.innerReturn = target.dispatchEvent(event);
+          });
+        }
+      });
+      const event = new Event('e', { cancelable: true, bubbles: false });
+      out.outerReturn = target.dispatchEvent(event);
+      return JSON.stringify(out);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "defaultPrevented-outer-own script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let observed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        observed["outerReturn"],
+        serde_json::Value::Bool(false),
+        "outer dispatchEvent MUST return false — the outer listener \
+         DID call preventDefault; the save/restore around the drain \
+         must preserve defaultPrevented when it was true before the \
+         drain. Observed: {observed}",
+    );
+    assert_eq!(
+        observed["innerReturn"],
+        serde_json::Value::Bool(false),
+        "inner dispatchEvent returns false — the event's \
+         defaultPrevented is still true at the start of the inner \
+         dispatch (Chrome 156 scenario `outerListenerAlsoPrevents`). \
+         Observed: {observed}",
+    );
+    reset();
+}
+
 /// Review R4 H2: `record.trusted` is dispatch-scoped — `dispatchTarget`'s
 /// entry writes it from the `host` parameter, and neither its own
 /// `finally` nor `drainMicrotasksAcrossDispatch`'s save-set restores it.
