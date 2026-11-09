@@ -101,6 +101,30 @@
     for(let i=0;i<path.length;i++){const s=native('targetGet',path[i]);if(!s)continue;const list=s.listeners;for(let j=0;j<list.length;j++){const l=list[j];if(!l.removed&&l.type===type)return true;}}
     return false;
   }
+  // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
+  // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
+  // true, so a microtask that synchronously re-dispatches the same event
+  // would see `dispatching=true` on the shared record and throw
+  // InvalidStateError — Chrome 156's dispatch flag is per-dispatch and
+  // allows the re-dispatch. Save every dispatch-scoped field, clear
+  // dispatching for the drain, drain, then restore. A microtask's own
+  // dispatch runs in its scope; the outer dispatch resumes unchanged.
+  function drainMicrotasksAcrossDispatch(record){
+    const savedDispatching=record.dispatching;
+    const savedCurrent=record.currentTarget;
+    const savedPhase=record.eventPhase;
+    const savedPath=record.path;
+    const savedTarget=record.target;
+    record.dispatching=false;
+    try{native('microtaskCheckpoint');}
+    finally{
+      record.dispatching=savedDispatching;
+      record.currentTarget=savedCurrent;
+      record.eventPhase=savedPhase;
+      record.path=savedPath;
+      record.target=savedTarget;
+    }
+  }
   // Run every listener of `event` on `level` whose capture flag matches `captureFilter`
   // (null = any, which is AT_TARGET's contract). Per-listener invocation sets
   // currentTarget/eventPhase and scopes `composedPath()` to `[level]` (Chrome 156's IDB
@@ -117,7 +141,7 @@
       if(listener.signal&&aborted(listener.signal))continue;
       if(listener.once)targetRemove(level,state,listener);
       record.passive=listener.passive;
-      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;native('microtaskCheckpoint');}
+      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{record.passive=false;drainMicrotasksAcrossDispatch(record);}
     }
   }
   // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at
