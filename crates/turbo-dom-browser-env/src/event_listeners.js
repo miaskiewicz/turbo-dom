@@ -132,7 +132,20 @@
   // unadapted_reaction_order`: the `signal` listener's queued microtask
   // fires AFTER the `dependent` listener in the same dispatch, not
   // between them).
-  let listenerDepth=0,hostDispatchDepth=0;
+  //
+  // turbo-dom#484 regression (timer path): `hostDispatchDepth > 0` alone is
+  // not enough. V8-native `AbortSignal.timeout` fires its abort reaction from
+  // an engine-task entry whose C++ path never calls `__captureHostEventDispatch`
+  // (surf's `__runLocalTimers` / V8's native timer runner), yet Chrome 156
+  // DOES checkpoint microtasks between its listeners (the realm is at the top
+  // of the script settings stack — no page JS called in). The embedding needs
+  // a second seam to mark engine-task boundaries: `globalThis.__engineTaskScope(fn)`
+  // (below) bumps `engineTaskDepth` around `fn` so the drain also fires inside
+  // that bracket. Surf's abort-bridge oracle stays green because
+  // `controller.abort()` is page-script (no scope, no bracket). Surf
+  // `abort_signal_any_and_timeout_match_chrome156` goes green because the
+  // timer runner wraps `__timerApply` with the new scope.
+  let listenerDepth=0,hostDispatchDepth=0,engineTaskDepth=0;
   function afterListener(record){record.passive=false;if(--listenerDepth===0&&hostDispatchDepth>0)drainMicrotasksAcrossDispatch(record);}
   // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
   // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
@@ -323,6 +336,14 @@
     try{return target===g?dispatch(event,true):native('targetGet',target)?dispatchTarget(event,target,true):oldHost(event,target);}
     finally{hostDispatchDepth--;}
   };
+  // turbo-dom#484 timer regression: bracket an engine-task entry (timer
+  // runner, microtask queue flush, V8-native AbortSignal timer fire, etc.)
+  // so a dispatch inside `fn` checkpoints microtasks between listeners even
+  // when it looks like a page-script `target.dispatchEvent` — the realm IS
+  // at the top of the script settings stack for the duration of the task.
+  // Single-function signature keeps pairing impossible to forget; the
+  // `finally` restores the counter on any exit (return / throw / termination).
+  g.__engineTaskScope=fn=>{engineTaskDepth++;try{return fn();}finally{engineTaskDepth--;}};
   g.__captureWindowEventPhase=(event,capture)=>invoke(event,capture,capture?1:3);
   g.__captureListenerOptions=flatten;g.__captureSignalAborted=localAborted;g.__captureSignalSubscription=(signal,hook,subscribe)=>apply(subscribe?signalAdd:signalRemove,signal,['abort',hook,subscribe?{once:true}:undefined]);
 })();
