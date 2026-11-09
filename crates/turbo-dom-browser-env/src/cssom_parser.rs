@@ -33,6 +33,29 @@ pub fn is_supported_property(name: &str) -> bool {
     {
         return false;
     }
+    // turbo-dom#441: a -webkit-* name whose Chrome 156 acceptance disagrees with Lightning
+    // CSS is pinned here against `css_webkit_prefix_chrome156.json`. Accept the seven
+    // properties Chrome serves but Lightning CSS models as Custom (ASCII case-insensitive
+    // per CSS 2.2 §4.1.1 — the Chrome page admits `-WEBKIT-LINE-CLAMP`); reject
+    // `-webkit-backdrop-filter`, the one Lightning CSS models but Chrome 156 does not.
+    if name.len() > 1 && name.as_bytes()[0] == b'-' {
+        let lower = name.to_ascii_lowercase();
+        if matches!(
+            lower.as_str(),
+            "-webkit-text-fill-color"
+                | "-webkit-text-stroke"
+                | "-webkit-text-stroke-color"
+                | "-webkit-text-stroke-width"
+                | "-webkit-font-smoothing"
+                | "-webkit-tap-highlight-color"
+                | "-webkit-line-clamp"
+        ) {
+            return true;
+        }
+        if lower == "-webkit-backdrop-filter" {
+            return false;
+        }
+    }
     !matches!(PropertyId::from(name), PropertyId::Custom(_))
         || interest_delay_arity(name).is_some()
         || name == "writing-mode"
