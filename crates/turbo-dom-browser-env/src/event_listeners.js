@@ -146,7 +146,7 @@
   // `abort_signal_any_and_timeout_match_chrome156` goes green because the
   // timer runner wraps `__timerApply` with the new scope.
   let listenerDepth=0,hostDispatchDepth=0,engineTaskDepth=0;
-  function afterListener(record){record.passive=false;if(--listenerDepth===0&&hostDispatchDepth>0)drainMicrotasksAcrossDispatch(record);}
+  function afterListener(record){record.passive=false;if(--listenerDepth===0&&(hostDispatchDepth>0||engineTaskDepth>0))drainMicrotasksAcrossDispatch(record);}
   // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
   // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
   // true, so a microtask that synchronously re-dispatches the same event
