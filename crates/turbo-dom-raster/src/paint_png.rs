@@ -422,7 +422,17 @@ fn paint_column_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+    // v0.8.2 R1 M1 + L1: reject non-finite sizes too — `f.width <= 0.0`
+    // alone is false for `NaN` (every comparison with NaN is false) and
+    // `f.width <= 0.0` is false for `Infinity`, so a NaN would cascade
+    // into `cx = NaN / 2.0 = NaN` and `period = 2 * NaN = NaN`, feeding
+    // tiny-skia NaN coordinates.
+    if color.a == 0
+        || !f.width.is_finite()
+        || !f.height.is_finite()
+        || f.width <= 0.0
+        || f.height <= 0.0
+    {
         return;
     }
     match style {
@@ -453,8 +463,9 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     // fragment must paint nothing, and `max(1.0)` would otherwise coerce it
     // into the sub-pixel fallback below. (The outer `paint_column_rule`
     // already guards, but the helper's direct contract keeps the loop
-    // protection pinned.)
-    if f.width <= 0.0 {
+    // protection pinned.) R1 M1: `is_finite()` also rejects `NaN` and
+    // `Infinity`, which comparisons never catch.
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 {
         return;
     }
     let diameter = f.width.max(1.0);
@@ -493,16 +504,35 @@ fn paint_dotted_rule_stroked(
     color: Rgba,
     xf: Transform,
 ) {
+    // R1 M1: non-finite inputs (NaN / Infinity) escape every `<`/`<=`
+    // comparison — reject them so `y_top + height = NaN` never leaks
+    // into the loop and `end = y_top + Infinity = Infinity` never runs
+    // the dash loop forever.
+    if !cx.is_finite()
+        || !y_top.is_finite()
+        || !height.is_finite()
+        || !diameter.is_finite()
+        || height <= 0.0
+        || diameter <= 0.0
+    {
+        return;
+    }
     let px_left = cx.floor();
     let end = y_top + height;
     // Leading cap: one px above the first dash (Blink's round line-cap).
+    // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
+    // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
+    // leak past `end` — Blink's round cap collapses with the rule
+    // height, and the probe on a 0.3 px rule never paints a full pixel.
     if y_top < end {
-        fill_rect(pm, px_left, y_top, diameter, diameter, color, xf);
+        let cap_h = (end - y_top).min(diameter);
+        fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
     }
     // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
     let mut y = y_top + diameter;
     while y < end {
-        fill_rect(pm, px_left, y, diameter, diameter, color, xf);
+        let dash_h = (end - y).min(diameter);
+        fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
         y += 2.0 * diameter;
     }
 }
@@ -531,6 +561,13 @@ fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
 /// Stamp dashes of length `2 * width` down the rule, period `3 * width` (Blink's
 /// `kDashedStroke`: a `width` gap between each dash).
 fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    // R1 M1: reject non-finite sizes — `period <= 0.0` is false for
+    // `NaN` and `Infinity`, which would otherwise step the loop at
+    // undefined coordinates (`dash_top += NaN` never terminates
+    // `dash_top < end`).
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     let width = f.width;
     let dash = 2.0 * width;
     let gap = width;
@@ -553,11 +590,24 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
 /// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
 /// painter falls back to one solid band so a thin double rule still shows.
 fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    let band = (f.width / 3.0).floor().max(1.0);
+    // R1 M1 + L1: reject `NaN` / `Infinity` — `f.width < 3.0` is false
+    // for either, so without this guard an `Infinity` width would run
+    // the two-band path with Inf band widths, and a NaN would make
+    // `f.width - band = NaN`.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
+    // R1 L2: the thin-double fallback below handles every `f.width < 3.0`
+    // case, so from here on `f.width >= 3.0`, which forces
+    // `(f.width / 3.0).floor() >= 1.0` — the earlier `.max(1.0)` was a
+    // dead branch unreachable after the short-circuit. Computing `band`
+    // AFTER the fallback also avoids a wasted divide + floor on the
+    // thin path. Proof: f.width >= 3.0 && floor(x) <= x => floor(f.width / 3.0) >= 1.0.
     if f.width < 3.0 {
         fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
         return;
     }
+    let band = (f.width / 3.0).floor();
     fill_rect(pm, f.x, f.y, band, f.height, color, xf);
     fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
 }

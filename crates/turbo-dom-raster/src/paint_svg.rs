@@ -240,7 +240,15 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// `width`, dashed stamps dashes `2 * width` long, double paints two edge
 /// bands of `floor(width / 3)` thickness.
 fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
-    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+    // R1 M1: reject non-finite sizes — `f.width <= 0.0` is false for
+    // `NaN` and `Infinity`, which would cascade into `cx = NaN / 2.0`
+    // and SVG `cx="NaN"` / `width="NaN"` output.
+    if color.a == 0
+        || !f.width.is_finite()
+        || !f.height.is_finite()
+        || f.width <= 0.0
+        || f.height <= 0.0
+    {
         return;
     }
     match style {
@@ -262,8 +270,11 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
 fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     // A zero- or negative-width fragment must emit nothing: the `max(1.0)`
     // floor below would otherwise coerce it into the sub-pixel rect
-    // fallback (mirrors the PNG painter's guard, #424).
-    if f.width <= 0.0 {
+    // fallback (mirrors the PNG painter's guard, #424). R1 M1:
+    // `is_finite()` also rejects `NaN` / `Infinity`, which comparisons
+    // never catch — otherwise `cx = f.x + NaN / 2.0 = NaN` would render
+    // `cx="NaN"` in the SVG output.
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 {
         return;
     }
     let diameter = f.width.max(1.0);
@@ -272,12 +283,17 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let end = f.y + f.height;
     if f.width < 1.0 {
         let px_left = cx.floor();
+        // R1 L3 (SVG mirror): clamp the leading cap and each dash so a
+        // fragment shorter than `diameter` (e.g. `height = 0.3`) stays
+        // inside its box. Blink's round cap collapses with the rule.
         if f.y < end {
-            rect(svg, px_left, f.y, diameter, diameter, color);
+            let cap_h = (end - f.y).min(diameter);
+            rect(svg, px_left, f.y, diameter, cap_h, color);
         }
         let mut y = f.y + diameter;
         while y < end {
-            rect(svg, px_left, y, diameter, diameter, color);
+            let dash_h = (end - y).min(diameter);
+            rect(svg, px_left, y, diameter, dash_h, color);
             y += 2.0 * diameter;
         }
         return;
@@ -295,6 +311,11 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 }
 
 fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    // R1 M1: reject non-finite sizes — `period <= 0.0` misses `NaN` and
+    // `Infinity`.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     let width = f.width;
     let dash = 2.0 * width;
     let gap = width;
@@ -314,11 +335,17 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 }
 
 fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    // R1 M1 + L1: reject non-finite sizes. R1 L2: after the `< 3.0`
+    // short-circuit `f.width >= 3.0` forces `(f.width / 3.0).floor() >= 1.0`,
+    // so the trailing `.max(1.0)` is unreachable — dropped.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     if f.width < 3.0 {
         rect(svg, f.x, f.y, f.width, f.height, color);
         return;
     }
-    let band = (f.width / 3.0).floor().max(1.0);
+    let band = (f.width / 3.0).floor();
     rect(svg, f.x, f.y, band, f.height, color);
     rect(svg, f.x + f.width - band, f.y, band, f.height, color);
 }
@@ -1987,18 +2014,12 @@ mod tests {
                 ColumnRuleStyle::Dashed,
                 ColumnRuleStyle::Double,
             ] {
-                let body_w = body(
-                    &rule(1.0, 1.0, bad, 8.0, style, RED),
-                    &HashMap::new(),
-                );
+                let body_w = body(&rule(1.0, 1.0, bad, 8.0, style, RED), &HashMap::new());
                 assert!(
                     body_w.is_empty(),
                     "non-finite width must emit no rule markup ({style:?}, {bad}): {body_w}"
                 );
-                let body_h = body(
-                    &rule(1.0, 1.0, 4.0, bad, style, RED),
-                    &HashMap::new(),
-                );
+                let body_h = body(&rule(1.0, 1.0, 4.0, bad, style, RED), &HashMap::new());
                 assert!(
                     body_h.is_empty(),
                     "non-finite height must emit no rule markup ({style:?}, {bad}): {body_h}"

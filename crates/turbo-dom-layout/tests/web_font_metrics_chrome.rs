@@ -325,8 +325,11 @@ fn fixture_font_dpr2_metrics_at_the_11_19_px_boundary_match_chrome_156() {
         let got = inline_box_content_height_in(&fonts, family, size, 2.0);
         // Exact match: both sides are produced on the same device-pixel grid
         // (Chrome under `--force-device-scale-factor=2` and the live-layout
-        // path at `layout_scale: 2.0` both land on a half-CSS-px grain).
-        if (got - want).abs() > f32::EPSILON {
+        // path at `layout_scale: 2.0` both land on a half-CSS-px grain). R1
+        // M2: fixture values carry `.0` / `.5` which are exact in f32, so
+        // an exact comparison matches the docstring — `f32::EPSILON` would
+        // mask a 1-ULP drift that the "exact" claim promises to catch.
+        if got != want {
             failures.push(format!(
                 "{font} {size}px: inline box content height {got}, Chrome {want}"
             ));
