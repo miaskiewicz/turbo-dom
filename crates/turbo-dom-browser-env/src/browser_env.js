@@ -875,17 +875,24 @@
     info.display = 'block'; info.position = 'absolute';
     info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
   }
+  // Dispatch table for the per-kind element-backed pseudo-elements. Keeps pseudoInfoForKind
+  // under cc 12. Each handler takes (info, el, tag) uniformly — signatures that need fewer
+  // arguments ignore the extras.
+  var pseudoInfoKindHandlers = { __proto__: null,
+    'placeholder': function(info, el, tag){ pseudoInfoPlaceholder(info, el, tag); },
+    'file-selector-button': function(info, el, tag){ pseudoInfoFileButton(info, el, tag); },
+    'details-content': function(info, el, tag){ pseudoInfoDetailsContent(info, el, tag); },
+    'picker': function(info, el, tag){ pseudoInfoPicker(info, tag); },
+    'scroll-marker-group': function(info){ info.display = 'block'; }
+  };
   // Fills `info` for `kind`; returns the kind pseudoAccepts reads (highlights share one).
   function pseudoInfoForKind(info, kind, el, tag, parentStyle){
-    if (kind === 'marker') pseudoInfoMarker(info, el, parentStyle);
-    else if (kind === 'first-line' || kind === 'first-letter') info.container = kind === 'first-line';
-    else if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
-    else if (kind === 'placeholder') pseudoInfoPlaceholder(info, el, tag);
-    else if (kind === 'file-selector-button') pseudoInfoFileButton(info, el, tag);
-    else if (kind === 'details-content') pseudoInfoDetailsContent(info, el, tag);
-    else if (kind === 'picker') pseudoInfoPicker(info, tag);
-    else if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
-    else if (kind === 'scroll-marker-group') info.display = 'block';
+    if (kind === 'marker') { pseudoInfoMarker(info, el, parentStyle); return kind; }
+    if (kind === 'first-line' || kind === 'first-letter') { info.container = kind === 'first-line'; return kind; }
+    if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
+    var handler = pseudoInfoKindHandlers[kind];
+    if (handler) { handler(info, el, tag); return kind; }
+    if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
     else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) pseudoInfoViewTransition(info, kind);
     return kind;
   }
@@ -1095,16 +1102,42 @@
   // `features` collects the class names, ids and (lowercase) attribute names the selector
   // names, for Tree::set_style_filter.
   var computedIdent=/^-?(?:[A-Za-z_\u0080-\uffff]|-)[\w\u0080-\uffff-]*/;
+  // Characters that advance `index` without changing scope bits (except `[` which may
+  // signal an inline-style attribute selector). The lookup replaces a chain of `||` tests
+  // that pushed computedSelectorScope's cyclomatic complexity over the limit.
+  var computedSelectorSkipChars = { __proto__: null, '"': 1, "'": 1, '[': 1, '.': 1, '#': 1 };
+  var computedSelectorMetaChars = { __proto__: null, '+': 1, '~': 1, ':': 1 };
+  // Advance past a skip-char; returns the new `index`, or -2 / -3 for the -1 / 8
+  // bail-outs the outer loop forwards as -1 / 8.
+  function computedSelectorScopeSkip(text, index, c, features){
+    if (c === '"' || c === "'") return computedStringEnd(text, index);
+    if (c === '[') {
+      var e = computedAttributeEnd(text, index, features);
+      return e < 0 ? (e === -1 ? -2 : -3) : e;
+    }
+    return computedFeatureEnd(text, index, features);  // c === '.' || c === '#'
+  }
+  // Updates `meta.end` to the new `index` and returns the new `scope`, or -1 when the
+  // pseudo forces the whole selector to scope 8 (the outer loop then returns 8).
+  function computedSelectorScopeMeta(text, index, c, scope, meta){
+    if (c === '+' || c === '~') { meta.end = index; return scope | 1; }
+    var pseudo = computedPseudoAt(text, index);  // c === ':'
+    meta.end = pseudo.end;
+    return pseudo.scope === 8 ? -1 : (scope | pseudo.scope);
+  }
   function computedSelectorScope(text,features){
-    var scope=0;
-    for(var index=0;index<text.length;index++){
-      var c=text[index];
-      if(c==='\\')return 8;
-      if(c==='"'||c==="'")index=computedStringEnd(text,index);
-      else if(c==='['){index=computedAttributeEnd(text,index,features);if(index<0)return index===-1?-1:8;}
-      else if(c==='.'||c==='#')index=computedFeatureEnd(text,index,features);
-      else if(c==='+'||c==='~')scope|=1;
-      else if(c===':'){var pseudo=computedPseudoAt(text,index);if(pseudo.scope===8)return 8;scope|=pseudo.scope;index=pseudo.end;}
+    var scope = 0, meta = { end: 0 };
+    for (var index = 0; index < text.length; index++) {
+      var c = text[index];
+      if (c === '\\') return 8;
+      if (computedSelectorSkipChars[c]) {
+        index = computedSelectorScopeSkip(text, index, c, features);
+        if (index < 0) return index === -2 ? -1 : 8;
+      } else if (computedSelectorMetaChars[c]) {
+        scope = computedSelectorScopeMeta(text, index, c, scope, meta);
+        if (scope < 0) return 8;
+        index = meta.end;
+      }
     }
     return scope;
   }
@@ -1168,6 +1201,12 @@
   // The owner's scope, reported with the features its selectors name to the tree
   // (Tree::set_style_filter) when reused styles key on its style generations, so writes of
   // unnamed classes, ids and attributes move none.
+  // Push `scope` / `features` into the cache entry (if still live) and ask the embedder
+  // to narrow its style filter to the named features when the scope allows it.
+  function computedOwnerScopeStore(owner, scope, sheets, features, entry){
+    try { computedStyleFilter(owner, scope >= 0 && scope < 8 ? features : null); } catch(e){}
+    if (entry && entry.sheets === sheets) { entry.scope = scope; entry.features = features; }
+  }
   function computedOwnerScope(el){
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
     if(!owner||computedAdopted(owner))return -1;
@@ -1179,8 +1218,7 @@
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&entry.sheets===sheets&&entry.scope!==undefined)return entry.scope;
     var features=computedFeatureLists(),scope=computedSheetsScope(sheets,features);
-    try{computedStyleFilter(owner,scope>=0&&scope<8?features:null);}catch(e){}
-    if(entry&&entry.sheets===sheets){entry.scope=scope;entry.features=features;}
+    computedOwnerScopeStore(owner, scope, sheets, features, entry);
     return scope;
   }
   // A tree other than the document's: a shadow tree (no document sheets) or a child iframe
@@ -1197,6 +1235,17 @@
     return scope;
   }
   function computedAdopted(owner){var adopted=adoptionStates&&$c.get(adoptionStates,owner);return !!(adopted&&adopted.target&&adopted.target.length);}
+  // Combine `sheets` (the owner's own) with `adopted.target` (adoptedStyleSheets), but
+  // only when `el` is the owner itself (not a shadow tree inside it). The adopted-sheets
+  // path is rare, so the extracted allocation stays off the common-case fast path.
+  function computedSheetsWithAdopted(owner, el, sheets, adopted){
+    if (!(adopted && adopted.target && adopted.target.length && cssApply(computedStyleNativeRoot, el, []) === owner)) return sheets;
+    var active = [];
+    cssSetPrototype(active, null);
+    for (var i = 0; i < sheets.length; i++) active[active.length] = sheets[i];
+    for (var j = 0; j < adopted.target.length; j++) active[active.length] = adopted.target[j];
+    return active;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     var scoped=owner&&computedScopeSheets(el,owner);if(scoped)return scoped;
@@ -1206,8 +1255,7 @@
     var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&adopted.target&&adopted.target.length&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
-    return sheets;
+    return computedSheetsWithAdopted(owner, el, sheets, adopted);
   }
   // The selector text of every enabled style rule that can select `el`.
   function computedStyleRules(el){
@@ -1378,6 +1426,16 @@
     out.context=computedFontContext(el);
     return out;
   }
+  // Returns the styleShares entry for `parent`, rebuilding it when the generation or
+  // sheet-build digest changed (same allocation it replaces inline).
+  function styleShareFetchRecord(parent, generation, build){
+    var record = computedSnapshotGet(styleShares, parent);
+    if (!record || record.generation !== generation || record.build !== build) {
+      record = { __proto__: null, generation: generation, build: build, signatures: { __proto__: null }, count: 0 };
+      computedSnapshotSet(styleShares, parent, record);
+    }
+    return record;
+  }
   function styleShareProbe(el){
     if(styleShareOff&&styleShareOff())return null;
     var info;
@@ -1387,8 +1445,7 @@
     var signature=tag+'\u0001'+namespace+'\u0001'+(context&&context[4]?1:0)+'\u0001'+names+'\u0001'+id,attributes=styleShareAttributes(owner);
     for(var index=0;index<attributes.length;index++)signature+='\u0001'+cssApply(computedStyleNativeGetAttribute,el,[attributes[index]]);
     var sheets=computedSheets(el),build=computedSheetEntries(sheets,el);
-    var record=computedSnapshotGet(styleShares,parent);
-    if(!record||record.generation!==generation||record.build!==build){record={__proto__:null,generation:generation,build:build,signatures:{__proto__:null},count:0};computedSnapshotSet(styleShares,parent,record);}
+    var record=styleShareFetchRecord(parent,generation,build);
     var probe={__proto__:null,record:record,signature:signature,hit:null},entry=record.signatures[signature];
     // (The record's build already holds only while its @media answers do.)
     if(entry&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
@@ -1523,6 +1580,14 @@
     }
     return [index,count];
   }
+  // A color longhand that now holds a sibling-count substitution reparses to its canonical
+  // spelling (`cssShorthand('longhand', …)` validates and serializes); non-color properties
+  // pass through unchanged.
+  function treeCountingApplyColor(name, value){
+    if (!cssShorthand || !$c.test(/color$/i, name)) return value;
+    var spelled = cssShorthand('longhand', cssPropertyName(name), value);
+    return spelled[0] === 'valid' ? spelled[1] : value;
+  }
   // The declarations holding a tree-counting function, with the element's counts in place.
   function treeCountingValues(decl,el,pseudo){
     var names=null,counts=null;
@@ -1533,7 +1598,7 @@
       if(!counts)counts=treeCounts(el);
       value=$c.replace($c.replace(value,/sibling-index\(\s*\)/gi,String(counts[0])),/sibling-count\(\s*\)/gi,String(counts[1]));
       // A color resolves its math now: the color stage below reads its spelling.
-      if(cssShorthand&&$c.test(/color$/i,name)){var spelled=cssShorthand('longhand',cssPropertyName(name),value);if(spelled[0]==='valid')value=spelled[1];}
+      value=treeCountingApplyColor(name,value);
       decl[name]=value;
       if($c.toLowerCase(name)===name){if(!names)names=[];$c.push(names,name);}
     }
@@ -1951,12 +2016,22 @@
   // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
   // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
   // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
+  // Read the parent's visibility; '' on any exception from the inherit helper.
+  function computedVisibilityInherited(cs){
+    try { return cs.inheritedValue('visibility'); } catch(e){ return ''; }
+  }
+  // `initial` always resolves to `visible`; a connected empty or wide-keyword value
+  // inherits from the composed parent; everything else keeps the cascaded value.
+  function computedVisibilityResolve(cs, visibilityValue, visibilityKey){
+    if (visibilityKey === 'initial') return 'visible';
+    if (cs.connected && (visibilityValue === '' || visibilityKey)) return computedVisibilityInherited(cs);
+    return visibilityValue;
+  }
   function computedVisibility(cs){
     var decl=cs.decl,connected=cs.connected;
     var visibilityValue = connected ? computedCascadedValue(cs,'visibility') : String(decl.visibility == null ? '' : decl.visibility);
     var visibilityKey = computedWideKeyword(visibilityValue);
-    if (visibilityKey === 'initial') visibilityValue = 'visible';
-    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = cs.inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
+    visibilityValue = computedVisibilityResolve(cs, visibilityValue, visibilityKey);
     if (!visibilityValue && connected) visibilityValue = 'visible';
     // Highlights never take the element's visibility (turbo-dom#47).
     if (connected && cs.info && cs.info.highlight) visibilityValue = 'visible';
@@ -1964,36 +2039,45 @@
   }
   // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
   // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  // The generated-content pseudos whose default `content` is `none`.
+  function computedContentIsGenerated(pseudo, info){
+    return pseudo === 'before' || pseudo === 'after' || info && info.generated;
+  }
   function computedContent(cs){
     var decl=cs.decl,pseudo=cs.pseudo,info=cs.info;
     var contentValue = decl.content == null ? '' : $c.trim(String(decl.content));
     if (pseudo && contentValue) contentValue = $c.replace(contentValue, /'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + $c.replace($c.replace(inner, /\\'/g, "'"), /"/g, '\\"') + '"'; });
-    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
+    if (computedContentIsGenerated(pseudo, info)) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
     else if (pseudo && contentValue) decl.content = contentValue;
     else if (decl.content == null) decl.content = cs.connected ? 'normal' : '';
+  }
+  // Resolve `transform` to matrix() / matrix3d() / none per Chrome 156 (the "resolved
+  // value" for a used transform). Percentage translates and em need a layout box and the
+  // font size; `ns.resolveTransform` returns null to keep the declared text when it cannot
+  // resolve them (turbo-dom#353). No-op for pseudo-elements or without an embedder hook.
+  function computedTransformResolve(cs, decl){
+    if (cs.pseudo || typeof __ns.resolveTransform !== 'function' || typeof decl.transform !== 'string') return;
+    try {
+      var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
+      var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
+      if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
+    } catch(e){}
   }
   // Initial computed values of properties Web Animations commonly animate.
   function computedTransformValues(cs){
     var decl=cs.decl,connected=cs.connected;
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
-    // Resolve `transform` to the matrix() / matrix3d() / none Chrome 156 reports (the
-    // "resolved value" for a used transform). Percentage translates and em need a layout
-    // box and the font size; `ns.resolveTransform` returns null to keep the declared text
-    // when it cannot resolve them (turbo-dom#353).
-    if (connected && !cs.pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
-      try {
-        var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
-        var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
-        if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
-      } catch(e){}
-    }
+    if (connected) computedTransformResolve(cs, decl);
+  }
+  // A modal dialog's overflow longhands recompose the overflow shorthand (modal UA).
+  function computedNormalizeOverflowModal(cs, decl){
+    if (!(cs.connected && !cs.pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')) return;
+    decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
   }
   function computedNormalizeColorLonghands(cs){
     var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
-    // A modal dialog's overflow longhands recompose the shorthand.
-    if (connected && !pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
-      decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
+    computedNormalizeOverflowModal(cs, decl);
     if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     // turbo-dom#374: Chrome 156 serializes every `<color>` longhand in computed style as
     // rgb() / rgba() / the authored string for a value it does not recognize; a named
@@ -2012,12 +2096,17 @@
   // (pct * the containing block's content width/height), which a real browser reports in px.
   // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
   // getComputedStyle(child).width matches a browser without a full layout engine.
+  // The `parentElement` fallback computedUsedPx walks up (an Element parent or an Element
+  // sibling via parentNode).
+  function computedUsedPxParent(node){
+    return node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+  }
   function computedUsedPx(cs, node, axis, depth){
     if (!node || depth > 32) return null;
     var raw;try{raw=node===cs.el?cs.decl[axis]:computedSnapshotValue(cs.parentStyle(node),axis);}catch(e){return null;}
     raw = raw == null ? '' : String(raw);
     var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
-    var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+    var parent = computedUsedPxParent(node);
     var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
     if (mpc) { var base = computedUsedPx(cs, parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
     // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
@@ -2083,8 +2172,7 @@
     // Tree-counting functions take this element's counts; their style follows its siblings.
     var treeNames=treeCountingValues(decl,el,pseudo);
     computedColor(cs);
-    if (cs.connected) computedDisplayPosition(cs);
-    else if (decl.display == null) decl.display = '';
+    computeStyleFreshDisplay(cs, decl);
     computedVisibility(cs);
     computedContent(cs);
     computedTransformValues(cs);
@@ -2097,8 +2185,18 @@
     computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
-    if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
+    computeStyleFreshStore(el,pseudo,snapshots,snapshot);
     return snapshot;
+  }
+  // display: connected elements pass through computedDisplayPosition; a disconnected one
+  // leaves an unset `display` as '' (the empty default).
+  function computeStyleFreshDisplay(cs, decl){
+    if (cs.connected) computedDisplayPosition(cs);
+    else if (decl.display == null) decl.display = '';
+  }
+  // Stash the fresh snapshot in the per-call cache (skip pseudo reads, which share a key).
+  function computeStyleFreshStore(el, pseudo, snapshots, snapshot){
+    if (el && !pseudo) computedSnapshotSet(snapshots, el, snapshot);
   }
   var ownMatchMedia = null;
   function installWindowOperations(){
@@ -2813,6 +2911,15 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       finally{endEventDispatch(state);}return !state.defaultPrevented;
     };
   }
+  // Invoke each listener in `list` on `target` for `event`; honours stopImmediatePropagation
+  // and swallows per-listener exceptions. Hoisted so __captureHostEventDispatch stays under cc 12.
+  function captureHostEventDispatchRun(target, event, list, state){
+    if (!list) return;
+    for (var listener of list.slice()) {
+      if (state.stopImmediate) break;
+      try { typeof listener === 'function' ? listener.call(target, event) : listener.handleEvent(event); } catch(e){}
+    }
+  }
   // Captured privately by the host before page scripts can run.
   g.__captureHostEventDispatch=function(event,target){
     'use strict';
@@ -2823,10 +2930,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(legacyWindow)state.target=g.document;
     var registry=target===g?__ns.winListeners:(target.__etl||target.__listeners);
     var list=registry&&registry[state.type];
-    try{if(list)for(var listener of list.slice()){
-      if(state.stopImmediate)break;
-      try{typeof listener==='function'?listener.call(target,event):listener.handleEvent(event);}catch(e){}
-    }}finally{if(!legacyWindow)endEventDispatch(state);}
+    try{captureHostEventDispatchRun(target,event,list,state);}
+    finally{if(!legacyWindow)endEventDispatch(state);}
     return !state.defaultPrevented;
   };
   // document extras (pure-JS shims over the native tree).
