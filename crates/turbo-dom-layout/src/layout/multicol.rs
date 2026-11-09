@@ -804,10 +804,17 @@ fn fragment_pieces(
     col_cursor: &mut f32,
 ) -> Vec<ColPiece> {
     let mut pieces: Vec<ColPiece> = Vec::new();
-    // A non-positive column height collapses fragmentation to a single piece
-    // at the current cursor: the caller owns the placement, the flow does not
-    // walk forever trying to spill into fresh strips.
-    if col_h <= 0.0 {
+    // A column height at or below `FRAG_EPS` can't admit a real piece — the
+    // "fits" branch needs `remaining <= available + FRAG_EPS` (so any item
+    // wider than ~eps fails it) and the "advance to next column" branch only
+    // fires once the cursor has moved off 0, so the loop would keep slicing
+    // one ~col_h chunk into every column until `remaining` ran out. Collapse
+    // the whole fragmentation to a single piece at the current cursor:
+    // caller owns the placement, the flow does not walk forever trying to
+    // spill into fresh strips, and pathological styling can't force
+    // thousands of pieces (turbo-dom#426). The existing `col_h <= 0.0`
+    // policy is a special case of this bound.
+    if col_h < FRAG_EPS {
         pieces.push(ColPiece {
             col_index: *col_index,
             y: *col_cursor,
