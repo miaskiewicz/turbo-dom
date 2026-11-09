@@ -1260,3 +1260,133 @@ fn microtask_continuation_sees_post_dispatch_sentinel_fields() {
     );
     reset();
 }
+
+/// turbo-dom#433: when a capture-phase listener on an ANCESTOR calls
+/// `stopPropagation()`, Chrome 156 stops the dispatch before entering
+/// AT_TARGET on the target — the target's AT_TARGET listeners do NOT
+/// fire. The current `dispatchMulti` only short-circuits AT_TARGET on
+/// `stopImmediate`:
+///
+/// ```text
+/// if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+/// ```
+///
+/// so a `stop` set during the capture walk leaks through and the
+/// target's AT_TARGET listeners still run. Pinned on turbo-surf's
+/// `/path/stopped` trace (`fix/193-idb-event-path`); fixed by guarding
+/// AT_TARGET on BOTH flags, matching the capture and bubble loops.
+///
+/// The test chain is parent -> mid -> target (parent-hook chain, host
+/// dispatch on `target`). `parent`'s capture listener calls
+/// `stopPropagation()`; `target`'s AT_TARGET listener must NOT run,
+/// but `target`'s `stopImmediatePropagation`-equivalent test (another
+/// AT_TARGET listener after a `stopImmediate` on the same target)
+/// stays unchanged.
+#[test]
+fn ancestor_capture_stop_propagation_suppresses_target_at_target() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = r#"(() => {
+      const target = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(target, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      // Capture order along the reverse path: parent -> mid. The #433 bug
+      // appears when the IMMEDIATE ancestor (`mid`, the last step of the
+      // capture loop) calls stopPropagation — the loop exits normally at
+      // `i=0` without re-checking the stop flag, then falls through to
+      // `if(!record.stopImmediate)invokeAt(..., 2)` with `record.stop=true`
+      // but `record.stopImmediate=false`, so AT_TARGET on `target` runs
+      // anyway. With `parent` doing the stop instead, the next loop
+      // iteration's guard catches it — that path was ALREADY correct and
+      // would not pin #433.
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-capture:' + event.eventPhase);
+      }, { capture: true });
+      mid.addEventListener('ping', (event) => {
+        trace.push('mid-capture:' + event.eventPhase);
+        event.stopPropagation();
+      }, { capture: true });
+      target.addEventListener('ping', (event) => {
+        trace.push('target-at-target:' + event.eventPhase);
+      });
+      target.addEventListener('ping', (event) => {
+        trace.push('target-at-target-second:' + event.eventPhase);
+      });
+      // Bubble phase: should not run either, but the AT_TARGET assertion is
+      // the one issue #433 pins. Record it so a mutant that drops the stop
+      // check from the bubble loop is also caught.
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-bubble:' + event.eventPhase);
+      });
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), target);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "#433 ancestor-capture-stopPropagation script failed: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Sanity: both capture listeners MUST fire — parent (first step of the
+    // reverse path walk) and mid (next step, which calls stopPropagation).
+    // If a listener did not fire, the chain is broken and the rest of the
+    // test proves nothing — mutation-resistant to a "listener never
+    // installed" defect.
+    assert!(
+        has("parent-capture:1"),
+        "parent-capture must fire — first step of the reverse path walk. \
+         Trace: {trace}",
+    );
+    assert!(
+        has("mid-capture:1"),
+        "mid-capture must fire — it owns the stopPropagation call. \
+         Trace: {trace}",
+    );
+    // The #433 fix: AT_TARGET on target MUST NOT fire. Both AT_TARGET
+    // listeners are asserted so a mutant that guards only the first
+    // listener's invocation is also caught.
+    assert!(
+        !has("target-at-target:2"),
+        "target-at-target MUST NOT fire — ancestor capture called \
+         stopPropagation, Chrome 156 stops dispatch before AT_TARGET. \
+         Trace: {trace}",
+    );
+    assert!(
+        !has("target-at-target-second:2"),
+        "target-at-target-second MUST NOT fire — same contract as the \
+         first AT_TARGET listener. Trace: {trace}",
+    );
+    assert!(
+        !has("parent-bubble:3"),
+        "parent-bubble MUST NOT fire — stopPropagation also suppresses \
+         bubble, same contract. Trace: {trace}",
+    );
+    reset();
+}
