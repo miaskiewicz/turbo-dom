@@ -281,10 +281,7 @@ fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
         if parser_document.is_some() && !tree.has_attribute(handle, "async") {
             state.force_async = true;
         }
-        let (src, source, source_units, kind) = match script_classification(tree, handle) {
-            Some(t) => t,
-            None => return None,
-        };
+        let (src, source, source_units, kind) = script_classification(tree, handle)?;
         if let Some(document) = parser_document {
             state.parser_document = Some(document);
             state.parser_inserted = true;
@@ -296,30 +293,54 @@ fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
         {
             return None;
         }
-        let attributes = tree
-            .attributes_namespaced(handle)
-            .into_iter()
-            .filter(|attribute| attribute.namespace.is_none())
-            .map(|attribute| {
-                (
-                    attribute.local_name.to_string(),
-                    attribute.value.to_string(),
-                )
-            })
-            .collect();
-        let parser_inserted = state.parser_inserted;
-        let asynchronous = state.force_async || tree.has_attribute(handle, "async");
-        Some(PreparedScript {
+        Some(build_prepared_script(
+            tree,
+            handle,
+            state,
+            src,
             source,
             source_units,
-            src,
             kind,
-            asynchronous,
-            parser_inserted,
-            attributes,
             in_shadow_tree,
-        })
+        ))
     })
+}
+
+/// Build the `PreparedScript` shell once we have decided this script is admitted.
+#[allow(clippy::too_many_arguments)]
+fn build_prepared_script(
+    tree: &Tree,
+    handle: Handle,
+    state: &ScriptState,
+    src: Option<String>,
+    source: String,
+    source_units: Vec<u16>,
+    kind: String,
+    in_shadow_tree: bool,
+) -> PreparedScript {
+    let attributes = tree
+        .attributes_namespaced(handle)
+        .into_iter()
+        .filter(|attribute| attribute.namespace.is_none())
+        .map(|attribute| {
+            (
+                attribute.local_name.to_string(),
+                attribute.value.to_string(),
+            )
+        })
+        .collect();
+    let parser_inserted = state.parser_inserted;
+    let asynchronous = state.force_async || tree.has_attribute(handle, "async");
+    PreparedScript {
+        source,
+        source_units,
+        src,
+        kind,
+        asynchronous,
+        parser_inserted,
+        attributes,
+        in_shadow_tree,
+    }
 }
 
 /// Host-only admission. Guest properties, prototypes and expando markers are never read.
