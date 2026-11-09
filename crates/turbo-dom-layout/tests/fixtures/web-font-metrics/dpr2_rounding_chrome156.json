@@ -1,0 +1,104 @@
+{
+ "generator": "scripts/webfont-inline-dpr2-chrome-control.mjs",
+ "chrome": "156.0.8078.47",
+ "environment": {
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+  "viewport": [
+   1280,
+   800
+  ],
+  "deviceScaleFactor": 2
+ },
+ "cases": [
+  {
+   "font": "liberation-serif-regular",
+   "size": 11,
+   "spanHeight": 12.5,
+   "rangeHeight": 12.5
+  },
+  {
+   "font": "liberation-serif-regular",
+   "size": 13,
+   "spanHeight": 14.5,
+   "rangeHeight": 14.5
+  },
+  {
+   "font": "liberation-serif-regular",
+   "size": 15,
+   "spanHeight": 16.5,
+   "rangeHeight": 16.5
+  },
+  {
+   "font": "liberation-serif-regular",
+   "size": 17,
+   "spanHeight": 18.5,
+   "rangeHeight": 18.5
+  },
+  {
+   "font": "liberation-serif-regular",
+   "size": 19,
+   "spanHeight": 21,
+   "rangeHeight": 21
+  },
+  {
+   "font": "inter-regular",
+   "size": 11,
+   "spanHeight": 13,
+   "rangeHeight": 13
+  },
+  {
+   "font": "inter-regular",
+   "size": 13,
+   "spanHeight": 15.5,
+   "rangeHeight": 15.5
+  },
+  {
+   "font": "inter-regular",
+   "size": 15,
+   "spanHeight": 18,
+   "rangeHeight": 18
+  },
+  {
+   "font": "inter-regular",
+   "size": 17,
+   "spanHeight": 20.5,
+   "rangeHeight": 20.5
+  },
+  {
+   "font": "inter-regular",
+   "size": 19,
+   "spanHeight": 23,
+   "rangeHeight": 23
+  },
+  {
+   "font": "fira-code-regular",
+   "size": 11,
+   "spanHeight": 13.5,
+   "rangeHeight": 13.5
+  },
+  {
+   "font": "fira-code-regular",
+   "size": 13,
+   "spanHeight": 16,
+   "rangeHeight": 16
+  },
+  {
+   "font": "fira-code-regular",
+   "size": 15,
+   "spanHeight": 18.5,
+   "rangeHeight": 18.5
+  },
+  {
+   "font": "fira-code-regular",
+   "size": 17,
+   "spanHeight": 20.5,
+   "rangeHeight": 20.5
+  },
+  {
+   "font": "fira-code-regular",
+   "size": 19,
+   "spanHeight": 23.5,
+   "rangeHeight": 23.5
+  }
+ ]
+}

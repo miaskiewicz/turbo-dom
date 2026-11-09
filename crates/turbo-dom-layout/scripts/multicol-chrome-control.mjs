@@ -254,6 +254,33 @@ const CASES = [
       ),
     ),
   },
+  // #442 (a): content overflows past used_count under `overflow:visible` —
+  // extra strips painted past the content box; the overflowing kid's
+  // bounding rect sits at the overflow strip's x.
+  {
+    id: "overflow-visible-extra-strips",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:100px;overflow:visible",
+        stack([100, 100, 100, 100, 100, 100]),
+      ),
+    ),
+  },
+  // #442 (b): same flow under `overflow:hidden` — Chrome still lays the
+  // overflow strips out past the content box, but paint-time clipping trims
+  // them. `getBoundingClientRect()` reports the laid-out (pre-clip) x of the
+  // overflowing kid; that is what the layout contract pins.
+  {
+    id: "overflow-hidden-extra-strips",
+    html: DOC(
+      "",
+      WRAP(
+        "columns:2;column-gap:0;width:400px;height:100px;overflow:hidden",
+        stack([100, 100, 100, 100, 100, 100]),
+      ),
+    ),
+  },
 ];
 
 const browser = await chromium.launch({
