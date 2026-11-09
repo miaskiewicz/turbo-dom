@@ -721,12 +721,24 @@ mod tests {
             .unwrap_or_else(|| panic!("eval failed: {src}"))
     }
 
-    /// Kills surviving mutants at 547:5 / 550:5 / 556:5 / 560:5: `isolation_available`,
-    /// `take_isolation_state`, `put_isolation_state`, `reset_node_subscriptions`.
-    /// Each isolation helper is observed by the signal-subscription census it is meant to
-    /// drive — taking the state drains `NODE_SUBSCRIPTIONS`, putting it back restores it,
-    /// and `reset_node_subscriptions` empties it. A no-op or `Default::default()` body for
-    /// any of them makes the census count diverge from the expectation on the matching line.
+    /// Kills surviving mutants at 547:5 (`isolation_available -> false` polarity only) /
+    /// 550:5 / 556:5 / 560:5: the `take_isolation_state`, `put_isolation_state`, and
+    /// `reset_node_subscriptions` helpers. Each helper is observed by the signal-
+    /// subscription census it is meant to drive — taking the state drains
+    /// `NODE_SUBSCRIPTIONS`, putting it back restores it, and `reset_node_subscriptions`
+    /// empties it. A no-op or `Default::default()` body for any of them makes the census
+    /// count diverge from the expectation on the matching line.
+    ///
+    /// Note (R2-fresh M2, 2026-11-09): the `isolation_available -> true` mutant is
+    /// equivalent in this test because `isolation_available()` is already true in a
+    /// bound-TLS test context, so the `assert!` below would pass either way. Killing the
+    /// `-> true` polarity requires TLS-teardown scaffolding that the surrounding test
+    /// harness does not provide; what this test kills is the `-> false` polarity (by
+    /// observing a positive subscription count after a binding-installed listener runs)
+    /// plus the take / put / reset helpers via the subscription_count observations
+    /// below. The `assert!(isolation_available())` is kept as an informative precondition
+    /// — it documents that the TLS is bound for the rest of the assertions — not as
+    /// part of the 547:5 `-> true` kill chain.
     #[test]
     fn isolation_helpers_drain_restore_and_clear_signal_subscriptions() {
         super::super::tests::init_v8();
