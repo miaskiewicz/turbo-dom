@@ -2091,10 +2091,17 @@
   var setEventRecord = WeakMap.prototype.set.bind(eventRecords);
   var eventClockOrigin = Date.now();
   var eventDefineProperty = Object.defineProperty;
+  var eventObjectFreeze = Object.freeze;
+  // turbo-dom#423: the returned copy is frozen so a listener's stashed composedPath()
+  // cannot be mutated (defense-in-depth; record.path itself is frozen per invocation in
+  // event_listeners.js). Chrome 156 still hands out a fresh array per call; the extra
+  // freeze matches the immutability the per-invocation path contract promises. The
+  // captured `eventObjectFreeze` keeps the engine off page-patched Object.freeze
+  // (turbo-dom#199 captured-intrinsics rule).
   function copyEventPath(path) {
     var result = [];
     for (var index=0; index<path.length; index++) eventDefineProperty(result,index,{__proto__:null,value:path[index],writable:true,configurable:true,enumerable:true});
-    return result;
+    return eventObjectFreeze(result);
   }
   var nativeEventRecord = g.__nativeEventRecord;
   delete g.__nativeEventRecord;

@@ -9,6 +9,14 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env event dispatch (#423)**: per-level `composedPath()`
+  on a non-Node EventTarget is now immutable. `record.path` is frozen at
+  every `invokeAt` and at the dispatch init/finally boundaries, and
+  `copyEventPath` (shared with Node dispatch) returns a frozen copy so a
+  listener's stashed `event.composedPath()` can never be mutated by another
+  listener higher in the parent chain. Chrome 156 still hands out a fresh
+  array per call; the extra freeze matches the per-invocation immutability
+  the path contract promises. R1 meshde follow-up from #381.
 - **turbo-dom-layout multicol**: adversarial review R1 cleanups.
   (1) The Chrome 156 geometry oracle tolerance
   tightens from 0.5 px to 0.1 px — Chrome's `LayoutUnit` grid is 1/64 px

@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const g=globalThis,ns=__tsNs,native=g.__windowListenerNative;delete g.__windowListenerNative;
-  const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf;
+  const make=ns.makeNativeFunction,apply=Reflect.apply,create=Object.create,StringValue=String,ErrorType=TypeError,define=Object.defineProperty,getPrototype=Object.getPrototypeOf,setPrototype=Object.setPrototypeOf,objectFreeze=Object.freeze;
   const Exception=__tsNs.DOMException;
   const oldHost=g.__captureHostEventDispatch,BaseTarget=g.EventTarget,NodeConstructor=g.Node,EventType=g.Event,document=g.document;
   const ownIndex=(value,index,item)=>define(value,index,{__proto__:null,value:item,writable:true,configurable:true,enumerable:true});
@@ -107,7 +107,7 @@
   // contract). Handler records that return false (legacy on* cancel) set defaultPrevented.
   function invokeAt(event,record,level,captureFilter,phase){
     const state=native('targetGet',level);if(!state)return;
-    record.currentTarget=level;record.eventPhase=phase;record.path=[level];
+    record.currentTarget=level;record.eventPhase=phase;record.path=objectFreeze([level]);
     const list=slice(state.listeners);
     for(let index=0;index<list.length;index++){
       const listener=list[index];
@@ -134,8 +134,8 @@
     if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
   }
   function dispatchTarget(event,target,host=false){
-    const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=[target];
-    try{if(state.parent)dispatchMulti(event,record,target,state,host);else dispatchSingle(event,record,target);}finally{record.currentTarget=null;record.eventPhase=0;record.path=[];record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
+    const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=objectFreeze([target]);
+    try{if(state.parent)dispatchMulti(event,record,target,state,host);else dispatchSingle(event,record,target);}finally{record.currentTarget=null;record.eventPhase=0;record.path=objectFreeze([]);record.dispatching=false;record.stop=false;record.stopImmediate=false;record.passive=false;}return !record.defaultPrevented;
   }
   for(const [name,fn]of [['addEventListener',targetListen],['removeEventListener',targetUnlisten],['dispatchEvent',function(event){targetRecord(this);if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatchTarget(event,this)}]])ns.eventTargetCallbacks[name]=fn;
   const registry=new Map(),get=registry.get.bind(registry),set=registry.set.bind(registry);
@@ -162,9 +162,9 @@
   }
   function dispatch(event,host=false){
     const state=readEvent(event);if(state.dispatching||!state.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');
-    state.dispatching=true;state.trusted=host;state.target=g;state.currentTarget=g;state.eventPhase=2;state.path=[g];
+    state.dispatching=true;state.trusted=host;state.target=g;state.currentTarget=g;state.eventPhase=2;state.path=objectFreeze([g]);
     const legacy=host&&(state.type==='load'||state.type==='pageshow');if(legacy)state.target=document;
-    try{invoke(event,null,2);}finally{if(!legacy){state.currentTarget=null;state.eventPhase=0;state.path=[];state.dispatching=false;state.stop=false;state.stopImmediate=false;}state.passive=false;}
+    try{invoke(event,null,2);}finally{if(!legacy){state.currentTarget=null;state.eventPhase=0;state.path=objectFreeze([]);state.dispatching=false;state.stop=false;state.stopImmediate=false;}state.passive=false;}
     return !state.defaultPrevented;
   }
   for(const type of 'abort blur cancel change click close contextmenu dblclick error focus hashchange input invalid keydown keypress keyup languagechange load message messageerror offline online pagehide pageshow popstate rejectionhandled reset resize scroll storage submit toggle unhandledrejection unload wheel beforeunload'.split(' ')){
