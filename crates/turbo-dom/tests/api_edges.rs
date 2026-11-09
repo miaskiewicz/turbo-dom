@@ -648,5 +648,5 @@ fn a_shadow_root_cannot_take_an_ancestor_of_its_host() {
     tree.append_child(shadow, host);
     assert_eq!(tree.parent(p), body);
     assert_eq!(tree.parent(host), Some(p));
-    assert!(tree.children(shadow).is_empty());
+    assert_eq!(tree.children(shadow).len(), 0);
 }

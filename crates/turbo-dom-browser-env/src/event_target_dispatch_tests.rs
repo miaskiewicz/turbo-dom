@@ -297,14 +297,28 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
       // also drains, but the explicit parent hook mirrors the real IDB
       // consumer that motivated #382.
       globalThis.__testSetParent(target, () => null);
-      let count = 0, error = null, ran = false;
+      // turbo-dom#451: isolate two distinct properties.
+      //   (1) a SYNC re-dispatch of the same event inside its own listener
+      //       must throw InvalidStateError (Chrome's actual dispatch-flag
+      //       contract; a mutant that drops the `dispatching` guard would
+      //       silently recurse without this probe).
+      //   (2) a MICROTASK re-dispatch of the same event must run exactly
+      //       once more (count === 2), because the per-listener checkpoint
+      //       has saved/restored the dispatch flag by then.
+      let count = 0, syncError = null, asyncError = null, ran = false;
+      let syncTried = false;
       target.addEventListener('ping', (event) => {
         count++;
         if (count === 1) {
+          // Sync probe: must throw InvalidStateError while dispatching.
+          syncTried = true;
+          try { target.dispatchEvent(event); }
+          catch (e) { syncError = (e && e.name) || String(e); }
+          // Microtask probe: must not throw and must increment count.
           Promise.resolve().then(() => {
             ran = true;
             try { target.dispatchEvent(event); }
-            catch (e) { error = (e && e.name) || String(e); }
+            catch (e) { asyncError = (e && e.name) || String(e); }
           });
         }
       });
@@ -312,7 +326,7 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
       // The microtask drains inside the dispatch's per-listener finally
       // (turbo-dom#382). After dispatchTarget returns, the microtask has
       // already run — count reflects whether it was allowed through.
-      return JSON.stringify({ count, error, ran });
+      return JSON.stringify({ count, syncError, asyncError, ran, syncTried });
     })()"#;
     super::crate_surface::run_engine_script(
         scope,
@@ -334,8 +348,10 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result, r#"{"count":2,"error":null,"ran":true}"#,
-        "microtask-driven re-dispatch of the same event must not throw",
+        result,
+        r#"{"count":2,"syncError":"InvalidStateError","asyncError":null,"ran":true,"syncTried":true}"#,
+        "sync re-dispatch while dispatching must throw InvalidStateError; \
+         microtask re-dispatch must run exactly once more (count=2)",
     );
     reset();
 }
@@ -965,6 +981,74 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
         "outer:parent-bubble must see isTrusted=true — the inner \
          (untrusted) re-dispatch's trusted flag must NOT leak back into \
          the outer (R4 H2). Trace: {trace}",
+    );
+    reset();
+}
+
+/// turbo-dom#452: the `collectPath` 10 000-hop cap (R1 H1) was only exercised at 101 hops
+/// (the pre-fix silent-truncation boundary). The band between 101 and 10 000 — where Chrome
+/// still walks and the fix's raised ceiling matters — was untested, as was the 10 001-hop
+/// loud-throw path. This test exercises both:
+///   (1) a 9 999-hop chain with a listener on the deepest ancestor fires the listener
+///       (walk reaches every real ancestor below the cap),
+///   (2) a 10 001-hop chain throws a loud TypeError from `dispatchEvent` (cap enforced).
+#[test]
+fn collect_path_fires_at_9999_hops_and_throws_at_10001_hops() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Both chains use a native-held array to avoid blowing the parser on 10 000 literals.
+    let source = r#"(() => {
+      function chain(depth) {
+        const nodes = new Array(depth);
+        for (let i = 0; i < depth; i++) nodes[i] = new EventTarget();
+        for (let i = 0; i < depth - 1; i++) {
+          const next = nodes[i + 1];
+          globalThis.__testSetParent(nodes[i], () => next);
+        }
+        return nodes;
+      }
+      // (1) 9 999 hops: just under the cap. Deep ancestor sees the event.
+      const BELOW = 9999;
+      const below = chain(BELOW);
+      let deepSaw = false;
+      below[BELOW - 1].addEventListener('x', () => { deepSaw = true; });
+      below[0].dispatchEvent(new Event('x', { bubbles: true }));
+      // (2) 10 001 hops: over the cap. Dispatch throws loudly.
+      const OVER = 10001;
+      const over = chain(OVER);
+      // Attach a listener so the fast-skip does not swallow the walk.
+      over[OVER - 1].addEventListener('x', () => {});
+      let overError = null;
+      try { over[0].dispatchEvent(new Event('x', { bubbles: true })); }
+      catch (e) { overError = (e && e.name) || String(e); }
+      return JSON.stringify({ deepSaw, below: BELOW, overError, over: OVER });
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "hop-cap-band script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"deepSaw":true,"below":9999,"overError":"TypeError","over":10001}"#,
+        "9 999-hop chain fires deepest listener; 10 001-hop chain throws TypeError",
     );
     reset();
 }
