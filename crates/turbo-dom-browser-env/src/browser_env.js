@@ -71,6 +71,9 @@
       clone=new RegExpType($apply(sourceOf,pattern,[]),flags);$apply(weakSet,clones,[pattern,clone]);$apply(weakSet,cloneUnicode,[clone,$apply(strings.indexOf,flags,['u'])>=0||$apply(strings.indexOf,flags,['v'])>=0]);return clone;
     };
     var isPair=function(text,index){var high=$apply(strings.charCodeAt,text,[index]),low=$apply(strings.charCodeAt,text,[index+1]);return high>=0xD800&&high<=0xDBFF&&low>=0xDC00&&low<=0xDFFF;};
+    // After a zero-length match at `index`, advance past the current character — two code
+    // units when the regex is unicode-flagged and we are on a surrogate pair.
+    var splitAdvanceAfterZero = function(text, index, unicode){ return index + (unicode && isPair(text, index) ? 2 : 1); };
     var split=function(text,pattern,limit){
       var out=[],max=limit===undefined?4294967295:limit>>>0;if(max===0)return out;
       var clone=globalClone(pattern),unicode=$apply(weakGet,cloneUnicode,[clone]),at=0,from=0,match;
@@ -79,7 +82,7 @@
         clone.lastIndex=from;match=$apply(exec,clone,[text]);
         if(!match||match.index>=text.length)break;
         var index=match.index,end=index+match[0].length;
-        if(end===at){from=index+(unicode&&isPair(text,index)?2:1);continue;}
+        if(end===at){from=splitAdvanceAfterZero(text,index,unicode);continue;}
         add(out,$apply(strings.slice,text,[at,index]));if(out.length===max)return out;
         for(var i=1;i<match.length;i++){add(out,match[i]);if(out.length===max)return out;}
         at=end;from=at;
@@ -235,11 +238,20 @@
   // A child iframe document's root element is its own root (turbo-dom#299).
   function computedFontRoot(element,parent,root){return !parent&&computedFrameRoot(element)===element?element:root;}
   function fontRaw(decl,name,inheritedValue,initialValue){var value=decl[name],key=typeof value==='string'?fontLower(value):value;return !value||$c.test(/^(inherit|unset|revert|revert-layer)$/, key)?inheritedValue:key==='initial'?initialValue:value;}
+  // Resolve a parsed `<number><unit>` against the surrounding `base` / `rem` lengths.
+  // Hoisted out of fontLength.term so the inner closure stays a small dispatcher.
+  function fontTermResolve(unit,number,base,rem,scalar){
+    if(unit==='em')return base===null?null:number*base;
+    if(unit==='rem')return rem===null?null:number*rem;
+    if(unit==='%')return base===null?null:number*base/100;
+    if(unit)return number*fontUnitScale[unit];
+    return scalar||number===0?number:null;
+  }
   function fontLength(value,base,rem,typedLine){
     function term(text,scalar){
       var match=$c.exec(/^((?:\d*\.)?\d+)(px|em|rem|%|pt|pc|in|cm|mm|q)?$/i, text);if(!match)return null;
       var number=cssFontNumber(match[1]),unit=fontLower(match[2]||'');
-      var resolved=unit==='em'?(base===null?null:number*base):unit==='rem'?(rem===null?null:number*rem):unit==='%'?(base===null?null:number*base/100):unit?number*fontUnitScale[unit]:scalar||number===0?number:null;
+      var resolved=fontTermResolve(unit,number,base,rem,scalar);
       return resolved!==null&&cssFontFinite(resolved)?new FontLength(resolved,unit?1:0):null;
     }
     function result(value){if(typedLine)return new FontLine(value&&value.dimension===0?'factor':'length',value?value.number:null,source);return value&&(value.dimension===1||value.number===0)?value.number:null;}
@@ -285,21 +297,39 @@
     if(stretch!=='100%'){var stretchName=$c.find($O.keys(fontStretchValues),function(key){return fontStretchValues[key]===stretch;});$c.push(shorthand, stretchName||stretch);}
     $c.push(shorthand, sizeText);if(lineText!=='normal')$c.push(shorthand, '/ '+lineText);$c.push(shorthand, family);return $c.join(shorthand, ' ');
   }
+  // The default `initial` FontState for an element whose font context is `context`
+  // (or a disconnected element, when `context` is null). Allocated once per
+  // computedFonts call, same as the inline literal it replaces.
+  function computedFontsInitial(context){
+    var initialFamily=context?context[0]:'';
+    var initialSize=context?context[1]:16;
+    return new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
+  }
+  // A named helper beats the per-call closure the $c.map used to allocate for every
+  // computedFonts call (same body, hoisted so the family mapper is reused).
+  var computedFontGenericFamily=/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/;
+  function computedFontsFamilyName(part){
+    var name=$c.trim(part),key=fontLower(name);
+    return $c.test(computedFontGenericFamily, key)?key:name;
+  }
+  // Resolve [parent, root] for `element`'s font context. A pseudo-element's parent
+  // is its originating element (its root clears so inheritance restarts, Chrome).
+  function computedFontsParentRoot(element,context,pseudo){
+    var parent=context&&context[2],root=context&&context[3];
+    if(pseudo&&context)return [element,null];
+    return [parent,computedFontRoot(element,parent,root)];
+  }
   function computedFonts(decl,element,parentStyle,connected,pseudo,parentSnapshot){
-    var context=computedFontContext(element),parent=context&&context[2],root=context&&context[3];
-    // A pseudo-element's parent is its originating element (or its parent pseudo-element).
-    if(pseudo&&context){parent=element;root=null;}
-    else root=computedFontRoot(element,parent,root);
-    var initialFamily=context?context[0]:'',initialSize=context?context[1]:16;
+    var context=computedFontContext(element),pr=computedFontsParentRoot(element,context,pseudo),parent=pr[0],root=pr[1];
+    var initial=computedFontsInitial(context),initialSize=initial.size;
     var inherited=parent?declarationRecords.get(parentSnapshot||parentStyle(parent)).fontState:null;
-    var initial=new FontState(undefined,initialFamily,initialSize,undefined,'normal','400','100%','normal',fontNormalLine,initialSize);
     inherited=inherited||initial;
     var rootSize=inherited.rootSize===undefined?initialSize:inherited.rootSize;
     var sizeValue=fontRaw(decl,'font-size',inherited.size===null?inherited.sizeText:inherited.size,initialSize),size=computedFontSize(sizeValue,inherited,rootSize,initialSize);
     var family=fontRaw(decl,'font-family',inherited.family,initial.family),style=fontRaw(decl,'font-style',inherited.style,initial.style),weight=cssFontString(fontRaw(decl,'font-weight',inherited.weight,initial.weight));
     style=fontKeyword(style,/^(normal|italic|oblique)$/);
     weight=fontKeyword(weight,/^(normal|bold|bolder|lighter)$/);
-    family=$c.join($c.map(cssParts(family,','), function(part){var name=$c.trim(part),key=fontLower(name);return $c.test(/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong)$/, key)?key:name;}), ', ');
+    family=$c.join($c.map(cssParts(family,','), computedFontsFamilyName), ', ');
     weight=computedFontWeight(weight,inherited.weight);
     var stretch=fontRaw(decl,'font-stretch',inherited.stretch,initial.stretch);
     stretch=fontStretchValues[fontLower(stretch)]||stretch;
@@ -360,12 +390,17 @@
   // empty declaration (invalid, or a form Chrome computes no style for), else the
   // pseudo-element: its lowercase name, functional ones with their argument (`highlight(x)`,
   // `picker(select)`).
+  // `scroll-button(direction)` — direction is `*` or a scroll keyword.
+  function computedPseudoDirection(name,argument,word){
+    var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';
+    return scrollButtonDirections[direction]?name+'('+direction+')':null;
+  }
   // A functional pseudo-element argument: `name(` ... `)` per its kind.
   function computedPseudoFunctional(name,rest,ident,colons){
     var kind=computedPseudoFunctions[name];
     if(colons!==2||rest[ident.length]!=='('||rest[rest.length-1]!==')'||!kind)return null;
     var argument=$c.replace($c.slice(rest,ident.length+1,-1),/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g,''),word=cssIdentifierPrefix(argument);
-    if(kind==='direction'){var direction=argument==='*'?'*':word&&word.length===argument.length?word.name:'';return scrollButtonDirections[direction]?name+'('+direction+')':null;}
+    if(kind==='direction')return computedPseudoDirection(name,argument,word);
     if(!word||word.length!==argument.length)return null;
     if(kind==='select')return word.name==='select'?name+'(select)':null;
     return name+'('+argument+')';
@@ -569,6 +604,14 @@
   // The parent a connected element's snapshot inherits unset properties from (null at the
   // root), or undefined for snapshots without defaults (pseudo-elements, disconnected).
   function defaultsParentOf(el, pseudo, connected, parent){ return connected && !pseudo && el ? parent : undefined; }
+  // `border-<side>-width` reads 0px when the matching style is none/hidden (Chrome).
+  function computedDefaultBorderWidth(record, name, entry){
+    return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
+  }
+  // `auto` top/right/bottom/left reads '' when position is not `static` (used value).
+  function computedDefaultSideAuto(record, name, entry){
+    return entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static';
+  }
   // The computed value of `name` for a connected element's snapshot no declaration set, or ''.
   function computedDefault(record, name){
     var entry = computedInitialValues[name];
@@ -579,8 +622,8 @@
     if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name);
     if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, new computedSnapshotMap())), name);
     if (entry[0] === 'currentcolor') return propertyValue(record, 'color');
-    if ($c.test(/^border-[a-z]+-width$/, name)) return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
-    if (entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static') return '';
+    if ($c.test(/^border-[a-z]+-width$/, name)) return computedDefaultBorderWidth(record, name, entry);
+    if (computedDefaultSideAuto(record, name, entry)) return '';
     return entry[0];
   }
   // CSS-wide keywords compute to the value they select (turbo-dom#317; computed_defaults case
@@ -590,6 +633,13 @@
   // inherits, revert -> html.css's value, i.e. the lazy default (setProp already applied a UA
   // table's). A border width resolved here is 0px while its side's style is none / hidden.
   var wideKeywordInitials = { __proto__: null, width: ['auto', false], height: ['auto', false] };
+  // The value `inherit` / `initial` resolves to (currentcolor -> the element's `color`),
+  // or undefined for any other key (which the caller skips).
+  function wideKeywordValue(key, entry, parentRecord, decl, name){
+    if (key === 'inherit' && parentRecord) return propertyValue(parentRecord, name);
+    if (key === 'inherit' || key === 'initial') return entry[0] === 'currentcolor' ? decl.color : entry[0];
+    return undefined;
+  }
   function resolveWideKeywords(decl, parentRecord, setProp, drop){
     var widths = [];
     $c.forEach($O.keys(decl), function(name){
@@ -598,10 +648,9 @@
       var key = $c.toLowerCase($c.trim(value));
       if (key === 'revert') { drop(name); return; }
       if (key === 'unset') key = entry[1] ? 'inherit' : 'initial';
-      if (key === 'inherit' && parentRecord) value = propertyValue(parentRecord, name);
-      else if (key === 'inherit' || key === 'initial') value = entry[0] === 'currentcolor' ? decl.color : entry[0];
-      else return;
-      setProp(name, value);
+      var resolved = wideKeywordValue(key, entry, parentRecord, decl, name);
+      if (resolved === undefined) return;
+      setProp(name, resolved);
       if ($c.test(/^border-[a-z]+-width$/, name)) $c.push(widths, name);
     });
     $c.forEach(widths, function(name){
@@ -618,6 +667,10 @@
   // rendered box reads its declared value (or "": no used value to report, the null return).
   var usedReplacedTags = { __proto__: null, IMG: 1, CANVAS: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, EMBED: 1, OBJECT: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, BUTTON: 1 };
   var usedSvgBoxes = { __proto__: null, rect: 1, image: 1, foreignObject: 1 };
+  // The index into the `[bw, bh, cw, ch]` tuple for `name` at the current `box-sizing`.
+  function computedUsedBoxIndex(record, name){
+    return (name === 'height' ? 1 : 0) + (propertyValue(record, 'box-sizing') === 'border-box' ? 0 : 2);
+  }
   function computedUsedSize(record, name){
     var el = record.defaultsOf;
     if ((name !== 'width' && name !== 'height') || !el) return null;
@@ -626,7 +679,7 @@
     var provider = __ns.layoutUsedSize;
     if (typeof provider !== 'function') return null;
     var value = NaN;
-    try { var box = provider(el); value = box ? cssFontNumber(box[(name === 'height' ? 1 : 0) + (propertyValue(record, 'box-sizing') === 'border-box' ? 0 : 2)]) : NaN; } catch(e){}
+    try { var box = provider(el); value = box ? cssFontNumber(box[computedUsedBoxIndex(record, name)]) : NaN; } catch(e){}
     if (cssFontFinite(value)) return computedUsedPixels(value);
     return declared ? declared.text : 'auto';
   }
@@ -667,6 +720,13 @@
   // ordinary UA declaration, the rest are !important and beat every author declaration.
   var fullscreenUserAgent = { 'object-fit': 'contain' };
   var fullscreenImportant = { 'position': 'fixed', 'inset': '0px', 'margin': '0px', 'box-sizing': 'border-box', 'min-width': '0px', 'max-width': 'none', 'min-height': '0px', 'max-height': 'none', 'width': '100%', 'height': '100%', 'transform': 'none' };
+  // +1 for a bracket open, -1 for a bracket close, 0 for anything else. Hoisted and
+  // allocation-free — V8 inlines it into the character loop of selectorListItems.
+  function selectorListItemsBracket(c){
+    if (c === '(' || c === '[') return 1;
+    if (c === ')' || c === ']') return -1;
+    return 0;
+  }
   // Split a selector list at its top-level commas (outside (), [] and strings).
   function selectorListItems(text){
     var items = [], depth = 0, quote = '', start = 0;
@@ -675,9 +735,11 @@
       if (c === '\\') { i++; continue; }
       if (quote) { if (c === quote) quote = ''; continue; }
       if (c === '"' || c === "'") quote = c;
-      else if (c === '(' || c === '[') depth++;
-      else if (c === ')' || c === ']') depth--;
-      else if (c === ',' && depth === 0) { $c.push(items, $c.slice(text, start, i)); start = i + 1; }
+      else {
+        var bracket = selectorListItemsBracket(c);
+        if (bracket) depth += bracket;
+        else if (c === ',' && depth === 0) { $c.push(items, $c.slice(text, start, i)); start = i + 1; }
+      }
     }
     $c.push(items, $c.slice(text, start));
     return items;
@@ -816,17 +878,24 @@
     info.display = 'block'; info.position = 'absolute';
     info.ua = kind === 'view-transition' || kind === 'view-transition-image-pair' ? { 'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px' } : kind === 'view-transition-group' ? { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': '0px' } : { 'top': '0px', 'right': 'auto', 'bottom': 'auto', 'left': 'auto' };
   }
+  // Dispatch table for the per-kind element-backed pseudo-elements. Keeps pseudoInfoForKind
+  // under cc 12. Each handler takes (info, el, tag) uniformly — signatures that need fewer
+  // arguments ignore the extras.
+  var pseudoInfoKindHandlers = { __proto__: null,
+    'placeholder': function(info, el, tag){ pseudoInfoPlaceholder(info, el, tag); },
+    'file-selector-button': function(info, el, tag){ pseudoInfoFileButton(info, el, tag); },
+    'details-content': function(info, el, tag){ pseudoInfoDetailsContent(info, el, tag); },
+    'picker': function(info, el, tag){ pseudoInfoPicker(info, tag); },
+    'scroll-marker-group': function(info){ info.display = 'block'; }
+  };
   // Fills `info` for `kind`; returns the kind pseudoAccepts reads (highlights share one).
   function pseudoInfoForKind(info, kind, el, tag, parentStyle){
-    if (kind === 'marker') pseudoInfoMarker(info, el, parentStyle);
-    else if (kind === 'first-line' || kind === 'first-letter') info.container = kind === 'first-line';
-    else if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
-    else if (kind === 'placeholder') pseudoInfoPlaceholder(info, el, tag);
-    else if (kind === 'file-selector-button') pseudoInfoFileButton(info, el, tag);
-    else if (kind === 'details-content') pseudoInfoDetailsContent(info, el, tag);
-    else if (kind === 'picker') pseudoInfoPicker(info, tag);
-    else if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
-    else if (kind === 'scroll-marker-group') info.display = 'block';
+    if (kind === 'marker') { pseudoInfoMarker(info, el, parentStyle); return kind; }
+    if (kind === 'first-line' || kind === 'first-letter') { info.container = kind === 'first-line'; return kind; }
+    if (highlightPseudoNames[kind]) { pseudoInfoHighlight(info); return 'highlight'; }
+    var handler = pseudoInfoKindHandlers[kind];
+    if (handler) { handler(info, el, tag); return kind; }
+    if (kind === 'checkmark' || kind === 'picker-icon') pseudoInfoGenerated(info, kind, tag);
     else if ($c.slice(kind, 0, 15) === 'view-transition' && tag) pseudoInfoViewTransition(info, kind);
     return kind;
   }
@@ -1036,16 +1105,42 @@
   // `features` collects the class names, ids and (lowercase) attribute names the selector
   // names, for Tree::set_style_filter.
   var computedIdent=/^-?(?:[A-Za-z_\u0080-\uffff]|-)[\w\u0080-\uffff-]*/;
+  // Characters that advance `index` without changing scope bits (except `[` which may
+  // signal an inline-style attribute selector). The lookup replaces a chain of `||` tests
+  // that pushed computedSelectorScope's cyclomatic complexity over the limit.
+  var computedSelectorSkipChars = { __proto__: null, '"': 1, "'": 1, '[': 1, '.': 1, '#': 1 };
+  var computedSelectorMetaChars = { __proto__: null, '+': 1, '~': 1, ':': 1 };
+  // Advance past a skip-char; returns the new `index`, or -2 / -3 for the -1 / 8
+  // bail-outs the outer loop forwards as -1 / 8.
+  function computedSelectorScopeSkip(text, index, c, features){
+    if (c === '"' || c === "'") return computedStringEnd(text, index);
+    if (c === '[') {
+      var e = computedAttributeEnd(text, index, features);
+      return e < 0 ? (e === -1 ? -2 : -3) : e;
+    }
+    return computedFeatureEnd(text, index, features);  // c === '.' || c === '#'
+  }
+  // Updates `meta.end` to the new `index` and returns the new `scope`, or -1 when the
+  // pseudo forces the whole selector to scope 8 (the outer loop then returns 8).
+  function computedSelectorScopeMeta(text, index, c, scope, meta){
+    if (c === '+' || c === '~') { meta.end = index; return scope | 1; }
+    var pseudo = computedPseudoAt(text, index);  // c === ':'
+    meta.end = pseudo.end;
+    return pseudo.scope === 8 ? -1 : (scope | pseudo.scope);
+  }
   function computedSelectorScope(text,features){
-    var scope=0;
-    for(var index=0;index<text.length;index++){
-      var c=text[index];
-      if(c==='\\')return 8;
-      if(c==='"'||c==="'")index=computedStringEnd(text,index);
-      else if(c==='['){index=computedAttributeEnd(text,index,features);if(index<0)return index===-1?-1:8;}
-      else if(c==='.'||c==='#')index=computedFeatureEnd(text,index,features);
-      else if(c==='+'||c==='~')scope|=1;
-      else if(c===':'){var pseudo=computedPseudoAt(text,index);if(pseudo.scope===8)return 8;scope|=pseudo.scope;index=pseudo.end;}
+    var scope = 0, meta = { end: 0 };
+    for (var index = 0; index < text.length; index++) {
+      var c = text[index];
+      if (c === '\\') return 8;
+      if (computedSelectorSkipChars[c]) {
+        index = computedSelectorScopeSkip(text, index, c, features);
+        if (index < 0) return index === -2 ? -1 : 8;
+      } else if (computedSelectorMetaChars[c]) {
+        scope = computedSelectorScopeMeta(text, index, c, scope, meta);
+        if (scope < 0) return 8;
+        index = meta.end;
+      }
     }
     return scope;
   }
@@ -1109,6 +1204,12 @@
   // The owner's scope, reported with the features its selectors name to the tree
   // (Tree::set_style_filter) when reused styles key on its style generations, so writes of
   // unnamed classes, ids and attributes move none.
+  // Push `scope` / `features` into the cache entry (if still live) and ask the embedder
+  // to narrow its style filter to the named features when the scope allows it.
+  function computedOwnerScopeStore(owner, scope, sheets, features, entry){
+    try { computedStyleFilter(owner, scope >= 0 && scope < 8 ? features : null); } catch(e){}
+    if (entry && entry.sheets === sheets) { entry.scope = scope; entry.features = features; }
+  }
   function computedOwnerScope(el){
     var owner=null;try{owner=cssApply(computedStyleNativeOwner,el,[]);}catch(e){return -1;}
     if(!owner||computedAdopted(owner))return -1;
@@ -1120,8 +1221,7 @@
     var sheets=computedOwnerSheets(owner,host),entry=computedSnapshotGet(computedSheetLists,owner);
     if(entry&&entry.sheets===sheets&&entry.scope!==undefined)return entry.scope;
     var features=computedFeatureLists(),scope=computedSheetsScope(sheets,features);
-    try{computedStyleFilter(owner,scope>=0&&scope<8?features:null);}catch(e){}
-    if(entry&&entry.sheets===sheets){entry.scope=scope;entry.features=features;}
+    computedOwnerScopeStore(owner, scope, sheets, features, entry);
     return scope;
   }
   // A tree other than the document's: a shadow tree (no document sheets) or a child iframe
@@ -1138,6 +1238,17 @@
     return scope;
   }
   function computedAdopted(owner){var adopted=adoptionStates&&$c.get(adoptionStates,owner);return !!(adopted&&adopted.target&&adopted.target.length);}
+  // Combine `sheets` (the owner's own) with `adopted.target` (adoptedStyleSheets), but
+  // only when `el` is the owner itself (not a shadow tree inside it). The adopted-sheets
+  // path is rare, so the extracted allocation stays off the common-case fast path.
+  function computedSheetsWithAdopted(owner, el, sheets, adopted){
+    if (!(adopted && adopted.target && adopted.target.length && cssApply(computedStyleNativeRoot, el, []) === owner)) return sheets;
+    var active = [];
+    cssSetPrototype(active, null);
+    for (var i = 0; i < sheets.length; i++) active[active.length] = sheets[i];
+    for (var j = 0; j < adopted.target.length; j++) active[active.length] = adopted.target[j];
+    return active;
+  }
   function computedSheets(el){
     var owner=el?cssApply(computedStyleNativeOwner,el,[]):null;
     var scoped=owner&&computedScopeSheets(el,owner);if(scoped)return scoped;
@@ -1147,8 +1258,7 @@
     var sheets = host ? computedOwnerSheets(owner,host) : [];
     // Document adoption follows ordinary sheets, but is not a shadow-tree scope.
     var adopted=adoptionStates&&$c.get(adoptionStates,owner);
-    if(adopted&&adopted.target&&adopted.target.length&&cssApply(computedStyleNativeRoot,el,[])===owner){var active=[];cssSetPrototype(active,null);for(var index=0;index<sheets.length;index++)active[active.length]=sheets[index];for(var index=0;index<adopted.target.length;index++)active[active.length]=adopted.target[index];sheets=active;}
-    return sheets;
+    return computedSheetsWithAdopted(owner, el, sheets, adopted);
   }
   // The selector text of every enabled style rule that can select `el`.
   function computedStyleRules(el){
@@ -1319,6 +1429,16 @@
     out.context=computedFontContext(el);
     return out;
   }
+  // Returns the styleShares entry for `parent`, rebuilding it when the generation or
+  // sheet-build digest changed (same allocation it replaces inline).
+  function styleShareFetchRecord(parent, generation, build){
+    var record = computedSnapshotGet(styleShares, parent);
+    if (!record || record.generation !== generation || record.build !== build) {
+      record = { __proto__: null, generation: generation, build: build, signatures: { __proto__: null }, count: 0 };
+      computedSnapshotSet(styleShares, parent, record);
+    }
+    return record;
+  }
   function styleShareProbe(el){
     if(styleShareOff&&styleShareOff())return null;
     var info;
@@ -1328,8 +1448,7 @@
     var signature=tag+'\u0001'+namespace+'\u0001'+(context&&context[4]?1:0)+'\u0001'+names+'\u0001'+id,attributes=styleShareAttributes(owner);
     for(var index=0;index<attributes.length;index++)signature+='\u0001'+cssApply(computedStyleNativeGetAttribute,el,[attributes[index]]);
     var sheets=computedSheets(el),build=computedSheetEntries(sheets,el);
-    var record=computedSnapshotGet(styleShares,parent);
-    if(!record||record.generation!==generation||record.build!==build){record={__proto__:null,generation:generation,build:build,signatures:{__proto__:null},count:0};computedSnapshotSet(styleShares,parent,record);}
+    var record=styleShareFetchRecord(parent,generation,build);
     var probe={__proto__:null,record:record,signature:signature,hit:null},entry=record.signatures[signature];
     // (The record's build already holds only while its @media answers do.)
     if(entry&&styleShareAgrees(el,entry.tests)){probe.hit=entry.base;if(noteStyleShare)noteStyleShare();}
@@ -1464,6 +1583,14 @@
     }
     return [index,count];
   }
+  // A color longhand that now holds a sibling-count substitution reparses to its canonical
+  // spelling (`cssShorthand('longhand', …)` validates and serializes); non-color properties
+  // pass through unchanged.
+  function treeCountingApplyColor(name, value){
+    if (!cssShorthand || !$c.test(/color$/i, name)) return value;
+    var spelled = cssShorthand('longhand', cssPropertyName(name), value);
+    return spelled[0] === 'valid' ? spelled[1] : value;
+  }
   // The declarations holding a tree-counting function, with the element's counts in place.
   function treeCountingValues(decl,el,pseudo){
     var names=null,counts=null;
@@ -1474,7 +1601,7 @@
       if(!counts)counts=treeCounts(el);
       value=$c.replace($c.replace(value,/sibling-index\(\s*\)/gi,String(counts[0])),/sibling-count\(\s*\)/gi,String(counts[1]));
       // A color resolves its math now: the color stage below reads its spelling.
-      if(cssShorthand&&$c.test(/color$/i,name)){var spelled=cssShorthand('longhand',cssPropertyName(name),value);if(spelled[0]==='valid')value=spelled[1];}
+      value=treeCountingApplyColor(name,value);
       decl[name]=value;
       if($c.toLowerCase(name)===name){if(!names)names=[];$c.push(names,name);}
     }
@@ -1892,12 +2019,22 @@
   // have propagated down. The JS cascade above only sees this element's own rules, so we defer to
   // rtdom's native cascade (cascade::computed_style) for shadow-scoped rules; the composed
   // parent's snapshot supplies inheritance and the root's value is the initial `visible`.
+  // Read the parent's visibility; '' on any exception from the inherit helper.
+  function computedVisibilityInherited(cs){
+    try { return cs.inheritedValue('visibility'); } catch(e){ return ''; }
+  }
+  // `initial` always resolves to `visible`; a connected empty or wide-keyword value
+  // inherits from the composed parent; everything else keeps the cascaded value.
+  function computedVisibilityResolve(cs, visibilityValue, visibilityKey){
+    if (visibilityKey === 'initial') return 'visible';
+    if (cs.connected && (visibilityValue === '' || visibilityKey)) return computedVisibilityInherited(cs);
+    return visibilityValue;
+  }
   function computedVisibility(cs){
     var decl=cs.decl,connected=cs.connected;
     var visibilityValue = connected ? computedCascadedValue(cs,'visibility') : String(decl.visibility == null ? '' : decl.visibility);
     var visibilityKey = computedWideKeyword(visibilityValue);
-    if (visibilityKey === 'initial') visibilityValue = 'visible';
-    else if (connected && (visibilityValue === '' || visibilityKey)) { try { visibilityValue = cs.inheritedValue('visibility'); } catch(e){ visibilityValue = ''; } }
+    visibilityValue = computedVisibilityResolve(cs, visibilityValue, visibilityKey);
     if (!visibilityValue && connected) visibilityValue = 'visible';
     // Highlights never take the element's visibility (turbo-dom#47).
     if (connected && cs.info && cs.info.highlight) visibilityValue = 'visible';
@@ -1905,36 +2042,45 @@
   }
   // `content` computes to normal, and to none on ::before / ::after / ::checkmark /
   // ::picker-icon; strings serialize double-quoted (turbo-dom#47).
+  // The generated-content pseudos whose default `content` is `none`.
+  function computedContentIsGenerated(pseudo, info){
+    return pseudo === 'before' || pseudo === 'after' || info && info.generated;
+  }
   function computedContent(cs){
     var decl=cs.decl,pseudo=cs.pseudo,info=cs.info;
     var contentValue = decl.content == null ? '' : $c.trim(String(decl.content));
     if (pseudo && contentValue) contentValue = $c.replace(contentValue, /'((?:[^'\\\n]|\\[\s\S])*)'/g, function(_, inner){ return '"' + $c.replace($c.replace(inner, /\\'/g, "'"), /"/g, '\\"') + '"'; });
-    if (pseudo === 'before' || pseudo === 'after' || info && info.generated) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
+    if (computedContentIsGenerated(pseudo, info)) decl.content = contentValue === '' || $c.test(/^normal$/i, contentValue) ? 'none' : contentValue;
     else if (pseudo && contentValue) decl.content = contentValue;
     else if (decl.content == null) decl.content = cs.connected ? 'normal' : '';
+  }
+  // Resolve `transform` to matrix() / matrix3d() / none per Chrome 156 (the "resolved
+  // value" for a used transform). Percentage translates and em need a layout box and the
+  // font size; `ns.resolveTransform` returns null to keep the declared text when it cannot
+  // resolve them (turbo-dom#353). No-op for pseudo-elements or without an embedder hook.
+  function computedTransformResolve(cs, decl){
+    if (cs.pseudo || typeof __ns.resolveTransform !== 'function' || typeof decl.transform !== 'string') return;
+    try {
+      var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
+      var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
+      if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
+    } catch(e){}
   }
   // Initial computed values of properties Web Animations commonly animate.
   function computedTransformValues(cs){
     var decl=cs.decl,connected=cs.connected;
     if (decl.opacity == null) decl.opacity = connected ? '1' : '';
     if (decl.transform == null) { decl.transform = connected ? 'none' : ''; }
-    // Resolve `transform` to the matrix() / matrix3d() / none Chrome 156 reports (the
-    // "resolved value" for a used transform). Percentage translates and em need a layout
-    // box and the font size; `ns.resolveTransform` returns null to keep the declared text
-    // when it cannot resolve them (turbo-dom#353).
-    if (connected && !cs.pseudo && typeof __ns.resolveTransform === 'function' && typeof decl.transform === 'string') {
-      try {
-        var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
-        var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
-        if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
-      } catch(e){}
-    }
+    if (connected) computedTransformResolve(cs, decl);
+  }
+  // A modal dialog's overflow longhands recompose the overflow shorthand (modal UA).
+  function computedNormalizeOverflowModal(cs, decl){
+    if (!(cs.connected && !cs.pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')) return;
+    decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
   }
   function computedNormalizeColorLonghands(cs){
     var decl=cs.decl,connected=cs.connected,pseudo=cs.pseudo;
-    // A modal dialog's overflow longhands recompose the shorthand.
-    if (connected && !pseudo && cs.layer === 'modal' && typeof decl['overflow-x'] === 'string' && typeof decl['overflow-y'] === 'string')
-      decl.overflow = decl['overflow-x'] === decl['overflow-y'] ? decl['overflow-x'] : decl['overflow-x'] + ' ' + decl['overflow-y'];
+    computedNormalizeOverflowModal(cs, decl);
     if (pseudo && typeof decl['background-color'] === 'string') decl['background-color'] = decl.backgroundColor = normalizeComputedColor(decl['background-color']);
     // turbo-dom#374: Chrome 156 serializes every `<color>` longhand in computed style as
     // rgb() / rgba() / the authored string for a value it does not recognize; a named
@@ -1953,12 +2099,17 @@
   // (pct * the containing block's content width/height), which a real browser reports in px.
   // Resolve against the nearest ancestor with a px (or, for width, auto=fill) measure so
   // getComputedStyle(child).width matches a browser without a full layout engine.
+  // The `parentElement` fallback computedUsedPx walks up (an Element parent or an Element
+  // sibling via parentNode).
+  function computedUsedPxParent(node){
+    return node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+  }
   function computedUsedPx(cs, node, axis, depth){
     if (!node || depth > 32) return null;
     var raw;try{raw=node===cs.el?cs.decl[axis]:computedSnapshotValue(cs.parentStyle(node),axis);}catch(e){return null;}
     raw = raw == null ? '' : String(raw);
     var mpx = $c.exec(/^(-?\d+(?:\.\d+)?)px$/, raw); if (mpx) return parseFloat(mpx[1]);
-    var parent = node.parentElement || (node.parentNode && node.parentNode.nodeType === 1 ? node.parentNode : null);
+    var parent = computedUsedPxParent(node);
     var mpc = $c.exec(/^(-?\d+(?:\.\d+)?)%$/, raw);
     if (mpc) { var base = computedUsedPx(cs, parent, axis, depth + 1); return base == null ? null : (parseFloat(mpc[1]) / 100) * base; }
     // width:auto in normal flow fills the containing block (block box); height:auto is content-driven (unknown here).
@@ -2024,8 +2175,7 @@
     // Tree-counting functions take this element's counts; their style follows its siblings.
     var treeNames=treeCountingValues(decl,el,pseudo);
     computedColor(cs);
-    if (cs.connected) computedDisplayPosition(cs);
-    else if (decl.display == null) decl.display = '';
+    computeStyleFreshDisplay(cs, decl);
     computedVisibility(cs);
     computedContent(cs);
     computedTransformValues(cs);
@@ -2038,8 +2188,18 @@
     computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
-    if(el&&!pseudo)computedSnapshotSet(snapshots,el,snapshot);
+    computeStyleFreshStore(el,pseudo,snapshots,snapshot);
     return snapshot;
+  }
+  // display: connected elements pass through computedDisplayPosition; a disconnected one
+  // leaves an unset `display` as '' (the empty default).
+  function computeStyleFreshDisplay(cs, decl){
+    if (cs.connected) computedDisplayPosition(cs);
+    else if (decl.display == null) decl.display = '';
+  }
+  // Stash the fresh snapshot in the per-call cache (skip pseudo reads, which share a key).
+  function computeStyleFreshStore(el, pseudo, snapshots, snapshot){
+    if (el && !pseudo) computedSnapshotSet(snapshots, el, snapshot);
   }
   var ownMatchMedia = null;
   function installWindowOperations(){
@@ -2307,19 +2467,24 @@ g.DOMException = class DOMException {
   get code() { return __domExceptionCodes[__exceptionState(this).name] || 0; }
 };
 Object.setPrototypeOf(DOMException.prototype, Error.prototype);
-for (const name of ["name", "message", "code"]) {
-  const descriptor = Object.getOwnPropertyDescriptor(DOMException.prototype, name);
-  Object.defineProperty(DOMException.prototype, name, {...descriptor, enumerable: true});
-}
-Object.defineProperty(DOMException.prototype, Symbol.toStringTag, {value: "DOMException", configurable: true});
-for (const [name, code] of Object.entries({INDEX_SIZE_ERR:1, DOMSTRING_SIZE_ERR:2,
-  HIERARCHY_REQUEST_ERR:3, WRONG_DOCUMENT_ERR:4, INVALID_CHARACTER_ERR:5, NO_DATA_ALLOWED_ERR:6,
-  NO_MODIFICATION_ALLOWED_ERR:7, NOT_FOUND_ERR:8, NOT_SUPPORTED_ERR:9, INUSE_ATTRIBUTE_ERR:10,
-  INVALID_STATE_ERR:11, SYNTAX_ERR:12, INVALID_MODIFICATION_ERR:13, NAMESPACE_ERR:14,
-  INVALID_ACCESS_ERR:15, VALIDATION_ERR:16, TYPE_MISMATCH_ERR:17, SECURITY_ERR:18,
-  NETWORK_ERR:19, ABORT_ERR:20, URL_MISMATCH_ERR:21, QUOTA_EXCEEDED_ERR:22, TIMEOUT_ERR:23,
-  INVALID_NODE_TYPE_ERR:24, DATA_CLONE_ERR:25})) {
-  for (const object of [DOMException, DOMException.prototype]) Object.defineProperty(object, name, {value: code, enumerable: true, configurable: true});
+// Wrap the Chrome 156 DOMException numeric-code tables and the `enumerable: true` pass
+// over name/message/code into a nested helper, so the top-level IIFE's cc stays at 12.
+installDOMExceptionCodes();
+function installDOMExceptionCodes(){
+  for (const name of ["name", "message", "code"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(DOMException.prototype, name);
+    Object.defineProperty(DOMException.prototype, name, {...descriptor, enumerable: true});
+  }
+  Object.defineProperty(DOMException.prototype, Symbol.toStringTag, {value: "DOMException", configurable: true});
+  for (const [name, code] of Object.entries({INDEX_SIZE_ERR:1, DOMSTRING_SIZE_ERR:2,
+    HIERARCHY_REQUEST_ERR:3, WRONG_DOCUMENT_ERR:4, INVALID_CHARACTER_ERR:5, NO_DATA_ALLOWED_ERR:6,
+    NO_MODIFICATION_ALLOWED_ERR:7, NOT_FOUND_ERR:8, NOT_SUPPORTED_ERR:9, INUSE_ATTRIBUTE_ERR:10,
+    INVALID_STATE_ERR:11, SYNTAX_ERR:12, INVALID_MODIFICATION_ERR:13, NAMESPACE_ERR:14,
+    INVALID_ACCESS_ERR:15, VALIDATION_ERR:16, TYPE_MISMATCH_ERR:17, SECURITY_ERR:18,
+    NETWORK_ERR:19, ABORT_ERR:20, URL_MISMATCH_ERR:21, QUOTA_EXCEEDED_ERR:22, TIMEOUT_ERR:23,
+    INVALID_NODE_TYPE_ERR:24, DATA_CLONE_ERR:25})) {
+    for (const object of [DOMException, DOMException.prototype]) Object.defineProperty(object, name, {value: code, enumerable: true, configurable: true});
+  }
 }
 
 if(typeof __ns.makeNativeFunction==='function'){
@@ -2426,12 +2591,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     var UNITS = { px: 1, em: 16, rem: 16, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6, in: 96, pt: 4 / 3, pc: 16 };
     var RESOLUTION = { dppx: 1, x: 1, dpi: 1 / 96, dpcm: 2.54 / 96 };
+    // Ratio literal `a / b` (default denominator `1`) as [[num, denom], serialization] or null.
+    function parseRatio(text){
+      var ratio = /^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?$/.exec(text);
+      if (!ratio) return null;
+      var denom = ratio[2] === undefined ? 1 : +ratio[2];
+      var denomSer = ratio[2] === undefined ? '1' : ratio[2];
+      return [[+ratio[1], denom], ratio[1] + ' / ' + denomSer];
+    }
     // A value token of `kind` as [number (or ratio pair), serialization], or null when invalid.
     function parseValue(kind, text){
-      if (kind === 'ratio') {
-        var ratio = /^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+(?:\.\d+)?))?$/.exec(text);
-        return ratio ? [[+ratio[1], ratio[2] === undefined ? 1 : +ratio[2]], ratio[1] + ' / ' + (ratio[2] === undefined ? '1' : ratio[2])] : null;
-      }
+      if (kind === 'ratio') return parseRatio(text);
       var match = /^(-?(?:\d+\.?\d*|\.\d+))([a-z]*)$/.exec(text);
       if (!match) return null;
       var table = kind === 'length' ? UNITS : kind === 'resolution' ? RESOLUTION : null;
@@ -2461,6 +2631,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var range = RANGES[name];
       return range ? { ser: '(' + name + ')', test: function(){ var current = range[1](); return range[0] === 'ratio' ? current[0] !== 0 : current !== 0 && current === current; } } : null;
     }
+    // One `<name> <op> <value>` (or `<value> <op> <name>`) pair inside a range feature.
+    // Rewrites parts[valueAt] with the canonical serialization and appends a [op, value]
+    // check to `checks`. Returns false when the operand fails to parse.
+    function rangeFeatureCheck(parts, index, nameAt, range, checks){
+      var valueAt = index - 1 === nameAt ? index + 1 : index - 1;
+      var value = parseValue(range[0], parts[valueAt]);
+      if (!value || !TEST[parts[index]]) return false;
+      parts[valueAt] = value[1];
+      checks.push([valueAt > nameAt ? parts[index] : FLIP[parts[index]], value[0]]);
+      return true;
+    }
     // `(width >= 600px)` / `(400px <= width <= 1100px)` range syntax.
     function rangeFeature(text){
       var parts = text.split(/\s*(<=|>=|<|>|=)\s*/);
@@ -2469,10 +2650,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if (nameAt < 0 || parts.length === 5 && nameAt !== 2) return null;
       var range = RANGES[parts[nameAt]], checks = [];
       for (var index = 1; index < parts.length; index += 2) {
-        var valueAt = index - 1 === nameAt ? index + 1 : index - 1, value = parseValue(range[0], parts[valueAt]);
-        if (!value || !TEST[parts[index]]) return null;
-        parts[valueAt] = value[1];
-        checks.push([valueAt > nameAt ? parts[index] : FLIP[parts[index]], value[0]]);
+        if (!rangeFeatureCheck(parts, index, nameAt, range, checks)) return null;
       }
       return { ser: '(' + parts.join(' ') + ')', test: function(){ var current = range[1](); return checks.every(function(check){ return TEST[check[0]](compare(range[0], current, check[1])); }); } };
     }
@@ -2482,17 +2660,31 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       return /[<>=]/.test(text) ? rangeFeature(text) : booleanFeature(text);
     }
     // Top-level tokens: words and balanced `( … )` groups.
-    function tokens(text){
-      var out = [], depth = 0, start = -1;
-      for (var index = 0; index < text.length; index++) {
-        var c = text[index];
-        if (c === '(') { if (depth++ === 0) { if (start >= 0) out.push(text.slice(start, index)); start = index; } }
-        else if (c === ')') { if (--depth < 0) return null; if (depth === 0) { out.push(text.slice(start, index + 1)); start = -1; } }
-        else if (depth === 0 && /\s/.test(c)) { if (start >= 0) out.push(text.slice(start, index)); start = -1; }
-        else if (start < 0) start = index;
+    // The inner loop body returns the new `start` on success, or -1 to signal an
+    // unbalanced `)` which makes `tokens` return null. `state` carries { depth, start }.
+    function tokensStep(text, index, c, state){
+      if (c === '(') {
+        if (state.depth++ === 0) { if (state.start >= 0) state.out.push(text.slice(state.start, index)); state.start = index; }
+        return true;
       }
-      if (start >= 0) out.push(text.slice(start));
-      return depth === 0 ? out : null;
+      if (c === ')') {
+        if (--state.depth < 0) return false;
+        if (state.depth === 0) { state.out.push(text.slice(state.start, index + 1)); state.start = -1; }
+        return true;
+      }
+      if (state.depth === 0 && /\s/.test(c)) {
+        if (state.start >= 0) state.out.push(text.slice(state.start, index));
+        state.start = -1;
+      } else if (state.start < 0) state.start = index;
+      return true;
+    }
+    function tokens(text){
+      var state = { out: [], depth: 0, start: -1 };
+      for (var index = 0; index < text.length; index++) {
+        if (!tokensStep(text, index, text[index], state)) return null;
+      }
+      if (state.start >= 0) state.out.push(text.slice(state.start));
+      return state.depth === 0 ? state.out : null;
     }
     function group(token){
       if (!token || token[0] !== '(') return null;
@@ -2727,6 +2919,15 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       finally{endEventDispatch(state);}return !state.defaultPrevented;
     };
   }
+  // Invoke each listener in `list` on `target` for `event`; honours stopImmediatePropagation
+  // and swallows per-listener exceptions. Hoisted so __captureHostEventDispatch stays under cc 12.
+  function captureHostEventDispatchRun(target, event, list, state){
+    if (!list) return;
+    for (var listener of list.slice()) {
+      if (state.stopImmediate) break;
+      try { typeof listener === 'function' ? listener.call(target, event) : listener.handleEvent(event); } catch(e){}
+    }
+  }
   // Captured privately by the host before page scripts can run.
   g.__captureHostEventDispatch=function(event,target){
     'use strict';
@@ -2737,10 +2938,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(legacyWindow)state.target=g.document;
     var registry=target===g?__ns.winListeners:(target.__etl||target.__listeners);
     var list=registry&&registry[state.type];
-    try{if(list)for(var listener of list.slice()){
-      if(state.stopImmediate)break;
-      try{typeof listener==='function'?listener.call(target,event):listener.handleEvent(event);}catch(e){}
-    }}finally{if(!legacyWindow)endEventDispatch(state);}
+    try{captureHostEventDispatchRun(target,event,list,state);}
+    finally{if(!legacyWindow)endEventDispatch(state);}
     return !state.defaultPrevented;
   };
   // document extras (pure-JS shims over the native tree).
@@ -2816,20 +3015,25 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     while(i+1<text.length&&$c.test(/\s/,text[i+1]))i++;
     return {skipTo:i,insert:out};
   }
+  // Neutral-state step (not already inside a comment / quoted string). Returns the new
+  // value of `i`; appends to `out.val` and may flip `state.comment` / `state.quote`.
+  function cssPreludeStepNeutral(state, text, i, c, next, out){
+    if (c === '\\') { out.val += c; if (next !== undefined) out.val += text[++i]; return i; }
+    if (c === '/' && next === '*') { state.comment = true; return i + 1; }
+    if (c === '"' || c === "'") { state.quote = c; out.val += c; return i; }
+    if (out.commas && c === ',') { var step = cssPreludeComma(text, i); out.val = $c.replace(out.val, /\s*$/, '') + step.insert; return step.skipTo; }
+    out.val += c; return i;
+  }
   function cssPrelude(text,commas){
-    var out='';
-    var state={quote:'',escaped:false,comment:false};
-    for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined;
-      if(state.comment){if(c==='*'&&next==='/'){state.comment=false;i++;}continue;}
-      if(state.quote){out+=c;cssPartsQuoteStep(state,c);continue;}
-      if(c==='\\'){out+=c;if(next!==undefined)out+=text[++i];continue;}
-      if(c==='/'&&next==='*'){state.comment=true;i++;continue;}
-      if(c==='"'||c==="'"){state.quote=c;out+=c;continue;}
-      if(commas&&c===','){var step=cssPreludeComma(text,i);out=$c.replace(out,/\s*$/,'')+step.insert;i=step.skipTo;}
-      else out+=c;
+    var state = { quote:'', escaped:false, comment:false };
+    var out = { val:'', commas:commas };
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i], next = i + 1 < text.length ? text[i + 1] : undefined;
+      if (state.comment) { if (c === '*' && next === '/') { state.comment = false; i++; } continue; }
+      if (state.quote) { out.val += c; cssPartsQuoteStep(state, c); continue; }
+      i = cssPreludeStepNeutral(state, text, i, c, next, out);
     }
-    return $c.trim(out);
+    return $c.trim(out.val);
   }
   var declarationRecords=cssMap('declaration'),inlineDeclarations=cssMap('inlineDeclaration'),cssPropertyCache=new Map();
   function declarationRecord(style){var record=$c.get(declarationRecords,style);if(!record)throw new TypeError('Illegal invocation');if(record.owner){var text=$c.call(appliedInlineRead,record.owner);if(text!==record.source){record.source=text;parseDeclaration(record,text);}}if(record.refresh){var fresh=$c.get(declarationRecords,record.refresh());if(fresh){record.values=fresh.values;record.names=fresh.names;record.fontState=fresh.fontState;record.defaultsOf=fresh.defaultsOf;record.defaultsParent=fresh.defaultsParent;}}return record;}
@@ -2869,7 +3073,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
   function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
-  function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!record.fontFace&&!$c.startsWith(name,'--')&&!knownProperty(name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!record.fontFace&&!$c.startsWith(name,'--')&&__ns.typedOmValid&&!__ns.typedOmValid(name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
+  // Accept / reject a legacy-parsed property name before its value is classified.
+  function parseLegacyNameKnown(record, name){ return record.fontFace || $c.startsWith(name, '--') || knownProperty(name); }
+  // Accept / reject the value through Typed OM once the !important suffix is stripped.
+  function parseLegacyTypedValid(record, name, value){
+    if (record.fontFace || $c.startsWith(name, '--') || !__ns.typedOmValid) return true;
+    return __ns.typedOmValid(name, value);
+  }
+  function parseLegacyDeclaration(record,text){record.names=[];record.values=new Map();var selector=record.fontFace?'@font-face':'x',parsed=typeof cssNativeParse==='function'?cssNativeParse(selector+' { '+text+' }'):selector+' { '+text+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}'));$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1)return;var name=$c.trim($c.slice(part,0,index));if(!parseLegacyNameKnown(record,name))return;var value=$c.trim($c.slice(part,index+1)),important=$c.test(/\s*!important\s*$/i,value);if(important)value=$c.trim($c.replace(value,/\s*!important\s*$/i,''));if(!parseLegacyTypedValid(record,name,value))return;var previous=$c.get(record.values,name);if(previous&&previous.priority&&!important)return;storeDeclaration(record,name,value,important?'important':'');});}
   function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)bumpCssomEpoch();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
@@ -2957,16 +3168,26 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     }
     return out+'}';
   }
+  // Serialize a style rule (type 1) or an @import (type 5) — selector/prelude + the body text.
+  function cssRuleTextStyle(record){
+    var text = declarationText(declarationRecord(record.style));
+    return (record.type === 1 ? record.selectorText : record.prelude) + ' {' + (text ? ' ' + text + ' ' : ' ') + '}';
+  }
+  // Serialize a grouping rule (@media / @supports / @container / …) or @keyframes (type 7),
+  // listing one child rule per line like Chrome 156 (turbo-dom#134).
+  function cssRuleTextGrouping(record){
+    var rules = cssItems(record.cssRules);
+    var out = (record.kind ? groupPrelude(record) : record.prelude) + (record.type === 7 ? ' { \n' : ' {\n');
+    for (var index = 0; index < rules.length; index++) out += '  ' + cssRuleText(cssRuleRecord(rules[index])) + '\n';
+    return out + '}';
+  }
   function cssRuleText(record){
-    if(record.kind==='nested-declarations'){return declarationText(declarationRecord(record.style));}
-    if(record.type===1&&record.cssRules&&cssItems(record.cssRules).length)return nestedStyleRuleText(record);
-    if(record.type===1||record.type===5){
-      var text=declarationText(declarationRecord(record.style));
-      return (record.type===1?record.selectorText:record.prelude)+' {'+(text?' '+text+' ':' ')+'}';
-    }
-    // Chrome 156: grouping rules and @keyframes list one child rule per line (turbo-dom#134).
-    if((record.grouping||record.type===7)&&record.cssRules){var rules=cssItems(record.cssRules),out=(record.kind?groupPrelude(record):record.prelude)+(record.type===7?' { \n':' {\n');for(var index=0;index<rules.length;index++)out+='  '+cssRuleText(cssRuleRecord(rules[index]))+'\n';return out+'}';}
-    return record.cssText;}
+    if (record.kind === 'nested-declarations') return declarationText(declarationRecord(record.style));
+    if (record.type === 1 && record.cssRules && cssItems(record.cssRules).length) return nestedStyleRuleText(record);
+    if (record.type === 1 || record.type === 5) return cssRuleTextStyle(record);
+    if ((record.grouping || record.type === 7) && record.cssRules) return cssRuleTextGrouping(record);
+    return record.cssText;
+  }
   __ns.readCssRuleText=function(rule){return cssRuleText(cssRuleRecord(rule));};
   cssRuleMember('CSSRule','cssText',function(){return cssRuleText(cssRuleRecord(this));},function(value){cssRuleRecord(this);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');String(value);});
   cssRuleMember('CSSStyleRule','selectorText',function(){return cssRuleRecord(this,1).selectorText;},function(value){var record=cssRuleRecord(this,1);if(typeof value==='symbol')throw new TypeError('Cannot convert a Symbol to a string');var parsed=parseCssRules(String(value)+' {}',record.parentStyleSheet,record.parentRule);if(parsed.length===1&&cssRuleRecord(parsed[0]).type===1)record.selectorText=cssRuleRecord(parsed[0],1).selectorText;});
@@ -3009,37 +3230,45 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // rule is a grouping rule too; insertRule / deleteRule reuse insertGroupRule /
   // deleteGroupRule, with the parent record coming from the style rule's own cssRuleStates entry.
   cssRuleMember('CSSStyleRule','cssRules',function(){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();return record.cssRules;});
+  // A bare declaration body becomes a CSSNestedDeclarations rule under the host style rule
+  // (Chrome 156; turbo-dom#358). Returns the inserted index.
+  function insertNestedDeclarations(ownerRule, record, list, text, i){
+    var declText = $c.trim(text);
+    if (declText[declText.length - 1] !== ';') declText += ';';
+    var nested = { type:0, parentStyleSheet:record.parentStyleSheet, parentRule:ownerRule, prelude:'', kind:'nested-declarations', cssText:declText };
+    nested.style = cssDeclaration(declText, null, nested);
+    var nestedRule = finishCssRule(nested);
+    cssRuleRecord(nestedRule).effectiveSelector = record.effectiveSelector || record.selectorText;
+    $c.splice(list, i, 0, nestedRule);
+    invalidateComputedStyles();
+    return i;
+  }
+  // Rewrite a nested style rule's selector through the same normalization as parseCssRules
+  // (prepend '& ' to a selector that doesn't start with '&').
+  function nestedInsertRuleText(text, source){
+    if (source === null) return text;
+    var braceOpen = $c.indexOf(source, '{');
+    if (braceOpen > 0 && source[0] !== '@') {
+      var preludePart = $c.trim($c.slice(source, 0, braceOpen)), rest = $c.slice(source, braceOpen);
+      return nestedSelectorList(preludePart) + ' ' + rest;
+    }
+    return source;
+  }
+  // After insertGroupRule returns, stamp the inserted rule's effectiveSelector.
+  function finishInsertedNestedRule(record, inserted){
+    if (!inserted) return;
+    var ir = cssRuleRecord(inserted);
+    if (ir.type === 1) ir.effectiveSelector = nestedCascadeSelector(ir.selectorText, record.effectiveSelector || record.selectorText);
+  }
   cssMethod(g.CSSStyleRule.prototype,'insertRule',1,function(text,index){
     var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();
     if(!arguments.length)throw new TypeError("Failed to execute 'insertRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");
     text=cssString(text);var i=index===undefined?0:Number(index)>>>0,list=cssItems(record.cssRules);
     if(i>list.length)throw new __ns.DOMException("Failed to execute 'insertRule' on 'CSSStyleRule': the index "+i+" must be less than or equal to the length of the rule list.",'IndexSizeError');
-    // A bare declaration becomes a CSSNestedDeclarations (Chrome 156).
-    if(!$c.test(/[{}]/,text)){
-      var declText=$c.trim(text);if(declText[declText.length-1]!==';')declText+=';';
-      var nested={type:0,parentStyleSheet:record.parentStyleSheet,parentRule:this,prelude:'',kind:'nested-declarations',cssText:declText};
-      nested.style=cssDeclaration(declText,null,nested);
-      var nestedRule=finishCssRule(nested);
-      cssRuleRecord(nestedRule).effectiveSelector=record.effectiveSelector||record.selectorText;
-      $c.splice(list,i,0,nestedRule);invalidateComputedStyles();return i;
-    }
-    // Nested style rule context: prepend '& ' to a selector that doesn't start with '&',
-    // through the same normalization as parseCssRules.
-    var source=cssNativeParse(text,false,true);
-    if(source!==null){
-      var braceOpen=$c.indexOf(source,'{');
-      if(braceOpen>0&&source[0]!=='@'){
-        var preludePart=$c.trim($c.slice(source,0,braceOpen)),rest=$c.slice(source,braceOpen);
-        text=nestedSelectorList(preludePart)+' '+rest;
-      } else if(source!==null) text=source;
-    }
+    if(!$c.test(/[{}]/,text))return insertNestedDeclarations(this,record,list,text,i);
+    text=nestedInsertRuleText(text,cssNativeParse(text,false,true));
     var position=insertGroupRule(this,record,text,index,'CSSStyleRule');
-    // Compute effectiveSelector for the just-inserted nested rule.
-    var inserted=cssItems(record.cssRules)[position];
-    if(inserted){
-      var ir=cssRuleRecord(inserted);
-      if(ir.type===1)ir.effectiveSelector=nestedCascadeSelector(ir.selectorText,record.effectiveSelector||record.selectorText);
-    }
+    finishInsertedNestedRule(record,cssItems(record.cssRules)[position]);
     return position;
   });
   cssMethod(g.CSSStyleRule.prototype,'deleteRule',1,function(index){var record=cssRuleRecord(this,1);if(!record.cssRules)record.cssRules=cssList();if(!arguments.length)throw new TypeError("Failed to execute 'deleteRule' on 'CSSStyleRule': 1 argument required, but only 0 present.");deleteGroupRule(record,index,'CSSStyleRule');});
@@ -3247,15 +3476,28 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(imported){var rule={};rule.type=3;rule.href=imported[1];rule.media=makeMedia(imported[2]||'');rule.styleSheet=null;rule.parentStyleSheet=sheet;rule.parentRule=parent||null;rule.cssText=statement+';';$c.push(cssItems(out),finishCssRule(rule));}
     else if($c.test(/^@layer\s/i,statement)){var layer={};layer.type=0;layer.kind='layer-statement';layer.prelude=statement;layer.parentStyleSheet=sheet;layer.parentRule=parent||null;layer.cssText=statement+';';$c.push(cssItems(out),finishCssRule(layer));}
   }
+  // One brace/semicolon dispatch step for parseCssRules. `state` holds the running
+  // depth / open-brace position / block start (all three change per rule boundary).
+  function parseCssRulesStep(out, text, i, c, state, sheet, parent){
+    if (c === '{') { if (state.depth++ === 0) state.open = i; return; }
+    if (c === '}' && state.depth > 0 && --state.depth === 0) {
+      cssPushBlockRule(out, text, state.start, state.open, i, sheet, parent);
+      state.start = i + 1; return;
+    }
+    if (c === ';' && state.depth === 0) {
+      cssPushStatementRule(out, $c.trim($c.slice(text, state.start, i)), sheet, parent);
+      state.start = i + 1;
+    }
+  }
   var parseCssRules = function(text, sheet, parent, validated){
-    text=String(text);if(!validated&&typeof cssNativeParse==='function')text=cssNativeParse(text);
-    var out=cssList(), start=0, depth=0, scan=new CssRuleScan(), open=-1;
-    for(var i=0;i<text.length;i++){
-      var c=text[i],next=i+1<text.length?text[i+1]:undefined,skip=cssScanSkip(scan,c,next);
-      if(skip){i+=skip-1;continue;}
-      if(c==='{' ){if(depth++===0)open=i;}
-      else if(c==='}'&&depth>0&&--depth===0){cssPushBlockRule(out,text,start,open,i,sheet,parent);start=i+1;}
-      else if(c===';'&&depth===0){cssPushStatementRule(out,$c.trim($c.slice(text,start,i)),sheet,parent);start=i+1;}
+    text = String(text);
+    if (!validated && typeof cssNativeParse === 'function') text = cssNativeParse(text);
+    var out = cssList(), state = { depth: 0, open: -1, start: 0 }, scan = new CssRuleScan();
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i], next = i + 1 < text.length ? text[i + 1] : undefined;
+      var skip = cssScanSkip(scan, c, next);
+      if (skip) { i += skip - 1; continue; }
+      parseCssRulesStep(out, text, i, c, state, sheet, parent);
     }
     return out;
   };
@@ -3373,6 +3615,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // declaration write happened and its @media answers hold. Only a sheet of unlayered rules
   // without @import is kept: a layer joins the build's layer tree, an import the build's seen set.
   var computedSheetCache=new computedSnapshotMap();
+  // Can this sheet's entries be reused on the next cascade: no volatile reads, no new
+  // @layer joins, no @import, every entry still in the active layer tree.
+  function computedSheetKeepable(went, layers, layersBefore, rules, list){
+    if (went || layers.children.length !== layersBefore) return false;
+    for (var at = 0; at < rules.length; at++) if (cssRuleRecord(rules[at]).type === 3) return false;
+    for (var index = 0; index < list.length; index++) if (list[index].layer !== layers) return false;
+    return true;
+  }
   function computedOneSheetEntries(sheet,el,layers,seen){
     if($c.has(seen,sheet))return [];
     var kept=computedSnapshotGet(computedSheetCache,sheet);
@@ -3382,9 +3632,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     computedMediaReads=media;computedVolatile=false;
     try{list=appliedSheetEntries(sheet,el,layers,undefined,seen);}
     finally{var went=computedVolatile;computedMediaReads=outer;computedVolatile=volatile||went;computedMergeMedia(media);}
-    var keep=!went&&layers.children.length===layersBefore,rules=cssItems(sheetRecord(sheet).rules);
-    for(var at=0;keep&&at<rules.length;at++)if(cssRuleRecord(rules[at]).type===3)keep=false;
-    for(var index=0;keep&&index<list.length;index++)if(list[index].layer!==layers)keep=false;
+    var keep=computedSheetKeepable(went,layers,layersBefore,cssItems(sheetRecord(sheet).rules),list);
     computedSnapshotSet(computedSheetCache,sheet,keep?{__proto__:null,epoch:structure,media:media,list:list}:null);
     return list;
   }
@@ -3580,6 +3828,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // (turbo-dom#276), or null. A selector with :scope binds it to the scoping root; & stands
   // for :where(:scope); any other selector is relative to the root (its descendants, with no
   // added specificity). Proximity counts the generations from the root to `el`.
+  // Does `item` select `el` from scoping root `root`? A `:scope`-naming selector uses the
+  // scope-aware matcher; otherwise ordinary matches apply, but a bare `:scope` (root === el)
+  // is not one of its descendants. Hoisted; returns a boolean — no per-call allocation.
+  function cssScopedMatchItem(root, el, item){
+    if ($c.test(/:scope\b/i, item)) return cssScopeSelects(root, el, item);
+    return root !== el && computedNativeMatches(el, item);
+  }
   function cssScopedMatch(el,entry){
     var scopes=entry.scopes,frame=scopes[scopes.length-1],best=null;
     for(var index=0;index<scopes.length-1;index++)if(!cssInScope(el,scopes[index]))return null;
@@ -3587,9 +3842,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     for(var root=el,hops=0;root;root=cssParentElement(root),hops++){
       if(!cssScopeRootMatches(frame,root)||cssScopeLimited(el,frame,root))continue;
       for(var at=0;at<items.length;at+=4){
-        var item=items[at],value=cssSpecificityAt(items,at);
+        var value=cssSpecificityAt(items,at);
         if(best&&value<=best[0])continue;
-        if($c.test(/:scope\b/i,item)?cssScopeSelects(root,el,item):root!==el&&computedNativeMatches(el,item))best=[value,hops];
+        if(cssScopedMatchItem(root,el,items[at]))best=[value,hops];
       }
     }
     return best;
@@ -3604,6 +3859,14 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // The cascade record of `entry`'s style rule when it selects `el` (`pseudo`: that
   // pseudo-element of it), or null. A rule under a conditional @media makes the computation
   // volatile when its selector matches.
+  // Build the EntryMatch (or null) after a matched entry has been decided. The @media=2
+  // entry is one that cannot match in any state (dropped); every other matched entry
+  // under a conditional @media bumps computedVolatile. Allocation-free aside from the
+  // EntryMatch, which existed on the hot path before the refactor.
+  function appliedEntryMatchFinish(entry, matched, specificity, proximity, order){
+    if (matched && entry.media && !computedMediaReads) computedVolatile = true;
+    return matched && entry.media !== 2 ? new EntryMatch(entry, specificity, proximity, order) : null;
+  }
   function appliedEntryMatch(el,entry,pseudo,order){
     if(noteRuleProbe)noteRuleProbe();
     // A nested rule's cascade selector resolves `&` and nesting scope; see nestedCascadeSelector.
@@ -3611,8 +3874,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
     else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
-    if(matched&&entry.media&&!computedMediaReads)computedVolatile=true;
-    return matched&&entry.media!==2?new EntryMatch(entry,specificity,proximity,order):null;
+    return appliedEntryMatchFinish(entry, matched, specificity, proximity, order);
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
   // scoping root, then earlier.
@@ -3761,7 +4023,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   // OWN accessor on each control element (testing-library's setNativeValue reads
   // getOwnPropertyDescriptor(element)) AND on the interface .prototype (React's value-tracker reads
   // node.constructor.prototype). No setPrototypeOf — avoids touching the native proto chain.
-  var currentSheetGetter;
+  var currentSheetGetter, currentSheetGetterStyle;
   var sheetTagName=__ns.domAccessor('tagName',false,'Element'),sheetConnected=__ns.domAccessor('isConnected',false,'Node'),sheetTextContent=__ns.domAccessor('textContent',false,'Node'),sheetGetAttribute=d.createElement('style').getAttribute;
   function sheetNativeAttribute(element,name){return cssApply(sheetGetAttribute,element,[name]);}
   (function(){
@@ -4420,8 +4682,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       'OES_draw_buffers_indexed','OES_texture_float_linear','WEBGL_compressed_texture_s3tc',
       'WEBGL_compressed_texture_s3tc_srgb','WEBGL_debug_renderer_info','WEBGL_debug_shaders',
       'WEBGL_lose_context','WEBGL_multi_draw','WEBGL_provoking_vertex'];
-    var mkWebGLCtx = function(canvas, isGL2){
-      var C = GLC, noop = function(){};
+    // Build the WebGL `getParameter` table for the requested context version. Moving the
+    // isGL2 branches here keeps mkWebGLCtx under the cc limit.
+    var mkWebGLParams = function(isGL2){
+      var C = GLC;
       var params = {};
       params[C.VENDOR] = 'WebKit'; params[C.RENDERER] = 'WebKit WebGL';
       params[C.VERSION] = isGL2 ? 'WebGL 2.0 (OpenGL ES 3.0 Chromium)' : 'WebGL 1.0 (OpenGL ES 2.0 Chromium)';
@@ -4447,6 +4711,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         params[C.MAX_FRAGMENT_UNIFORM_BLOCKS] = 12; params[C.MAX_ELEMENTS_INDICES] = 0x7FFFFFFF;
         params[C.MAX_ELEMENTS_VERTICES] = 0x7FFFFFFF;
       }
+      return params;
+    };
+    var mkWebGLCtx = function(canvas, isGL2){
+      var C = GLC, noop = function(){};
+      var params = mkWebGLParams(isGL2);
       var EXT = isGL2 ? GL_EXT2 : GL_EXT1;
       var gl = { canvas: canvas, _ops: [],
         drawingBufferWidth: (canvas && canvas.width) || 300, drawingBufferHeight: (canvas && canvas.height) || 150,
@@ -4573,22 +4842,34 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         // Defined on the shared element prototype and
         // WITHOUT a descriptor guard (the NON_MASKING interceptor makes every lookup
         // report a descriptor, so a guard would wrongly skip). Caches per element.
+        // `.sheet` resolution for a <style> element (<link> takes the ternary in the caller).
+        // Returns null when inline sheets are disallowed; otherwise rebuilds the CSSOM sheet
+        // on text change and keeps it otherwise.
+        currentSheetGetterStyle=function(elt, cached){
+          if (!cssApply(inlineSheetAllowed, elt, [])) {
+            if (cached) detachSheet(cached.sheet);
+            elementSheets.set(elt, { sheet: null, text: null });
+            return null;
+          }
+          var text = cssApply(sheetTextContent, elt, []) || '';
+          if (!cached || !cached.sheet || cached.text !== text) {
+            if (cached) detachSheet(cached.sheet);
+            cached = { sheet: mkSheet(elt), text: text };
+            elementSheets.set(elt, cached);
+          }
+          return cached.sheet;
+        };
         currentSheetGetter=function(){
-            var tag = cssApply(sheetTagName,this,[]);
-            if (!tag) return null;
-            tag=cssTagUpper(tag);if(tag!=='STYLE'&&tag!=='LINK')return null;
-            var cached=elementSheets.get(this);
-            // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
-            if (!computedConnected(this)) {if(cached)detachSheet(cached.sheet);elementSheets.delete(this);return null;}
-            if(tag==='LINK')return cached?cached.sheet:null;
-            if(!cssApply(inlineSheetAllowed,this,[])){if(cached)detachSheet(cached.sheet);elementSheets.set(this,{sheet:null,text:null});return null;}
-            var text=cssApply(sheetTextContent,this,[])||'';
-            if (!cached || !cached.sheet || cached.text!==text) {
-              if(cached)detachSheet(cached.sheet);
-              cached={sheet:mkSheet(this),text:text};elementSheets.set(this,cached);
-            }
-            return cached.sheet;
-          };
+          var tag = cssApply(sheetTagName, this, []);
+          if (!tag) return null;
+          tag = cssTagUpper(tag);
+          if (tag !== 'STYLE' && tag !== 'LINK') return null;
+          var cached = elementSheets.get(this);
+          // A child iframe document's <style> / <link> has a sheet (turbo-dom#299).
+          if (!computedConnected(this)) { if (cached) detachSheet(cached.sheet); elementSheets.delete(this); return null; }
+          if (tag === 'LINK') return cached ? cached.sheet : null;
+          return currentSheetGetterStyle(this, cached);
+        };
         Object.defineProperty(baseProto, 'sheet', {configurable:true,get:currentSheetGetter});
         var docProto = Object.getPrototypeOf(d) || baseProto;
         // Documents without a browsing context list their own sheets too (turbo-dom#163).
@@ -4628,20 +4909,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function __zeroRect(){ return { x:0,y:0,top:0,left:0,right:0,bottom:0,width:0,height:0,toJSON:function(){return this;} }; }
   function __nodeIndex(n){ var p=n.parentNode; if(!p) return 0; var i=0,c=p.firstChild; while(c&&c!==n){ i++; c=c.nextSibling; } return i; }
   function __ancestry(n){ var a=[]; while(n){ a.push(n); n=n.parentNode; } return a; } // node … root
+  // Resolve two boundary points once a common ancestor at (A[i] === B[j]) is found.
+  // Returns -1 (before) / 1 (after) / 0 (same child + offset).
+  function __cmpAt(A, B, i, j, oa, ob){
+    var childA = i > 0 ? A[i - 1] : null, childB = j > 0 ? B[j - 1] : null;
+    if (childA === null) return oa <= __nodeIndex(childB) ? -1 : 1;     // ca IS the common ancestor
+    if (childB === null) return __nodeIndex(childA) < ob ? -1 : 1;      // cb IS the common ancestor
+    var ia = __nodeIndex(childA), ib = __nodeIndex(childB);
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+  }
   // Compare boundary points (ca,oa) vs (cb,ob) in document order: -1 before, 0 equal, 1 after.
   function __cmp(ca,oa,cb,ob){
     if(ca===cb) return oa<ob?-1:oa>ob?1:0;
     var A=__ancestry(ca), B=__ancestry(cb);
     // walk B looking for a node whose ancestry includes it → common ancestor
-    for(var i=0;i<A.length;i++){ var j=B.indexOf(A[i]); if(j>=0){
-      var anc=A[i];
-      // child of anc on A's side (or ca itself if A[i-1])
-      var childA=i>0?A[i-1]:null, childB=j>0?B[j-1]:null;
-      if(childA===null) return oa<=__nodeIndex(childB)?-1:1;     // ca IS the common ancestor
-      if(childB===null) return __nodeIndex(childA)<ob?-1:1;       // cb IS the common ancestor
-      var ia=__nodeIndex(childA), ib=__nodeIndex(childB);
-      return ia<ib?-1:ia>ib?1:0;
-    }}
+    for(var i=0;i<A.length;i++){ var j=B.indexOf(A[i]); if(j>=0) return __cmpAt(A, B, i, j, oa, ob); }
     return 0; // disconnected
   }
   function __commonAncestor(a,b){ var A=__ancestry(a); var n=b; while(n){ if(A.indexOf(n)>=0) return n; n=n.parentNode; } return d; }
@@ -4671,7 +4953,29 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   Range.prototype.isPointInRange=function(n,o){ return this.comparePoint(n,o)===0; };
   Range.prototype.compareBoundaryPoints=function(how,other){ return __cmp(this.startContainer,this.startOffset,other.startContainer,other.startOffset); };
   Range.prototype.insertNode=function(node){ var c=this.startContainer, o=this.startOffset; if(c.nodeType===3){ var txt=c.data||''; var after=c.splitText?c.splitText(o):null; c.parentNode.insertBefore(node, after||c.nextSibling); } else { var ref=c.childNodes?c.childNodes[o]:null; c.insertBefore(node, ref||null); } };
-  Range.prototype.deleteContents=function(){ if(this.collapsed) return; var sc=this.startContainer; if(sc===this.endContainer && sc.nodeType===3){ var t=sc.data||''; if(sc.deleteData) sc.deleteData(this.startOffset, this.endOffset-this.startOffset); else sc.data=t.slice(0,this.startOffset)+t.slice(this.endOffset); this.endOffset=this.startOffset; this.endContainer=sc; return; } var ca=this.commonAncestorContainer; var kids=ca.childNodes?Array.prototype.slice.call(ca.childNodes):[]; for(var i=0;i<kids.length;i++){ var k=kids[i]; if(this.comparePoint(k,0)===0 && this.comparePoint(k, (k.nodeType===3?(k.data||'').length:(k.childNodes?k.childNodes.length:0)))===0 && k.parentNode){ k.parentNode.removeChild(k); } } this.collapse(true); };
+  // End offset of a child node (text length for CharacterData, child count for Element).
+  function rangeChildEndOffset(k){ return k.nodeType === 3 ? (k.data || '').length : (k.childNodes ? k.childNodes.length : 0); }
+  // Delete a text slice inside one Text node that owns both boundaries.
+  function rangeDeleteTextSlice(range, sc){
+    var t = sc.data || '';
+    if (sc.deleteData) sc.deleteData(range.startOffset, range.endOffset - range.startOffset);
+    else sc.data = t.slice(0, range.startOffset) + t.slice(range.endOffset);
+    range.endOffset = range.startOffset; range.endContainer = sc;
+  }
+  Range.prototype.deleteContents=function(){
+    if(this.collapsed) return;
+    var sc=this.startContainer;
+    if(sc===this.endContainer && sc.nodeType===3){ rangeDeleteTextSlice(this, sc); return; }
+    var ca=this.commonAncestorContainer;
+    var kids=ca.childNodes?Array.prototype.slice.call(ca.childNodes):[];
+    for(var i=0;i<kids.length;i++){
+      var k=kids[i];
+      if(this.comparePoint(k,0)===0 && this.comparePoint(k, rangeChildEndOffset(k))===0 && k.parentNode){
+        k.parentNode.removeChild(k);
+      }
+    }
+    this.collapse(true);
+  };
   Range.prototype.cloneContents=function(){ var f=this.document.createDocumentFragment(); return f; };
   Range.prototype.extractContents=function(){ var f=this.cloneContents(); this.deleteContents(); return f; };
   Range.prototype.surroundContents=function(node){ this.insertNode(node); };
@@ -4960,9 +5264,16 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         location: { origin: parentOrigin, href: (parentWin.location && parentWin.location.href) || '' },
       };
       childWin.parent = parentView; childWin.top = parentView; childWin.frameElement = hostEl || null;
-      if (hostEl) { hostEl.__realm = childWin; try { hostEl.contentWindow = childWin; hostEl.contentDocument = childDoc; } catch(e){} }
+      wireFrameHost(hostEl, childWin, childDoc);
       return childWin;
     };
+    // Attach the realm to its host <iframe> element. Native elements may refuse the
+    // contentWindow / contentDocument accessors (eager read-only), so the write is in try.
+    function wireFrameHost(hostEl, childWin, childDoc){
+      if (!hostEl) return;
+      hostEl.__realm = childWin;
+      try { hostEl.contentWindow = childWin; hostEl.contentDocument = childDoc; } catch(e){}
+    }
 
     // Wire createElement('iframe') to expose a real contentWindow/contentDocument, built
     // lazily on first access (or when src is set). Kept general so any consumer gets it;
@@ -5062,10 +5373,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var mime=$c.toLowerCase($c.trim($c.split(String(type),';',1)[0]));
       return $c.has(mediaTypes,mime)?'maybe':'';
     },'canPlayType',1),writable:true,enumerable:true,configurable:true});
-    if(typeof g.Audio==='function'){
-      var audioConstructor=__ns.makeNativeFunction(function(src){var element=d.createElement('audio');if(src!==undefined)element.src=src;return element;},'Audio',0,true,false,false);
-      audioConstructor.prototype=prototypes.HTMLAudioElement;Object.defineProperty(audioConstructor,'prototype',{writable:false});
-      Object.defineProperty(g,'Audio',{value:audioConstructor,writable:true,configurable:true});
+    installAudioConstructor();
+    function installAudioConstructor(){
+      if (typeof g.Audio !== 'function') return;
+      var audioConstructor = __ns.makeNativeFunction(function(src){ var element = d.createElement('audio'); if (src !== undefined) element.src = src; return element; }, 'Audio', 0, true, false, false);
+      audioConstructor.prototype = prototypes.HTMLAudioElement;
+      Object.defineProperty(audioConstructor, 'prototype', { writable: false });
+      Object.defineProperty(g, 'Audio', { value: audioConstructor, writable: true, configurable: true });
     }
 
     // Keep existing compatibility behavior while separating the base interfaces;
@@ -5141,7 +5455,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     Object.keys(mapMethods).forEach(function(name){var delegate=mapMethods[name];Object.defineProperty(namedMapProto,name,{value:__ns.makeNativeFunction(function(){mapOwner(this);if(arguments.length<delegate.length)throw new TypeError('Not enough arguments');return delegate.apply(this,arguments);},name,delegate.length),writable:true,enumerable:true,configurable:true});});
     Object.defineProperty(namedMapProto,'length',{get:__ns.makeNativeFunction(function(){return mapEntries(this).length;},'get length',0),enumerable:true,configurable:true});
     Object.defineProperty(namedMapProto,Symbol.iterator,{value:__ns.makeNativeFunction(function(){var map=this;mapOwner(map);var index=0;return {next(){var entries=mapEntries(map);return index<entries.length?{value:entries[index++],done:false}:{value:undefined,done:true};},[Symbol.iterator](){return this;}};},'values',0),writable:true,configurable:true});
-    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=$call($wmGet,mapsByElement,owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];if(operation==='indices')return Array.from(entries,function(_,index){return index;});if(operation==='keys')return Array.from(new Set(Array.from(entries,function(entry){return entry.name;})));if(operation==='get')return attribute;if(operation==='has')return !!attribute;if(operation==='descriptor')return attribute?{value:attribute,writable:false,enumerable:index!==null,configurable:true}:undefined;if(operation==='set'||operation==='define')return attribute?true:undefined;if(operation==='delete')return attribute?false:undefined;},true);$c.set(mapRecords,map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});$c.set(mapsByElement,owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
+    // Operation dispatcher for the NamedNodeMap proxy. A `switch` lets the many kinds share
+    // one helper; without it the proxy callback blew the cc <= 12 ceiling.
+    function namedAttrsOp(operation, attribute, entries, index){
+      switch (operation) {
+        case 'indices': return Array.from(entries, function(_, i){ return i; });
+        case 'keys': return Array.from(new Set(Array.from(entries, function(entry){ return entry.name; })));
+        case 'get': return attribute;
+        case 'has': return !!attribute;
+        case 'descriptor': return attribute ? { value: attribute, writable: false, enumerable: index !== null, configurable: true } : undefined;
+        case 'set': case 'define': return attribute ? true : undefined;
+        case 'delete': return attribute ? false : undefined;
+      }
+    }
+    Object.defineProperty(elementProto,'attributes',{get:__ns.makeNativeFunction(function(){getTag.call(this);var owner=this,map=$call($wmGet,mapsByElement,owner);if(map)return map;map=namedFactory(namedMapProto,function(operation,key,value){var entries=nativeAttributes.call(owner),index=/^(0|[1-9]\d*)$/.test(key)?Number(key):null,attribute=index===null?Array.from(entries).find(function(entry){return entry.name===key;}):entries[index];return namedAttrsOp(operation,attribute,entries,index);},true);$c.set(mapRecords,map,owner);if(collectionSet)collectionSet(map,{kind:'NamedNodeMap',owner:owner});$c.set(mapsByElement,owner,map);return map;},'get attributes',0),enumerable:true,configurable:true});
     var isShadowRoot=__ns.domAccessor('__isShadowRoot',false,'Node');
     var probe=d.createElement('div');
     __ns.cascadeProp=Object.getOwnPropertyDescriptor(probe,'__cascadeProp').value;
@@ -5200,12 +5527,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // Rendering, as Chrome 156 measures it: an SVG element other than <svg> needs a non-HTML
     // parent, a non-SVG element under SVG needs a <foreignObject> parent, and no inclusive
     // ancestor may compute display: none.
+    // SVG element (other than <svg> itself) whose parent is HTML (or has no namespace):
+    // its rendering stops here per Chrome's foreign-rendered test.
+    function foreignRenderedSvgNoHost(node, parentSpace){
+      return node.namespaceURI === 'http://www.w3.org/2000/svg' && node.localName !== 'svg' && (parentSpace === null || parentSpace === 'http://www.w3.org/1999/xhtml');
+    }
+    // Non-SVG under SVG: only renders inside <foreignObject>.
+    function foreignRenderedBadForeign(node, parentSpace, parent){
+      return node.namespaceURI !== 'http://www.w3.org/2000/svg' && parentSpace === 'http://www.w3.org/2000/svg' && parent.localName !== 'foreignObject';
+    }
     var foreignRendered=function(element){
-      for(var node=element;node&&node.nodeType===1;node=node.parentNode){
-        var parent=node.parentNode,parentSpace=parent&&parent.nodeType===1?parent.namespaceURI:null;
-        if(node.namespaceURI==='http://www.w3.org/2000/svg'&&node.localName!=='svg'&&(parentSpace===null||parentSpace==='http://www.w3.org/1999/xhtml'))return false;
-        if(node.namespaceURI!=='http://www.w3.org/2000/svg'&&parentSpace==='http://www.w3.org/2000/svg'&&parent.localName!=='foreignObject')return false;
-        if(g.getComputedStyle(node).display==='none')return false;
+      for (var node = element; node && node.nodeType === 1; node = node.parentNode) {
+        var parent = node.parentNode, parentSpace = parent && parent.nodeType === 1 ? parent.namespaceURI : null;
+        if (foreignRenderedSvgNoHost(node, parentSpace)) return false;
+        if (foreignRenderedBadForeign(node, parentSpace, parent)) return false;
+        if (g.getComputedStyle(node).display === 'none') return false;
       }
       return true;
     };
@@ -5413,8 +5749,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         get:__ns.makeNativeFunction(function(){brand(this);if(flag)return reflectedApply(reflectedHasAttribute,this,[attribute]);var value=reflectedApply(reflectedGetAttribute,this,[attribute]);return value===null?'':value;},'get '+name,0),
         set:__ns.makeNativeFunction(function(value){brand(this);if(arguments.length<1)throw new TypeError("Failed to set the '"+name+"' property on '"+owner+"': 1 argument required, but only 0 present.");if(!flag){reflectedApply(reflectedSetAttribute,this,[attribute,attributeString(value)]);return;}if(value)reflectedApply(reflectedSetAttribute,this,[attribute,'']);else reflectedApply(reflectedRemoveAttribute,this,[attribute]);},'set '+name,1)});
     });
+    installMediaMuted();
+    installTextWholeText();
     // The muted IDL attribute is media state, not a reflection: it starts false.
-    if(prototypes.HTMLMediaElement&&!Object.hasOwn(prototypes.HTMLMediaElement,'muted')){
+    function installMediaMuted(){
+      if (!prototypes.HTMLMediaElement || Object.hasOwn(prototypes.HTMLMediaElement, 'muted')) return;
       var mediaMuted=new WeakMap(),mutedGet=WeakMap.prototype.get,mutedSet=WeakMap.prototype.set,mediaLocals=new Set(['audio','video']),mediaCheck=__ns.domAccessor('nodeType',false,'HTMLElement');
       var mediaBrand=function(receiver){reflectedApply(mediaCheck,receiver,[]);if(!reflectedApply(reflectedSetHas,mediaLocals,[reflectedApply(getLocalTag,receiver,[])]))throw new TypeError('Illegal invocation');};
       Object.defineProperty(prototypes.HTMLMediaElement,'muted',{configurable:true,enumerable:true,
@@ -5422,7 +5761,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         set:__ns.makeNativeFunction(function(value){mediaBrand(this);reflectedApply(mutedSet,mediaMuted,[this,!!value]);},'set muted',1)});
     }
     // Text.wholeText (turbo-dom#143): the data of the contiguous Text siblings, in tree order.
-    if(g.Text&&!Object.hasOwn(g.Text.prototype,'wholeText')){
+    function installTextWholeText(){
+      if (!g.Text || Object.hasOwn(g.Text.prototype, 'wholeText')) return;
       var wholeCheck=__ns.domAccessor('nodeType',false,'Text'),wholeType=Object.getOwnPropertyDescriptor(nodeProto,'nodeType').get,wholePrevious=Object.getOwnPropertyDescriptor(nodeProto,'previousSibling').get,wholeNext=Object.getOwnPropertyDescriptor(nodeProto,'nextSibling').get,wholeData=Object.getOwnPropertyDescriptor(g.CharacterData.prototype,'data').get;
       var isText=function(node){if(node===null)return false;var type=reflectedApply(wholeType,node,[]);return type===3||type===4;};
       Object.defineProperty(g.Text.prototype,'wholeText',{configurable:true,enumerable:true,get:__ns.makeNativeFunction(function(){
@@ -5453,12 +5793,81 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     });
     // The lookup start of locate-a-namespace / locate-a-namespace-prefix, through captured natives.
     function nodeLookupStart(node){var type=$call(getType,node);return type===9?$call($N.documentElement,node):type===2?$call($N['attr.ownerElement'],node):type===1?node:$call($N.parentElement,node);}
+    // The `xmlns` declaration that defines `prefix` on `element` (null for the default
+    // namespace), returned as its value; undefined when the element declares no such thing.
+    function lookupNamespaceURIDecl(element, prefix){
+      var declaration = $call($N.getAttributeNodeNS, element, 'http://www.w3.org/2000/xmlns/', prefix === null ? 'xmlns' : prefix);
+      if (!declaration) return undefined;
+      var expectedAttrPrefix = prefix === null ? null : 'xmlns';
+      if ($call($N['attr.prefix'], declaration) !== expectedAttrPrefix) return undefined;
+      return $call($N['attr.value'], declaration) || null;
+    }
+    // Does this attribute declare `namespace` under some prefix (the attr's local name).
+    function lookupPrefixAttrMatch(self, attribute, namespace){
+      return $call($N['attr.namespaceURI'], attribute) === 'http://www.w3.org/2000/xmlns/' &&
+        $call($N['attr.prefix'], attribute) === 'xmlns' &&
+        $call($N['attr.value'], attribute) === namespace &&
+        $call(nodeOperations.lookupNamespaceURI, self, $call($N['attr.localName'], attribute)) === namespace;
+    }
+    // Cross-shadow-root order per Chrome 156: a stable WeakMap-keyed ordinal per root, OR'd
+    // with the DOCUMENT_POSITION_DISCONNECTED | IMPLEMENTATION_SPECIFIC flags (0x21 = 33).
+    function compareDocumentPositionCrossRoot(self, other){
+      var order = __ns.nodeComparisonOrder || (__ns.nodeComparisonOrder = new WeakMap());
+      var next = __ns.nodeComparisonNext || 1;
+      if (!$c.has(order, self)) $c.set(order, self, next++);
+      if (!$c.has(order, other)) $c.set(order, other, next++);
+      __ns.nodeComparisonNext = next;
+      return 33 | ($c.get(order, self) < $c.get(order, other) ? 4 : 2);
+    }
     var nodeOperations={
-      lookupNamespaceURI(prefix){prefix=prefix==null||prefix===''?null:attributeString(prefix);var element=nodeLookupStart(this);while(element){if(prefix==='xml')return 'http://www.w3.org/XML/1998/namespace';if(prefix==='xmlns')return 'http://www.w3.org/2000/xmlns/';var elementNamespace=$call($N['element.namespaceURI'],element);if(elementNamespace&&$call($N['element.prefix'],element)===prefix)return elementNamespace;var declaration=$call($N.getAttributeNodeNS,element,'http://www.w3.org/2000/xmlns/',prefix===null?'xmlns':prefix);if(declaration&&(prefix===null?$call($N['attr.prefix'],declaration)===null:$call($N['attr.prefix'],declaration)==='xmlns'))return $call($N['attr.value'],declaration)||null;element=$call($N.parentElement,element);}return null;},
-      lookupPrefix(namespace){namespace=namespace==null||namespace===''?null:attributeString(namespace);if(namespace===null)return null;var element=nodeLookupStart(this);while(element){var elementPrefix=$call($N['element.prefix'],element);if(elementPrefix&&$call($N['element.namespaceURI'],element)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,elementPrefix)===namespace)return elementPrefix;var attributes=$call($N.nativeAttributes,element);for(var index=0;index<attributes.length;index++){var attribute=attributes[index];if($call($N['attr.namespaceURI'],attribute)==='http://www.w3.org/2000/xmlns/'&&$call($N['attr.prefix'],attribute)==='xmlns'&&$call($N['attr.value'],attribute)===namespace&&$call(nodeOperations.lookupNamespaceURI,this,$call($N['attr.localName'],attribute))===namespace)return $call($N['attr.localName'],attribute);}element=$call($N.parentElement,element);}return null;},
+      lookupNamespaceURI(prefix){
+        prefix = prefix == null || prefix === '' ? null : attributeString(prefix);
+        var element = nodeLookupStart(this);
+        while (element) {
+          if (prefix === 'xml') return 'http://www.w3.org/XML/1998/namespace';
+          if (prefix === 'xmlns') return 'http://www.w3.org/2000/xmlns/';
+          var elementNamespace = $call($N['element.namespaceURI'], element);
+          if (elementNamespace && $call($N['element.prefix'], element) === prefix) return elementNamespace;
+          var decl = lookupNamespaceURIDecl(element, prefix);
+          if (decl !== undefined) return decl;
+          element = $call($N.parentElement, element);
+        }
+        return null;
+      },
+      lookupPrefix(namespace){
+        namespace = namespace == null || namespace === '' ? null : attributeString(namespace);
+        if (namespace === null) return null;
+        var element = nodeLookupStart(this);
+        while (element) {
+          var elementPrefix = $call($N['element.prefix'], element);
+          if (elementPrefix && $call($N['element.namespaceURI'], element) === namespace && $call(nodeOperations.lookupNamespaceURI, this, elementPrefix) === namespace) return elementPrefix;
+          var attributes = $call($N.nativeAttributes, element);
+          for (var index = 0; index < attributes.length; index++) {
+            var attribute = attributes[index];
+            if (lookupPrefixAttrMatch(this, attribute, namespace)) return $call($N['attr.localName'], attribute);
+          }
+          element = $call($N.parentElement, element);
+        }
+        return null;
+      },
       isDefaultNamespace(namespace){namespace=namespace==null||namespace===''?null:String(namespace);return $call(nodeOperations.lookupNamespaceURI,this,null)===namespace;},
       normalize(){var nodes=this.childNodes;for(var index=0;index<nodes.length;){var node=nodes[index];if(node.nodeType!==3){node.normalize();index++;continue;}while(index+1<nodes.length&&nodes[index+1].nodeType===3){node.data+=nodes[index+1].data;this.removeChild(nodes[index+1]);nodes=this.childNodes;}if(!node.data){this.removeChild(node);nodes=this.childNodes;}else index++;}},
-      compareDocumentPosition(other){getType.call(other);if(this===other)return 0;var root=$call($N.getRootNode,this),otherRoot=$call($N.getRootNode,other);if(root!==otherRoot){var order=__ns.nodeComparisonOrder||(__ns.nodeComparisonOrder=new WeakMap());var next=__ns.nodeComparisonNext||1;if(!$c.has(order,this))$c.set(order,this,next++);if(!$c.has(order,other))$c.set(order,other,next++);__ns.nodeComparisonNext=next;return 33|($c.get(order,this)<$c.get(order,other)?4:2);}if($call($N.contains,this,other))return 20;if($call($N.contains,other,this))return 10;var self=this,before=false,found=false;(function visit(node){if(found)return;if(node===self)before=true;if(node===other){found=true;return;}for(var child=$call($N.firstChild,node);child!==null;child=$call($N.nextSibling,child))visit(child);})(root);return before?4:2;}
+      compareDocumentPosition(other){
+        getType.call(other);
+        if (this === other) return 0;
+        var root = $call($N.getRootNode, this), otherRoot = $call($N.getRootNode, other);
+        if (root !== otherRoot) return compareDocumentPositionCrossRoot(this, other);
+        if ($call($N.contains, this, other)) return 20;
+        if ($call($N.contains, other, this)) return 10;
+        var self = this, before = false, found = false;
+        (function visit(node){
+          if (found) return;
+          if (node === self) before = true;
+          if (node === other) { found = true; return; }
+          for (var child = $call($N.firstChild, node); child !== null; child = $call($N.nextSibling, child)) visit(child);
+        })(root);
+        return before ? 4 : 2;
+      }
     };
     Object.keys(nodeOperations).forEach(function(name){var delegate=nodeOperations[name];var fn=__ns.makeNativeFunction(function(){getType.call(this);if(arguments.length<delegate.length)throw new TypeError(name+' requires '+delegate.length+' arguments');return delegate.apply(this,arguments);},name,delegate.length);Object.defineProperty(nodeProto,name,{value:fn,writable:true,configurable:true,enumerable:true});});
     var tags={DIV:'HTMLDivElement',SPAN:'HTMLSpanElement',P:'HTMLParagraphElement',INPUT:'HTMLInputElement',TEXTAREA:'HTMLTextAreaElement',SELECT:'HTMLSelectElement',OPTION:'HTMLOptionElement',BUTTON:'HTMLButtonElement',LABEL:'HTMLLabelElement',CANVAS:'HTMLCanvasElement',A:'HTMLAnchorElement',FORM:'HTMLFormElement',STYLE:'HTMLStyleElement',SCRIPT:'HTMLScriptElement',IFRAME:'HTMLIFrameElement',IMG:'HTMLImageElement',UL:'HTMLUListElement',LI:'HTMLLIElement',TABLE:'HTMLTableElement'};
@@ -5484,19 +5893,33 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var projectionApply=Reflect.apply,projectionSetPrototype=Object.setPrototypeOf;
     var projectionHasOwn=Object.prototype.hasOwnProperty,projectionHas=WeakSet.prototype.has,projectionAdd=WeakSet.prototype.add;
     var projectionSlice=String.prototype.slice;
+    // Interface name for an Element (nodeType 1). SVG elements go to SVGSVGElement or
+    // SVGElement depending on their (prefix-stripped) local name; xhtml / math / other
+    // namespaces take their own interfaces.
+    function projectNodeName1(tag, namespace){
+      if (namespace === 'http://www.w3.org/2000/svg') {
+        var localStart = 0;
+        for (var index = 0; index < tag.length; index++) if (tag[index] === ':') localStart = index + 1;
+        return projectionApply(projectionSlice, tag, [localStart]) === 'svg' ? 'SVGSVGElement' : 'SVGElement';
+      }
+      return namespace === 'http://www.w3.org/1999/xhtml' ? htmlInterfaceName(tag) : namespace === 'http://www.w3.org/1998/Math/MathML' ? 'MathMLElement' : 'Element';
+    }
+    // Interface name for every other node type (document, attr, text, fragment, …).
+    var projectNodeTypeNames = { 2:'Attr', 10:'DocumentType', 3:'Text', 4:'CDATASection', 7:'ProcessingInstruction', 8:'Comment', 9:'HTMLDocument', 11:'DocumentFragment' };
+    function projectNodeNameOther(obj, type){
+      if (type === 11 && projectionApply(isShadowRoot, obj, [])) return 'ShadowRoot';
+      return projectNodeTypeNames[type] || 'Node';
+    }
     __ns.projectNativeNode=function(obj){
-      if(projectionApply(projectionHas,projected,[obj]))return obj;
-      var type=projectionApply(getType,obj,[]),name;
-      if(type===1){
-        var tag=projectionApply(getLocalTag,obj,[]),namespace=projectionApply(getNamespace,obj,[]);
-        if(namespace==='http://www.w3.org/2000/svg'){
-          var localStart=0;for(var index=0;index<tag.length;index++)if(tag[index]===':')localStart=index+1;
-          name=projectionApply(projectionSlice,tag,[localStart])==='svg'?'SVGSVGElement':'SVGElement';
-        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):namespace==='http://www.w3.org/1998/Math/MathML'?'MathMLElement':'Element';
-      }else name=type===11&&projectionApply(isShadowRoot,obj,[])?'ShadowRoot':({2:'Attr',10:'DocumentType',3:'Text',4:'CDATASection',7:'ProcessingInstruction',8:'Comment',9:'HTMLDocument',11:'DocumentFragment'})[type]||'Node';
-      projectionSetPrototype(obj,prototypes[name]);
-      projectionApply(projectionAdd,projected,[obj]);
-      for(var index=0;index<nativeKeys.length;index++){var key=nativeKeys[index];if(projectionApply(projectionHasOwn,obj,[key]))delete obj[key];}
+      if (projectionApply(projectionHas, projected, [obj])) return obj;
+      var type = projectionApply(getType, obj, []), name;
+      if (type === 1) {
+        var tag = projectionApply(getLocalTag, obj, []), namespace = projectionApply(getNamespace, obj, []);
+        name = projectNodeName1(tag, namespace);
+      } else name = projectNodeNameOther(obj, type);
+      projectionSetPrototype(obj, prototypes[name]);
+      projectionApply(projectionAdd, projected, [obj]);
+      for (var index = 0; index < nativeKeys.length; index++) { var key = nativeKeys[index]; if (projectionApply(projectionHasOwn, obj, [key])) delete obj[key]; }
       return obj;
     };
     __ns.projectNativeNode(d);
