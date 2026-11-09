@@ -296,6 +296,71 @@ mod tests {
         browser_env::reset();
     }
 
+    /// turbo-dom#428: `structuredClone` must round-trip the HTML spec types
+    /// (Date, Map, Set, RegExp, typed arrays, cycles, BigInt) instead of
+    /// rejecting them. The previous JSON-based stub threw DataCloneError on
+    /// all of these; a page feature-detection then disagreed with Chrome.
+    #[test]
+    fn structured_clone_round_trips_html_spec_types() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // A single safe-eval probe: every assertion runs inside try/catch
+        // (the current JSON-stub throws DataCloneError eagerly, which would
+        // otherwise abort the host-side eval helper on the first failure).
+        let probe = r#"(() => {
+          const rows = {};
+          function safe(label, fn) { try { rows[label] = fn(); } catch (e) { rows[label] = 'threw:' + (e && e.name || String(e)); } }
+          safe('date', () => {
+            const d = new Date(1700000000000); const c = structuredClone(d);
+            return [c instanceof Date, c !== d, c.getTime() === d.getTime()];
+          });
+          safe('map', () => {
+            const m = new Map([['a',1],['b',2]]); const c = structuredClone(m);
+            return [c instanceof Map, c !== m, c.get('a'), c.get('b'), c.size];
+          });
+          safe('set', () => {
+            const s = new Set([1,2,3]); const c = structuredClone(s);
+            return [c instanceof Set, c !== s, c.has(1), c.has(2), c.has(3), c.size];
+          });
+          safe('regexp', () => {
+            const r = /foo/gi; const c = structuredClone(r);
+            return [c instanceof RegExp, c.source === 'foo', c.flags === r.flags];
+          });
+          safe('bigint', () => {
+            const n = 123456789012345678901234567890n; const c = structuredClone(n);
+            return [typeof c === 'bigint', c === n];
+          });
+          safe('cycle', () => {
+            const o = {}; o.self = o; const c = structuredClone(o);
+            return [c !== o, c.self === c];
+          });
+          safe('u8', () => {
+            const u = new Uint8Array([1,2,3,255]); const c = structuredClone(u);
+            return [c instanceof Uint8Array, c !== u, Array.from(c).join()];
+          });
+          safe('fn', () => {
+            let name = null;
+            try { structuredClone(() => {}); }
+            catch (e) { name = e && e.name; }
+            return name;
+          });
+          return JSON.stringify(rows);
+        })()"#;
+        let result = eval(scope, probe);
+        let expected = r#"{"date":[true,true,true],"map":[true,true,1,2,2],"set":[true,true,true,true,true,3],"regexp":[true,true,true],"bigint":[true,true],"cycle":[true,true],"u8":[true,true,"1,2,3,255"],"fn":"DataCloneError"}"#;
+        assert_eq!(
+            result, expected,
+            "structuredClone must round-trip HTML-spec types (Date, Map, \
+             Set, RegExp, BigInt, cycles, typed arrays) and still reject \
+             non-cloneable values (functions) with DataCloneError"
+        );
+        browser_env::reset();
+    }
+
     /// turbo-dom#438: native-side event payloads must not inherit
     /// `Object.prototype`. A worker-side script that stamps a getter on
     /// `Object.prototype.leak` would otherwise be able to observe the native
