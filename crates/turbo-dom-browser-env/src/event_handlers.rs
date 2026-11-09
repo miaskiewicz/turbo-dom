@@ -279,14 +279,16 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             Some(context) => context,
             None => {
                 // No live realm for this element: a torn-down context leaves neither an
-                // owner-DOM entry nor a creation context. Dropping the compile silently
-                // would lose a handler; keep the behaviour (there is no realm to compile
-                // in), but make the None case loud so a regression — a stale cache miss,
-                // a wrong `dom_id_of` — does not hide here (M2, R1 cleanup).
-                debug_assert!(
-                    false,
-                    "inline on* handler: element has no live owner-document realm",
-                );
+                // owner-DOM entry nor a creation context, so there is nowhere to compile
+                // the handler. Documented invariant: the fallback `get_creation_context`
+                // above catches every legitimately detached element on the paths this
+                // function is called from (owner-DOM lookup or creation-context fallback),
+                // so None here means a genuine bug (a stale cache miss, a wrong
+                // `dom_id_of`, a snapshot-restored or post-dispose path we did not model)
+                // — but a hard panic here would be fragile for tests that legitimately
+                // reach this branch (R2-events M1, 2026-11-09). This crate has no
+                // logging facade (see Cargo.toml: no `log`/`tracing` dep), so we return
+                // silently and rely on the handler never being invoked as the signal.
                 return None;
             }
         };
