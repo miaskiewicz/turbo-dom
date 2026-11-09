@@ -106,15 +106,29 @@
   // true, so a microtask that synchronously re-dispatches the same event
   // would see `dispatching=true` on the shared record and throw
   // InvalidStateError — Chrome 156's dispatch flag is per-dispatch and
-  // allows the re-dispatch. Save every dispatch-scoped field, clear
+  // allows the re-dispatch (Chrome 156 probe:
+  // `scripts/microtask-redispatch-chrome-control.mjs` records
+  // `count=2, error=null`). Save every dispatch-scoped field, clear
   // dispatching for the drain, drain, then restore. A microtask's own
   // dispatch runs in its scope; the outer dispatch resumes unchanged.
+  //
+  // Review R3 H1: `stop` and `stopImmediate` are dispatch-scoped too —
+  // dispatchTarget's outer finally unconditionally resets them, so a
+  // nested re-dispatch's finally would otherwise wipe an outer
+  // listener's `stopPropagation()`. Save and restore both, so the outer
+  // dispatch's stop-propagation state survives the drain window. The
+  // inner dispatch still sees its own fresh `stop`/`stopImmediate`
+  // (restored to the saved values once the inner dispatch's finally has
+  // reset them — which is its right: a re-dispatched event's stopping
+  // state is its own, not the outer's).
   function drainMicrotasksAcrossDispatch(record){
     const savedDispatching=record.dispatching;
     const savedCurrent=record.currentTarget;
     const savedPhase=record.eventPhase;
     const savedPath=record.path;
     const savedTarget=record.target;
+    const savedStop=record.stop;
+    const savedStopImmediate=record.stopImmediate;
     record.dispatching=false;
     try{native('microtaskCheckpoint');}
     finally{
@@ -123,6 +137,8 @@
       record.eventPhase=savedPhase;
       record.path=savedPath;
       record.target=savedTarget;
+      record.stop=savedStop;
+      record.stopImmediate=savedStopImmediate;
     }
   }
   // Run every listener of `event` on `level` whose capture flag matches `captureFilter`

@@ -556,10 +556,15 @@ Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom
   Promise queued inside one listener has settled before the next runs — the window dispatch
   (`invoke`) is unchanged. The per-listener drain is wrapped in
   `drainMicrotasksAcrossDispatch`: it saves and restores every dispatch-scoped field
-  (`dispatching` / `currentTarget` / `eventPhase` / `path` / `target`) across the
+  (`dispatching` / `currentTarget` / `eventPhase` / `path` / `target` / `stop` /
+  `stopImmediate`) across the
   checkpoint, so a microtask that synchronously re-dispatches the same event object runs
   in its own scope and the outer dispatch resumes unchanged — matching Chrome 156's
-  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3).
+  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3, R3 H1). R3 H1 added
+  `stop` / `stopImmediate` to the save set: the outer `dispatchTarget`'s `finally`
+  unconditionally resets them, so an inner nested dispatch (from a microtask) would
+  otherwise wipe an outer listener's `stopPropagation()` and the outer bubble phase
+  would run.
 - **Shadow DOM is pay-for-what-you-use, gated on `Document.__hasShadow`** (set by the first
   `attachShadow`; armed eagerly for declarative `<template shadowrootmode>` in `index.mjs`, behind
   a `'shadowroot'` substring check on the HTML). Until then every hot path runs byte-for-byte as
