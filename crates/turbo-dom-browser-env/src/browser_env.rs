@@ -11490,6 +11490,95 @@ mod tests {
         reset();
     }
 
+    // An iframe document's inline `on*` content-attribute handler must compile in the
+    // IFRAME's own realm, not the parent realm that happened to trigger the compile
+    // (Chrome 156: the body's globals, `this` binding and `window` reference the iframe
+    // window). turbo-dom#478 / turbo-surf#287: parent-realm dispatch on a script element in
+    // an independent child context was compiling the handler against the parent realm, so
+    // `globalThis.x = 1` landed on the parent's `x` and the iframe's stayed 0.
+    #[test]
+    fn inline_handler_compiles_in_element_owning_realm() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let parent = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, parent);
+        install(scope);
+        let child = v8::Context::new(scope, Default::default());
+        child.set_security_token(parent.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(
+                scope,
+                "<body><div id=target onload='globalThis.realmMarker=\"child\"; globalThis.hits=(globalThis.hits||0)+1; globalThis.thisIsElement=(this===document.getElementById(\"target\")); globalThis.freeDocumentOwner=document;'></div></body>",
+            );
+        }
+        let key = v8::String::new(scope, "child").unwrap();
+        let child_global = child.global(scope);
+        parent
+            .global(scope)
+            .set(scope, key.into(), child_global.into());
+        let src = v8::String::new(
+            scope,
+            r#"
+                globalThis.realmMarker = 'parent';
+                globalThis.hits = 0;
+                globalThis.thisIsElement = false;
+                globalThis.freeDocumentOwner = null;
+                const node = child.document.getElementById('target');
+                // Borrow the PARENT realm's EventTarget.prototype.dispatchEvent and invoke it on a
+                // CHILD-owned element. This forces refresh() to run with scope.get_current_context()
+                // == parent, which (before the fix) compiled the inline onload in the parent realm.
+                EventTarget.prototype.dispatchEvent.call(node, new child.Event('load'));
+                JSON.stringify({
+                    parentRealm: globalThis.realmMarker,
+                    childRealm: child.realmMarker,
+                    parentHits: globalThis.hits,
+                    childHits: child.hits,
+                    childThisIsElement: child.thisIsElement,
+                    parentThisIsElement: globalThis.thisIsElement,
+                    childFreeDocumentIsChild: child.freeDocumentOwner === child.document,
+                    childFreeDocumentIsParent: child.freeDocumentOwner === document,
+                });
+            "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, src, None).unwrap();
+        let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Compare against the Chrome 156 control row for realm selection (turbo-dom#478).
+        let control: serde_json::Value =
+            serde_json::from_str(include_str!("iframe_inline_handler_realm_chrome156.json"))
+                .unwrap();
+        let expected = &control["result"]["realmSelection"];
+        for field in [
+            "childRealmMarker",
+            "parentRealmMarker",
+            "childHits",
+            "parentHits",
+            "childThisIsElement",
+            "parentThisIsElement",
+            "childFreeDocumentIsChild",
+            "childFreeDocumentIsParent",
+        ] {
+            let got_key = match field {
+                "childRealmMarker" => "childRealm",
+                "parentRealmMarker" => "parentRealm",
+                other => other,
+            };
+            assert_eq!(
+                v[got_key], expected[field],
+                "{field} must match Chrome 156 control: got {out}"
+            );
+        }
+        // Chrome 156: exactly ONE invocation per dispatch (surf#287 double-fire regression).
+        assert_eq!(
+            v["childHits"], control["result"]["oneFirePerDispatch"]["childHitsAfterSingleDispatch"],
+            "handler fires exactly once per dispatch: {out}"
+        );
+        reset();
+    }
+
     // A cross-origin <iframe> hosts a bridged second window realm: contentWindow is a
     // distinct object with its own document, and postMessage crosses the realm boundary
     // in BOTH directions carrying the correct source/origin (the reCAPTCHA anchor↔bframe

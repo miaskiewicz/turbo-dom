@@ -1,0 +1,34 @@
+{
+  "browser": "Chrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "probe": "iframe-inline-handler-realm-chrome156-probe.js",
+  "probeSha256": "8fc6e90cf174d30d061ebfbbfc17004130f4e4a8156348b0c7b324de8c968ed8",
+  "collectorSha256": "6e7dece375d8bcbb67cf9de2af7e7be197306dc44c7493d1ae298da0629d2c4b",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "result": {
+    "realmSelection": {
+      "childRealmMarker": "child",
+      "parentRealmMarker": "parent",
+      "childHits": 1,
+      "parentHits": 0,
+      "childThisIsElement": true,
+      "parentThisIsElement": false,
+      "childFreeDocumentIsChild": true,
+      "childFreeDocumentIsParent": false
+    },
+    "oneFirePerDispatch": {
+      "childHitsAfterSingleDispatch": 1
+    }
+  }
+}
