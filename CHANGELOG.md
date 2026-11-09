@@ -43,6 +43,18 @@ Follow-up release addressing issues surfaced during the v0.8.1 R1-R4 adversarial
   sweep (#454) deferred to a second pass.
 - **Release ops**: `publish.yml` now attaches the napi `.node` prebuilts to the GitHub Release
   so turbo-surf's pipeline doesn't rebuild them (#479).
+- **R1/R2/R3 adversarial-review follow-ups** (pre-publish hardening): iframe inline on* handlers
+  now compile in the element's **owner-document** realm, not creation context, so cross-document
+  `adoptNode` re-targets the handler like Chrome (#478 R1 adoption gap). Raster painters
+  (`paint_image` / `paint_border` / `paint_box_shadow` / `paint_inset_shadow` / `paint_gradient` /
+  `paint_round_border` / `paint_tiles`) and SVG `rect_r` reject non-finite (NaN/±Inf) width/height,
+  closing the `width="NaN"` SVG hole; column-rule painters already guarded in v0.8.1. `-webkit-*`
+  parity fixture extended with `-webkit-{mask,box-shadow,border-image,column-*,perspective*,backface-visibility}`
+  (10 new rows, 4 added to admitted list). `dom_ownership::sweep_collected` behavioural call-count
+  gate replaces the earlier source-shape grep. `captured_intrinsics.js` `rewrap` helper preserves
+  the error subclass + attaches `cause`. `cssom_parser` hot path switched to `eq_ignore_ascii_case`
+  to drop a per-call allocation. Webfont DPR-2 comparator switched to exact equality to match
+  the "both sides on device-pixel grid" docstring.
 
 ## [0.8.1] — 2026-11-09
 
