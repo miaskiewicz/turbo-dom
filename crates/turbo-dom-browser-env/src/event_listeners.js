@@ -269,7 +269,7 @@
     const path=collectPath(target,state);
     if(!host&&!anyPathListener(path,record.type))return;
     for(let i=path.length-1;i>0;i--){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],true,1);}
-    if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+    if(!record.stop&&!record.stopImmediate)invokeAt(event,record,target,null,2);
     if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
   }
   function dispatchTarget(event,target,host=false){

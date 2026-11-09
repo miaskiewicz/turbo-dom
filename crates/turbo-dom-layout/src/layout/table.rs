@@ -73,6 +73,11 @@ fn rows_of(group: &LayoutBox) -> Vec<&LayoutBox> {
     }
 }
 
+/// Review R4 M1 (#472): only `<thead>` / `<tfoot>` repeat across page / column
+/// breaks. `Display::TableRowGroup` (`<tbody>`) is a plain body section — it
+/// ends up in [`row_groups`] / [`sections`] but never repeats. The four other
+/// non-row table variants (`TableColumnGroup` / `TableColumn` / `TableCaption` /
+/// `TableCell`) never reach this helper from a well-formed table flow.
 fn group_repeat(d: Display) -> Option<RepeatKind> {
     match d {
         Display::TableHeaderGroup => Some(RepeatKind::Header),
@@ -320,6 +325,9 @@ fn stronger(group: BreakRule, row: BreakRule) -> BreakRule {
         (BreakRule::Page, _) | (_, BreakRule::Page) => BreakRule::Page,
         (BreakRule::Column, _) | (_, BreakRule::Column) => BreakRule::Column,
         (BreakRule::Avoid, _) | (_, BreakRule::Avoid) => BreakRule::Avoid,
+        // R4 M2 (#473): `avoid-page` is page-class like `avoid`; it beats
+        // `avoid-column` for the same "coarser class wins" reason.
+        (BreakRule::AvoidPage, _) | (_, BreakRule::AvoidPage) => BreakRule::AvoidPage,
         (BreakRule::AvoidColumn, _) | (_, BreakRule::AvoidColumn) => BreakRule::AvoidColumn,
         _ => BreakRule::Auto,
     }
