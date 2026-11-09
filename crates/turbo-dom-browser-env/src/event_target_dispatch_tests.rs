@@ -473,3 +473,163 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
     );
     reset();
 }
+
+/// Review R4 H1: `drainMicrotasksAcrossDispatch` added `stop` / `stopImmediate`
+/// to the SAVE set (R3 H1) but did NOT CLEAR them before the
+/// `microtaskCheckpoint`. A nested re-dispatch from a microtask therefore
+/// enters `dispatchMulti` / `dispatchTarget` with the outer's `record.stop =
+/// true`, and the inner's capture / bubble loops bail out on their first
+/// `if (record.stop || record.stopImmediate) return;` check — Chrome 156
+/// dispatches each nested dispatch as an independent `stop` scope and runs
+/// every phase of the inner. Fix: clear `record.stop` / `record.stopImmediate`
+/// after saving but before the checkpoint, so a nested re-dispatch starts
+/// fresh and the outer's values restore on the drain's finally.
+#[test]
+fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Three-level chain child -> mid -> parent. Outer dispatches the SAME
+    // event the inner will re-dispatch; the only listener that stops
+    // propagation lives on mid (a `pingOnce` guard keeps it from recursing
+    // in the inner dispatch). The outer's stopPropagation must NOT leak
+    // INTO the inner's dispatch — Chrome 156 treats each nested dispatch as
+    // an independent stop scope, so every capture / bubble phase on the
+    // inner must still fire. With R4 H1's bug, the drain's checkpoint runs
+    // with the outer's `record.stop = true` still on the shared record, and
+    // the inner's `dispatchMulti` bails on its first
+    // `if (record.stop || record.stopImmediate) return;` — inner capture
+    // and bubble phases silently skipped, only AT_TARGET fires.
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let stoppedOnce = false, queued = false;
+      let depth = 0;
+      // Capture listeners: path walks parent -> mid -> child, so the
+      // parent's capture runs BEFORE mid's and records the outer phase.
+      parent.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':parent-capture:' + event.eventPhase);
+      }, { capture: true });
+      mid.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':mid-capture:' + event.eventPhase);
+        if (!stoppedOnce) {
+          stoppedOnce = true;
+          event.stopPropagation();
+        }
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('inner-start');
+            depth = 1;
+            try { child.dispatchEvent(event); }
+            catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+            depth = 0;
+            trace.push('inner-end');
+          });
+        }
+      }, { capture: true });
+      // AT_TARGET on child.
+      child.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':child-target:' + event.eventPhase);
+      });
+      // Bubble: mid, then parent.
+      mid.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':mid-bubble:' + event.eventPhase);
+      });
+      parent.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':parent-bubble:' + event.eventPhase);
+      });
+      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "nested re-dispatch stop-state script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Outer (depth=0) stop assertions: parent-capture fires BEFORE mid
+    // (chain is parent -> mid -> child, capture walks top to target).
+    // AT_TARGET's child-target DOES fire — stopPropagation does NOT stop
+    // AT_TARGET (only stopImmediatePropagation does). Bubble is skipped.
+    assert!(
+        has("depth=0:parent-capture:1"),
+        "depth=0:parent-capture must fire (capture walks top to target; \
+         stopPropagation on mid comes after parent). Trace: {trace}",
+    );
+    assert!(
+        has("depth=0:mid-capture:1"),
+        "depth=0:mid-capture must fire (and calls stopPropagation). \
+         Trace: {trace}",
+    );
+    assert!(
+        has("depth=0:child-target:2"),
+        "depth=0:child-target MUST fire — stopPropagation on a multi-level \
+         path does NOT block AT_TARGET's own level (only \
+         stopImmediatePropagation does). Trace: {trace}",
+    );
+    assert!(
+        !has("depth=0:mid-bubble:3"),
+        "depth=0:mid-bubble must NOT fire — outer stopPropagation. \
+         Trace: {trace}",
+    );
+    assert!(
+        !has("depth=0:parent-bubble:3"),
+        "depth=0:parent-bubble must NOT fire — outer stopPropagation. \
+         Trace: {trace}",
+    );
+    // Inner dispatch (depth=1) assertions: every phase runs — the outer's
+    // stop state must NOT leak INTO the inner through the drain's unreset
+    // `record.stop`. With R4 H1's bug, the inner's `dispatchMulti` bails
+    // on its capture loop's first `if(record.stop||record.stopImmediate)
+    // return;` check — AT_TARGET and bubble never run either (dispatchMulti
+    // returns from the capture loop, not from a per-phase guard).
+    assert!(
+        has("depth=1:parent-capture:1"),
+        "depth=1:parent-capture must fire — the outer's stopPropagation \
+         must NOT leak into the microtask-driven re-dispatch of the same \
+         event (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:mid-capture:1"),
+        "depth=1:mid-capture must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:child-target:2"),
+        "depth=1:child-target must fire — with the R4 H1 leak, the inner \
+         dispatchMulti bails on its capture loop before AT_TARGET runs. \
+         Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:mid-bubble:3"),
+        "depth=1:mid-bubble must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:parent-bubble:3"),
+        "depth=1:parent-bubble must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    reset();
+}
