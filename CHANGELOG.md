@@ -31,6 +31,7 @@ at the time); this file reconstructs them from history.
   test-support` all pass with no behaviour change. The JS gate
   (`complexity / js`) still reads cc <= 15 at the integrator; the
   per-lane PRs drive the counts to 12 ahead of the ceiling flip.
+- #379 JS lane B (typed_om / editing / animations): extracted helpers for cc <= 12.
 
 ### Fixed
 
