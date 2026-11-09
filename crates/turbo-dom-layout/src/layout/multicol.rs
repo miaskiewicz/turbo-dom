@@ -2162,4 +2162,139 @@ mod tests {
         let bs = resolve_box_style(&cs(&[("height", "auto")]), ctx);
         assert_eq!(definite_container_height(&bs), None);
     }
+
+    /// `apply_pre_break`'s `break_inside_avoid` branch fires when a kid with
+    /// that flag fits in a column but would overrun the current one — a push
+    /// to the next column replaces fragmentation. Covers multicol.rs 816-823
+    /// (R1 M8 / #440), asserting both the advance (column + 1) and the reset
+    /// (cursor back to 0) so a mutation that drops either half fails.
+    #[test]
+    fn apply_pre_break_pushes_break_inside_avoid_to_next_column() {
+        let f = KidFlags {
+            break_inside_avoid: true,
+            ..KidFlags::default()
+        };
+        // Set-up: col_h=100, kid fits in a column (50 <= 100) but would
+        // overflow the current one (60 + 50 > 100), and cursor > 0.
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(
+            col_index, 1,
+            "break-inside:avoid-that-would-fragment must push to next column"
+        );
+        assert!(
+            col_cursor.abs() < 1e-5,
+            "the push resets the column cursor (was {col_cursor})"
+        );
+
+        // Guard: kid taller than a column stays put — CSS Fragmentation 3
+        // §5.2 "If the fragment does not fit, the user agent may ignore the
+        // value".
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f, 100.0, 150.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 60.0).abs() < 1e-5);
+
+        // Guard: fits in current column — no push.
+        let mut col_index = 0u32;
+        let mut col_cursor = 20.0f32;
+        apply_pre_break(f, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 20.0).abs() < 1e-5);
+
+        // Guard: flag off — no push even when the geometry would qualify.
+        let f_no = KidFlags::default();
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f_no, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 60.0).abs() < 1e-5);
+    }
+
+    /// `place_measured`'s non-Box fallback (multicol.rs 974-981) collapses
+    /// into the pre-#427 union rect: a fragmented block whose measured
+    /// content is not a paintable Box (text line, marker, image, tiles,
+    /// column rule) can't be split per-column, so its fragments reduce to
+    /// one shell at the union geometry. Exercises the fallback arm so a
+    /// mutation that forgets to update `x/y/width/height`, keeps the
+    /// children, or returns before placing the union would fail.
+    #[test]
+    fn place_measured_multi_piece_uses_union_rect_for_non_box_content() {
+        use super::super::fragment::{FragmentContent, NodeId};
+        use crate::tag::MarkerKind;
+        let marker_kind = MarkerKind {
+            id: 7,
+            inline: false,
+        };
+        let mut measured = Fragment::new(
+            NodeId(42),
+            0.0,
+            0.0,
+            150.0,
+            70.0,
+            FragmentContent::Marker(marker_kind),
+        );
+        // Spurious children on the input must be cleared — the fallback is
+        // the pre-#427 behaviour, not the #427 per-column shell.
+        measured.children.push(Fragment::new(
+            NodeId(43),
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(marker_kind),
+        ));
+        // Two pieces across columns 0 and 1.
+        let pieces = [
+            ColPiece {
+                col_index: 0,
+                y: 40.0,
+                height: 30.0,
+            },
+            ColPiece {
+                col_index: 1,
+                y: 0.0,
+                height: 25.0,
+            },
+        ];
+        // used_count=2, used_width=200, gap=20, cw=420, cx=10, cy=5.
+        // left_col=0 → strip_origin(0) = cx = 10.
+        // right_col=1 (last): end-aligned at cx + cw - used_width = 10 + 420 - 200 = 230.
+        // right = 230 + 200 = 430. width = 430 - 10 = 420.
+        // min_y = 0 (pieces[1].y), max_bottom = 70 (pieces[0].y+height).
+        // y = cy + min_y = 5 + 0 = 5. height = max_bottom - min_y = 70.
+        let got = place_measured(measured, &pieces, (2, 200.0, 20.0), 420.0, 10.0, 5.0);
+        assert!(
+            (got.x - 10.0).abs() < 1e-5,
+            "union-rect left edge = strip_origin(left_col) (got {})",
+            got.x
+        );
+        assert!(
+            (got.y - 5.0).abs() < 1e-5,
+            "union-rect y = cy + min_y (got {})",
+            got.y
+        );
+        assert!(
+            (got.width - 420.0).abs() < 1e-5,
+            "union-rect width spans every column it touches (got {})",
+            got.width
+        );
+        assert!(
+            (got.height - 70.0).abs() < 1e-5,
+            "union-rect height = max_bottom - min_y (got {})",
+            got.height
+        );
+        assert!(
+            got.children.is_empty(),
+            "non-Box fallback clears children (pre-#427 shape)"
+        );
+        // Content survives through the arm — a mutation that swapped the
+        // bindings would smuggle the empty-Box content in here instead.
+        assert!(
+            matches!(got.content, FragmentContent::Marker(k) if k == marker_kind),
+            "measured.content (non-Box) is preserved through the fallback"
+        );
+    }
 }

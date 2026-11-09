@@ -2087,4 +2087,51 @@ mod percent_tests {
         );
         assert_eq!(grow(&[0.0, 0.0], &[true, true], 10.0), [5.0, 5.0]);
     }
+
+    /// CSS Fragmentation 3 §3.1: a group's `break-*` combines with the row's own
+    /// following a strict coarseness-wins policy. `Page` beats every other value
+    /// (coarsest forced break), then `Column` (finer forced break), then `Avoid`
+    /// (coarsest avoid, i.e. avoid-page), then `AvoidColumn`, then `Auto`.
+    /// Exercises every arm of `stronger` so a mutation that swaps two returns,
+    /// drops an arm, or collapses two of them cannot pass.
+    #[test]
+    fn stronger_picks_coarsest_rule_class() {
+        use super::{stronger, BreakRule};
+        // Page beats anything on either side.
+        assert_eq!(stronger(BreakRule::Page, BreakRule::Auto), BreakRule::Page);
+        assert_eq!(stronger(BreakRule::Auto, BreakRule::Page), BreakRule::Page);
+        assert_eq!(
+            stronger(BreakRule::Page, BreakRule::Column),
+            BreakRule::Page
+        );
+        // Column wins once Page is out of the picture.
+        assert_eq!(
+            stronger(BreakRule::Column, BreakRule::Avoid),
+            BreakRule::Column
+        );
+        assert_eq!(
+            stronger(BreakRule::Auto, BreakRule::Column),
+            BreakRule::Column
+        );
+        // Avoid (page-coarse) wins over AvoidColumn.
+        assert_eq!(
+            stronger(BreakRule::Avoid, BreakRule::AvoidColumn),
+            BreakRule::Avoid
+        );
+        assert_eq!(
+            stronger(BreakRule::AvoidColumn, BreakRule::Avoid),
+            BreakRule::Avoid
+        );
+        // AvoidColumn beats Auto.
+        assert_eq!(
+            stronger(BreakRule::AvoidColumn, BreakRule::Auto),
+            BreakRule::AvoidColumn
+        );
+        assert_eq!(
+            stronger(BreakRule::Auto, BreakRule::AvoidColumn),
+            BreakRule::AvoidColumn
+        );
+        // Two autos fall through to Auto.
+        assert_eq!(stronger(BreakRule::Auto, BreakRule::Auto), BreakRule::Auto);
+    }
 }
