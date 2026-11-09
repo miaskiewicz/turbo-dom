@@ -35,7 +35,8 @@ fn break_rule_of_matches_chrome156_accept_reject() {
         if prop == "break-inside" {
             let s = style_with(prop, kw);
             let got_avoid = break_inside_avoid_of(&s) || break_inside_column_avoid_of(&s);
-            let expected_avoid = *chrome_supports && (kw == "avoid" || kw == "avoid-page" || kw == "avoid-column");
+            let expected_avoid =
+                *chrome_supports && (kw == "avoid" || kw == "avoid-page" || kw == "avoid-column");
             if got_avoid != expected_avoid {
                 mismatches.push(format!(
                     "{prop}: {kw}: ours_avoid={got_avoid} expected_avoid={expected_avoid} chrome_held={held:?}"

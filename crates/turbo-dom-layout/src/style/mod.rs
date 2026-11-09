@@ -504,8 +504,7 @@ mod tests {
     /// test.
     #[test]
     fn html_default_display_matches_ua_css_display_rules() {
-        let mut from_ua: std::collections::BTreeMap<&str, &str> =
-            std::collections::BTreeMap::new();
+        let mut from_ua: std::collections::BTreeMap<&str, &str> = std::collections::BTreeMap::new();
         for rule in UA_CSS.split('}') {
             let Some((selector, body)) = rule.split_once('{') else {
                 continue;
@@ -545,17 +544,79 @@ mod tests {
         // And the converse: every html_default_display row must be grounded in UA_CSS,
         // so a surf-mode fallback does not invent a default UA_CSS does not declare.
         for tag in [
-            "address", "article", "aside", "blockquote", "body", "center", "dd", "details",
-            "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer",
-            "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "html",
-            "legend", "listing", "main", "menu", "nav", "ol", "optgroup", "option", "p",
-            "plaintext", "pre", "search", "section", "ul", "xmp", "li", "summary", "table",
-            "thead", "tbody", "tfoot", "tr", "caption", "td", "th", "colgroup", "col",
-            "input", "textarea", "select", "button", "progress", "meter", "marquee",
-            "template", "datalist", "rp", "slot", "rt", "rtc",
+            "address",
+            "article",
+            "aside",
+            "blockquote",
+            "body",
+            "center",
+            "dd",
+            "details",
+            "dialog",
+            "dir",
+            "div",
+            "dl",
+            "dt",
+            "fieldset",
+            "figcaption",
+            "figure",
+            "footer",
+            "form",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "header",
+            "hgroup",
+            "hr",
+            "html",
+            "legend",
+            "listing",
+            "main",
+            "menu",
+            "nav",
+            "ol",
+            "optgroup",
+            "option",
+            "p",
+            "plaintext",
+            "pre",
+            "search",
+            "section",
+            "ul",
+            "xmp",
+            "li",
+            "summary",
+            "table",
+            "thead",
+            "tbody",
+            "tfoot",
+            "tr",
+            "caption",
+            "td",
+            "th",
+            "colgroup",
+            "col",
+            "input",
+            "textarea",
+            "select",
+            "button",
+            "progress",
+            "meter",
+            "marquee",
+            "template",
+            "datalist",
+            "rp",
+            "slot",
+            "rt",
+            "rtc",
         ] {
             let Some(got) = html_default_display(tag) else {
-                mismatches.push(format!("{tag}: html_default_display None but is a known tag"));
+                mismatches.push(format!(
+                    "{tag}: html_default_display None but is a known tag"
+                ));
                 continue;
             };
             match from_ua.get(tag) {
