@@ -84,16 +84,10 @@ fn run_chain() -> serde_json::Value {
     let source = v8::String::new(scope, source).unwrap();
     let scope = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut scope.init();
-    let result = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
-    if result.is_none() {
-        panic!(
-            "event_target_dispatch fixture: {:?}",
-            scope
-                .exception()
-                .map(|value| value.to_rust_string_lossy(scope))
-        );
-    }
-    let text = result.unwrap().to_rust_string_lossy(scope);
+    let text = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .expect("event_target_dispatch fixture compiled")
+        .to_rust_string_lossy(scope);
     reset();
     serde_json::from_str(&text).unwrap()
 }

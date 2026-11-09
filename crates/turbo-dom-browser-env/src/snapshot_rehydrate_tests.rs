@@ -69,17 +69,10 @@ JSON.stringify(__log)
 fn eval(scope: &mut v8::PinScope, source: &str) -> String {
     v8::tc_scope!(let scope, scope);
     let code = v8::String::new(scope, source).unwrap();
-    match v8::Script::compile(scope, code, None).and_then(|script| script.run(scope)) {
-        Some(value) => value.to_rust_string_lossy(scope),
-        None => {
-            let exception = scope.exception().unwrap();
-            let line = scope.message().map(|m| m.get_line_number(scope));
-            panic!(
-                "threw {} at {line:?}",
-                exception.to_rust_string_lossy(scope)
-            );
-        }
-    }
+    v8::Script::compile(scope, code, None)
+        .and_then(|script| script.run(scope))
+        .expect("eval compiled and ran")
+        .to_rust_string_lossy(scope)
 }
 
 fn smoke(scope: &mut v8::PinScope) -> (String, String) {
@@ -234,14 +227,13 @@ fn custom_element_constructors_of_a_snapshot_context_use_its_registry() {
 /// Whether `value` is a node wrapper whose internal fields `strip_wrappers` cleared (a
 /// wrapper of the build's shell tree that survived into the blob).
 fn stale_wrapper(scope: &mut v8::PinScope, value: v8::Local<v8::Value>) -> bool {
-    let Ok(object) = v8::Local::<v8::Object>::try_from(value) else {
-        return false;
-    };
-    object.internal_field_count() >= 2
-        && object
-            .get_internal_field(scope, 0)
-            .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
-            .is_some_and(|field| field.is_undefined())
+    v8::Local::<v8::Object>::try_from(value).is_ok_and(|object| {
+        object.internal_field_count() >= 2
+            && object
+                .get_internal_field(scope, 0)
+                .and_then(|field| v8::Local::<v8::Value>::try_from(field).ok())
+                .is_some_and(|field| field.is_undefined())
+    })
 }
 
 /// Only the document wrapper outlives the snapshot build (round-1 review #15): every other
