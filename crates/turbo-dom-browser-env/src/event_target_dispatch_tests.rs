@@ -412,6 +412,78 @@ fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
     reset();
 }
 
+/// turbo-dom#484: a page-script `dispatchEvent` on a non-Node EventTarget (what
+/// `controller.abort()` does internally for the 'abort' event, and what
+/// `AbortSignal.any`'s subscription hook does to propagate to a dependent signal)
+/// must NOT checkpoint microtasks BETWEEN its own listeners. Chrome 156 keeps the
+/// microtask queued inside listener A pending until the dispatch unwinds back to
+/// the calling script's natural yield (a later `await` / microtask / timer); the
+/// synchronous tail of the surrounding script, including listener B, runs before
+/// A's queued microtask. #382's per-listener drain fires only for HOST-initiated
+/// dispatches (engine-fired, routed through `__captureHostEventDispatch`), not
+/// for page-script dispatches. Source: the surf abort-bridge oracle
+/// `official_abort_bridge_keeps_chrome_state_and_unadapted_reaction_order`
+/// (`harness/detection/abort-bridge-order-probe.js`) — Chrome 156 records
+/// `[signal, dependent, after-abort, ..., signal-microtask]`, with the
+/// signal-microtask AFTER the dependent listener that ran inside the same
+/// `dispatchTarget('abort', signal, true)` call.
+#[test]
+fn page_script_dispatch_does_not_checkpoint_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('abort', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; trace.push('microtask'); });
+      });
+      target.addEventListener('abort', () => {
+        trace.push('B:' + microFlag);
+      });
+      // Page-script dispatch, exactly what `controller.abort()`'s internal
+      // `dispatchTarget('abort', signal, true)` reduces to (host=true sets
+      // isTrusted but the call originates from JS, not from the engine).
+      target.dispatchEvent(new Event('abort'));
+      trace.push('after-dispatch:' + microFlag);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "abort-bridge script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // Chrome 156: listener B observes `microFlag === 'pending'` because the
+    // per-listener microtask checkpoint doesn't run for page-script dispatches.
+    // The microtask fires only AFTER the dispatch unwinds to the calling
+    // script's natural yield. Pre-fix: B saw 'ran' because #382's drain fired
+    // unconditionally at the outer listener boundary.
+    assert_eq!(
+        result,
+        r#"["A:pending","B:pending","microtask","after-dispatch:ran"]"#,
+        "page-script dispatchEvent must not checkpoint microtasks between \
+         its own listeners (turbo-dom#484: the #382 drain is a HOST-dispatch \
+         observable only; a page-script dispatch keeps A's queued microtask \
+         behind B's synchronous invocation, matching Chrome 156's abort-bridge \
+         reaction order)."
+    );
+    reset();
+}
+
 /// Review R3 H1: `drainMicrotasksAcrossDispatch` saves and restores the
 /// dispatch-scoped fields (`dispatching` / `currentTarget` / `eventPhase` /
 /// `path` / `target`) but not `stop` / `stopImmediate`. A listener on an
