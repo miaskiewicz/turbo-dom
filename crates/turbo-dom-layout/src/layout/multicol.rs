@@ -836,10 +836,17 @@ fn fragment_pieces(
     col_cursor: &mut f32,
 ) -> Vec<ColPiece> {
     let mut pieces: Vec<ColPiece> = Vec::new();
-    // A non-positive column height collapses fragmentation to a single piece
-    // at the current cursor: the caller owns the placement, the flow does not
-    // walk forever trying to spill into fresh strips.
-    if col_h <= 0.0 {
+    // A column height at or below `FRAG_EPS` can't admit a real piece — the
+    // "fits" branch needs `remaining <= available + FRAG_EPS` (so any item
+    // wider than ~eps fails it) and the "advance to next column" branch only
+    // fires once the cursor has moved off 0, so the loop would keep slicing
+    // one ~col_h chunk into every column until `remaining` ran out. Collapse
+    // the whole fragmentation to a single piece at the current cursor:
+    // caller owns the placement, the flow does not walk forever trying to
+    // spill into fresh strips, and pathological styling can't force
+    // thousands of pieces (turbo-dom#426). The existing `col_h <= 0.0`
+    // policy is a special case of this bound.
+    if col_h < FRAG_EPS {
         pieces.push(ColPiece {
             col_index: *col_index,
             y: *col_cursor,
@@ -1687,6 +1694,48 @@ mod tests {
         assert_eq!(pieces[0].col_index, 0);
         assert_eq!(pieces[0].y, 0.0);
         assert!(pieces[0].height > 0.0);
+    }
+
+    #[test]
+    fn fragment_pieces_caps_output_for_subeps_col_height() {
+        // turbo-dom#426. `col_h` below `FRAG_EPS` can't admit a real piece
+        // (the "fits" branch needs `remaining <= available + FRAG_EPS` and
+        // the "advance" branch only fires once the cursor has moved off 0),
+        // so without a cap the loop fills column after column with the same
+        // ~col_h slice — ceil(item_h / col_h) pieces. Treating a sub-eps
+        // column like a non-positive one (one piece, caller owns the paint)
+        // closes the DoS window and matches the existing `col_h <= 0.0`
+        // policy. 100 / 0.3 would otherwise emit > 300 pieces.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(100.0, 0.3, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 0);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_trailing_zero_height_after_full_column_advances() {
+        // turbo-dom#443. Prior kid filled col 0 to `col_h` exactly; a
+        // margin-collapsed trailing zero-height kid must land in col 1, not
+        // at (col_index=0, y=col_h). The current `available <= FRAG_EPS &&
+        // col_cursor > 0.0` advance branch already handles this (cursor at
+        // col_h is > 0, so the branch fires before the "place and stop"
+        // branch sees `remaining <= available + FRAG_EPS` as a 0-at-col_h
+        // placement). Lock the behaviour so a later refactor can't drop the
+        // `> 0.0` guard — which would spin the column index at the top of
+        // the FIRST column — or flip the order of the "fits" and "advance"
+        // branches.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 50.0; // == col_h
+        let pieces = fragment_pieces(0.0, 50.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 1);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 0.0).abs() < 1e-5);
+        assert_eq!(ci, 1);
+        assert!((cc - 0.0).abs() < 1e-5);
     }
 
     #[test]
