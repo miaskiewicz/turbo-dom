@@ -1581,6 +1581,29 @@ mod tests {
     }
 
     #[test]
+    fn fragment_pieces_trailing_zero_height_after_full_column_advances() {
+        // turbo-dom#443. Prior kid filled col 0 to `col_h` exactly; a
+        // margin-collapsed trailing zero-height kid must land in col 1, not
+        // at (col_index=0, y=col_h). The current `available <= FRAG_EPS &&
+        // col_cursor > 0.0` advance branch already handles this (cursor at
+        // col_h is > 0, so the branch fires before the "place and stop"
+        // branch sees `remaining <= available + FRAG_EPS` as a 0-at-col_h
+        // placement). Lock the behaviour so a later refactor can't drop the
+        // `> 0.0` guard — which would spin the column index at the top of
+        // the FIRST column — or flip the order of the "fits" and "advance"
+        // branches.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 50.0; // == col_h
+        let pieces = fragment_pieces(0.0, 50.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 1);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 0.0).abs() < 1e-5);
+        assert_eq!(ci, 1);
+        assert!((cc - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn fragment_pieces_single_piece_for_non_positive_col_height() {
         let mut ci: u32 = 0;
         let mut cc: f32 = 0.0;
