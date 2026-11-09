@@ -226,6 +226,39 @@ fn percent_of(token: &str, unit_value: f32) -> f32 {
         .unwrap_or_else(|_| (f64::from(unit_value) * 100.0) as f32)
 }
 
+/// ASCII-lowercase `Kind::Ident` texts whose identifier does not start with `--`
+/// (custom idents are case-preserving).
+fn lowercase_non_dashed_idents(inner: &mut [Comp]) {
+    for comp in inner {
+        if let Kind::Ident(ident) = &comp.kind {
+            if !ident.starts_with("--") {
+                comp.text = ident.to_ascii_lowercase();
+            }
+        }
+    }
+}
+
+/// Fold `calc()`/math expressions in `cubic-bezier()` / `linear()` arguments into
+/// numbers (both) and percentages (`linear` only), matching Blink's serialization.
+fn normalize_timing_number_components(name: &str, inner: &mut [Comp]) {
+    for comp in inner {
+        match math_value(comp) {
+            Some((unit, value)) if unit.is_empty() => {
+                comp.text = css_number(value as f32);
+                comp.kind = Kind::Number {
+                    value: value as f32,
+                    integer: false,
+                };
+            }
+            Some((unit, value)) if unit == "%" && name == "linear" => {
+                comp.text = format!("{}%", css_number(value as f32));
+                comp.kind = Kind::Percentage(value as f32);
+            }
+            _ => {}
+        }
+    }
+}
+
 fn read_function_comp(name: &str, inner: Vec<Comp>) -> Option<Comp> {
     if name == "url" {
         let [Comp {
@@ -242,31 +275,10 @@ fn read_function_comp(name: &str, inner: Vec<Comp>) -> Option<Comp> {
     }
     let mut inner = inner;
     if !NAMING_FUNCTIONS.contains(&name) {
-        for comp in &mut inner {
-            if let Kind::Ident(ident) = &comp.kind {
-                if !ident.starts_with("--") {
-                    comp.text = ident.to_ascii_lowercase();
-                }
-            }
-        }
+        lowercase_non_dashed_idents(&mut inner);
     }
     if name == "cubic-bezier" || name == "linear" {
-        for comp in &mut inner {
-            match math_value(comp) {
-                Some((unit, value)) if unit.is_empty() => {
-                    comp.text = css_number(value as f32);
-                    comp.kind = Kind::Number {
-                        value: value as f32,
-                        integer: false,
-                    };
-                }
-                Some((unit, value)) if unit == "%" && name == "linear" => {
-                    comp.text = format!("{}%", css_number(value as f32));
-                    comp.kind = Kind::Percentage(value as f32);
-                }
-                _ => {}
-            }
-        }
+        normalize_timing_number_components(name, &mut inner);
     }
     if !function_valid(name, &inner) {
         return None;
@@ -726,7 +738,28 @@ fn arguments_type(inner: &[Comp]) -> Option<CalcType> {
 
 fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     let commas = inner.iter().filter(|comp| comp.kind == Kind::Comma).count();
-    let hue = |comp: &Comp| match &comp.kind {
+    if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
+        return rgb_hsl_from_valid(inner, commas);
+    }
+    if name.starts_with("hsl") && inner.first().is_some_and(|comp| !hsl_hue_valid(comp, commas)) {
+        return false;
+    }
+    if commas > 0 {
+        rgb_hsl_legacy_comma_valid(inner, commas)
+    } else {
+        rgb_hsl_modern_space_valid(inner)
+    }
+}
+
+/// `rgb(from <color> ...)`: comma-less, three or four space-separated channels, with
+/// an optional `/ <alpha>` tail.
+fn rgb_hsl_from_valid(inner: &[Comp], commas: usize) -> bool {
+    commas == 0 && (inner.len() == 5 || (inner.len() == 7 && inner[5].is_slash()))
+}
+
+/// Hue channel: number, angle dimension, `none` (modern syntax only), or math.
+fn hsl_hue_valid(comp: &Comp, commas: usize) -> bool {
+    match &comp.kind {
         Kind::Number { .. } => true,
         Kind::Dimension { unit, .. } => unit_category(unit) == Some(2),
         Kind::Ident(_) => commas == 0 && comp.is_ident(&["none"]),
@@ -735,23 +768,24 @@ fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
             Some(CalcType::Number | CalcType::Unit(2) | CalcType::Unknown)
         ),
         _ => false,
-    };
-    if inner.first().is_some_and(|comp| comp.is_ident(&["from"])) {
-        commas == 0 && (inner.len() == 5 || (inner.len() == 7 && inner[5].is_slash()))
-    } else if name.starts_with("hsl") && inner.first().is_some_and(|comp| !hue(comp)) {
-        false
-    } else if commas > 0 {
-        (commas == 2 || commas == 3)
-            && inner.len() == 2 * commas + 1
-            && inner
-                .iter()
-                .enumerate()
-                .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
-    } else {
-        match inner.iter().position(|comp| comp.kind == Kind::Slash) {
-            Some(slash) => slash == 3 && inner.len() == 5,
-            None => inner.len() == 3,
-        }
+    }
+}
+
+/// Legacy comma syntax: three channels + optional alpha, each separated by a comma.
+fn rgb_hsl_legacy_comma_valid(inner: &[Comp], commas: usize) -> bool {
+    (commas == 2 || commas == 3)
+        && inner.len() == 2 * commas + 1
+        && inner
+            .iter()
+            .enumerate()
+            .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+}
+
+/// Modern space syntax: three space-separated channels, optionally `/ <alpha>`.
+fn rgb_hsl_modern_space_valid(inner: &[Comp]) -> bool {
+    match inner.iter().position(|comp| comp.kind == Kind::Slash) {
+        Some(slash) => slash == 3 && inner.len() == 5,
+        None => inner.len() == 3,
     }
 }
 
@@ -1044,48 +1078,59 @@ fn color_function(name: &str, inner: &[Comp]) -> Option<String> {
         let channel = |comp: &Comp| number(comp).or_else(|| percent(comp).map(|p| p * 2.55));
         [channel(parts[0])?, channel(parts[1])?, channel(parts[2])?]
     } else {
-        // `function_valid` admitted a number, an angle, `none` or a math function hue.
-        let hue = match &parts[0].kind {
-            Kind::Number { value, .. } => f64::from(*value),
-            Kind::Dimension { value, unit } => {
-                f64::from(*value)
-                    * match unit.as_str() {
-                        "deg" => 1.0,
-                        "grad" => 0.9,
-                        "rad" => 180.0 / std::f64::consts::PI,
-                        _ => 360.0,
-                    }
-            }
-            _ => computed(parts[0], "").or_else(|| computed(parts[0], "deg"))?,
-        };
-        let (saturation, lightness) = (percent(parts[1])? / 100.0, percent(parts[2])? / 100.0);
-        let hue = hue.rem_euclid(360.0) / 360.0;
-        let q = if lightness < 0.5 {
-            lightness * (1.0 + saturation)
-        } else {
-            lightness + saturation - lightness * saturation
-        };
-        let p = 2.0 * lightness - q;
-        let channel = |t: f64| {
-            let t = t.rem_euclid(1.0);
-            255.0
-                * if t < 1.0 / 6.0 {
-                    p + (q - p) * 6.0 * t
-                } else if t < 0.5 {
-                    q
-                } else if t < 2.0 / 3.0 {
-                    p + (q - p) * (2.0 / 3.0 - t) * 6.0
-                } else {
-                    p
-                }
-        };
-        [
-            channel(hue + 1.0 / 3.0),
-            channel(hue),
-            channel(hue - 1.0 / 3.0),
-        ]
+        hsl_channels(parts, &computed, &percent)?
     };
     Some(rgb_text(channels, alpha))
+}
+
+/// Compute the sRGB channels of an `hsl()`/`hsla()` function. `parts` holds hue,
+/// saturation, lightness. `computed` resolves `none` / math; `percent` resolves a
+/// percentage or percentage-typed math.
+fn hsl_channels(
+    parts: &[&Comp],
+    computed: &dyn Fn(&Comp, &str) -> Option<f64>,
+    percent: &dyn Fn(&Comp) -> Option<f64>,
+) -> Option<[f64; 3]> {
+    // `function_valid` admitted a number, an angle, `none` or a math function hue.
+    let hue = match &parts[0].kind {
+        Kind::Number { value, .. } => f64::from(*value),
+        Kind::Dimension { value, unit } => {
+            f64::from(*value)
+                * match unit.as_str() {
+                    "deg" => 1.0,
+                    "grad" => 0.9,
+                    "rad" => 180.0 / std::f64::consts::PI,
+                    _ => 360.0,
+                }
+        }
+        _ => computed(parts[0], "").or_else(|| computed(parts[0], "deg"))?,
+    };
+    let (saturation, lightness) = (percent(parts[1])? / 100.0, percent(parts[2])? / 100.0);
+    let hue = hue.rem_euclid(360.0) / 360.0;
+    let q = if lightness < 0.5 {
+        lightness * (1.0 + saturation)
+    } else {
+        lightness + saturation - lightness * saturation
+    };
+    let p = 2.0 * lightness - q;
+    let channel = |t: f64| {
+        let t = t.rem_euclid(1.0);
+        255.0
+            * if t < 1.0 / 6.0 {
+                p + (q - p) * 6.0 * t
+            } else if t < 0.5 {
+                q
+            } else if t < 2.0 / 3.0 {
+                p + (q - p) * (2.0 / 3.0 - t) * 6.0
+            } else {
+                p
+            }
+    };
+    Some([
+        channel(hue + 1.0 / 3.0),
+        channel(hue),
+        channel(hue - 1.0 / 3.0),
+    ])
 }
 
 /// `lab()` / `lch()` / `oklab()` / `oklch()`: a percentage lightness spelled as a number.
@@ -1122,6 +1167,44 @@ fn steps_text(inner: &[Comp]) -> Option<String> {
 /// `linear()` with every stop's input position filled in (first 0%, last 100%, the rest
 /// spread evenly between their known neighbours).
 fn linear_text(inner: &[Comp]) -> Option<String> {
+    let stops = build_linear_stops(inner)?;
+    if stops.len() < 2 {
+        unreachable!("function_valid admits linear() with a comma: two stops or more");
+    }
+    let mut flat: Vec<Option<f64>> = stops
+        .iter()
+        .flat_map(|(_, positions)| positions.iter().copied())
+        .collect();
+    let last = flat.len() - 1;
+    flat[0].get_or_insert(0.0);
+    flat[last].get_or_insert(100.0);
+    // A position below the largest before it is that largest.
+    let mut largest = f64::NEG_INFINITY;
+    for position in flat.iter_mut().flatten() {
+        largest = largest.max(*position);
+        *position = largest;
+    }
+    fill_linear_gaps(&mut flat)?;
+    let mut out = Vec::new();
+    let mut index = 0;
+    for (output, positions) in &stops {
+        let texts: Vec<String> = positions
+            .iter()
+            .map(|_| {
+                let value = flat[index].unwrap_or(0.0);
+                index += 1;
+                format!("{}%", css_number(value as f32))
+            })
+            .collect();
+        out.push(format!("{output} {}", texts.join(" ")));
+    }
+    Some(format!("linear({})", out.join(", ")))
+}
+
+/// Split `linear()` arguments at commas into `(output, positions)` stops. A stop with two
+/// positions splits into two single-position stops. Returns `None` if a stop is empty
+/// (the first item has no output number).
+fn build_linear_stops(inner: &[Comp]) -> Option<Vec<(String, Vec<Option<f64>>)>> {
     let mut stops: Vec<(String, Vec<Option<f64>>)> = Vec::new();
     for item in inner.split(|comp| comp.kind == Kind::Comma) {
         // `function_valid` admitted a number and at most two percentages per stop.
@@ -1142,22 +1225,12 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
             }
         }
     }
-    if stops.len() < 2 {
-        unreachable!("function_valid admits linear() with a comma: two stops or more");
-    }
-    let mut flat: Vec<Option<f64>> = stops
-        .iter()
-        .flat_map(|(_, positions)| positions.iter().copied())
-        .collect();
-    let last = flat.len() - 1;
-    flat[0].get_or_insert(0.0);
-    flat[last].get_or_insert(100.0);
-    // A position below the largest before it is that largest.
-    let mut largest = f64::NEG_INFINITY;
-    for position in flat.iter_mut().flatten() {
-        largest = largest.max(*position);
-        *position = largest;
-    }
+    Some(stops)
+}
+
+/// Fill every `None` gap in `flat` by evenly spreading between its known neighbours.
+/// Returns `None` if a gap has no known start or end (unreachable in valid input).
+fn fill_linear_gaps(flat: &mut [Option<f64>]) -> Option<()> {
     let mut at = 0;
     while at < flat.len() {
         if flat[at].is_none() {
@@ -1171,20 +1244,7 @@ fn linear_text(inner: &[Comp]) -> Option<String> {
         }
         at += 1;
     }
-    let mut out = Vec::new();
-    let mut index = 0;
-    for (output, positions) in &stops {
-        let texts: Vec<String> = positions
-            .iter()
-            .map(|_| {
-                let value = flat[index].unwrap_or(0.0);
-                index += 1;
-                format!("{}%", css_number(value as f32))
-            })
-            .collect();
-        out.push(format!("{output} {}", texts.join(" ")));
-    }
-    Some(format!("linear({})", out.join(", ")))
+    Some(())
 }
 
 /// Join components with single spaces, commas as `, `.

@@ -19,6 +19,13 @@ at the time); this file reconstructs them from history.
   tracked for the cc <= 9 pass in 0.9.0. The JS gate
   (`complexity / js`) stays at cc <= 15 for now and will drop in a
   follow-up PR.
+  Rust lane B (this PR) lands the mechanical helper extractions in
+  `rtdom/cascade.rs`, `rtdom/query.rs`, `rtdom/query_utf16.rs`,
+  `rtdom/storage.rs` and the `rtdom/css_shorthand/` grammars and
+  serializers: 20 functions brought from cc 13-15 down to <= 12, each
+  by splitting out a behaviour-preserving helper. No hot-path
+  pessimization, no new allocations, and no change to the Chrome 156
+  selector-engine lockstep with `src/runtime/selectors.mjs`.
 
 ### Fixed
 
