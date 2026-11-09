@@ -213,6 +213,107 @@ const CASES = [
       [10, 10],
     ],
   },
+  // #424: dotted with a declared width smaller than 1px (gap-clamped).
+  // Chrome stamps a dot pattern centred in the gap; the probe at the
+  // first dot row's rule centre records whatever Chrome paints — this
+  // pins the sub-pixel fallback (dot visible vs collapsed to backdrop).
+  // Content-box 20..420, column-gap:2, col-width 199: col0 20..219,
+  // gap 219..221 (centre 220), col1 221..420. Declared 0.5px rule
+  // clamped to the 2px gap.
+  {
+    id: "multicol-rule-dotted-subpixel",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:2px;column-rule-width:0.5px;column-rule-style:dotted;column-rule-color:#000000">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // First dot centre row (y ~ container top + radius ~ 20+0.25).
+      [220, 20],
+      // One row down.
+      [220, 21],
+      // Column block — `#eef` wash.
+      [50, 60],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  // #424: double rule at 2px declared width — floor(2/3)=0, so Chrome
+  // paints a solid rule rather than invisible bands. Gap 6, col-width
+  // 197, col0 20..217, gap 217..223 (centre 220), col1 223..420. Rule
+  // 2px at 219..221.
+  {
+    id: "multicol-rule-double-thin",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:6px;column-rule-width:2px;column-rule-style:double;column-rule-color:#000000">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre — black.
+      [220, 40],
+      // One px left of the rule — in the gap band, backdrop.
+      [218, 40],
+      // One px right — in the gap band, backdrop.
+      [222, 40],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  // #457: broader colour / width / gap — green 6px solid, gap 10.
+  // col-width 195, col0 20..215, gap 215..225 (centre 220), col1
+  // 225..420. Rule 6px at 217..223.
+  {
+    id: "multicol-rule-solid-wide-green",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:10px;column-rule:6px solid #00aa00">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre — green.
+      [220, 40],
+      [218, 40],
+      [222, 40],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  // #457: three columns + solid blue rules, wide 30 px gaps.
+  // content-box 20..620, col-width (600-60)/3 = 180, col0 20..200,
+  // gap0 200..230 (centre 215), col1 230..410, gap1 410..440
+  // (centre 425), col2 440..620. Rule 4px at 213..217 and 423..427.
+  {
+    id: "multicol-rule-solid-3col-wide-gap",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:600px;height:200px;columns:3;column-gap:30px;column-rule:4px solid #0000aa">${stack([60, 60, 60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Left rule centre — blue.
+      [215, 40],
+      // Right rule centre — blue.
+      [425, 40],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
+  // #457: thin 1px solid yellow with an 8 px gap.
+  // col-width 196, col0 20..216, gap 216..224 (centre 220), col1
+  // 224..420. Rule 1px at 219.5..220.5.
+  {
+    id: "multicol-rule-solid-thin-yellow",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:8px;column-rule:1px solid #cccc00">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre — yellow.
+      [220, 40],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
 ];
 
 /** Decode an 8-bit RGB/RGBA PNG (all five filters) to px(x, y) -> [r,g,b]. */
