@@ -8,7 +8,7 @@ name: CI
 #   msrv         Rust 1.89 for turbo-dom, -layout, -raster
 #   guards       rustfmt, version agreement, retired-gate guard, verify-copied reviews, script self-tests
 #   coverage     tarpaulin per crate with fail-under floors (blocking)
-#   complexity   cyclomatic complexity <= 15 per function: Rust (cc-check) and JS (oxlint); blocking since 0.8.0
+#   complexity   cyclomatic complexity per function: Rust (cc-check) cc <= 12 since 0.8.1 (#379 rust half), JS (oxlint) cc <= 15; blocking since 0.8.0
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
@@ -451,16 +451,16 @@ jobs:
           HTML2PDF_REPO="$RUNNER_TEMP/turbo-html2pdf.git" SURF_REPO="$RUNNER_TEMP/turbo-surf.git" \
             bash scripts/verify-copied-layout.sh
 
-  # ---- complexity: cyclomatic complexity <= 15 per function, no allow-list, no baseline ----
-  # Blocking since 0.8.0 (turbo-dom#297 cleared the backlog). Never raise the limit to turn it
-  # green. Rust: turbo-html2pdf's tools/cc-check installed from its home at a pinned rev (not
-  # copied here) over every tracked .rs file; JS: oxlint's `complexity` rule
-  # (.oxlintrc.complexity.json) over src/ (the npm runtime) and the browser-env crate's JS.
-  # The only JS exclusions are the vendored xpath@0.0.35 drop and 16 named Chrome-control
-  # probes whose controls pin the probe's SHA-256 (see the config). 0.8.1 lowers the limit
-  # (turbo-dom#379).
+  # ---- complexity: cyclomatic complexity per function, no allow-list, no baseline ----
+  # Blocking since 0.8.0 (turbo-dom#297 cleared the backlog). 0.8.1 lowered the Rust ceiling
+  # 15 -> 12 (turbo-dom#379, rust half); the JS gate stays at cc <= 15 for now and lowers in a
+  # follow-up. Never raise either limit to turn it green. Rust: turbo-html2pdf's tools/cc-check
+  # installed from its home at a pinned rev (not copied here) over every tracked .rs file;
+  # JS: oxlint's `complexity` rule (.oxlintrc.complexity.json) over src/ (the npm runtime) and
+  # the browser-env crate's JS. The only JS exclusions are the vendored xpath@0.0.35 drop and
+  # 16 named Chrome-control probes whose controls pin the probe's SHA-256 (see the config).
   complexity-rust:
-    name: complexity / rust (cc <= 15)
+    name: complexity / rust (cc <= 12)
     runs-on: ubuntu-latest
     env:
       CC_CHECK_REV: 923c89f791f3a89cb089a59626a25cef0a9cbd5f
@@ -480,13 +480,13 @@ jobs:
               --git https://github.com/miaskiewicz/turbo-html2pdf --rev "$CC_CHECK_REV" cc-check
           fi
           echo "$HOME/.cc-check/bin" >> "$GITHUB_PATH"
-      - name: cc-check --max 15 (every tracked .rs file)
+      - name: cc-check --max 12 (every tracked .rs file)
         shell: bash  # -eo pipefail: tee must not mask the gate's exit code
         run: npm run -s complexity:rust 2>&1 | tee complexity.txt
       - name: List the functions over the limit (refactor backlog)
         if: failure()
         run: |
-          { echo '### Rust functions above cc 15'; echo '```'; grep 'cyclomatic complexity' complexity.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '### Rust functions above cc 12'; echo '```'; grep 'cyclomatic complexity' complexity.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   complexity-js:
     name: complexity / js (cc <= 15)
