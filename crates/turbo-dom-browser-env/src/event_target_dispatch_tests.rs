@@ -984,3 +984,72 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
     );
     reset();
 }
+
+/// turbo-dom#452: the `collectPath` 10 000-hop cap (R1 H1) was only exercised at 101 hops
+/// (the pre-fix silent-truncation boundary). The band between 101 and 10 000 — where Chrome
+/// still walks and the fix's raised ceiling matters — was untested, as was the 10 001-hop
+/// loud-throw path. This test exercises both:
+///   (1) a 9 999-hop chain with a listener on the deepest ancestor fires the listener
+///       (walk reaches every real ancestor below the cap),
+///   (2) a 10 001-hop chain throws a loud TypeError from `dispatchEvent` (cap enforced).
+#[test]
+fn collect_path_fires_at_9999_hops_and_throws_at_10001_hops() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Both chains use a native-held array to avoid blowing the parser on 10 000 literals.
+    let source = r#"(() => {
+      function chain(depth) {
+        const nodes = new Array(depth);
+        for (let i = 0; i < depth; i++) nodes[i] = new EventTarget();
+        for (let i = 0; i < depth - 1; i++) {
+          const next = nodes[i + 1];
+          globalThis.__testSetParent(nodes[i], () => next);
+        }
+        return nodes;
+      }
+      // (1) 9 999 hops: just under the cap. Deep ancestor sees the event.
+      const BELOW = 9999;
+      const below = chain(BELOW);
+      let deepSaw = false;
+      below[BELOW - 1].addEventListener('x', () => { deepSaw = true; });
+      below[0].dispatchEvent(new Event('x', { bubbles: true }));
+      // (2) 10 001 hops: over the cap. Dispatch throws loudly.
+      const OVER = 10001;
+      const over = chain(OVER);
+      // Attach a listener so the fast-skip does not swallow the walk.
+      over[OVER - 1].addEventListener('x', () => {});
+      let overError = null;
+      try { over[0].dispatchEvent(new Event('x', { bubbles: true })); }
+      catch (e) { overError = (e && e.name) || String(e); }
+      return JSON.stringify({ deepSaw, below: BELOW, overError, over: OVER });
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "hop-cap-band script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result,
+        r#"{"deepSaw":true,"below":9999,"overError":"TypeError","over":10001}"#,
+        "9 999-hop chain fires deepest listener; 10 001-hop chain throws TypeError",
+    );
+    reset();
+}
