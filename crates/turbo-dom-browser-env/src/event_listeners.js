@@ -159,6 +159,29 @@
   // bubble listeners see `event.isTrusted === false`. Save `trusted`
   // alongside stop/stopImmediate. (No pre-checkpoint clear needed: the
   // inner's own `dispatchTarget` entry overwrites it anyway.)
+  //
+  // turbo-dom#450: `record.defaultPrevented` leaks the same way. A
+  // microtask whose inner listener calls `event.preventDefault()`
+  // mutates the shared record's `defaultPrevented = true`; the inner
+  // `dispatchTarget`'s finally resets `stop` / `stopImmediate` /
+  // `passive` but NOT `defaultPrevented` (it is spec-correct that
+  // preventDefault persists on the event, so dispatchTarget cannot
+  // clear it). The outer's `return !record.defaultPrevented` then
+  // falsely reports canceled even though no outer listener cancelled.
+  //
+  // Chrome 156 control
+  // (`event_defaultprevented_chrome156.json`.listenerQueuesMicrotask):
+  // outerReturn=true, innerReturn=false — the outer dispatch's return
+  // value is independent of the inner's preventDefault because Chrome
+  // runs the microtask AFTER the outer dispatch completes (it does not
+  // checkpoint microtasks between the outer's listeners when the
+  // dispatch is issued from user script). Add `defaultPrevented` to
+  // the save-set so turbo-dom matches that outer-return independence
+  // while the drain window itself remains per-listener for the
+  // #382 host-dispatch contract. (No pre-checkpoint clear needed: if
+  // the outer DID cancel, its saved value is restored on finally; if
+  // it did not, the inner's cancellation is confined to the inner
+  // dispatch's own `return !record.defaultPrevented`.)
   function drainMicrotasksAcrossDispatch(record){
     const savedDispatching=record.dispatching;
     const savedCurrent=record.currentTarget;
@@ -168,6 +191,7 @@
     const savedStop=record.stop;
     const savedStopImmediate=record.stopImmediate;
     const savedTrusted=record.trusted;
+    const savedDefaultPrevented=record.defaultPrevented;
     record.dispatching=false;
     record.stop=false;
     record.stopImmediate=false;
@@ -181,6 +205,7 @@
       record.stop=savedStop;
       record.stopImmediate=savedStopImmediate;
       record.trusted=savedTrusted;
+      record.defaultPrevented=savedDefaultPrevented;
     }
   }
   // Run every listener of `event` on `level` whose capture flag matches `captureFilter`
