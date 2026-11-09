@@ -780,7 +780,18 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
 
 /// A filled box `rect` with corner radii `radii` (square unless rounded).
 fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
-    if rect.2 <= 0.0 || rect.3 <= 0.0 || c.a == 0 {
+    // R3 H1: `rect.2 <= 0.0 || rect.3 <= 0.0` is false for `NaN` (every
+    // comparison with NaN is false) and for `Infinity` (strictly positive),
+    // so a non-finite rect would reach `shape` and serialize `width="NaN"` /
+    // `x="inf"` into the document. Reject non-finite coords up front.
+    if !rect.0.is_finite()
+        || !rect.1.is_finite()
+        || !rect.2.is_finite()
+        || !rect.3.is_finite()
+        || rect.2 <= 0.0
+        || rect.3 <= 0.0
+        || c.a == 0
+    {
         return;
     }
     let radii = if radii.is_rounded() {
