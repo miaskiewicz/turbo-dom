@@ -780,7 +780,18 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
 
 /// A filled box `rect` with corner radii `radii` (square unless rounded).
 fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
-    if rect.2 <= 0.0 || rect.3 <= 0.0 || c.a == 0 {
+    // R3 H1: `rect.2 <= 0.0 || rect.3 <= 0.0` is false for `NaN` (every
+    // comparison with NaN is false) and for `Infinity` (strictly positive),
+    // so a non-finite rect would reach `shape` and serialize `width="NaN"` /
+    // `x="inf"` into the document. Reject non-finite coords up front.
+    if !rect.0.is_finite()
+        || !rect.1.is_finite()
+        || !rect.2.is_finite()
+        || !rect.3.is_finite()
+        || rect.2 <= 0.0
+        || rect.3 <= 0.0
+        || c.a == 0
+    {
         return;
     }
     let radii = if radii.is_rounded() {
@@ -2272,6 +2283,35 @@ mod tests {
                 buf.is_empty(),
                 "non-finite ({bad}) stop position must emit no markup, got: {buf}"
             );
+        }
+    }
+
+    // v0.8.2 R3 H1: the `paint_subtree` Box branch fills the background through
+    // `rect_r` BEFORE any `fragment_finite_positive` guard, so a non-finite
+    // width / height / x / y on a `Box` fragment with a background colour
+    // slipped past `rect_r`'s `w <= 0.0 || h <= 0.0` check (every comparison
+    // with NaN is false; Infinity is strictly positive) and the `shape`
+    // serializer wrote `width="NaN"` / `width="inf"` into the document.
+    // Guard `rect_r` so non-finite coordinates emit nothing.
+    #[test]
+    fn paint_subtree_box_rejects_non_finite_coords() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            // Vary which coordinate is non-finite: x, y, width, height.
+            let cases = [
+                plain(bad, 0.0, 4.0, 4.0, Some(RED)),
+                plain(0.0, bad, 4.0, 4.0, Some(RED)),
+                plain(0.0, 0.0, bad, 4.0, Some(RED)),
+                plain(0.0, 0.0, 4.0, bad, Some(RED)),
+            ];
+            for f in cases {
+                let mut buf = String::new();
+                let images = HashMap::new();
+                paint_subtree(&mut buf, &f, &images);
+                assert!(
+                    !buf.contains("NaN") && !buf.contains("inf"),
+                    "non-finite ({bad}) box coord must not serialize NaN/inf, got: {buf}"
+                );
+            }
         }
     }
 }
