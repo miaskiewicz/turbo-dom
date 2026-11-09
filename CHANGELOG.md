@@ -74,6 +74,26 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env event dispatch (#450)**:
+  `drainMicrotasksAcrossDispatch` now saves and restores
+  `defaultPrevented` alongside the R3 H1 / R4 H2 save set. A microtask
+  queued inside a listener that re-dispatches the same cancelable Event
+  and whose inner listener calls `event.preventDefault()` previously
+  mutated the shared `record.defaultPrevented`; the inner
+  `dispatchTarget`'s `finally` did not reset it (preventDefault is
+  spec-persistent on the event), and the outer dispatch's
+  `return !record.defaultPrevented` therefore falsely reported canceled
+  even though no outer listener called `preventDefault()`. Chrome 156
+  probe
+  (`crates/turbo-dom-browser-env/src/event_defaultprevented_chrome156.json`,
+  scenario `listenerQueuesMicrotask`) confirmed `outerReturn=true` /
+  `innerReturn=false`: Chrome runs the microtask AFTER the outer
+  dispatch completes, so the outer's return is independent of the
+  inner's preventDefault. The save/restore pattern matches that
+  independence synchronously. Outer dispatches that themselves call
+  `preventDefault()` before queueing a microtask still return `false`
+  — the saved value (`true`) is restored on finally, so the inner's
+  additional preventDefault is a no-op for the outer return.
 - **turbo-dom-browser-env event dispatch (R3 H1)**:
   `drainMicrotasksAcrossDispatch` now saves and restores `stop` and
   `stopImmediate` alongside the previously saved 5 dispatch-scoped fields.
@@ -133,11 +153,13 @@ at the time); this file reconstructs them from history.
   here but not fixed. Reviewer may file 0.8.2 follow-ups if they warrant
   action later.
 - **R3 adversarial review LOW follow-ups filed for 0.8.2**:
-  defaultPrevented save (#450), R2 M3 red-test isolation (#451),
-  9999-hop collectPath coverage (#452), 1.99+ clippy `assert_is_empty`
-  on `turbo-dom` tests (#453), cargo-mutants sweep over R1/R2/R3 fixes
-  (#454), CLAUDE.md save-set audit habit (#455), broader
-  `multicol_rule_chrome156.json` spot-check (#457).
+  R2 M3 red-test isolation (#451), 9999-hop collectPath coverage
+  (#452), 1.99+ clippy `assert_is_empty` on `turbo-dom` tests
+  (#453), cargo-mutants sweep over R1/R2/R3 fixes (#454), CLAUDE.md
+  save-set audit habit (#455), broader `multicol_rule_chrome156.json`
+  spot-check (#457). (R3 L1's `defaultPrevented` save (#450) was
+  originally on this list; it is fixed in this release — see the
+  `### Fixed` entry above.)
 - **turbo-dom-browser-env event dispatch (R4 H1)**:
   `drainMicrotasksAcrossDispatch` now CLEARS `record.stop` /
   `record.stopImmediate` before `microtaskCheckpoint`, not just saves /
@@ -181,12 +203,12 @@ at the time); this file reconstructs them from history.
   dispatch and once in the microtask-driven inner re-dispatch. A
   single-occurrence trace now signals the R4 H1 leak.
 - **R4 adversarial review triage**:
-  - R4 M3 (`defaultPrevented` save) — not fixed in this PR. Chrome's
-    per-dispatch-vs-per-event canceled-flag semantics are not pinned
-    by a probe; filed as 0.8.2 follow-up #450 (R3 L1). The outer
-    dispatch's return value is `!record.defaultPrevented`, so a
-    microtask that calls `preventDefault()` CAN mutate the outer's
-    return value today; whether that matches Chrome is unproved.
+  - R4 M3 (`defaultPrevented` save) — **fixed in this release** as
+    its own `### Fixed` entry above (#450). The Chrome 156 probe at
+    `crates/turbo-dom-browser-env/scripts/event-defaultprevented-chrome156-probe.js`
+    pinned the behaviour: outer dispatchEvent returns true while a
+    microtask's inner re-dispatch that calls preventDefault returns
+    false. Save/restore added to `drainMicrotasksAcrossDispatch`.
   - R4 M5 (#449 capture is forward-defensive, no engine reader) —
     the capture is correct as a surf-consumer fix. No turbo-dom
     change; documented in the #449 bullet above.
