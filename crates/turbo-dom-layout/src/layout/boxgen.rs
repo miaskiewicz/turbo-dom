@@ -1513,6 +1513,18 @@ fn box_kind_for(display: Display, el: &StyledElement, ids: &mut Ids) -> BoxKind 
         Display::Flex | Display::InlineFlex => BoxKind::Flex(flex_grid_children(el, ids)),
         Display::Grid | Display::InlineGrid => BoxKind::Grid(flex_grid_children(el, ids)),
         Display::Table | Display::InlineTable => table_kind(el, ids),
+        // Review R4 M1 (#472): `Display::TableRowGroup` / `TableColumnGroup` /
+        // `TableColumn` intentionally fall through to the generic flow path here
+        // (same shape as `Display::Block`). The variants are load-bearing for the
+        // CSS 2.1 §9.7 blockification rule (R2 H2: `float:left` / abspos on a
+        // `<tbody>` turns it into `Display::Block`; verified by
+        // `live/tests.rs::html_default_display_covers_the_table_internal_variants`)
+        // and the table-section tagging in [`table::group_repeat`] /
+        // [`table::sections`] (`<thead>` / `<tfoot>` repeat-group markers); they
+        // do NOT need their own `BoxKind` because, in a normal table flow, a
+        // `<tbody>` and a `<div>` child both route through `build_flow` — Chrome
+        // 156 anonymously wraps non-section children at the table layout step,
+        // not the box-generation step.
         _ => build_flow(&el.children, &el.style, ids),
     }
 }
