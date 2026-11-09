@@ -22,9 +22,28 @@
 const WORKER_BOOTSTRAP: &str = include_str!("worker_scope.js");
 
 /// Install the worker surface onto the current context's `globalThis`.
+///
+/// turbo-dom#435: compile with a `ScriptOrigin` naming `worker_scope.js` so a
+/// stack trace from inside the bootstrap (e.g. an event-listener error) names
+/// the source file and the line within it — the default `compile(scope, code,
+/// None)` leaves the frame as the anonymous `<anonymous>` placeholder.
 pub(super) fn install(scope: &mut v8::PinScope) {
     let code = v8::String::new(scope, WORKER_BOOTSTRAP).unwrap();
-    if let Some(script) = v8::Script::compile(scope, code, None) {
+    let resource = v8::String::new(scope, "worker_scope.js").unwrap();
+    let origin = v8::ScriptOrigin::new(
+        scope,
+        resource.into(),
+        0,
+        0,
+        false,
+        0,
+        None,
+        false,
+        false,
+        false,
+        None,
+    );
+    if let Some(script) = v8::Script::compile(scope, code, Some(&origin)) {
         let _ = script.run(scope);
     }
 }
@@ -533,6 +552,37 @@ mod tests {
     /// `v8::Local::<v8::Object>::try_from(undefined)` fails in both
     /// `set_hook` and `dispatch_message` and each returns early. One bare
     /// context exercises every helper's early-return path.
+    /// turbo-dom#435: the worker bootstrap must compile with a `ScriptOrigin`
+    /// naming `worker_scope.js`, so an exception that unwinds through a
+    /// bootstrap frame has a readable stack trace instead of the default
+    /// anonymous placeholder.
+    #[test]
+    fn worker_bootstrap_frames_carry_the_worker_scope_js_resource_name() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // `importScripts` with no registered loader throws from the bootstrap
+        // body — the top frame of the resulting stack must name worker_scope.js.
+        let probe = v8::String::new(
+            scope,
+            "try { importScripts('x.js'); '' } catch (e) { e.stack || String(e) }",
+        )
+        .unwrap();
+        let stack = v8::Script::compile(scope, probe, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_rust_string_lossy(scope);
+        assert!(
+            stack.contains("worker_scope.js"),
+            "stack must name worker_scope.js, got: {stack}"
+        );
+        browser_env::reset();
+    }
+
     #[test]
     fn worker_helpers_are_a_no_op_without_the_bootstrap() {
         browser_env::tests::init_v8();

@@ -31,8 +31,7 @@ fn captured_intrinsics_names_the_intrinsic_in_thrown_error() {
             .unwrap();
         let code = v8::String::new(scope, src).unwrap();
         v8::tc_scope!(let catch, scope);
-        let ran =
-            v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
+        let ran = v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
         assert!(ran.is_none(), "captured_intrinsics must throw");
         let msg = catch.exception().unwrap().to_rust_string_lossy(catch);
         assert!(
@@ -58,9 +57,11 @@ fn captured_intrinsics_names_the_intrinsic_in_thrown_error() {
             .unwrap();
         let code = v8::String::new(scope, src).unwrap();
         v8::tc_scope!(let catch, scope);
-        let ran =
-            v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
-        assert!(ran.is_none(), "captured_intrinsics must throw on frozen __tsNs");
+        let ran = v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
+        assert!(
+            ran.is_none(),
+            "captured_intrinsics must throw on frozen __tsNs"
+        );
         let msg = catch.exception().unwrap().to_rust_string_lossy(catch);
         assert!(
             msg.contains("captured_intrinsics") && msg.contains("handlerAdd"),

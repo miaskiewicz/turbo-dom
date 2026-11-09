@@ -8713,6 +8713,21 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
     if is_worker_context(scope.get_current_context()) {
         return;
     }
+    // turbo-dom#436: one dispatcher at the tail — every install path (snapshot
+    // fast path, snapshot miss -> split/full, non-snapshot -> split/full) ends
+    // by running the registered init scripts. Previously each path reached for
+    // `run_init_scripts` on its own, which made it easy to forget on a new
+    // path.
+    install_document_body(scope, tree);
+    // turbo-dom#394: embedder init scripts run after the engine is in place
+    // but before the embedder executes the parser's inline `<script>`s.
+    run_init_scripts(scope);
+}
+
+/// The install work proper: snapshot fast path when enabled, otherwise the
+/// split/full path. Kept separate from [`run_init_scripts`] so every caller
+/// of [`install_with_tree`] runs init scripts in exactly one place.
+fn install_document_body(scope: &mut v8::PinScope, tree: Tree) {
     if snapshot_path() {
         #[cfg(test)]
         let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
@@ -8725,20 +8740,12 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
                     before,
                     "a snapshot install ran an engine script"
                 );
-                // turbo-dom#394: embedder init scripts run after the engine is in place
-                // but before the embedder executes the parser's inline `<script>`s.
-                run_init_scripts(scope);
-                return;
             }
-            Err(tree) => {
-                install_split_or_full(scope, tree);
-                run_init_scripts(scope);
-                return;
-            }
+            Err(tree) => install_split_or_full(scope, tree),
         }
+        return;
     }
     install_split_or_full(scope, tree);
-    run_init_scripts(scope);
 }
 
 fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {
