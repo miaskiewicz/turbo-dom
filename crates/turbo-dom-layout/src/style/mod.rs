@@ -209,6 +209,8 @@ tr { display: table-row }
 caption { display: table-caption; text-align: -webkit-center }
 td, th { display: table-cell; padding: 1px }
 th { font-weight: bold; text-align: center }
+colgroup { display: table-column-group }
+col { display: table-column }
 li { display: list-item }
 ul, menu, dir { list-style-type: disc }
 ol { list-style-type: decimal }
