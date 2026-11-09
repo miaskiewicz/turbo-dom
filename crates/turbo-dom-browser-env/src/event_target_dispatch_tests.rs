@@ -1171,13 +1171,16 @@ fn microtask_continuation_sees_post_dispatch_sentinel_fields() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
-    // Dispatch a host-dispatch event on a plain EventTarget. Inside the (sole) listener,
-    // queue a microtask (Promise.resolve().then) that reads the event's dispatch-scoped
-    // fields. With R3 H1's bug, the microtask runs inside the per-listener drain window
-    // with `currentTarget === target`, `eventPhase === 2` (AT_TARGET), and
-    // `composedPath() === [target]` because those fields are saved-and-restored but not
-    // cleared. Chrome 156 clears them so a microtask continuation sees post-dispatch
-    // state (null / 0 / []).
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the per-listener
+    // drain window runs (page-script dispatchEvent is gated out of the drain path).
+    // Inside the listener, queue a microtask (Promise.resolve().then) that reads
+    // the event's dispatch-scoped fields. With #483's bug the microtask runs inside
+    // the per-listener drain window with `currentTarget === target`, `eventPhase === 2`
+    // (AT_TARGET), and `composedPath() === [target]` because those fields are
+    // saved-and-restored but not cleared. Chrome 156 clears them so a microtask
+    // continuation sees post-dispatch state (null / 0 / []).
     let source = r#"(() => {
       const target = new EventTarget();
       const seen = {};
@@ -1195,7 +1198,7 @@ fn microtask_continuation_sees_post_dispatch_sentinel_fields() {
           };
         });
       });
-      target.dispatchEvent(new Event('ping'));
+      globalThis.__hostDispatchTarget(new Event('ping'), target);
       return JSON.stringify(seen);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
