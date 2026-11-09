@@ -1,6 +1,6 @@
 [package]
 name = "turbo-dom"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 # Consolidation MSRV for turbo-dom, -layout and -raster (smol_str 0.3.6 sets the floor).
 rust-version = "1.89"
