@@ -455,6 +455,10 @@ fn paint_column_rule(
         ColumnRuleStyle::Dotted => paint_dotted_rule(pm, f, color, xf),
         ColumnRuleStyle::Dashed => paint_dashed_rule(pm, f, color, xf),
         ColumnRuleStyle::Double => paint_double_rule(pm, f, color, xf),
+        ColumnRuleStyle::Groove
+        | ColumnRuleStyle::Ridge
+        | ColumnRuleStyle::Inset
+        | ColumnRuleStyle::Outset => paint_shaded_rule(pm, f, style, color, xf),
     }
 }
 
@@ -625,6 +629,23 @@ fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     let band = (f.width / 3.0).floor();
     fill_rect(pm, f.x, f.y, band, f.height, color, xf);
     fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
+}
+
+/// Paint a 3-D column rule (`groove` / `ridge` / `inset` / `outset`;
+/// miaskiewicz/turbo-dom#419) as two halves of the rule's inline axis,
+/// shaded through [`border_style_colour`]. Chrome 156 splits the rule at
+/// its inline midpoint: `groove` and `outset` paint the LEFT half with the
+/// darkened shade and the RIGHT half with the lightened one; `ridge` and
+/// `inset` swap the two (the rule is vertical, so the two "halves" are
+/// vertical bands running the rule's full height).
+fn paint_shaded_rule(
+    _pm: &mut Pixmap,
+    _f: &Fragment,
+    _style: ColumnRuleStyle,
+    _color: Rgba,
+    _xf: Transform,
+) {
+    // Stub: miaskiewicz/turbo-dom#419 (red commit). Filled in the next commit.
 }
 
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)

@@ -118,10 +118,9 @@ pub enum FragmentContent {
 }
 
 /// A supported `column-rule-style` keyword (CSS Multicol 1 §5.2;
-/// miaskiewicz/turbo-dom#398 PR-D). The `groove` / `ridge` / `inset` / `outset`
-/// family is tracked separately (miaskiewicz/turbo-dom#419): a style fragment
-/// is emitted only for the keywords this enum lists, so the painter never sees
-/// one it cannot draw.
+/// miaskiewicz/turbo-dom#398 PR-D, follow-up miaskiewicz/turbo-dom#419 for the
+/// 3-D family). A fragment is emitted only for the keywords this enum lists,
+/// so the painter never sees one it cannot draw.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColumnRuleStyle {
     /// A filled band of `color` filling the rule rect.
@@ -135,6 +134,20 @@ pub enum ColumnRuleStyle {
     /// Two parallel bands, each `floor(width / 3)` thick, flush with the rule's
     /// long edges, separated by the remaining width (CSS Backgrounds 3 §4.2).
     Double,
+    /// Chrome 156 splits a `groove` column-rule into two halves across the
+    /// rule's inline axis: the left half paints in [`border_style_colour`]'s
+    /// dark shade, the right half in the light shade (miaskiewicz/turbo-dom#419).
+    Groove,
+    /// `ridge` is `groove` with the two shades swapped (left light, right
+    /// dark) — the Chrome 156 fixture for a vertical rule shows `ridge` and
+    /// `inset` producing identical pixels.
+    Ridge,
+    /// For a column-rule (a vertical strip), Chrome 156 paints `inset` as
+    /// left half light, right half dark — the same pattern as `ridge`.
+    Inset,
+    /// `outset` mirrors `inset`: left half dark, right half light — the same
+    /// pattern as `groove` for a vertical rule.
+    Outset,
 }
 
 /// A repeating background tile: [`TilePattern::tile`] painted `tile_width x

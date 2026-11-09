@@ -257,6 +257,10 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
         ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
         ColumnRuleStyle::Dashed => paint_dashed_rule(svg, f, color),
         ColumnRuleStyle::Double => paint_double_rule(svg, f, color),
+        ColumnRuleStyle::Groove
+        | ColumnRuleStyle::Ridge
+        | ColumnRuleStyle::Inset
+        | ColumnRuleStyle::Outset => paint_shaded_rule(svg, f, style, color),
     }
 }
 
@@ -349,6 +353,15 @@ fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let band = (f.width / 3.0).floor();
     rect(svg, f.x, f.y, band, f.height, color);
     rect(svg, f.x + f.width - band, f.y, band, f.height, color);
+}
+
+/// SVG counterpart to [`crate::paint_png::paint_shaded_rule`] — the two halves
+/// of a 3-D column rule, shaded through [`border_style_colour`]
+/// (miaskiewicz/turbo-dom#419). `groove` / `outset` paint the left half dark
+/// and the right half light; `ridge` / `inset` swap them. The rule is
+/// vertical, so "left" and "right" are the two vertical bands.
+fn paint_shaded_rule(_svg: &mut String, _f: &Fragment, _style: ColumnRuleStyle, _color: Rgba) {
+    // Stub: miaskiewicz/turbo-dom#419 (red commit). Filled in the next commit.
 }
 
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.
