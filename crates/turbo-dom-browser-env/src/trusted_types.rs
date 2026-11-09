@@ -828,6 +828,22 @@ mod tests {
         assert!(script.run(scope).is_none());
         assert!(scope.is_execution_terminating());
         assert!(install_trusted_types_policy(scope, callback));
+        // Review R3 M1: assert the TerminationRestore guard actually
+        // re-terminated. Without this check, a mutant that removes
+        // `TerminationRestore::Drop`'s body (no re-terminate) would still
+        // pass — the manual `cancel_terminate_execution` below would mask
+        // the restore. Observable proof: a script run after install must
+        // STILL return None (termination pending) before the manual cancel,
+        // because the guard's Drop re-set the isolate-level flag.
+        let probe = v8::String::new(scope, "1").unwrap();
+        let probe = v8::Script::compile(scope, probe, None).unwrap();
+        assert!(
+            probe.run(scope).is_none(),
+            "install_trusted_types_policy must restore the pre-install \
+             pending termination (TerminationRestore::Drop) — a script \
+             run after install should still see the termination flag set, \
+             but run() returned a value: mutant alert, Drop removed"
+        );
         // And when the embedder clears the watchdog, the installed callback is live:
         // the next createPolicy consults it (returns true → allowed).
         scope.cancel_terminate_execution();

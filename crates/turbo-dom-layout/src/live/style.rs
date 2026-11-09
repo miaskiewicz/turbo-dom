@@ -175,25 +175,27 @@ impl Styler<'_, '_> {
         // UA rule in the pre-matched origins still wins, and unknown tags stay
         // inline.
         ensure_default_display(&mut style, local);
-        // Review R2 layout H1 continuation: Chrome's UA has
-        // `input[type=hidden] { display: none }`. `ensure_default_display`
-        // is attribute-blind, so an `<input type=hidden>` under the
-        // live-input path (no UA origin) would otherwise paint its
-        // `inline-block` text-field box. Treat it the same way the UA
-        // rule would — only when nothing else overrode `display` to a
-        // real-rendering value for this element — by stamping `none`
-        // when the element's `type` attribute resolves to the literal
-        // `hidden` (ASCII case-insensitive like Chrome's attribute
-        // selector `i`), unless an author rule / inline style has
-        // already set a displayed value that would override the UA's
-        // `display: none` in a real cascade.
+        // Review R2 layout H1 continuation + R3 M5: Chrome's UA has
+        // `input[type=hidden] { display: none }` with specificity
+        // (0, 1, 1), which outranks an author `input { display: block }`
+        // (0, 0, 1). `ensure_default_display` is attribute-blind, so an
+        // `<input type=hidden>` under the live-input path (no UA origin)
+        // would otherwise paint its `inline-block` text-field box — and
+        // an author rule that sets `display` to anything else (`block` /
+        // `flex` / `grid`) would still win over the previous narrow
+        // guard. Stamp `display: none` unconditionally when the element
+        // is `input` with a `type` attribute whose ASCII-lowercase value
+        // is `hidden`: this represents the UA rule, and a Chrome cascade
+        // only lets an AUTHOR [type=hidden] rule override it — such a
+        // rule would already be in `declarations` as a user-supplied
+        // override, which this live-input path sees in `inline_style`
+        // (handled separately) but not through a stylesheet match
+        // without an embedder UA origin. Attribute match is
+        // case-insensitive like Chrome's `i` modifier.
         if local == "input"
             && tree
                 .get_attribute(node, "type")
                 .is_some_and(|v| v.eq_ignore_ascii_case("hidden"))
-            && style
-                .get("display")
-                .is_none_or(|v| v.trim().eq_ignore_ascii_case("inline-block"))
         {
             style.set("display", "none".to_string());
         }
