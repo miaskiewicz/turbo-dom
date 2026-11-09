@@ -291,6 +291,59 @@ mod tests {
         browser_env::reset();
     }
 
+    /// turbo-dom#438: native-side event payloads must not inherit
+    /// `Object.prototype`. A worker-side script that stamps a getter on
+    /// `Object.prototype.leak` would otherwise be able to observe the native
+    /// event through the inherited slot. The event is constructed with a null
+    /// prototype so inherited lookups return `undefined` and the event shape
+    /// is exactly what the Rust side wrote (`type`, `data`).
+    #[test]
+    fn dispatch_message_event_has_null_prototype() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // Plant a getter on `Object.prototype.leak` and record the event's
+        // prototype and whether the inherited getter fires on the event.
+        eval(
+            scope,
+            "globalThis.__leakCalls = 0; \
+             Object.defineProperty(Object.prototype, 'leak', { \
+               configurable: true, get() { globalThis.__leakCalls++; return 'leaked'; } \
+             }); \
+             globalThis.__probe = null; \
+             addEventListener('message', (e) => { \
+               globalThis.__probe = { \
+                 protoNull: Object.getPrototypeOf(e) === null, \
+                 ownType: Object.prototype.hasOwnProperty.call(e, 'type'), \
+                 ownData: Object.prototype.hasOwnProperty.call(e, 'data'), \
+                 leak: e.leak === undefined ? 'undef' : String(e.leak), \
+               }; \
+             });",
+        );
+        let data = v8::String::new(scope, "payload").unwrap();
+        let delivered = browser_env::dispatch_worker_message(scope, data.into());
+        assert!(delivered);
+        assert_eq!(
+            eval(scope, "JSON.stringify(__probe)"),
+            r#"{"protoNull":true,"ownType":true,"ownData":true,"leak":"undef"}"#,
+            "dispatch_message event must have a null prototype so \
+             Object.prototype getters cannot observe or alter it",
+        );
+        // Belt and suspenders: the inherited getter must never have fired
+        // against the event object.
+        assert_eq!(
+            eval(scope, "String(__leakCalls)"),
+            "0",
+            "no inherited Object.prototype getter may fire against the event",
+        );
+        // Cleanup for shared test context.
+        eval(scope, "delete Object.prototype.leak;");
+        browser_env::reset();
+    }
+
     #[test]
     fn turbo_dom_worker_namespace_is_locked_against_page_tampering() {
         // Review R1 M4: page JS inside a worker must not be able to
