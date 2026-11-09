@@ -63,20 +63,28 @@
   // Object.defineProperty) and otherwise reports success quietly; deleting a supported
   // index is refused.
   const indexOf = (key) => { const index = NumberValue(key); return index >= 0 && index < 4294967295 && index % 1 === 0 && StringValue(index) === key ? index : -1; };
-  const indexed = (prototype, interfaceName, length, item) => named(prototype, function (operation, key, value, throws) {
-    if (operation === 'keys') return [];
-    if (operation === 'indices') { const keys = []; for (let at = 0; at < length(); at++) push(keys, at); return keys; }
-    const index = indexOf(key);
-    if (index < 0) return undefined;
-    const present = index < length();
-    if (operation === 'define') { if (throws) throw new TypeErrorValue("Failed to set an indexed property [" + index + "] on '" + interfaceName + "': Index property setter is not supported."); return true; }
-    if (operation === 'set') { if (throws) throw new TypeErrorValue("Failed to set an indexed property [" + index + "] on '" + interfaceName + "': Indexed property setter is not supported."); return true; }
-    if (!present) return undefined;
+  const indexedWriteNoop = (operation, interfaceName, index, throws) => {
+    if (operation === 'define' || operation === 'set') {
+      if (throws) throw new TypeErrorValue("Failed to set an indexed property [" + index + "] on '" + interfaceName + "': " + (operation === 'define' ? 'Index' : 'Indexed') + " property setter is not supported.");
+      return true;
+    }
+    return undefined;
+  };
+  const indexedReadPresent = (operation, interfaceName, index, item, throws) => {
     if (operation === 'get') return item(index);
     if (operation === 'has') return true;
     if (operation === 'descriptor') return {__proto__: null, value: item(index), writable: false, enumerable: true, configurable: true};
     if (operation === 'delete') { if (throws) throw new TypeErrorValue("Failed to delete an indexed property [" + index + "] from '" + interfaceName + "': Index property deleter is not supported."); return false; }
     return undefined;
+  };
+  const indexed = (prototype, interfaceName, length, item) => named(prototype, function (operation, key, value, throws) {
+    if (operation === 'keys') return [];
+    if (operation === 'indices') { const keys = []; for (let at = 0; at < length(); at++) push(keys, at); return keys; }
+    const index = indexOf(key);
+    if (index < 0) return undefined;
+    if (operation === 'define' || operation === 'set') return indexedWriteNoop(operation, interfaceName, index, throws);
+    if (index >= length()) return undefined;
+    return indexedReadPresent(operation, interfaceName, index, item, throws);
   }, true);
 
   const interfaceObject = (name, length, body, constructible) => {

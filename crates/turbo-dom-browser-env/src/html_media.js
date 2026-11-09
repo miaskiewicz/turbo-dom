@@ -177,6 +177,17 @@
   const trackState = ns.textTrackState;
   const trackEvent = (() => {
     const trackEvents = new WeakMap();
+    const readTrackEventInit = (init, base, prefix) => {
+      let track = null;
+      if (init === undefined || init === null) return track;
+      base.bubbles = !!init.bubbles;
+      base.cancelable = !!init.cancelable;
+      base.composed = !!init.composed;
+      const value = init.track;
+      if (value !== undefined && value !== null && !trackState(value)) throw new ErrorType(prefix + "Failed to read the 'track' property from 'TrackEventInit': The provided value is not of type '(AudioTrack or TextTrack or VideoTrack)'.");
+      if (value !== undefined) track = value;
+      return track;
+    };
     const TrackEventImplementation = function (type, init) {
       const prefix = "Failed to construct 'TrackEvent': ";
       if (!arguments.length) throw new ErrorType(prefix + '1 argument required, but only 0 present.');
@@ -184,15 +195,7 @@
       type = StringValue(type);
       if (init !== undefined && init !== null && typeof init !== 'object' && typeof init !== 'function') throw new ErrorType(prefix + "The provided value is not of type 'TrackEventInit'.");
       const base = { __proto__: null, bubbles: false, cancelable: false, composed: false };
-      let track = null;
-      if (init !== undefined && init !== null) {
-        base.bubbles = !!init.bubbles;
-        base.cancelable = !!init.cancelable;
-        base.composed = !!init.composed;
-        const value = init.track;
-        if (value !== undefined && value !== null && !trackState(value)) throw new ErrorType(prefix + "Failed to read the 'track' property from 'TrackEventInit': The provided value is not of type '(AudioTrack or TextTrack or VideoTrack)'.");
-        if (value !== undefined) track = value;
-      }
+      const track = readTrackEventInit(init, base, prefix);
       const event = construct(EventType, [type, base], new.target);
       apply(mapSet, trackEvents, [event, track]);
       return event;

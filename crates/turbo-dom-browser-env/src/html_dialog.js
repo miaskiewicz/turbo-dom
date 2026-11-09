@@ -47,11 +47,10 @@
     if (!connected(node)) return;
     apply(focus, Native('delegate', node), []);
   }
-  // https://html.spec.whatwg.org/#show-a-modal-dialog and the show() method steps.
-  function show(node, isModal, source) {
-    const operation = isModal ? 'showModal' : 'show';
+  // Preconditions for show()/showModal(): bail (return) when already open compatibly, or throw.
+  function showPreconditions(node, isModal, operation) {
     if (open(node)) {
-      if (modal(node) === isModal) return;
+      if (modal(node) === isModal) return true;
       throw fail(operation, isModal ? 'The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.' : 'The dialog is already open as a modal dialog, and therefore cannot be opened as a non-modal dialog.');
     }
     if (isModal) {
@@ -59,6 +58,12 @@
       if (!Native('active', node)) throw fail(operation, 'Invalid for dialogs within documents that are not fully active.');
       if (Native('popover', node)) throw fail(operation, 'The dialog is already open as a Popover, and therefore cannot be opened as a modal dialog.');
     }
+    return false;
+  }
+  // https://html.spec.whatwg.org/#show-a-modal-dialog and the show() method steps.
+  function show(node, isModal, source) {
+    const operation = isModal ? 'showModal' : 'show';
+    if (showPreconditions(node, isModal, operation)) return;
     if (!beforetoggle(node, true, source)) return;
     if (open(node) || isModal && (!connected(node) || Native('popover', node))) return;
     queueToggle(node, 'closed', 'open', source);

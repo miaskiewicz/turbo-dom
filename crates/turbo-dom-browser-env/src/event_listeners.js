@@ -162,6 +162,17 @@
   // (null = any, which is AT_TARGET's contract). Per-listener invocation sets
   // currentTarget/eventPhase and scopes `composedPath()` to `[level]` (Chrome 156's IDB
   // contract). Handler records that return false (legacy on* cancel) set defaultPrevented.
+  // Whether this listener should be skipped on the current invocation pass.
+  function skipListener(listener,record,captureFilter){
+    if(listener.removed||listener.type!==record.type)return true;
+    if(captureFilter!==null&&listener.capture!==captureFilter)return true;
+    if(listener.signal&&aborted(listener.signal))return true;
+    return false;
+  }
+  function callListener(event,record,listener,level){
+    listenerDepth++;
+    try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{afterListener(record);}
+  }
   function invokeAt(event,record,level,captureFilter,phase){
     const state=native('targetGet',level);if(!state)return;
     record.currentTarget=level;record.eventPhase=phase;record.path=objectFreeze([level]);
@@ -169,13 +180,10 @@
     for(let index=0;index<list.length;index++){
       const listener=list[index];
       if(record.stopImmediate)break;
-      if(listener.removed||listener.type!==record.type)continue;
-      if(captureFilter!==null&&listener.capture!==captureFilter)continue;
-      if(listener.signal&&aborted(listener.signal))continue;
+      if(skipListener(listener,record,captureFilter))continue;
       if(listener.once)targetRemove(level,state,listener);
       record.passive=listener.passive;
-      listenerDepth++;
-      try{const result=native('call',event,listener.callback,level);if(listener.handler&&result===false&&record.cancelable&&!record.passive)record.defaultPrevented=true;}finally{afterListener(record);}
+      callListener(event,record,listener,level);
     }
   }
   // Single-target fast path (no parent hook). Preserved from the pre-#381 implementation: at

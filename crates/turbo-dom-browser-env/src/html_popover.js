@@ -36,6 +36,14 @@
   if (typeof g.ToggleEvent === 'undefined') {
     const Event = g.Event, construct = Reflect.construct;
     const records = new WeakMap(), read = records.get.bind(records), store = records.set.bind(records);
+    const toggleEventRecord = (init) => {
+      const newValue = init.newState, newState = newValue === undefined ? '' : string(newValue);
+      const oldValue = init.oldState, oldState = oldValue === undefined ? '' : string(oldValue);
+      const sourceValue = init.source;
+      const source = sourceValue === undefined || sourceValue === null ? null : sourceValue;
+      if (source !== null && apply(check, source, []) !== 1) throw new TypeError('ToggleEvent source must be an Element');
+      return { oldState, newState, source };
+    };
     const Delegate = function (type, init) {
       if (!new.target) throw new TypeError('ToggleEvent requires new');
       if (!arguments.length) throw new TypeError('ToggleEvent requires 1 argument');
@@ -43,13 +51,9 @@
       if (init != null && typeof init !== 'object' && typeof init !== 'function') throw new TypeError('ToggleEventInit must be a dictionary');
       init = init == null ? {} : init;
       const eventInit = { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed };
-      const newValue = init.newState, newState = newValue === undefined ? '' : string(newValue);
-      const oldValue = init.oldState, oldState = oldValue === undefined ? '' : string(oldValue);
-      const sourceValue = init.source;
-      const source = sourceValue === undefined || sourceValue === null ? null : sourceValue;
-      if (source !== null && apply(check, source, []) !== 1) throw new TypeError('ToggleEvent source must be an Element');
+      const record = toggleEventRecord(init);
       const event = construct(Event, [convertedType, eventInit], new.target);
-      store(event, { oldState, newState, source });
+      store(event, record);
       return event;
     };
     Object.setPrototypeOf(Delegate.prototype, Event.prototype);
