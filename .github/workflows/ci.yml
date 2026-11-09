@@ -14,8 +14,11 @@ name: CI
 on:
   push:
     branches: [main, 'release/**']
+  # Only PRs that target main run CI. Stacked PRs into a release/** integration
+  # branch do not (the release branch still gets CI on push above, and its own
+  # PR into main runs the full gate); this is the merge gate, not every rung.
   pull_request:
-    branches: [main, 'release/**']
+    branches: [main]
   workflow_call:
     inputs:
       darwin:
