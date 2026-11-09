@@ -337,3 +337,75 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
     );
     reset();
 }
+
+/// turbo-dom#382 regression: the per-listener microtask checkpoint
+/// (`drainMicrotasksAcrossDispatch`) runs after every listener of
+/// `invokeAt`, including listeners of a NESTED dispatch that a host-run
+/// listener initiates. Chrome 156 only checkpoints "clean up after
+/// running a callback" when the realm is at the top of the script
+/// settings stack — a page-script `dispatchEvent` (or
+/// `AbortController.abort()`) inside a host-run listener is nested and
+/// does not drain its own listeners' microtasks between calls.
+///
+/// Repro (the surf `abort_signal_any` oracle's `timeoutNestedAbort`
+/// scenario, hoisted to a plain non-Node EventTarget so the binding
+/// test can exercise it without `AbortSignal.timeout`): a host-run
+/// outer listener synchronously dispatches `inner` on a second target;
+/// the inner listener queues a microtask, then control returns to the
+/// outer listener which pushes `after-inner`. Chrome records
+/// `["inner","after-inner","inner-microtask"]`; pre-fix the inner's
+/// drain fires the `inner-microtask` before `after-inner`.
+#[test]
+fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = r#"(() => {
+      const outer = new EventTarget();
+      const log = [];
+      outer.addEventListener('timeout', () => {
+        const inner = new EventTarget();
+        inner.addEventListener('abort', () => {
+          log.push('inner');
+          // Promise.resolve().then stands in for `queueMicrotask` (the bare
+          // V8 test isolate has no window-scope polyfill); both enqueue a
+          // real microtask.
+          Promise.resolve().then(() => log.push('inner-microtask'));
+        });
+        inner.dispatchEvent(new Event('abort'));
+        log.push('after-inner');
+      });
+      globalThis.__hostDispatchTarget(new Event('timeout'), outer);
+      return JSON.stringify(log);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "nested dispatch script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["inner","after-inner","inner-microtask"]"#,
+        "nested page-script dispatch inside a host-run listener must not drain \
+         microtasks between its own listeners (Chrome 156: the inner listener's \
+         `queueMicrotask` fires only after the outer listener's synchronous \
+         tail, not between the inner listener and its outer continuation).",
+    );
+    reset();
+}
