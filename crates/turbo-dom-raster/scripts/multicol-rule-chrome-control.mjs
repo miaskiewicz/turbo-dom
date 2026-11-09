@@ -274,6 +274,35 @@ const CASES = [
       [10, 10],
     ],
   },
+  // #424: sub-pixel dotted rule — 0.5 px declared width in a 2 px gap. Chrome
+  // paints each dot at >= 1 px effective diameter, so the rule centre column
+  // is solid black across two consecutive rows at the first dot. Content-box
+  // 20..420, col-width (400 - 2) / 2 = 199, col 0 = 20..219, gap 219..221
+  // (centre 220), col 1 = 221..420.
+  {
+    id: "multicol-rule-dotted-subpixel",
+    html: DOC(
+      `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:2px;column-rule-width:0.5px;column-rule-style:dotted;column-rule-color:#000000">${stack([60, 60, 60, 60])}</div>`,
+    ),
+    probes: [
+      // Rule centre, first dot rows — Chrome floors the dot diameter to >= 1 px
+      // so these are solid black.
+      [220, 20],
+      [220, 21],
+      // Keep walking the rule to pin the period and dot pattern.
+      [220, 22],
+      [220, 23],
+      [220, 24],
+      [220, 25],
+      [220, 26],
+      [220, 27],
+      [220, 28],
+      // Column block — `#eef` wash.
+      [50, 40],
+      // Backdrop outside.
+      [10, 10],
+    ],
+  },
   // #457: thin 2px solid yellow with a 6 px gap — aligned so the rule
   // sits on an integer pixel boundary (col-width 197, col0 20..217,
   // gap 217..223 centre 220, rule 2px at 219..221 → pixel 220 fully

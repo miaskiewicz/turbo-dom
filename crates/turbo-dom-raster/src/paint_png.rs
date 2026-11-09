@@ -434,15 +434,40 @@ fn paint_column_rule(
 }
 
 /// Stamp circular dots of diameter `f.width` down the rule's centerline, period
-/// `2 * width` (Blink's `kDottedStroke` with cap-round).
+/// `2 * width` (Blink's `kDottedStroke` with cap-round). The painted diameter
+/// is floored to 1 px to match Chrome 156's `kDottedStroke`, which rounds the
+/// effective stroke to >= 1 device pixel so a sub-pixel `column-rule-width`
+/// (e.g. `0.5px`) still produces visible dots instead of vanishing to
+/// antialiased transparent; the rule is kept centred on `f.x + f.width / 2`
+/// so gap allocation still reserves the declared width (#424).
+///
+/// When the declared width is < 1 px, the circle rasterization of a radius-0.5
+/// disk spreads anti-aliased across two half-pixel columns (an ~20 % coverage
+/// stamp that reads as grey-cyan, not black). Chrome's painter instead goes
+/// through `GraphicsContext::StrokePath` with [`LineCap::Round`] and dash
+/// `[0, 2 * stroke_width]`, which pixel-snaps the dot column and paints pure
+/// black at the rule centre. We mirror that path for the floored case so the
+/// probe at the rule centre reads `rgb(0, 0, 0)` like Chrome.
 fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    let diameter = f.width;
-    let radius = diameter / 2.0;
-    let cx = f.x + radius;
+    // Guard `f.width <= 0.0` BEFORE flooring: a zero- or negative-width
+    // fragment must paint nothing, and `max(1.0)` would otherwise coerce it
+    // into the sub-pixel fallback below. (The outer `paint_column_rule`
+    // already guards, but the helper's direct contract keeps the loop
+    // protection pinned.)
+    if f.width <= 0.0 {
+        return;
+    }
+    let diameter = f.width.max(1.0);
+    let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
     if period <= 0.0 {
         return;
     }
+    if f.width < 1.0 {
+        paint_dotted_rule_stroked(pm, cx, f.y, f.height, diameter, color, xf);
+        return;
+    }
+    let radius = diameter / 2.0;
     let mut cy = f.y + radius;
     let end = f.y + f.height;
     while cy - radius < end {
@@ -450,6 +475,38 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
             pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
         }
         cy += period;
+    }
+}
+
+/// Dotted-rule fallback for sub-pixel declared widths (`column-rule-width` < 1
+/// px): Blink clamps `kDottedStroke`'s effective thickness to >= 1 device
+/// pixel, then paints `GraphicsContext::DrawLineForBoxSide`'s dotted pattern
+/// as pixel-aligned 1-px squares at the rule's centre column — a leading cap
+/// at `y_top`, then one square per 2 px of rule length starting at `y_top +
+/// 1`, which together matches Chrome 156's observed pattern (first two rows
+/// solid, then one square on / one off; #424). An anti-aliased radius-0.5
+/// disk would spread to adjacent columns at ~20 % coverage each, so pixel
+/// snapping is load-bearing.
+fn paint_dotted_rule_stroked(
+    pm: &mut Pixmap,
+    cx: f32,
+    y_top: f32,
+    height: f32,
+    diameter: f32,
+    color: Rgba,
+    xf: Transform,
+) {
+    let px_left = cx.floor();
+    let end = y_top + height;
+    // Leading cap: one px above the first dash (Blink's round line-cap).
+    if y_top < end {
+        fill_rect(pm, px_left, y_top, diameter, diameter, color, xf);
+    }
+    // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
+    let mut y = y_top + diameter;
+    while y < end {
+        fill_rect(pm, px_left, y, diameter, diameter, color, xf);
+        y += 2.0 * diameter;
     }
 }
 

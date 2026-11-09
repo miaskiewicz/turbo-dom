@@ -222,6 +222,19 @@ fn double_thin_column_rules_collapse_to_solid_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// #424: a dotted rule declared sub-pixel (0.5 px) in a 2 px gap. Chrome 156
+/// floors the effective dot diameter to >= 1 px, so the rule centre column
+/// paints solid black across the first-dot rows. Both painters must floor
+/// their dot diameter the same way (a sub-pixel radius circle disappears to
+/// transparent anti-aliasing otherwise).
+#[test]
+fn dotted_subpixel_column_rules_floor_diameter_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-dotted-subpixel";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// #457: broader colour / width / gap coverage — green solid, blue
 /// 3-column, yellow thin.
 #[test]
@@ -268,6 +281,7 @@ fn every_fixture_case_is_covered() {
                     | "multicol-rule-dashed"
                     | "multicol-rule-currentcolor"
                     | "multicol-rule-double-thin"
+                    | "multicol-rule-dotted-subpixel"
                     | "multicol-rule-solid-wide-green"
                     | "multicol-rule-solid-3col-wide-gap"
                     | "multicol-rule-solid-thin-yellow"

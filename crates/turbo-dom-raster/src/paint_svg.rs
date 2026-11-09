@@ -251,16 +251,42 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
     }
 }
 
+/// SVG counterpart to [`crate::paint_png::paint_dotted_rule`]: diameter is
+/// floored to 1 px (Chrome 156's `kDottedStroke` rounds the effective stroke
+/// to >= 1 device pixel; a sub-pixel `column-rule-width` would vanish to
+/// resvg's antialiased transparent otherwise), rule centred on
+/// `f.x + f.width / 2` so gap allocation still uses the declared width.
+/// For sub-pixel declared widths we emit pixel-aligned 1 px squares matching
+/// the PNG painter's fallback — a disk of radius 0.5 would spread to
+/// adjacent columns under resvg's anti-aliasing (#424).
 fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
-    let diameter = f.width;
-    let radius = diameter / 2.0;
-    let cx = f.x + radius;
+    // A zero- or negative-width fragment must emit nothing: the `max(1.0)`
+    // floor below would otherwise coerce it into the sub-pixel rect
+    // fallback (mirrors the PNG painter's guard, #424).
+    if f.width <= 0.0 {
+        return;
+    }
+    let diameter = f.width.max(1.0);
+    let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
     if period <= 0.0 {
         return;
     }
-    let mut cy = f.y + radius;
     let end = f.y + f.height;
+    if f.width < 1.0 {
+        let px_left = cx.floor();
+        if f.y < end {
+            rect(svg, px_left, f.y, diameter, diameter, color);
+        }
+        let mut y = f.y + diameter;
+        while y < end {
+            rect(svg, px_left, y, diameter, diameter, color);
+            y += 2.0 * diameter;
+        }
+        return;
+    }
+    let radius = diameter / 2.0;
+    let mut cy = f.y + radius;
     while cy - radius < end {
         let _ = writeln!(
             svg,
