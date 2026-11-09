@@ -35,6 +35,8 @@ const EXPECTED_IDS: &[&str] = &[
     "break-after-column",
     "break-inside-avoid",
     "break-inside-avoid-fits-anyway",
+    "abspos-in-multicol",
+    "fragmented-background",
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
@@ -305,4 +307,32 @@ fn break_inside_avoid_fits_anyway_matches_chrome_156() {
         "break-inside-avoid-fits-anyway",
     );
     assert_matches_chrome("break-inside-avoid-fits-anyway", case);
+}
+
+// --------------------------------------------------------------------------
+// v0.8.2 correctness: out-of-flow kids (miaskiewicz/turbo-dom#444 /
+// miaskiewicz/turbo-dom#461) and per-column paint of a fragmented block
+// (miaskiewicz/turbo-dom#427).
+// --------------------------------------------------------------------------
+
+/// turbo-dom#444 / #461: an abspos kid inside a multicol does NOT occupy
+/// column flow space — Chrome routes it around the column flow and places
+/// it at its CSS `left`/`top` with its CSS `width`/`height`. The surrounding
+/// in-flow kids pack as if the abspos kid were absent.
+#[test]
+fn abspos_in_multicol_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "abspos-in-multicol");
+    assert_matches_chrome("abspos-in-multicol", case);
+}
+
+/// turbo-dom#427: a `background` on a block that fragments across the
+/// column gap still reports its union border box via `getBoundingClientRect`
+/// (Chrome's contract). Per-column paint is tested in multicol.rs' unit
+/// tests; here we gate the Chrome BCR.
+#[test]
+fn fragmented_background_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "fragmented-background");
+    assert_matches_chrome("fragmented-background", case);
 }
