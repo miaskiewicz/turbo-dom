@@ -460,9 +460,6 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     let diameter = f.width.max(1.0);
     let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
-    if period <= 0.0 {
-        return;
-    }
     if f.width < 1.0 {
         paint_dotted_rule_stroked(pm, cx, f.y, f.height, diameter, color, xf);
         return;

@@ -269,9 +269,6 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let diameter = f.width.max(1.0);
     let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
-    if period <= 0.0 {
-        return;
-    }
     let end = f.y + f.height;
     if f.width < 1.0 {
         let px_left = cx.floor();
