@@ -176,6 +176,9 @@ pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
     ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
 }
 
+pub use crate::layout::value::{
+    break_inside_avoid_of, break_inside_column_avoid_of, break_rule_of, BreakRule,
+};
 pub use crate::style::{ensure_default_display, html_default_display};
 
 /// The computed style of an element whose author declarations are `declarations` (one

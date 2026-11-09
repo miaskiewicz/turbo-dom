@@ -11966,6 +11966,14 @@ mod css_adoption_tests;
 mod css_admission_tests;
 
 #[cfg(test)]
+#[path = "css_webkit_prefix_tests.rs"]
+mod css_webkit_prefix_tests;
+
+#[cfg(test)]
+#[path = "dom_ownership_sweep_tests.rs"]
+mod dom_ownership_sweep_tests;
+
+#[cfg(test)]
 #[path = "dom_implementation_tests.rs"]
 mod dom_implementation_tests;
 #[cfg(test)]

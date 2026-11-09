@@ -1646,7 +1646,8 @@ fn vertical_align_of(s: &ComputedStyle) -> VAlign {
 /// flow each honor their own (turbo-html2pdf#69 — the paginator must not treat
 /// `break-{before,after}: column` as a page break). Keywords are ASCII
 /// case-insensitive. `region` / `avoid-region` stay rejected (not implemented).
-pub(super) fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
+#[must_use]
+pub fn break_rule_of(s: &ComputedStyle, prop: &str) -> BreakRule {
     if let Some(v) = s.get(prop) {
         return match v.trim().to_ascii_lowercase().as_str() {
             "avoid" | "avoid-page" => BreakRule::Avoid,
@@ -1681,7 +1682,8 @@ fn opacity_of(s: &ComputedStyle) -> f32 {
 }
 
 /// `break-inside: avoid | avoid-page`, or the legacy `page-break-inside: avoid`.
-pub(super) fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
+#[must_use]
+pub fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
     let is = |prop: &str, want: &[&str]| {
         s.get(prop)
             .is_some_and(|v| want.contains(&v.trim().to_ascii_lowercase().as_str()))
@@ -1700,7 +1702,8 @@ pub(super) fn break_inside_avoid_of(s: &ComputedStyle) -> bool {
 /// in one place (siblings with [`break_inside_avoid_of`]) rather than
 /// routing through [`break_rule_of`], which collapses `avoid` and
 /// `avoid-page` into one `BreakRule::Avoid`.
-pub(super) fn break_inside_column_avoid_of(s: &ComputedStyle) -> bool {
+#[must_use]
+pub fn break_inside_column_avoid_of(s: &ComputedStyle) -> bool {
     s.get("break-inside").is_some_and(|v| {
         let v = v.trim();
         v.eq_ignore_ascii_case("avoid") || v.eq_ignore_ascii_case("avoid-column")

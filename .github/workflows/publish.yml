@@ -7,6 +7,8 @@ name: Publish
 #                turbo-dom-browser-env, sequential; every step skips a version that is
 #                already on crates.io and waits until it is in the crates.io index
 #   4. npm       @miaskiewicz/turbo-dom (all napi binaries bundled), skipped if published
+#   5. napi      attach the prebuilt .node binaries to the GitHub release so turbo-surf's
+#                publish step can pull them without a local Rust build (turbo-dom#479)
 # Secrets: CARGO_REGISTRY_TOKEN (crates.io), NPM_TOKEN (npm). Never run by hand: only a
 # pushed tag publishes, and re-running a partially failed run resumes where it stopped.
 
@@ -15,7 +17,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write   # the napi-prebuilts job attaches .node binaries to the GitHub release
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -147,3 +149,36 @@ jobs:
         run: npm publish --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # turbo-dom#479: expose the prebuilt turbo-dom-parser napi binaries on the GitHub release,
+  # so turbo-surf's publish step can pull them without a local Rust build or a
+  # TURBO_SURF_NAPI_PATH override. Each tag's release attaches
+  # turbo-dom-parser.<platform>.node for darwin-arm64, linux-x64-gnu, linux-arm64-gnu and
+  # win32-x64-msvc (the same set the npm package bundles on line ~133 above).
+  napi-prebuilts:
+    name: Attach napi .node prebuilts to the GitHub release
+    needs: [ci, preflight]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the prebuilt binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bindings-*
+          path: artifacts
+      - name: Collect the .node files for the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-napi
+          for node in linux-x64-gnu linux-arm64-gnu darwin-arm64 win32-x64-msvc; do
+            src=$(find artifacts -name "turbo-dom-parser.$node.node" -print -quit)
+            [ -n "$src" ] || { echo "::error::turbo-dom-parser.$node.node missing from ci artifacts"; exit 1; }
+            cp "$src" "release-napi/turbo-dom-parser.$node.node"
+          done
+          ls -l release-napi
+      - name: Upload the prebuilts to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-napi/*.node
+          fail_on_unmatched_files: true
