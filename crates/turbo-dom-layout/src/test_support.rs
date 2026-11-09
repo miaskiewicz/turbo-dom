@@ -177,6 +177,7 @@ pub fn style(pairs: &[(&str, &str)]) -> ComputedStyle {
 }
 
 pub use crate::style::{ensure_default_display, html_default_display};
+pub use crate::layout::value::{break_inside_avoid_of, break_inside_column_avoid_of, break_rule_of, BreakRule};
 
 /// The computed style of an element whose author declarations are `declarations` (one
 /// block, in source order), cascaded like a real rule: shorthands set their longhands
