@@ -285,11 +285,18 @@ const CASES = [
       `<div data-cid="c" style="position:absolute;left:20px;top:20px;width:400px;height:200px;columns:2;column-gap:2px;column-rule-width:0.5px;column-rule-style:dotted;column-rule-color:#000000">${stack([60, 60, 60, 60])}</div>`,
     ),
     probes: [
-      // Rule centre, first dot row — Chrome floors the dot diameter to 1 px
-      // so this is solid black.
+      // Rule centre, first dot rows — Chrome floors the dot diameter to >= 1 px
+      // so these are solid black.
       [220, 20],
-      // Rule centre, second row — same dot, still solid black.
       [220, 21],
+      // Keep walking the rule to pin the period and dot pattern.
+      [220, 22],
+      [220, 23],
+      [220, 24],
+      [220, 25],
+      [220, 26],
+      [220, 27],
+      [220, 28],
       // Column block — `#eef` wash.
       [50, 40],
       // Backdrop outside.
