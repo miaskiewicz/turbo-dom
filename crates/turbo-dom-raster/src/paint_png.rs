@@ -3495,6 +3495,7 @@ mod exact_tests {
             paint_dotted_rule(&mut pm, &f, RED, id);
             paint_dashed_rule(&mut pm, &f, RED, id);
             paint_double_rule(&mut pm, &f, RED, id);
+            paint_shaded_rule(&mut pm, &f, ColumnRuleStyle::Groove, RED, id);
             paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, 1.0, RED, id);
             paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, 8.0, bad, RED, id);
             assert!(

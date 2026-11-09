@@ -2104,6 +2104,7 @@ mod tests {
             paint_dotted_rule(&mut buf, &f, RED);
             paint_dashed_rule(&mut buf, &f, RED);
             paint_double_rule(&mut buf, &f, RED);
+            paint_shaded_rule(&mut buf, &f, ColumnRuleStyle::Groove, RED);
             assert!(
                 buf.is_empty(),
                 "non-finite-width SVG helpers must not emit markup or loop ({bad}): {buf}"
