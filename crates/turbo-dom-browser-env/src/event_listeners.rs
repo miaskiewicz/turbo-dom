@@ -713,6 +713,202 @@ pub(super) fn subscription_count() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn eval_value<'s>(scope: &mut v8::PinScope<'s, '_>, src: &str) -> v8::Local<'s, v8::Value> {
+        let source = v8::String::new(scope, src).unwrap();
+        v8::Script::compile(scope, source, None)
+            .and_then(|s| s.run(scope))
+            .unwrap_or_else(|| panic!("eval failed: {src}"))
+    }
+
+    /// Kills surviving mutants at 547:5 / 550:5 / 556:5 / 560:5: `isolation_available`,
+    /// `take_isolation_state`, `put_isolation_state`, `reset_node_subscriptions`.
+    /// Each isolation helper is observed by the signal-subscription census it is meant to
+    /// drive — taking the state drains `NODE_SUBSCRIPTIONS`, putting it back restores it,
+    /// and `reset_node_subscriptions` empties it. A no-op or `Default::default()` body for
+    /// any of them makes the census count diverge from the expectation on the matching line.
+    #[test]
+    fn isolation_helpers_drain_restore_and_clear_signal_subscriptions() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install(scope);
+        // In-process isolation is live during an installed native binding call: a `false`
+        // replacement for the body would disable every isolation hop (dom_isolation's
+        // `thread_available` reads this), and the whole setup below would never see a
+        // positive subscription count.
+        assert!(isolation_available());
+        assert_eq!(subscription_count(), 0);
+        run_js(
+            scope,
+            "globalThis.__c=new AbortController();document.body.addEventListener('x',()=>{},{signal:__c.signal});",
+        );
+        assert_eq!(subscription_count(), 1);
+
+        // take: drains NODE_SUBSCRIPTIONS AND NEXT_LISTENER. A `Default::default()` mutant
+        // would leave the thread-local alone, so the count below would still be 1.
+        let state = take_isolation_state();
+        assert_eq!(subscription_count(), 0);
+        assert_eq!(state.subscriptions.len(), 1);
+        assert!(state.next_listener >= 2);
+
+        // put: restores. A `()` mutant drops the state, so count stays 0.
+        put_isolation_state(state);
+        assert_eq!(subscription_count(), 1);
+
+        // reset: clears. A `()` mutant leaves the count at 1.
+        reset_node_subscriptions();
+        assert_eq!(subscription_count(), 0);
+        reset();
+    }
+
+    /// Kills the surviving mutant at 671:5 (`clear_context -> ()`). Every context slot
+    /// `event_listeners` owns must be gone after `clear_context`; a no-op body leaves them
+    /// in place.
+    #[test]
+    fn clear_context_drops_every_event_listener_slot() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install(scope);
+        assert!(context.get_slot::<WindowPhases>().is_some());
+        assert!(context.get_slot::<ListenerParser>().is_some());
+        assert!(context.get_slot::<SignalReader>().is_some());
+        assert!(context.get_slot::<WindowInterfaces>().is_some());
+        assert!(context.get_slot::<SignalSubscription>().is_some());
+        assert!(context.get_slot::<ErrorGetters>().is_some());
+        clear_context(context);
+        assert!(context.get_slot::<WindowPhases>().is_none());
+        assert!(context.get_slot::<ListenerParser>().is_none());
+        assert!(context.get_slot::<SignalReader>().is_none());
+        assert!(context.get_slot::<WindowInterfaces>().is_none());
+        assert!(context.get_slot::<SignalSubscription>().is_none());
+        assert!(context.get_slot::<ErrorGetters>().is_none());
+        reset();
+    }
+
+    /// Kills the surviving mutant at 458:64 (the `index > 0` AbortSignal branch flipped to
+    /// `==` or `>=`). The branch picks `prototype.get_own_property_descriptor().get` for the
+    /// `aborted` accessor (index 0) and `prototype.get` for the `addEventListener` /
+    /// `removeEventListener` methods (indices 1, 2). Flipping the operator makes at least
+    /// one of the three entries non-function (undefined or a non-function value), observable
+    /// by replacing the realm's capture-callback with a recorder and inspecting what the
+    /// capture produced.
+    #[test]
+    fn capture_window_event_interfaces_records_real_abortsignal_methods() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install(scope);
+        // Install a recorder in place of the WindowInterfaces updater captured by
+        // event_listeners.js. The recorder stashes the values object on globalThis so the
+        // test can inspect what `capture_window_event_interfaces` produced for AbortSignal
+        // without going through the JS updater's `typeof === 'function'` guard, which
+        // swallows an undefined entry.
+        let recorder = v8::Local::<v8::Function>::try_from(eval_value(
+            scope,
+            "(values)=>{globalThis.__recorded=values;}",
+        ))
+        .expect("recorder");
+        context.set_slot(std::rc::Rc::new(WindowInterfaces(v8::Weak::new(
+            scope, recorder,
+        ))));
+        capture_window_event_interfaces(scope);
+        // Index 0 is the real aborted getter on an AbortSignal instance (not a plain
+        // boolean, undefined, or throwing). Indices 1 and 2 are addEventListener /
+        // removeEventListener functions. Together these pin the right-branch shape.
+        let result = eval_value(
+            scope,
+            "(()=>{const sig=new AbortController().signal;const [g,a,r]=globalThis.__recorded.AbortSignal;\
+             if(typeof g!=='function'||typeof a!=='function'||typeof r!=='function')return 'shape';\
+             if(g.call(sig)!==false)return 'getter';\
+             let fired=0;a.call(sig,'abort',()=>fired++);new AbortController();\
+             return 'ok';})()",
+        );
+        assert_eq!(
+            result.to_rust_string_lossy(scope),
+            "ok",
+            "capture shape wrong"
+        );
+        reset();
+    }
+
+    /// Kills the surviving mutants at 679:5 / 683:9 / 706:73 — the whole
+    /// `sweep_collected_listeners`, its inner `remove_dead`, and the `!node.is_empty()`
+    /// final `NODE_SUBSCRIPTIONS` retain predicate.
+    ///
+    /// The setup has three observables in one shot:
+    ///   (a) a live signal subscription whose node Weak is non-empty — the final
+    ///       `NODE_SUBSCRIPTIONS.retain(|_, node| !node.is_empty())` must keep it, so the
+    ///       census stays 1. Dropping the `!` flips the predicate and drops every live
+    ///       subscription instead; the census then reads 0 (kills 706:73).
+    ///   (b) a dead entry in `LISTENERS` whose node Weak is forced empty — `remove_dead`
+    ///       must drop its key; a no-op body for either the outer sweep or the inner
+    ///       `remove_dead` leaves it in place (kills 679:5 / 683:9).
+    ///   (c) a live listener whose key must survive the retain — the dispatch below still
+    ///       fires it.
+    #[test]
+    fn sweep_removes_dead_entries_and_preserves_live_listener_keys() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install(scope);
+        run_js(
+            scope,
+            "globalThis.liveNode=document.createElement('div');document.body.append(liveNode);\
+             globalThis.deadNode=document.createElement('p');document.body.append(deadNode);\
+             globalThis.liveCtrl=new AbortController();\
+             globalThis.fired=0;\
+             liveNode.addEventListener('live-type',()=>fired++,{signal:liveCtrl.signal});\
+             deadNode.addEventListener('dead-type',()=>{});",
+        );
+        // Precondition for (a): the signal subscription is live.
+        assert_eq!(subscription_count(), 1);
+        let before = super::super::LISTENERS.with(|l| l.borrow().len());
+        assert!(before >= 2, "expected the two seeded entries, got {before}");
+        // Force every listener for the 'dead-type' entry to carry an empty node Weak, as
+        // `sweep_collected_listeners` expects after a GC. The live `(liveNode,
+        // 'live-type')` entry is untouched so the signal subscription stays non-empty.
+        super::super::LISTENERS.with(|state| {
+            for ((_, type_name), list) in state.borrow_mut().iter_mut() {
+                if type_name == "dead-type" {
+                    for listener in list.iter_mut() {
+                        listener.node = v8::Weak::empty(scope);
+                    }
+                }
+            }
+        });
+        sweep_collected_listeners(scope);
+        // (b) 679:5 / 683:9: the dead `LISTENERS` key was removed.
+        let after = super::super::LISTENERS.with(|l| l.borrow().len());
+        assert_eq!(after, before - 1, "sweep did not remove the dead entry");
+        // (a) 706:73: the live signal subscription survives the final retain.
+        assert_eq!(
+            subscription_count(),
+            1,
+            "live signal subscription dropped by sweep"
+        );
+        // (c): dispatch still finds the live listener.
+        let fired = eval_value(
+            scope,
+            "liveNode.dispatchEvent(new Event('live-type'));globalThis.fired",
+        );
+        assert_eq!(
+            fired.int32_value(scope),
+            Some(1),
+            "live listener key dropped by sweep"
+        );
+        reset();
+    }
+
     /// turbo-dom#301: a listener's exception is reported (a trusted, cancelable ErrorEvent at
     /// the window with the throw site) before the next listener runs, on generic, node, window,
     /// document and AbortSignal targets; an exception thrown while reporting is not reported
