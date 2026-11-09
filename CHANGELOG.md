@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.1] — unreleased
 
+### Changed
+
+- #379 JS lane B (typed_om / editing / animations): extracted helpers for cc <= 12.
+
 ### Fixed
 
 - **turbo-dom-browser-env event dispatch (R3 H1)**:

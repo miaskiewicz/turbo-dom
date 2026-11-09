@@ -160,6 +160,14 @@
     }
     return sliceText(mantissa, 0, exponent + 1) + '.' + sliceText(mantissa, exponent + 1);
   }
+  function formatGRoundUp(kept, rest) {
+    if (charCode(rest, 0) > 53) return true;
+    return charCode(rest, 0) === 53 && (testRegExp(/[1-9]/, sliceText(rest, 1)) || (charCode(kept, 5) - 48) % 2 === 1);
+  }
+  function formatGExponent(sign, mantissa, exponent) {
+    const magnitude = mathAbs(exponent);
+    return sign + stripZeros(mantissa[0] + '.' + sliceText(mantissa, 1)) + 'e' + (exponent < 0 ? '-' : '+') + (magnitude < 10 ? '0' : '') + magnitude;
+  }
   function formatG(number) {
     if (number === 0) return 1 / number < 0 ? '-0' : '0';
     const negative = number < 0, exact = toExponential(negative ? -number : number, 99);
@@ -167,13 +175,10 @@
     const digits = replaceText(sliceText(exact, 0, at), '.', '');
     let exponent = +sliceText(exact, at + 1);
     const kept = sliceText(digits, 0, 6), rest = sliceText(digits, 6);
-    let roundUp = false;
-    if (charCode(rest, 0) > 53) roundUp = true;
-    else if (charCode(rest, 0) === 53) roundUp = testRegExp(/[1-9]/, sliceText(rest, 1)) || (charCode(kept, 5) - 48) % 2 === 1;
     let mantissa = kept;
-    if (roundUp) { const rounded = formatGRoundMantissa(kept, exponent); mantissa = rounded.mantissa; exponent = rounded.exponent; }
+    if (formatGRoundUp(kept, rest)) { const rounded = formatGRoundMantissa(kept, exponent); mantissa = rounded.mantissa; exponent = rounded.exponent; }
     const sign = negative ? '-' : '';
-    if (exponent < -4 || exponent >= 6) { const magnitude = mathAbs(exponent); return sign + stripZeros(mantissa[0] + '.' + sliceText(mantissa, 1)) + 'e' + (exponent < 0 ? '-' : '+') + (magnitude < 10 ? '0' : '') + magnitude; }
+    if (exponent < -4 || exponent >= 6) return formatGExponent(sign, mantissa, exponent);
     return sign + stripZeros(formatGPlain(mantissa, exponent));
   }
   // CSSNumericLiteralValue::CustomCSSText.
@@ -459,13 +464,17 @@
       const char = fromCode(c); state.at += char.length - 1; return char;
     }
     function name() { let result = ''; for (;;) { const c = code(0); if (isName(c)) { result += text[state.at]; state.at++; } else if (validEscape(c, code(1))) { state.at++; result += escape(); } else return result; } }
+    function numberStartsExponent() {
+      const e = code(0);
+      if (e !== 69 && e !== 101) return false;
+      return isDigit(code(1)) || ((code(1) === 43 || code(1) === 45) && isDigit(code(2)));
+    }
     function number() {
       const start = state.at; let integer = true;
       if (code(0) === 43 || code(0) === 45) state.at++;
       while (isDigit(code(0))) state.at++;
       if (code(0) === 46 && isDigit(code(1))) { integer = false; state.at += 2; while (isDigit(code(0))) state.at++; }
-      const e = code(0);
-      if ((e === 69 || e === 101) && (isDigit(code(1)) || ((code(1) === 43 || code(1) === 45) && isDigit(code(2))))) { integer = false; state.at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) state.at++; }
+      if (numberStartsExponent()) { integer = false; state.at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) state.at++; }
       return { value: +sliceText(text, start, state.at), integer };
     }
     function consumeString(quote) {
@@ -522,18 +531,21 @@
     const isCdc = (c) => c === 45 && code(1) === 45 && code(2) === 62;
     const isCdo = (c) => c === 60 && code(1) === 33 && code(2) === 45 && code(3) === 45;
     function fallbackDelim() { const char = fromCode(charCodeFull(text, state.at)); state.at += char.length; return { type: 'delim', delim: char }; }
-    function nextToken(c) {
-      if (isSpace(c)) { while (isSpace(code(0))) state.at++; return { type: 'whitespace' }; }
-      if (c === 34 || c === 39) return consumeString(c);
-      if (c === 35) return hashOrDelim();
-      if (PUNCTUATOR_TOKEN[c]) { state.at++; return { type: PUNCTUATOR_TOKEN[c] }; }
-      if (startsNumber(c, code(1), code(2))) return numberToken();
+    function nextTokenCdxOrIdent(c) {
       if (isCdc(c)) { state.at += 3; return { type: 'cdc' }; }
       if (isCdo(c)) { state.at += 4; return { type: 'cdo' }; }
       if (startsIdent(c, code(1), code(2))) return identLike();
       if (c === 64) return atOrDelim();
       if (c === 92) return backslashToken(c);
       return fallbackDelim();
+    }
+    function nextToken(c) {
+      if (isSpace(c)) { while (isSpace(code(0))) state.at++; return { type: 'whitespace' }; }
+      if (c === 34 || c === 39) return consumeString(c);
+      if (c === 35) return hashOrDelim();
+      if (PUNCTUATOR_TOKEN[c]) { state.at++; return { type: PUNCTUATOR_TOKEN[c] }; }
+      if (startsNumber(c, code(1), code(2))) return numberToken();
+      return nextTokenCdxOrIdent(c);
     }
     while (state.at < length) {
       const start = state.at, c = code(0);
@@ -604,20 +616,22 @@
     return indexOfText(text, '.') < 0 && indexOfText(text, 'e') < 0 ? text + '.0' : text;
   }
   const SIMPLE_TOKEN_TEXT = { __proto__: null, 'bad-string': "'\n", 'bad-url': 'url(()', whitespace: ' ', colon: ':', semicolon: ';', comma: ',', cdo: '<!--', cdc: '-->' };
+  const SERIALIZE_TOKEN_NAMES = { __proto__: null,
+    ident: (t) => serializeIdentifier(t.value),
+    function: (t) => serializeIdentifier(t.value) + '(',
+    at: (t) => '@' + serializeIdentifier(t.value),
+    hash: (t) => '#' + (t.hashType === 'unrestricted' ? serializeIdentifierRest(t.value) : serializeIdentifier(t.value)),
+    url: (t) => 'url(' + serializeIdentifier(t.value) + ')',
+    delim: (t) => t.delim === '\\' ? '\\\n' : t.delim,
+    number: (t) => serializeNumberToken(t),
+    percentage: (t) => shortNumber(t.value) + '%',
+    dimension: (t) => shortNumber(t.value) + serializeIdentifier(t.unit),
+    string: (t) => serializeString(t.value),
+  };
   function serializeToken(token) {
-    switch (token.type) {
-      case 'ident': return serializeIdentifier(token.value);
-      case 'function': return serializeIdentifier(token.value) + '(';
-      case 'at': return '@' + serializeIdentifier(token.value);
-      case 'hash': return '#' + (token.hashType === 'unrestricted' ? serializeIdentifierRest(token.value) : serializeIdentifier(token.value));
-      case 'url': return 'url(' + serializeIdentifier(token.value) + ')';
-      case 'delim': return token.delim === '\\' ? '\\\n' : token.delim;
-      case 'number': return serializeNumberToken(token);
-      case 'percentage': return shortNumber(token.value) + '%';
-      case 'dimension': return shortNumber(token.value) + serializeIdentifier(token.unit);
-      case 'string': return serializeString(token.value);
-      default: return token.type in SIMPLE_TOKEN_TEXT ? SIMPLE_TOKEN_TEXT[token.type] : token.type;
-    }
+    const handler = SERIALIZE_TOKEN_NAMES[token.type];
+    if (handler) return handler(token);
+    return token.type in SIMPLE_TOKEN_TEXT ? SIMPLE_TOKEN_TEXT[token.type] : token.type;
   }
   function serializeIdentifierRest(value) { const text = serializeIdentifier('a' + value); return sliceText(text, 1); }
   const NEEDS_COMMENT_IDENT_LHS = plainSet(['ident', 'at', 'hash', 'dimension', 'number']);
@@ -674,10 +688,15 @@
     if (kind === 'length') return UNITS[node.unit].category === 'length';
     return false;
   }
+  function createOperationType(leftType, rightType, op) {
+    if (op === ADD || op === SUB) return addTypes(leftType, rightType);
+    if (op === MUL) return multiplyTypes(leftType, rightType);
+    return multiplyTypes(leftType, negateType(rightType));
+  }
   function createOperation(left, right, op) {
     const leftType = nodeType(left), rightType = nodeType(right);
     if (!leftType || !rightType || left.t === 'kw' || right.t === 'kw') return null;
-    let type = op === ADD || op === SUB ? addTypes(leftType, rightType) : op === MUL ? multiplyTypes(leftType, rightType) : multiplyTypes(leftType, negateType(rightType));
+    const type = createOperationType(leftType, rightType, op);
     if (!type) return null;
     if (op === DIV) {
       const inverted = invertNode(right);
@@ -727,11 +746,17 @@
     return result ? nest(result) : null;
   }
   const bothLiteralOperands = (node) => node.operands[0].t === 'lit' && node.operands[1].t === 'lit';
+  function distributeLeft(left, right, op) {
+    return isAddOrSub(left) && bothLiteralOperands(left) && right.t === 'lit' && category(right) === 'number';
+  }
+  function distributeRight(left, right, op) {
+    return isAddOrSub(right) && bothLiteralOperands(right) && left.t === 'lit' && category(left) === 'number' && op !== DIV;
+  }
   function distribute(left, right, op) {
     if (op !== MUL && op !== DIV) return null;
     if (category(left) === 'intermediate' || category(right) === 'intermediate') return null;
-    if (isAddOrSub(left) && bothLiteralOperands(left) && right.t === 'lit' && category(right) === 'number') return distributeOver(left, right, 'left', op);
-    if (isAddOrSub(right) && bothLiteralOperands(right) && left.t === 'lit' && category(left) === 'number' && op !== DIV) return distributeOver(right, left, 'right', op);
+    if (distributeLeft(left, right, op)) return distributeOver(left, right, 'left', op);
+    if (distributeRight(left, right, op)) return distributeOver(right, left, 'right', op);
     return null;
   }
   function simplifiedAddSub(left, right, op, leftCategory, rightCategory) {
@@ -804,6 +829,11 @@
     if (node.t === 'lit') { if (used[node.unit]) return { skip: true }; used[node.unit] = true; }
     return { node, op };
   }
+  function simplifySumOrProductMergeFactor(result, factorRef) {
+    if (!result) return lit(factorRef.factor, 'number');
+    if (factorRef.factor !== 1) return simplified(result, lit(factorRef.factor, 'number'), MUL);
+    return result;
+  }
   function simplifySumOrProduct(root) {
     const multiply = isMulOrDiv(root);
     const { combined, children } = simplifySumOrProductCombine(root, multiply);
@@ -816,10 +846,7 @@
       result = simplified(result, step.node, step.op);
       if (!result) return null;
     }
-    if (multiply) {
-      if (!result) result = lit(factorRef.factor, 'number');
-      else if (factorRef.factor !== 1) { result = simplified(result, lit(factorRef.factor, 'number'), MUL); if (!result) return null; }
-    }
+    if (multiply) { result = simplifySumOrProductMergeFactor(result, factorRef); if (!result) return null; }
     return nest(result);
   }
   const maybeSimplifySumOrProduct = (node) => node && (isAddOrSub(node) || isMulOrDiv(node)) && !nestedIntermediate(node) ? simplifySumOrProduct(node) : node;
@@ -851,9 +878,18 @@
   const FN_RESULT_ANGLE = plainSet(['asin', 'acos', 'atan', 'atan2']);
   const FN_NUMBER_INPUTS = plainSet(['pow', 'sqrt', 'exp', 'log', 'asin', 'acos', 'atan']);
   const FN_SAME_TYPE = plainSet(['hypot', 'mod', 'rem', 'round', 'atan2']);
+  function fnResultTypeTrig(operands) {
+    const kind = category(operands[0]);
+    if (kind !== 'number' && kind !== 'angle') return null;
+    return makeType('number');
+  }
+  function fnResultTypeNumberInputsOk(operands) {
+    for (let index = 0; index < operands.length; index++) if (category(operands[index]) !== 'number') return false;
+    return true;
+  }
   function fnResultType(name, operands, types) {
-    if (name === 'sin' || name === 'cos' || name === 'tan') { const kind = category(operands[0]); if (kind !== 'number' && kind !== 'angle') return null; return makeType('number'); }
-    if (FN_NUMBER_INPUTS[name]) { for (let index = 0; index < operands.length; index++) if (category(operands[index]) !== 'number') return null; }
+    if (name === 'sin' || name === 'cos' || name === 'tan') return fnResultTypeTrig(operands);
+    if (FN_NUMBER_INPUTS[name] && !fnResultTypeNumberInputsOk(operands)) return null;
     if (FN_RESULT_NUMBER[name]) return makeType('number');
     if (FN_RESULT_ANGLE[name]) return name === 'atan2' && !sameTypes(types) ? null : makeType('deg');
     if (FN_SAME_TYPE[name]) return sameTypes(types);
@@ -996,31 +1032,37 @@
     if (item.type === 'dimension') { const key = lowerCase(item.unit); if (!UNITS[key] || key === 'number' || key === 'percent' || key === 'fr') return null; return lit(item.value, key); }
     return null;
   }
+  function parseTermItem(state, item) {
+    if (item.block && (item.type === '(' || (item.type === 'function' && lowerCase(item.value) === 'calc'))) return parseTermParen(state, item);
+    if (item.block && item.type === 'function') { const node = parseMathFunction(lowerCase(item.value), item.children, state.depth + 1); state.at++; return node; }
+    if (item.block) return null;
+    return parseTermToken(state, item);
+  }
   function parseTerm(state, info) {
     const items = state.items;
     if (state.at >= items.length) return null;
-    const item = items[state.at];
-    let result = null;
-    if ((item.block && item.type === '(') || (item.block && item.type === 'function' && lowerCase(item.value) === 'calc')) result = parseTermParen(state, item);
-    else if (item.block && item.type === 'function') { result = parseMathFunction(lowerCase(item.value), item.children, state.depth + 1); state.at++; }
-    else if (item.block) return null;
-    else result = parseTermToken(state, item);
+    const result = parseTermItem(state, items[state.at]);
     if (!result) return null;
     info.space = state.at < items.length && items[state.at].type === 'whitespace';
     while (state.at < items.length && items[state.at].type === 'whitespace') state.at++;
     return result;
   }
+  function parseProductDelim(state) {
+    const item = state.items[state.at];
+    if (!item || item.type !== 'delim' || (item.delim !== '*' && item.delim !== '/')) return null;
+    state.at++;
+    while (state.at < state.items.length && state.items[state.at].type === 'whitespace') state.at++;
+    return item.delim === '*' ? MUL : DIV;
+  }
   function parseProduct(state, info) {
     let result = parseTerm(state, info);
     if (!result) return null;
     for (;;) {
-      const item = state.items[state.at];
-      if (!item || item.type !== 'delim' || (item.delim !== '*' && item.delim !== '/')) break;
-      state.at++;
-      while (state.at < state.items.length && state.items[state.at].type === 'whitespace') state.at++;
+      const op = parseProductDelim(state);
+      if (op === null) break;
       const right = parseTerm(state, info);
       if (!right) return null;
-      result = simplified(result, right, item.delim === '*' ? MUL : DIV);
+      result = simplified(result, right, op);
       if (!result) return null;
     }
     if (isMulOrDiv(result) && !nestedIntermediate(result)) result = simplifySumOrProduct(result);
@@ -1426,13 +1468,19 @@
   // CSSUnparsedValue::FromCSSVariableData: var()/env() become references, the rest strings.
   function unparsedFromText(text) {
     const tokens = tokenize(text); const stateRef = { index: 0 };
+    function skipWhitespace() {
+      while (stateRef.index < tokens.length && tokens[stateRef.index].type === 'whitespace') stateRef.index++;
+    }
+    function consumeVarReferenceName() {
+      if (stateRef.index < tokens.length && tokens[stateRef.index].type === 'ident') { const name = tokens[stateRef.index].value; stateRef.index++; return name; }
+      return '';
+    }
     function consumeVarReference(segments, builder) {
       if (builder) { push(segments, builder); }
       stateRef.index++;
-      while (stateRef.index < tokens.length && tokens[stateRef.index].type === 'whitespace') stateRef.index++;
-      let variable = '';
-      if (stateRef.index < tokens.length && tokens[stateRef.index].type === 'ident') { variable = tokens[stateRef.index].value; stateRef.index++; }
-      while (stateRef.index < tokens.length && tokens[stateRef.index].type === 'whitespace') stateRef.index++;
+      skipWhitespace();
+      const variable = consumeVarReferenceName();
+      skipWhitespace();
       if (stateRef.index < tokens.length && tokens[stateRef.index].type === 'comma') stateRef.index++;
       const inner = read(true);
       if (stateRef.index < tokens.length && tokens[stateRef.index].type === ')') stateRef.index++;
@@ -1740,13 +1788,18 @@
   // CSSUnitValue::IsValueOutOfRangeForProperty.
   const OUT_OF_RANGE_INT_ONLY = plainSet(['order', 'reading-order', 'z-index', 'math-depth']);
   const OUT_OF_RANGE_POSITIVE_INT = plainSet(['orphans', 'widows', 'column-count']);
-  function outOfRange(name, value, unitKey) {
-    if (unitKey === 'fr') return false;
-    if (NON_NEGATIVE_LENGTH[name] && value < 0) return true;
+  function outOfRangeNamedCategory(name, value, unitKey) {
     if (OUT_OF_RANGE_INT_ONLY[name]) return mathRound(value) !== value;
     if (name === 'tab-size') return value < 0 || (unitKey === 'number' && mathRound(value) !== value);
     if (OUT_OF_RANGE_POSITIVE_INT[name]) return mathRound(value) !== value || value < 1;
     if (name === 'font-weight') return value < 1 || value > 1000;
+    return undefined;
+  }
+  function outOfRange(name, value, unitKey) {
+    if (unitKey === 'fr') return false;
+    if (NON_NEGATIVE_LENGTH[name] && value < 0) return true;
+    const named = outOfRangeNamedCategory(name, value, unitKey);
+    if (named !== undefined) return named;
     return !!NON_NEGATIVE[name] && value < 0;
   }
 
@@ -1767,14 +1820,17 @@
     return allowEmpty || content;
   }
   // var()/env() argument grammar: a custom property name first, then an optional fallback.
+  function substitutionArgsOk(item) {
+    const inner = significant(item.children), name = lowerCase(item.value);
+    if (!inner.length || inner[0].type !== 'ident' || (name === 'var' && !startsWith(inner[0].value, '--'))) return false;
+    return !(inner.length > 1 && inner[1].type !== 'comma');
+  }
   function substitutionsOk(items) {
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
       if (!item.block) continue;
       if (item.type === 'function' && (lowerCase(item.value) === 'var' || lowerCase(item.value) === 'env')) {
-        const inner = significant(item.children);
-        if (!inner.length || inner[0].type !== 'ident' || (lowerCase(item.value) === 'var' && !startsWith(inner[0].value, '--'))) return false;
-        if (inner.length > 1 && inner[1].type !== 'comma') return false;
+        if (!substitutionArgsOk(item)) return false;
       }
       if (!substitutionsOk(item.children)) return false;
     }
@@ -1927,13 +1983,22 @@
     if (positionIsKeyword(item, ' top bottom ')) return [unitValue(50, 'percent'), positionKeywordOffset(lowerCase(item.value))];
     const value = positionOffset(item); return value ? [value, unitValue(50, 'percent')] : null;
   }
+  function positionValueTwoFlags(a, b) {
+    const flag = (item) => ({
+      value: positionOffset(item),
+      x: positionIsKeyword(item, ' left right '),
+      y: positionIsKeyword(item, ' top bottom '),
+      c: positionIsKeyword(item, ' center '),
+    });
+    return { a: flag(a), b: flag(b) };
+  }
+  const positionValueTwoXyMatch = (a, b) => (a.x || a.c || a.value) && (b.y || b.c || b.value) && !(a.c && b.x);
+  const positionValueTwoYxMatch = (a, b) => (a.y || a.c) && (b.x || b.c);
   function positionValueTwo(a, b) {
-    const aValue = positionOffset(a), bValue = positionOffset(b);
-    const aX = positionIsKeyword(a, ' left right '), aY = positionIsKeyword(a, ' top bottom '), aC = positionIsKeyword(a, ' center ');
-    const bX = positionIsKeyword(b, ' left right '), bY = positionIsKeyword(b, ' top bottom '), bC = positionIsKeyword(b, ' center ');
+    const f = positionValueTwoFlags(a, b);
     const valueOf = (item, number) => number || positionKeywordOffset(lowerCase(item.value));
-    if ((aX || aC || aValue) && (bY || bC || bValue) && !(aC && bX)) return [valueOf(a, aValue), valueOf(b, bValue)];
-    if ((aY || aC) && (bX || bC)) return [valueOf(b, bValue), valueOf(a, aValue)];
+    if (positionValueTwoXyMatch(f.a, f.b)) return [valueOf(a, f.a.value), valueOf(b, f.b.value)];
+    if (positionValueTwoYxMatch(f.a, f.b)) return [valueOf(b, f.b.value), valueOf(a, f.a.value)];
     return null;
   }
   function positionValueGroups(parts) {
@@ -2042,11 +2107,7 @@
   const TRANSFORM_ROTATE = plainSet(['rotate', 'rotatex', 'rotatey', 'rotatez', 'rotate3d']);
   const TRANSFORM_SCALE = plainSet(['scale', 'scalex', 'scaley', 'scalez', 'scale3d']);
   const TRANSFORM_SKEW = plainSet(['skew', 'skewx', 'skewy']);
-  function transformComponent(item) {
-    if (!item.block || item.type !== 'function') return null;
-    const name = lowerCase(item.value), args = splitComponents(item.children, 'comma');
-    const values = list();
-    if (!(args.length === 1 && !args[0].length)) for (let index = 0; index < args.length; index++) { const value = transformComponentNumeric(args[index]); if (!value && name !== 'perspective') return null; push(values, value); }
+  function transformComponentDispatch(name, args, values) {
     if (TRANSFORM_TRANSLATE[name]) return transformComponentTranslate(name, values);
     if (TRANSFORM_ROTATE[name]) return transformComponentRotate(name, values);
     if (TRANSFORM_SCALE[name]) return transformComponentScale(name, values);
@@ -2054,6 +2115,13 @@
     if (name === 'perspective') return transformComponentPerspective(args, values);
     if (name === 'matrix' || name === 'matrix3d') return transformComponentMatrix(name, values);
     return null;
+  }
+  function transformComponent(item) {
+    if (!item.block || item.type !== 'function') return null;
+    const name = lowerCase(item.value), args = splitComponents(item.children, 'comma');
+    const values = list();
+    if (!(args.length === 1 && !args[0].length)) for (let index = 0; index < args.length; index++) { const value = transformComponentNumeric(args[index]); if (!value && name !== 'perspective') return null; push(values, value); }
+    return transformComponentDispatch(name, args, values);
   }
   function reifyRadius(property, items, single, mode) {
     if (single) return genericValue(property, single, mode);
@@ -2559,21 +2627,21 @@
     const horizontal0 = vertical0 === sides[0] ? sides[1] : sides[0];
     return vertical0 + '-' + horizontal0;
   }
+  const PHYSICAL_RESOLVER_SIDE = { __proto__: null,
+    inline: (s) => s.vertical ? 'vertical' : 'horizontal',
+    block: (s) => s.vertical ? 'horizontal' : 'vertical',
+    'inline-start': (s) => s.inlineStart,
+    'inline-end': (s) => s.inlineEnd,
+    'block-start': (s) => s.blockStart,
+    'block-end': (s) => s.blockEnd,
+    'start-start': (s) => physicalResolverCorner(s.blockStart, s.inlineStart),
+    'start-end': (s) => physicalResolverCorner(s.blockStart, s.inlineEnd),
+    'end-start': (s) => physicalResolverCorner(s.blockEnd, s.inlineStart),
+    'end-end': (s) => physicalResolverCorner(s.blockEnd, s.inlineEnd),
+  };
   function physicalResolver(resolver, mode, rtl) {
-    const sides = physicalResolverSides(mode, rtl);
-    switch (resolver) {
-      case 'inline': return sides.vertical ? 'vertical' : 'horizontal';
-      case 'block': return sides.vertical ? 'horizontal' : 'vertical';
-      case 'inline-start': return sides.inlineStart;
-      case 'inline-end': return sides.inlineEnd;
-      case 'block-start': return sides.blockStart;
-      case 'block-end': return sides.blockEnd;
-      case 'start-start': return physicalResolverCorner(sides.blockStart, sides.inlineStart);
-      case 'start-end': return physicalResolverCorner(sides.blockStart, sides.inlineEnd);
-      case 'end-start': return physicalResolverCorner(sides.blockEnd, sides.inlineStart);
-      case 'end-end': return physicalResolverCorner(sides.blockEnd, sides.inlineEnd);
-    }
-    return resolver;
+    const handler = PHYSICAL_RESOLVER_SIDE[resolver];
+    return handler ? handler(physicalResolverSides(mode, rtl)) : resolver;
   }
   const CURRENTCOLOR_INITIAL = plainSet(['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-block-start-color', 'border-block-end-color', 'border-inline-start-color', 'border-inline-end-color', 'outline-color', 'column-rule-color', 'row-rule-color', 'text-decoration-color', 'text-emphasis-color', 'caret-color', '-webkit-text-fill-color', '-webkit-text-stroke-color']);
   const BORDER_WIDTH = plainSet(['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', 'outline-width', 'column-rule-width', 'row-rule-width']);
@@ -2611,18 +2679,25 @@
       }
       return values;
     });
+    const ANIMATION_IDENT_KEYS = { __proto__: null,
+      reverse: 'animation-direction', alternate: 'animation-direction', 'alternate-reverse': 'animation-direction',
+      forwards: 'animation-fill-mode', backwards: 'animation-fill-mode', both: 'animation-fill-mode',
+      running: 'animation-play-state', paused: 'animation-play-state',
+    };
+    function animationItemKey(item, text, id, timesRef) {
+      if (isTime(item)) return { key: timesRef.times++ ? 'animation-delay' : 'animation-duration', value: text };
+      if (timing(item)) return { key: 'animation-timing-function', value: text };
+      if (item.type === 'number' || id === 'infinite') return { key: 'animation-iteration-count', value: text };
+      if (ANIMATION_IDENT_KEYS[id]) return { key: ANIMATION_IDENT_KEYS[id], value: id };
+      return { key: 'animation-name', value: text };
+    }
     expand('animation', ANIMATION, (items) => {
       const values = { __proto__: null, 'animation-name': 'none', 'animation-duration': 'auto', 'animation-timing-function': 'ease', 'animation-delay': '0s', 'animation-iteration-count': '1', 'animation-direction': 'normal', 'animation-fill-mode': 'none', 'animation-play-state': 'running' };
-      let times = 0;
+      const timesRef = { times: 0 };
       for (let index = 0; index < items.length; index++) {
         const item = items[index], text = componentCssText(item), id = ident(item);
-        if (isTime(item)) values[times++ ? 'animation-delay' : 'animation-duration'] = text;
-        else if (timing(item)) values['animation-timing-function'] = text;
-        else if (item.type === 'number' || id === 'infinite') values['animation-iteration-count'] = text;
-        else if (id === 'reverse' || id === 'alternate' || id === 'alternate-reverse') values['animation-direction'] = id;
-        else if (id === 'forwards' || id === 'backwards' || id === 'both') values['animation-fill-mode'] = id;
-        else if (id === 'running' || id === 'paused') values['animation-play-state'] = id;
-        else values['animation-name'] = text;
+        const r = animationItemKey(item, text, id, timesRef);
+        values[r.key] = r.value;
       }
       return values;
     });
@@ -2641,17 +2716,18 @@
     const values = meta.initial;
     return values ? joinList(values, meta.separator === ',' ? ', ' : ' ') : '';
   }
+  function uaTextDisplay(element) {
+    if (apply(namespaceOf, element, []) !== HTML_NAMESPACE) return 'inline';
+    if (attributeOf(element, 'hidden') !== null) return 'none';
+    const tag = apply(tagOf, element, []);
+    if (tag === 'html') return 'block';
+    if (tag === 'dialog' && attributeOf(element, 'open') !== null) return 'block';
+    return registry.display[tag] || 'inline';
+  }
   // UA stylesheet values the cascade does not carry: HTML display, [hidden], body margins.
   function uaText(context, name) {
     const element = context.element;
-    if (name === 'display') {
-      if (apply(namespaceOf, element, []) !== HTML_NAMESPACE) return 'inline';
-      if (attributeOf(element, 'hidden') !== null) return 'none';
-      const tag = apply(tagOf, element, []);
-      if (tag === 'html') return 'block';
-      if (tag === 'dialog' && attributeOf(element, 'open') !== null) return 'block';
-      return registry.display[tag] || 'inline';
-    }
+    if (name === 'display') return uaTextDisplay(element);
     if (startsWith(name, 'margin-') && apply(namespaceOf, element, []) === HTML_NAMESPACE && apply(tagOf, element, []) === 'body') return '8px';
     if (name === 'unicode-bidi' && apply(namespaceOf, element, []) === HTML_NAMESPACE) return registry.unicodeBidi[apply(tagOf, element, [])] || null;
     return null;
@@ -2706,13 +2782,14 @@
   }
   function inheritedText(context, name) { const parent = parentContext(context, context.contexts); return parent ? computeText(parent, name) : rootText(context, name); }
   const rootText = (context, name) => absolutize(context, name, uaText(context, name) || initialText(name));
+  const RAW_INHERITED_PARENT_KWS = { __proto__: null, inherit: 1, unset: 1, revert: 1, 'revert-layer': 1 };
   // currentcolor computes to itself and inherits as a keyword; it resolves per element.
   function rawInherited(context, name) {
     let text = specifiedText(context, name);
     if (text !== undefined) text = substitute(context, trimText(text));
     const keyword = text === undefined || text === null ? 'inherit' : lowerCase(trimText(text));
     if (keyword === 'initial') return 'currentcolor';
-    if (keyword === 'inherit' || keyword === 'unset' || keyword === 'revert' || keyword === 'revert-layer') { const parent = parentContext(context, context.contexts); return parent ? rawInherited(parent, name) : 'currentcolor'; }
+    if (RAW_INHERITED_PARENT_KWS[keyword]) { const parent = parentContext(context, context.contexts); return parent ? rawInherited(parent, name) : 'currentcolor'; }
     const items = significant(components(tokenize(text)));
     if (items.length === 1 && (ident(items[0]) === 'currentcolor' || (name === 'caret-color' && ident(items[0]) === 'auto'))) return 'currentcolor';
     return absolutize(context, name, text);
@@ -2801,14 +2878,16 @@
     const viewport = computedLiteralViewport(unitKey, node);
     return viewport || node;
   }
+  const COMPUTED_NODE_ARITHMETIC = { __proto__: null, [ADD]: 1, [SUB]: 1, [MUL]: 1 };
+  const COMPUTED_NODE_COMPARISON = { __proto__: null, min: 1, max: 1, clamp: 1 };
   function computedNode(context, name, node) {
     if (node.t === 'lit') return computedLiteral(context, name, node);
     if (node.t !== 'op') return node;
     const operands = list();
     for (let index = 0; index < node.operands.length; index++) push(operands, computedNode(context, name, node.operands[index]));
-    if (node.op === ADD || node.op === SUB || node.op === MUL) return simplified(operands[0], operands[1], node.op) || node;
+    if (COMPUTED_NODE_ARITHMETIC[node.op]) return simplified(operands[0], operands[1], node.op) || node;
     if (node.op === 'invert') return invertNode(operands[0]);
-    if (node.op === 'min' || node.op === 'max' || node.op === 'clamp') return createComparison(toArray(operands), node.op) || node;
+    if (COMPUTED_NODE_COMPARISON[node.op]) return createComparison(toArray(operands), node.op) || node;
     return node;
   }
   function computedComponentNumeric(context, name, item) {
@@ -2872,6 +2951,13 @@
     }
     return segments;
   }
+  function resolveReferenceSimple(reference, scheme, authority, basePath, parts) {
+    if (startsWith(reference, '//')) return scheme + reference;
+    if (reference === '') return scheme + authority + basePath + (parts[4] || '');
+    if (startsWith(reference, '#')) return scheme + authority + basePath + (parts[4] || '') + reference;
+    if (startsWith(reference, '?')) return scheme + authority + basePath + reference;
+    return null;
+  }
   function resolveReference(reference, base) {
     if (execRegExp(/^[A-Za-z][A-Za-z0-9+.-]*:/, reference)) return reference;
     const parts = execRegExp(/^([A-Za-z][A-Za-z0-9+.-]*:)(\/\/[^/?#]*)?([^?#]*)(\?[^#]*)?(#.*)?$/, base);
@@ -2879,10 +2965,8 @@
     const scheme = parts[1], authority = parts[2] || '', basePath = parts[3] || '/';
     // An opaque-path base (about:blank) cannot resolve a relative reference.
     if (!authority && !startsWith(basePath, '/')) return reference;
-    if (startsWith(reference, '//')) return scheme + reference;
-    if (reference === '') return scheme + authority + basePath + (parts[4] || '');
-    if (startsWith(reference, '#')) return scheme + authority + basePath + (parts[4] || '') + reference;
-    if (startsWith(reference, '?')) return scheme + authority + basePath + reference;
+    const simple = resolveReferenceSimple(reference, scheme, authority, basePath, parts);
+    if (simple !== null) return simple;
     const split = execRegExp(/^([^?#]*)(.*)$/, reference), path = split[1], suffix = split[2];
     const merged = startsWith(path, '/') ? path : sliceText(basePath, 0, basePath.lastIndexOf('/') + 1) + path;
     const segments = resolveReferenceMergePath(merged.split('/'));
