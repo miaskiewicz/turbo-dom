@@ -1180,11 +1180,7 @@ export class Element extends Node {
     const root = this.getRootNode();
     if (!root.__isShadowRoot) return [];
     const slotName = this.getAttribute('name') || '';
-    const out = [];
-    for (const c of root.host.__children()) {
-      if (c.nodeType === ELEMENT_NODE) { if ((c.getAttribute('slot') || '') === slotName) out.push(c); }
-      else if (c.nodeType === TEXT_NODE && slotName === '') out.push(c); // text routes only to the default slot
-    }
+    const out = collectAssigned(root.host.__children(), slotName);
     if (out.length === 0 && options && options.flatten) {
       return this.__children().filter((n) => n.nodeType === ELEMENT_NODE || n.nodeType === TEXT_NODE);
     }
@@ -1477,6 +1473,17 @@ function cloneKids(source, parent, doc) {
   const src = source.__children(), kids = new Array(src.length);
   for (let i = 0; i < src.length; i++) { const cl = src[i].__clone(doc, true); cl.parentNode = parent; kids[i] = cl; }
   return kids;
+}
+
+// Light-DOM children routed to a slot of `slotName`: elements whose `slot` attribute matches,
+// plus text nodes (only to the default slot).
+function collectAssigned(kids, slotName) {
+  const out = [];
+  for (const c of kids) {
+    if (c.nodeType === ELEMENT_NODE) { if ((c.getAttribute('slot') || '') === slotName) out.push(c); }
+    else if (c.nodeType === TEXT_NODE && slotName === '') out.push(c);
+  }
+  return out;
 }
 
 // First <slot> within a shadow tree whose name matches (default slot: name '').
