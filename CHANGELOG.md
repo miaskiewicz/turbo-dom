@@ -9,6 +9,21 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env event dispatch (R3 H1)**:
+  `drainMicrotasksAcrossDispatch` now saves and restores `stop` and
+  `stopImmediate` alongside the previously saved 5 dispatch-scoped fields.
+  A listener that calls `event.stopPropagation()` and queues a microtask
+  which synchronously re-dispatches the same event previously saw the
+  outer bubble phase fire anyway: the inner `dispatchTarget`'s `finally`
+  reset `record.stop=false`, and the drain's restore did not put it back.
+  Chrome 156 probe confirmed the microtask-triggered re-dispatch is
+  allowed (so the R2 M3 save/restore stays); the fix extends the save set
+  rather than reverting it.
+- **CHANGELOG**: spliced the two `## [0.8.1] — unreleased` headers into
+  one section. The two separate `### Fixed` blocks (R1/R2/R3 fixes
+  above, pre-R1 fixes + `### Added` below) now live under one 0.8.1
+  header, so the release tagger can flip "unreleased" to a date without
+  physically splicing the file (R3 H2).
 - **turbo-dom-layout break-before/after/inside: column**: `break_rule_of` in
   `layout/value.rs` collapsed `page` / `column` / `left` / `right` / `recto` /
   `verso` into a single `BreakRule::Page`, so `break-before: column` reached
@@ -172,10 +187,6 @@ at the time); this file reconstructs them from history.
   `<span>` in IBM Plex Mono at 20px (turbo-surf's `font_face.rs`
   plain/csp "ready-height" probe) is 25 CSS px tall at every DSF, not 26
   (miaskiewicz/turbo-dom#387; sibling to the text Range path #377 fixed).
-## [0.8.1] — unreleased
-
-### Fixed
-
 - **turbo-dom-raster** / **turbo-dom-browser-env**: restored the 100% /
   97.6% coverage floors after PR-D (column-rule painting, turbo-dom#398)
   and the release/0.8.1 browser-env additions (#381 non-Node dispatch,
