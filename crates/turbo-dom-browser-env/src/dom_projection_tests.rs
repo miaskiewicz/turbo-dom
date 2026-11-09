@@ -70,6 +70,73 @@ fn captured_intrinsics_names_the_intrinsic_in_thrown_error() {
     }
 }
 
+/// Review R1 L5: `captured_intrinsics.js`'s rewrap must not drop the
+/// original error's subclass identity, and it must attach the original
+/// as `cause` so programmatic triage works. A page getter that throws
+/// a `TypeError` currently surfaces as a plain `Error`, so an engine
+/// path (or a test) that catches `TypeError` specifically loses the
+/// signal.
+#[test]
+fn captured_intrinsics_rewrap_preserves_subclass_and_attaches_cause() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let setup = v8::String::new(
+        scope,
+        "globalThis.__tsNs = {}; \
+         globalThis.EventTarget = class { addEventListener(){} removeEventListener(){} }; \
+         globalThis.__originalThrow = new TypeError('page-poison'); \
+         Object.defineProperty(Promise, Symbol.species, { configurable: true, \
+         get: function(){ throw globalThis.__originalThrow } });",
+    )
+    .unwrap();
+    v8::Script::compile(scope, setup, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let src = include_str!("captured_intrinsics.js");
+    let code = v8::String::new(scope, src).unwrap();
+    v8::tc_scope!(let catch, scope);
+    let ran = v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
+    assert!(ran.is_none(), "captured_intrinsics must throw");
+    let exception = catch.exception().unwrap();
+    // Probe the thrown exception's shape from JS so we can read `.cause`
+    // and `.constructor.name` under TryCatch's current exception.
+    let probe = v8::String::new(
+        catch,
+        "(function(e){return JSON.stringify({ \
+            ctor: e && e.constructor && e.constructor.name, \
+            hasCause: !!(e && e.cause), \
+            causeIsOrig: e && e.cause === globalThis.__originalThrow, \
+            message: e && e.message || String(e), \
+         });})",
+    )
+    .unwrap();
+    v8::tc_scope!(let inner, catch);
+    let probe_fn = v8::Script::compile(inner, probe, None)
+        .unwrap()
+        .run(inner)
+        .unwrap();
+    let probe_fn: v8::Local<v8::Function> = probe_fn.try_into().unwrap();
+    let undef = v8::undefined(inner).into();
+    let result = probe_fn.call(inner, undef, &[exception]).unwrap();
+    let shape = result.to_rust_string_lossy(inner);
+    assert!(
+        shape.contains("\"ctor\":\"TypeError\""),
+        "rewrap must preserve the original error's subclass (got shape={shape})"
+    );
+    assert!(
+        shape.contains("\"hasCause\":true") && shape.contains("\"causeIsOrig\":true"),
+        "rewrap must attach the original error as `cause` (got shape={shape})"
+    );
+    assert!(
+        shape.contains("PromiseSpecies") && shape.contains("captured_intrinsics"),
+        "rewrap must still name the intrinsic in the message (got shape={shape})"
+    );
+}
+
 /// turbo-dom#439: the WeakSet-bookkeeping audit's static companion — every `.js`
 /// sibling under `crates/turbo-dom-browser-env/src/` that instantiates a
 /// `new WeakSet(...)` must also capture `WeakSet.prototype.{add,has,delete}` (or
