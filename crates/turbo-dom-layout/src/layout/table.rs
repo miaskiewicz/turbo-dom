@@ -310,12 +310,17 @@ fn shares(total: f32, weights: &[f32]) -> Vec<f32> {
     out
 }
 
-/// The group's break value where it is set, else the row's own (a forced `Page`
-/// on either side wins over `Avoid`, CSS Fragmentation 3 §3.1).
+/// The group's break value where it is set, else the row's own (a forced break
+/// on either side wins over any `Avoid*`, CSS Fragmentation 3 §3.1). `Page` and
+/// `Column` are both forced breaks; a `Page` beats a `Column` (page-class is
+/// coarser than column-class, Fragmentation 3 §3). Likewise `Avoid` (avoid-page)
+/// beats `AvoidColumn` for the same coarseness reason.
 fn stronger(group: BreakRule, row: BreakRule) -> BreakRule {
     match (group, row) {
         (BreakRule::Page, _) | (_, BreakRule::Page) => BreakRule::Page,
+        (BreakRule::Column, _) | (_, BreakRule::Column) => BreakRule::Column,
         (BreakRule::Avoid, _) | (_, BreakRule::Avoid) => BreakRule::Avoid,
+        (BreakRule::AvoidColumn, _) | (_, BreakRule::AvoidColumn) => BreakRule::AvoidColumn,
         _ => BreakRule::Auto,
     }
 }

@@ -280,7 +280,11 @@ package or publish workflow.
   / `avoid-column` pushes a child that would fragment into a fresh column
   (when it fits in one — CSS Fragmentation 3 §5.2 "may ignore the value"
   otherwise). `page` / `avoid-page` are pagination's concern (turbo-html2pdf)
-  and stay no-ops here. The balancer becomes a 30-step binary search for the
+  and stay no-ops here. The `break-{before,after}` classes are read through
+  the central `layout::value::break_rule_of` parser, which returns one of
+  `BreakRule::{Auto, Avoid, AvoidColumn, Page, Column}` so the multicol flow
+  and the paginator see the same rule set and never collapse a column break
+  into a page break (turbo-html2pdf#69). The balancer becomes a 30-step binary search for the
   smallest `col_h` at which the break-aware flow fits in `used_count` columns,
   capped by the container's definite height (a capped `col_h` smaller than
   the break-aware minimum accepts overflow strips past `used_count`). The last
