@@ -71,6 +71,9 @@
       clone=new RegExpType($apply(sourceOf,pattern,[]),flags);$apply(weakSet,clones,[pattern,clone]);$apply(weakSet,cloneUnicode,[clone,$apply(strings.indexOf,flags,['u'])>=0||$apply(strings.indexOf,flags,['v'])>=0]);return clone;
     };
     var isPair=function(text,index){var high=$apply(strings.charCodeAt,text,[index]),low=$apply(strings.charCodeAt,text,[index+1]);return high>=0xD800&&high<=0xDBFF&&low>=0xDC00&&low<=0xDFFF;};
+    // After a zero-length match at `index`, advance past the current character — two code
+    // units when the regex is unicode-flagged and we are on a surrogate pair.
+    var splitAdvanceAfterZero = function(text, index, unicode){ return index + (unicode && isPair(text, index) ? 2 : 1); };
     var split=function(text,pattern,limit){
       var out=[],max=limit===undefined?4294967295:limit>>>0;if(max===0)return out;
       var clone=globalClone(pattern),unicode=$apply(weakGet,cloneUnicode,[clone]),at=0,from=0,match;
@@ -79,7 +82,7 @@
         clone.lastIndex=from;match=$apply(exec,clone,[text]);
         if(!match||match.index>=text.length)break;
         var index=match.index,end=index+match[0].length;
-        if(end===at){from=index+(unicode&&isPair(text,index)?2:1);continue;}
+        if(end===at){from=splitAdvanceAfterZero(text,index,unicode);continue;}
         add(out,$apply(strings.slice,text,[at,index]));if(out.length===max)return out;
         for(var i=1;i<match.length;i++){add(out,match[i]);if(out.length===max)return out;}
         at=end;from=at;
@@ -2464,19 +2467,24 @@ g.DOMException = class DOMException {
   get code() { return __domExceptionCodes[__exceptionState(this).name] || 0; }
 };
 Object.setPrototypeOf(DOMException.prototype, Error.prototype);
-for (const name of ["name", "message", "code"]) {
-  const descriptor = Object.getOwnPropertyDescriptor(DOMException.prototype, name);
-  Object.defineProperty(DOMException.prototype, name, {...descriptor, enumerable: true});
-}
-Object.defineProperty(DOMException.prototype, Symbol.toStringTag, {value: "DOMException", configurable: true});
-for (const [name, code] of Object.entries({INDEX_SIZE_ERR:1, DOMSTRING_SIZE_ERR:2,
-  HIERARCHY_REQUEST_ERR:3, WRONG_DOCUMENT_ERR:4, INVALID_CHARACTER_ERR:5, NO_DATA_ALLOWED_ERR:6,
-  NO_MODIFICATION_ALLOWED_ERR:7, NOT_FOUND_ERR:8, NOT_SUPPORTED_ERR:9, INUSE_ATTRIBUTE_ERR:10,
-  INVALID_STATE_ERR:11, SYNTAX_ERR:12, INVALID_MODIFICATION_ERR:13, NAMESPACE_ERR:14,
-  INVALID_ACCESS_ERR:15, VALIDATION_ERR:16, TYPE_MISMATCH_ERR:17, SECURITY_ERR:18,
-  NETWORK_ERR:19, ABORT_ERR:20, URL_MISMATCH_ERR:21, QUOTA_EXCEEDED_ERR:22, TIMEOUT_ERR:23,
-  INVALID_NODE_TYPE_ERR:24, DATA_CLONE_ERR:25})) {
-  for (const object of [DOMException, DOMException.prototype]) Object.defineProperty(object, name, {value: code, enumerable: true, configurable: true});
+// Wrap the Chrome 156 DOMException numeric-code tables and the `enumerable: true` pass
+// over name/message/code into a nested helper, so the top-level IIFE's cc stays at 12.
+installDOMExceptionCodes();
+function installDOMExceptionCodes(){
+  for (const name of ["name", "message", "code"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(DOMException.prototype, name);
+    Object.defineProperty(DOMException.prototype, name, {...descriptor, enumerable: true});
+  }
+  Object.defineProperty(DOMException.prototype, Symbol.toStringTag, {value: "DOMException", configurable: true});
+  for (const [name, code] of Object.entries({INDEX_SIZE_ERR:1, DOMSTRING_SIZE_ERR:2,
+    HIERARCHY_REQUEST_ERR:3, WRONG_DOCUMENT_ERR:4, INVALID_CHARACTER_ERR:5, NO_DATA_ALLOWED_ERR:6,
+    NO_MODIFICATION_ALLOWED_ERR:7, NOT_FOUND_ERR:8, NOT_SUPPORTED_ERR:9, INUSE_ATTRIBUTE_ERR:10,
+    INVALID_STATE_ERR:11, SYNTAX_ERR:12, INVALID_MODIFICATION_ERR:13, NAMESPACE_ERR:14,
+    INVALID_ACCESS_ERR:15, VALIDATION_ERR:16, TYPE_MISMATCH_ERR:17, SECURITY_ERR:18,
+    NETWORK_ERR:19, ABORT_ERR:20, URL_MISMATCH_ERR:21, QUOTA_EXCEEDED_ERR:22, TIMEOUT_ERR:23,
+    INVALID_NODE_TYPE_ERR:24, DATA_CLONE_ERR:25})) {
+    for (const object of [DOMException, DOMException.prototype]) Object.defineProperty(object, name, {value: code, enumerable: true, configurable: true});
+  }
 }
 
 if(typeof __ns.makeNativeFunction==='function'){
@@ -5885,19 +5893,33 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     var projectionApply=Reflect.apply,projectionSetPrototype=Object.setPrototypeOf;
     var projectionHasOwn=Object.prototype.hasOwnProperty,projectionHas=WeakSet.prototype.has,projectionAdd=WeakSet.prototype.add;
     var projectionSlice=String.prototype.slice;
+    // Interface name for an Element (nodeType 1). SVG elements go to SVGSVGElement or
+    // SVGElement depending on their (prefix-stripped) local name; xhtml / math / other
+    // namespaces take their own interfaces.
+    function projectNodeName1(tag, namespace){
+      if (namespace === 'http://www.w3.org/2000/svg') {
+        var localStart = 0;
+        for (var index = 0; index < tag.length; index++) if (tag[index] === ':') localStart = index + 1;
+        return projectionApply(projectionSlice, tag, [localStart]) === 'svg' ? 'SVGSVGElement' : 'SVGElement';
+      }
+      return namespace === 'http://www.w3.org/1999/xhtml' ? htmlInterfaceName(tag) : namespace === 'http://www.w3.org/1998/Math/MathML' ? 'MathMLElement' : 'Element';
+    }
+    // Interface name for every other node type (document, attr, text, fragment, …).
+    var projectNodeTypeNames = { 2:'Attr', 10:'DocumentType', 3:'Text', 4:'CDATASection', 7:'ProcessingInstruction', 8:'Comment', 9:'HTMLDocument', 11:'DocumentFragment' };
+    function projectNodeNameOther(obj, type){
+      if (type === 11 && projectionApply(isShadowRoot, obj, [])) return 'ShadowRoot';
+      return projectNodeTypeNames[type] || 'Node';
+    }
     __ns.projectNativeNode=function(obj){
-      if(projectionApply(projectionHas,projected,[obj]))return obj;
-      var type=projectionApply(getType,obj,[]),name;
-      if(type===1){
-        var tag=projectionApply(getLocalTag,obj,[]),namespace=projectionApply(getNamespace,obj,[]);
-        if(namespace==='http://www.w3.org/2000/svg'){
-          var localStart=0;for(var index=0;index<tag.length;index++)if(tag[index]===':')localStart=index+1;
-          name=projectionApply(projectionSlice,tag,[localStart])==='svg'?'SVGSVGElement':'SVGElement';
-        }else name=namespace==='http://www.w3.org/1999/xhtml'?htmlInterfaceName(tag):namespace==='http://www.w3.org/1998/Math/MathML'?'MathMLElement':'Element';
-      }else name=type===11&&projectionApply(isShadowRoot,obj,[])?'ShadowRoot':({2:'Attr',10:'DocumentType',3:'Text',4:'CDATASection',7:'ProcessingInstruction',8:'Comment',9:'HTMLDocument',11:'DocumentFragment'})[type]||'Node';
-      projectionSetPrototype(obj,prototypes[name]);
-      projectionApply(projectionAdd,projected,[obj]);
-      for(var index=0;index<nativeKeys.length;index++){var key=nativeKeys[index];if(projectionApply(projectionHasOwn,obj,[key]))delete obj[key];}
+      if (projectionApply(projectionHas, projected, [obj])) return obj;
+      var type = projectionApply(getType, obj, []), name;
+      if (type === 1) {
+        var tag = projectionApply(getLocalTag, obj, []), namespace = projectionApply(getNamespace, obj, []);
+        name = projectNodeName1(tag, namespace);
+      } else name = projectNodeNameOther(obj, type);
+      projectionSetPrototype(obj, prototypes[name]);
+      projectionApply(projectionAdd, projected, [obj]);
+      for (var index = 0; index < nativeKeys.length; index++) { var key = nativeKeys[index]; if (projectionApply(projectionHasOwn, obj, [key])) delete obj[key]; }
       return obj;
     };
     __ns.projectNativeNode(d);

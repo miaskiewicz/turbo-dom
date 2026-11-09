@@ -332,6 +332,10 @@ at the time); this file reconstructs them from history.
   previously beaten by parse-time inline-script fetches.
 - **turbo-dom-browser-env**: `snapshot_blob()` blobs are now compatible with any default-snapshot isolate alive later in the process. The build thread anchors V8's shared read-only heap with a default-snapshot isolate before starting its snapshot creator, so blobs built with no isolate alive and used while a plain isolate exists (a worker, a leaked creator from a failed startup-snapshot build) no longer abort V8 in `Deserializer::ReadReadOnlyHeapRef` (miaskiewicz/turbo-dom#392; surfaced during the 0.8.0 coverage work, #389).
 
+### Changed
+
+- **JS cyclomatic-complexity ceiling lowered to cc ≤ 12** (miaskiewicz/turbo-dom#379, JS half, lane A — `crates/turbo-dom-browser-env/src/browser_env.js`). All 44 functions in that file that measured cc 13–15 against the 0.8.0 ceiling were brought down to cc ≤ 12 by behavior-preserving extract-helper refactors. The hot families named in the complexity gate — `applied*`, `cssScopedMatch`, `appliedEntryMatch`, `computed*` — were extracted with allocation-aware helpers (hoisted named functions, no per-call closures beyond what the originals already built; small-literal returns avoided on per-element inner loops). Rust half, the other JS files, and the gate bump from `cc ≤ 15` to `cc ≤ 12` land in sibling PRs.
+
 ### Added
 
 - CSS multi-column: `column-span: all` + `break-{before,after,inside}` flow
