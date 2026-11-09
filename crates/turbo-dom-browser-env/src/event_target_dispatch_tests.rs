@@ -633,3 +633,109 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
     );
     reset();
 }
+
+/// Review R4 H2: `record.trusted` is dispatch-scoped — `dispatchTarget`'s
+/// entry writes it from the `host` parameter, and neither its own
+/// `finally` nor `drainMicrotasksAcrossDispatch`'s save-set restores it.
+/// A trusted outer whose microtask re-dispatches the same event flips
+/// `record.trusted = false` (untrusted inner), and the outer's
+/// subsequent bubble listeners see `event.isTrusted === false` — a
+/// trusted event spuriously becomes untrusted mid-dispatch.
+///
+/// Fix: add `trusted` to the drain's save-set alongside `stop` /
+/// `stopImmediate`. (Clearing is not required: the inner's own
+/// `dispatchTarget` entry overwrites `trusted` anyway.)
+#[test]
+fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Three-level chain child -> mid -> parent. Host-dispatch on child
+    // (trusted). `child`'s capture listener queues a microtask that
+    // synchronously re-dispatches the same event through
+    // `child.dispatchEvent` (untrusted). After the microtask returns and
+    // the outer's dispatch continues, every outer listener on the path
+    // must still see `event.isTrusted === true` — the trusted flag of
+    // the outer dispatch is not the inner's to toggle.
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let queued = false;
+      // capture on child (runs AT_TARGET on a multi-level — fires first
+      // after parent + mid capture). Queue the microtask here; its
+      // observable is BUBBLE listeners on mid + parent that follow.
+      child.addEventListener('x', (event) => {
+        trace.push('outer:child:isTrusted=' + event.isTrusted);
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('inner-start:beforeTrusted=' + event.isTrusted);
+            try { child.dispatchEvent(event); }
+            catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+            trace.push('inner-end:afterTrusted=' + event.isTrusted);
+          });
+        }
+      }, { capture: true });
+      // Bubble listeners run AFTER the drain restores (if the save
+      // works), so each must still see isTrusted = true on the outer.
+      mid.addEventListener('x', (event) => {
+        trace.push('outer:mid-bubble:isTrusted=' + event.isTrusted);
+      });
+      parent.addEventListener('x', (event) => {
+        trace.push('outer:parent-bubble:isTrusted=' + event.isTrusted);
+      });
+      globalThis.__hostDispatchTarget(new Event('x', { bubbles: true }), child);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "trusted-leak script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Outer AT_TARGET listener on child must see trusted (the host set it).
+    assert!(
+        has("outer:child:isTrusted=true"),
+        "outer:child must see isTrusted=true (host dispatch set it). \
+         Trace: {trace}",
+    );
+    // Inner re-dispatch via `child.dispatchEvent(event)` is NOT a host
+    // call — the inner's `dispatchTarget` writes `record.trusted =
+    // host = false`. Its finally does not restore trusted, so without
+    // the save/restore the outer's bubble listeners would see false.
+    assert!(
+        has("outer:mid-bubble:isTrusted=true"),
+        "outer:mid-bubble must see isTrusted=true — the inner \
+         (untrusted) re-dispatch's trusted flag must NOT leak back into \
+         the outer (R4 H2). Trace: {trace}",
+    );
+    assert!(
+        has("outer:parent-bubble:isTrusted=true"),
+        "outer:parent-bubble must see isTrusted=true — the inner \
+         (untrusted) re-dispatch's trusted flag must NOT leak back into \
+         the outer (R4 H2). Trace: {trace}",
+    );
+    reset();
+}
