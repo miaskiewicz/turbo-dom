@@ -512,6 +512,20 @@ at the time); this file reconstructs them from history.
   listener is invoked — like Chrome 156's "clean up after running a callback" step,
   observable as IDB transaction deactivation (turbo-dom#382). Unblocks surf #193.
 
+### Changed
+
+- **turbo-dom-browser-env JS: cc <= 12 refactor, lane D — medium files
+  (turbo-dom#379).** Mechanical extract-helper refactors across 9
+  `crates/turbo-dom-browser-env/src/*.js` files (`selection.js`,
+  `input_members.js`, `html_image.js`, `trusted_types.js`,
+  `form_controls.js`, `document_xpath.js`, `sanitizer.js`,
+  `range_contents.js`, `html_reflections.js`) take every function at cc
+  13..=15 down to <= 12. Behaviour-preserving: all 748 browser-env Rust
+  tests still pass. `trusted_types.js` keeps the R2 V8 H1 null-prototype
+  `factoryState` invariant and the R3 M1 Drop-assert comments in place;
+  the new `authorizePolicyName` helper routes through the same
+  null-prototype `state.names` / `state.defaultPolicy` writes.
+
 ## [0.8.0] — 2026-11-06
 
 ### Highlights

@@ -98,11 +98,7 @@
   factoryState.emptyScript = emptyScript;
   const factory = make('TrustedTypePolicyFactory', factoryState);
   for (const name of ['emptyHTML', 'emptyScript', 'defaultPolicy']) accessor(factoryPrototype, name, function () { return read(this, 'TrustedTypePolicyFactory')[name]; });
-  member(factoryPrototype, 'createPolicy', function (name, options) {
-    const state = read(this, 'TrustedTypePolicyFactory');
-    required('createPolicy', 'TrustedTypePolicyFactory', arguments.length, 1);
-    name = string(name, 'createPolicy', 'TrustedTypePolicyFactory');
-    if (options != null && typeof options !== 'object' && typeof options !== 'function') throw failure('createPolicy', 'TrustedTypePolicyFactory', "The provided value is not of type 'TrustedTypePolicyOptions'.");
+  function readPolicyRules(options) {
     const rules = create(null);
     for (let index = 0; index < methods.length; index++) {
       const method = methods[index];
@@ -110,9 +106,23 @@
       if (callback !== undefined && typeof callback !== 'function') throw failure('createPolicy', 'TrustedTypePolicyFactory', "Failed to read the '" + method + "' property from 'TrustedTypePolicyOptions': The given value is not a function.");
       rules[method] = callback;
     }
+    return rules;
+  }
+  function authorizePolicyName(state, name) {
     if (state.authorize && !state.authorize('policy', name, own(state.names, name))) throw failure('createPolicy', 'TrustedTypePolicyFactory', own(state.names, name) ? 'Policy with name "' + name + '" already exists.' : 'Policy "' + name + '" disallowed.');
     if (name === 'default' && state.defaultPolicy) throw failure('createPolicy', 'TrustedTypePolicyFactory', 'Policy with name "default" already exists.');
+  }
+  member(factoryPrototype, 'createPolicy', function (name, options) {
+    const state = read(this, 'TrustedTypePolicyFactory');
+    required('createPolicy', 'TrustedTypePolicyFactory', arguments.length, 1);
+    name = string(name, 'createPolicy', 'TrustedTypePolicyFactory');
+    if (options != null && typeof options !== 'object' && typeof options !== 'function') throw failure('createPolicy', 'TrustedTypePolicyFactory', "The provided value is not of type 'TrustedTypePolicyOptions'.");
+    const rules = readPolicyRules(options);
+    authorizePolicyName(state, name);
     const policy = make('TrustedTypePolicy', { name, rules });
+    // Review R2 V8 H1: these two writes go through the null-prototype
+    // factoryState (`state.names` is also null-prototype), so a planted
+    // prototype setter cannot intercept them.
     state.names[name] = true;
     if (name === 'default') state.defaultPolicy = policy;
     return policy;
@@ -127,8 +137,12 @@
   }
   // Null-prototype tables: 'constructor' / '__proto__' are unknown names, not inherited hits.
   const KNOWN_NS = { __proto__: null, [HTML]: 1, [SVG]: 1, 'http://www.w3.org/1998/Math/MathML': 1 };
+  function attributeNSAllowed(ns, attributeNS) {
+    if (attributeNS == null || attributeNS === '') return true;
+    return ns === SVG && attributeNS === XLINK;
+  }
   function attributeType(tag, attribute, ns, attributeNS) {
-    if (attributeNS != null && attributeNS !== '' && !(ns === SVG && attributeNS === XLINK)) return null;
+    if (!attributeNSAllowed(ns, attributeNS)) return null;
     if (!KNOWN_NS[ns]) return null;
     const nsAttrEmpty = attributeNS == null || attributeNS === '';
     if (nsAttrEmpty && own(mapping['*'].attributes, attribute)) return 'TrustedScript';
@@ -196,6 +210,17 @@
     }, 1);
   }
   finishInterface('TrustedTypePolicy');
+  function runDefaultPolicy(state, type, text, sink) {
+    const policy = read(state.defaultPolicy, 'TrustedTypePolicy');
+    let index = 0; while (index < typeNames.length && typeNames[index] !== type) index++;
+    const callback = policy.rules[methods[index]];
+    if (!callback) return null;
+    const result = apply(callback, undefined, [text, type, sink]);
+    if (result == null) return null;
+    let value = string(result, methods[index], 'TrustedTypePolicy');
+    if (type === 'TrustedScriptURL') value = wellFormed(value);
+    return make(type, { value });
+  }
   function convert(input, type, sink, prefix, nullToEmpty) {
     const record = nativeRecord(true, input);
     if (record && record.kind === type) return input;
@@ -203,17 +228,8 @@
     const state = read(factory, 'TrustedTypePolicyFactory');
     if (!state.authorize || !state.authorize('required')) return text;
     if (state.defaultPolicy) {
-      const policy = read(state.defaultPolicy, 'TrustedTypePolicy');
-      let index = 0; while (index < typeNames.length && typeNames[index] !== type) index++;
-      const callback = policy.rules[methods[index]];
-      if (callback) {
-        const result = apply(callback, undefined, [text, type, sink]);
-        if (result != null) {
-          let value = string(result, methods[index], 'TrustedTypePolicy');
-          if (type === 'TrustedScriptURL') value = wellFormed(value);
-          return make(type, { value });
-        }
-      }
+      const output = runDefaultPolicy(state, type, text, sink);
+      if (output !== null) return output;
     }
     if (!state.authorize('sink', type, sink, text)) throw new TypeErrorClass(prefix + "This document requires '" + type + "' assignment" + (state.defaultPolicy ? " and the 'default' policy failed to execute" : '') + '.');
     return make(type, { value: text });
