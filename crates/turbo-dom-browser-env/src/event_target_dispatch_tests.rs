@@ -268,3 +268,72 @@ fn per_level_composed_path_is_frozen_per_invocation() {
     );
     reset();
 }
+
+/// Review R2 V8 M3: the per-listener microtask checkpoint
+/// (turbo-dom#382) runs INSIDE `dispatchTarget`'s try/finally while
+/// `record.dispatching` is still true, so a microtask that
+/// synchronously re-dispatches the same event throws
+/// `InvalidStateError` — Chrome 156 permits the re-dispatch because
+/// its dispatch flag is per-dispatch, not per-event. Save / restore
+/// the dispatch state around the drain so a microtask's re-dispatch
+/// of the same event runs in its own scope.
+#[test]
+fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    // One non-Node EventTarget with one listener. Listener queues a
+    // microtask that re-dispatches the same event object. If the
+    // microtask throws InvalidStateError the re-dispatch's count
+    // stays at 1; otherwise we see 2.
+    let source = r#"(() => {
+      const target = new EventTarget();
+      // The target has a parent hook so dispatchTarget routes through
+      // dispatchMulti -> invokeAt (the R1 M3 microtask drain path).
+      // Without a parent hook the path is dispatchSingle -> invokeAt, which
+      // also drains, but the explicit parent hook mirrors the real IDB
+      // consumer that motivated #382.
+      globalThis.__testSetParent(target, () => null);
+      let count = 0, error = null, ran = false;
+      target.addEventListener('ping', (event) => {
+        count++;
+        if (count === 1) {
+          Promise.resolve().then(() => {
+            ran = true;
+            try { target.dispatchEvent(event); }
+            catch (e) { error = (e && e.name) || String(e); }
+          });
+        }
+      });
+      target.dispatchEvent(new Event('ping'));
+      // The microtask drains inside the dispatch's per-listener finally
+      // (turbo-dom#382). After dispatchTarget returns, the microtask has
+      // already run — count reflects whether it was allowed through.
+      return JSON.stringify({ count, error, ran });
+    })()"#;
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "re-dispatch script failed: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"count":2,"error":null,"ran":true}"#,
+        "microtask-driven re-dispatch of the same event must not throw",
+    );
+    reset();
+}

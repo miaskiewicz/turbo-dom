@@ -20,7 +20,17 @@ pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 pub fn is_supported_property(name: &str) -> bool {
     // Chrome 156 refuses every `-moz-*` vendor-prefixed name, even the ones Lightning CSS
     // maps to a known PropertyId (e.g. `-moz-appearance`): see turbo-dom#390.
-    if name.len() > 5 && name.as_bytes()[0] == b'-' && name[1..].starts_with("moz-") {
+    //
+    // Review R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
+    // case-insensitive; `CSS.supports("-MOZ-appearance", "none")` and
+    // `-MOZ-APPEARANCE: none` in a stylesheet must be rejected like `-moz-`.
+    // Lightning CSS normalises for its own lookup, so without an
+    // ASCII-case-insensitive check here the rejection leaked. Match the
+    // `-moz-` prefix case-insensitively.
+    if name.len() > 5
+        && name.as_bytes()[0] == b'-'
+        && name.as_bytes()[1..5].eq_ignore_ascii_case(b"moz-")
+    {
         return false;
     }
     !matches!(PropertyId::from(name), PropertyId::Custom(_))

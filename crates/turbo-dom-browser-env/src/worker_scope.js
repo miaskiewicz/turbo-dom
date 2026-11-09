@@ -6,12 +6,26 @@
 (function () {
 	"use strict";
 	const global = globalThis;
+	// Review R2 V8 M1: capture every intrinsic the bootstrap uses at install
+	// time, before any page script can reassign `globalThis.Set` or poison
+	// `Array.prototype[@@iterator]`. The main-realm binding does this via
+	// captured_intrinsics.js; the worker bootstrap now does the same.
+	const SetType = global.Set;
+	const MapType = global.Map;
+	const SetAdd = SetType.prototype.add;
+	const SetDel = SetType.prototype.delete;
+	const SetHas = SetType.prototype.has;
+	const SetSize = Object.getOwnPropertyDescriptor(SetType.prototype, "size").get;
+	const SetForEach = SetType.prototype.forEach;
+	const MapGet = MapType.prototype.get;
+	const MapSet = MapType.prototype.set;
+	const apply = Reflect.apply;
 	Object.defineProperty(global, "self", {
 		value: global,
 		writable: true,
 		configurable: true,
 	});
-	const listeners = new Map();
+	const listeners = new MapType();
 	const handlers = { message: null, messageerror: null, error: null };
 	let postHook = null;
 	let closeHook = null;
@@ -44,12 +58,19 @@
 					slot.call(global, event);
 				} catch (_err) {}
 			}
-			const list = listeners.get(kind);
-			if (list && list.size) {
+			const list = apply(MapGet, listeners, [kind]);
+			if (list && apply(SetSize, list, [])) {
 				fired = true;
-				for (const fn of [...list]) {
+				// Snapshot via captured Set.prototype.forEach — avoids
+				// `[...list]` which resolves Array.prototype[@@iterator]
+				// at call time (R2 V8 M1).
+				const snapshot = [];
+				apply(SetForEach, list, [(fn) => {
+					snapshot[snapshot.length] = fn;
+				}]);
+				for (let index = 0; index < snapshot.length; index++) {
 					try {
-						fn.call(global, event);
+						snapshot[index].call(global, event);
 					} catch (_err) {}
 				}
 			}
@@ -108,8 +129,8 @@
 		return false;
 	}
 	function assertObject(value, seen) {
-		if (seen.has(value)) throw dataCloneError("cyclic reference");
-		seen.add(value);
+		if (apply(SetHas, seen, [value])) throw dataCloneError("cyclic reference");
+		apply(SetAdd, seen, [value]);
 		if (Array.isArray(value)) {
 			for (let i = 0; i < value.length; i++) assertCloneable(value[i], seen);
 			return;
@@ -127,21 +148,21 @@
 		assertObject(value, seen);
 	}
 	global.structuredClone = function structuredClone(value) {
-		assertCloneable(value, new Set());
+		assertCloneable(value, new SetType());
 		return JSON.parse(JSON.stringify(value));
 	};
 	global.addEventListener = function addEventListener(type, listener) {
 		if (typeof listener !== "function") return;
-		let list = listeners.get(type);
+		let list = apply(MapGet, listeners, [type]);
 		if (!list) {
-			list = new Set();
-			listeners.set(type, list);
+			list = new SetType();
+			apply(MapSet, listeners, [type, list]);
 		}
-		list.add(listener);
+		apply(SetAdd, list, [listener]);
 	};
 	global.removeEventListener = function removeEventListener(type, listener) {
-		const list = listeners.get(type);
-		if (list) list.delete(listener);
+		const list = apply(MapGet, listeners, [type]);
+		if (list) apply(SetDel, list, [listener]);
 	};
 	global.dispatchEvent = function dispatchEvent(event) {
 		return global.__turboDomWorker.dispatch(event && event.type, event);

@@ -217,6 +217,56 @@ mod tests {
         browser_env::reset();
     }
 
+    /// Review R2 V8 M1: worker bootstrap must capture its own intrinsics so a
+    /// page that mutates `globalThis.Set` / `Array.prototype[@@iterator]`
+    /// before the first `addEventListener` cannot intercept listener
+    /// bookkeeping or the dispatch's iteration. The main-realm binding
+    /// already does this (captured_intrinsics.js); the worker had the gap.
+    #[test]
+    fn listener_bookkeeping_uses_captured_set_through_prototype_poisoning() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // Poison BOTH globalThis.Set (constructor replacement) and
+        // Array.prototype[@@iterator] (spread-iteration). The first
+        // addEventListener has not been called yet, so the worker scope
+        // has not materialised its per-type Set. A bootstrap that
+        // re-reads `Set` or does `[...list]` would now use the poisoned
+        // builtins. A bootstrap that captured its intrinsics at install
+        // time is untouched.
+        eval(
+            scope,
+            "globalThis.__poisonAdded = false; \
+             globalThis.Set = class { add() { globalThis.__poisonAdded = true; } has() { return false; } }; \
+             Array.prototype[Symbol.iterator] = function () { throw new Error('poisoned iterator'); };",
+        );
+        // Register a listener and dispatch a message — both paths touch
+        // Set (on first add) and the dispatch iteration ([...list]).
+        eval(
+            scope,
+            "globalThis.__log = []; \
+             addEventListener('message', (e) => __log.push(e.data));",
+        );
+        let data = v8::String::new(scope, "poisoned-but-delivered").unwrap();
+        let delivered = browser_env::dispatch_worker_message(scope, data.into());
+        // Clean the prototype poisoning so other tests on this isolate are
+        // unaffected.
+        eval(
+            scope,
+            "delete Array.prototype[Symbol.iterator]; delete globalThis.__poisonAdded;",
+        );
+        assert!(delivered, "dispatch must still report delivery");
+        assert_eq!(
+            eval(scope, "JSON.stringify(__log)"),
+            r#"["poisoned-but-delivered"]"#,
+            "listener must fire even with poisoned builtins",
+        );
+        browser_env::reset();
+    }
+
     #[test]
     fn dispatches_messages_to_onmessage_and_listeners() {
         browser_env::tests::init_v8();

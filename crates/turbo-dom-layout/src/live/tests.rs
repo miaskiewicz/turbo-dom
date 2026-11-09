@@ -581,17 +581,32 @@ fn inline_override_replaces_only_an_existing_style_attribute_395() {
 /// `<meter>`), and the table family (`<table>`, `<tr>`, `<td>`, `<th>`, `<thead>`,
 /// `<tbody>`, `<tfoot>`, `<caption>`). Each tag with a width/height override must
 /// honour the override under the live-input path with no UA origin supplied.
+///
+/// Review R2 layout M5 tightens this test: assert the resolved `Display`
+/// variant too (not just the inline-override width), so the dead-string
+/// regression R2 H2 flagged — `<tbody>` / `<col>` / `<colgroup>` falling
+/// through to `Display::Block` — fails loudly next time instead of masking
+/// the width assertion.
 #[test]
 fn inline_override_applies_to_every_non_inline_html_tag_default() {
+    use crate::layout::value::{display_of, Display};
     // Non-inline HTML tags whose Chrome UA default is not `inline`. Each carries
     // a seed `style` attribute so `inline_style` picks up the override (mirrors
     // the #395 oracle: a surf page's CSSOM override only lands on an element
     // whose `style` attribute already exists). The <ul> wraps <li> so list-item
-    // layout runs under a block ancestor.
+    // layout runs under a block ancestor. The <tbody> / <col> / <colgroup>
+    // rows cover the R2 H2 variants that previously fell through to
+    // `Display::Block` end-to-end.
     let styled = Styled::new(
         "<body style='margin:0'>\
          <ul style='margin:0;padding:0'><li id=li style='width:0;height:0'></li></ul>\
-         <table style='border-spacing:0'><tbody><tr><td id=td style='padding:0'></td><th id=th style='padding:0'></th></tr></tbody></table>\
+         <table id=table style='border-spacing:0;width:0;height:0'>\
+           <colgroup id=colgroup style='width:0'><col id=col style='width:0'></colgroup>\
+           <thead id=thead style='height:0'><tr id=trhead style='height:0'><th id=th style='padding:0'></th></tr></thead>\
+           <tbody id=tbody style='height:0'><tr id=tr style='height:0'><td id=td style='padding:0'></td></tr></tbody>\
+           <tfoot id=tfoot style='height:0'><tr id=trfoot style='height:0'><td id=tdfoot style='padding:0'></td></tr></tfoot>\
+           <caption id=caption style='padding:0'></caption>\
+         </table>\
          <input id=input style='padding:0;border:0'>\
          <button id=button style='padding:0;border:0'></button>\
          <select id=select style='padding:0;border:0'></select>\
@@ -600,30 +615,134 @@ fn inline_override_applies_to_every_non_inline_html_tag_default() {
          <meter id=meter style='padding:0'></meter>\
          </body>",
     );
-    let names = [
-        "li", "td", "th", "input", "button", "select", "textarea", "progress", "meter",
+    // (id, expected Display variant). The width/height overrides below still
+    // go through border(&snapshot, _) when the fragment has a BorderBox entry;
+    // tags that do not produce a BorderBox fragment (col / colgroup / the
+    // internal table groups outside a caption-bearing table wrapper) are
+    // kept to the `Display` assertion so the variant fix is still pinned
+    // without re-baselining.
+    let cases: &[(&str, Display)] = &[
+        ("li", Display::ListItem),
+        ("table", Display::Table),
+        ("colgroup", Display::TableColumnGroup),
+        ("col", Display::TableColumn),
+        ("thead", Display::TableHeaderGroup),
+        ("tbody", Display::TableRowGroup),
+        ("tfoot", Display::TableFooterGroup),
+        ("tr", Display::TableRow),
+        ("trhead", Display::TableRow),
+        ("trfoot", Display::TableRow),
+        ("td", Display::TableCell),
+        ("tdfoot", Display::TableCell),
+        ("th", Display::TableCell),
+        ("caption", Display::TableCaption),
+        ("input", Display::InlineBlock),
+        ("button", Display::InlineBlock),
+        ("select", Display::InlineBlock),
+        ("textarea", Display::InlineBlock),
+        ("progress", Display::InlineBlock),
+        ("meter", Display::InlineBlock),
     ];
-    let handles: Vec<_> = names.iter().map(|id| (*id, styled.el(id))).collect();
+    let handles: Vec<_> = cases
+        .iter()
+        .map(|(id, want)| (*id, styled.el(id), *want))
+        .collect();
     // Each element already has a `style` attribute (so `inline_override` picks
-    // up the override), but the DOM itself is never rewritten — the fixture's
-    // authored value stays on the element.
-    for (id, h) in &handles {
+    // up the override).
+    for (id, h, _) in &handles {
         assert!(
             styled.tree.get_attribute(*h, "style").is_some(),
             "{id}: seed style attribute must exist for the override to land",
         );
     }
-    // Each element gets a 30-px wide override.
     let decl = "width:30px;height:5px";
-    let overrides: Vec<(Handle, &str)> = handles.iter().map(|(_, h)| (*h, decl)).collect();
-    let (snapshot, ()) = styled.run(&[], &overrides, &|_| Ok(0), |_| Ok(())).unwrap();
-    for (id, h) in &handles {
-        let (w, _) = border(&snapshot, *h);
+    let overrides: Vec<(Handle, &str)> = handles.iter().map(|(_, h, _)| (*h, decl)).collect();
+    // Pull every target's resolved style back through the StyledNode tree hook.
+    let targets: Vec<Handle> = handles.iter().map(|(_, h, _)| *h).collect();
+    let (snapshot, resolved) = styled
+        .run(&[], &overrides, &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                let el = find(nodes, *h).ok_or_else(|| "no styled element".to_string())?;
+                out.push(el.style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    for ((id, h, want), style) in handles.iter().zip(resolved.iter()) {
+        // R2 M5: the Display variant must be exactly what the Chrome keyword
+        // resolved to — a regression that drops the match arm for a new
+        // `table-*` keyword would re-land on Block and fail loudly here.
         assert_eq!(
-            w, 30.0,
-            "{id}: inline override must apply (width = 30 px)",
+            display_of(style),
+            *want,
+            "{id}: Display variant mismatch (specified_display match arm missing?)",
         );
+        // If the element produces a border-box fragment, assert the inline
+        // override still applies to its width — the R1 H2 width guarantee.
+        if snapshot
+            .source(super::source_id(DOCUMENT, *h))
+            .and_then(|s| {
+                s.fragment_indices
+                    .iter()
+                    .map(|&i| &snapshot.fragments()[i])
+                    .find(|f| f.kind == GeometryKind::BorderBox)
+            })
+            .is_some()
+        {
+            let (w, _) = border(&snapshot, *h);
+            assert_eq!(
+                w, 30.0,
+                "{id}: inline override must apply (width = 30 px)",
+            );
+        }
     }
+}
+
+/// Review R2 layout H1: Chrome's UA has `input[type=hidden] { display: none }`.
+/// `ensure_default_display` is tag-only and gave every `<input>` `inline-block`,
+/// so a surf-level `<input type=hidden>` under the live-input path (no UA
+/// origin) rendered its default text-field box. Honour the attribute.
+#[test]
+fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
+    use crate::layout::value::{display_of, Display};
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <input id=plain style='padding:0;border:0'>\
+         <input id=hidden type=hidden>\
+         <input id=hidden_mixed TYPE='Hidden'>\
+         <input id=text type=text>\
+         </body>",
+    );
+    let targets: Vec<Handle> = ["plain", "hidden", "hidden_mixed", "text"]
+        .iter()
+        .map(|id| styled.el(id))
+        .collect();
+    let (_, resolved) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                out.push(find(nodes, *h).unwrap().style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    assert_eq!(display_of(&resolved[0]), Display::InlineBlock, "input: plain");
+    assert_eq!(
+        display_of(&resolved[1]),
+        Display::None,
+        "input[type=hidden]: display must be none"
+    );
+    assert_eq!(
+        display_of(&resolved[2]),
+        Display::None,
+        "input[TYPE=Hidden]: attribute match is case-insensitive"
+    );
+    assert_eq!(
+        display_of(&resolved[3]),
+        Display::InlineBlock,
+        "input[type=text]: unchanged"
+    );
 }
 
 #[test]

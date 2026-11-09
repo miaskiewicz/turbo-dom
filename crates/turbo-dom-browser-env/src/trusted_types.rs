@@ -101,6 +101,37 @@ fn field<'s>(
     let key = v8::String::new(scope, name)?;
     object.get(scope, key.into())
 }
+/// Review R2 V8 M6: cancel/restore the isolate's execution-terminating flag
+/// as a scope-guard. The restore runs in [`Drop`], so it is panic-safe and
+/// cannot be bypassed by a future early return / `?` inside the guarded
+/// block. A no-op when the scope was not terminating at construction.
+struct TerminationRestore<'a, 'p, 's> {
+    scope: &'a mut v8::PinScope<'p, 's>,
+    was_terminating: bool,
+}
+impl<'a, 'p, 's> TerminationRestore<'a, 'p, 's> {
+    fn cancel(scope: &'a mut v8::PinScope<'p, 's>) -> Self {
+        let was_terminating = scope.is_execution_terminating();
+        if was_terminating {
+            scope.cancel_terminate_execution();
+        }
+        TerminationRestore {
+            scope,
+            was_terminating,
+        }
+    }
+    fn scope(&mut self) -> &mut v8::PinScope<'p, 's> {
+        self.scope
+    }
+}
+impl Drop for TerminationRestore<'_, '_, '_> {
+    fn drop(&mut self) {
+        if self.was_terminating {
+            self.scope.terminate_execution();
+        }
+    }
+}
+
 pub(super) fn install_policy(
     scope: &mut v8::PinScope,
     callback: v8::Local<v8::Function>,
@@ -112,36 +143,33 @@ pub(super) fn install_policy(
     // interrupted" and aborts the frame bootstrap. The install is race-safe to
     // retry, so clear the pending termination for the duration of the write and
     // restore it before returning — the embedder's next guest-JS call still aborts.
-    let was_terminating = scope.is_execution_terminating();
-    if was_terminating {
-        scope.cancel_terminate_execution();
-    }
-    let result = (|| -> Option<()> {
-        // Review R1 M3: the realm global and the Trusted Types `factory` /
-        // `state` records are plain `v8::Object`s installed by
-        // `install_global`, which is called once from the engine side with no
-        // guest JS running — nothing between installation and here can swap
-        // them for a Proxy or stamp a `v8::PrivateName` interceptor. The
-        // `get_private` / `set` calls below therefore hit native slots only,
-        // never guest JS, and the cancel/restore window around them cannot
-        // leak a window where a `is_execution_terminating()` observer under
-        // user control sees "no termination pending".
-        let global = scope.get_current_context().global(scope);
-        debug_assert!(
-            !global.is_proxy(),
-            "trusted_types::install_policy: realm global is a Proxy; a user-controlled \
-             private-name interceptor could observe the cancel/restore window"
-        );
-        let record = private_record(scope, global)?;
-        let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
-        let state = private_record(scope, factory)?;
-        let name = v8::String::new(scope, "authorize")?;
-        (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
-    })();
-    if was_terminating {
-        scope.terminate_execution();
-    }
-    result
+    //
+    // Review R2 V8 M6: the cancel/restore pair is a scope-guard
+    // (`TerminationRestore`). Its `Drop` runs the restore even on an early
+    // `None` / `?` return or a panic from a nested call, closing a class of
+    // future failures where a new branch inside the guarded block would
+    // forget to restore manually.
+    let mut guard = TerminationRestore::cancel(scope);
+    let scope = guard.scope();
+    // Review R1 M3: the realm global and the Trusted Types `factory` /
+    // `state` records are plain `v8::Object`s installed by `install_global`,
+    // which is called once from the engine side with no guest JS running —
+    // nothing between installation and here can swap them for a Proxy or
+    // stamp a `v8::PrivateName` interceptor. The `get_private` / `set` calls
+    // below therefore hit native slots only, never guest JS. Review R2 V8
+    // H1: the state object's prototype is null, so `state.set('authorize',
+    // callback)` cannot walk into an `Object.prototype` setter either.
+    let global = scope.get_current_context().global(scope);
+    debug_assert!(
+        !global.is_proxy(),
+        "trusted_types::install_policy: realm global is a Proxy; a user-controlled \
+         private-name interceptor could observe the cancel/restore window"
+    );
+    let record = private_record(scope, global)?;
+    let factory = v8::Local::<v8::Object>::try_from(field(scope, record, "factory")?).ok()?;
+    let state = private_record(scope, factory)?;
+    let name = v8::String::new(scope, "authorize")?;
+    (state.set(scope, name.into(), callback.into()) == Some(true)).then_some(())
 }
 pub(super) fn convert<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -716,6 +744,56 @@ mod tests {
             isolate.low_memory_notification();
         }
         assert!(weak.is_empty());
+    }
+
+    /// Review R2 V8 H1: the `state` object the Trusted Types factory records
+    /// was a plain object literal with `Object.prototype` as its prototype.
+    /// A hostile prelude that stamps `Object.defineProperty(Object.prototype,
+    /// 'authorize', { set(fn) {...} })` would see that setter fire INSIDE the
+    /// `install_policy` cancel/restore-terminate window, running guest JS
+    /// while the embedder's watchdog termination is cleared. The fix is to
+    /// use a null-prototype state; this test asserts the first
+    /// `install_policy` write does NOT fire a prototype-chain setter — the
+    /// setter's side effect would prove the prototype chain was walked.
+    #[test]
+    fn install_policy_does_not_walk_object_prototype_setter_for_authorize() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body>");
+        // A hostile prelude stamps an `authorize` setter on Object.prototype
+        // that, if it fires, writes `globalThis.__pollution = true`. The
+        // factory's internal state object must not inherit from
+        // Object.prototype — otherwise `state.set('authorize', fn)` walks the
+        // prototype chain and invokes this setter inside the Rust-side
+        // cancel/restore-terminate window around install_policy.
+        eval(
+            scope,
+            "globalThis.__pollution = false; \
+             Object.defineProperty(Object.prototype, 'authorize', { \
+               configurable: true, \
+               set(_value) { globalThis.__pollution = true; } \
+             });",
+        );
+        fn authorize(
+            _: &mut v8::PinScope,
+            _: v8::FunctionCallbackArguments,
+            mut result: v8::ReturnValue,
+        ) {
+            result.set_bool(true);
+        }
+        let callback = v8::Function::new(scope, ext!(FunctionCallback, authorize)).unwrap();
+        assert!(install_trusted_types_policy(scope, callback));
+        // The prelude's setter must NOT have fired.
+        assert!(
+            eval(scope, "globalThis.__pollution").is_false(),
+            "install_policy walked Object.prototype and fired the setter"
+        );
+        // Clean the pollution before reset (reset re-uses the isolate).
+        eval(scope, "delete Object.prototype.authorize;");
+        reset();
     }
 
     /// turbo-dom#401: a prior cross-origin iframe's script left a watchdog termination

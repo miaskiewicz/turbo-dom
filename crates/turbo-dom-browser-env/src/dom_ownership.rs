@@ -500,6 +500,13 @@ pub(super) fn sweep_collected() -> usize {
     // #397: before 0.8.1 only the first was consulted, so a retired frame whose graph had
     // never been materialised, or whose ownership was `None` under a non-standard install
     // path, kept its OTHER_DOMS and DOM_CONTEXTS entries forever).
+    //
+    // Review R2 V8 M5: the second pass must NOT prune a DOM_CONTEXTS entry that
+    // the binding did not originate itself. A non-surf embedder (host-internals
+    // feature) can register its own DOM_CONTEXTS id without a paired OTHER_DOMS
+    // record; V8's weak signal there is the embedder's to interpret. Narrow the
+    // gate so the second pass only adds entries whose id is in OTHER_DOMS AND
+    // whose weak handle is empty.
     let mut stale = OTHER_DOMS.with(|states| {
         states
             .borrow()
@@ -514,10 +521,17 @@ pub(super) fn sweep_collected() -> usize {
             .map(|(id, _)| *id)
             .collect::<Vec<_>>()
     });
+    let stale_set: std::collections::HashSet<_> = stale.iter().copied().collect();
+    let other_dom_ids: std::collections::HashSet<_> =
+        OTHER_DOMS.with(|states| states.borrow().keys().copied().collect());
     DOM_CONTEXTS.with(|contexts| {
         let contexts = contexts.borrow();
         for (id, weak) in contexts.iter() {
-            if weak.is_empty() && !stale.contains(id) {
+            // Only prune a DOM_CONTEXTS entry when (a) its weak context is
+            // empty and (b) OTHER_DOMS records this id — i.e. the binding owns
+            // the entry. A non-surf embedder's standalone registration is
+            // excluded; its lifecycle is the embedder's to drive.
+            if weak.is_empty() && other_dom_ids.contains(id) && !stale_set.contains(id) {
                 stale.push(*id);
             }
         }
