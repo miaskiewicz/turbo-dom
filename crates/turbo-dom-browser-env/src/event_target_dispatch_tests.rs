@@ -1790,3 +1790,87 @@ fn abort_signal_any_polyfill_drains_between_listeners() {
     );
     reset();
 }
+
+/// Smoke test: after the FULL bootstrap (`install_with_html`, surf's entry
+/// point), `AbortSignal.timeout` and `AbortSignal.any` MUST be the polyfill
+/// functions — not V8's native getters. Surf reported the polyfill silently
+/// failing to land in their render isolate (a6648c45) because the IIFE's
+/// install block threw between `__engineTaskScope` and the overrides and
+/// `run_js` swallowed the exception, leaving the native methods in place.
+/// This test runs the same bootstrap path, so a future regression where the
+/// polyfill install throws silently fails here instead of in surf's oracle.
+#[test]
+fn abort_signal_timeout_polyfill_installs_through_install_with_html() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    // End-to-end: install a FIFO setTimeout (mirroring surf's wrapped timer
+    // runner) that wraps every callback in `__engineTaskScope` on drain, then
+    // register two listeners on an `AbortSignal.timeout(0)` signal and assert
+    // Chrome 156's interleaved `[L0, L0-mt, L1, L1-mt]` order. The polyfill
+    // must route the abort through our dispatch path for the engine-task
+    // bracket's per-listener drain to fire; a V8-native path would skip the
+    // override and the trace would batch the microtasks at the end.
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+          const queue = [];
+          globalThis.setTimeout = (fn) => {
+            queue.push(() => {
+              // __engineTaskScope is captured + deleted at bootstrap, so this
+              // uses the same Rust API surf wraps via engine_task_scope.
+              // We re-bind a JS shim through the `__engineScope` back door
+              // the test has already installed (see below).
+              globalThis.__engineScope(() => fn());
+            });
+            return queue.length;
+          };
+          const sig = AbortSignal.timeout(0);
+          const trace = [];
+          sig.addEventListener('abort', () => {
+            trace.push('L0:enter');
+            Promise.resolve().then(() => trace.push('L0:microtask'));
+          });
+          sig.addEventListener('abort', () => {
+            trace.push('L1:enter');
+            Promise.resolve().then(() => trace.push('L1:microtask'));
+          });
+          while (queue.length) queue.shift()();
+          trace.push('after');
+          return JSON.stringify(trace);
+        })()"#,
+    )
+    .unwrap();
+    let global = context.global(scope);
+    bind_method(scope, global, "__engineScope", engine_task_scope_binding);
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "polyfill-smoke script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "polyfill MUST replace V8's native AbortSignal.timeout AND route the \
+         abort through the embedder's dispatch path so the engine-task scope's \
+         per-listener drain fires between listeners. If the native \
+         AbortController.abort bypasses our EventTarget.prototype.dispatchEvent \
+         override, V8 dispatches natively and the listener microtasks batch \
+         at the end — the #484 surf oracle regression. Observed: {result} — \
+         expected Chrome 156's \
+         `[L0:enter,L0:microtask,L1:enter,L1:microtask,after]`. (If the IIFE \
+         threw silently before the override, `run_js` swallowed the exception; \
+         a drop to V8 natives points at that too.)",
+    );
+    reset();
+}
