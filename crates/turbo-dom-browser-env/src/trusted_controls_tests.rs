@@ -35,11 +35,19 @@ fn activation_host(
     _document: v8::Local<v8::Object>,
     query: ActivationQuery,
 ) -> bool {
+    // Transient and history queries share one arm each: the `consume` form clears the
+    // flag, the plain form reads it.
     match query {
-        ActivationQuery::Transient => flag(scope, "__transient", None),
-        ActivationQuery::HistoryAction => flag(scope, "__history", None),
-        ActivationQuery::ConsumeTransient => flag(scope, "__transient", Some(false)),
-        ActivationQuery::ConsumeHistoryAction => flag(scope, "__history", Some(false)),
+        ActivationQuery::Transient | ActivationQuery::ConsumeTransient => flag(
+            scope,
+            "__transient",
+            matches!(query, ActivationQuery::ConsumeTransient).then_some(false),
+        ),
+        ActivationQuery::HistoryAction | ActivationQuery::ConsumeHistoryAction => flag(
+            scope,
+            "__history",
+            matches!(query, ActivationQuery::ConsumeHistoryAction).then_some(false),
+        ),
         ActivationQuery::CrossOriginFrame | ActivationQuery::Sticky => false,
         ActivationQuery::FullscreenAllowed => true,
     }

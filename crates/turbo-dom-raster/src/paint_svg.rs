@@ -9,11 +9,12 @@ use std::fmt::Write;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
-    LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
+    border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
+    FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
+use crate::paint_png::fragment_finite_positive;
 use crate::rrect::{self, Seg};
 use crate::tile_cell::TileCell;
 
@@ -240,7 +241,15 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// `width`, dashed stamps dashes `2 * width` long, double paints two edge
 /// bands of `floor(width / 3)` thickness.
 fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
-    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+    // R1 M1: reject non-finite sizes — `f.width <= 0.0` is false for
+    // `NaN` and `Infinity`, which would cascade into `cx = NaN / 2.0`
+    // and SVG `cx="NaN"` / `width="NaN"` output.
+    if color.a == 0
+        || !f.width.is_finite()
+        || !f.height.is_finite()
+        || f.width <= 0.0
+        || f.height <= 0.0
+    {
         return;
     }
     match style {
@@ -248,19 +257,54 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
         ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
         ColumnRuleStyle::Dashed => paint_dashed_rule(svg, f, color),
         ColumnRuleStyle::Double => paint_double_rule(svg, f, color),
+        ColumnRuleStyle::Groove
+        | ColumnRuleStyle::Ridge
+        | ColumnRuleStyle::Inset
+        | ColumnRuleStyle::Outset => paint_shaded_rule(svg, f, style, color),
     }
 }
 
+/// SVG counterpart to [`crate::paint_png::paint_dotted_rule`]: diameter is
+/// floored to 1 px (Chrome 156's `kDottedStroke` rounds the effective stroke
+/// to >= 1 device pixel; a sub-pixel `column-rule-width` would vanish to
+/// resvg's antialiased transparent otherwise), rule centred on
+/// `f.x + f.width / 2` so gap allocation still uses the declared width.
+/// For sub-pixel declared widths we emit pixel-aligned 1 px squares matching
+/// the PNG painter's fallback — a disk of radius 0.5 would spread to
+/// adjacent columns under resvg's anti-aliasing (#424).
 fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
-    let diameter = f.width;
-    let radius = diameter / 2.0;
-    let cx = f.x + radius;
-    let period = 2.0 * diameter;
-    if period <= 0.0 {
+    // A zero- or negative-width fragment must emit nothing: the `max(1.0)`
+    // floor below would otherwise coerce it into the sub-pixel rect
+    // fallback (mirrors the PNG painter's guard, #424). R1 M1:
+    // `is_finite()` also rejects `NaN` / `Infinity`, which comparisons
+    // never catch — otherwise `cx = f.x + NaN / 2.0 = NaN` would render
+    // `cx="NaN"` in the SVG output.
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 {
         return;
     }
-    let mut cy = f.y + radius;
+    let diameter = f.width.max(1.0);
+    let cx = f.x + f.width / 2.0;
+    let period = 2.0 * diameter;
     let end = f.y + f.height;
+    if f.width < 1.0 {
+        let px_left = cx.floor();
+        // R1 L3 (SVG mirror): clamp the leading cap and each dash so a
+        // fragment shorter than `diameter` (e.g. `height = 0.3`) stays
+        // inside its box. Blink's round cap collapses with the rule.
+        if f.y < end {
+            let cap_h = (end - f.y).min(diameter);
+            rect(svg, px_left, f.y, diameter, cap_h, color);
+        }
+        let mut y = f.y + diameter;
+        while y < end {
+            let dash_h = (end - y).min(diameter);
+            rect(svg, px_left, y, diameter, dash_h, color);
+            y += 2.0 * diameter;
+        }
+        return;
+    }
+    let radius = diameter / 2.0;
+    let mut cy = f.y + radius;
     while cy - radius < end {
         let _ = writeln!(
             svg,
@@ -272,6 +316,11 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 }
 
 fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    // R1 M1: reject non-finite sizes — `period <= 0.0` misses `NaN` and
+    // `Infinity`.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     let width = f.width;
     let dash = 2.0 * width;
     let gap = width;
@@ -291,13 +340,36 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 }
 
 fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
+    // R1 M1 + L1: reject non-finite sizes. R1 L2: after the `< 3.0`
+    // short-circuit `f.width >= 3.0` forces `(f.width / 3.0).floor() >= 1.0`,
+    // so the trailing `.max(1.0)` is unreachable — dropped.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     if f.width < 3.0 {
         rect(svg, f.x, f.y, f.width, f.height, color);
         return;
     }
-    let band = (f.width / 3.0).floor().max(1.0);
+    let band = (f.width / 3.0).floor();
     rect(svg, f.x, f.y, band, f.height, color);
     rect(svg, f.x + f.width - band, f.y, band, f.height, color);
+}
+
+/// SVG counterpart to [`crate::paint_png::paint_shaded_rule`] — the two halves
+/// of a 3-D column rule, shaded through [`border_style_colour`]
+/// (miaskiewicz/turbo-dom#419). `groove` / `outset` paint the left half dark
+/// and the right half light; `ridge` / `inset` swap them. The rule is
+/// vertical, so "left" and "right" are the two vertical bands.
+fn paint_shaded_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
+    let left_color = border_style_colour(color, left_dark);
+    let right_color = border_style_colour(color, !left_dark);
+    let half = f.width / 2.0;
+    rect(svg, f.x, f.y, half, f.height, left_color);
+    rect(svg, f.x + half, f.y, f.width - half, f.height, right_color);
 }
 
 /// The most tiles without a whole-pixel period [`paint_tiles`] writes one by one.
@@ -311,6 +383,9 @@ const MAX_LISTED_TILES: usize = 4096;
 /// off the pixel grid) are written one by one when there are at most
 /// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
 fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let area = (f.x, f.y, f.width, f.height);
     let Some(first) = pattern.tiles(area).next() else {
         return;
@@ -485,6 +560,9 @@ fn paint_image(
     placement: &turbo_dom_layout::ImagePlacement,
     images: &DecodedAssets,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let decoded = images.get(&placement.name);
     let key = decoded.map(|img| {
         let size = (f.width.to_bits(), f.height.to_bits());
@@ -575,6 +653,9 @@ fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
 /// edge). `blur` 0 emits an unfiltered offset rect. The filter id is the document
 /// offset, unique (round-1 review of 0.7.0, finding 8: it was the box origin).
 fn paint_box_shadow(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, sh: &BoxShadow) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let spread = sh.spread as f32;
     let x = f.x + sh.offset_x as f32 - spread;
     let y = f.y + sh.offset_y as f32 - spread;
@@ -614,6 +695,9 @@ fn paint_inset_shadow(
     border_radius: &BorderRadii,
     shadow: Option<&BoxShadow>,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
@@ -668,7 +752,12 @@ fn paint_inset_shadow(
 /// box rect (rounded by `border_radius`). The gradient id is the document offset,
 /// unique.
 fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g: &CssGradient) {
-    if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
+    if !fragment_finite_positive(f)
+        || f.width < 0.5
+        || f.height < 0.5
+        || g.stops.len() < 2
+        || g.stops.iter().any(|s| !s.pos.is_finite())
+    {
         return;
     }
     let (w, h) = (f.width, f.height);
@@ -712,7 +801,18 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
 
 /// A filled box `rect` with corner radii `radii` (square unless rounded).
 fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
-    if rect.2 <= 0.0 || rect.3 <= 0.0 || c.a == 0 {
+    // R3 H1: `rect.2 <= 0.0 || rect.3 <= 0.0` is false for `NaN` (every
+    // comparison with NaN is false) and for `Infinity` (strictly positive),
+    // so a non-finite rect would reach `shape` and serialize `width="NaN"` /
+    // `x="inf"` into the document. Reject non-finite coords up front.
+    if !rect.0.is_finite()
+        || !rect.1.is_finite()
+        || !rect.2.is_finite()
+        || !rect.3.is_finite()
+        || rect.2 <= 0.0
+        || rect.3 <= 0.0
+        || c.a == 0
+    {
         return;
     }
     let radii = if radii.is_rounded() {
@@ -725,6 +825,9 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let side = |s: &BorderSide| {
         s.color
             .filter(|_| s.width > 0)
@@ -764,6 +867,9 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
 /// when every painted side has one colour, else each side's part of it through a
 /// `<clipPath>` of its region ([`rrect::side_region`]). Clip ids are document offsets.
 fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &BorderRadii) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let rect = (f.x, f.y, f.width, f.height);
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut d = path_data(&rrect::outline(rect, radii));
@@ -1949,6 +2055,63 @@ mod tests {
         );
     }
 
+    // v0.8.2 R1 adversarial M1 + L1: a `NaN` or `Infinity` width / height
+    // slips past the `f.width <= 0.0 || f.height <= 0.0` guard because
+    // every comparison with `NaN` is false (and `Infinity > 0.0`), and
+    // would cascade into `cx = NaN / 2.0` / `period = 2 * NaN` — the SVG
+    // painter would emit `cx="NaN"` or run an undefined loop. The guard
+    // must reject both.
+    #[test]
+    fn paint_column_rule_svg_is_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for style in [
+                ColumnRuleStyle::Solid,
+                ColumnRuleStyle::Dotted,
+                ColumnRuleStyle::Dashed,
+                ColumnRuleStyle::Double,
+            ] {
+                let body_w = body(&rule(1.0, 1.0, bad, 8.0, style, RED), &HashMap::new());
+                assert!(
+                    body_w.is_empty(),
+                    "non-finite width must emit no rule markup ({style:?}, {bad}): {body_w}"
+                );
+                let body_h = body(&rule(1.0, 1.0, 4.0, bad, style, RED), &HashMap::new());
+                assert!(
+                    body_h.is_empty(),
+                    "non-finite height must emit no rule markup ({style:?}, {bad}): {body_h}"
+                );
+            }
+        }
+    }
+
+    // Helpers' direct contract: none of them may paint or loop on a
+    // non-finite width.
+    #[test]
+    fn rule_svg_helpers_are_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                bad,
+                8.0,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            let mut buf = String::new();
+            paint_dotted_rule(&mut buf, &f, RED);
+            paint_dashed_rule(&mut buf, &f, RED);
+            paint_double_rule(&mut buf, &f, RED);
+            paint_shaded_rule(&mut buf, &f, ColumnRuleStyle::Groove, RED);
+            assert!(
+                buf.is_empty(),
+                "non-finite-width SVG helpers must not emit markup or loop ({bad}): {buf}"
+            );
+        }
+    }
+
     #[test]
     fn boxes_at_one_origin_get_their_own_gradient_and_shadow_ids() {
         let blue = Rgba::new(0, 0, 255, 255);
@@ -1989,6 +2152,237 @@ mod tests {
                 1,
                 "{id}: {svg}"
             );
+        }
+    }
+
+    // v0.8.2 R2 M1: every public SVG painter that reads `f.width` / `f.height`
+    // must no-op on a non-finite fragment. Unlike the raster side (where
+    // tiny-skia's own `Rect::from_xywh` rejects NaN / Inf), the SVG painter
+    // formats coordinates directly into attributes — a non-finite size would
+    // emit `width="NaN"` / `x="NaN"` / `cx="NaN"` into the document, which
+    // is why this guard is load-bearing on the SVG path. Call each painter
+    // with NaN / Infinity width (and height) and assert nothing emitted.
+    #[test]
+    fn non_rule_svg_painters_are_a_no_op_on_non_finite_fragments() {
+        let mk = |w: f32, h: f32| {
+            Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                w,
+                h,
+                FragmentContent::Marker(MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            )
+        };
+        let placement = ImagePlacement {
+            name: "missing".to_string(),
+            intrinsic_w: 4,
+            intrinsic_h: 4,
+            has_alpha: true,
+            tint: None,
+            orientation: Orientation::IDENTITY,
+        };
+        let border = BorderEdges {
+            top: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            right: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            bottom: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            left: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+        };
+        let shadow_cfg = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: RED,
+            inset: false,
+        };
+        let inset_shadow_cfg = BoxShadow {
+            inset: true,
+            ..shadow_cfg
+        };
+        let gradient = CssGradient {
+            angle_deg: 0.0,
+            stops: vec![
+                GradientStop {
+                    color: RED,
+                    pos: 0.0,
+                },
+                GradientStop {
+                    color: WHITE,
+                    pos: 1.0,
+                },
+            ],
+        };
+        let pattern = turbo_dom_layout::TilePattern {
+            tile: Box::new(FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: false,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 1.0,
+            tile_height: 1.0,
+            step_x: 1.0,
+            step_y: 1.0,
+        };
+        let radii = BorderRadii::uniform(2.0);
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [mk(bad, 4.0), mk(4.0, bad)] {
+                let mut buf = String::new();
+                let images = HashMap::new();
+                paint_image(&mut buf, &f, &placement, &images);
+                paint_border(&mut buf, &f, &border);
+                paint_box_shadow(&mut buf, &f, &BorderRadii::ZERO, &shadow_cfg);
+                paint_inset_shadow(
+                    &mut buf,
+                    &f,
+                    &border,
+                    &BorderRadii::ZERO,
+                    Some(&inset_shadow_cfg),
+                );
+                paint_gradient(&mut buf, &f, &BorderRadii::ZERO, &gradient);
+                paint_round_border(&mut buf, &f, &border, &radii);
+                paint_tiles(&mut buf, &f, &pattern, &images);
+                assert!(
+                    buf.is_empty(),
+                    "non-finite ({bad}) size {}x{} must emit no markup, got: {buf}",
+                    f.width,
+                    f.height
+                );
+            }
+        }
+    }
+
+    // v0.8.2 R2 M1: `paint_gradient` additionally rejects a gradient whose
+    // stops include a non-finite position. Without it a `NaN` / `Infinity`
+    // would reach the `<stop offset="…"/>` serializer and produce
+    // `offset="NaN"` in the document.
+    #[test]
+    fn paint_gradient_svg_rejects_non_finite_stop_positions() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut buf = String::new();
+            let gradient = CssGradient {
+                angle_deg: 0.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: bad,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            };
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                10.0,
+                10.0,
+                FragmentContent::Marker(MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            );
+            paint_gradient(&mut buf, &f, &BorderRadii::ZERO, &gradient);
+            assert!(
+                buf.is_empty(),
+                "non-finite ({bad}) stop position must emit no markup, got: {buf}"
+            );
+        }
+    }
+
+    // v0.8.2 R3 H1: the `paint_subtree` Box branch fills the background through
+    // `rect_r` BEFORE any `fragment_finite_positive` guard, so a non-finite
+    // width / height / x / y on a `Box` fragment with a background colour
+    // slipped past `rect_r`'s `w <= 0.0 || h <= 0.0` check (every comparison
+    // with NaN is false; Infinity is strictly positive) and the `shape`
+    // serializer wrote `width="NaN"` / `width="inf"` into the document.
+    // Guard `rect_r` so non-finite coordinates emit nothing.
+    // v0.8.2 raster-cov: `paint_inset_shadow` (SVG) guards the padding box
+    // against a non-positive inline or block size BEFORE it writes a
+    // `<mask>` into the document — without this guard a border wider than
+    // the fragment (padding box = width - left - right <= 0) would emit
+    // `<mask … width="-N"/>` and a `<rect … width="-N"/>` inside it,
+    // dirtying the document and producing an invalid mask. Reachable from
+    // honest layout: a `box-sizing: border-box` box whose borders exceed
+    // its box dimensions, so this test pins the guard with a real
+    // inset-shadow configuration.
+    #[test]
+    fn paint_inset_shadow_svg_skips_a_border_wider_than_the_fragment() {
+        let side = BorderSide {
+            width: 20,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side,
+            right: side,
+            bottom: side,
+            left: side,
+        };
+        let shadow = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: RED,
+            inset: true,
+        };
+        let f = Fragment::new(
+            NodeId(0),
+            1.0,
+            1.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: false,
+            }),
+        );
+        let mut buf = String::new();
+        paint_inset_shadow(&mut buf, &f, &border, &BorderRadii::ZERO, Some(&shadow));
+        assert!(
+            buf.is_empty(),
+            "a border wider than the fragment collapses the padding box; \
+             the inset-shadow painter must emit no markup, got: {buf}"
+        );
+    }
+
+    #[test]
+    fn paint_subtree_box_rejects_non_finite_coords() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            // Vary which coordinate is non-finite: x, y, width, height.
+            let cases = [
+                plain(bad, 0.0, 4.0, 4.0, Some(RED)),
+                plain(0.0, bad, 4.0, 4.0, Some(RED)),
+                plain(0.0, 0.0, bad, 4.0, Some(RED)),
+                plain(0.0, 0.0, 4.0, bad, Some(RED)),
+            ];
+            for f in cases {
+                let mut buf = String::new();
+                let images = HashMap::new();
+                paint_subtree(&mut buf, &f, &images);
+                assert!(
+                    !buf.contains("NaN") && !buf.contains("inf"),
+                    "non-finite ({bad}) box coord must not serialize NaN/inf, got: {buf}"
+                );
+            }
         }
     }
 }

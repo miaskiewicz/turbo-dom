@@ -73,6 +73,11 @@ fn rows_of(group: &LayoutBox) -> Vec<&LayoutBox> {
     }
 }
 
+/// Review R4 M1 (#472): only `<thead>` / `<tfoot>` repeat across page / column
+/// breaks. `Display::TableRowGroup` (`<tbody>`) is a plain body section — it
+/// ends up in [`row_groups`] / [`sections`] but never repeats. The four other
+/// non-row table variants (`TableColumnGroup` / `TableColumn` / `TableCaption` /
+/// `TableCell`) never reach this helper from a well-formed table flow.
 fn group_repeat(d: Display) -> Option<RepeatKind> {
     match d {
         Display::TableHeaderGroup => Some(RepeatKind::Header),
@@ -320,6 +325,9 @@ fn stronger(group: BreakRule, row: BreakRule) -> BreakRule {
         (BreakRule::Page, _) | (_, BreakRule::Page) => BreakRule::Page,
         (BreakRule::Column, _) | (_, BreakRule::Column) => BreakRule::Column,
         (BreakRule::Avoid, _) | (_, BreakRule::Avoid) => BreakRule::Avoid,
+        // R4 M2 (#473): `avoid-page` is page-class like `avoid`; it beats
+        // `avoid-column` for the same "coarser class wins" reason.
+        (BreakRule::AvoidPage, _) | (_, BreakRule::AvoidPage) => BreakRule::AvoidPage,
         (BreakRule::AvoidColumn, _) | (_, BreakRule::AvoidColumn) => BreakRule::AvoidColumn,
         _ => BreakRule::Auto,
     }
@@ -2086,5 +2094,52 @@ mod percent_tests {
             [100.0, 300.0, 0.0]
         );
         assert_eq!(grow(&[0.0, 0.0], &[true, true], 10.0), [5.0, 5.0]);
+    }
+
+    /// CSS Fragmentation 3 §3.1: a group's `break-*` combines with the row's own
+    /// following a strict coarseness-wins policy. `Page` beats every other value
+    /// (coarsest forced break), then `Column` (finer forced break), then `Avoid`
+    /// (coarsest avoid, i.e. avoid-page), then `AvoidColumn`, then `Auto`.
+    /// Exercises every arm of `stronger` so a mutation that swaps two returns,
+    /// drops an arm, or collapses two of them cannot pass.
+    #[test]
+    fn stronger_picks_coarsest_rule_class() {
+        use super::{stronger, BreakRule};
+        // Page beats anything on either side.
+        assert_eq!(stronger(BreakRule::Page, BreakRule::Auto), BreakRule::Page);
+        assert_eq!(stronger(BreakRule::Auto, BreakRule::Page), BreakRule::Page);
+        assert_eq!(
+            stronger(BreakRule::Page, BreakRule::Column),
+            BreakRule::Page
+        );
+        // Column wins once Page is out of the picture.
+        assert_eq!(
+            stronger(BreakRule::Column, BreakRule::Avoid),
+            BreakRule::Column
+        );
+        assert_eq!(
+            stronger(BreakRule::Auto, BreakRule::Column),
+            BreakRule::Column
+        );
+        // Avoid (page-coarse) wins over AvoidColumn.
+        assert_eq!(
+            stronger(BreakRule::Avoid, BreakRule::AvoidColumn),
+            BreakRule::Avoid
+        );
+        assert_eq!(
+            stronger(BreakRule::AvoidColumn, BreakRule::Avoid),
+            BreakRule::Avoid
+        );
+        // AvoidColumn beats Auto.
+        assert_eq!(
+            stronger(BreakRule::AvoidColumn, BreakRule::Auto),
+            BreakRule::AvoidColumn
+        );
+        assert_eq!(
+            stronger(BreakRule::Auto, BreakRule::AvoidColumn),
+            BreakRule::AvoidColumn
+        );
+        // Two autos fall through to Auto.
+        assert_eq!(stronger(BreakRule::Auto, BreakRule::Auto), BreakRule::Auto);
     }
 }

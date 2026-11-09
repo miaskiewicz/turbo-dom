@@ -112,12 +112,8 @@ fn run_probe_in(html: &str, probe: &str, frozen: bool, switches: Switches) -> se
 fn control(json: &str, probe: &str, cases: &[u8]) -> (serde_json::Value, serde_json::Value) {
     let control: serde_json::Value = serde_json::from_str(json).unwrap();
     // The frozen headless shell (the same 156.0.8078.47 build) reports itself as HeadlessChrome.
-    assert!(
-        ["Chrome/156.0.8078.47", "HeadlessChrome/156.0.8078.47"]
-            .contains(&control["browser"].as_str().unwrap()),
-        "{}",
-        control["browser"]
-    );
+    assert!(["Chrome/156.0.8078.47", "HeadlessChrome/156.0.8078.47"]
+        .contains(&control["browser"].as_str().unwrap()));
     assert_eq!(control["errors"], serde_json::json!([]));
     assert_eq!(
         control["probeSha256"],

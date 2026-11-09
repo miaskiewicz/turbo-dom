@@ -10,9 +10,9 @@ use tiny_skia::{
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
-    BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment, FragmentContent,
-    LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba, TilePattern,
-    Transform2D as BoxTransform,
+    border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
+    FragmentContent, LinearGradient as CssGradient, OverflowClip, PositionedGlyph, Rgba,
+    TilePattern, Transform2D as BoxTransform,
 };
 
 use std::rc::Rc;
@@ -28,6 +28,21 @@ const IMAGE_PLACEHOLDER: Rgba = Rgba {
     b: 220,
     a: 255,
 };
+
+/// Shared painter guard (v0.8.2 R2 M1, extending R1's column-rule guards to every
+/// painter): reject a fragment whose size is not finite and positive. A `NaN` or
+/// `Infinity` width / height slips past `w <= 0.0` (every `NaN` comparison is
+/// false and `Infinity > 0.0`); tiny-skia's own `Rect::from_xywh` + `PathBuilder`
+/// contracts silently no-op on non-finite inputs in most paths, but relying on
+/// a 3rd-party contract leaves `paint_box_shadow`'s `sw = f.width + 2.0 * spread`
+/// → `Inf + Inf = Inf` / `-Inf + Inf = NaN` and the SVG painter (which formats
+/// coordinates directly into attributes) emitting `width="NaN"` / `x="NaN"` into
+/// the document. Every public-entry painter that reads `f.width` / `f.height`
+/// calls this first.
+#[inline]
+pub(crate) fn fragment_finite_positive(f: &Fragment) -> bool {
+    f.width.is_finite() && f.height.is_finite() && f.width > 0.0 && f.height > 0.0
+}
 
 /// Paint `galley` into a `width × height` PNG over a `bg` canvas fill (the
 /// propagated root/body background). `Err` only on a zero/oversized canvas or a
@@ -422,7 +437,17 @@ fn paint_column_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    if color.a == 0 || f.width <= 0.0 || f.height <= 0.0 {
+    // v0.8.2 R1 M1 + L1: reject non-finite sizes too — `f.width <= 0.0`
+    // alone is false for `NaN` (every comparison with NaN is false) and
+    // `f.width <= 0.0` is false for `Infinity`, so a NaN would cascade
+    // into `cx = NaN / 2.0 = NaN` and `period = 2 * NaN = NaN`, feeding
+    // tiny-skia NaN coordinates.
+    if color.a == 0
+        || !f.width.is_finite()
+        || !f.height.is_finite()
+        || f.width <= 0.0
+        || f.height <= 0.0
+    {
         return;
     }
     match style {
@@ -430,19 +455,46 @@ fn paint_column_rule(
         ColumnRuleStyle::Dotted => paint_dotted_rule(pm, f, color, xf),
         ColumnRuleStyle::Dashed => paint_dashed_rule(pm, f, color, xf),
         ColumnRuleStyle::Double => paint_double_rule(pm, f, color, xf),
+        ColumnRuleStyle::Groove
+        | ColumnRuleStyle::Ridge
+        | ColumnRuleStyle::Inset
+        | ColumnRuleStyle::Outset => paint_shaded_rule(pm, f, style, color, xf),
     }
 }
 
 /// Stamp circular dots of diameter `f.width` down the rule's centerline, period
-/// `2 * width` (Blink's `kDottedStroke` with cap-round).
+/// `2 * width` (Blink's `kDottedStroke` with cap-round). The painted diameter
+/// is floored to 1 px to match Chrome 156's `kDottedStroke`, which rounds the
+/// effective stroke to >= 1 device pixel so a sub-pixel `column-rule-width`
+/// (e.g. `0.5px`) still produces visible dots instead of vanishing to
+/// antialiased transparent; the rule is kept centred on `f.x + f.width / 2`
+/// so gap allocation still reserves the declared width (#424).
+///
+/// When the declared width is < 1 px, the circle rasterization of a radius-0.5
+/// disk spreads anti-aliased across two half-pixel columns (an ~20 % coverage
+/// stamp that reads as grey-cyan, not black). Chrome's painter instead goes
+/// through `GraphicsContext::StrokePath` with [`LineCap::Round`] and dash
+/// `[0, 2 * stroke_width]`, which pixel-snaps the dot column and paints pure
+/// black at the rule centre. We mirror that path for the floored case so the
+/// probe at the rule centre reads `rgb(0, 0, 0)` like Chrome.
 fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    let diameter = f.width;
-    let radius = diameter / 2.0;
-    let cx = f.x + radius;
-    let period = 2.0 * diameter;
-    if period <= 0.0 {
+    // Guard `f.width <= 0.0` BEFORE flooring: a zero- or negative-width
+    // fragment must paint nothing, and `max(1.0)` would otherwise coerce it
+    // into the sub-pixel fallback below. (The outer `paint_column_rule`
+    // already guards, but the helper's direct contract keeps the loop
+    // protection pinned.) R1 M1: `is_finite()` also rejects `NaN` and
+    // `Infinity`, which comparisons never catch.
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 {
         return;
     }
+    let diameter = f.width.max(1.0);
+    let cx = f.x + f.width / 2.0;
+    let period = 2.0 * diameter;
+    if f.width < 1.0 {
+        paint_dotted_rule_stroked(pm, cx, f.y, f.height, diameter, color, xf);
+        return;
+    }
+    let radius = diameter / 2.0;
     let mut cy = f.y + radius;
     let end = f.y + f.height;
     while cy - radius < end {
@@ -450,6 +502,57 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
             pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
         }
         cy += period;
+    }
+}
+
+/// Dotted-rule fallback for sub-pixel declared widths (`column-rule-width` < 1
+/// px): Blink clamps `kDottedStroke`'s effective thickness to >= 1 device
+/// pixel, then paints `GraphicsContext::DrawLineForBoxSide`'s dotted pattern
+/// as pixel-aligned 1-px squares at the rule's centre column — a leading cap
+/// at `y_top`, then one square per 2 px of rule length starting at `y_top +
+/// 1`, which together matches Chrome 156's observed pattern (first two rows
+/// solid, then one square on / one off; #424). An anti-aliased radius-0.5
+/// disk would spread to adjacent columns at ~20 % coverage each, so pixel
+/// snapping is load-bearing.
+fn paint_dotted_rule_stroked(
+    pm: &mut Pixmap,
+    cx: f32,
+    y_top: f32,
+    height: f32,
+    diameter: f32,
+    color: Rgba,
+    xf: Transform,
+) {
+    // R1 M1: non-finite inputs (NaN / Infinity) escape every `<`/`<=`
+    // comparison — reject them so `y_top + height = NaN` never leaks
+    // into the loop and `end = y_top + Infinity = Infinity` never runs
+    // the dash loop forever.
+    if !cx.is_finite()
+        || !y_top.is_finite()
+        || !height.is_finite()
+        || !diameter.is_finite()
+        || height <= 0.0
+        || diameter <= 0.0
+    {
+        return;
+    }
+    let px_left = cx.floor();
+    let end = y_top + height;
+    // Leading cap: one px above the first dash (Blink's round line-cap).
+    // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
+    // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
+    // leak past `end` — Blink's round cap collapses with the rule
+    // height, and the probe on a 0.3 px rule never paints a full pixel.
+    if y_top < end {
+        let cap_h = (end - y_top).min(diameter);
+        fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
+    }
+    // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
+    let mut y = y_top + diameter;
+    while y < end {
+        let dash_h = (end - y).min(diameter);
+        fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
+        y += 2.0 * diameter;
     }
 }
 
@@ -477,6 +580,13 @@ fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
 /// Stamp dashes of length `2 * width` down the rule, period `3 * width` (Blink's
 /// `kDashedStroke`: a `width` gap between each dash).
 fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    // R1 M1: reject non-finite sizes — `period <= 0.0` is false for
+    // `NaN` and `Infinity`, which would otherwise step the loop at
+    // undefined coordinates (`dash_top += NaN` never terminates
+    // `dash_top < end`).
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
     let width = f.width;
     let dash = 2.0 * width;
     let gap = width;
@@ -499,13 +609,68 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
 /// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
 /// painter falls back to one solid band so a thin double rule still shows.
 fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    let band = (f.width / 3.0).floor().max(1.0);
+    // R1 M1 + L1: reject `NaN` / `Infinity` — `f.width < 3.0` is false
+    // for either, so without this guard an `Infinity` width would run
+    // the two-band path with Inf band widths, and a NaN would make
+    // `f.width - band = NaN`.
+    if !f.width.is_finite() || !f.height.is_finite() {
+        return;
+    }
+    // R1 L2: the thin-double fallback below handles every `f.width < 3.0`
+    // case, so from here on `f.width >= 3.0`, which forces
+    // `(f.width / 3.0).floor() >= 1.0` — the earlier `.max(1.0)` was a
+    // dead branch unreachable after the short-circuit. Computing `band`
+    // AFTER the fallback also avoids a wasted divide + floor on the
+    // thin path. Proof: f.width >= 3.0 && floor(x) <= x => floor(f.width / 3.0) >= 1.0.
     if f.width < 3.0 {
         fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
         return;
     }
+    let band = (f.width / 3.0).floor();
     fill_rect(pm, f.x, f.y, band, f.height, color, xf);
     fill_rect(pm, f.x + f.width - band, f.y, band, f.height, color, xf);
+}
+
+/// Paint a 3-D column rule (`groove` / `ridge` / `inset` / `outset`;
+/// miaskiewicz/turbo-dom#419) as two halves of the rule's inline axis,
+/// shaded through [`border_style_colour`]. Chrome 156 splits the rule at
+/// its inline midpoint: `groove` and `outset` paint the LEFT half with the
+/// darkened shade and the RIGHT half with the lightened one; `ridge` and
+/// `inset` swap the two (the rule is vertical, so the two "halves" are
+/// vertical bands running the rule's full height).
+fn paint_shaded_rule(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    style: ColumnRuleStyle,
+    color: Rgba,
+    xf: Transform,
+) {
+    // The outer `paint_column_rule` already rejects non-finite / non-positive
+    // sizes; the helper's direct contract keeps a future caller from feeding
+    // it NaN / Infinity (`is_finite` rejects both) or a zero-area fragment
+    // (nothing to paint — `fill_rect` would early-return anyway).
+    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
+        return;
+    }
+    // Chrome 156: left band = darker shade for `groove` / `outset`, lighter
+    // shade for `ridge` / `inset`; right band is the other. Split at the
+    // rule's inline midpoint (`f.width / 2.0`); the right band takes the
+    // trailing pixels so that an odd-pixel rule's extra column lands on the
+    // right, mirroring Chrome's floor/ceil split.
+    let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
+    let left_color = border_style_colour(color, left_dark);
+    let right_color = border_style_colour(color, !left_dark);
+    let half = f.width / 2.0;
+    fill_rect(pm, f.x, f.y, half, f.height, left_color, xf);
+    fill_rect(
+        pm,
+        f.x + half,
+        f.y,
+        f.width - half,
+        f.height,
+        right_color,
+        xf,
+    );
 }
 
 /// Paint a background layer's tiles ([`TilePattern`]; 0.7.0 round-2 review, finding 1)
@@ -519,6 +684,9 @@ fn paint_tiles(
     images: &DecodedAssets,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(region) = visible_region(f, xf, (pm.width(), pm.height())) else {
         return;
     };
@@ -810,6 +978,9 @@ fn paint_image(
     images: &DecodedAssets,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let (w, h) = (f.width.round() as u32, f.height.round() as u32);
     // Fold the box's top-left into the transform so a transformed image (a rotated
     // thumbnail, a translated slide) maps correctly.
@@ -909,6 +1080,9 @@ fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Trans
 /// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
 /// right bands first, then the top and bottom ones mitred on the corner diagonals.
 fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let side = |s: &BorderSide| {
         s.color
             .filter(|_| s.width > 0)
@@ -1000,6 +1174,9 @@ fn paint_box_shadow(
     sh: &BoxShadow,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let spread = sh.spread as f32;
     let sx = f.x + sh.offset_x as f32 - spread;
     let sy = f.y + sh.offset_y as f32 - spread;
@@ -1037,6 +1214,9 @@ fn paint_inset_shadow(
     shadow: Option<&BoxShadow>,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let Some(sh) = shadow.filter(|s| s.inset && s.color.a > 0) else {
         return;
     };
@@ -1256,7 +1436,12 @@ fn paint_gradient(
     g: &CssGradient,
     xf: Transform,
 ) {
-    if f.width < 0.5 || f.height < 0.5 || g.stops.len() < 2 {
+    if !fragment_finite_positive(f)
+        || f.width < 0.5
+        || f.height < 0.5
+        || g.stops.len() < 2
+        || g.stops.iter().any(|s| !s.pos.is_finite())
+    {
         return;
     }
     let (w, h) = (f.width, f.height);
@@ -1360,6 +1545,9 @@ fn paint_round_border(
     radii: &BorderRadii,
     xf: Transform,
 ) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
     let rect = (f.x, f.y, f.width, f.height);
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut ring = PathBuilder::new();
@@ -3253,6 +3441,103 @@ mod exact_tests {
         assert!(is_blank(&pm), "zero-width helpers must not paint or loop");
     }
 
+    // v0.8.2 R1 adversarial M1 + L1: a `NaN` or `Infinity` width / height
+    // slips past the `f.width <= 0.0 || f.height <= 0.0` guard because every
+    // comparison with `NaN` is false and `Infinity > 0.0`. Without the
+    // non-finite guard the painter would compute `cx = NaN / 2.0 = NaN`,
+    // feed NaN coordinates to tiny-skia (undefined output) and — for the
+    // dotted / dashed loops — compute `period = 2 * NaN = NaN` so
+    // `cy += NaN` leaves `cy < end` undefined, or `period = 2 * Infinity`
+    // so the loop body can still run once with NaN/Inf coordinates. The
+    // guard must reject both.
+    #[test]
+    fn paint_column_rule_is_a_no_op_on_non_finite_fragments() {
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for style in [
+                ColumnRuleStyle::Solid,
+                ColumnRuleStyle::Dotted,
+                ColumnRuleStyle::Dashed,
+                ColumnRuleStyle::Double,
+            ] {
+                assert!(
+                    is_blank(&drawn(&rule(1.0, 1.0, bad, 8.0, style, RED), 10, 10)),
+                    "non-finite width must paint nothing ({style:?}, {bad})"
+                );
+                assert!(
+                    is_blank(&drawn(&rule(1.0, 1.0, 4.0, bad, style, RED), 10, 10)),
+                    "non-finite height must paint nothing ({style:?}, {bad})"
+                );
+            }
+        }
+    }
+
+    // The rule-painter HELPERS (`paint_dotted_rule`, `paint_dashed_rule`,
+    // `paint_double_rule`, `paint_dotted_rule_stroked`) each sit on a direct
+    // contract — a mutation that weakens `paint_column_rule`'s guard must
+    // not reach into the helper's own math. Call each helper directly with
+    // a `NaN` / `Infinity` width to pin that contract.
+    #[test]
+    fn rule_helpers_are_a_no_op_on_non_finite_fragments() {
+        let id = Transform::identity();
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut pm = white(10, 10);
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                bad,
+                8.0,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            paint_dotted_rule(&mut pm, &f, RED, id);
+            paint_dashed_rule(&mut pm, &f, RED, id);
+            paint_double_rule(&mut pm, &f, RED, id);
+            paint_shaded_rule(&mut pm, &f, ColumnRuleStyle::Groove, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, 1.0, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, 8.0, bad, RED, id);
+            assert!(
+                is_blank(&pm),
+                "non-finite width/height helpers must not paint or loop ({bad})"
+            );
+        }
+    }
+
+    // v0.8.2 R1 adversarial L3: `paint_dotted_rule_stroked`'s leading cap
+    // stamps a `diameter`-tall rect even when the fragment itself is
+    // shorter than `diameter` (e.g. `f.height = 0.3`). The cap would then
+    // paint pixels past `y_top + f.height`, leaking outside the fragment.
+    // The clamped version stamps `(end - y_top).min(diameter)` so the
+    // over-paint vanishes. Probe: a cap at integer `y=1` with
+    // `height = 0.3` paints pixel (5,1) with ~30% alpha; leaving the pixel
+    // mostly white rather than full red.
+    #[test]
+    fn paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments() {
+        let mut pm = white(10, 10);
+        let id = Transform::identity();
+        // cx=5.5, y_top=1.0, height=0.3, diameter=1.0.
+        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, 1.0, RED, id);
+        let c = pm.pixel(5, 1).unwrap();
+        assert!(
+            c.green() > 100 && c.blue() > 100,
+            "pixel (5,1) must stay largely white when f.height < diameter; got rgb=({},{},{})",
+            c.red(),
+            c.green(),
+            c.blue()
+        );
+        // And no pixel below the fragment (y >= 2) gains any red.
+        for y in 2..10 {
+            let c = pm.pixel(5, y).unwrap();
+            assert_eq!(
+                [c.red(), c.green(), c.blue()],
+                [255, 255, 255],
+                "pixel (5,{y}) must stay white"
+            );
+        }
+    }
+
     #[test]
     fn glyph_ink_past_its_line_box_is_clipped_by_overflow() {
         // `overflow:hidden; height:10px; line-height:10px; font-size:40px` around "gy": the
@@ -3312,5 +3597,271 @@ mod exact_tests {
             (10..30).any(|x| (10..20).any(|y| got.pixel(x, y).unwrap().red() < 128)),
             "the glyphs paint inside the region"
         );
+    }
+
+    // v0.8.2 R2 M1: the shared `fragment_finite_positive` guard the non-rule
+    // painters all call. A mutation that weakens any of its four clauses
+    // (`is_finite` on width / height, `> 0.0` on width / height) would let a
+    // non-finite or non-positive fragment through, so pin each clause here
+    // independently of the painter tests below.
+    #[test]
+    fn fragment_finite_positive_rejects_non_finite_and_non_positive_sizes() {
+        let ok = Fragment::new(
+            NodeId(0),
+            0.0,
+            0.0,
+            4.0,
+            8.0,
+            FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                id: 1,
+                inline: false,
+            }),
+        );
+        assert!(fragment_finite_positive(&ok));
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut f = ok.clone();
+            f.width = bad;
+            assert!(!fragment_finite_positive(&f), "non-finite width ({bad})");
+            let mut f = ok.clone();
+            f.height = bad;
+            assert!(!fragment_finite_positive(&f), "non-finite height ({bad})");
+        }
+        for &non_positive in &[0.0_f32, -1.0_f32, -0.0_f32] {
+            let mut f = ok.clone();
+            f.width = non_positive;
+            assert!(
+                !fragment_finite_positive(&f),
+                "non-positive width ({non_positive})"
+            );
+            let mut f = ok.clone();
+            f.height = non_positive;
+            assert!(
+                !fragment_finite_positive(&f),
+                "non-positive height ({non_positive})"
+            );
+        }
+    }
+
+    // v0.8.2 R2 M1: every public painter that reads `f.width` / `f.height`
+    // must no-op on a non-finite fragment. tiny-skia's own
+    // `Rect::from_xywh` / `PathBuilder` silently reject NaN / Inf inputs in
+    // most paths, but `paint_box_shadow` computes `sw = f.width + 2 * spread`
+    // (`Inf + Inf = Inf`, `-Inf + Inf = NaN`) before any tiny-skia call, and
+    // we don't want to lean on a 3rd-party contract. Call each painter
+    // directly with NaN / Infinity width (and height) and assert nothing
+    // painted.
+    #[test]
+    fn non_rule_painters_are_a_no_op_on_non_finite_fragments() {
+        use turbo_dom_layout::image::Orientation;
+        let id = Transform::identity();
+        let mk = |w: f32, h: f32| {
+            Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                w,
+                h,
+                FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            )
+        };
+        let placement = turbo_dom_layout::ImagePlacement {
+            name: "missing".to_string(),
+            intrinsic_w: 4,
+            intrinsic_h: 4,
+            has_alpha: true,
+            tint: None,
+            orientation: Orientation::IDENTITY,
+        };
+        let border = BorderEdges {
+            top: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            right: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            bottom: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+            left: BorderSide {
+                width: 2,
+                color: Some(RED),
+            },
+        };
+        let shadow_cfg = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: BLUE,
+            inset: false,
+        };
+        let inset_shadow = BoxShadow {
+            inset: true,
+            ..shadow_cfg
+        };
+        let gradient = CssGradient {
+            angle_deg: 0.0,
+            stops: vec![
+                GradientStop {
+                    color: RED,
+                    pos: 0.0,
+                },
+                GradientStop {
+                    color: BLUE,
+                    pos: 1.0,
+                },
+            ],
+        };
+        let pattern = TilePattern {
+            tile: Box::new(FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                id: 1,
+                inline: false,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 1.0,
+            tile_height: 1.0,
+            step_x: 1.0,
+            step_y: 1.0,
+        };
+        let radii = BorderRadii::uniform(2.0);
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [mk(bad, 4.0), mk(4.0, bad)] {
+                let mut pm = white(20, 20);
+                let images = HashMap::new();
+                paint_image(&mut pm, &f, &placement, &images, id);
+                paint_border(&mut pm, &f, &border, id);
+                paint_box_shadow(&mut pm, &f, &BorderRadii::ZERO, &shadow_cfg, id);
+                paint_inset_shadow(
+                    &mut pm,
+                    &f,
+                    &border,
+                    &BorderRadii::ZERO,
+                    Some(&inset_shadow),
+                    id,
+                );
+                paint_gradient(&mut pm, &f, &BorderRadii::ZERO, &gradient, id);
+                paint_round_border(&mut pm, &f, &border, &radii, id);
+                paint_tiles(&mut pm, &f, &pattern, &images, id);
+                assert!(
+                    is_blank(&pm),
+                    "non-finite ({bad}) size {}x{} must paint nothing",
+                    f.width,
+                    f.height
+                );
+            }
+        }
+    }
+
+    // v0.8.2 R2 M1: `paint_gradient` additionally rejects a gradient whose
+    // stops include a non-finite position, matching the painter's documented
+    // contract (a `NaN` / `Infinity` `pos` would round-trip through `clamp`
+    // or feed tiny-skia's `GradientStop::new` an undefined offset). The
+    // outer finite-size guard is already covered above; this test pins the
+    // stop-position clause specifically.
+    #[test]
+    fn paint_gradient_rejects_non_finite_stop_positions() {
+        let id = Transform::identity();
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut pm = white(20, 20);
+            let gradient = CssGradient {
+                angle_deg: 0.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: bad,
+                    },
+                    GradientStop {
+                        color: BLUE,
+                        pos: 1.0,
+                    },
+                ],
+            };
+            let f = Fragment::new(
+                NodeId(0),
+                1.0,
+                1.0,
+                10.0,
+                10.0,
+                FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                    id: 1,
+                    inline: false,
+                }),
+            );
+            paint_gradient(&mut pm, &f, &BorderRadii::ZERO, &gradient, id);
+            assert!(
+                is_blank(&pm),
+                "non-finite ({bad}) stop position must paint nothing"
+            );
+        }
+    }
+
+    // v0.8.2 raster-cov: `paint_round_border` guards `ring.finish()` against
+    // returning `None` — tiny-skia's `PathBuilder::finish()` returns `None`
+    // when the collected points reject a bounding rect, which happens as
+    // soon as any point is non-finite. `fragment_finite_positive` keeps
+    // width / height finite, but `f.x` / `f.y` are not checked (every
+    // painter but this one feeds them to tiny-skia primitives that silently
+    // reject non-finite inputs; the round-border ring runs through
+    // `PathBuilder` so the None branch IS reachable on a non-finite
+    // position). Assert the painter no-ops: without the `else { return; }`
+    // the `pm.fill_path(&ring, …)` below would be fed a path that was
+    // never constructed, so this test pins the guard rather than the
+    // branch alone.
+    #[test]
+    fn paint_round_border_is_a_no_op_on_a_non_finite_position() {
+        let id = Transform::identity();
+        let side = BorderSide {
+            width: 2,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side,
+            right: side,
+            bottom: side,
+            left: side,
+        };
+        let radii = BorderRadii::ZERO;
+        for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for f in [
+                Fragment::new(
+                    NodeId(0),
+                    bad,
+                    1.0,
+                    10.0,
+                    10.0,
+                    FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                        id: 1,
+                        inline: false,
+                    }),
+                ),
+                Fragment::new(
+                    NodeId(0),
+                    1.0,
+                    bad,
+                    10.0,
+                    10.0,
+                    FragmentContent::Marker(turbo_dom_layout::MarkerKind {
+                        id: 1,
+                        inline: false,
+                    }),
+                ),
+            ] {
+                let mut pm = white(20, 20);
+                paint_round_border(&mut pm, &f, &border, &radii, id);
+                assert!(
+                    is_blank(&pm),
+                    "non-finite ({bad}) position {},{} must paint nothing",
+                    f.x,
+                    f.y
+                );
+            }
+        }
     }
 }

@@ -104,6 +104,12 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
    linux-x64 addon over the CI-built one. It reruns the glibc guard on the two linux-gnu
    addons that ship, then runs `npm publish --ignore-scripts`. The job is skipped when that
    version is already on npm.
+5. **napi-prebuilts** (`contents: write`, after ci + preflight; turbo-dom#479) — downloads
+   the same `bindings-*` artifacts the ci job uploaded and attaches
+   `turbo-dom-parser.<platform>.node` for `darwin-arm64`, `linux-x64-gnu`,
+   `linux-arm64-gnu` and `win32-x64-msvc` to the GitHub release for the tag. turbo-surf's
+   release pipeline downloads these prebuilts so its playwright-shim's napi path does not
+   need a local Rust build or `TURBO_SURF_NAPI_PATH`.
 
 A failed run is resumed by re-running the failed jobs: every publish step is guarded
 against an existing version. Verify npm's `latest` version and tarball contents (platform

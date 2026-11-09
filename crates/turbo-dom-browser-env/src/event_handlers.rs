@@ -239,6 +239,25 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             .as_ref()
             .is_some_and(|state| state.browsing_context)
     });
+    // The compiled function's realm is the SCOPE's current context (V8 contract for
+    // `script_compiler::compile_function`). An inline on* handler belongs to its element's
+    // own document, so the body's `globalThis`, free variable lookups, and `this` default
+    // must resolve against the element's OWNER-DOCUMENT realm — not whichever realm
+    // happened to trigger the compile (parent-borrowed
+    // `EventTarget.prototype.dispatchEvent.call(childEl, …)` reaches refresh with the
+    // parent realm current), and not the V8 wrapper's creation context (that stays
+    // pinned at materialization time, so `document.adoptNode(el)` moving `el` between
+    // realms would not follow). Look up the element's current owner-DOM realm via its
+    // tagged owner. Fall back to the V8 creation context only when the owner DOM has no
+    // live realm (truly detached). turbo-dom#478 / turbo-surf#287.
+    let owner_id = dom_id_of(scope, element);
+    let owner_context = DOM_CONTEXTS.with(|contexts| {
+        contexts
+            .borrow()
+            .get(&owner_id)
+            .and_then(|weak| weak.to_local(scope))
+    });
+    let element_context = owner_context.or_else(|| element.get_creation_context(scope));
     let function = source.filter(|_| active).and_then(|text| {
         if let Some(policy) = policy {
             let callback = dom_ownership::local(scope, policy);
@@ -256,6 +275,24 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
                 return None;
             }
         }
+        let context = match element_context {
+            Some(context) => context,
+            None => {
+                // No live realm for this element: a torn-down context leaves neither an
+                // owner-DOM entry nor a creation context, so there is nowhere to compile
+                // the handler. Documented invariant: the fallback `get_creation_context`
+                // above catches every legitimately detached element on the paths this
+                // function is called from (owner-DOM lookup or creation-context fallback),
+                // so None here means a genuine bug (a stale cache miss, a wrong
+                // `dom_id_of`, a snapshot-restored or post-dispose path we did not model)
+                // — but a hard panic here would be fragile for tests that legitimately
+                // reach this branch (R2-events M1, 2026-11-09). This crate has no
+                // logging facade (see Cargo.toml: no `log`/`tracing` dep), so we return
+                // silently and rely on the handler never being invoked as the signal.
+                return None;
+            }
+        };
+        let scope = &mut v8::ContextScope::new(scope, context);
         let code = v8::String::new_from_two_byte(scope, &text, v8::NewStringType::Normal)?;
         let resource = v8::String::new(
             scope,

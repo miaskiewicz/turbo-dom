@@ -446,13 +446,17 @@ fn forced_side_breaks_and_legacy_page_break_aliases_are_page_breaks() {
             "{v}"
         );
     }
-    for v in ["avoid", "avoid-page"] {
-        assert_eq!(
-            resolve(&[("break-before", v)]).break_before,
-            BreakRule::Avoid,
-            "{v}"
-        );
-    }
+    // Review R4 M2 (#473): `avoid` and `avoid-page` map to distinct
+    // variants — page-only (`AvoidPage`) vs. coarse-avoid-everything
+    // (`Avoid`, which also forbids column breaks).
+    assert_eq!(
+        resolve(&[("break-before", "avoid")]).break_before,
+        BreakRule::Avoid
+    );
+    assert_eq!(
+        resolve(&[("break-before", "avoid-page")]).break_before,
+        BreakRule::AvoidPage
+    );
     assert_eq!(
         resolve(&[("page-break-after", "avoid")]).break_after,
         BreakRule::Avoid

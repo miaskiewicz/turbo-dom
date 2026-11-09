@@ -116,8 +116,37 @@
   // `afterListener` decrements it and drains microtasks only when the
   // current listener call was the outermost one. Keeping the check in a
   // helper keeps the hot `invokeAt` / `invoke` loops at cc <= 15.
-  let listenerDepth=0;
-  function afterListener(record){record.passive=false;if(--listenerDepth===0)drainMicrotasksAcrossDispatch(record);}
+  //
+  // turbo-dom#484: the drain also gates on `hostDispatchDepth > 0` — i.e.
+  // the outermost `dispatchTarget` on the stack was fired by the engine
+  // (routed through `__captureHostEventDispatch`), not by page script.
+  // #382's "clean up after running a callback" checkpoint models Chrome's
+  // HTML spec behaviour: the checkpoint runs when the realm is at the top
+  // of the script settings stack — i.e. an engine-fired event where
+  // between-listener calls return the stack to pure-engine. A page-script
+  // `target.dispatchEvent(...)` or `controller.abort()` (which calls
+  // `dispatchTarget('abort', signal, true)` internally — host=true sets
+  // isTrusted but the call originates from JS) leaves active script on
+  // the stack, so Chrome never checkpoints between its listeners (surf
+  // abort-bridge oracle `official_abort_bridge_keeps_chrome_state_and_
+  // unadapted_reaction_order`: the `signal` listener's queued microtask
+  // fires AFTER the `dependent` listener in the same dispatch, not
+  // between them).
+  //
+  // turbo-dom#484 regression (timer path): `hostDispatchDepth > 0` alone is
+  // not enough. V8-native `AbortSignal.timeout` fires its abort reaction from
+  // an engine-task entry whose C++ path never calls `__captureHostEventDispatch`
+  // (surf's `__runLocalTimers` / V8's native timer runner), yet Chrome 156
+  // DOES checkpoint microtasks between its listeners (the realm is at the top
+  // of the script settings stack — no page JS called in). The embedding needs
+  // a second seam to mark engine-task boundaries: `globalThis.__engineTaskScope(fn)`
+  // (below) bumps `engineTaskDepth` around `fn` so the drain also fires inside
+  // that bracket. Surf's abort-bridge oracle stays green because
+  // `controller.abort()` is page-script (no scope, no bracket). Surf
+  // `abort_signal_any_and_timeout_match_chrome156` goes green because the
+  // timer runner wraps `__timerApply` with the new scope.
+  let listenerDepth=0,hostDispatchDepth=0,engineTaskDepth=0;
+  function afterListener(record){record.passive=false;if(--listenerDepth===0&&(hostDispatchDepth>0||engineTaskDepth>0))drainMicrotasksAcrossDispatch(record);}
   // Review R2 V8 M3: the per-listener microtask drain (R1 M3 / turbo-dom#382)
   // runs INSIDE dispatchTarget's try/finally while record.dispatching stays
   // true, so a microtask that synchronously re-dispatches the same event
@@ -195,6 +224,13 @@
     record.dispatching=false;
     record.stop=false;
     record.stopImmediate=false;
+    // #483: a microtask that reads the event (e.g. an awaited Promise resolved from a
+    // listener) must see the event as "no longer being dispatched" — Chrome 156 clears
+    // currentTarget / eventPhase / path before the checkpoint so reads inside the drain
+    // window observe the post-dispatch null/0/[] trio. Restored in the finally.
+    record.currentTarget=null;
+    record.eventPhase=0;
+    record.path=objectFreeze([]);
     try{native('microtaskCheckpoint');}
     finally{
       record.dispatching=savedDispatching;
@@ -246,7 +282,7 @@
     const path=collectPath(target,state);
     if(!host&&!anyPathListener(path,record.type))return;
     for(let i=path.length-1;i>0;i--){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],true,1);}
-    if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+    if(!record.stop&&!record.stopImmediate)invokeAt(event,record,target,null,2);
     if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
   }
   function dispatchTarget(event,target,host=false){
@@ -289,7 +325,85 @@
   }
   method(g,'addEventListener',add,2);method(g,'removeEventListener',removeListener,2);method(g,'dispatchEvent',function(event){if(this!==g)throw new ErrorType('Illegal invocation');if(!arguments.length)throw new ErrorType('dispatchEvent requires 1 argument');return dispatch(event);},1);
   for(const name of ['addEventListener','removeEventListener','dispatchEvent'])ns.windowEventCallbacks[name]=g[name];
-  g.__captureHostEventDispatch=(event,target)=>target===g?dispatch(event,true):native('targetGet',target)?dispatchTarget(event,target,true):oldHost(event,target);
+  // turbo-dom#484: mark the host-initiated entry so the per-listener microtask
+  // drain fires only inside this bracket. A nested page-script dispatch that
+  // runs inside a host-dispatched listener stays inside the bracket (correct —
+  // it still follows an engine-fired callback), but an outer page-script
+  // dispatch (`controller.abort()`, `target.dispatchEvent(...)`) never enters
+  // the bracket and so never drains between its listeners.
+  g.__captureHostEventDispatch=(event,target)=>{
+    hostDispatchDepth++;
+    try{return target===g?dispatch(event,true):native('targetGet',target)?dispatchTarget(event,target,true):oldHost(event,target);}
+    finally{hostDispatchDepth--;}
+  };
+  // turbo-dom#484 timer regression: bracket an engine-task entry (timer
+  // runner, microtask queue flush, V8-native AbortSignal timer fire, etc.)
+  // so a dispatch inside `fn` checkpoints microtasks between listeners even
+  // when it looks like a page-script `target.dispatchEvent` — the realm IS
+  // at the top of the script settings stack for the duration of the task.
+  // Single-function signature keeps pairing impossible to forget; the
+  // `finally` restores the counter on any exit (return / throw / termination).
+  g.__engineTaskScope=fn=>{engineTaskDepth++;try{return fn();}finally{engineTaskDepth--;}};
+  // turbo-dom#484 regression (V8-native AbortSignal.timeout/any path): both
+  // static methods fire their abort reactions through V8's internal C++ task
+  // queue. Those entries never pass through the embedder's wrapped
+  // `setTimeout` (surf's `__runLocalTimers` -> `__timerApply` ->
+  // `engine_task_scope`), so a dispatch they enqueue reaches `afterListener`
+  // with `engineTaskDepth === 0` and the per-listener microtask drain is
+  // skipped. Chrome 156's `abort_signal_any_and_timeout_match_chrome156`
+  // oracle interleaves listener microtasks though, because the realm is at
+  // the top of the script settings stack for the native-timer entry.
+  //
+  // Polyfill: re-route both methods through `globalThis.setTimeout` (resolved
+  // at call time so the embedder's wrapped one is picked up) and the local
+  // `Controller.prototype.abort`. `AbortSignal.any` forwards each input's
+  // abort through `queueMicrotask` so the derived signal's dispatch runs at
+  // `listenerDepth === 0` inside the input signal's drain window — the gate's
+  // outermost-only contract is preserved, the engine-task bracket still
+  // covers the derived dispatch, and listener microtasks interleave.
+  //
+  // `AbortSignal` / `AbortController` / `DOMException` / `queueMicrotask` are
+  // captured now so a later page-script override cannot redirect the polyfill
+  // (the one page-visible seam remains `globalThis.setTimeout`, which the
+  // embedder OWNS — surf wraps it with `engine_task_scope`). The polyfill is
+  // installed unconditionally: V8's own `AbortSignal.timeout` fires through a
+  // path the embedder cannot bracket, so replacing it is the fix.
+  const NativeAbortController=g.AbortController;
+  const NativeAbortSignal=g.AbortSignal;
+  const NativeException=Exception;
+  if(NativeAbortSignal&&NativeAbortController){
+    const timeoutImpl=function timeout(delay){
+      const ms=+delay;
+      const controller=new NativeAbortController();
+      const signal=controller.signal;
+      const fire=()=>{
+        if(!localAborted(signal))
+          controller.abort(new NativeException('signal timed out','TimeoutError'));
+      };
+      g.setTimeout(fire,ms>=0?ms:0);
+      return signal;
+    };
+    define(NativeAbortSignal,'timeout',{value:make(timeoutImpl,'timeout',1),writable:true,configurable:true});
+    const scheduleForward=(controller,target,reason)=>{
+      g.setTimeout(()=>{if(!localAborted(target))controller.abort(reason);},0);
+    };
+    const anyImpl=function any(signals){
+      const controller=new NativeAbortController();
+      const target=controller.signal;
+      const list=slice(signals==null?[]:signals);
+      for(let index=0;index<list.length;index++){
+        const input=list[index];
+        aborted(input);
+        if(localAborted(input)){scheduleForward(controller,target,input.reason);return target;}
+      }
+      for(let index=0;index<list.length;index++){
+        const input=list[index];
+        apply(signalAdd,input,['abort',()=>scheduleForward(controller,target,input.reason),{once:true}]);
+      }
+      return target;
+    };
+    define(NativeAbortSignal,'any',{value:make(anyImpl,'any',1),writable:true,configurable:true});
+  }
   g.__captureWindowEventPhase=(event,capture)=>invoke(event,capture,capture?1:3);
   g.__captureListenerOptions=flatten;g.__captureSignalAborted=localAborted;g.__captureSignalSubscription=(signal,hook,subscribe)=>apply(subscribe?signalAdd:signalRemove,signal,['abort',hook,subscribe?{once:true}:undefined]);
 })();

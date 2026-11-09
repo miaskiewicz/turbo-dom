@@ -541,12 +541,7 @@ jobs:
           # browser-env lib binary (~555 V8 tests) takes ~600s instrumented on ubuntu-latest, so the
           # old 600 cut it off mid-run ("Timed out waiting for test response" on whichever test was
           # running at exactly +600s; turbo-dom#235). Not a hang.
-          # Floor nudged 97.6 -> 97.5 for 0.8.1: the R1-R4 adversarial-review fixers added test
-          # helpers with defensive `panic!()` branches (tarpaulin counts them as uncovered on
-          # stable Rust; line-level inline skip needs nightly `coverage_attribute`). Not a real
-          # product-coverage regression. v0.8.2 follow-up #TBD: refactor the panic helpers so the
-          # floor can return to 97.6.
-          - { crate: turbo-dom-browser-env, floor: 97.5, features: '--features host-internals,test-support', timeout: 2400 }
+          - { crate: turbo-dom-browser-env, floor: 97.6, features: '--features host-internals,test-support', timeout: 2400 }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master

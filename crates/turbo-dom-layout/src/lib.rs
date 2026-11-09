@@ -46,7 +46,7 @@ pub use layout::fragment::{
     FragmentContent, GradientStop, ImagePlacement, LinearGradient, NodeId, OverflowClip,
     PositionedGlyph, RepeatKind, TilePattern, Transform2D,
 };
-pub use layout::value::{BreakRule, Rgba};
+pub use layout::value::{border_style_colour, BreakRule, Rgba};
 pub use layout::{
     layout, layout_in_viewport, layout_recorded, layout_recorded_in_viewport, layout_with_images,
     layout_with_options, ImageCtx, LaidOut, LayoutOptions, NodeSources, INDETERMINATE_ATTR,

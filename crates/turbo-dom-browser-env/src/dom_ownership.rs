@@ -493,6 +493,39 @@ pub(super) fn release_listener<'s>(
     }
 }
 
+/// Pure inner loop of `sweep_collected`, generic over the id type so a test can
+/// instrument equality/hash calls on the key. The two containers that drive the
+/// inner loop (`stale_set`, `other_dom_set`) MUST stay `HashSet`-backed: the
+/// second-pass filter runs once per empty-weak context entry, and each call hits
+/// both sets. A regression to `Vec::contains` turns this from O(N + M) into
+/// O(N * M). The hash-set equality-call count on a test input of N pairs stays
+/// in O(N); a Vec-backed version would show O(N²) — that is what
+/// `dom_ownership_sweep_tests` asserts.
+pub(super) fn compute_stale_ids<K: Eq + std::hash::Hash + Copy>(
+    other_dom_rows: impl IntoIterator<Item = (K, bool)>,
+    empty_context_ids: impl IntoIterator<Item = K>,
+) -> Vec<K> {
+    let mut stale: Vec<K> = Vec::new();
+    let mut other_dom_set: std::collections::HashSet<K> = std::collections::HashSet::new();
+    for (id, graph_stale) in other_dom_rows {
+        other_dom_set.insert(id);
+        if graph_stale {
+            stale.push(id);
+        }
+    }
+    let stale_set: std::collections::HashSet<K> = stale.iter().copied().collect();
+    for id in empty_context_ids {
+        // Only prune a DOM_CONTEXTS entry when (a) its weak context is empty
+        // (filtered already by the caller) and (b) OTHER_DOMS records this id —
+        // i.e. the binding owns the entry. A non-surf embedder's standalone
+        // registration is excluded; its lifecycle is the embedder's to drive.
+        if other_dom_set.contains(&id) && !stale_set.contains(&id) {
+            stale.push(id);
+        }
+    }
+    stale
+}
+
 pub(super) fn sweep_collected() -> usize {
     // A retired frame's context dies once nothing holds its document wrapper. The ownership
     // graph's weak document goes empty then; its weak context in DOM_CONTEXTS does too, so
@@ -507,35 +540,28 @@ pub(super) fn sweep_collected() -> usize {
     // record; V8's weak signal there is the embedder's to interpret. Narrow the
     // gate so the second pass only adds entries whose id is in OTHER_DOMS AND
     // whose weak handle is empty.
-    let mut stale = OTHER_DOMS.with(|states| {
+    let other_dom_rows: Vec<(u64, bool)> = OTHER_DOMS.with(|states| {
         states
             .borrow()
             .iter()
-            .filter(|(_, state)| {
-                state
+            .map(|(id, state)| {
+                let graph_stale = state
                     .dom
                     .as_ref()
                     .and_then(|dom| dom.ownership.as_ref())
-                    .is_some_and(|graph| !graph.borrow().document_alive())
+                    .is_some_and(|graph| !graph.borrow().document_alive());
+                (*id, graph_stale)
             })
-            .map(|(id, _)| *id)
-            .collect::<Vec<_>>()
+            .collect()
     });
-    let stale_set: std::collections::HashSet<_> = stale.iter().copied().collect();
-    let other_dom_ids: std::collections::HashSet<_> =
-        OTHER_DOMS.with(|states| states.borrow().keys().copied().collect());
-    DOM_CONTEXTS.with(|contexts| {
-        let contexts = contexts.borrow();
-        for (id, weak) in contexts.iter() {
-            // Only prune a DOM_CONTEXTS entry when (a) its weak context is
-            // empty and (b) OTHER_DOMS records this id — i.e. the binding owns
-            // the entry. A non-surf embedder's standalone registration is
-            // excluded; its lifecycle is the embedder's to drive.
-            if weak.is_empty() && other_dom_ids.contains(id) && !stale_set.contains(id) {
-                stale.push(*id);
-            }
-        }
+    let empty_context_ids: Vec<u64> = DOM_CONTEXTS.with(|contexts| {
+        contexts
+            .borrow()
+            .iter()
+            .filter_map(|(id, weak)| weak.is_empty().then_some(*id))
+            .collect()
     });
+    let mut stale = compute_stale_ids(other_dom_rows, empty_context_ids);
     OTHER_DOMS.with(|states| {
         let mut states = states.borrow_mut();
         for id in &stale {

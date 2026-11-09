@@ -84,16 +84,10 @@ fn run_chain() -> serde_json::Value {
     let source = v8::String::new(scope, source).unwrap();
     let scope = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut scope.init();
-    let result = v8::Script::compile(scope, source, None).and_then(|script| script.run(scope));
-    if result.is_none() {
-        panic!(
-            "event_target_dispatch fixture: {:?}",
-            scope
-                .exception()
-                .map(|value| value.to_rust_string_lossy(scope))
-        );
-    }
-    let text = result.unwrap().to_rust_string_lossy(scope);
+    let text = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .expect("event_target_dispatch fixture compiled")
+        .to_rust_string_lossy(scope);
     reset();
     serde_json::from_str(&text).unwrap()
 }
@@ -106,6 +100,24 @@ fn host_dispatch_target(
     let event = v8::Local::<v8::Object>::try_from(args.get(0)).expect("event");
     let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("target");
     dispatch_host_event(scope, event, target);
+}
+
+/// Test-only bridge to the Rust `engine_task_scope` (turbo-dom#484 timer
+/// regression). Page-visible `__engineTaskScope` is captured + deleted at
+/// bootstrap (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`),
+/// so tests re-bind a JS entry under the same name that drives the captured
+/// Rust API. Mirrors how `__hostDispatchTarget` is re-bound to drive
+/// `dispatch_host_event`.
+fn engine_task_scope_binding(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let callback =
+        v8::Local::<v8::Function>::try_from(args.get(0)).expect("engine-task scope callback");
+    if let Some(value) = super::engine_task_scope(scope, callback) {
+        rv.set(value);
+    }
 }
 
 /// turbo-dom#381: phase records across the parent chain match Chrome 156 IDB.
@@ -285,10 +297,22 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     // One non-Node EventTarget with one listener. Listener queues a
     // microtask that re-dispatches the same event object. If the
     // microtask throws InvalidStateError the re-dispatch's count
     // stays at 1; otherwise we see 2.
+    //
+    // turbo-dom#484: the per-listener microtask drain only fires inside
+    // a HOST-initiated dispatch (routed through `__captureHostEventDispatch`),
+    // because Chrome 156's "clean up after running a callback" checkpoint
+    // only runs when the realm is at the top of the script settings stack.
+    // The outer dispatch therefore goes through `__hostDispatchTarget` so
+    // the drain-state save/restore invariants this test asserts are
+    // actually exercised. The inner (microtask-driven) re-dispatch stays
+    // as page-script `target.dispatchEvent`: it's nested inside the host
+    // bracket and the invariant we probe is the drain's own save/restore.
     let source = r#"(() => {
       const target = new EventTarget();
       // The target has a parent hook so dispatchTarget routes through
@@ -297,22 +321,37 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
       // also drains, but the explicit parent hook mirrors the real IDB
       // consumer that motivated #382.
       globalThis.__testSetParent(target, () => null);
-      let count = 0, error = null, ran = false;
+      // turbo-dom#451: isolate two distinct properties.
+      //   (1) a SYNC re-dispatch of the same event inside its own listener
+      //       must throw InvalidStateError (Chrome's actual dispatch-flag
+      //       contract; a mutant that drops the `dispatching` guard would
+      //       silently recurse without this probe).
+      //   (2) a MICROTASK re-dispatch of the same event must run exactly
+      //       once more (count === 2), because the per-listener checkpoint
+      //       has saved/restored the dispatch flag by then.
+      let count = 0, syncError = null, asyncError = null, ran = false;
+      let syncTried = false;
       target.addEventListener('ping', (event) => {
         count++;
         if (count === 1) {
+          // Sync probe: must throw InvalidStateError while dispatching.
+          syncTried = true;
+          try { target.dispatchEvent(event); }
+          catch (e) { syncError = (e && e.name) || String(e); }
+          // Microtask probe: must not throw and must increment count.
           Promise.resolve().then(() => {
             ran = true;
             try { target.dispatchEvent(event); }
-            catch (e) { error = (e && e.name) || String(e); }
+            catch (e) { asyncError = (e && e.name) || String(e); }
           });
         }
       });
-      target.dispatchEvent(new Event('ping'));
+      globalThis.__hostDispatchTarget(new Event('ping'), target);
       // The microtask drains inside the dispatch's per-listener finally
-      // (turbo-dom#382). After dispatchTarget returns, the microtask has
-      // already run — count reflects whether it was allowed through.
-      return JSON.stringify({ count, error, ran });
+      // (turbo-dom#382, host-dispatch only since #484). After the host
+      // dispatch returns, the microtask has already run — count reflects
+      // whether it was allowed through.
+      return JSON.stringify({ count, syncError, asyncError, ran, syncTried });
     })()"#;
     super::crate_surface::run_engine_script(
         scope,
@@ -334,8 +373,10 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result, r#"{"count":2,"error":null,"ran":true}"#,
-        "microtask-driven re-dispatch of the same event must not throw",
+        result,
+        r#"{"count":2,"syncError":"InvalidStateError","asyncError":null,"ran":true,"syncTried":true}"#,
+        "sync re-dispatch while dispatching must throw InvalidStateError; \
+         microtask re-dispatch must run exactly once more (count=2)",
     );
     reset();
 }
@@ -402,6 +443,79 @@ fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
     reset();
 }
 
+/// turbo-dom#484: a page-script `dispatchEvent` on a non-Node EventTarget (what
+/// `controller.abort()` does internally for the 'abort' event, and what
+/// `AbortSignal.any`'s subscription hook does to propagate to a dependent signal)
+/// must NOT checkpoint microtasks BETWEEN its own listeners. Chrome 156 keeps the
+/// microtask queued inside listener A pending until the dispatch unwinds back to
+/// the calling script's natural yield (a later `await` / microtask / timer); the
+/// synchronous tail of the surrounding script, including listener B, runs before
+/// A's queued microtask. #382's per-listener drain fires only for HOST-initiated
+/// dispatches (engine-fired, routed through `__captureHostEventDispatch`), not
+/// for page-script dispatches. Source: the surf abort-bridge oracle
+/// `official_abort_bridge_keeps_chrome_state_and_unadapted_reaction_order`
+/// (`harness/detection/abort-bridge-order-probe.js`) — Chrome 156 records
+/// `[signal, dependent, after-abort, ..., signal-microtask]`, with the
+/// signal-microtask AFTER the dependent listener that ran inside the same
+/// `dispatchTarget('abort', signal, true)` call.
+#[test]
+fn page_script_dispatch_does_not_checkpoint_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('abort', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; trace.push('microtask'); });
+      });
+      target.addEventListener('abort', () => {
+        trace.push('B:' + microFlag);
+      });
+      // Page-script dispatch, exactly what `controller.abort()`'s internal
+      // `dispatchTarget('abort', signal, true)` reduces to (host=true sets
+      // isTrusted but the call originates from JS, not from the engine).
+      target.dispatchEvent(new Event('abort'));
+      trace.push('after-dispatch:' + microFlag);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "abort-bridge script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // Chrome 156: no microtask checkpoint runs for page-script dispatch, so
+    // both listeners and `after-dispatch` observe `microFlag === 'pending'`.
+    // The microtask fires only after the sync script yields — which happens
+    // after `JSON.stringify(trace)` is computed, so the 'microtask' entry
+    // never appears in this trace. Pre-fix the drain fired between A and B
+    // and again at B's exit, so B and after-dispatch saw 'ran' and the
+    // 'microtask' entry landed before 'B:ran'.
+    assert_eq!(
+        result, r#"["A:pending","B:pending","after-dispatch:pending"]"#,
+        "page-script dispatchEvent must not checkpoint microtasks between \
+         its own listeners (turbo-dom#484: the #382 drain is a HOST-dispatch \
+         observable only; a page-script dispatch keeps A's queued microtask \
+         behind B's synchronous invocation, matching Chrome 156's abort-bridge \
+         reaction order)."
+    );
+    reset();
+}
+
 /// Review R3 H1: `drainMicrotasksAcrossDispatch` saves and restores the
 /// dispatch-scoped fields (`dispatching` / `currentTarget` / `eventPhase` /
 /// `path` / `target`) but not `stop` / `stopImmediate`. A listener on an
@@ -417,11 +531,19 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: use host dispatch for the outer so the per-listener
+    // microtask drain path this test probes is exercised (page-script
+    // dispatch no longer drains since #484 — see `page_script_dispatch_
+    // does_not_checkpoint_between_listeners`). The microtask-driven inner
+    // re-dispatch stays page-script, nested inside the host bracket.
+    //
     // Review R4 M4: tighten the R3 H1 assertion. The earlier version only
     // checked `!has_parent_bubble` — a test that passes for both correct
     // behaviour AND the R4 H1 leak (outer stop leaking INTO the inner
@@ -458,7 +580,7 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
       child.addEventListener('ping', (event) => {
         trace.push('child-target:' + event.eventPhase);
       });
-      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), child);
       return JSON.stringify(trace);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -534,11 +656,15 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch goes through `__hostDispatchTarget` so
+    // the per-listener microtask drain (where R4 H1's clear operates) runs.
     // Three-level chain child -> mid -> parent. Outer dispatches the SAME
     // event the inner will re-dispatch; the only listener that stops
     // propagation lives on mid (a `pingOnce` guard keeps it from recursing
@@ -591,7 +717,7 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
       parent.addEventListener('ping', (event) => {
         trace.push('depth=' + depth + ':parent-bubble:' + event.eventPhase);
       });
-      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), child);
       return JSON.stringify(trace);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -629,11 +755,17 @@ fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
         "depth=0:mid-capture must fire (and calls stopPropagation). \
          Trace: {trace}",
     );
+    // Review R4 (#433 follow-up): stopPropagation called from an ANCESTOR
+    // capture listener (`mid`, the immediate parent of `child`) DOES
+    // suppress AT_TARGET on the target — Chrome 156 stops dispatch before
+    // AT_TARGET when `record.stop` is set after the capture walk. The
+    // earlier assertion (`child-target MUST fire`) was written against
+    // the pre-#433 buggy dispatchMulti.
     assert!(
-        has("depth=0:child-target:2"),
-        "depth=0:child-target MUST fire — stopPropagation on a multi-level \
-         path does NOT block AT_TARGET's own level (only \
-         stopImmediatePropagation does). Trace: {trace}",
+        !has("depth=0:child-target:2"),
+        "depth=0:child-target MUST NOT fire — mid's capture called \
+         stopPropagation, which suppresses the target's AT_TARGET per \
+         #433. Trace: {trace}",
     );
     assert!(
         !has("depth=0:mid-bubble:3"),
@@ -714,11 +846,15 @@ fn microtask_re_dispatch_preserves_outer_default_prevented() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the
+    // per-listener drain (where defaultPrevented's save/restore sits) runs.
     // Plain EventTarget with no parent hook triggers `dispatchSingle`, which
     // still routes callListener through `afterListener` (the drain path).
     // The outer listener queues a microtask whose inner dispatch's listener
@@ -740,7 +876,8 @@ fn microtask_re_dispatch_preserves_outer_default_prevented() {
         }
       });
       const event = new Event('e', { cancelable: true, bubbles: false });
-      out.outerReturn = target.dispatchEvent(event);
+      globalThis.__hostDispatchTarget(event, target);
+      out.outerReturn = !event.defaultPrevented;
       return JSON.stringify(out);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -801,11 +938,15 @@ fn microtask_re_dispatch_preserves_outer_own_default_prevented() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
     super::crate_surface::run_engine_script(
         scope,
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the
+    // per-listener drain (where defaultPrevented's save/restore sits) runs.
     let source = r#"(() => {
       const target = new EventTarget();
       let step = 0;
@@ -821,7 +962,8 @@ fn microtask_re_dispatch_preserves_outer_own_default_prevented() {
         }
       });
       const event = new Event('e', { cancelable: true, bubbles: false });
-      out.outerReturn = target.dispatchEvent(event);
+      globalThis.__hostDispatchTarget(event, target);
+      out.outerReturn = !event.defaultPrevented;
       return JSON.stringify(out);
     })()"#;
     let source = v8::String::new(scope, source).unwrap();
@@ -965,6 +1107,770 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
         "outer:parent-bubble must see isTrusted=true — the inner \
          (untrusted) re-dispatch's trusted flag must NOT leak back into \
          the outer (R4 H2). Trace: {trace}",
+    );
+    reset();
+}
+
+/// turbo-dom#452: the `collectPath` 10 000-hop cap (R1 H1) was only exercised at 101 hops
+/// (the pre-fix silent-truncation boundary). The band between 101 and 10 000 — where Chrome
+/// still walks and the fix's raised ceiling matters — was untested, as was the 10 001-hop
+/// loud-throw path. This test exercises both:
+///   (1) a 9 999-hop chain with a listener on the deepest ancestor fires the listener
+///       (walk reaches every real ancestor below the cap),
+///   (2) a 10 001-hop chain throws a loud TypeError from `dispatchEvent` (cap enforced).
+#[test]
+fn collect_path_fires_at_9999_hops_and_throws_at_10001_hops() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Both chains use a native-held array to avoid blowing the parser on 10 000 literals.
+    let source = r#"(() => {
+      function chain(depth) {
+        const nodes = new Array(depth);
+        for (let i = 0; i < depth; i++) nodes[i] = new EventTarget();
+        for (let i = 0; i < depth - 1; i++) {
+          const next = nodes[i + 1];
+          globalThis.__testSetParent(nodes[i], () => next);
+        }
+        return nodes;
+      }
+      // (1) 9 999 hops: just under the cap. Deep ancestor sees the event.
+      const BELOW = 9999;
+      const below = chain(BELOW);
+      let deepSaw = false;
+      below[BELOW - 1].addEventListener('x', () => { deepSaw = true; });
+      below[0].dispatchEvent(new Event('x', { bubbles: true }));
+      // (2) 10 001 hops: over the cap. Dispatch throws loudly.
+      const OVER = 10001;
+      const over = chain(OVER);
+      // Attach a listener so the fast-skip does not swallow the walk.
+      over[OVER - 1].addEventListener('x', () => {});
+      let overError = null;
+      try { over[0].dispatchEvent(new Event('x', { bubbles: true })); }
+      catch (e) { overError = (e && e.name) || String(e); }
+      return JSON.stringify({ deepSaw, below: BELOW, overError, over: OVER });
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "hop-cap-band script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"deepSaw":true,"below":9999,"overError":"TypeError","over":10001}"#,
+        "9 999-hop chain fires deepest listener; 10 001-hop chain throws TypeError",
+    );
+    reset();
+}
+
+/// turbo-dom#483: `drainMicrotasksAcrossDispatch` added `currentTarget` / `eventPhase` /
+/// `path` to the SAVE set (R3 H1) but did NOT CLEAR them before the
+/// `microtaskCheckpoint`. A Promise continuation that runs inside the drain window
+/// (e.g. awaited from a listener on a MessagePort host-dispatch) therefore sees the
+/// listener-scoped mid-dispatch state on the Event instance instead of Chrome's
+/// post-dispatch null/0/[] trio. Fix: clear the three fields after saving but before
+/// the checkpoint, so microtask continuations observe the between-dispatch sentinel
+/// values; restore on finally so the outer dispatch resumes unchanged.
+#[test]
+fn microtask_continuation_sees_post_dispatch_sentinel_fields() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    // turbo-dom#484: outer dispatch via `__hostDispatchTarget` so the per-listener
+    // drain window runs (page-script dispatchEvent is gated out of the drain path).
+    // Inside the listener, queue a microtask (Promise.resolve().then) that reads
+    // the event's dispatch-scoped fields. With #483's bug the microtask runs inside
+    // the per-listener drain window with `currentTarget === target`, `eventPhase === 2`
+    // (AT_TARGET), and `composedPath() === [target]` because those fields are
+    // saved-and-restored but not cleared. Chrome 156 clears them so a microtask
+    // continuation sees post-dispatch state (null / 0 / []).
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const seen = {};
+      target.addEventListener('ping', (event) => {
+        seen.listener = {
+          currentIsTarget: event.currentTarget === target,
+          phase: event.eventPhase,
+          pathLen: event.composedPath().length,
+        };
+        Promise.resolve().then(() => {
+          seen.micro = {
+            currentTarget: event.currentTarget,
+            phase: event.eventPhase,
+            pathLen: event.composedPath().length,
+          };
+        });
+      });
+      globalThis.__hostDispatchTarget(new Event('ping'), target);
+      return JSON.stringify(seen);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "#483 drain-sentinel script failed: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+    // Sanity: the listener itself saw AT_TARGET / currentTarget / path=[target] —
+    // this guards against a mutant that just silences the listener.
+    let listener = &value["listener"];
+    assert_eq!(
+        listener["currentIsTarget"].as_bool(),
+        Some(true),
+        "listener must observe its own currentTarget. Result: {value}",
+    );
+    assert_eq!(
+        listener["phase"].as_u64(),
+        Some(2),
+        "listener must observe eventPhase === AT_TARGET (2). Result: {value}",
+    );
+    assert_eq!(
+        listener["pathLen"].as_u64(),
+        Some(1),
+        "listener must observe composedPath() === [target]. Result: {value}",
+    );
+    // The microtask (which runs inside drainMicrotasksAcrossDispatch) must see the
+    // post-dispatch sentinel trio: currentTarget === null, eventPhase === 0,
+    // composedPath() === []. With #483's bug (save-and-restore only, no clear),
+    // every one of these fails: currentTarget is the EventTarget, phase is 2,
+    // pathLen is 1 — so each assertion distinguishes the fix from a one-line
+    // revert of any single cleared field.
+    let micro = &value["micro"];
+    assert!(
+        micro["currentTarget"].is_null(),
+        "microtask continuation must see event.currentTarget === null \
+         (post-dispatch sentinel). Result: {value}",
+    );
+    assert_eq!(
+        micro["phase"].as_u64(),
+        Some(0),
+        "microtask continuation must see event.eventPhase === 0 (NONE). \
+         Result: {value}",
+    );
+    assert_eq!(
+        micro["pathLen"].as_u64(),
+        Some(0),
+        "microtask continuation must see event.composedPath() === [] \
+         (post-dispatch sentinel). Result: {value}",
+    );
+    reset();
+}
+
+/// turbo-dom#433: when a capture-phase listener on an ANCESTOR calls
+/// `stopPropagation()`, Chrome 156 stops the dispatch before entering
+/// AT_TARGET on the target — the target's AT_TARGET listeners do NOT
+/// fire. The current `dispatchMulti` only short-circuits AT_TARGET on
+/// `stopImmediate`:
+///
+/// ```text
+/// if(!record.stopImmediate)invokeAt(event,record,target,null,2);
+/// ```
+///
+/// so a `stop` set during the capture walk leaks through and the
+/// target's AT_TARGET listeners still run. Pinned on turbo-surf's
+/// `/path/stopped` trace (`fix/193-idb-event-path`); fixed by guarding
+/// AT_TARGET on BOTH flags, matching the capture and bubble loops.
+///
+/// The test chain is parent -> mid -> target (parent-hook chain, host
+/// dispatch on `target`). `parent`'s capture listener calls
+/// `stopPropagation()`; `target`'s AT_TARGET listener must NOT run,
+/// but `target`'s `stopImmediatePropagation`-equivalent test (another
+/// AT_TARGET listener after a `stopImmediate` on the same target)
+/// stays unchanged.
+#[test]
+fn ancestor_capture_stop_propagation_suppresses_target_at_target() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = r#"(() => {
+      const target = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(target, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      // Capture order along the reverse path: parent -> mid. The #433 bug
+      // appears when the IMMEDIATE ancestor (`mid`, the last step of the
+      // capture loop) calls stopPropagation — the loop exits normally at
+      // `i=0` without re-checking the stop flag, then falls through to
+      // `if(!record.stopImmediate)invokeAt(..., 2)` with `record.stop=true`
+      // but `record.stopImmediate=false`, so AT_TARGET on `target` runs
+      // anyway. With `parent` doing the stop instead, the next loop
+      // iteration's guard catches it — that path was ALREADY correct and
+      // would not pin #433.
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-capture:' + event.eventPhase);
+      }, { capture: true });
+      mid.addEventListener('ping', (event) => {
+        trace.push('mid-capture:' + event.eventPhase);
+        event.stopPropagation();
+      }, { capture: true });
+      target.addEventListener('ping', (event) => {
+        trace.push('target-at-target:' + event.eventPhase);
+      });
+      target.addEventListener('ping', (event) => {
+        trace.push('target-at-target-second:' + event.eventPhase);
+      });
+      // Bubble phase: should not run either, but the AT_TARGET assertion is
+      // the one issue #433 pins. Record it so a mutant that drops the stop
+      // check from the bubble loop is also caught.
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-bubble:' + event.eventPhase);
+      });
+      globalThis.__hostDispatchTarget(new Event('ping', { bubbles: true }), target);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "#433 ancestor-capture-stopPropagation script failed: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Sanity: both capture listeners MUST fire — parent (first step of the
+    // reverse path walk) and mid (next step, which calls stopPropagation).
+    // If a listener did not fire, the chain is broken and the rest of the
+    // test proves nothing — mutation-resistant to a "listener never
+    // installed" defect.
+    assert!(
+        has("parent-capture:1"),
+        "parent-capture must fire — first step of the reverse path walk. \
+         Trace: {trace}",
+    );
+    assert!(
+        has("mid-capture:1"),
+        "mid-capture must fire — it owns the stopPropagation call. \
+         Trace: {trace}",
+    );
+    // The #433 fix: AT_TARGET on target MUST NOT fire. Both AT_TARGET
+    // listeners are asserted so a mutant that guards only the first
+    // listener's invocation is also caught.
+    assert!(
+        !has("target-at-target:2"),
+        "target-at-target MUST NOT fire — ancestor capture called \
+         stopPropagation, Chrome 156 stops dispatch before AT_TARGET. \
+         Trace: {trace}",
+    );
+    assert!(
+        !has("target-at-target-second:2"),
+        "target-at-target-second MUST NOT fire — same contract as the \
+         first AT_TARGET listener. Trace: {trace}",
+    );
+    assert!(
+        !has("parent-bubble:3"),
+        "parent-bubble MUST NOT fire — stopPropagation also suppresses \
+         bubble, same contract. Trace: {trace}",
+    );
+    reset();
+}
+
+/// turbo-dom#484 regression (timer path): V8-native `AbortSignal.timeout` fires
+/// the signal's `abort` reaction from an engine-task entry — Chrome 156
+/// checkpoints microtasks BETWEEN that dispatch's listeners (HTML "clean up
+/// after running a callback"). #484's `hostDispatchDepth > 0` gate skipped the
+/// drain here because neither the V8-native timer runner nor the native
+/// dispatch path goes through `__captureHostEventDispatch`, so the dispatch
+/// reached `afterListener` with the counter still at 0 — the listeners' queued
+/// microtasks batched at the end of the task instead of interleaving.
+///
+/// Fix: expose `globalThis.__engineTaskScope(fn)` so the embedding (surf's
+/// `__runLocalTimers` / timer runner, this test's manual wrapper) can mark
+/// engine-task boundaries. Inside the scope, the per-listener drain fires
+/// even for a page-script-shaped `target.dispatchEvent` because the realm IS
+/// at the top of the script settings stack (no page JS called in — the
+/// engine itself is running the task). Gate: `listenerDepth === 0 &&
+/// (hostDispatchDepth > 0 || engineTaskDepth > 0)`.
+///
+/// Red test: a plain `target.dispatchEvent` wrapped by `__engineTaskScope`
+/// must interleave listener-0 / listener-0-microtask / listener-1 /
+/// listener-1-microtask — Chrome 156's observed order for the surf
+/// `abort_signal_any_and_timeout_match_chrome156` oracle.
+#[test]
+fn engine_task_scope_checkpoints_microtasks_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    // A page-script `dispatchEvent` normally keeps A's queued microtask
+    // behind B (the drain gate's own contract; see
+    // `page_script_dispatch_does_not_checkpoint_between_listeners`). Wrapping
+    // the same call in `__engineTaskScope` promotes it to an engine-task
+    // entry — now the drain fires between A and B, and `after-dispatch`
+    // observes both microtasks already run.
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const trace = [];
+      target.addEventListener('abort', () => {
+        trace.push('A:enter');
+        Promise.resolve().then(() => trace.push('A:microtask'));
+      });
+      target.addEventListener('abort', () => {
+        trace.push('B:enter');
+        Promise.resolve().then(() => trace.push('B:microtask'));
+      });
+      globalThis.__engineTaskScope(() => target.dispatchEvent(new Event('abort')));
+      trace.push('after-scope');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // Chrome 156: Each listener's queued microtask is drained BEFORE the
+    // next listener runs (the realm is at the top of the script settings
+    // stack because the engine itself is running the timer task). Both
+    // microtasks have already run by `after-scope`.
+    //
+    // Mutation-resistance: this trace fails all of these mutants:
+    //   - Gate removed (always drain): would still pass (drain fires), but
+    //     page_script_dispatch_does_not_checkpoint_between_listeners then
+    //     fails — the pair pins the gate's both directions.
+    //   - Gate inverted (only page-script drains): A:microtask would land
+    //     AFTER both listeners, not between them.
+    //   - engineTaskDepth never incremented: same as before the fix — the
+    //     batched order `[A:enter,B:enter,A:microtask,B:microtask,...]`
+    //     appears, which this exact string refuses.
+    //   - engineTaskDepth never decremented (leaks across calls): a later
+    //     page-script dispatch in the same realm would wrongly drain; a
+    //     companion test below pins this by dispatching AFTER the scope.
+    assert_eq!(
+        result, r#"["A:enter","A:microtask","B:enter","B:microtask","after-scope"]"#,
+        "`__engineTaskScope` must restore the per-listener microtask \
+         checkpoint for a dispatch inside its bracket (HTML `clean up after \
+         running a callback`, Chrome 156's \
+         abort_signal_any_and_timeout_match_chrome156 oracle). Observed: {result}",
+    );
+    reset();
+}
+
+/// Companion to `engine_task_scope_checkpoints_microtasks_between_listeners`:
+/// `engineTaskDepth` MUST be decremented when the scope returns, otherwise a
+/// subsequent page-script dispatch in the same realm would wrongly drain
+/// between its listeners and #484's abort-bridge oracle would regress once
+/// the realm has ever entered an engine task. This pins the `finally`.
+#[test]
+fn engine_task_scope_decrements_on_exit() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      // Burn one engine-task scope so the counter would leak if the finally
+      // didn't fire, then issue a plain page-script dispatch and assert
+      // the drain does NOT run between its listeners.
+      globalThis.__engineTaskScope(() => {});
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('t', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; trace.push('microtask'); });
+      });
+      target.addEventListener('t', () => {
+        trace.push('B:' + microFlag);
+      });
+      target.dispatchEvent(new Event('t'));
+      trace.push('after:' + microFlag);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope decrement script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["A:pending","B:pending","after:pending"]"#,
+        "`__engineTaskScope` must decrement `engineTaskDepth` on return — a \
+         subsequent page-script `dispatchEvent` MUST keep the pre-#484 \
+         page-script contract (no per-listener drain). Observed: {result}",
+    );
+    reset();
+}
+
+/// `__engineTaskScope` must restore the counter even if `fn` throws.
+/// A leaked counter would permanently break every page-script dispatch
+/// after the first engine-task entry — the `finally` is load-bearing.
+#[test]
+fn engine_task_scope_decrements_on_throw() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      let threw = false;
+      try {
+        globalThis.__engineTaskScope(() => { throw new Error('boom'); });
+      } catch (e) { threw = (e && e.message === 'boom'); }
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('t', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; });
+      });
+      target.addEventListener('t', () => {
+        trace.push('B:' + microFlag);
+      });
+      target.dispatchEvent(new Event('t'));
+      return JSON.stringify({ trace, threw });
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope throw script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // After the scope rethrows, a page-script dispatch stays on the
+    // pre-#484 page-script contract (B sees 'pending') — the counter was
+    // restored by the `finally`.
+    assert_eq!(
+        result, r#"{"trace":["A:pending","B:pending"],"threw":true}"#,
+        "`__engineTaskScope` must decrement `engineTaskDepth` even on a \
+         throw from `fn`. Observed: {result}",
+    );
+    reset();
+}
+
+/// turbo-dom#484 regression (V8-native timer path): `AbortSignal.timeout` and
+/// `AbortSignal.any` fire their abort reactions through V8's internal C++
+/// task queue — those entries never pass through the embedding's wrapped
+/// `setTimeout`, so an embedder like surf that wraps its timer runner in
+/// `__engineTaskScope` still sees the pre-#484 batched listener order for a
+/// signal produced by either static method. Fix: a bootstrap polyfill that
+/// re-routes both static methods through `globalThis.setTimeout` / the
+/// embedder's abort dispatch path, so the engine-task scope covers them and
+/// the per-listener microtask drain fires between listeners.
+///
+/// Red test: install `__engineTaskScope` + a FIFO `setTimeout` whose runner
+/// wraps each callback in `__engineTaskScope` (mirroring surf's
+/// `__runLocalTimers` → `__timerApply` → `engine_task_scope`). Register two
+/// listeners on the timeout signal, drain the queue, and assert Chrome 156's
+/// interleaved `[L0:enter, L0:microtask, L1:enter, L1:microtask, after]`
+/// order. The pre-polyfill isolate either throws (no native
+/// `AbortSignal.timeout`) or fires through V8's internal queue that the test
+/// never pumps — either way the trace never contains L0/L1/M0/M1, so the
+/// strict equality fails.
+#[test]
+fn abort_signal_timeout_polyfill_drains_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    // The embedder's `setTimeout` (surf wraps its real one in
+    // `engine_task_scope` via `__runLocalTimers`). The polyfill must call
+    // through `globalThis.setTimeout`, not some pre-captured native binding
+    // that would bypass this wrap.
+    let source = r#"(() => {
+      const queue = [];
+      globalThis.setTimeout = (fn) => {
+        queue.push(() => globalThis.__engineTaskScope(() => fn()));
+        return queue.length;
+      };
+      if (typeof AbortSignal.timeout !== 'function') {
+        return JSON.stringify({ error: 'AbortSignal.timeout missing' });
+      }
+      const sig = AbortSignal.timeout(0);
+      const trace = [];
+      sig.addEventListener('abort', () => {
+        trace.push('L0:enter');
+        Promise.resolve().then(() => trace.push('L0:microtask'));
+      });
+      sig.addEventListener('abort', () => {
+        trace.push('L1:enter');
+        Promise.resolve().then(() => trace.push('L1:microtask'));
+      });
+      while (queue.length) queue.shift()();
+      trace.push('after');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "AbortSignal.timeout polyfill script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "`AbortSignal.timeout` must route through `globalThis.setTimeout` so \
+         the embedder's engine-task scope brackets the abort dispatch (Chrome \
+         156 interleaves listener microtasks; batched `[L0,L1,M0,M1,...]` is \
+         the pre-polyfill order). Observed: {result}",
+    );
+    reset();
+}
+
+/// Companion to `abort_signal_timeout_polyfill_drains_between_listeners`:
+/// `AbortSignal.any` forwards its inputs' abort reactions. In the surf
+/// `abort_signal_any_and_timeout_match_chrome156` oracle an input is
+/// `AbortSignal.timeout(0)`, so the derived signal's listeners also need to
+/// interleave their microtasks. The polyfill forwards through a microtask so
+/// the derived dispatch runs at `listenerDepth === 0` inside the input
+/// signal's drain window — that preserves the gate's outermost-only contract
+/// while still placing the cascade inside the engine-task bracket.
+#[test]
+fn abort_signal_any_polyfill_drains_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      const queue = [];
+      globalThis.setTimeout = (fn) => {
+        queue.push(() => globalThis.__engineTaskScope(() => fn()));
+        return queue.length;
+      };
+      if (typeof AbortSignal.timeout !== 'function' || typeof AbortSignal.any !== 'function') {
+        return JSON.stringify({ error: 'AbortSignal.timeout/any missing' });
+      }
+      const timed = AbortSignal.timeout(0);
+      const any = AbortSignal.any([timed]);
+      const trace = [];
+      any.addEventListener('abort', () => {
+        trace.push('L0:enter');
+        Promise.resolve().then(() => trace.push('L0:microtask'));
+      });
+      any.addEventListener('abort', () => {
+        trace.push('L1:enter');
+        Promise.resolve().then(() => trace.push('L1:microtask'));
+      });
+      while (queue.length) queue.shift()();
+      trace.push('after');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "AbortSignal.any polyfill script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "`AbortSignal.any` must forward its input's abort so the derived \
+         signal's listeners interleave their microtasks (Chrome 156's \
+         abort_signal_any_and_timeout_match_chrome156 contract). Observed: {result}",
+    );
+    reset();
+}
+
+/// Smoke test: after the FULL bootstrap (`install_with_html`, surf's entry
+/// point), `AbortSignal.timeout` and `AbortSignal.any` MUST be the polyfill
+/// functions — not V8's native getters. Surf reported the polyfill silently
+/// failing to land in their render isolate (a6648c45) because the IIFE's
+/// install block threw between `__engineTaskScope` and the overrides and
+/// `run_js` swallowed the exception, leaving the native methods in place.
+/// This test runs the same bootstrap path, so a future regression where the
+/// polyfill install throws silently fails here instead of in surf's oracle.
+#[test]
+fn abort_signal_timeout_polyfill_installs_through_install_with_html() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    // End-to-end: install a FIFO setTimeout (mirroring surf's wrapped timer
+    // runner) that wraps every callback in `__engineTaskScope` on drain, then
+    // register two listeners on an `AbortSignal.timeout(0)` signal and assert
+    // Chrome 156's interleaved `[L0, L0-mt, L1, L1-mt]` order. The polyfill
+    // must route the abort through our dispatch path for the engine-task
+    // bracket's per-listener drain to fire; a V8-native path would skip the
+    // override and the trace would batch the microtasks at the end.
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+          const queue = [];
+          globalThis.setTimeout = (fn) => {
+            queue.push(() => {
+              // __engineTaskScope is captured + deleted at bootstrap, so this
+              // uses the same Rust API surf wraps via engine_task_scope.
+              // We re-bind a JS shim through the `__engineScope` back door
+              // the test has already installed (see below).
+              globalThis.__engineScope(() => fn());
+            });
+            return queue.length;
+          };
+          const sig = AbortSignal.timeout(0);
+          const trace = [];
+          sig.addEventListener('abort', () => {
+            trace.push('L0:enter');
+            Promise.resolve().then(() => trace.push('L0:microtask'));
+          });
+          sig.addEventListener('abort', () => {
+            trace.push('L1:enter');
+            Promise.resolve().then(() => trace.push('L1:microtask'));
+          });
+          while (queue.length) queue.shift()();
+          trace.push('after');
+          return JSON.stringify(trace);
+        })()"#,
+    )
+    .unwrap();
+    let global = context.global(scope);
+    bind_method(scope, global, "__engineScope", engine_task_scope_binding);
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "polyfill-smoke script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        "polyfill MUST replace V8's native AbortSignal.timeout AND route the \
+         abort through the embedder's dispatch path so the engine-task scope's \
+         per-listener drain fires between listeners. If the native \
+         AbortController.abort bypasses our EventTarget.prototype.dispatchEvent \
+         override, V8 dispatches natively and the listener microtasks batch \
+         at the end — the #484 surf oracle regression. Observed: {result} — \
+         expected Chrome 156's \
+         `[L0:enter,L0:microtask,L1:enter,L1:microtask,after]`. (If the IIFE \
+         threw silently before the override, `run_js` swallowed the exception; \
+         a drop to V8 natives points at that too.)",
     );
     reset();
 }

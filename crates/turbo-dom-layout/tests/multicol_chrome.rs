@@ -16,7 +16,10 @@
 // rules.
 
 use serde_json::Value;
-use turbo_dom_layout::{layout_boxes, test_support::fixture_fonts, Diagnostics};
+use turbo_dom_layout::{
+    layout_boxes, layout_html, test_support::fixture_fonts, Diagnostics, Fragment, FragmentContent,
+    Rgba,
+};
 
 const FIXTURE: &str = include_str!("fixtures/multicol_chrome156.json");
 
@@ -35,6 +38,10 @@ const EXPECTED_IDS: &[&str] = &[
     "break-after-column",
     "break-inside-avoid",
     "break-inside-avoid-fits-anyway",
+    "abspos-in-multicol",
+    "fragmented-background",
+    "overflow-visible-extra-strips",
+    "overflow-hidden-extra-strips",
 ];
 
 // Chrome rounds multi-column widths and gap positions on its 1/64 px LayoutUnit
@@ -305,4 +312,190 @@ fn break_inside_avoid_fits_anyway_matches_chrome_156() {
         "break-inside-avoid-fits-anyway",
     );
     assert_matches_chrome("break-inside-avoid-fits-anyway", case);
+}
+
+// --------------------------------------------------------------------------
+// v0.8.2 correctness: out-of-flow kids (miaskiewicz/turbo-dom#444 /
+// miaskiewicz/turbo-dom#461) and per-column paint of a fragmented block
+// (miaskiewicz/turbo-dom#427).
+// --------------------------------------------------------------------------
+
+/// turbo-dom#444 / #461: an abspos kid inside a multicol does NOT occupy
+/// column flow space — Chrome routes it around the column flow and places
+/// it at its CSS `left`/`top` with its CSS `width`/`height`. The surrounding
+/// in-flow kids pack as if the abspos kid were absent.
+#[test]
+fn abspos_in_multicol_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(fixture["cases"].as_array().unwrap(), "abspos-in-multicol");
+    assert_matches_chrome("abspos-in-multicol", case);
+}
+
+/// turbo-dom#427: a `background` on a block that fragments across the
+/// column gap still reports its union border box via `getBoundingClientRect`
+/// (Chrome's contract).
+#[test]
+fn fragmented_background_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
+    assert_matches_chrome("fragmented-background", case);
+}
+
+/// Collect every `FragmentContent::Box` fragment whose background colour
+/// matches `want` (ARGB, exact — the fixture's `#cce` is `(0xcc, 0xcc,
+/// 0xee, 0xff)`), with the fragment's own `(x, y, width, height)`. Used
+/// by the #427 per-column-paint assertion below.
+fn walk_bg(f: &Fragment, want: Rgba, out: &mut Vec<(f32, f32, f32, f32)>) {
+    if let FragmentContent::Box {
+        background: Some(bg),
+        ..
+    } = &f.content
+    {
+        if *bg == want {
+            out.push((f.x, f.y, f.width, f.height));
+        }
+    }
+    for c in &f.children {
+        walk_bg(c, want, out);
+    }
+}
+
+fn collect_background_boxes(root: &Fragment, want: Rgba) -> Vec<(f32, f32, f32, f32)> {
+    let mut out = Vec::new();
+    walk_bg(root, want, &mut out);
+    out
+}
+
+/// turbo-dom#427: a fragmented block paints its background PER COLUMN
+/// (never across the gap). The oracle's `items[].rects` captures the
+/// per-column fragments Chrome paints. Before the fix the engine
+/// collapses the fragmented block into one union-rect Fragment whose
+/// background bleeds across the gap; after the fix the painter sees one
+/// background Box per column fragment, each at a column strip's rect.
+#[test]
+fn fragmented_block_paints_background_per_column() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "fragmented-background",
+    );
+    let html = case["html"].as_str().expect("html");
+    let fonts = fixture_fonts();
+    let mut diags = Diagnostics::default();
+    let root = layout_html(html, "", 1280.0, &fonts, &mut diags).expect("layout_html");
+    // `background: #cce` on the one flowed div: Chrome paints it in each
+    // column fragment Chrome reported in the fixture.
+    let want_bg = Rgba::new(0xcc, 0xcc, 0xee, 0xff);
+    let got = collect_background_boxes(&root, want_bg);
+    let want_rects: Vec<(f64, f64, f64, f64)> = case["items"].as_array().unwrap()[0]["rects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["x"].as_f64().unwrap(),
+                r["y"].as_f64().unwrap(),
+                r["width"].as_f64().unwrap(),
+                r["height"].as_f64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        want_rects.len(),
+        2,
+        "fixture: two column fragments expected for the 300px block in a 2-col, 200px-tall container",
+    );
+    // There must be at least one background Box per column fragment. The
+    // outer shell (if any) carries no visible background, so the match
+    // count is strictly per-column.
+    assert_eq!(
+        got.len(),
+        want_rects.len(),
+        "expected one per-column background Box per column fragment; got {got:?}",
+    );
+    // Each reported rect must match a Chrome fragment within TOL.
+    for want in &want_rects {
+        let matched = got.iter().any(|g| {
+            (f64::from(g.0) - want.0).abs() < TOL
+                && (f64::from(g.1) - want.1).abs() < TOL
+                && (f64::from(g.2) - want.2).abs() < TOL
+                && (f64::from(g.3) - want.3).abs() < TOL
+        });
+        assert!(
+            matched,
+            "no per-column Box matched Chrome rect {want:?}; got {got:?}",
+        );
+    }
+}
+
+// --------------------------------------------------------------------------
+// #442: overflow strips past `used_count` under `overflow: visible` /
+// `overflow: hidden`. Chrome lays the overflow strips out past the content
+// box in both cases (the `overflow: hidden` clip is paint-time only, so a
+// `getBoundingClientRect()` on an overflowing kid still reports the laid-out
+// x of its strip — identical to the visible case).
+// --------------------------------------------------------------------------
+
+#[test]
+fn overflow_visible_extra_strips_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-visible-extra-strips",
+    );
+    assert_matches_chrome("overflow-visible-extra-strips", case);
+}
+
+#[test]
+fn overflow_hidden_extra_strips_matches_chrome_156() {
+    let fixture = fixture();
+    let case = find_case(
+        fixture["cases"].as_array().unwrap(),
+        "overflow-hidden-extra-strips",
+    );
+    assert_matches_chrome("overflow-hidden-extra-strips", case);
+}
+
+// --------------------------------------------------------------------------
+// v0.8.2 R1 adversarial L4: a sub-pixel `column-rule-width` (< 1px) is
+// kept as the DECLARED width in the emitted `FragmentContent::ColumnRule`
+// fragment; the painter's `max(1.0)` floor applies only to the stamped
+// dot diameter, never to gap allocation. If the layout ever clamped the
+// fragment width to 1.0 the rule would eat into the surrounding column
+// gap and `getBoundingClientRect` on a column-fragmented child would
+// drift by the clamp. This test pins the fragment-width contract.
+// --------------------------------------------------------------------------
+
+fn collect_rule_widths(f: &Fragment) -> Vec<f32> {
+    let mut out = Vec::new();
+    if matches!(f.content, FragmentContent::ColumnRule { .. }) {
+        out.push(f.width);
+    }
+    for c in &f.children {
+        out.extend(collect_rule_widths(c));
+    }
+    out
+}
+
+#[test]
+fn sub_pixel_column_rule_keeps_declared_width_in_the_fragment() {
+    let html = r#"<!doctype html><html><body><div style="column-count:2;column-gap:20px;column-rule-style:solid;column-rule-width:0.5px;column-rule-color:#f00;width:200px;height:100px"><p>aaa</p><p>bbb</p></div></body></html>"#;
+    let fonts = fixture_fonts();
+    let mut diags = Diagnostics::default();
+    let galley =
+        turbo_dom_layout::layout_html(html, "", 1280.0, &fonts, &mut diags).expect("layout_html");
+    let widths = collect_rule_widths(&galley);
+    assert!(
+        !widths.is_empty(),
+        "expected at least one ColumnRule fragment, got none"
+    );
+    for w in &widths {
+        assert_eq!(
+            *w, 0.5_f32,
+            "column-rule fragment width must stay the declared 0.5px (not the painter's 1.0 floor); widths = {widths:?}"
+        );
+    }
 }

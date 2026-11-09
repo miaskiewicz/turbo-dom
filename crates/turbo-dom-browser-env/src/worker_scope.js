@@ -10,6 +10,12 @@
 	// time, before any page script can reassign `globalThis.Set` or poison
 	// `Array.prototype[@@iterator]`. The main-realm binding does this via
 	// captured_intrinsics.js; the worker bootstrap now does the same.
+	// turbo-dom#428: capture the native structured-clone binding BEFORE any
+	// page script can tamper with `globalThis`. The binding is installed by
+	// `worker_scope::install` right before this bootstrap runs; we hold it
+	// in a closure and delete the global slot so the surface stays Chrome-shaped.
+	const nativeStructuredClone = global.__turboDomStructuredClone;
+	delete global.__turboDomStructuredClone;
 	const SetType = global.Set;
 	const MapType = global.Map;
 	const SetAdd = SetType.prototype.add;
@@ -96,61 +102,34 @@
 			);
 		return importHook.apply(global, urls);
 	};
-	// Review R1 M5: a POJO-only stub that THROWS DataCloneError on
-	// anything it cannot faithfully round-trip. The real
-	// `structuredClone` honours Date / Map / Set / BigInt / typed
-	// arrays / cycles / undefined / Infinity / NaN; silently dropping
-	// them (what the previous JSON round-trip did) made a page
-	// feature-detection succeed while behaviour disagreed with Chrome.
-	// turbo-surf wires the real HTML structured clone through its
-	// message-port machinery; this stub is just a well-behaved marker.
-	// Full structured-clone semantics is turbo-dom#422 (follow-up).
-	function dataCloneError(detail) {
-		const err = new Error(`${detail} is not cloneable (structuredClone stub)`);
-		err.name = "DataCloneError";
-		return err;
+	// turbo-dom#428: real structured-clone semantics via V8's
+	// ValueSerializer / ValueDeserializer (captured native binding above).
+	// Date / Map / Set / RegExp / BigInt / typed arrays / cycles round-trip
+	// faithfully; non-cloneable values (functions, symbols, WeakMap, ...)
+	// throw DataCloneError from the native side. turbo-surf still wires its
+	// own message-port path for transferables.
+	if (typeof nativeStructuredClone === "function") {
+		global.structuredClone = function structuredClone(value) {
+			if (arguments.length === 0) {
+				throw new TypeError(
+					"structuredClone: 1 argument required, but only 0 present",
+				);
+			}
+			return nativeStructuredClone(value);
+		};
+	} else {
+		// Fallback (defensive — the native binding is installed in every
+		// worker context this crate creates). If it is missing, structured
+		// clone throws DataCloneError so a page cannot silently disagree with
+		// Chrome.
+		global.structuredClone = function structuredClone() {
+			const err = new Error(
+				"structuredClone: native binding unavailable",
+			);
+			err.name = "DataCloneError";
+			throw err;
+		};
 	}
-	const PRIMITIVE_REJECTS = {
-		undefined: "undefined",
-		bigint: "BigInt",
-		symbol: "Symbol",
-		function: "Function",
-	};
-	function assertPrimitive(value) {
-		if (value === null) return true;
-		const t = typeof value;
-		if (t === "string" || t === "boolean") return true;
-		if (t === "number") {
-			if (Number.isFinite(value)) return true;
-			throw dataCloneError(String(value));
-		}
-		const reject = PRIMITIVE_REJECTS[t];
-		if (reject) throw dataCloneError(reject);
-		return false;
-	}
-	function assertObject(value, seen) {
-		if (apply(SetHas, seen, [value])) throw dataCloneError("cyclic reference");
-		apply(SetAdd, seen, [value]);
-		if (Array.isArray(value)) {
-			for (let i = 0; i < value.length; i++) assertCloneable(value[i], seen);
-			return;
-		}
-		const tag = Object.prototype.toString.call(value);
-		if (tag !== "[object Object]") throw dataCloneError(tag);
-		const proto = Object.getPrototypeOf(value);
-		if (proto !== null && proto !== Object.prototype) {
-			throw dataCloneError("non-POJO object");
-		}
-		for (const key of Object.keys(value)) assertCloneable(value[key], seen);
-	}
-	function assertCloneable(value, seen) {
-		if (assertPrimitive(value)) return;
-		assertObject(value, seen);
-	}
-	global.structuredClone = function structuredClone(value) {
-		assertCloneable(value, new SetType());
-		return JSON.parse(JSON.stringify(value));
-	};
 	global.addEventListener = function addEventListener(type, listener) {
 		if (typeof listener !== "function") return;
 		let list = apply(MapGet, listeners, [type]);

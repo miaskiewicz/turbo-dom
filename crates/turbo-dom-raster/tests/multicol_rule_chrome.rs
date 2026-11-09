@@ -10,8 +10,8 @@
 //! the paint tests use (`paint_chrome.rs` `probe_difference` contract).
 //!
 //! Styles covered: `none`, `solid`, `dotted`, `dashed`, `double`, plus
-//! `currentcolor` colour and a gap-clamp case. The `groove` / `ridge` /
-//! `inset` / `outset` family is deferred to miaskiewicz/turbo-dom#419.
+//! `currentcolor` colour and a gap-clamp case. Since miaskiewicz/turbo-dom#419
+//! `groove` / `ridge` / `inset` / `outset` also paint.
 use std::collections::HashSet;
 
 use turbo_dom_raster::{screenshot_png_with_opts, screenshot_svg_with_opts, ImageAssets, Viewport};
@@ -211,6 +211,89 @@ fn wider_than_gap_column_rules_are_clamped_to_the_gap_like_chrome_156() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// #424: a double rule declared at 2 px — where `floor(width/3) = 0` —
+/// collapses to a solid rule in Chrome, which both painters mirror via
+/// their `< 3 px` solid fallback.
+#[test]
+fn double_thin_column_rules_collapse_to_solid_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-double-thin";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #424: a dotted rule declared sub-pixel (0.5 px) in a 2 px gap. Chrome 156
+/// floors the effective dot diameter to >= 1 px, so the rule centre column
+/// paints solid black across the first-dot rows. Both painters must floor
+/// their dot diameter the same way (a sub-pixel radius circle disappears to
+/// transparent anti-aliasing otherwise).
+#[test]
+fn dotted_subpixel_column_rules_floor_diameter_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-dotted-subpixel";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #457: broader colour / width / gap coverage — green solid, blue
+/// 3-column, yellow thin.
+#[test]
+fn broader_solid_column_rule_colours_and_gaps_paint_like_chrome_156() {
+    let pick = |id: &str| {
+        matches!(
+            id,
+            "multicol-rule-solid-wide-green"
+                | "multicol-rule-solid-3col-wide-gap"
+                | "multicol-rule-solid-thin-yellow"
+        )
+    };
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #419: `column-rule-style: groove` splits the rule into two equal halves —
+/// left half darker, right half lighter — via
+/// `turbo_dom_layout::border_style_colour`. Both painters match Chrome 156 at
+/// 4 px and 6 px.
+#[test]
+fn groove_column_rules_paint_shaded_halves_like_chrome_156() {
+    let pick = |id: &str| matches!(id, "multicol-rule-groove-6px" | "multicol-rule-groove-4px");
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #419: `ridge` is `groove` with the two shades swapped — left light, right
+/// dark — in both painters.
+#[test]
+fn ridge_column_rules_paint_swapped_halves_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-ridge-6px";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #419: `inset` on a vertical column rule paints like `ridge` — left half
+/// light, right half dark — matching Chrome 156.
+#[test]
+fn inset_column_rules_paint_like_ridge_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-inset-6px";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// #419: `outset` on a vertical column rule paints like `groove` — left half
+/// dark, right half light — matching Chrome 156.
+#[test]
+fn outset_column_rules_paint_like_groove_like_chrome_156() {
+    let pick = |id: &str| id == "multicol-rule-outset-6px";
+    let mut failures = png_differences(pick);
+    failures.extend(svg_differences(pick));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// Every case in the fixture is picked by exactly one of the suites above,
 /// so `cargo test` never silently skips a Chrome case the capture script
 /// writes. If a new case is added, add a pattern matcher for it (or extend
@@ -239,6 +322,16 @@ fn every_fixture_case_is_covered() {
                     | "multicol-rule-wider-than-gap"
                     | "multicol-rule-dashed"
                     | "multicol-rule-currentcolor"
+                    | "multicol-rule-double-thin"
+                    | "multicol-rule-dotted-subpixel"
+                    | "multicol-rule-solid-wide-green"
+                    | "multicol-rule-solid-3col-wide-gap"
+                    | "multicol-rule-solid-thin-yellow"
+                    | "multicol-rule-groove-6px"
+                    | "multicol-rule-groove-4px"
+                    | "multicol-rule-ridge-6px"
+                    | "multicol-rule-inset-6px"
+                    | "multicol-rule-outset-6px"
             )
         })
         .map(String::as_str)

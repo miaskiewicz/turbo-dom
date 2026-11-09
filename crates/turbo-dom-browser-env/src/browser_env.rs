@@ -101,6 +101,7 @@ pub fn clear_context_capabilities(scope: &mut v8::PinScope) {
             context.remove_slot::<EventRecordAccessor>();
             context.remove_slot::<HostEventDispatcher>();
             context.remove_slot::<InlineHandlerSetter>();
+            context.remove_slot::<EngineTaskScope>();
             event_listeners::clear_context(context);
             range_contents::clear_context(context);
         }
@@ -658,6 +659,13 @@ struct FormSubmissionDispatcher(v8::Weak<v8::Function>);
 struct FormValueReader(v8::Weak<v8::Function>);
 struct FormEntryListReader(v8::Weak<v8::Function>);
 struct FormDataEventDispatcher(v8::Weak<v8::Function>);
+/// turbo-dom#484 timer regression: engine-task bracket for the per-listener
+/// microtask drain. Captured from the `__engineTaskScope(fn)` bootstrap hook
+/// and invoked from Rust (surf's timer runner, our test harness) so a
+/// dispatch inside `fn` checkpoints microtasks between listeners even when
+/// the dispatch looks like a page-script `target.dispatchEvent` — the realm
+/// IS at the top of the script settings stack for the task's duration.
+struct EngineTaskScope(v8::Weak<v8::Function>);
 fn_slots!([
     FormSubmissionDispatcher,
     FormValueReader,
@@ -666,6 +674,7 @@ fn_slots!([
     EventRecordAccessor,
     HostEventDispatcher,
     InlineHandlerSetter,
+    EngineTaskScope,
 ]);
 
 #[derive(Default)]
@@ -4979,6 +4988,34 @@ pub fn dispatch_host_event_did_listeners_throw(
     get_bool_prop(scope, record, "threw")
 }
 
+/// turbo-dom#484 timer regression: bracket an engine-task entry so the
+/// per-listener microtask drain fires for a dispatch inside `callback` even
+/// when it looks like a page-script `target.dispatchEvent` (Chrome 156's HTML
+/// "clean up after running a callback" — the realm IS at the top of the
+/// script settings stack while the engine itself runs the task). Embeddings
+/// (surf's `__runLocalTimers`, V8-native AbortSignal.timeout fire path) wrap
+/// their timer callback invocations with this. Without it, V8-native
+/// `AbortSignal.timeout(0)` listeners batch their microtasks at the end of
+/// the task instead of interleaving per listener (surf oracle
+/// `abort_signal_any_and_timeout_match_chrome156`).
+///
+/// `callback` receives no arguments; its return value is propagated. The JS
+/// hook wraps the call in try/finally so the counter is always restored (a
+/// throwing callback rethrows here).
+pub fn engine_task_scope<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    callback: v8::Local<v8::Function>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    if scope.is_execution_terminating() {
+        return None;
+    }
+    let context = scope.get_current_context();
+    let scope_fn = context.get_slot::<EngineTaskScope>()?;
+    let function = dom_ownership::local(scope, &scope_fn.0);
+    let receiver = v8::undefined(scope).into();
+    function.call(scope, receiver, &[callback.into()])
+}
+
 /// Enter or leave an engine-delivered callback on a non-DOM target.
 pub fn event_callback_state(
     scope: &mut v8::PinScope,
@@ -8713,6 +8750,21 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
     if is_worker_context(scope.get_current_context()) {
         return;
     }
+    // turbo-dom#436: one dispatcher at the tail — every install path (snapshot
+    // fast path, snapshot miss -> split/full, non-snapshot -> split/full) ends
+    // by running the registered init scripts. Previously each path reached for
+    // `run_init_scripts` on its own, which made it easy to forget on a new
+    // path.
+    install_document_body(scope, tree);
+    // turbo-dom#394: embedder init scripts run after the engine is in place
+    // but before the embedder executes the parser's inline `<script>`s.
+    run_init_scripts(scope);
+}
+
+/// The install work proper: snapshot fast path when enabled, otherwise the
+/// split/full path. Kept separate from [`run_init_scripts`] so every caller
+/// of [`install_with_tree`] runs init scripts in exactly one place.
+fn install_document_body(scope: &mut v8::PinScope, tree: Tree) {
     if snapshot_path() {
         #[cfg(test)]
         let before = ENGINE_SCRIPTS_RUN.with(std::cell::Cell::get);
@@ -8725,20 +8777,12 @@ fn install_with_tree(scope: &mut v8::PinScope, tree: Tree) {
                     before,
                     "a snapshot install ran an engine script"
                 );
-                // turbo-dom#394: embedder init scripts run after the engine is in place
-                // but before the embedder executes the parser's inline `<script>`s.
-                run_init_scripts(scope);
-                return;
             }
-            Err(tree) => {
-                install_split_or_full(scope, tree);
-                run_init_scripts(scope);
-                return;
-            }
+            Err(tree) => install_split_or_full(scope, tree),
         }
+        return;
     }
     install_split_or_full(scope, tree);
-    run_init_scripts(scope);
 }
 
 fn install_split_or_full(scope: &mut v8::PinScope, tree: Tree) {
@@ -9326,6 +9370,11 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     ) {
         return;
     }
+    // turbo-dom#484 timer regression: engine-task bracket hook (invoked from
+    // Rust via `engine_task_scope`; see that fn's doc). Captured and deleted
+    // like every other `__capture*` bootstrap callback so page script never
+    // sees the dunder (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`).
+    capture_bootstrap_callback::<EngineTaskScope>(scope, global, "__engineTaskScope");
     event_handlers::install(scope, None, "about:blank");
     custom_elements::install(scope);
     element_internals::install(scope);
@@ -11483,6 +11532,175 @@ mod tests {
         reset();
     }
 
+    // An iframe document's inline `on*` content-attribute handler must compile in the
+    // IFRAME's own realm, not the parent realm that happened to trigger the compile
+    // (Chrome 156: the body's globals, `this` binding and `window` reference the iframe
+    // window). turbo-dom#478 / turbo-surf#287: parent-realm dispatch on a script element in
+    // an independent child context was compiling the handler against the parent realm, so
+    // `globalThis.x = 1` landed on the parent's `x` and the iframe's stayed 0.
+    #[test]
+    fn inline_handler_compiles_in_element_owning_realm() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let parent = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, parent);
+        install(scope);
+        let child = v8::Context::new(scope, Default::default());
+        child.set_security_token(parent.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(
+                scope,
+                "<body><div id=target onload='globalThis.realmMarker=\"child\"; globalThis.hits=(globalThis.hits||0)+1; globalThis.thisIsElement=(this===document.getElementById(\"target\")); globalThis.freeDocumentOwner=document;'></div></body>",
+            );
+        }
+        let key = v8::String::new(scope, "child").unwrap();
+        let child_global = child.global(scope);
+        parent
+            .global(scope)
+            .set(scope, key.into(), child_global.into());
+        let src = v8::String::new(
+            scope,
+            r#"
+                globalThis.realmMarker = 'parent';
+                globalThis.hits = 0;
+                globalThis.thisIsElement = false;
+                globalThis.freeDocumentOwner = null;
+                const node = child.document.getElementById('target');
+                // Borrow the PARENT realm's EventTarget.prototype.dispatchEvent and invoke it on a
+                // CHILD-owned element. This forces refresh() to run with scope.get_current_context()
+                // == parent, which (before the fix) compiled the inline onload in the parent realm.
+                EventTarget.prototype.dispatchEvent.call(node, new child.Event('load'));
+                JSON.stringify({
+                    parentRealm: globalThis.realmMarker,
+                    childRealm: child.realmMarker,
+                    parentHits: globalThis.hits,
+                    childHits: child.hits,
+                    childThisIsElement: child.thisIsElement,
+                    parentThisIsElement: globalThis.thisIsElement,
+                    childFreeDocumentIsChild: child.freeDocumentOwner === child.document,
+                    childFreeDocumentIsParent: child.freeDocumentOwner === document,
+                });
+            "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, src, None).unwrap();
+        let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Compare against the Chrome 156 control row for realm selection (turbo-dom#478).
+        let control: serde_json::Value =
+            serde_json::from_str(include_str!("iframe_inline_handler_realm_chrome156.json"))
+                .unwrap();
+        let expected = &control["result"]["realmSelection"];
+        for field in [
+            "childRealmMarker",
+            "parentRealmMarker",
+            "childHits",
+            "parentHits",
+            "childThisIsElement",
+            "parentThisIsElement",
+            "childFreeDocumentIsChild",
+            "childFreeDocumentIsParent",
+        ] {
+            let got_key = match field {
+                "childRealmMarker" => "childRealm",
+                "parentRealmMarker" => "parentRealm",
+                other => other,
+            };
+            assert_eq!(
+                v[got_key], expected[field],
+                "{field} must match Chrome 156 control: got {out}"
+            );
+        }
+        // Chrome 156: exactly ONE invocation per dispatch (surf#287 double-fire regression).
+        assert_eq!(
+            v["childHits"], control["result"]["oneFirePerDispatch"]["childHitsAfterSingleDispatch"],
+            "handler fires exactly once per dispatch: {out}"
+        );
+        reset();
+    }
+
+    // After `A.adoptNode(el)` moves `el` from realm B into realm A, an inline `on*`
+    // content-attribute handler SET on the adopted element must compile against A's
+    // realm, not B's: HTML "getting the current value of the event handler" uses the
+    // node document's relevant settings object. The V8 wrapper's creation context stays
+    // pinned at where the wrapper was first materialized (B), so pinning compiles to
+    // creation context mis-routes handlers after adoption (turbo-dom#478 same class).
+    #[test]
+    fn inline_handler_realm_follows_adopted_owner_document() {
+        init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let parent = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, parent);
+        install_independent_html(scope, "<body></body>");
+        let child = v8::Context::new(scope, Default::default());
+        child.set_security_token(parent.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<body></body>");
+        }
+        let key = v8::String::new(scope, "child").unwrap();
+        let child_global = child.global(scope);
+        parent
+            .global(scope)
+            .set(scope, key.into(), child_global.into());
+        let src = v8::String::new(
+            scope,
+            r#"
+                globalThis.realmMarker = 'parent-initial';
+                child.realmMarker = 'child-initial';
+                // 1) Create element in CHILD realm with an inline handler bound to CHILD.
+                const el = child.document.createElement('div');
+                el.setAttribute('onclick', 'globalThis.realmMarker = "child-fired"');
+                child.document.body.appendChild(el);
+                // 2) Dispatch in CHILD. Handler should write to CHILD.realmMarker.
+                el.dispatchEvent(new child.Event('click'));
+                const afterChildDispatch = {
+                    parent: globalThis.realmMarker,
+                    child: child.realmMarker,
+                };
+                // 3) Adopt the element into PARENT, set a NEW inline handler in PARENT.
+                const adopted = document.adoptNode(el);
+                document.body.appendChild(adopted);
+                adopted.setAttribute('onclick', 'globalThis.realmMarker = "parent-after-adopt"');
+                // 4) Dispatch again. Handler must now compile in PARENT's realm and
+                //    write to PARENT.realmMarker; CHILD.realmMarker must NOT change.
+                adopted.dispatchEvent(new Event('click'));
+                JSON.stringify({
+                    afterChildDispatch,
+                    parentAfterAdopt: globalThis.realmMarker,
+                    childAfterAdopt: child.realmMarker,
+                });
+            "#,
+        )
+        .unwrap();
+        let script = v8::Script::compile(scope, src, None).unwrap();
+        let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Sanity: pre-adoption dispatch fires in child realm, not parent.
+        assert_eq!(
+            v["afterChildDispatch"]["child"], "child-fired",
+            "pre-adoption: child handler fires in child realm: {out}"
+        );
+        assert_eq!(
+            v["afterChildDispatch"]["parent"], "parent-initial",
+            "pre-adoption: child handler does not touch parent realm: {out}"
+        );
+        // The real assertion: post-adoption the handler compiled in A, so A's global
+        // marker changed to the new source, and B's marker stayed at "child-fired".
+        assert_eq!(
+            v["parentAfterAdopt"], "parent-after-adopt",
+            "adopted handler compiled in parent (new owner) realm: {out}"
+        );
+        assert_eq!(
+            v["childAfterAdopt"], "child-fired",
+            "adopted handler must NOT write to child (prior owner) realm: {out}"
+        );
+        reset();
+    }
+
     // A cross-origin <iframe> hosts a bridged second window realm: contentWindow is a
     // distinct object with its own document, and postMessage crosses the realm boundary
     // in BOTH directions carrying the correct source/origin (the reCAPTCHA anchor↔bframe
@@ -11868,6 +12086,14 @@ mod css_adoption_tests;
 #[cfg(test)]
 #[path = "css_admission_tests.rs"]
 mod css_admission_tests;
+
+#[cfg(test)]
+#[path = "css_webkit_prefix_tests.rs"]
+mod css_webkit_prefix_tests;
+
+#[cfg(test)]
+#[path = "dom_ownership_sweep_tests.rs"]
+mod dom_ownership_sweep_tests;
 
 #[cfg(test)]
 #[path = "dom_implementation_tests.rs"]

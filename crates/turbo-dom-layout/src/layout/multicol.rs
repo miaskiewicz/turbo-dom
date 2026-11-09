@@ -52,7 +52,8 @@
 
 use super::block::{self, Ctx};
 use super::boxgen::LayoutBox;
-use super::fragment::{ColumnRuleStyle, Fragment, FragmentContent};
+use super::fragment::{BorderRadii, ColumnRuleStyle, Fragment, FragmentContent};
+use super::value::BorderEdges;
 use super::value::{
     break_inside_column_avoid_of, break_rule_of, float_of, parse_color, parse_px, position_of,
     BoxSizing, BoxStyle, BreakRule, Float, LengthPct, ResolveCtx, Rgba,
@@ -170,15 +171,19 @@ fn parse_rule_width(s: &ComputedStyle, fs: f32) -> f32 {
     .max(0.0)
 }
 
-/// The used `column-rule-style` as one of the four [`ColumnRuleStyle`] variants
-/// this PR paints, or `None` for `none` / `hidden` / an unsupported keyword
-/// (`groove` / `ridge` / `inset` / `outset`: deferred, miaskiewicz/turbo-dom#419).
+/// The used `column-rule-style` as one of the paintable [`ColumnRuleStyle`]
+/// variants, or `None` for `none` / `hidden` / an unknown keyword.
+/// `groove` / `ridge` / `inset` / `outset` ship since miaskiewicz/turbo-dom#419.
 fn parse_rule_style(s: &ComputedStyle) -> Option<ColumnRuleStyle> {
     match s.get("column-rule-style").map_or("none", str::trim) {
         "solid" => Some(ColumnRuleStyle::Solid),
         "dotted" => Some(ColumnRuleStyle::Dotted),
         "dashed" => Some(ColumnRuleStyle::Dashed),
         "double" => Some(ColumnRuleStyle::Double),
+        "groove" => Some(ColumnRuleStyle::Groove),
+        "ridge" => Some(ColumnRuleStyle::Ridge),
+        "inset" => Some(ColumnRuleStyle::Inset),
+        "outset" => Some(ColumnRuleStyle::Outset),
         _ => None,
     }
 }
@@ -295,14 +300,14 @@ struct KidFlags {
 /// read through the shared [`break_rule_of`] parser so the paginator and the
 /// multicol flow see the same rule set (`page` / `left` / `right` / `recto` /
 /// `verso` are pagination's concern, left as a no-op here; turbo-html2pdf#69).
-/// `break-inside: avoid | avoid-column` reads through
-/// [`break_inside_column_avoid_of`] — multicol's sibling to
-/// [`super::value::break_inside_avoid_of`] — so the "which keywords
-/// forbid a column break here" set lives in one place next to the
-/// page-break parser (R3 M7). We do NOT route `break-inside` through
-/// [`break_rule_of`], because that parser collapses `avoid` and
-/// `avoid-page` into one [`BreakRule::Avoid`], and `avoid-page` is
-/// explicitly pagination-only — it must not forbid a column break.
+/// `break-inside: avoid | avoid-column` reads through the SHARED
+/// [`break_rule_of`] parser now that it distinguishes [`BreakRule::Avoid`]
+/// from [`BreakRule::AvoidPage`] (R4 M2 / #473). [`break_inside_column_avoid_of`]
+/// stays as a trivial typed wrapper that matches `Avoid | AvoidColumn`; the
+/// "which keywords forbid a column break here" set lives in exactly one
+/// place — the `break_rule_of` match — rather than two parsers reading
+/// the same raw string. `avoid-page` → [`BreakRule::AvoidPage`] stays
+/// off here (pagination-only, must not forbid a column break).
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
     // Review R2 layout M1 + R4 H3: CSS Multicol 1 §6.1 "A spanning box": an
     // out-of-flow (`position: absolute` / `fixed`) or floated element
@@ -314,9 +319,10 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
     // column break, nor an `avoid` on a floated kid as a reason to shift
     // the surrounding in-flow content.
     let in_flow = !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
+    // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
+    let column_span_all = in_flow && keyword_eq(style, "column-span", "all");
     KidFlags {
-        // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
-        column_span_all: in_flow && keyword_eq(style, "column-span", "all"),
+        column_span_all,
         // R4 H3: break flags count only for in-flow kids.
         // BreakRule fix: route break-{before,after}: column through the shared parser so
         // `column` is distinguished from `page`.
@@ -324,7 +330,10 @@ fn kid_flags(style: &ComputedStyle) -> KidFlags {
             && matches!(break_rule_of(style, "break-before"), BreakRule::Column),
         break_after_column: in_flow
             && matches!(break_rule_of(style, "break-after"), BreakRule::Column),
-        break_inside_avoid: in_flow && break_inside_column_avoid_of(style),
+        // miaskiewicz/turbo-dom#440: a span-all segment does not fragment,
+        // so `break-inside: avoid | avoid-column` on it has no multicol
+        // semantics. Clear it here so the two flags never coexist.
+        break_inside_avoid: in_flow && !column_span_all && break_inside_column_avoid_of(style),
     }
 }
 
@@ -385,7 +394,16 @@ pub(crate) fn layout_multicol(
     let fs = bs.font_size;
     let tracks = resolve_tracks(&container.style, cw, fs);
     let container_h = definite_container_height(bs);
-    let flags: Vec<KidFlags> = kids.iter().map(|k| kid_flags(&k.style)).collect();
+    // miaskiewicz/turbo-dom#444: partition kids. Out-of-flow (position:
+    // absolute/fixed) and floated kids are NOT in the column flow (CSS
+    // Multicol 1 §6.1); they do not consume column space and lay out
+    // against their own containing block. Floats inside a column still
+    // participate in that column's inline layout — but a float declared
+    // DIRECTLY on a multicol kid is treated like an abspos here (R2 L5).
+    let (in_flow_kids, oof_kids): (Vec<&LayoutBox>, Vec<&LayoutBox>) =
+        kids.iter().partition(|k| !is_out_of_flow_kid(&k.style));
+    let in_flow_owned: Vec<LayoutBox> = in_flow_kids.into_iter().cloned().collect();
+    let flags: Vec<KidFlags> = in_flow_owned.iter().map(|k| kid_flags(&k.style)).collect();
     let segments = partition_segments(&flags);
     // The container's definite height caps the balanced `col_h` only when
     // the container has a single sub-flow (no span-all child). A sub-flow
@@ -399,7 +417,7 @@ pub(crate) fn layout_multicol(
     for seg in &segments {
         let seg_out = lay_out_segment(
             seg,
-            kids,
+            &in_flow_owned,
             &flags,
             container,
             tracks,
@@ -416,7 +434,25 @@ pub(crate) fn layout_multicol(
     // A definite container height wins; otherwise the box grows to hold all
     // the sub-flows and span-all slabs.
     let content_h = container_h.unwrap_or(y_cursor);
+    // miaskiewicz/turbo-dom#444 / #461: lay out out-of-flow kids at the
+    // multicol content-box origin as their static-position fallback.
+    // `block::layout_multicol_out_of_flow` resolves their used `width`
+    // and `height` from their own CSS declarations (not `used_width`)
+    // so an abspos kid with an 80x50 box inside a 2-column 400px
+    // multicol places at its CSS geometry, never the column strip.
+    for kid in &oof_kids {
+        let frag = block::layout_multicol_out_of_flow(kid, (cx, cy), cw, fs, ctx);
+        placed.push(frag);
+    }
     (placed, content_h)
+}
+
+/// Whether a multicol kid is laid out out-of-flow for column purposes:
+/// `position: absolute` / `fixed`, or a direct float. Mirrors the
+/// `in_flow` gate in `kid_flags` so partitioning and flag-clearing stay
+/// in lockstep (R2 L5).
+fn is_out_of_flow_kid(style: &ComputedStyle) -> bool {
+    position_of(style).is_out_of_flow() || float_of(style) != Float::None
 }
 
 /// A contiguous slice of children the layout handles as one unit: either a
@@ -804,10 +840,17 @@ fn fragment_pieces(
     col_cursor: &mut f32,
 ) -> Vec<ColPiece> {
     let mut pieces: Vec<ColPiece> = Vec::new();
-    // A non-positive column height collapses fragmentation to a single piece
-    // at the current cursor: the caller owns the placement, the flow does not
-    // walk forever trying to spill into fresh strips.
-    if col_h <= 0.0 {
+    // A column height at or below `FRAG_EPS` can't admit a real piece — the
+    // "fits" branch needs `remaining <= available + FRAG_EPS` (so any item
+    // wider than ~eps fails it) and the "advance to next column" branch only
+    // fires once the cursor has moved off 0, so the loop would keep slicing
+    // one ~col_h chunk into every column until `remaining` ran out. Collapse
+    // the whole fragmentation to a single piece at the current cursor:
+    // caller owns the placement, the flow does not walk forever trying to
+    // spill into fresh strips, and pathological styling can't force
+    // thousands of pieces (turbo-dom#426). The existing `col_h <= 0.0`
+    // policy is a special case of this bound.
+    if col_h < FRAG_EPS {
         pieces.push(ColPiece {
             col_index: *col_index,
             y: *col_cursor,
@@ -889,17 +932,85 @@ fn place_measured(
     let (left_col, right_col, min_y, max_bottom) = piece_bounds(pieces);
     let left = strip_origin(left_col);
     let right = strip_origin(right_col) + used_width;
+    // miaskiewicz/turbo-dom#427: emit ONE invisible union shell whose
+    // `(x, y, width, height)` is the union of the per-column pieces
+    // (so `collect_boxes` reports Chrome's `getBoundingClientRect`
+    // contract), with one Box child per piece carrying the original
+    // paint at that column strip's rect. The painter walks the
+    // children and paints each column fragment separately — a block's
+    // background and border no longer bleed across the gap.
+    //
+    // The outer shell carries NO paint: its Box content is zeroed to
+    // `background: None` / default borders / no radii / no shadow / no
+    // gradient, but the transform is preserved so a CSS `transform`
+    // still affects the whole fragmented block (per-column paint is
+    // inside the transform).
+    //
+    // The measured Fragment's original inline children can't be
+    // flowed per column at this layer (CSS Fragmentation's per-column
+    // text re-layout is a bigger follow-up); they are dropped, as they
+    // were before #427. No Chrome 156 oracle case has text content
+    // inside a fragmenting block yet.
+    let (per_column_content, transform) = match measured.content.clone() {
+        FragmentContent::Box {
+            background,
+            border,
+            border_radius,
+            shadow,
+            gradient,
+            transform,
+        } => (
+            FragmentContent::Box {
+                background,
+                border,
+                border_radius,
+                shadow,
+                gradient,
+                // Each per-column piece paints its own slice, not a
+                // double transform of the whole: transform is applied
+                // on the outer shell.
+                transform: None,
+            },
+            transform,
+        ),
+        // Non-Box content (e.g. an image or a text line) isn't a
+        // paintable block anyway; fall back to the pre-#427 union rect.
+        other => {
+            measured.x = left;
+            measured.y = cy + min_y;
+            measured.width = right - left;
+            measured.height = max_bottom - min_y;
+            measured.content = other;
+            measured.children.clear();
+            return measured;
+        }
+    };
     measured.x = left;
     measured.y = cy + min_y;
     measured.width = right - left;
     measured.height = max_bottom - min_y;
-    // The measured Fragment's own children live in its per-column paint; once
-    // the block is fragmented across strips the union box cannot host them
-    // sensibly (they would paint off their column). Clearing them also keeps
-    // `collect_boxes` from re-emitting a now-invalid per-column cid under the
-    // union rect. A per-column paint of a fragmented block is a future
-    // followup (no Chrome 156 oracle case needs it yet).
+    measured.content = FragmentContent::Box {
+        background: None,
+        border: BorderEdges::default(),
+        border_radius: BorderRadii::ZERO,
+        shadow: None,
+        gradient: None,
+        transform,
+    };
     measured.children.clear();
+    measured.children.reserve(pieces.len());
+    for p in pieces {
+        let ox = strip_origin(p.col_index);
+        let oy = cy + p.y;
+        measured.children.push(Fragment::new(
+            measured.node_id,
+            ox,
+            oy,
+            used_width,
+            p.height,
+            per_column_content.clone(),
+        ));
+    }
     measured
 }
 
@@ -1283,17 +1394,53 @@ mod tests {
         assert!(matches!(segs[4], Segment::SubFlow { start: 5, end: 6 }));
     }
 
+    /// Review R1 L4: `break-before: page` on a multicol kid routes through
+    /// `break_rule_of` as `BreakRule::Page` (the paginator's concern) and must
+    /// NOT be consumed by multicol as a forced column break. Same for `left` /
+    /// `right` / `recto` / `verso` (side page breaks) and the `avoid-page`
+    /// variant. value.rs §`break_rule_of` keeps column and page classes
+    /// distinct for exactly this reason (turbo-html2pdf#69).
+    #[test]
+    fn kid_flags_does_not_consume_page_break_classes_as_column_breaks() {
+        for keyword in ["page", "left", "right", "recto", "verso"] {
+            let f = kid_flags(&cs(&[("break-before", keyword)]));
+            assert!(
+                !f.break_before_column,
+                "break-before:{keyword} is a page-break class and must not fire a \
+                 column break (multicol kid)",
+            );
+            let f = kid_flags(&cs(&[("break-after", keyword)]));
+            assert!(
+                !f.break_after_column,
+                "break-after:{keyword} is a page-break class and must not fire a \
+                 column break (multicol kid)",
+            );
+        }
+        // `avoid-page` is pagination-only; it must not forbid a column break
+        // either, which the dedicated `break_inside_column_avoid_of` parser
+        // already enforces by excluding `avoid-page` from its keyword set.
+        let f = kid_flags(&cs(&[("break-inside", "avoid-page")]));
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid-page is page-only and must not forbid a column break",
+        );
+    }
+
     #[test]
     fn kid_flags_reads_all_four_properties_case_insensitively() {
+        // `break-inside: avoid-column` kept separate from `column-span: all`
+        // (#440: the two normalize to span-all-only; a dedicated test covers
+        // that normalization). This case just exercises case-insensitive
+        // parsing of each property on an in-flow kid.
         let f = kid_flags(&cs(&[
             ("column-span", "  ALL  "),
             ("break-before", "Column"),
             ("break-after", "  column "),
-            ("break-inside", "AVOID-COLUMN"),
         ]));
         assert!(f.column_span_all);
         assert!(f.break_before_column);
         assert!(f.break_after_column);
+        let f = kid_flags(&cs(&[("break-inside", "AVOID-COLUMN")]));
         assert!(f.break_inside_avoid);
     }
 
@@ -1418,6 +1565,37 @@ mod tests {
                 "position:{position}: column-span-all must stay",
             );
         }
+    }
+
+    /// miaskiewicz/turbo-dom#440: a `column-span: all` box is its own
+    /// full-width segment (CSS Multicol 1 §6.1 "A spanning box") and does
+    /// not fragment — `break-inside: avoid` on it has no multicol
+    /// semantics. The engine already acts on `column_span_all` only, but
+    /// `KidFlags` must normalize the combination so a future reader never
+    /// sees the two flags set at once.
+    #[test]
+    fn kid_flags_clears_break_inside_avoid_when_column_span_all() {
+        let f = kid_flags(&cs(&[("column-span", "all"), ("break-inside", "avoid")]));
+        assert!(f.column_span_all);
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid is meaningless on a column-span:all segment",
+        );
+        let f = kid_flags(&cs(&[
+            ("column-span", "all"),
+            ("break-inside", "avoid-column"),
+        ]));
+        assert!(f.column_span_all);
+        assert!(
+            !f.break_inside_avoid,
+            "break-inside:avoid-column is meaningless on a column-span:all segment",
+        );
+        // Guard against the inverse mutation (clearing column_span_all
+        // instead of break_inside_avoid): with no span-all the avoid flag
+        // must still carry through.
+        let f = kid_flags(&cs(&[("break-inside", "avoid")]));
+        assert!(!f.column_span_all);
+        assert!(f.break_inside_avoid);
     }
 
     #[test]
@@ -1555,6 +1733,48 @@ mod tests {
     }
 
     #[test]
+    fn fragment_pieces_caps_output_for_subeps_col_height() {
+        // turbo-dom#426. `col_h` below `FRAG_EPS` can't admit a real piece
+        // (the "fits" branch needs `remaining <= available + FRAG_EPS` and
+        // the "advance" branch only fires once the cursor has moved off 0),
+        // so without a cap the loop fills column after column with the same
+        // ~col_h slice — ceil(item_h / col_h) pieces. Treating a sub-eps
+        // column like a non-positive one (one piece, caller owns the paint)
+        // closes the DoS window and matches the existing `col_h <= 0.0`
+        // policy. 100 / 0.3 would otherwise emit > 300 pieces.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 0.0;
+        let pieces = fragment_pieces(100.0, 0.3, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 0);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 100.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn fragment_pieces_trailing_zero_height_after_full_column_advances() {
+        // turbo-dom#443. Prior kid filled col 0 to `col_h` exactly; a
+        // margin-collapsed trailing zero-height kid must land in col 1, not
+        // at (col_index=0, y=col_h). The current `available <= FRAG_EPS &&
+        // col_cursor > 0.0` advance branch already handles this (cursor at
+        // col_h is > 0, so the branch fires before the "place and stop"
+        // branch sees `remaining <= available + FRAG_EPS` as a 0-at-col_h
+        // placement). Lock the behaviour so a later refactor can't drop the
+        // `> 0.0` guard — which would spin the column index at the top of
+        // the FIRST column — or flip the order of the "fits" and "advance"
+        // branches.
+        let mut ci: u32 = 0;
+        let mut cc: f32 = 50.0; // == col_h
+        let pieces = fragment_pieces(0.0, 50.0, &mut ci, &mut cc);
+        assert_eq!(pieces.len(), 1);
+        assert_eq!(pieces[0].col_index, 1);
+        assert_eq!(pieces[0].y, 0.0);
+        assert!((pieces[0].height - 0.0).abs() < 1e-5);
+        assert_eq!(ci, 1);
+        assert!((cc - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn fragment_pieces_single_piece_for_non_positive_col_height() {
         let mut ci: u32 = 0;
         let mut cc: f32 = 0.0;
@@ -1609,11 +1829,26 @@ mod tests {
             parse_rule_style(&cs(&[("column-rule-style", "double")])),
             Some(ColumnRuleStyle::Double)
         );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "groove")])),
+            Some(ColumnRuleStyle::Groove)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "ridge")])),
+            Some(ColumnRuleStyle::Ridge)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "inset")])),
+            Some(ColumnRuleStyle::Inset)
+        );
+        assert_eq!(
+            parse_rule_style(&cs(&[("column-rule-style", "outset")])),
+            Some(ColumnRuleStyle::Outset)
+        );
         // Default (unset) is `none` and returns None (no rule painted).
         assert_eq!(parse_rule_style(&cs(&[])), None);
-        // Deferred keywords (`groove` / `ridge` / `inset` / `outset`) and
-        // `hidden` all come back as `None` (miaskiewicz/turbo-dom#419).
-        for k in ["hidden", "groove", "ridge", "inset", "outset", "wat"] {
+        // `hidden` and unknown keywords come back as `None`.
+        for k in ["hidden", "wat"] {
             assert_eq!(parse_rule_style(&cs(&[("column-rule-style", k)])), None);
         }
     }
@@ -1977,5 +2212,140 @@ mod tests {
         // Auto height = indefinite, so the balancer resolves from content.
         let bs = resolve_box_style(&cs(&[("height", "auto")]), ctx);
         assert_eq!(definite_container_height(&bs), None);
+    }
+
+    /// `apply_pre_break`'s `break_inside_avoid` branch fires when a kid with
+    /// that flag fits in a column but would overrun the current one — a push
+    /// to the next column replaces fragmentation. Covers multicol.rs 816-823
+    /// (R1 M8 / #440), asserting both the advance (column + 1) and the reset
+    /// (cursor back to 0) so a mutation that drops either half fails.
+    #[test]
+    fn apply_pre_break_pushes_break_inside_avoid_to_next_column() {
+        let f = KidFlags {
+            break_inside_avoid: true,
+            ..KidFlags::default()
+        };
+        // Set-up: col_h=100, kid fits in a column (50 <= 100) but would
+        // overflow the current one (60 + 50 > 100), and cursor > 0.
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(
+            col_index, 1,
+            "break-inside:avoid-that-would-fragment must push to next column"
+        );
+        assert!(
+            col_cursor.abs() < 1e-5,
+            "the push resets the column cursor (was {col_cursor})"
+        );
+
+        // Guard: kid taller than a column stays put — CSS Fragmentation 3
+        // §5.2 "If the fragment does not fit, the user agent may ignore the
+        // value".
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f, 100.0, 150.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 60.0).abs() < 1e-5);
+
+        // Guard: fits in current column — no push.
+        let mut col_index = 0u32;
+        let mut col_cursor = 20.0f32;
+        apply_pre_break(f, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 20.0).abs() < 1e-5);
+
+        // Guard: flag off — no push even when the geometry would qualify.
+        let f_no = KidFlags::default();
+        let mut col_index = 0u32;
+        let mut col_cursor = 60.0f32;
+        apply_pre_break(f_no, 100.0, 50.0, &mut col_index, &mut col_cursor);
+        assert_eq!(col_index, 0);
+        assert!((col_cursor - 60.0).abs() < 1e-5);
+    }
+
+    /// `place_measured`'s non-Box fallback (multicol.rs 974-981) collapses
+    /// into the pre-#427 union rect: a fragmented block whose measured
+    /// content is not a paintable Box (text line, marker, image, tiles,
+    /// column rule) can't be split per-column, so its fragments reduce to
+    /// one shell at the union geometry. Exercises the fallback arm so a
+    /// mutation that forgets to update `x/y/width/height`, keeps the
+    /// children, or returns before placing the union would fail.
+    #[test]
+    fn place_measured_multi_piece_uses_union_rect_for_non_box_content() {
+        use super::super::fragment::{FragmentContent, NodeId};
+        use crate::tag::MarkerKind;
+        let marker_kind = MarkerKind {
+            id: 7,
+            inline: false,
+        };
+        let mut measured = Fragment::new(
+            NodeId(42),
+            0.0,
+            0.0,
+            150.0,
+            70.0,
+            FragmentContent::Marker(marker_kind),
+        );
+        // Spurious children on the input must be cleared — the fallback is
+        // the pre-#427 behaviour, not the #427 per-column shell.
+        measured.children.push(Fragment::new(
+            NodeId(43),
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(marker_kind),
+        ));
+        // Two pieces across columns 0 and 1.
+        let pieces = [
+            ColPiece {
+                col_index: 0,
+                y: 40.0,
+                height: 30.0,
+            },
+            ColPiece {
+                col_index: 1,
+                y: 0.0,
+                height: 25.0,
+            },
+        ];
+        // used_count=2, used_width=200, gap=20, cw=420, cx=10, cy=5.
+        // left_col=0 → strip_origin(0) = cx = 10.
+        // right_col=1 (last): end-aligned at cx + cw - used_width = 10 + 420 - 200 = 230.
+        // right = 230 + 200 = 430. width = 430 - 10 = 420.
+        // min_y = 0 (pieces[1].y), max_bottom = 70 (pieces[0].y+height).
+        // y = cy + min_y = 5 + 0 = 5. height = max_bottom - min_y = 70.
+        let got = place_measured(measured, &pieces, (2, 200.0, 20.0), 420.0, 10.0, 5.0);
+        assert!(
+            (got.x - 10.0).abs() < 1e-5,
+            "union-rect left edge = strip_origin(left_col) (got {})",
+            got.x
+        );
+        assert!(
+            (got.y - 5.0).abs() < 1e-5,
+            "union-rect y = cy + min_y (got {})",
+            got.y
+        );
+        assert!(
+            (got.width - 420.0).abs() < 1e-5,
+            "union-rect width spans every column it touches (got {})",
+            got.width
+        );
+        assert!(
+            (got.height - 70.0).abs() < 1e-5,
+            "union-rect height = max_bottom - min_y (got {})",
+            got.height
+        );
+        assert!(
+            got.children.is_empty(),
+            "non-Box fallback clears children (pre-#427 shape)"
+        );
+        // Content survives through the arm — a mutation that swapped the
+        // bindings would smuggle the empty-Box content in here instead.
+        assert!(
+            matches!(got.content, FragmentContent::Marker(k) if k == marker_kind),
+            "measured.content (non-Box) is preserved through the fallback"
+        );
     }
 }

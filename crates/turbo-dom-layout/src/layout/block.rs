@@ -3055,6 +3055,29 @@ pub(crate) fn layout_box_sized(
     layout_box_sized_impl(lb, bs, bx, by, bbw, ctx, false)
 }
 
+/// Lay out one out-of-flow (`position: absolute` / `fixed`) kid of a
+/// multicol container at `static_pos` as its static-position fallback
+/// (CSS Multicol 1 §6.1 "A spanning box": an out-of-flow kid is not in
+/// the column flow). The kid's used `width`/`height` come from its own
+/// CSS declarations resolved against its containing block, not the
+/// multicol's column strip (miaskiewicz/turbo-dom#444 / #461): an
+/// abspos kid with `width: 80px; height: 50px; left: 10px; top: 120px`
+/// in a `position: relative` multicol lands at `(cx + 10, cy + 120)`
+/// with that size, regardless of the container's `column-width` /
+/// `column-count`. `cb_width` is the multicol's content-box inline
+/// size (the containing block for percentage insets / sizes).
+pub(crate) fn layout_multicol_out_of_flow(
+    kid: &LayoutBox,
+    static_pos: (f32, f32),
+    cb_width: f32,
+    fs: f32,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let kbs = positioned_style(kid, cb_width, fs, ctx);
+    let (bx, by) = out_of_flow_origin(kid, &kbs, cb_width, ctx, static_pos);
+    layout_positioned(kid, (bx, by), cb_width, fs, ctx)
+}
+
 /// [`layout_box_sized`] for a box that ALWAYS establishes a block formatting
 /// context — a flex/grid item or a table cell (§CSS: each is an independent
 /// formatting context). Without this, an item that floats its content (a clearfix

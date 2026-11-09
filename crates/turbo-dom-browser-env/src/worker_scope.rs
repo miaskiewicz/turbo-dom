@@ -22,10 +22,100 @@
 const WORKER_BOOTSTRAP: &str = include_str!("worker_scope.js");
 
 /// Install the worker surface onto the current context's `globalThis`.
+///
+/// turbo-dom#435: compile with a `ScriptOrigin` naming `worker_scope.js` so a
+/// stack trace from inside the bootstrap (e.g. an event-listener error) names
+/// the source file and the line within it — the default `compile(scope, code,
+/// None)` leaves the frame as the anonymous `<anonymous>` placeholder.
 pub(super) fn install(scope: &mut v8::PinScope) {
+    // turbo-dom#428: expose a native `__turboDomStructuredClone` BEFORE the JS
+    // bootstrap runs so the bootstrap can capture it, delete it from the
+    // global, and freeze a reference inside the namespace. This routes
+    // `structuredClone` through V8's own ValueSerializer / ValueDeserializer
+    // so Date / Map / Set / RegExp / BigInt / typed arrays / cycles
+    // round-trip faithfully with HTML-spec semantics.
+    let context = scope.get_current_context();
+    let global = context.global(scope);
+    super::bind_method(scope, global, "__turboDomStructuredClone", structured_clone);
     let code = v8::String::new(scope, WORKER_BOOTSTRAP).unwrap();
-    if let Some(script) = v8::Script::compile(scope, code, None) {
+    let resource = v8::String::new(scope, "worker_scope.js").unwrap();
+    let origin = v8::ScriptOrigin::new(
+        scope,
+        resource.into(),
+        0,
+        0,
+        false,
+        0,
+        None,
+        false,
+        false,
+        false,
+        None,
+    );
+    if let Some(script) = v8::Script::compile(scope, code, Some(&origin)) {
         let _ = script.run(scope);
+    }
+}
+
+/// A `ValueSerializerImpl` that rethrows cloneability failures as
+/// `DataCloneError` (matching HTML spec and Chrome worker behaviour).
+struct StructuredCloneSerializerDelegate;
+
+impl v8::ValueSerializerImpl for StructuredCloneSerializerDelegate {
+    fn throw_data_clone_error<'s>(
+        &self,
+        scope: &mut v8::PinScope<'s, '_>,
+        message: v8::Local<'s, v8::String>,
+    ) {
+        let exc = v8::Exception::error(scope, message);
+        if let Ok(obj) = v8::Local::<v8::Object>::try_from(exc) {
+            // invariants: engine-built strings, well below V8's limits
+            let key = v8::String::new(scope, "name").unwrap();
+            let name = v8::String::new(scope, "DataCloneError").unwrap();
+            obj.set(scope, key.into(), name.into());
+        }
+        scope.throw_exception(exc);
+    }
+}
+
+/// A `ValueDeserializerImpl` with default behaviour (no host objects, no
+/// transferables — structured clone of an in-process payload only).
+struct StructuredCloneDeserializerDelegate;
+
+impl v8::ValueDeserializerImpl for StructuredCloneDeserializerDelegate {}
+
+/// `__turboDomStructuredClone(value)` — a V8-backed structured clone of
+/// `value`. Throws `DataCloneError` for values the HTML spec declines
+/// (functions, Symbols, WeakMap, etc.). Transferables are not supported
+/// (callers that need them route through the message-port path).
+fn structured_clone<'a, 'i>(
+    scope: &mut v8::PinScope<'a, 'i>,
+    args: v8::FunctionCallbackArguments<'a>,
+    mut rv: v8::ReturnValue<'a>,
+) {
+    let value = args.get(0);
+    let context = scope.get_current_context();
+    use v8::ValueDeserializerHelper;
+    use v8::ValueSerializerHelper;
+    let bytes = {
+        let serializer =
+            v8::ValueSerializer::new(scope, Box::new(StructuredCloneSerializerDelegate));
+        serializer.write_header();
+        match serializer.write_value(context, value) {
+            Some(true) => serializer.release(),
+            // Exception (DataCloneError) or false: either way the serializer's
+            // throw_data_clone_error has already scheduled the exception; just
+            // return so V8 propagates it.
+            _ => return,
+        }
+    };
+    let deserializer =
+        v8::ValueDeserializer::new(scope, Box::new(StructuredCloneDeserializerDelegate), &bytes);
+    if deserializer.read_header(context) != Some(true) {
+        return;
+    }
+    if let Some(cloned) = deserializer.read_value(context) {
+        rv.set(cloned);
     }
 }
 
@@ -107,7 +197,12 @@ pub(super) fn dispatch_message<'s>(
     let Ok(dispatch_fn) = v8::Local::<v8::Function>::try_from(dispatch_value) else {
         return false;
     };
+    // turbo-dom#438: construct the event with a null prototype so inherited
+    // lookups through `Object.prototype` cannot observe or alter the native
+    // event payload. `type` and `data` remain own properties of the event.
     let event = v8::Object::new(scope);
+    let null_proto: v8::Local<v8::Value> = v8::null(scope).into();
+    event.set_prototype(scope, null_proto);
     let type_key = v8::String::new(scope, "type").unwrap();
     let message = v8::String::new(scope, "message").unwrap();
     event.set(scope, type_key.into(), message.into());
@@ -291,6 +386,124 @@ mod tests {
         browser_env::reset();
     }
 
+    /// turbo-dom#428: `structuredClone` must round-trip the HTML spec types
+    /// (Date, Map, Set, RegExp, typed arrays, cycles, BigInt) instead of
+    /// rejecting them. The previous JSON-based stub threw DataCloneError on
+    /// all of these; a page feature-detection then disagreed with Chrome.
+    #[test]
+    fn structured_clone_round_trips_html_spec_types() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // A single safe-eval probe: every assertion runs inside try/catch
+        // (the current JSON-stub throws DataCloneError eagerly, which would
+        // otherwise abort the host-side eval helper on the first failure).
+        let probe = r#"(() => {
+          const rows = {};
+          function safe(label, fn) { try { rows[label] = fn(); } catch (e) { rows[label] = 'threw:' + (e && e.name || String(e)); } }
+          safe('date', () => {
+            const d = new Date(1700000000000); const c = structuredClone(d);
+            return [c instanceof Date, c !== d, c.getTime() === d.getTime()];
+          });
+          safe('map', () => {
+            const m = new Map([['a',1],['b',2]]); const c = structuredClone(m);
+            return [c instanceof Map, c !== m, c.get('a'), c.get('b'), c.size];
+          });
+          safe('set', () => {
+            const s = new Set([1,2,3]); const c = structuredClone(s);
+            return [c instanceof Set, c !== s, c.has(1), c.has(2), c.has(3), c.size];
+          });
+          safe('regexp', () => {
+            const r = /foo/gi; const c = structuredClone(r);
+            return [c instanceof RegExp, c.source === 'foo', c.flags === r.flags];
+          });
+          safe('bigint', () => {
+            const n = 123456789012345678901234567890n; const c = structuredClone(n);
+            return [typeof c === 'bigint', c === n];
+          });
+          safe('cycle', () => {
+            const o = {}; o.self = o; const c = structuredClone(o);
+            return [c !== o, c.self === c];
+          });
+          safe('u8', () => {
+            const u = new Uint8Array([1,2,3,255]); const c = structuredClone(u);
+            return [c instanceof Uint8Array, c !== u, Array.from(c).join()];
+          });
+          safe('fn', () => {
+            let name = null;
+            try { structuredClone(() => {}); }
+            catch (e) { name = e && e.name; }
+            return name;
+          });
+          return JSON.stringify(rows);
+        })()"#;
+        let result = eval(scope, probe);
+        let expected = r#"{"date":[true,true,true],"map":[true,true,1,2,2],"set":[true,true,true,true,true,3],"regexp":[true,true,true],"bigint":[true,true],"cycle":[true,true],"u8":[true,true,"1,2,3,255"],"fn":"DataCloneError"}"#;
+        assert_eq!(
+            result, expected,
+            "structuredClone must round-trip HTML-spec types (Date, Map, \
+             Set, RegExp, BigInt, cycles, typed arrays) and still reject \
+             non-cloneable values (functions) with DataCloneError"
+        );
+        browser_env::reset();
+    }
+
+    /// turbo-dom#438: native-side event payloads must not inherit
+    /// `Object.prototype`. A worker-side script that stamps a getter on
+    /// `Object.prototype.leak` would otherwise be able to observe the native
+    /// event through the inherited slot. The event is constructed with a null
+    /// prototype so inherited lookups return `undefined` and the event shape
+    /// is exactly what the Rust side wrote (`type`, `data`).
+    #[test]
+    fn dispatch_message_event_has_null_prototype() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // Plant a getter on `Object.prototype.leak` and record the event's
+        // prototype and whether the inherited getter fires on the event.
+        eval(
+            scope,
+            "globalThis.__leakCalls = 0; \
+             Object.defineProperty(Object.prototype, 'leak', { \
+               configurable: true, get() { globalThis.__leakCalls++; return 'leaked'; } \
+             }); \
+             globalThis.__probe = null; \
+             addEventListener('message', (e) => { \
+               globalThis.__probe = { \
+                 protoNull: Object.getPrototypeOf(e) === null, \
+                 ownType: Object.prototype.hasOwnProperty.call(e, 'type'), \
+                 ownData: Object.prototype.hasOwnProperty.call(e, 'data'), \
+                 leak: e.leak === undefined ? 'undef' : String(e.leak), \
+               }; \
+             });",
+        );
+        let data = v8::String::new(scope, "payload").unwrap();
+        let delivered = browser_env::dispatch_worker_message(scope, data.into());
+        assert!(delivered);
+        assert_eq!(
+            eval(scope, "JSON.stringify(__probe)"),
+            r#"{"protoNull":true,"ownType":true,"ownData":true,"leak":"undef"}"#,
+            "dispatch_message event must have a null prototype so \
+             Object.prototype getters cannot observe or alter it",
+        );
+        // Belt and suspenders: the inherited getter must never have fired
+        // against the event object.
+        assert_eq!(
+            eval(scope, "String(__leakCalls)"),
+            "0",
+            "no inherited Object.prototype getter may fire against the event",
+        );
+        // Cleanup for shared test context.
+        eval(scope, "delete Object.prototype.leak;");
+        browser_env::reset();
+    }
+
     #[test]
     fn turbo_dom_worker_namespace_is_locked_against_page_tampering() {
         // Review R1 M4: page JS inside a worker must not be able to
@@ -353,14 +566,12 @@ mod tests {
 
     #[test]
     fn structured_clone_throws_on_unsupported_inputs() {
-        // Review R1 M5: the JSON round-trip stub silently dropped Date /
-        // Map / Set / typed arrays / BigInt / undefined / Infinity / NaN
-        // and threw on cycles with a misleading SyntaxError. A feature
-        // detection `typeof structuredClone === 'function'` succeeded but
-        // the behaviour differed. The stub now throws a DataCloneError
-        // with a clear message for anything it cannot faithfully round-
-        // trip, so a page's feature detection fails cleanly (follow-up
-        // issue for real structured-clone semantics).
+        // turbo-dom#428: the real structured-clone implementation (V8
+        // ValueSerializer / ValueDeserializer) accepts Date, Map, Set,
+        // BigInt, Infinity, NaN, `undefined` (as a property value) and
+        // cyclic object graphs; it still throws `DataCloneError` for
+        // genuinely non-cloneable values — functions, symbols, WeakMap,
+        // WeakSet, Promise, Proxy-wrapped instances of host objects.
         browser_env::tests::init_v8();
         let isolate = &mut browser_env::tests::plain_isolate();
         v8::scope!(let scope, isolate);
@@ -377,14 +588,11 @@ mod tests {
             "ok",
         );
         for src in [
-            "structuredClone(new Date(0))",
-            "structuredClone(new Map())",
-            "structuredClone(new Set())",
-            "structuredClone(1n)",
-            "structuredClone({ x: undefined })",
-            "const o = {}; o.self = o; structuredClone(o)",
-            "structuredClone(Infinity)",
-            "structuredClone(NaN)",
+            "structuredClone(() => {})",
+            "structuredClone(Symbol('s'))",
+            "structuredClone(new WeakMap())",
+            "structuredClone(new WeakSet())",
+            "structuredClone(Promise.resolve())",
         ] {
             assert_eq!(
                 eval(
@@ -533,6 +741,37 @@ mod tests {
     /// `v8::Local::<v8::Object>::try_from(undefined)` fails in both
     /// `set_hook` and `dispatch_message` and each returns early. One bare
     /// context exercises every helper's early-return path.
+    /// turbo-dom#435: the worker bootstrap must compile with a `ScriptOrigin`
+    /// naming `worker_scope.js`, so an exception that unwinds through a
+    /// bootstrap frame has a readable stack trace instead of the default
+    /// anonymous placeholder.
+    #[test]
+    fn worker_bootstrap_frames_carry_the_worker_scope_js_resource_name() {
+        browser_env::tests::init_v8();
+        let isolate = &mut browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        browser_env::install_worker_global_scope(scope, context).unwrap();
+        let scope = &mut v8::ContextScope::new(scope, context);
+        // `importScripts` with no registered loader throws from the bootstrap
+        // body — the top frame of the resulting stack must name worker_scope.js.
+        let probe = v8::String::new(
+            scope,
+            "try { importScripts('x.js'); '' } catch (e) { e.stack || String(e) }",
+        )
+        .unwrap();
+        let stack = v8::Script::compile(scope, probe, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_rust_string_lossy(scope);
+        assert!(
+            stack.contains("worker_scope.js"),
+            "stack must name worker_scope.js, got: {stack}"
+        );
+        browser_env::reset();
+    }
+
     #[test]
     fn worker_helpers_are_a_no_op_without_the_bootstrap() {
         browser_env::tests::init_v8();

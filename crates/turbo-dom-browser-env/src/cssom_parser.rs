@@ -33,6 +33,41 @@ pub fn is_supported_property(name: &str) -> bool {
     {
         return false;
     }
+    // turbo-dom#441: a -webkit-* name whose Chrome 156 acceptance disagrees with Lightning
+    // CSS is pinned here against `css_webkit_prefix_chrome156.json`. Accept the seven
+    // properties Chrome serves but Lightning CSS models as Custom (ASCII case-insensitive
+    // per CSS 2.2 §4.1.1 — the Chrome page admits `-WEBKIT-LINE-CLAMP`); reject
+    // `-webkit-backdrop-filter`, the one Lightning CSS models but Chrome 156 does not.
+    if name.len() > 1 && name.as_bytes()[0] == b'-' {
+        // R1 L3: match the -webkit-* allowlist case-insensitively on the borrowed
+        // name instead of allocating a lowercase copy on this hot path.
+        // CSS 2.2 §4.1.1 says property names are ASCII case-insensitive,
+        // so `-WEBKIT-text-fill-color` must still be accepted.
+        let admitted = [
+            "-webkit-text-fill-color",
+            "-webkit-text-stroke",
+            "-webkit-text-stroke-color",
+            "-webkit-text-stroke-width",
+            "-webkit-font-smoothing",
+            "-webkit-tap-highlight-color",
+            "-webkit-line-clamp",
+            // turbo-dom R1 M1: Chrome 156 admits -webkit- aliases of the
+            // CSS Multicol 1 column-* longhands + shorthand (the
+            // css_webkit_prefix_chrome156.json control). Lightning CSS
+            // models them as Custom (no -webkit- alias to the
+            // column-* PropertyId), so admit the names here.
+            "-webkit-column-count",
+            "-webkit-column-width",
+            "-webkit-column-gap",
+            "-webkit-column-rule",
+        ];
+        if admitted.iter().any(|n| name.eq_ignore_ascii_case(n)) {
+            return true;
+        }
+        if name.eq_ignore_ascii_case("-webkit-backdrop-filter") {
+            return false;
+        }
+    }
     !matches!(PropertyId::from(name), PropertyId::Custom(_))
         || interest_delay_arity(name).is_some()
         || name == "writing-mode"

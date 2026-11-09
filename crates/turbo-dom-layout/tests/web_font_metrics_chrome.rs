@@ -14,6 +14,7 @@ use turbo_dom_layout::layout_snapshot::{
     snapshot_html_live_tree_with_native_text, NativeTextOptions, SnapshotInputs, SourceId,
     SourceIdentity,
 };
+use turbo_dom_layout::test_support::fixture_fonts;
 use turbo_dom_layout::test_support::literal;
 use turbo_dom_layout::test_support::literal::parse_html;
 use turbo_dom_layout::{build_cascade, Diagnostics, FontFace, FontRegistry, ImageCtx, NoImages};
@@ -234,4 +235,110 @@ fn an_inline_box_with_a_web_face_takes_chromes_content_height() {
             "dsf{dsf} {size}px"
         );
     }
+}
+
+/// Inline-box content height of an `x` glyph in `family` at `size` px laid out
+/// at device scale `scale`. Mirrors [`inline_box_content_height`] but names the
+/// CSS family so it can walk `fixture_fonts()` by generic.
+fn inline_box_content_height_in(fonts: &FontRegistry, family: &str, size: f32, scale: f32) -> f32 {
+    let nodes = parse_html(&format!(
+        "<div><span style='font-family:\"{family}\";font-size:{size}px;white-space:nowrap'>x</span></div>"
+    ))
+    .unwrap();
+    let id = |id, path: &[usize]| SourceIdentity {
+        id: SourceId(id),
+        path: path.to_vec(),
+    };
+    let snapshot = snapshot_html_live_tree_with_native_text(
+        &literal::tree(&nodes).input(),
+        &[id(1, &[0]), id(2, &[0, 0]), id(3, &[0, 0, 0])],
+        &build_cascade("", "", turbo_dom_layout::style::TokenSet::default()),
+        &NativeTextOptions {
+            original_text: &[],
+            svg_viewports: &[],
+            layout_scale: scale,
+        },
+        &SnapshotInputs {
+            width: 800.0,
+            height: 600.0,
+            fonts,
+            images: &ImageCtx {
+                resolver: &NoImages,
+                body_height: None,
+            },
+        },
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    let span = SourceId(2);
+    for frag in snapshot.fragments() {
+        if frag.source_id == Some(span) {
+            if let Some(used) = frag.used_box {
+                return used.content_height;
+            }
+        }
+    }
+    panic!("no used_box for the <span>");
+}
+
+/// miaskiewicz/turbo-dom#446: at DSF 2 the inline-box content height for the
+/// `fixture_fonts()` faces at 11 / 13 / 15 / 17 / 19 px (the rounding
+/// boundary sizes between the already-pinned 10 / 20 metrics) matches Chrome
+/// 156 under `--force-device-scale-factor=2`. Fixture captured by
+/// `scripts/webfont-inline-dpr2-chrome-control.mjs`. The fixture names each
+/// case by `font` (the file-stem id below) and `size` px; the test maps each
+/// font id to its `fixture_fonts()` CSS family (serif / sans-serif /
+/// monospace generics all resolve to the bundled face).
+#[test]
+fn fixture_font_dpr2_metrics_at_the_11_19_px_boundary_match_chrome_156() {
+    let control: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/web-font-metrics/dpr2_rounding_chrome156.json"
+    ))
+    .unwrap();
+    assert!(
+        control["chrome"]
+            .as_str()
+            .expect("chrome")
+            .starts_with("156."),
+        "Chrome version: {}",
+        control["chrome"]
+    );
+    let dsf = control["environment"]["deviceScaleFactor"]
+        .as_f64()
+        .expect("dsf");
+    assert_eq!(dsf, 2.0, "fixture is a DSF 2 capture");
+    let cases = control["cases"].as_array().expect("cases");
+    // 3 faces (Liberation Serif, Inter, Fira Code) x 5 sizes (11, 13, 15, 17, 19).
+    assert_eq!(cases.len(), 15, "fixture covers every face x size pair");
+    let fonts = fixture_fonts();
+    let mut failures: Vec<String> = Vec::new();
+    for case in cases {
+        let font = case["font"].as_str().expect("font");
+        let size = case["size"].as_f64().expect("size") as f32;
+        let want = case["spanHeight"].as_f64().expect("spanHeight") as f32;
+        let family = match font {
+            "liberation-serif-regular" => "Liberation Serif",
+            "inter-regular" => "Inter",
+            "fira-code-regular" => "Fira Code",
+            other => panic!("unexpected font id in fixture: {other}"),
+        };
+        let got = inline_box_content_height_in(&fonts, family, size, 2.0);
+        // Exact match: both sides are produced on the same device-pixel grid
+        // (Chrome under `--force-device-scale-factor=2` and the live-layout
+        // path at `layout_scale: 2.0` both land on a half-CSS-px grain). R1
+        // M2: fixture values carry `.0` / `.5` which are exact in f32, so
+        // an exact comparison matches the docstring — `f32::EPSILON` would
+        // mask a 1-ULP drift that the "exact" claim promises to catch.
+        if got != want {
+            failures.push(format!(
+                "{font} {size}px: inline box content height {got}, Chrome {want}"
+            ));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{} mismatches:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }
