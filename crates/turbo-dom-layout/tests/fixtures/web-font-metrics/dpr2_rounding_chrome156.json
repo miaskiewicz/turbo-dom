@@ -1,0 +1,6 @@
+{
+ "generator": "scripts/webfont-inline-dpr2-chrome-control.mjs",
+ "chrome": "156.0.0.0",
+ "environment": { "deviceScaleFactor": 2.0 },
+ "cases": []
+}
