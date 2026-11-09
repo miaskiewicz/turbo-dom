@@ -116,28 +116,13 @@ fn decode_escape(units: &[u16], i: &mut usize, quoted: bool, out: &mut Vec<u16>)
         return;
     }
     if matches!(units[*i], 10 | 12 | 13) {
-        if units[*i] == 13 && units.get(*i + 1) == Some(&10) {
-            *i += 1;
-        }
-        *i += 1;
+        consume_newline(units, i);
         return;
     }
-    let mut hex = 0u32;
-    let mut count = 0;
-    while count < 6 && *i < units.len() {
-        let Some(digit) = char::from_u32(u32::from(units[*i])).and_then(|c| c.to_digit(16)) else {
-            break;
-        };
-        hex = hex * 16 + digit;
-        *i += 1;
-        count += 1;
-    }
+    let (hex, count) = scan_hex_digits(units, i);
     if count != 0 {
         if *i < units.len() && whitespace(units[*i]) {
-            if units[*i] == 13 && units.get(*i + 1) == Some(&10) {
-                *i += 1;
-            }
-            *i += 1;
+            consume_newline(units, i);
         }
         let scalar = char::from_u32(hex)
             .filter(|&c| c != '\0')
@@ -148,6 +133,30 @@ fn decode_escape(units: &[u16], i: &mut usize, quoted: bool, out: &mut Vec<u16>)
         out.push(units[*i]);
         *i += 1;
     }
+}
+
+/// Advance `*i` past one newline. A `\r\n` counts as one newline (skip two code units);
+/// every other code unit at `*i` is treated as a single-unit newline.
+fn consume_newline(units: &[u16], i: &mut usize) {
+    if units[*i] == 13 && units.get(*i + 1) == Some(&10) {
+        *i += 1;
+    }
+    *i += 1;
+}
+
+/// Scan up to 6 hex digits at `*i`, advancing `*i` past them. Returns `(value, count)`.
+fn scan_hex_digits(units: &[u16], i: &mut usize) -> (u32, usize) {
+    let mut hex = 0u32;
+    let mut count = 0;
+    while count < 6 && *i < units.len() {
+        let Some(digit) = char::from_u32(u32::from(units[*i])).and_then(|c| c.to_digit(16)) else {
+            break;
+        };
+        hex = hex * 16 + digit;
+        *i += 1;
+        count += 1;
+    }
+    (hex, count)
 }
 fn identifier(units: &[u16]) -> String {
     String::from_utf16_lossy(&decoded(units, false))
@@ -400,24 +409,7 @@ fn ident(source: &[u16], index: &mut usize) -> String {
         let unit = source[*index];
         if unit == 92 {
             *index += 1;
-            let mut hex = 0;
-            while *index < source.len()
-                && hex < 6
-                && char::from_u32(u32::from(source[*index])).is_some_and(|c| c.is_ascii_hexdigit())
-            {
-                *index += 1;
-                hex += 1;
-            }
-            if hex != 0 {
-                if *index < source.len() && whitespace(source[*index]) {
-                    if source[*index] == 13 && source.get(*index + 1) == Some(&10) {
-                        *index += 1;
-                    }
-                    *index += 1;
-                }
-            } else if *index < source.len() {
-                *index += 1;
-            }
+            skip_ident_escape(source, index);
             continue;
         }
         if whitespace(unit) || matches!(unit, 35 | 46 | 58 | 91 | 93 | 40 | 41 | 62 | 43 | 126 | 44)
@@ -427,6 +419,27 @@ fn ident(source: &[u16], index: &mut usize) -> String {
         *index += 1;
     }
     identifier(&source[start..*index])
+}
+
+/// Advance `*index` past the body of a CSS escape (after the leading `\\`): either up to
+/// 6 hex digits followed by an optional trailing whitespace, or a single non-newline code
+/// unit. Matches the CSS Syntax 3 §4.3.7 "consume an escaped code point" state.
+fn skip_ident_escape(source: &[u16], index: &mut usize) {
+    let mut hex = 0;
+    while *index < source.len()
+        && hex < 6
+        && char::from_u32(u32::from(source[*index])).is_some_and(|c| c.is_ascii_hexdigit())
+    {
+        *index += 1;
+        hex += 1;
+    }
+    if hex != 0 {
+        if *index < source.len() && whitespace(source[*index]) {
+            consume_newline(source, index);
+        }
+    } else if *index < source.len() {
+        *index += 1;
+    }
 }
 fn pseudo(name: &str, arg: Option<&[u16]>) -> Pseudo {
     let Some(arg) = arg else {
@@ -555,36 +568,7 @@ fn complex(source: &[u16]) -> Option<Complex> {
                 compound.tag = Some(tag);
             }
         }
-        while index < source.len() {
-            match source[index] {
-                35 => {
-                    index += 1;
-                    compound.id = Some(ident(source, &mut index));
-                }
-                46 => {
-                    index += 1;
-                    compound.classes.push(ident(source, &mut index));
-                }
-                91 => {
-                    index += 1;
-                    compound
-                        .attrs
-                        .push(attr(balanced(source, &mut index, 91, 93)));
-                }
-                58 => {
-                    index += 1;
-                    let name = ident(source, &mut index);
-                    let arg = if source.get(index) == Some(&40) {
-                        index += 1;
-                        Some(balanced(source, &mut index, 40, 41))
-                    } else {
-                        None
-                    };
-                    compound.pseudos.push(pseudo(&name, arg));
-                }
-                _ => break,
-            }
-        }
+        parse_compound_parts(source, &mut index, &mut compound);
         if index == begin {
             index += 1;
             continue;
@@ -598,6 +582,43 @@ fn complex(source: &[u16]) -> Option<Complex> {
     }
     first.map(|first| Complex { first, rest })
 }
+
+/// Consume id (`#`), class (`.`), attribute (`[...]`) and pseudo (`:name(...)`) parts of
+/// a compound selector at `*index`, folding each into `compound`. Stops at the first
+/// code unit that does not start one of these.
+fn parse_compound_parts(source: &[u16], index: &mut usize, compound: &mut Compound) {
+    while *index < source.len() {
+        match source[*index] {
+            35 => {
+                *index += 1;
+                compound.id = Some(ident(source, index));
+            }
+            46 => {
+                *index += 1;
+                compound.classes.push(ident(source, index));
+            }
+            91 => {
+                *index += 1;
+                compound
+                    .attrs
+                    .push(attr(balanced(source, index, 91, 93)));
+            }
+            58 => {
+                *index += 1;
+                let name = ident(source, index);
+                let arg = if source.get(*index) == Some(&40) {
+                    *index += 1;
+                    Some(balanced(source, index, 40, 41))
+                } else {
+                    None
+                };
+                compound.pseudos.push(pseudo(&name, arg));
+            }
+            _ => break,
+        }
+    }
+}
+
 /// A type selector's raw units split at an unescaped namespace bar: `*|p`, `|p`, `*|*`.
 /// `None` when there is no bar (an escaped `\|` is part of the name). Only `*` (any) and
 /// the empty prefix (no namespace) are declared for DOM selector APIs.
@@ -750,16 +771,7 @@ pub(super) fn state_argument(units: &[u16]) -> Option<Vec<u16>> {
     let normalized = String::from_utf16_lossy(units).replace('\0', "\u{fffd}");
     let source: Vec<u16> = normalized.encode_utf16().collect();
     let start = skip_state_trivia(&source, 0);
-    let first = *source.get(start)?;
-    let valid_start = state_name_start(first)
-        || first == 92 && state_escape_end(&source, start).is_some()
-        || first == 45
-            && source.get(start + 1).is_some_and(|&next| {
-                next == 45
-                    || state_name_start(next)
-                    || next == 92 && state_escape_end(&source, start + 1).is_some()
-            });
-    if !valid_start {
+    if !state_has_valid_start(&source, start) {
         return None;
     }
     let mut index = start;
@@ -776,4 +788,20 @@ pub(super) fn state_argument(units: &[u16]) -> Option<Vec<u16>> {
         return None;
     }
     Some(decoded(&source[start..index], false))
+}
+
+/// Can a `:state()` identifier start at `start` in `source`? Accepts a name-start,
+/// an escape (`\\`-prefixed), or a `-` followed by any of (`-`, name-start, escape).
+fn state_has_valid_start(source: &[u16], start: usize) -> bool {
+    let Some(&first) = source.get(start) else {
+        return false;
+    };
+    state_name_start(first)
+        || first == 92 && state_escape_end(source, start).is_some()
+        || first == 45
+            && source.get(start + 1).is_some_and(|&next| {
+                next == 45
+                    || state_name_start(next)
+                    || next == 92 && state_escape_end(source, start + 1).is_some()
+            })
 }

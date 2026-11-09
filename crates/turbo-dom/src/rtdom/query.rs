@@ -932,23 +932,35 @@ fn split_top_level_commas(src: &str) -> Vec<&str> {
             escaped = true;
             continue;
         }
-        if let Some(q) = quote {
-            if b == q {
-                quote = None;
-            }
-        } else if b == b'"' || b == b'\'' {
-            quote = Some(b);
-        } else if b == b'(' || b == b'[' {
-            depth += 1;
-        } else if b == b')' || b == b']' {
-            depth -= 1;
-        } else if b == b',' && depth == 0 {
+        if top_level_comma_at(b, &mut quote, &mut depth) {
             out.push(&src[last..i]);
             last = i + 1;
         }
     }
     out.push(&src[last..]);
     out
+}
+
+/// Advance the quote/bracket state for one byte and return `true` iff this byte is a
+/// top-level comma (outside quotes and all brackets). The in/out `quote` and `depth`
+/// track the running state; an escaped byte (`\\c`) must be filtered out upstream.
+fn top_level_comma_at(b: u8, quote: &mut Option<u8>, depth: &mut i32) -> bool {
+    if let Some(q) = *quote {
+        if b == q {
+            *quote = None;
+        }
+        return false;
+    }
+    match b {
+        b'"' | b'\'' => {
+            *quote = Some(b);
+        }
+        b'(' | b'[' => *depth += 1,
+        b')' | b']' => *depth -= 1,
+        b',' if *depth == 0 => return true,
+        _ => {}
+    }
+    false
 }
 
 /// Parse a pseudo argument as a SELECTOR LIST (comma-separated complex selectors)
@@ -1047,6 +1059,48 @@ fn parse_forgiving_list(src: &str) -> Vec<Complex> {
         .collect()
 }
 
+/// Parse `:nth-child(...)` / `:nth-last-child(...)`. Returns `Pseudo::Unknown` for an
+/// invalid `An+B`, an invalid `of S` list, or an unrecognized `name`.
+fn parse_nth_child_pseudo(name: &str, arg: &str) -> Pseudo {
+    let last = name == "nth-last-child";
+    if let Some((anb, of)) = split_nth_of(arg) {
+        if !valid_anb(anb) || has_empty_item(of, false) {
+            return Pseudo::unknown(name, Some(arg));
+        }
+        let (a, b) = parse_nth(anb);
+        let of = parse_selector_list_str(of);
+        if last {
+            Pseudo::NthLastChildOf(a, b, of)
+        } else {
+            Pseudo::NthChildOf(a, b, of)
+        }
+    } else {
+        if !valid_anb(arg) {
+            return Pseudo::unknown(name, Some(arg));
+        }
+        let (a, b) = parse_nth(arg);
+        if last {
+            Pseudo::NthLastChild(a, b)
+        } else {
+            Pseudo::NthChild(a, b)
+        }
+    }
+}
+
+/// Parse `:nth-of-type(...)` / `:nth-last-of-type(...)`. Returns `Pseudo::Unknown` for an
+/// invalid `An+B`.
+fn parse_nth_of_type_pseudo(name: &str, arg: &str) -> Pseudo {
+    if !valid_anb(arg) {
+        return Pseudo::unknown(name, Some(arg));
+    }
+    let (a, b) = parse_nth(arg);
+    if name == "nth-of-type" {
+        Pseudo::NthOfType(a, b)
+    } else {
+        Pseudo::NthLastOfType(a, b)
+    }
+}
+
 /// Map a pseudo `name` + optional `arg` to a `Pseudo`. Unrecognized → `Unknown`
 /// (never matches). Mirrors selectors.mjs `matchPseudo` switch.
 fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
@@ -1105,45 +1159,10 @@ fn parse_pseudo(name: &str, arg: Option<&str>) -> Pseudo {
         "fullscreen" | "-webkit-full-screen" => Pseudo::Fullscreen,
         "-webkit-full-screen-ancestor" => Pseudo::FullscreenAncestor,
         "nth-child" | "nth-last-child" => {
-            let arg = arg.unwrap_or("");
-            let last = name == "nth-last-child";
-            if let Some((anb, of)) = split_nth_of(arg) {
-                if !valid_anb(anb) {
-                    return Pseudo::unknown(name, Some(arg));
-                }
-                if has_empty_item(of, false) {
-                    return Pseudo::unknown(name, Some(arg));
-                }
-                let (a, b) = parse_nth(anb);
-                let of = parse_selector_list_str(of);
-                if last {
-                    Pseudo::NthLastChildOf(a, b, of)
-                } else {
-                    Pseudo::NthChildOf(a, b, of)
-                }
-            } else {
-                if !valid_anb(arg) {
-                    return Pseudo::unknown(name, Some(arg));
-                }
-                let (a, b) = parse_nth(arg);
-                if last {
-                    Pseudo::NthLastChild(a, b)
-                } else {
-                    Pseudo::NthChild(a, b)
-                }
-            }
+            parse_nth_child_pseudo(name, arg.unwrap_or(""))
         }
         "nth-of-type" | "nth-last-of-type" => {
-            let arg = arg.unwrap_or("");
-            if !valid_anb(arg) {
-                return Pseudo::unknown(name, Some(arg));
-            }
-            let (a, b) = parse_nth(arg);
-            if name == "nth-of-type" {
-                Pseudo::NthOfType(a, b)
-            } else {
-                Pseudo::NthLastOfType(a, b)
-            }
+            parse_nth_of_type_pseudo(name, arg.unwrap_or(""))
         }
         "is" => Pseudo::Is(parse_forgiving_list(arg.unwrap_or(""))),
         "where" => Pseudo::Where(parse_forgiving_list(arg.unwrap_or(""))),
