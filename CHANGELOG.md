@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.1] — unreleased
 
+### Changed
+
+- **#379 JS lane C (npm runtime)**: extracted helpers for cc <= 12 across
+  `src/runtime/{cascade,html-serialize,selectors,dom,css-shorthand}.mjs`;
+  hot-path fns deferred to v0.9.0 — see #462 (selectors.mjs match-time
+  family), #463 (dom.mjs hot-path methods), #464 (collections.mjs
+  live-collection `get` + events.mjs `dispatchEvent`).
+
 ### Fixed
 
 - **turbo-dom-browser-env event dispatch (R3 H1)**:

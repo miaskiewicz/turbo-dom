@@ -160,23 +160,35 @@ const SLOTTED_RE = /::slotted\(([^)]*)\)/;      // ::slotted(sel)
 //  'normal'  — el matched against the selector (skips :host/::slotted rules)
 //  'host'    — el is a shadow host; match the inner of a :host[(sel)] rule
 //  'slotted' — el is a slotted light node assigned to `slot`; match ::slotted() rules
+// Only called from getComputedStyle (test-time); the kind-dispatch is hoisted out
+// of the per-rule loop so each branch has a cc well under the gate.
 function collectMatched(el, rules, kind, into, slot) {
+  if (kind === 'normal') collectNormal(el, rules, into);
+  else if (kind === 'host') collectHost(el, rules, into);
+  else collectSlotted(el, rules, into, slot);
+}
+function collectNormal(el, rules, into) {
   for (let i = 0; i < rules.length; i++) {
     const r = rules[i];
     const sel = r.selector;
-    const hostM = HOST_RE.exec(sel);
-    const slotM = SLOTTED_RE.exec(sel);
-    if (kind === 'normal') {
-      if (hostM || slotM) continue; // shadow-only selectors never match plain elements
-      try { if (matchesSelector(el, sel, null)) into.push(r); } catch { /* unsupported → skip */ }
-    } else if (kind === 'host') {
-      if (!hostM) continue;
-      const inner = hostM[1];
-      if (inner === undefined) into.push(r);
-      else try { if (matchesSelector(el, inner.trim(), null)) into.push(r); } catch { /* skip */ }
-    } else if (slotM && matchesSlotted(el, slot, sel)) { // slotted
-      into.push(r);
-    }
+    if (HOST_RE.test(sel) || SLOTTED_RE.test(sel)) continue; // shadow-only selectors never match plain elements
+    try { if (matchesSelector(el, sel, null)) into.push(r); } catch { /* unsupported → skip */ }
+  }
+}
+function collectHost(el, rules, into) {
+  for (let i = 0; i < rules.length; i++) {
+    const r = rules[i];
+    const hostM = HOST_RE.exec(r.selector);
+    if (!hostM) continue;
+    const inner = hostM[1];
+    if (inner === undefined) { into.push(r); continue; }
+    try { if (matchesSelector(el, inner.trim(), null)) into.push(r); } catch { /* skip */ }
+  }
+}
+function collectSlotted(el, rules, into, slot) {
+  for (let i = 0; i < rules.length; i++) {
+    const r = rules[i];
+    if (SLOTTED_RE.test(r.selector) && matchesSlotted(el, slot, r.selector)) into.push(r);
   }
 }
 

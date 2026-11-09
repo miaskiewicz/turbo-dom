@@ -55,21 +55,28 @@ function startsIdent(src, i) {
   const d = src[i + 1];
   return d !== undefined && (d === '-' || isNameStart(d) || (d === '\\' && validEscape(src, i + 1)));
 }
-// Consume the escape at `src[i]` (a valid `\`): { ch, end }.
-function consumeEscape(src, i) {
-  let j = i + 1;
-  if (j >= src.length) return { ch: '\uFFFD', end: j };
-  if (!isHex(src[j])) {
-    const cp = src.codePointAt(j);
-    return { ch: String.fromCodePoint(cp), end: j + (cp > 0xffff ? 2 : 1) };
-  }
+// Advance past one hex-escape trailer (CRLF or a single whitespace) at `src[j]`.
+function escapeTrailer(src, j) {
+  if (src[j] === '\r' && src[j + 1] === '\n') return j + 2;
+  if (j < src.length && isWs(src[j])) return j + 1;
+  return j;
+}
+// Decode one hex escape starting at `j`; the caller has already seen the first hex digit.
+function decodeHexEscape(src, j) {
   let hex = '';
   while (j < src.length && hex.length < 6 && isHex(src[j])) hex += src[j++];
-  if (src[j] === '\r' && src[j + 1] === '\n') j += 2;
-  else if (j < src.length && isWs(src[j])) j++;
+  const end = escapeTrailer(src, j);
   const cp = parseInt(hex, 16);
   const bad = cp === 0 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff);
-  return { ch: bad ? '\uFFFD' : String.fromCodePoint(cp), end: j };
+  return { ch: bad ? '\uFFFD' : String.fromCodePoint(cp), end };
+}
+// Consume the escape at `src[i]` (a valid `\`): { ch, end }.
+function consumeEscape(src, i) {
+  const j = i + 1;
+  if (j >= src.length) return { ch: '\uFFFD', end: j };
+  if (isHex(src[j])) return decodeHexEscape(src, j);
+  const cp = src.codePointAt(j);
+  return { ch: String.fromCodePoint(cp), end: j + (cp > 0xffff ? 2 : 1) };
 }
 // Scan an identifier starting at `i` (caller checked startsIdent): { value, end }.
 function scanIdent(src, i) {
@@ -122,18 +129,25 @@ function scanBalanced(src, start, open, close) {
 // Split at top-level commas (outside quotes, escapes, () and []).
 function splitTopLevel(src) {
   const out = [];
-  let depth = 0, quote = null, last = 0;
+  const state = { depth: 0, quote: null };
+  let last = 0;
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     if (c === '\\') { i++; continue; }
-    if (quote) { if (c === quote) quote = null; continue; }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === '(' || c === '[') depth++;
-    else if (c === ')' || c === ']') depth--;
-    else if (c === ',' && depth === 0) { out.push(src.slice(last, i)); last = i + 1; }
+    if (splitStepStays(c, state)) continue;
+    if (c === ',' && state.depth === 0) { out.push(src.slice(last, i)); last = i + 1; }
   }
   out.push(src.slice(last));
   return out;
+}
+// Update `state` for the one-character step; returns true when `c` was handled here (string
+// delimiter / bracket) and the caller should skip the comma check for it.
+function splitStepStays(c, state) {
+  if (state.quote) { if (c === state.quote) state.quote = null; return true; }
+  if (c === '"' || c === "'") { state.quote = c; return true; }
+  if (c === '(' || c === '[') { state.depth++; return true; }
+  if (c === ')' || c === ']') { state.depth--; return true; }
+  return false;
 }
 
 // ── attribute selectors ─────────────────────────────────────────────────────
@@ -171,29 +185,39 @@ function closeAtEnd(out, quote, open) {
   while (open.length) out += open.pop();
   return out;
 }
+// A `\` at `i`: emit it and its next char (and whatever it consumed from `state`).
+// Returns the next source index, or -1 when scanning should stop (final stray `\` at EOF).
+function normalizeStepBackslash(src, i, state, closeAtEof) {
+  // an escape at the end: U+FFFD in a name, nothing in a string (closers stay unescaped)
+  if (i + 1 === src.length && closeAtEof) { if (!state.quote) state.out += '\uFFFD'; return -1; }
+  state.out += src.slice(i, i + 2);
+  return i + 2;
+}
+function normalizeStepComment(src, i, state) {
+  const end = commentEnd(src, i);
+  state.out += commentSeparator(state.out, src[end], state.open);
+  return end;
+}
+// Return the next index after processing src[i].
+function normalizeStep(src, i, state, closeAtEof) {
+  const c = src[i];
+  if (c === '\\') return normalizeStepBackslash(src, i, state, closeAtEof);
+  if (state.quote) { if (c === state.quote) state.quote = null; state.out += c; return i + 1; }
+  if (c === '/' && src[i + 1] === '*') return normalizeStepComment(src, i, state);
+  if (c === '"' || c === "'") state.quote = c;
+  else trackBracket(c, state.open);
+  state.out += c;
+  return i + 1;
+}
 function normalizeSource(src, closeAtEof) {
   if (!needsNormalize(src, closeAtEof)) return src;
-  let out = '', quote = null;
-  const open = [];
-  for (let i = 0; i < src.length; i++) {
-    const c = src[i];
-    if (c === '\\') {
-      // an escape at the end: U+FFFD in a name, nothing in a string (closers stay unescaped)
-      if (i + 1 === src.length && closeAtEof) { if (!quote) out += '\uFFFD'; break; }
-      out += src.slice(i, i + 2); i++; continue;
-    }
-    if (quote) { if (c === quote) quote = null; out += c; continue; }
-    if (c === '/' && src[i + 1] === '*') {
-      const end = commentEnd(src, i);
-      out += commentSeparator(out, src[end], open);
-      i = end - 1;
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else trackBracket(c, open);
-    out += c;
+  const state = { out: '', quote: null, open: [] };
+  for (let i = 0; i < src.length;) {
+    const next = normalizeStep(src, i, state, closeAtEof);
+    if (next < 0) break;
+    i = next;
   }
-  return closeAtEof ? closeAtEnd(out, quote, open) : out;
+  return closeAtEof ? closeAtEnd(state.out, state.quote, state.open) : state.out;
 }
 // A quoted string starting at `i` (src[i] is the quote): { value, end } (end past the
 // closing quote; an unterminated string ends with the input, as in CSS — the attribute
@@ -489,23 +513,26 @@ function scanHashOrClassToken(src, i, tokens) {
   tokens.push({ k: c === '#' ? 'id' : 'class', v: t.value });
   return t.end;
 }
+const COMBINATORS = new Set(['>', '+', '~']);
+// One tokenize step: returns the next source index after consuming src[i].
+function tokenizeStep(src, i, tokens) {
+  const c = src[i];
+  if (isWs(c)) { tokens.push({ k: 'ws' }); return skipWsAt(src, i); }
+  if (c === ',') { tokens.push({ k: 'comma' }); return i + 1; }
+  if (COMBINATORS.has(c)) { tokens.push({ k: 'comb', v: c }); return i + 1; }
+  return tokenizeSimple(src, i, c, tokens);
+}
+function tokenizeSimple(src, i, c, tokens) {
+  if (c === '*' || c === '|' || startsIdent(src, i)) return scanTypeToken(src, i, tokens);
+  if (c === '#' || c === '.') return scanHashOrClassToken(src, i, tokens);
+  if (c === '[') return scanAttrToken(src, i, tokens);
+  if (c === ':') return scanPseudoToken(src, i, tokens);
+  throw new SyntaxError(`unexpected '${c}' in selector`);
+}
 function tokenize(src) {
   const tokens = [];
   const n = src.length;
-  let i = 0;
-  while (i < n) {
-    const c = src[i];
-    if (isWs(c)) {
-      i = skipWsAt(src, i);
-      tokens.push({ k: 'ws' });
-    } else if (c === ',') { tokens.push({ k: 'comma' }); i++; }
-    else if (c === '>' || c === '+' || c === '~') { tokens.push({ k: 'comb', v: c }); i++; }
-    else if (c === '*' || c === '|' || startsIdent(src, i)) i = scanTypeToken(src, i, tokens);
-    else if (c === '#' || c === '.') i = scanHashOrClassToken(src, i, tokens);
-    else if (c === '[') i = scanAttrToken(src, i, tokens);
-    else if (c === ':') i = scanPseudoToken(src, i, tokens);
-    else throw new SyntaxError(`unexpected '${c}' in selector`);
-  }
+  for (let i = 0; i < n;) i = tokenizeStep(src, i, tokens);
   return tokens;
 }
 
@@ -534,14 +561,19 @@ function parsePlainPseudo(name, src) {
   throw syntax(src, `unknown pseudo-class :${name}`);
 }
 const NTH = new Set(['nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type']);
+// A nested selector-list pseudo (`:not` / `:is` / `:where` / `:-webkit-any`): its `parsed`.
+function parseListPseudo(name, arg, inHas, inCompound) {
+  if (name === 'not') return { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
+  if (name === 'is' || name === 'where') return { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
+  // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
+  return { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
+}
+const LIST_PSEUDO = new Set(['not', 'is', 'where', '-webkit-any']);
 // A functional pseudo-class: its `parsed`.
 function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
   if (PLAIN.has(name)) throw syntax(src, `:${name}() takes no argument`);
   if (NEVER_FUNCTIONAL.has(name)) return { never: true };
-  if (name === 'not') return { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
-  if (name === 'is' || name === 'where') return { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
-  // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
-  if (name === '-webkit-any') return { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
+  if (LIST_PSEUDO.has(name)) return parseListPseudo(name, arg, inHas, inCompound);
   if (name === 'has') {
     if (inHas) throw syntax(src, ':has() inside :has()');
     return { rel: parseRelative(arg, src) };
@@ -614,6 +646,21 @@ function validPseudoElementArg(name, arg) {
   return true; // ::cue() and ::slotted() take selectors (parsed below)
 }
 
+const PE_COMPOUND_OPTS = { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true };
+// Validate the argument of a functional pseudo-element and stash any ::slotted() parse on `pe`.
+function pseudoElementArg(pe, src) {
+  const { name, arg } = pe;
+  if (!validPseudoElementArg(name, arg)) throw syntax(src, `::${name}() argument`);
+  // ::cue(): compound selectors, nested lists restricted as in :-webkit-any() (Chrome 156)
+  if (name === 'cue') parseList(arg, PE_COMPOUND_OPTS);
+  if (name === 'slotted') {
+    // one compound selector, nested lists restricted as in :-webkit-any() (Chrome 156)
+    const list = parseList(arg, PE_COMPOUND_OPTS);
+    if (list.length !== 1) throw syntax(src, '::slotted() takes one compound selector');
+    // kept for specificity (non-enumerable, like a pseudo-class's `parsed`)
+    Object.defineProperty(pe, 'parsed', { value: list });
+  }
+}
 // Parse one pseudo-element (throws on unknown ones): { name, arg, slotted? }.
 function parsePseudoElement(tok, src) {
   const { name, arg } = tok;
@@ -621,16 +668,7 @@ function parsePseudoElement(tok, src) {
   const known = arg === null ? PSEUDO_ELEMENTS.has(name) : FUNCTIONAL_PSEUDO_ELEMENTS.has(name);
   if (!known && !name.startsWith('-webkit-')) throw syntax(src, `unknown pseudo-element ::${name}`);
   const pe = { name, arg };
-  if (arg !== null && !validPseudoElementArg(name, arg)) throw syntax(src, `::${name}() argument`);
-  // ::cue(): compound selectors, nested lists restricted as in :-webkit-any() (Chrome 156)
-  if (name === 'cue' && arg !== null) parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true });
-  if (name === 'slotted' && arg !== null) {
-    // one compound selector, nested lists restricted as in :-webkit-any() (Chrome 156)
-    const list = parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true });
-    if (list.length !== 1) throw syntax(src, '::slotted() takes one compound selector');
-    // kept for specificity (non-enumerable, like a pseudo-class's `parsed`)
-    Object.defineProperty(pe, 'parsed', { value: list });
-  }
+  if (arg !== null) pseudoElementArg(pe, src);
   return pe;
 }
 
@@ -703,38 +741,35 @@ function afterWhitespace(combinator, first) {
 function isDangling(combinator) {
   return combinator !== null && combinator !== ' ';
 }
+// Consume one compound at `state.pos`, appending it to `state` (first / rest / sawPe).
+function parseComplexCompound(tokens, end, src, opts, state) {
+  if (state.sawPe) throw syntax(src, 'combinator after a pseudo-element');
+  // one object shape for every compound (monomorphic matching): `ns` is null / 'any' /
+  // 'none', `pe` the pseudo-element or null
+  const compound = { tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null };
+  state.pos = parseCompound(tokens, state.pos, end, src, opts, compound);
+  if (compound.pe !== null) state.sawPe = true;
+  if (state.first === null) state.first = compound;
+  else state.rest.push({ combinator: state.combinator === null ? ' ' : state.combinator, compound });
+  state.combinator = null;
+}
 function parseComplexTokens(tokens, lo, hi, src, opts) {
   const start = firstNonWs(tokens, lo, hi);
   const end = endNonWs(tokens, start, hi);
   if (start >= end) throw syntax(src, 'empty selector');
-  let first = null;
-  const rest = [];
-  let combinator = null;
-  let pos = start;
-  let sawPe = false;
-  while (pos < end) {
-    const t = tokens[pos];
-    if (t.k === 'ws') { pos++; combinator = afterWhitespace(combinator, first); continue; }
+  const state = { first: null, rest: [], combinator: null, pos: start, sawPe: false };
+  while (state.pos < end) {
+    const t = tokens[state.pos];
+    if (t.k === 'ws') { state.pos++; state.combinator = afterWhitespace(state.combinator, state.first); continue; }
     if (t.k === 'comb') {
-      if (first === null || isDangling(combinator)) throw syntax(src, 'dangling combinator');
-      combinator = t.v;
-      pos++;
-      continue;
+      if (state.first === null || isDangling(state.combinator)) throw syntax(src, 'dangling combinator');
+      state.combinator = t.v; state.pos++; continue;
     }
-    if (sawPe) throw syntax(src, 'combinator after a pseudo-element');
-    // a compound
-    // one object shape for every compound (monomorphic matching): `ns` is null / 'any' /
-    // 'none', `pe` the pseudo-element or null
-    const compound = { tag: null, ns: null, id: null, classes: [], attrs: [], pseudos: [], pe: null };
-    pos = parseCompound(tokens, pos, end, src, opts, compound);
-    if (compound.pe !== null) sawPe = true;
-    if (first === null) first = compound;
-    else rest.push({ combinator: combinator === null ? ' ' : combinator, compound });
-    combinator = null;
+    parseComplexCompound(tokens, end, src, opts, state);
   }
-  if (isDangling(combinator)) throw syntax(src, 'dangling combinator');
-  if (opts.compound && rest.length) throw syntax(src, 'combinator inside :-webkit-any()');
-  return { first, rest };
+  if (isDangling(state.combinator)) throw syntax(src, 'dangling combinator');
+  if (opts.compound && state.rest.length) throw syntax(src, 'combinator inside :-webkit-any()');
+  return { first: state.first, rest: state.rest };
 }
 
 // A selector-list argument / list: `forgiving` (`:is()` / `:where()`) drops invalid items.

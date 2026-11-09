@@ -145,6 +145,13 @@ function extractPartial(doc, frag, move, node, from, fromOff, to, toOff) {
   sub.startContainer = from; sub.startOffset = fromOff; sub.endContainer = to; sub.endOffset = toOff;
   copy.appendChild(sub.__extract(move));
 }
+// Range.insertNode pre-check: a Comment start, a parentless Text start, or inserting the
+// range's start node into itself is a HierarchyRequestError.
+function assertInsertableAt(sc, node) {
+  if (sc.nodeType === COMMENT_NODE || (sc.nodeType === TEXT_NODE && !sc.parentNode) || sc === node) {
+    throw domError('HierarchyRequestError', 'The node cannot be inserted at the range start.');
+  }
+}
 // DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
 // letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
 // non-ASCII code point followed by ASCII alphanumerics, '-', '.', ':', '_' and non-ASCII.
@@ -1173,11 +1180,7 @@ export class Element extends Node {
     const root = this.getRootNode();
     if (!root.__isShadowRoot) return [];
     const slotName = this.getAttribute('name') || '';
-    const out = [];
-    for (const c of root.host.__children()) {
-      if (c.nodeType === ELEMENT_NODE) { if ((c.getAttribute('slot') || '') === slotName) out.push(c); }
-      else if (c.nodeType === TEXT_NODE && slotName === '') out.push(c); // text routes only to the default slot
-    }
+    const out = collectAssigned(root.host.__children(), slotName);
     if (out.length === 0 && options && options.flatten) {
       return this.__children().filter((n) => n.nodeType === ELEMENT_NODE || n.nodeType === TEXT_NODE);
     }
@@ -1472,6 +1475,17 @@ function cloneKids(source, parent, doc) {
   return kids;
 }
 
+// Light-DOM children routed to a slot of `slotName`: elements whose `slot` attribute matches,
+// plus text nodes (only to the default slot).
+function collectAssigned(kids, slotName) {
+  const out = [];
+  for (const c of kids) {
+    if (c.nodeType === ELEMENT_NODE) { if ((c.getAttribute('slot') || '') === slotName) out.push(c); }
+    else if (c.nodeType === TEXT_NODE && slotName === '') out.push(c);
+  }
+  return out;
+}
+
 // First <slot> within a shadow tree whose name matches (default slot: name '').
 function findSlot(shadowRoot, name) {
   let found = null;
@@ -1732,6 +1746,10 @@ class Range {
     if (this.collapsed) return frag;
     const sc = this.startContainer, so = this.startOffset, ec = this.endContainer, eo = this.endOffset;
     if (sc === ec && isCharData(sc)) { cutData(frag, sc, so, eo, move); if (move) this.collapse(true); return frag; }
+    this.__extractSpan(frag, move, sc, so, ec, eo);
+    return frag;
+  }
+  __extractSpan(frag, move, sc, so, ec, eo) {
     const common = this.commonAncestorContainer;
     const firstPartial = isInclusiveAncestor(sc, ec) ? null : childOfAncestor(sc, common);
     const lastPartial = isInclusiveAncestor(ec, sc) ? null : childOfAncestor(ec, common);
@@ -1742,7 +1760,6 @@ class Range {
     for (const c of contained) frag.appendChild(move ? c : c.cloneNode(true));
     if (lastPartial) extractPartial(this.__doc, frag, move, lastPartial, lastPartial, 0, ec, eo);
     if (move) { this.startContainer = this.endContainer = newNode; this.startOffset = this.endOffset = newOffset; }
-    return frag;
   }
   cloneContents() { return this.__extract(false); }
   extractContents() {
@@ -1767,16 +1784,11 @@ class Range {
   // (the live-range steps for the split and the insert, applied to this range).
   insertNode(node) {
     const sc = this.startContainer, so = this.startOffset;
-    if (sc.nodeType === COMMENT_NODE || (sc.nodeType === TEXT_NODE && !sc.parentNode) || sc === node) {
-      throw domError('HierarchyRequestError', 'The node cannot be inserted at the range start.');
-    }
+    assertInsertableAt(sc, node);
     const wasCollapsed = this.collapsed;
     let ref = sc.nodeType === TEXT_NODE ? sc : (sc.__children()[so] ?? null);
     const parent = ref ? ref.parentNode : sc;
-    if (sc.nodeType === TEXT_NODE) {
-      const at = nodeIndex(sc);
-      ref = sc.splitText(so);
-    }
+    if (sc.nodeType === TEXT_NODE) ref = sc.splitText(so);
     if (node === ref) ref = ref.nextSibling;
     // the live-range steps (split, removal, insertion) move this range's end like any other's
     if (node.parentNode) node.parentNode.removeChild(node);
@@ -2140,17 +2152,20 @@ function makeDataset(el) {
 // corruption). Materialize attrs + children off the current buffer FIRST, then sever
 // the buffer linkage, then switch ownerDocument — depth-first so each level reads its
 // own (old) buffer before being re-homed.
+// Materialize an element's lazy attrs off the OLD buffer before we sever the buffer link,
+// and freeze the parser's `is` value on HTML elements (it outlives the buffer link).
+function materializeElementAttrs(node) {
+  if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
+  if (node.__attrIdx >= 0 && node.__ns === '') freezeParsedIs(node);
+  node.__attrIdx = -1;
+}
 function adoptInto(node, doc) {
   if (node.ownerDocument === doc) return;
   const old = node.ownerDocument;
   // a document and its inert template document share one buffer: keep the lazy links
   if (old.__buf !== null && old.__buf === doc.__buf) { rehome(node, doc); return; }
   if (node.__idx >= 0) old.__cache[node.__idx] = undefined; // the old document no longer holds it
-  if (node.nodeType === ELEMENT_NODE) {
-    if (node.__attrs === undefined && node.__attrIdx >= 0) node.__attrs = node.__buildAttrs();
-    if (node.__attrIdx >= 0 && node.__ns === '') freezeParsedIs(node); // the parser's `is` outlives the buffer link
-    node.__attrIdx = -1;
-  }
+  if (node.nodeType === ELEMENT_NODE) materializeElementAttrs(node);
   const kids = node.__children ? node.__children() : []; // inflate off the OLD buffer
   node.__idx = -1;
   node.ownerDocument = doc;
