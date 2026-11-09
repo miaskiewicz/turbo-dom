@@ -107,7 +107,12 @@ pub(super) fn dispatch_message<'s>(
     let Ok(dispatch_fn) = v8::Local::<v8::Function>::try_from(dispatch_value) else {
         return false;
     };
+    // turbo-dom#438: construct the event with a null prototype so inherited
+    // lookups through `Object.prototype` cannot observe or alter the native
+    // event payload. `type` and `data` remain own properties of the event.
     let event = v8::Object::new(scope);
+    let null_proto: v8::Local<v8::Value> = v8::null(scope).into();
+    event.set_prototype(scope, null_proto);
     let type_key = v8::String::new(scope, "type").unwrap();
     let message = v8::String::new(scope, "message").unwrap();
     event.set(scope, type_key.into(), message.into());
