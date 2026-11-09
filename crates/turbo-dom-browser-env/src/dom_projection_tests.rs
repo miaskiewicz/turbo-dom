@@ -347,6 +347,22 @@ fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
     install_independent_html(scope, "<!doctype html><body></body>");
+    // Test-only: the production namespace lives behind a V8 private symbol page JS
+    // cannot name (turbo-dom#222). Expose each `<Ctor>Species` through a side
+    // channel the page script below can inspect, so the audit verifies the
+    // bootstrap did capture them (missing capture ⇒ `undefined` reaches the page).
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__capturedSpecies = {
+            PromiseSpecies: __tsNs.PromiseSpecies,
+            ArraySpecies: __tsNs.ArraySpecies,
+            MapSpecies: __tsNs.MapSpecies,
+            SetSpecies: __tsNs.SetSpecies,
+            RegExpSpecies: __tsNs.RegExpSpecies,
+            ArrayBufferSpecies: __tsNs.ArrayBufferSpecies,
+         };",
+    )
+    .unwrap();
     let code = v8::String::new(
         scope,
         r#"(()=>{
@@ -357,9 +373,11 @@ fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
       const saved=[];let hooks=0;const trips=[];
       const thrower=(label)=>function(){hooks++;trips.push(label);throw new Error('patched '+label)};
       // The `species` getters must each report with the constructor's name so a
-      // reader can identify which one the install path reached live.
+      // reader can identify which one the install path reached live. `WeakMap` /
+      // `WeakSet` have no `@@species` in V8 (and no spec entry), so the audit does
+      // not touch them.
       const ctors=[['Array',Array],['Promise',Promise],['Map',Map],['Set',Set],
-                   ['WeakMap',WeakMap],['WeakSet',WeakSet],['RegExp',RegExp],['ArrayBuffer',ArrayBuffer]];
+                   ['RegExp',RegExp],['ArrayBuffer',ArrayBuffer]];
       for(const [name,C] of ctors){
         const desc=gopd(C,Symbol.species);
         if(!desc||!desc.configurable)continue;
@@ -384,18 +402,14 @@ fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
         document.body.appendChild(f);
         const w=f.contentWindow;
         out.contentWindow=!!(w && w.document);
-        // The captured-species namespace must expose each species constructor so
-        // a consumer can reach them without a live `Promise[@@species]` read.
-        const ns=globalThis.__tsNs;
+        const captured=globalThis.__capturedSpecies||{};
         out.exposes={
-          PromiseSpecies: ns && ns.PromiseSpecies === Promise,
-          ArraySpecies: ns && ns.ArraySpecies === Array,
-          MapSpecies: ns && ns.MapSpecies === Map,
-          SetSpecies: ns && ns.SetSpecies === Set,
-          WeakMapSpecies: ns && ns.WeakMapSpecies === WeakMap,
-          WeakSetSpecies: ns && ns.WeakSetSpecies === WeakSet,
-          RegExpSpecies: ns && ns.RegExpSpecies === RegExp,
-          ArrayBufferSpecies: ns && ns.ArrayBufferSpecies === ArrayBuffer,
+          PromiseSpecies: captured.PromiseSpecies === Promise,
+          ArraySpecies: captured.ArraySpecies === Array,
+          MapSpecies: captured.MapSpecies === Map,
+          SetSpecies: captured.SetSpecies === Set,
+          RegExpSpecies: captured.RegExpSpecies === RegExp,
+          ArrayBufferSpecies: captured.ArrayBufferSpecies === ArrayBuffer,
         };
       }catch(e){out.err=String(e.message||e)}
       finally{for(let i=saved.length-1;i>=0;i--){const [o,k,d]=saved[i];def(o,k,d)}}
@@ -419,11 +433,9 @@ fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
             && got.contains("\"ArraySpecies\":true")
             && got.contains("\"MapSpecies\":true")
             && got.contains("\"SetSpecies\":true")
-            && got.contains("\"WeakMapSpecies\":true")
-            && got.contains("\"WeakSetSpecies\":true")
             && got.contains("\"RegExpSpecies\":true")
             && got.contains("\"ArrayBufferSpecies\":true"),
-        "#449: the bootstrap must expose every `@@species` on `__tsNs` (<ctor>Species) \
+        "#449: the bootstrap must expose every `@@species` on `__tsNs` (<Ctor>Species) \
          so consumers can dispatch through a captured reference — got {got}"
     );
     reset();
