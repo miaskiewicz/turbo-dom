@@ -3318,6 +3318,65 @@ mod clip_tests {
 }
 
 #[cfg(test)]
+mod break_rule_tests {
+    //! Review R4 M2 (#473): `break_rule_of` is the single parse+classify entry
+    //! for every `break-*` property (before / after / inside). `avoid` and
+    //! `avoid-page` MUST be distinct variants so `break-inside: avoid-page`
+    //! does not forbid a column break (multicol routes `Avoid | AvoidColumn`
+    //! to `break_inside_avoid=true`, never `AvoidPage`). The old parser
+    //! collapsed both keywords into `BreakRule::Avoid`, forcing multicol to
+    //! keep a sibling parser (`break_inside_column_avoid_of`) that
+    //! re-read the raw string; this test fails on that collapsed mapping.
+    use super::{break_rule_of, BreakRule, ComputedStyle};
+
+    fn rule(prop: &str, value: &str) -> BreakRule {
+        break_rule_of(
+            &ComputedStyle::from_pairs(std::iter::once((prop, value))),
+            prop,
+        )
+    }
+
+    #[test]
+    fn break_inside_avoid_and_avoid_page_are_distinct_variants() {
+        // `avoid` suppresses ALL fragmentation (page + column + region;
+        // CSS Fragmentation 3 §4.1), so multicol treats it as a column
+        // avoid. `avoid-page` is explicitly page-only and MUST NOT
+        // forbid a column break — distinct variant, not aliased.
+        assert_eq!(rule("break-inside", "avoid"), BreakRule::Avoid);
+        assert_ne!(
+            rule("break-inside", "avoid-page"),
+            BreakRule::Avoid,
+            "break-inside:avoid-page must not collapse into BreakRule::Avoid \
+             — multicol would then treat it as a column-break-avoid, which \
+             contradicts CSS Fragmentation 3 §4.1"
+        );
+        assert_eq!(
+            rule("break-inside", "avoid-column"),
+            BreakRule::AvoidColumn
+        );
+    }
+
+    #[test]
+    fn break_before_and_after_distinguish_avoid_from_avoid_page() {
+        // The same distinction holds for break-before / break-after: the
+        // paginator needs `Avoid | AvoidPage` to forbid a page break, and
+        // multicol reads only `Avoid | AvoidColumn` to shift a kid into
+        // a fresh column. A collapsed mapping would push `avoid-page` kids
+        // across column boundaries.
+        assert_ne!(
+            rule("break-before", "avoid-page"),
+            rule("break-before", "avoid"),
+            "break-before:avoid-page must be distinguishable from break-before:avoid"
+        );
+        assert_ne!(
+            rule("break-after", "avoid-page"),
+            rule("break-after", "avoid"),
+            "break-after:avoid-page must be distinguishable from break-after:avoid"
+        );
+    }
+}
+
+#[cfg(test)]
 mod direction_tests {
     use super::{align_of, ComputedStyle};
     use crate::text::Align;
