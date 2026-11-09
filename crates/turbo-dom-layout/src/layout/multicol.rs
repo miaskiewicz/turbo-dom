@@ -304,23 +304,27 @@ struct KidFlags {
 /// `avoid-page` into one [`BreakRule::Avoid`], and `avoid-page` is
 /// explicitly pagination-only — it must not forbid a column break.
 fn kid_flags(style: &ComputedStyle) -> KidFlags {
-    // Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box": an
+    // Review R2 layout M1 + R4 H3: CSS Multicol 1 §6.1 "A spanning box": an
     // out-of-flow (`position: absolute` / `fixed`) or floated element
-    // "cannot be column-span-all". Chrome 156 obeys. Gate `column-span: all`
-    // on the box being in-flow, so a kid with `column-span: all;
-    // position: absolute` stays in its multicol sub-flow and the spec's
-    // "ignored" value does not stretch the box to the container inline
-    // size.
-    let span_all_allowed =
-        !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
+    // "cannot be column-span-all". Chrome 156 obeys. R4 H3 extends the gate
+    // to the three break-related flags: an abspos / floated kid is NOT in
+    // the column flow (positioned relative to the containing block) and
+    // contributes zero to column-break analysis — `fits_in_count` must
+    // not count a `break-before: column` on an abspos kid as a forced
+    // column break, nor an `avoid` on a floated kid as a reason to shift
+    // the surrounding in-flow content.
+    let in_flow = !position_of(style).is_out_of_flow() && float_of(style) == Float::None;
     KidFlags {
         // R2 M1: span-all is ignored for floats / out-of-flow kids (CSS Multicol §6.1).
-        column_span_all: span_all_allowed && keyword_eq(style, "column-span", "all"),
+        column_span_all: in_flow && keyword_eq(style, "column-span", "all"),
+        // R4 H3: break flags count only for in-flow kids.
         // BreakRule fix: route break-{before,after}: column through the shared parser so
         // `column` is distinguished from `page`.
-        break_before_column: matches!(break_rule_of(style, "break-before"), BreakRule::Column),
-        break_after_column: matches!(break_rule_of(style, "break-after"), BreakRule::Column),
-        break_inside_avoid: break_inside_column_avoid_of(style),
+        break_before_column: in_flow
+            && matches!(break_rule_of(style, "break-before"), BreakRule::Column),
+        break_after_column: in_flow
+            && matches!(break_rule_of(style, "break-after"), BreakRule::Column),
+        break_inside_avoid: in_flow && break_inside_column_avoid_of(style),
     }
 }
 
@@ -1292,6 +1296,93 @@ mod tests {
         assert!(f.break_before_column);
         assert!(f.break_after_column);
         assert!(f.break_inside_avoid);
+    }
+
+    /// Review R4 H3: R2 M1's in-flow gate applied ONLY to `column_span_all`.
+    /// `break_before_column` / `break_after_column` / `break_inside_avoid`
+    /// remained unconditional, so a kid with `position: absolute` and
+    /// `break-before: column` still fired a forced column break inside
+    /// `fits_in_count`. Chrome's abspos / floated kids are NOT in the
+    /// column flow (positioned relative to the containing block) and
+    /// contribute zero to break analysis; gate all four flags on the
+    /// same in-flow predicate.
+    #[test]
+    fn kid_flags_rejects_break_flags_on_out_of_flow_or_floated_boxes() {
+        // Baseline: an in-flow kid with the break keywords carries them.
+        let f = kid_flags(&cs(&[
+            ("break-before", "column"),
+            ("break-after", "column"),
+            ("break-inside", "avoid"),
+        ]));
+        assert!(f.break_before_column);
+        assert!(f.break_after_column);
+        assert!(f.break_inside_avoid);
+        // Out-of-flow kid: every break flag ignored (not in the column flow).
+        for position in ["absolute", "fixed"] {
+            let f = kid_flags(&cs(&[
+                ("break-before", "column"),
+                ("break-after", "column"),
+                ("break-inside", "avoid"),
+                ("position", position),
+            ]));
+            assert!(
+                !f.break_before_column,
+                "position:{position}: break-before:column must be ignored \
+                 (out-of-flow kid is not in the column flow)",
+            );
+            assert!(
+                !f.break_after_column,
+                "position:{position}: break-after:column must be ignored \
+                 (out-of-flow kid is not in the column flow)",
+            );
+            assert!(
+                !f.break_inside_avoid,
+                "position:{position}: break-inside:avoid must be ignored \
+                 (out-of-flow kid is not in the column flow)",
+            );
+        }
+        // Floated kid: ignored (float is out-of-flow for multicol break analysis).
+        for float_value in ["left", "right"] {
+            let f = kid_flags(&cs(&[
+                ("break-before", "column"),
+                ("break-after", "column"),
+                ("break-inside", "avoid"),
+                ("float", float_value),
+            ]));
+            assert!(
+                !f.break_before_column,
+                "float:{float_value}: break-before:column must be ignored",
+            );
+            assert!(
+                !f.break_after_column,
+                "float:{float_value}: break-after:column must be ignored",
+            );
+            assert!(
+                !f.break_inside_avoid,
+                "float:{float_value}: break-inside:avoid must be ignored",
+            );
+        }
+        // `position: relative` / `sticky` / `static` are in-flow — flags stay.
+        for position in ["relative", "sticky", "static"] {
+            let f = kid_flags(&cs(&[
+                ("break-before", "column"),
+                ("break-after", "column"),
+                ("break-inside", "avoid"),
+                ("position", position),
+            ]));
+            assert!(
+                f.break_before_column,
+                "position:{position}: break-before:column must stay (in-flow)",
+            );
+            assert!(
+                f.break_after_column,
+                "position:{position}: break-after:column must stay (in-flow)",
+            );
+            assert!(
+                f.break_inside_avoid,
+                "position:{position}: break-inside:avoid must stay (in-flow)",
+            );
+        }
     }
 
     /// Review R2 layout M1: CSS Multicol 1 §6.1 "A spanning box" says an

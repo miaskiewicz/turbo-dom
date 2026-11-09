@@ -138,6 +138,61 @@ at the time); this file reconstructs them from history.
   on `turbo-dom` tests (#453), cargo-mutants sweep over R1/R2/R3 fixes
   (#454), CLAUDE.md save-set audit habit (#455), broader
   `multicol_rule_chrome156.json` spot-check (#457).
+- **turbo-dom-browser-env event dispatch (R4 H1)**:
+  `drainMicrotasksAcrossDispatch` now CLEARS `record.stop` /
+  `record.stopImmediate` before `microtaskCheckpoint`, not just saves /
+  restores them. R3 H1 added them to the save-set but never cleared
+  them, so a microtask-driven re-dispatch of the same event entered
+  `dispatchTarget` with the outer's `record.stop = true` still on the
+  shared record — `dispatchTarget`'s entry writes `dispatching` /
+  `trusted` / `target` / `currentTarget` / `eventPhase` / `path` but
+  not `stop` / `stopImmediate`, relying on the previous dispatch's
+  finally to have reset them. The inner `dispatchMulti` then bailed on
+  its capture loop's first `if (record.stop || record.stopImmediate)
+  return;` and AT_TARGET + bubble never ran either (it returns from
+  the capture loop, not per-phase). Chrome 156 treats each nested
+  dispatch as an independent stop scope. New test
+  `nested_re_dispatch_sees_fresh_stop_propagation_state` asserts every
+  phase of the inner re-dispatch fires.
+- **turbo-dom-browser-env event dispatch (R4 H2)**: the drain's
+  save-set now covers `trusted`. `dispatchTarget`'s entry writes
+  `record.trusted = host`, and neither its own finally nor R3 H1's
+  save-set restored it — a trusted outer whose microtask re-dispatched
+  the same event via `target.dispatchEvent(event)` (non-host) flipped
+  `record.trusted` to false and the outer's subsequent bubble
+  listeners saw `event.isTrusted === false`. New test
+  `trusted_flag_survives_nested_re_dispatch_from_microtask`.
+- **turbo-dom-layout multicol (R4 H3)**: `kid_flags`'s in-flow gate
+  now applies to `break_before_column` / `break_after_column` /
+  `break_inside_avoid` as well, not just `column_span_all`. R2 M1
+  gated `column_span_all` on the kid being in-flow but the three
+  break flags remained unconditional, so a kid with `position:
+  absolute; break-before: column` still fired a forced column break
+  in `fits_in_count` and consumed column height during balance.
+  Chrome's abspos / floated kids are NOT in the column flow and
+  contribute zero to break analysis (CSS Multicol 1 §6.1). New test
+  `kid_flags_rejects_break_flags_on_out_of_flow_or_floated_boxes`.
+- **R4 M4 (R3 H1 test tightening)**: the R3 H1 regression test
+  (`microtask_re_dispatch_preserves_outer_stop_propagation`) used to
+  assert only `!has_parent_bubble`, which passes for BOTH the correct
+  behaviour and the R4 H1 leak (both outcomes block bubble before
+  parent fires). Added a `parent` capture listener and an assertion
+  that `parent-capture:1` fires EXACTLY TWICE — once in the outer
+  dispatch and once in the microtask-driven inner re-dispatch. A
+  single-occurrence trace now signals the R4 H1 leak.
+- **R4 adversarial review triage**:
+  - R4 M3 (`defaultPrevented` save) — not fixed in this PR. Chrome's
+    per-dispatch-vs-per-event canceled-flag semantics are not pinned
+    by a probe; filed as 0.8.2 follow-up #450 (R3 L1). The outer
+    dispatch's return value is `!record.defaultPrevented`, so a
+    microtask that calls `preventDefault()` CAN mutate the outer's
+    return value today; whether that matches Chrome is unproved.
+  - R4 M5 (#449 capture is forward-defensive, no engine reader) —
+    the capture is correct as a surf-consumer fix. No turbo-dom
+    change; documented in the #449 bullet above.
+  - R4 M1 (TableRowGroup variants ship but unused), R4 M2
+    (break-inside two sources of truth) and R4 M6 (mutation-coverage
+    debt) filed as 0.8.2 follow-ups #472, #473 and #474.
 - **turbo-dom-browser-env Promise[Symbol.species] captured at bootstrap (#449,
   turbo-surf#245)**: the install-time captured-intrinsics snapshot
   (`captured_intrinsics.js`) now captures `Array[Symbol.species]`,

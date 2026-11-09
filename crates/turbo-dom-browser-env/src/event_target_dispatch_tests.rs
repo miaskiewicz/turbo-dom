@@ -422,12 +422,24 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
         "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
     )
     .unwrap();
+    // Review R4 M4: tighten the R3 H1 assertion. The earlier version only
+    // checked `!has_parent_bubble` — a test that passes for both correct
+    // behaviour AND the R4 H1 leak (outer stop leaking INTO the inner
+    // dispatch), because both make bubble stop before `parent` runs. Add
+    // a `parent` capture listener: it must fire TWICE (once during the
+    // outer dispatch's capture, once during the inner re-dispatch's
+    // capture — each BEFORE `mid`'s capture calls stopPropagation). With
+    // the R4 H1 leak, the inner's `dispatchMulti` bails on its capture
+    // loop's first guard and `parent-capture` fires only once (outer).
     let source = r#"(() => {
       const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
       globalThis.__testSetParent(child, () => mid);
       globalThis.__testSetParent(mid, () => parent);
       const trace = [];
       let queued = false;
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-capture:' + event.eventPhase);
+      }, { capture: true });
       mid.addEventListener('ping', (event) => {
         trace.push('mid-capture:' + event.eventPhase);
         event.stopPropagation();
@@ -470,6 +482,302 @@ fn microtask_re_dispatch_preserves_outer_stop_propagation() {
         !has_parent_bubble,
         "parent-bubble must not fire: stopPropagation called on mid should \
          suppress bubble on both outer and inner dispatches. Trace: {trace}",
+    );
+    // R4 M4 tightening: `parent-capture:1` must fire BOTH during the
+    // outer dispatch AND during the inner re-dispatch — each BEFORE
+    // `mid`'s capture (which stops propagation). Exactly two
+    // occurrences distinguishes correct behaviour from the R4 H1 leak
+    // (which skips the inner's capture entirely).
+    let parent_capture_count = array
+        .iter()
+        .filter(|v| v.as_str().unwrap() == "parent-capture:1")
+        .count();
+    assert_eq!(
+        parent_capture_count, 2,
+        "parent-capture:1 must fire TWICE — once in the outer dispatch \
+         and once in the microtask-driven inner re-dispatch. The R4 H1 \
+         leak makes the inner's `dispatchMulti` bail on its first \
+         `if (record.stop || record.stopImmediate) return;`, so a \
+         single-occurrence trace is the signature of that bug. \
+         Trace: {trace}",
+    );
+    // Also assert the microtask actually ran — guards against a mutant
+    // that drops the drain altogether.
+    let has_microtask_start = array
+        .iter()
+        .any(|v| v.as_str().unwrap() == "microtask-start");
+    let has_microtask_end = array
+        .iter()
+        .any(|v| v.as_str().unwrap() == "microtask-end");
+    assert!(
+        has_microtask_start && has_microtask_end,
+        "the microtask must have started and completed. Trace: {trace}",
+    );
+    reset();
+}
+
+/// Review R4 H1: `drainMicrotasksAcrossDispatch` added `stop` / `stopImmediate`
+/// to the SAVE set (R3 H1) but did NOT CLEAR them before the
+/// `microtaskCheckpoint`. A nested re-dispatch from a microtask therefore
+/// enters `dispatchMulti` / `dispatchTarget` with the outer's `record.stop =
+/// true`, and the inner's capture / bubble loops bail out on their first
+/// `if (record.stop || record.stopImmediate) return;` check — Chrome 156
+/// dispatches each nested dispatch as an independent `stop` scope and runs
+/// every phase of the inner. Fix: clear `record.stop` / `record.stopImmediate`
+/// after saving but before the checkpoint, so a nested re-dispatch starts
+/// fresh and the outer's values restore on the drain's finally.
+#[test]
+fn nested_re_dispatch_sees_fresh_stop_propagation_state() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Three-level chain child -> mid -> parent. Outer dispatches the SAME
+    // event the inner will re-dispatch; the only listener that stops
+    // propagation lives on mid (a `pingOnce` guard keeps it from recursing
+    // in the inner dispatch). The outer's stopPropagation must NOT leak
+    // INTO the inner's dispatch — Chrome 156 treats each nested dispatch as
+    // an independent stop scope, so every capture / bubble phase on the
+    // inner must still fire. With R4 H1's bug, the drain's checkpoint runs
+    // with the outer's `record.stop = true` still on the shared record, and
+    // the inner's `dispatchMulti` bails on its first
+    // `if (record.stop || record.stopImmediate) return;` — inner capture
+    // and bubble phases silently skipped, only AT_TARGET fires.
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let stoppedOnce = false, queued = false;
+      let depth = 0;
+      // Capture listeners: path walks parent -> mid -> child, so the
+      // parent's capture runs BEFORE mid's and records the outer phase.
+      parent.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':parent-capture:' + event.eventPhase);
+      }, { capture: true });
+      mid.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':mid-capture:' + event.eventPhase);
+        if (!stoppedOnce) {
+          stoppedOnce = true;
+          event.stopPropagation();
+        }
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('inner-start');
+            depth = 1;
+            try { child.dispatchEvent(event); }
+            catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+            depth = 0;
+            trace.push('inner-end');
+          });
+        }
+      }, { capture: true });
+      // AT_TARGET on child.
+      child.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':child-target:' + event.eventPhase);
+      });
+      // Bubble: mid, then parent.
+      mid.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':mid-bubble:' + event.eventPhase);
+      });
+      parent.addEventListener('ping', (event) => {
+        trace.push('depth=' + depth + ':parent-bubble:' + event.eventPhase);
+      });
+      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "nested re-dispatch stop-state script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Outer (depth=0) stop assertions: parent-capture fires BEFORE mid
+    // (chain is parent -> mid -> child, capture walks top to target).
+    // AT_TARGET's child-target DOES fire — stopPropagation does NOT stop
+    // AT_TARGET (only stopImmediatePropagation does). Bubble is skipped.
+    assert!(
+        has("depth=0:parent-capture:1"),
+        "depth=0:parent-capture must fire (capture walks top to target; \
+         stopPropagation on mid comes after parent). Trace: {trace}",
+    );
+    assert!(
+        has("depth=0:mid-capture:1"),
+        "depth=0:mid-capture must fire (and calls stopPropagation). \
+         Trace: {trace}",
+    );
+    assert!(
+        has("depth=0:child-target:2"),
+        "depth=0:child-target MUST fire — stopPropagation on a multi-level \
+         path does NOT block AT_TARGET's own level (only \
+         stopImmediatePropagation does). Trace: {trace}",
+    );
+    assert!(
+        !has("depth=0:mid-bubble:3"),
+        "depth=0:mid-bubble must NOT fire — outer stopPropagation. \
+         Trace: {trace}",
+    );
+    assert!(
+        !has("depth=0:parent-bubble:3"),
+        "depth=0:parent-bubble must NOT fire — outer stopPropagation. \
+         Trace: {trace}",
+    );
+    // Inner dispatch (depth=1) assertions: every phase runs — the outer's
+    // stop state must NOT leak INTO the inner through the drain's unreset
+    // `record.stop`. With R4 H1's bug, the inner's `dispatchMulti` bails
+    // on its capture loop's first `if(record.stop||record.stopImmediate)
+    // return;` check — AT_TARGET and bubble never run either (dispatchMulti
+    // returns from the capture loop, not from a per-phase guard).
+    assert!(
+        has("depth=1:parent-capture:1"),
+        "depth=1:parent-capture must fire — the outer's stopPropagation \
+         must NOT leak into the microtask-driven re-dispatch of the same \
+         event (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:mid-capture:1"),
+        "depth=1:mid-capture must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:child-target:2"),
+        "depth=1:child-target must fire — with the R4 H1 leak, the inner \
+         dispatchMulti bails on its capture loop before AT_TARGET runs. \
+         Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:mid-bubble:3"),
+        "depth=1:mid-bubble must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    assert!(
+        has("depth=1:parent-bubble:3"),
+        "depth=1:parent-bubble must fire — the outer's stopPropagation \
+         must NOT leak (R4 H1). Trace: {trace}",
+    );
+    reset();
+}
+
+/// Review R4 H2: `record.trusted` is dispatch-scoped — `dispatchTarget`'s
+/// entry writes it from the `host` parameter, and neither its own
+/// `finally` nor `drainMicrotasksAcrossDispatch`'s save-set restores it.
+/// A trusted outer whose microtask re-dispatches the same event flips
+/// `record.trusted = false` (untrusted inner), and the outer's
+/// subsequent bubble listeners see `event.isTrusted === false` — a
+/// trusted event spuriously becomes untrusted mid-dispatch.
+///
+/// Fix: add `trusted` to the drain's save-set alongside `stop` /
+/// `stopImmediate`. (Clearing is not required: the inner's own
+/// `dispatchTarget` entry overwrites `trusted` anyway.)
+#[test]
+fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Three-level chain child -> mid -> parent. Host-dispatch on child
+    // (trusted). `child`'s capture listener queues a microtask that
+    // synchronously re-dispatches the same event through
+    // `child.dispatchEvent` (untrusted). After the microtask returns and
+    // the outer's dispatch continues, every outer listener on the path
+    // must still see `event.isTrusted === true` — the trusted flag of
+    // the outer dispatch is not the inner's to toggle.
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let queued = false;
+      // capture on child (runs AT_TARGET on a multi-level — fires first
+      // after parent + mid capture). Queue the microtask here; its
+      // observable is BUBBLE listeners on mid + parent that follow.
+      child.addEventListener('x', (event) => {
+        trace.push('outer:child:isTrusted=' + event.isTrusted);
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('inner-start:beforeTrusted=' + event.isTrusted);
+            try { child.dispatchEvent(event); }
+            catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+            trace.push('inner-end:afterTrusted=' + event.isTrusted);
+          });
+        }
+      }, { capture: true });
+      // Bubble listeners run AFTER the drain restores (if the save
+      // works), so each must still see isTrusted = true on the outer.
+      mid.addEventListener('x', (event) => {
+        trace.push('outer:mid-bubble:isTrusted=' + event.isTrusted);
+      });
+      parent.addEventListener('x', (event) => {
+        trace.push('outer:parent-bubble:isTrusted=' + event.isTrusted);
+      });
+      globalThis.__hostDispatchTarget(new Event('x', { bubbles: true }), child);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "trusted-leak script: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    // Outer AT_TARGET listener on child must see trusted (the host set it).
+    assert!(
+        has("outer:child:isTrusted=true"),
+        "outer:child must see isTrusted=true (host dispatch set it). \
+         Trace: {trace}",
+    );
+    // Inner re-dispatch via `child.dispatchEvent(event)` is NOT a host
+    // call — the inner's `dispatchTarget` writes `record.trusted =
+    // host = false`. Its finally does not restore trusted, so without
+    // the save/restore the outer's bubble listeners would see false.
+    assert!(
+        has("outer:mid-bubble:isTrusted=true"),
+        "outer:mid-bubble must see isTrusted=true — the inner \
+         (untrusted) re-dispatch's trusted flag must NOT leak back into \
+         the outer (R4 H2). Trace: {trace}",
+    );
+    assert!(
+        has("outer:parent-bubble:isTrusted=true"),
+        "outer:parent-bubble must see isTrusted=true — the inner \
+         (untrusted) re-dispatch's trusted flag must NOT leak back into \
+         the outer (R4 H2). Trace: {trace}",
     );
     reset();
 }
