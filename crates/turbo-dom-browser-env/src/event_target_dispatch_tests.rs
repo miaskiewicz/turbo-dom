@@ -297,14 +297,28 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
       // also drains, but the explicit parent hook mirrors the real IDB
       // consumer that motivated #382.
       globalThis.__testSetParent(target, () => null);
-      let count = 0, error = null, ran = false;
+      // turbo-dom#451: isolate two distinct properties.
+      //   (1) a SYNC re-dispatch of the same event inside its own listener
+      //       must throw InvalidStateError (Chrome's actual dispatch-flag
+      //       contract; a mutant that drops the `dispatching` guard would
+      //       silently recurse without this probe).
+      //   (2) a MICROTASK re-dispatch of the same event must run exactly
+      //       once more (count === 2), because the per-listener checkpoint
+      //       has saved/restored the dispatch flag by then.
+      let count = 0, syncError = null, asyncError = null, ran = false;
+      let syncTried = false;
       target.addEventListener('ping', (event) => {
         count++;
         if (count === 1) {
+          // Sync probe: must throw InvalidStateError while dispatching.
+          syncTried = true;
+          try { target.dispatchEvent(event); }
+          catch (e) { syncError = (e && e.name) || String(e); }
+          // Microtask probe: must not throw and must increment count.
           Promise.resolve().then(() => {
             ran = true;
             try { target.dispatchEvent(event); }
-            catch (e) { error = (e && e.name) || String(e); }
+            catch (e) { asyncError = (e && e.name) || String(e); }
           });
         }
       });
@@ -312,7 +326,7 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
       // The microtask drains inside the dispatch's per-listener finally
       // (turbo-dom#382). After dispatchTarget returns, the microtask has
       // already run — count reflects whether it was allowed through.
-      return JSON.stringify({ count, error, ran });
+      return JSON.stringify({ count, syncError, asyncError, ran, syncTried });
     })()"#;
     super::crate_surface::run_engine_script(
         scope,
@@ -334,8 +348,10 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result, r#"{"count":2,"error":null,"ran":true}"#,
-        "microtask-driven re-dispatch of the same event must not throw",
+        result,
+        r#"{"count":2,"syncError":"InvalidStateError","asyncError":null,"ran":true,"syncTried":true}"#,
+        "sync re-dispatch while dispatching must throw InvalidStateError; \
+         microtask re-dispatch must run exactly once more (count=2)",
     );
     reset();
 }
