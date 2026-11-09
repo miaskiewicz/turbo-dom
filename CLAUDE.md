@@ -272,7 +272,10 @@ package or publish workflow.
   deferred. Since turbo-dom#398 PR-E a child with `column-span: all` breaks the
   flow: pre-span and post-span runs each become their own sub-flow balanced
   over `used_count` columns, and the span-all child places at the
-  container's full content inline size (CSS Multicol 1 §6). `break-before:
+  container's full content inline size (CSS Multicol 1 §6). `column-span: all`
+  is gated on the kid being in-flow — an out-of-flow (`position: absolute` /
+  `fixed`) or floated kid that declares it is ignored, per §6.1 "A spanning box"
+  (R2 layout M1). `break-before:
   column` / `break-after: column` force a column break; `break-inside: avoid`
   / `avoid-column` pushes a child that would fragment into a fresh column
   (when it fits in one — CSS Fragmentation 3 §5.2 "may ignore the value"
@@ -280,7 +283,11 @@ package or publish workflow.
   and stay no-ops here. The balancer becomes a 30-step binary search for the
   smallest `col_h` at which the break-aware flow fits in `used_count` columns,
   capped by the container's definite height (a capped `col_h` smaller than
-  the break-aware minimum accepts overflow strips past `used_count`). Six
+  the break-aware minimum accepts overflow strips past `used_count`). The last
+  in-flow column is end-aligned at `cx + cw - used_width` (Chrome's Blink
+  multicol), not `(used_count - 1) * stride`; the two agree on a pure-float
+  path but the stride formula would drift by up to 1/64 px if `used_width` is
+  ever rounded to Chrome's LayoutUnit grid (R2 layout M3). Six
   new Chrome 156 cases cover it: `span-all-simple`, `span-all-balance`,
   `break-before-column`, `break-after-column`, `break-inside-avoid`,
   `break-inside-avoid-fits-anyway`.
@@ -543,7 +550,12 @@ Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom
   `composedPath()` inside a non-Node listener returns only `[currentTarget]` (Chrome 156's
   IDB contract). The non-Node path drains microtasks between listeners (turbo-dom#382) so a
   Promise queued inside one listener has settled before the next runs — the window dispatch
-  (`invoke`) is unchanged.
+  (`invoke`) is unchanged. The per-listener drain is wrapped in
+  `drainMicrotasksAcrossDispatch`: it saves and restores every dispatch-scoped field
+  (`dispatching` / `currentTarget` / `eventPhase` / `path` / `target`) across the
+  checkpoint, so a microtask that synchronously re-dispatches the same event object runs
+  in its own scope and the outer dispatch resumes unchanged — matching Chrome 156's
+  per-dispatch (not per-event) dispatch flag semantics (R2 V8 M3).
 - **Shadow DOM is pay-for-what-you-use, gated on `Document.__hasShadow`** (set by the first
   `attachShadow`; armed eagerly for declarative `<template shadowrootmode>` in `index.mjs`, behind
   a `'shadowroot'` substring check on the HTML). Until then every hot path runs byte-for-byte as

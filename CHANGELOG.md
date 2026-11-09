@@ -9,6 +9,82 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env Trusted Types**: adversarial review R2 cleanups.
+  (1) The factory's internal state object is now built from
+  `Object.create(null)`, so `trusted_types::install_policy`'s
+  `state.set('authorize', callback)` cannot walk into an attacker-planted
+  `Object.prototype.authorize` setter inside the cancel-terminate window —
+  closing a prototype-pollution escape of the embedder's watchdog
+  (miaskiewicz/turbo-dom R2 V8 H1). (2) The cancel / restore of the
+  terminating flag around the write is now a Rust scope-guard
+  (`TerminationRestore`); its `Drop` makes the restore panic-safe and
+  future-proof against a new branch forgetting the manual restore
+  (R2 V8 M6).
+- **turbo-dom-browser-env workers**: `worker_scope.js` now captures its own
+  intrinsics at install time (`SetType`, `SetAdd/Del/Has/Size/ForEach`,
+  `MapType` / `MapGet` / `MapSet`, `Reflect.apply`) and routes listener-set,
+  dispatch and `structuredClone` cycle detection through them. A worker
+  page that poisons `globalThis.Set` or `Array.prototype[@@iterator]` can
+  no longer intercept listener bookkeeping or the dispatch iteration —
+  parity with the main-realm `captured_intrinsics.js`
+  (R2 V8 M1, follow-ups miaskiewicz/turbo-dom#435, #437-#439).
+- **turbo-dom-browser-env dispatch**: a microtask queued inside a non-Node
+  EventTarget listener can now re-dispatch the same event object. The
+  per-listener microtask checkpoint (#382) runs through a
+  `drainMicrotasksAcrossDispatch` helper that saves and restores every
+  dispatch-scoped field (`dispatching` / `currentTarget` / `eventPhase` /
+  `path` / `target`), so Chrome 156's per-dispatch flag semantics hold
+  and the InvalidStateError throw is gone (R2 V8 M3).
+- **turbo-dom-browser-env lifecycle**: `run_init_scripts` breaks out of
+  its loop as soon as `scope.is_execution_terminating()` is true after a
+  script, so a terminating isolate no longer churns the remaining init
+  scripts against a scope V8 refuses (R2 V8 M2, miaskiewicz/turbo-dom#436).
+- **turbo-dom-browser-env ownership**: `sweep_collected`'s second
+  `DOM_CONTEXTS` pass now gates `weak.is_empty()` on
+  `OTHER_DOMS.contains(id)`. A non-surf embedder (host-internals feature
+  / standalone test harness) that registers a context without a paired
+  `OTHER_DOMS` record no longer sees its contexts pruned on the binding's
+  GC sweep — its lifecycle is the embedder's to drive (R2 V8 M5).
+- **turbo-dom-layout display defaults**: `ensure_default_display` and
+  `UA_CSS` now cover every HTML tag whose Chrome `html.css` default is
+  not `inline`. Additions: `optgroup` → `block`, `datalist` → `none`,
+  `marquee` → `inline-block`, `slot` → `contents`, `rt` → `ruby-text`,
+  `rtc` → `ruby-text-container`, `rp` → `none`. `summary` flipped from
+  `block` to `list-item` with the Chrome 156 `list-style:
+  disclosure-closed inside`, so `<details>` paints its disclosure
+  triangle (R2 layout H1).
+- **turbo-dom-layout Display enum**: introduced
+  `Display::TableRowGroup` / `Display::TableColumnGroup` /
+  `Display::TableColumn` variants, with matching `specified_display`
+  arms and blockification. `html_default_display`'s keywords for
+  `tbody` / `colgroup` / `col` now land on distinct variants instead of
+  silently falling through to `Display::Block` — the R1 H2 "tbody fix"
+  is no longer a no-op end-to-end (R2 layout H2).
+- **turbo-dom-layout live-input path**: `input[type=hidden]` resolves to
+  `Display::None` even when the embedder supplies no UA origin, matching
+  Chrome's `input[type=hidden] { display: none }` UA rule (R2 layout H1
+  continuation).
+- **turbo-dom-layout coverage**: tightened the R1 H2 live test to assert
+  the resolved `Display` variant (not just the inline-override width),
+  so a future dead-string regression — a new `table-*` keyword without a
+  `specified_display` match arm — fails loudly instead of masking under
+  `Block` (R2 layout M5).
+- **turbo-dom-layout multicol**: `column-span: all` is now gated on the
+  kid being in-flow (`!position_of(style).is_out_of_flow() &&
+  float_of(style) == Float::None`), matching CSS Multicol 1 §6.1 "A
+  spanning box: Out-of-flow boxes and floated elements cannot be
+  column-span-all" (R2 layout M1).
+- **turbo-dom-layout multicol**: the last in-flow column is end-aligned
+  at `cx + cw - used_width`, matching Chrome's Blink multicol. The two
+  formulas agree on a pure-float path (as `used_width` is not
+  integer-truncated), but the stride formula would drift by up to
+  1/64 px if a future change rounded `used_width` to Chrome's
+  LayoutUnit grid (R2 layout M3).
+- **turbo-dom-browser-env CSSOM**: `is_supported_property`'s `-moz-*`
+  rejection now matches ASCII case-insensitively (CSS 2.2 §4.1.1), so
+  `CSS.supports('-MOZ-appearance', 'none')` and mixed-case `-Moz-` /
+  `-moz-` spellings all return `false` like Chrome 156 (R2 layout M2,
+  miaskiewicz/turbo-dom#390 follow-up).
 - **turbo-dom-layout multicol**: adversarial review R1 cleanups.
   (1) The Chrome 156 geometry oracle tolerance
   tightens from 0.5 px to 0.1 px — Chrome's `LayoutUnit` grid is 1/64 px
