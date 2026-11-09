@@ -2293,6 +2293,55 @@ mod tests {
     // with NaN is false; Infinity is strictly positive) and the `shape`
     // serializer wrote `width="NaN"` / `width="inf"` into the document.
     // Guard `rect_r` so non-finite coordinates emit nothing.
+    // v0.8.2 raster-cov: `paint_inset_shadow` (SVG) guards the padding box
+    // against a non-positive inline or block size BEFORE it writes a
+    // `<mask>` into the document — without this guard a border wider than
+    // the fragment (padding box = width - left - right <= 0) would emit
+    // `<mask … width="-N"/>` and a `<rect … width="-N"/>` inside it,
+    // dirtying the document and producing an invalid mask. Reachable from
+    // honest layout: a `box-sizing: border-box` box whose borders exceed
+    // its box dimensions, so this test pins the guard with a real
+    // inset-shadow configuration.
+    #[test]
+    fn paint_inset_shadow_svg_skips_a_border_wider_than_the_fragment() {
+        let side = BorderSide {
+            width: 20,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side,
+            right: side,
+            bottom: side,
+            left: side,
+        };
+        let shadow = BoxShadow {
+            offset_x: 0,
+            offset_y: 0,
+            blur: 0,
+            spread: 0,
+            color: RED,
+            inset: true,
+        };
+        let f = Fragment::new(
+            NodeId(0),
+            1.0,
+            1.0,
+            10.0,
+            10.0,
+            FragmentContent::Marker(MarkerKind {
+                id: 1,
+                inline: false,
+            }),
+        );
+        let mut buf = String::new();
+        paint_inset_shadow(&mut buf, &f, &border, &BorderRadii::ZERO, Some(&shadow));
+        assert!(
+            buf.is_empty(),
+            "a border wider than the fragment collapses the padding box; \
+             the inset-shadow painter must emit no markup, got: {buf}"
+        );
+    }
+
     #[test]
     fn paint_subtree_box_rejects_non_finite_coords() {
         for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
