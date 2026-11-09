@@ -492,6 +492,110 @@ mod tests {
         assert_eq!(html_default_display("span"), None);
         assert_eq!(html_default_display("x-custom"), None);
     }
+
+    /// turbo-dom#445 drift guard: `UA_CSS` and `html_default_display` are two sources of
+    /// truth for the same per-tag `display`. Derive a tag-to-display map from `UA_CSS`'s
+    /// bare-selector `display:` rules (one-token selectors with no attribute / combinator
+    /// parts) and assert `html_default_display` returns the same keyword for every tag
+    /// `UA_CSS` sets, and conversely never claims a non-`inline` default for a tag
+    /// `UA_CSS` leaves at the CSS initial. A new tag added to only one source fails this
+    /// test.
+    #[test]
+    fn html_default_display_matches_ua_css_display_rules() {
+        let mut from_ua: std::collections::BTreeMap<&str, &str> =
+            std::collections::BTreeMap::new();
+        for rule in UA_CSS.split('}') {
+            let Some((selector, body)) = rule.split_once('{') else {
+                continue;
+            };
+            // Only consider rules whose body declares `display:` as the first/only decl.
+            let Some(display_value) = extract_display_value(body) else {
+                continue;
+            };
+            // Split the comma-separated selector list and keep only bare tag selectors
+            // (one ASCII-ident token, no `[` / `:` / `>` / `.` / `#` / space) — a compound
+            // like `input[type=hidden]` is per-attribute and not a plain tag default.
+            for sel in selector.split(',') {
+                let sel = sel.trim();
+                if sel.is_empty() || !is_bare_tag(sel) {
+                    continue;
+                }
+                // Later rules override earlier ones for the same tag (cascade order).
+                from_ua.insert(sel, display_value);
+            }
+        }
+        // `<body>` is a block in the main `UA_CSS`; `html_default_display` agrees. Every
+        // UA_CSS entry except `inline` (which is the CSS initial, so no fallback needed)
+        // must have an `html_default_display` row.
+        let mut mismatches = Vec::new();
+        for (tag, display_value) in &from_ua {
+            match html_default_display(tag) {
+                Some(got) if got == *display_value => {}
+                Some(got) => mismatches.push(format!(
+                    "{tag}: UA_CSS says {display_value:?}, html_default_display says {got:?}"
+                )),
+                None if *display_value == "inline" => {}
+                None => mismatches.push(format!(
+                    "{tag}: UA_CSS says {display_value:?}, html_default_display returns None"
+                )),
+            }
+        }
+        // And the converse: every html_default_display row must be grounded in UA_CSS,
+        // so a surf-mode fallback does not invent a default UA_CSS does not declare.
+        for tag in [
+            "address", "article", "aside", "blockquote", "body", "center", "dd", "details",
+            "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer",
+            "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "html",
+            "legend", "listing", "main", "menu", "nav", "ol", "optgroup", "option", "p",
+            "plaintext", "pre", "search", "section", "ul", "xmp", "li", "summary", "table",
+            "thead", "tbody", "tfoot", "tr", "caption", "td", "th", "colgroup", "col",
+            "input", "textarea", "select", "button", "progress", "meter", "marquee",
+            "template", "datalist", "rp", "slot", "rt", "rtc",
+        ] {
+            let Some(got) = html_default_display(tag) else {
+                mismatches.push(format!("{tag}: html_default_display None but is a known tag"));
+                continue;
+            };
+            match from_ua.get(tag) {
+                Some(ua) if *ua == got => {}
+                Some(ua) => mismatches.push(format!(
+                    "{tag}: html_default_display says {got:?}, UA_CSS says {ua:?}"
+                )),
+                None => mismatches.push(format!(
+                    "{tag}: html_default_display says {got:?}, UA_CSS has no rule"
+                )),
+            }
+        }
+        assert!(
+            mismatches.is_empty(),
+            "UA_CSS vs html_default_display drift ({}): \n  {}",
+            mismatches.len(),
+            mismatches.join("\n  "),
+        );
+    }
+
+    /// Return the value of a `display:` declaration in a UA_CSS rule body, or `None`
+    /// if the body declares no `display`.
+    fn extract_display_value(body: &str) -> Option<&str> {
+        for decl in body.split(';') {
+            let decl = decl.trim();
+            let Some((prop, value)) = decl.split_once(':') else {
+                continue;
+            };
+            if prop.trim() == "display" {
+                return Some(value.trim());
+            }
+        }
+        None
+    }
+
+    /// A bare lowercase ASCII-tag selector: nothing but `[a-z0-9]+`.
+    fn is_bare_tag(sel: &str) -> bool {
+        !sel.is_empty()
+            && sel
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+    }
 }
 
 /// Original UA source for embedders that use a different selector parser.
