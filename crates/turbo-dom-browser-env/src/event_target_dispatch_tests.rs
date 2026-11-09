@@ -1712,8 +1712,7 @@ fn abort_signal_timeout_polyfill_drains_between_listeners() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result,
-        r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
         "`AbortSignal.timeout` must route through `globalThis.setTimeout` so \
          the embedder's engine-task scope brackets the abort dispatch (Chrome \
          156 interleaves listener microtasks; batched `[L0,L1,M0,M1,...]` is \
@@ -1784,8 +1783,7 @@ fn abort_signal_any_polyfill_drains_between_listeners() {
         })
         .to_rust_string_lossy(scope);
     assert_eq!(
-        result,
-        r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
+        result, r#"["L0:enter","L0:microtask","L1:enter","L1:microtask","after"]"#,
         "`AbortSignal.any` must forward its input's abort so the derived \
          signal's listeners interleave their microtasks (Chrome 156's \
          abort_signal_any_and_timeout_match_chrome156 contract). Observed: {result}",
