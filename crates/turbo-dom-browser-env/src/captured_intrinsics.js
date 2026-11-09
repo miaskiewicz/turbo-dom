@@ -9,6 +9,24 @@
   if (typeof ns.completeNodeIntrinsics === 'function') ns.completeNodeIntrinsics();
   ns.handlerAdd = target.addEventListener;
   ns.handlerRemove = target.removeEventListener;
+  // Every well-known `@@species` getter V8 may consult on a derived-class protocol
+  // (miaskiewicz/turbo-dom#449 / turbo-surf#245): `Array.prototype.slice|map|filter|concat|splice`,
+  // `Promise.prototype.then|catch|finally`, `Map.prototype.*` / `Set.prototype.*`'s
+  // subclass protocol, `RegExp[@@species]` which `String.prototype.split` /
+  // `replaceAll` reach through, and the typed-array / buffer `slice` family.
+  // (`WeakMap`/`WeakSet` have no `@@species`, so none is captured.)
+  // A page that replaces one of these with a thrower before the engine runs its
+  // iframe install (or any later engine path) poisons the live read; the captured
+  // reference lets the engine (and surf's own install, which reads them off
+  // `__tsNs`) dispatch to the real constructor without ever touching live
+  // `Promise`/`Array` etc. The capture runs before the first page script, so a
+  // patch that lands after bootstrap never reaches these bindings.
+  ns.ArraySpecies = Array[Symbol.species];
+  ns.PromiseSpecies = Promise[Symbol.species];
+  ns.MapSpecies = Map[Symbol.species];
+  ns.SetSpecies = Set[Symbol.species];
+  ns.RegExpSpecies = RegExp[Symbol.species];
+  ns.ArrayBufferSpecies = ArrayBuffer[Symbol.species];
   // Every interface prototype's own `on*` setters, keyed by prototype.
   const tables = new Map(), names = ownKeys(g);
   // One prototype's own `on*` setters, or null when it has none.

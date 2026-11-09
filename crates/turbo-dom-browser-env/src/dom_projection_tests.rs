@@ -358,7 +358,6 @@ fn sibling_bootstrap_files_use_captured_intrinsics_under_prototype_poison() {
         for(const key of ['get','set','delete']) Map.prototype[key]=trip;
         for(const key of ['add','has','delete']) WeakSet.prototype[key]=trip;
         for(const key of ['get','set','has']) WeakMap.prototype[key]=trip;
-        // event_listeners.js (window + non-Node EventTarget paths).
         attempt('window-add-dispatch',()=>{
           let hit=0; const handler=()=>{hit++};
           window.addEventListener('zoom',handler);
@@ -372,7 +371,6 @@ fn sibling_bootstrap_files_use_captured_intrinsics_under_prototype_poison() {
           t.dispatchEvent(new Event('ping'));
           return hit===1;
         });
-        // trusted_types.js: factory read + policy creation/use.
         attempt('trusted-types-factory',()=>{
           return typeof trustedTypes==='object';
         });
@@ -398,5 +396,98 @@ fn sibling_bootstrap_files_use_captured_intrinsics_under_prototype_poison() {
         .and_then(|script| script.run(catch))
         .unwrap_or_else(|| panic!("{}", catch.exception().unwrap().to_rust_string_lossy(catch)));
     assert_eq!(result.to_rust_string_lossy(catch), "ok");
+    reset();
+}
+
+/// turbo-dom#449: page JS that patches `Promise[Symbol.species]` (and every other
+/// well-known species getter) BEFORE an iframe is created must not poison the
+/// `iframe.contentWindow` build path — the engine's `@@species` reads on this path
+/// must dispatch through bootstrap-captured references.
+#[test]
+fn every_species_getter_used_by_iframe_install_is_captured_at_bootstrap() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><body></body>");
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__capturedSpecies = {
+            PromiseSpecies: __tsNs.PromiseSpecies,
+            ArraySpecies: __tsNs.ArraySpecies,
+            MapSpecies: __tsNs.MapSpecies,
+            SetSpecies: __tsNs.SetSpecies,
+            RegExpSpecies: __tsNs.RegExpSpecies,
+            ArrayBufferSpecies: __tsNs.ArrayBufferSpecies,
+         };",
+    )
+    .unwrap();
+    let code = v8::String::new(
+        scope,
+        r#"(()=>{
+      const gopd=Object.getOwnPropertyDescriptor,def=Object.defineProperty;
+      const f=document.createElement('iframe');
+      const saved=[];let hooks=0;const trips=[];
+      const thrower=(label)=>function(){hooks++;trips.push(label);throw new Error('patched '+label)};
+      const ctors=[['Array',Array],['Promise',Promise],['Map',Map],['Set',Set],
+                   ['RegExp',RegExp],['ArrayBuffer',ArrayBuffer]];
+      for(const [name,C] of ctors){
+        const desc=gopd(C,Symbol.species);
+        if(!desc||!desc.configurable)continue;
+        saved.push([C,Symbol.species,desc]);
+        def(C,Symbol.species,{configurable:true,enumerable:desc.enumerable,
+          get:thrower('get '+name+'.@@Symbol(Symbol.species)')});
+      }
+      const targets=[[Array.prototype,'Array.prototype',['concat','filter','map','slice','splice']],
+                     [Promise.prototype,'Promise.prototype',['then','catch','finally']]];
+      for(const [o,label,members] of targets){
+        for(const k of members){
+          const d=gopd(o,k);if(!d||!d.configurable||typeof d.value!=='function')continue;
+          saved.push([o,k,d]);
+          def(o,k,{value:thrower(label+'.'+k),writable:true,configurable:true,enumerable:d.enumerable});
+        }
+      }
+      const out={};
+      try{
+        document.body.appendChild(f);
+        const w=f.contentWindow;
+        out.contentWindow=!!(w && w.document);
+        const captured=globalThis.__capturedSpecies||{};
+        out.exposes={
+          PromiseSpecies: captured.PromiseSpecies === Promise,
+          ArraySpecies: captured.ArraySpecies === Array,
+          MapSpecies: captured.MapSpecies === Map,
+          SetSpecies: captured.SetSpecies === Set,
+          RegExpSpecies: captured.RegExpSpecies === RegExp,
+          ArrayBufferSpecies: captured.ArrayBufferSpecies === ArrayBuffer,
+        };
+      }catch(e){out.err=String(e.message||e)}
+      finally{for(let i=saved.length-1;i>=0;i--){const [o,k,d]=saved[i];def(o,k,d)}}
+      out.hooks=hooks;
+      out.trips=trips;
+      return JSON.stringify(out);
+    })()"#,
+    )
+    .unwrap();
+    v8::tc_scope!(let catch, scope);
+    let result = v8::Script::compile(catch, code, None)
+        .and_then(|script| script.run(catch))
+        .unwrap_or_else(|| panic!("{}", thrown(catch.exception(), catch)));
+    let got = result.to_rust_string_lossy(catch);
+    assert!(
+        got.contains("\"contentWindow\":true") && got.contains("\"hooks\":0"),
+        "#449: iframe contentWindow must build without reading live species — got {got}"
+    );
+    assert!(
+        got.contains("\"PromiseSpecies\":true")
+            && got.contains("\"ArraySpecies\":true")
+            && got.contains("\"MapSpecies\":true")
+            && got.contains("\"SetSpecies\":true")
+            && got.contains("\"RegExpSpecies\":true")
+            && got.contains("\"ArrayBufferSpecies\":true"),
+        "#449: the bootstrap must expose every `@@species` on `__tsNs` (<Ctor>Species) \
+         so consumers can dispatch through a captured reference — got {got}"
+    );
     reset();
 }

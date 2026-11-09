@@ -73,6 +73,21 @@ at the time); this file reconstructs them from history.
   on `turbo-dom` tests (#453), cargo-mutants sweep over R1/R2/R3 fixes
   (#454), CLAUDE.md save-set audit habit (#455), broader
   `multicol_rule_chrome156.json` spot-check (#457).
+- **turbo-dom-browser-env Promise[Symbol.species] captured at bootstrap (#449,
+  turbo-surf#245)**: the install-time captured-intrinsics snapshot
+  (`captured_intrinsics.js`) now captures `Array[Symbol.species]`,
+  `Promise[Symbol.species]`, `Map[Symbol.species]`, `Set[Symbol.species]`,
+  `RegExp[Symbol.species]` and `ArrayBuffer[Symbol.species]` onto the engine
+  namespace (`__tsNs.{ArraySpecies, PromiseSpecies, MapSpecies, SetSpecies,
+  RegExpSpecies, ArrayBufferSpecies}`), so a consumer that depends on
+  `Promise[@@species]` (surf's iframe content-Window build path through V8's
+  `.then()`/`.slice()`/`.map()` slow-path species lookup) can dispatch through
+  a captured reference, not a live read a page can replace. Before this,
+  turbo-surf#245's `page_patched_intrinsics_do_not_break_loading_or_append_child`
+  / `page_patched_intrinsics_full_set_like_chrome156` panicked at the
+  `headIframe` assertion with `patched get Promise.@@Symbol(Symbol.species)`.
+  Same capture-at-install-time pattern as #172 / #396 (WeakSet bookkeeping).
+  `WeakMap` / `WeakSet` have no `@@species` and are not captured.
 - **turbo-dom-layout break-before/after/inside: column**: `break_rule_of` in
   `layout/value.rs` collapsed `page` / `column` / `left` / `right` / `recto` /
   `verso` into a single `BreakRule::Page`, so `break-before: column` reached
