@@ -11503,7 +11503,7 @@ mod tests {
             let scope = &mut v8::ContextScope::new(scope, child);
             install_independent_html(
                 scope,
-                "<body><div id=target onload='globalThis.realmMarker=\"child\"; globalThis.hits=(globalThis.hits||0)+1;'></div></body>",
+                "<body><div id=target onload='globalThis.realmMarker=\"child\"; globalThis.hits=(globalThis.hits||0)+1; globalThis.thisIsElement=(this===document.getElementById(\"target\")); globalThis.freeDocumentOwner=document;'></div></body>",
             );
         }
         let key = v8::String::new(scope, "child").unwrap();
@@ -11516,6 +11516,8 @@ mod tests {
             r#"
                 globalThis.realmMarker = 'parent';
                 globalThis.hits = 0;
+                globalThis.thisIsElement = false;
+                globalThis.freeDocumentOwner = null;
                 const node = child.document.getElementById('target');
                 // Borrow the PARENT realm's EventTarget.prototype.dispatchEvent and invoke it on a
                 // CHILD-owned element. This forces refresh() to run with scope.get_current_context()
@@ -11526,6 +11528,10 @@ mod tests {
                     childRealm: child.realmMarker,
                     parentHits: globalThis.hits,
                     childHits: child.hits,
+                    childThisIsElement: child.thisIsElement,
+                    parentThisIsElement: globalThis.thisIsElement,
+                    childFreeDocumentIsChild: child.freeDocumentOwner === child.document,
+                    childFreeDocumentIsParent: child.freeDocumentOwner === document,
                 });
             "#,
         )
@@ -11533,16 +11539,36 @@ mod tests {
         let script = v8::Script::compile(scope, src, None).unwrap();
         let out = script.run(scope).unwrap().to_rust_string_lossy(scope);
         let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Compare against the Chrome 156 control row for realm selection (turbo-dom#478).
+        let control: serde_json::Value =
+            serde_json::from_str(include_str!("iframe_inline_handler_realm_chrome156.json"))
+                .unwrap();
+        let expected = &control["result"]["realmSelection"];
+        for field in [
+            "childRealmMarker",
+            "parentRealmMarker",
+            "childHits",
+            "parentHits",
+            "childThisIsElement",
+            "parentThisIsElement",
+            "childFreeDocumentIsChild",
+            "childFreeDocumentIsParent",
+        ] {
+            let got_key = match field {
+                "childRealmMarker" => "childRealm",
+                "parentRealmMarker" => "parentRealm",
+                other => other,
+            };
+            assert_eq!(
+                v[got_key], expected[field],
+                "{field} must match Chrome 156 control: got {out}"
+            );
+        }
+        // Chrome 156: exactly ONE invocation per dispatch (surf#287 double-fire regression).
         assert_eq!(
-            v["childRealm"], "child",
-            "inline handler must assign to iframe's global: {out}"
+            v["childHits"], control["result"]["oneFirePerDispatch"]["childHitsAfterSingleDispatch"],
+            "handler fires exactly once per dispatch: {out}"
         );
-        assert_eq!(
-            v["parentRealm"], "parent",
-            "inline handler must NOT reach parent's global: {out}"
-        );
-        assert_eq!(v["childHits"], 1, "handler fired exactly once on child: {out}");
-        assert_eq!(v["parentHits"], 0, "parent hits stay zero: {out}");
         reset();
     }
 

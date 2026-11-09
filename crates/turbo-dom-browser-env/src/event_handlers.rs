@@ -239,6 +239,13 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             .as_ref()
             .is_some_and(|state| state.browsing_context)
     });
+    // The compiled function's realm is the SCOPE's current context (V8 contract for
+    // `script_compiler::compile_function`). An inline on* handler belongs to its element's
+    // own document, so the body's `globalThis`, free variable lookups, and `this` default
+    // must resolve against the element's realm — not whichever realm happened to trigger
+    // the compile (parent-borrowed `EventTarget.prototype.dispatchEvent.call(childEl, …)`
+    // reaches refresh with the parent realm current). turbo-dom#478 / turbo-surf#287.
+    let element_context = element.get_creation_context(scope);
     let function = source.filter(|_| active).and_then(|text| {
         if let Some(policy) = policy {
             let callback = dom_ownership::local(scope, policy);
@@ -256,6 +263,8 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
                 return None;
             }
         }
+        let context = element_context?;
+        let scope = &mut v8::ContextScope::new(scope, context);
         let code = v8::String::new_from_two_byte(scope, &text, v8::NewStringType::Normal)?;
         let resource = v8::String::new(
             scope,
