@@ -348,15 +348,6 @@ fn microtask_may_re_dispatch_the_same_event_without_invalid_state_error() {
 /// settings stack — a page-script `dispatchEvent` (or
 /// `AbortController.abort()`) inside a host-run listener is nested and
 /// does not drain its own listeners' microtasks between calls.
-///
-/// Repro (the surf `abort_signal_any` oracle's `timeoutNestedAbort`
-/// scenario, hoisted to a plain non-Node EventTarget so the binding
-/// test can exercise it without `AbortSignal.timeout`): a host-run
-/// outer listener synchronously dispatches `inner` on a second target;
-/// the inner listener queues a microtask, then control returns to the
-/// outer listener which pushes `after-inner`. Chrome records
-/// `["inner","after-inner","inner-microtask"]`; pre-fix the inner's
-/// drain fires the `inner-microtask` before `after-inner`.
 #[test]
 fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
     super::tests::init_v8();
@@ -379,9 +370,6 @@ fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
         const inner = new EventTarget();
         inner.addEventListener('abort', () => {
           log.push('inner');
-          // Promise.resolve().then stands in for `queueMicrotask` (the bare
-          // V8 test isolate has no window-scope polyfill); both enqueue a
-          // real microtask.
           Promise.resolve().then(() => log.push('inner-microtask'));
         });
         inner.dispatchEvent(new Event('abort'));
@@ -410,6 +398,78 @@ fn nested_dispatch_inside_host_listener_defers_microtasks_to_outer_drain() {
          microtasks between its own listeners (Chrome 156: the inner listener's \
          `queueMicrotask` fires only after the outer listener's synchronous \
          tail, not between the inner listener and its outer continuation).",
+    );
+    reset();
+}
+
+/// Review R3 H1: `drainMicrotasksAcrossDispatch` saves and restores the
+/// dispatch-scoped fields (`dispatching` / `currentTarget` / `eventPhase` /
+/// `path` / `target`) but not `stop` / `stopImmediate`. A listener on an
+/// intermediate target that calls `event.stopPropagation()` and queues a
+/// microtask which re-dispatches the same event would see the inner
+/// dispatch's `finally` reset `record.stop=false`, and the outer bubble
+/// phase run even though the listener asked to stop propagation.
+#[test]
+fn microtask_re_dispatch_preserves_outer_stop_propagation() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    let source = r#"(() => {
+      const child = new EventTarget(), mid = new EventTarget(), parent = new EventTarget();
+      globalThis.__testSetParent(child, () => mid);
+      globalThis.__testSetParent(mid, () => parent);
+      const trace = [];
+      let queued = false;
+      mid.addEventListener('ping', (event) => {
+        trace.push('mid-capture:' + event.eventPhase);
+        event.stopPropagation();
+        if (!queued) {
+          queued = true;
+          Promise.resolve().then(() => {
+            trace.push('microtask-start');
+            child.dispatchEvent(event);
+            trace.push('microtask-end');
+          });
+        }
+      }, { capture: true });
+      parent.addEventListener('ping', (event) => {
+        trace.push('parent-bubble:' + event.eventPhase);
+      });
+      child.addEventListener('ping', (event) => {
+        trace.push('child-target:' + event.eventPhase);
+      });
+      child.dispatchEvent(new Event('ping', { bubbles: true }));
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "re-dispatch stopPropagation script failed: {:?}",
+                scope.exception().map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let has_parent_bubble = array
+        .iter()
+        .any(|v| v.as_str().unwrap().starts_with("parent-bubble"));
+    assert!(
+        !has_parent_bubble,
+        "parent-bubble must not fire: stopPropagation called on mid should \
+         suppress bubble on both outer and inner dispatches. Trace: {trace}",
     );
     reset();
 }

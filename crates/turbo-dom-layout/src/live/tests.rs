@@ -745,6 +745,56 @@ fn input_type_hidden_resolves_to_display_none_in_the_live_input_path() {
     );
 }
 
+/// Review R3 M5: Chrome's UA `input[type=hidden] { display: none }` has
+/// attribute specificity (0, 1, 1), which beats an author `input { display:
+/// block }` (0, 0, 1). The prior R2 H1 continuation fallback stamped
+/// `display: none` only when the computed `display` was absent or the
+/// `inline-block` from `ensure_default_display` — so an author rule that
+/// set `display` to `block` / `flex` / `grid` left the hidden input
+/// visible, diverging from Chrome. The fix drops the narrow guard so the
+/// fallback stamps `display: none` regardless of the current computed
+/// value: it represents the UA rule, which outranks author `input { ... }`.
+#[test]
+fn input_type_hidden_overrides_author_display_block_in_live_path() {
+    use crate::layout::value::{display_of, Display};
+    // An author inline style sets display: block on an input[type=hidden].
+    // Chrome's UA rule (specificity (0,1,1)) beats the author's tag-only
+    // inline (which stays in the author origin as a tag rule once parsed —
+    // and even as an inline it ties on origin but loses on attribute
+    // specificity to a UA [type=hidden] rule). The engine's live fallback
+    // must honour that.
+    let styled = Styled::new(
+        "<body style='margin:0'>\
+         <input id=auth_block type=hidden style='display:block'>\
+         <input id=auth_flex type=hidden style='display:flex'>\
+         </body>",
+    );
+    let targets: Vec<Handle> = ["auth_block", "auth_flex"]
+        .iter()
+        .map(|id| styled.el(id))
+        .collect();
+    let (_, resolved) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            let mut out = Vec::new();
+            for h in &targets {
+                out.push(find(nodes, *h).unwrap().style.clone());
+            }
+            Ok(out)
+        })
+        .unwrap();
+    assert_eq!(
+        display_of(&resolved[0]),
+        Display::None,
+        "input[type=hidden] with author display:block must still be none \
+         — Chrome's UA rule outranks the author `input` rule"
+    );
+    assert_eq!(
+        display_of(&resolved[1]),
+        Display::None,
+        "input[type=hidden] with author display:flex must still be none"
+    );
+}
+
 #[test]
 fn snapshot_errors_pass_through() {
     let styled = Styled::new("<body></body>");

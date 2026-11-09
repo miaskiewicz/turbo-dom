@@ -9,6 +9,70 @@ at the time); this file reconstructs them from history.
 
 ### Fixed
 
+- **turbo-dom-browser-env event dispatch (R3 H1)**:
+  `drainMicrotasksAcrossDispatch` now saves and restores `stop` and
+  `stopImmediate` alongside the previously saved 5 dispatch-scoped fields.
+  A listener that calls `event.stopPropagation()` and queues a microtask
+  which synchronously re-dispatches the same event previously saw the
+  outer bubble phase fire anyway: the inner `dispatchTarget`'s `finally`
+  reset `record.stop=false`, and the drain's restore did not put it back.
+  Chrome 156 probe confirmed the microtask-triggered re-dispatch is
+  allowed (so the R2 M3 save/restore stays); the fix extends the save set
+  rather than reverting it.
+- **CHANGELOG**: spliced the two `## [0.8.1] — unreleased` headers into
+  one section. The two separate `### Fixed` blocks (R1/R2/R3 fixes
+  above, pre-R1 fixes + `### Added` below) now live under one 0.8.1
+  header, so the release tagger can flip "unreleased" to a date without
+  physically splicing the file (R3 H2).
+- **turbo-dom-browser-env Trusted Types (R3 M1)**: the regression test
+  `install_policy_succeeds_while_a_prior_frames_termination_is_pending`
+  now asserts the `TerminationRestore::Drop` actually re-terminated by
+  running a probe script right after install and checking its return is
+  `None` — not just relying on the explicit `cancel_terminate_execution`
+  below, which would mask whether Drop ran. A mutant that empties Drop's
+  body now trips the probe (locally verified).
+- **turbo-dom-layout live-input (R3 M5)**: `input[type=hidden]`
+  resolves to `display: none` regardless of the current computed
+  display, matching Chrome 156's UA rule specificity (0, 1, 1), which
+  outranks an author `input { display: block }` (0, 0, 1). The previous
+  narrow guard only stamped `none` when the computed value was absent or
+  the `inline-block` from `ensure_default_display` — an author rule
+  setting `display: block / flex / grid` left the hidden input
+  visible, diverging from Chrome.
+- **turbo-dom-browser-env captured-intrinsics audit (R3 M6)**: added
+  `sibling_bootstrap_files_use_captured_intrinsics_under_prototype_poison`
+  which poisons every Set / Map / WeakSet / WeakMap prototype
+  bookkeeping method and exercises the window + non-Node EventTarget
+  add/dispatch paths plus the Trusted Types factory read and policy
+  creation. A regression that reads any of these prototypes live in
+  `event_listeners.js` or `trusted_types.js` now trips the thrower.
+- **turbo-dom-layout multicol (R3 M4)**: the multicol flow now hosts a
+  single module-level `col_x` helper that `place_measured` and
+  `column_rule_fragments` both call. The last in-flow column's
+  end-align (R2 M3) and each gap-centre now share one formula; on any
+  future rounded-`used_width` path the two would otherwise drift at the
+  final gap. New test `column_rule_fragments_use_shared_col_x_for_last_gap`.
+- **turbo-dom-layout multicol (R3 M7)**: `break-inside: avoid | avoid-column`
+  now reads through a new `break_inside_column_avoid_of` helper in
+  `value.rs`, sibling to `break_inside_avoid_of` for the paginator. The
+  "which keywords forbid a column break" set now lives next to the
+  page-break parser; a doc comment explains why multicol does NOT route
+  through `break_rule_of` — that parser collapses `avoid` and
+  `avoid-page` into one `BreakRule::Avoid`, and `avoid-page` must not
+  suppress a column break.
+- **turbo-dom-layout multicol (R3 M2 / M3 deferred)**: R3 M2 (a
+  dispatching-flicker side channel observable only through an async
+  side-channel) and R3 M3 (the R2 M3 end-align formula is algebraically
+  identical on the pure-float path; the drift vs Chrome is 0.005 px
+  within the 0.1 px tolerance, so not a correctness bug) are documented
+  here but not fixed. Reviewer may file 0.8.2 follow-ups if they warrant
+  action later.
+- **R3 adversarial review LOW follow-ups filed for 0.8.2**:
+  defaultPrevented save (#450), R2 M3 red-test isolation (#451),
+  9999-hop collectPath coverage (#452), 1.99+ clippy `assert_is_empty`
+  on `turbo-dom` tests (#453), cargo-mutants sweep over R1/R2/R3 fixes
+  (#454), CLAUDE.md save-set audit habit (#455), broader
+  `multicol_rule_chrome156.json` spot-check (#457).
 - **turbo-dom-layout break-before/after/inside: column**: `break_rule_of` in
   `layout/value.rs` collapsed `page` / `column` / `left` / `right` / `recto` /
   `verso` into a single `BreakRule::Page`, so `break-before: column` reached
@@ -188,10 +252,6 @@ at the time); this file reconstructs them from history.
   `<span>` in IBM Plex Mono at 20px (turbo-surf's `font_face.rs`
   plain/csp "ready-height" probe) is 25 CSS px tall at every DSF, not 26
   (miaskiewicz/turbo-dom#387; sibling to the text Range path #377 fixed).
-## [0.8.1] — unreleased
-
-### Fixed
-
 - **turbo-dom-raster** / **turbo-dom-browser-env**: restored the 100% /
   97.6% coverage floors after PR-D (column-rule painting, turbo-dom#398)
   and the release/0.8.1 browser-env additions (#381 non-Node dispatch,
