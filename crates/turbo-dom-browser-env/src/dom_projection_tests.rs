@@ -1,6 +1,133 @@
 use super::*;
 use crate::browser_env::crate_surface::harness_tests::thrown;
 
+/// turbo-dom#437: a page-installed thrower on `Array[Symbol.species]` or any
+/// other captured intrinsic must surface a readable error that names the
+/// intrinsic, not the thrower's opaque message. Likewise, running the bootstrap
+/// against a frozen `__tsNs` must throw loudly (strict-mode assignment on a
+/// frozen receiver) with a message that names the intrinsic the capture
+/// failed on.
+#[test]
+fn captured_intrinsics_names_the_intrinsic_in_thrown_error() {
+    super::tests::init_v8();
+    let src = include_str!("captured_intrinsics.js");
+    // Case 1: a thrower getter on Promise[Symbol.species].
+    {
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let setup = v8::String::new(
+            scope,
+            "globalThis.__tsNs = {}; \
+             globalThis.EventTarget = class { addEventListener(){} removeEventListener(){} }; \
+             Object.defineProperty(Promise, Symbol.species, { configurable: true, \
+             get: function(){ throw new Error('page-poison') } });",
+        )
+        .unwrap();
+        v8::Script::compile(scope, setup, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let code = v8::String::new(scope, src).unwrap();
+        v8::tc_scope!(let catch, scope);
+        let ran =
+            v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
+        assert!(ran.is_none(), "captured_intrinsics must throw");
+        let msg = catch.exception().unwrap().to_rust_string_lossy(catch);
+        assert!(
+            msg.contains("PromiseSpecies") && msg.contains("captured_intrinsics"),
+            "error must name the intrinsic, got: {msg}"
+        );
+    }
+    // Case 2: a frozen __tsNs.
+    {
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let setup = v8::String::new(
+            scope,
+            "globalThis.__tsNs = Object.freeze({}); \
+             globalThis.EventTarget = class { addEventListener(){} removeEventListener(){} };",
+        )
+        .unwrap();
+        v8::Script::compile(scope, setup, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let code = v8::String::new(scope, src).unwrap();
+        v8::tc_scope!(let catch, scope);
+        let ran =
+            v8::Script::compile(catch, code, None).and_then(|script| script.run(catch));
+        assert!(ran.is_none(), "captured_intrinsics must throw on frozen __tsNs");
+        let msg = catch.exception().unwrap().to_rust_string_lossy(catch);
+        assert!(
+            msg.contains("captured_intrinsics") && msg.contains("handlerAdd"),
+            "error must name the intrinsic + file, got: {msg}"
+        );
+    }
+}
+
+/// turbo-dom#439: the WeakSet-bookkeeping audit's static companion — every `.js`
+/// sibling under `crates/turbo-dom-browser-env/src/` that instantiates a
+/// `new WeakSet(...)` must also capture `WeakSet.prototype.{add,has,delete}` (or
+/// the subset of methods it actually invokes) at module-init time, so a later
+/// page-side patch to `WeakSet.prototype.*` cannot intercept its bookkeeping.
+/// The original runtime audit only exercises paths reachable from
+/// `browser_env.js`; this scan extends coverage to every sibling.
+#[test]
+fn every_sibling_js_file_that_uses_weakset_captures_prototype_methods() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    // Files whose only WeakSet mention is in a comment (not a code reference).
+    // Explicit allow-list keeps the scan simple while making every entry an
+    // audited waiver.
+    const COMMENT_ONLY: &[&str] = &["captured_intrinsics.js"];
+    let mut saw_weakset_file = Vec::new();
+    for entry in std::fs::read_dir(&dir).unwrap() {
+        let path = entry.unwrap().path();
+        let name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(s) => s.to_string(),
+            None => continue,
+        };
+        if !name.ends_with(".js") {
+            continue;
+        }
+        // Chrome-control probes pin SHA-256 and the vendored xpath drop is
+        // byte-identical to upstream — neither can introduce engine code.
+        if name.ends_with("_probe.js") || name == "xpath.js" {
+            continue;
+        }
+        let body = std::fs::read_to_string(&path).unwrap();
+        if !body.contains("WeakSet") {
+            continue;
+        }
+        if COMMENT_ONLY.contains(&name.as_str()) {
+            continue;
+        }
+        saw_weakset_file.push(name.clone());
+        assert!(
+            body.contains("WeakSet.prototype.") || body.contains("WeakSetType.prototype."),
+            "{name} references WeakSet but does not capture any \
+             `WeakSet.prototype.*` at module init — a later page-side patch \
+             to the prototype would intercept its bookkeeping (turbo-dom#439)"
+        );
+    }
+    // Guard the scan against regressions that would reduce coverage: every
+    // known WeakSet-using sibling file must be present.
+    for expected in [
+        "browser_env.js",
+        "html_track.js",
+        "select_element.js",
+        "xml_documents.js",
+    ] {
+        assert!(
+            saw_weakset_file.iter().any(|f| f == expected),
+            "audit missed {expected} (scan only saw {saw_weakset_file:?})"
+        );
+    }
+}
+
 #[test]
 fn replaced_document_preserves_traversal_and_equality_on_all_native_node_kinds() {
     super::tests::init_v8();
