@@ -102,6 +102,24 @@ fn host_dispatch_target(
     dispatch_host_event(scope, event, target);
 }
 
+/// Test-only bridge to the Rust `engine_task_scope` (turbo-dom#484 timer
+/// regression). Page-visible `__engineTaskScope` is captured + deleted at
+/// bootstrap (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`),
+/// so tests re-bind a JS entry under the same name that drives the captured
+/// Rust API. Mirrors how `__hostDispatchTarget` is re-bound to drive
+/// `dispatch_host_event`.
+fn engine_task_scope_binding(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let callback =
+        v8::Local::<v8::Function>::try_from(args.get(0)).expect("engine-task scope callback");
+    if let Some(value) = super::engine_task_scope(scope, callback) {
+        rv.set(value);
+    }
+}
+
 /// turbo-dom#381: phase records across the parent chain match Chrome 156 IDB.
 #[test]
 fn non_node_event_target_phases_match_chrome156() {
@@ -1393,6 +1411,227 @@ fn ancestor_capture_stop_propagation_suppresses_target_at_target() {
         !has("parent-bubble:3"),
         "parent-bubble MUST NOT fire — stopPropagation also suppresses \
          bubble, same contract. Trace: {trace}",
+    );
+    reset();
+}
+
+/// turbo-dom#484 regression (timer path): V8-native `AbortSignal.timeout` fires
+/// the signal's `abort` reaction from an engine-task entry — Chrome 156
+/// checkpoints microtasks BETWEEN that dispatch's listeners (HTML "clean up
+/// after running a callback"). #484's `hostDispatchDepth > 0` gate skipped the
+/// drain here because neither the V8-native timer runner nor the native
+/// dispatch path goes through `__captureHostEventDispatch`, so the dispatch
+/// reached `afterListener` with the counter still at 0 — the listeners' queued
+/// microtasks batched at the end of the task instead of interleaving.
+///
+/// Fix: expose `globalThis.__engineTaskScope(fn)` so the embedding (surf's
+/// `__runLocalTimers` / timer runner, this test's manual wrapper) can mark
+/// engine-task boundaries. Inside the scope, the per-listener drain fires
+/// even for a page-script-shaped `target.dispatchEvent` because the realm IS
+/// at the top of the script settings stack (no page JS called in — the
+/// engine itself is running the task). Gate: `listenerDepth === 0 &&
+/// (hostDispatchDepth > 0 || engineTaskDepth > 0)`.
+///
+/// Red test: a plain `target.dispatchEvent` wrapped by `__engineTaskScope`
+/// must interleave listener-0 / listener-0-microtask / listener-1 /
+/// listener-1-microtask — Chrome 156's observed order for the surf
+/// `abort_signal_any_and_timeout_match_chrome156` oracle.
+#[test]
+fn engine_task_scope_checkpoints_microtasks_between_listeners() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    // A page-script `dispatchEvent` normally keeps A's queued microtask
+    // behind B (the drain gate's own contract; see
+    // `page_script_dispatch_does_not_checkpoint_between_listeners`). Wrapping
+    // the same call in `__engineTaskScope` promotes it to an engine-task
+    // entry — now the drain fires between A and B, and `after-dispatch`
+    // observes both microtasks already run.
+    let source = r#"(() => {
+      const target = new EventTarget();
+      const trace = [];
+      target.addEventListener('abort', () => {
+        trace.push('A:enter');
+        Promise.resolve().then(() => trace.push('A:microtask'));
+      });
+      target.addEventListener('abort', () => {
+        trace.push('B:enter');
+        Promise.resolve().then(() => trace.push('B:microtask'));
+      });
+      globalThis.__engineTaskScope(() => target.dispatchEvent(new Event('abort')));
+      trace.push('after-scope');
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // Chrome 156: Each listener's queued microtask is drained BEFORE the
+    // next listener runs (the realm is at the top of the script settings
+    // stack because the engine itself is running the timer task). Both
+    // microtasks have already run by `after-scope`.
+    //
+    // Mutation-resistance: this trace fails all of these mutants:
+    //   - Gate removed (always drain): would still pass (drain fires), but
+    //     page_script_dispatch_does_not_checkpoint_between_listeners then
+    //     fails — the pair pins the gate's both directions.
+    //   - Gate inverted (only page-script drains): A:microtask would land
+    //     AFTER both listeners, not between them.
+    //   - engineTaskDepth never incremented: same as before the fix — the
+    //     batched order `[A:enter,B:enter,A:microtask,B:microtask,...]`
+    //     appears, which this exact string refuses.
+    //   - engineTaskDepth never decremented (leaks across calls): a later
+    //     page-script dispatch in the same realm would wrongly drain; a
+    //     companion test below pins this by dispatching AFTER the scope.
+    assert_eq!(
+        result, r#"["A:enter","A:microtask","B:enter","B:microtask","after-scope"]"#,
+        "`__engineTaskScope` must restore the per-listener microtask \
+         checkpoint for a dispatch inside its bracket (HTML `clean up after \
+         running a callback`, Chrome 156's \
+         abort_signal_any_and_timeout_match_chrome156 oracle). Observed: {result}",
+    );
+    reset();
+}
+
+/// Companion to `engine_task_scope_checkpoints_microtasks_between_listeners`:
+/// `engineTaskDepth` MUST be decremented when the scope returns, otherwise a
+/// subsequent page-script dispatch in the same realm would wrongly drain
+/// between its listeners and #484's abort-bridge oracle would regress once
+/// the realm has ever entered an engine task. This pins the `finally`.
+#[test]
+fn engine_task_scope_decrements_on_exit() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      // Burn one engine-task scope so the counter would leak if the finally
+      // didn't fire, then issue a plain page-script dispatch and assert
+      // the drain does NOT run between its listeners.
+      globalThis.__engineTaskScope(() => {});
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('t', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; trace.push('microtask'); });
+      });
+      target.addEventListener('t', () => {
+        trace.push('B:' + microFlag);
+      });
+      target.dispatchEvent(new Event('t'));
+      trace.push('after:' + microFlag);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope decrement script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"["A:pending","B:pending","after:pending"]"#,
+        "`__engineTaskScope` must decrement `engineTaskDepth` on return — a \
+         subsequent page-script `dispatchEvent` MUST keep the pre-#484 \
+         page-script contract (no per-listener drain). Observed: {result}",
+    );
+    reset();
+}
+
+/// `__engineTaskScope` must restore the counter even if `fn` throws.
+/// A leaked counter would permanently break every page-script dispatch
+/// after the first engine-task entry — the `finally` is load-bearing.
+#[test]
+fn engine_task_scope_decrements_on_throw() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(
+        scope,
+        global,
+        "__engineTaskScope",
+        engine_task_scope_binding,
+    );
+    let source = r#"(() => {
+      let threw = false;
+      try {
+        globalThis.__engineTaskScope(() => { throw new Error('boom'); });
+      } catch (e) { threw = (e && e.message === 'boom'); }
+      const target = new EventTarget();
+      const trace = [];
+      let microFlag = 'pending';
+      target.addEventListener('t', () => {
+        trace.push('A:' + microFlag);
+        Promise.resolve().then(() => { microFlag = 'ran'; });
+      });
+      target.addEventListener('t', () => {
+        trace.push('B:' + microFlag);
+      });
+      target.dispatchEvent(new Event('t'));
+      return JSON.stringify({ trace, threw });
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "engine-task-scope throw script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    // After the scope rethrows, a page-script dispatch stays on the
+    // pre-#484 page-script contract (B sees 'pending') — the counter was
+    // restored by the `finally`.
+    assert_eq!(
+        result, r#"{"trace":["A:pending","B:pending"],"threw":true}"#,
+        "`__engineTaskScope` must decrement `engineTaskDepth` even on a \
+         throw from `fn`. Observed: {result}",
     );
     reset();
 }

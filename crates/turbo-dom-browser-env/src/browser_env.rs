@@ -101,6 +101,7 @@ pub fn clear_context_capabilities(scope: &mut v8::PinScope) {
             context.remove_slot::<EventRecordAccessor>();
             context.remove_slot::<HostEventDispatcher>();
             context.remove_slot::<InlineHandlerSetter>();
+            context.remove_slot::<EngineTaskScope>();
             event_listeners::clear_context(context);
             range_contents::clear_context(context);
         }
@@ -658,6 +659,13 @@ struct FormSubmissionDispatcher(v8::Weak<v8::Function>);
 struct FormValueReader(v8::Weak<v8::Function>);
 struct FormEntryListReader(v8::Weak<v8::Function>);
 struct FormDataEventDispatcher(v8::Weak<v8::Function>);
+/// turbo-dom#484 timer regression: engine-task bracket for the per-listener
+/// microtask drain. Captured from the `__engineTaskScope(fn)` bootstrap hook
+/// and invoked from Rust (surf's timer runner, our test harness) so a
+/// dispatch inside `fn` checkpoints microtasks between listeners even when
+/// the dispatch looks like a page-script `target.dispatchEvent` — the realm
+/// IS at the top of the script settings stack for the task's duration.
+struct EngineTaskScope(v8::Weak<v8::Function>);
 fn_slots!([
     FormSubmissionDispatcher,
     FormValueReader,
@@ -666,6 +674,7 @@ fn_slots!([
     EventRecordAccessor,
     HostEventDispatcher,
     InlineHandlerSetter,
+    EngineTaskScope,
 ]);
 
 #[derive(Default)]
@@ -4977,6 +4986,34 @@ pub fn dispatch_host_event_did_listeners_throw(
     set_prop(scope, record, "threw", no.into());
     dispatch_host_event(scope, event, target);
     get_bool_prop(scope, record, "threw")
+}
+
+/// turbo-dom#484 timer regression: bracket an engine-task entry so the
+/// per-listener microtask drain fires for a dispatch inside `callback` even
+/// when it looks like a page-script `target.dispatchEvent` (Chrome 156's HTML
+/// "clean up after running a callback" — the realm IS at the top of the
+/// script settings stack while the engine itself runs the task). Embeddings
+/// (surf's `__runLocalTimers`, V8-native AbortSignal.timeout fire path) wrap
+/// their timer callback invocations with this. Without it, V8-native
+/// `AbortSignal.timeout(0)` listeners batch their microtasks at the end of
+/// the task instead of interleaving per listener (surf oracle
+/// `abort_signal_any_and_timeout_match_chrome156`).
+///
+/// `callback` receives no arguments; its return value is propagated. The JS
+/// hook wraps the call in try/finally so the counter is always restored (a
+/// throwing callback rethrows here).
+pub fn engine_task_scope<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    callback: v8::Local<v8::Function>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    if scope.is_execution_terminating() {
+        return None;
+    }
+    let context = scope.get_current_context();
+    let scope_fn = context.get_slot::<EngineTaskScope>()?;
+    let function = dom_ownership::local(scope, &scope_fn.0);
+    let receiver = v8::undefined(scope).into();
+    function.call(scope, receiver, &[callback.into()])
 }
 
 /// Enter or leave an engine-delivered callback on a non-DOM target.
@@ -9333,6 +9370,11 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     ) {
         return;
     }
+    // turbo-dom#484 timer regression: engine-task bracket hook (invoked from
+    // Rust via `engine_task_scope`; see that fn's doc). Captured and deleted
+    // like every other `__capture*` bootstrap callback so page script never
+    // sees the dunder (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`).
+    capture_bootstrap_callback::<EngineTaskScope>(scope, global, "__engineTaskScope");
     event_handlers::install(scope, None, "about:blank");
     custom_elements::install(scope);
     element_internals::install(scope);
