@@ -196,13 +196,25 @@ upstream rusty_v8's features (for example `simdutf`).
   `:host` / `::slotted()`, and inheritance across the host boundary. Layout belongs to
   `turbo-dom-layout`, and through it to turbo-html2pdf and turbo-surf.
 
-## Benchmarks — pending re-run
+## Benchmarks
 
-0.6.0 and 0.7.0 have not been benchmarked against jsdom / happy-dom yet. All four
-repositories will be re-run together on a quiet machine. Until then, the last measured
-numbers (v0.1.55, 2026-06-07, darwin-arm64, JS runtime vs happy-dom and jsdom) are kept
-unchanged and labelled in [docs/BENCHMARKS-history.md](docs/BENCHMARKS-history.md). They
-predate the consolidation. 0.7.0's browser-env performance work (measured on a real
+v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
+the suite row (ms/file, lower is faster).
+
+| benchmark | turbo-dom | happy-dom | jsdom |
+|---|---:|---:|---:|
+| realistic suite, 200 files (ms/file) | 0.015 | 1.108 | 3.091 |
+| cold per-file construct + query (ops/s) | 172,562 | 675 | 294 |
+| parse 56 KB SSR (ops/s, parseBuffer) | 736 | 63 | 70 |
+| parse 20 KB real page (ops/s, parseBuffer) | 4,893 | 546 | 469 |
+| repeated query throughput (iters/s) | 2,059,250 | 740,421 | 3,909 |
+
+Ratios: ~26x happy-dom / ~72x jsdom on the suite, ~2.8x happy-dom / ~527x jsdom on
+repeated queries, ~9–12x on realistic parses. WASM fallback runs at 42–67% of native
+parseBuffer. Full results, methodology, load averages and caveats (machine was not
+quiet; fixed per-fixture contestant order) in
+[docs/BENCHMARKS-history.md](docs/BENCHMARKS-history.md), which also keeps the v0.1.55
+baseline for comparison. 0.7.0's browser-env performance work (measured on a real
 React/MUI suite) is listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
