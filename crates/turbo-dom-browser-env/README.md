@@ -190,6 +190,18 @@ TURBO_DOM_ATTACH_PATH=1 cargo test -p turbo-dom-browser-env --features host-inte
 TURBO_DOM_SNAPSHOT_PATH=1 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # startup snapshot path
 ```
 
+**Title scaling harness (offline).** The ignored `title_search_scaling` lib test
+builds documents with 0, N/10 and N unrelated body rows, checks every title read
+and write, and prints native DOM call counts and elapsed milliseconds. For example:
+
+```sh
+TITLE_ROWS=5000 TITLE_ITERATIONS=200 cargo test -p turbo-dom-browser-env --lib title_search_scaling -- --ignored --nocapture
+```
+
+The regular `title_search_stops_before_unrelated_body_content` regression compares
+native call counts, so CI does not depend on wall-clock speed. Document-order,
+namespace, insertion and mutation semantics have a separate regression.
+
 **Chrome controls.** Every `src/*_chrome15x.json` file is Chrome's own result for the
 probe beside it (`src/*_probe.js`, with cases in `src/*_cases.json`). Each was recorded
 with an independently installed Chrome and is pinned to its probe by `probeSha256`.

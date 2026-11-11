@@ -884,3 +884,94 @@ fn live_collection_reads_between_mutations_cross_nothing() {
     }
     clear_interface_records(isolate);
 }
+
+fn title_work(body_rows: usize, iterations: usize) -> (usize, std::time::Duration) {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    let result;
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let html = format!(
+            "<!doctype html><title> first\n title </title><body>{}",
+            "<div><span>row</span></div>".repeat(body_rows)
+        );
+        install_with_html(scope, &html);
+        let before = NATIVE_CROSSINGS.with(std::cell::Cell::get);
+        let started = std::time::Instant::now();
+        assert_eq!(run(scope, &format!("(() => {{for(let i=0;i<{iterations};i++) {{if(document.title!=='first title')throw Error('title');document.title=' first\\n title ';}}return 'ok';}})()")), "ok");
+        result = (
+            NATIVE_CROSSINGS.with(std::cell::Cell::get) - before,
+            started.elapsed(),
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+    result
+}
+
+#[test]
+fn title_search_stops_before_unrelated_body_content() {
+    let (small, _) = title_work(0, 20);
+    let (large, _) = title_work(2_000, 20);
+    assert_eq!(
+        large, small,
+        "title reads/writes must stop at the first title"
+    );
+}
+
+/// Reusable offline harness: TITLE_ROWS=5000 TITLE_ITERATIONS=200 cargo test -p
+/// turbo-dom-browser-env title_search_scaling -- --ignored --nocapture.
+/// The counter is the gate; timings are diagnostic, never a pass threshold.
+#[test]
+#[ignore = "scalable offline performance harness"]
+fn title_search_scaling() {
+    let rows = std::env::var("TITLE_ROWS")
+        .ok()
+        .map_or(5_000, |v| v.parse().unwrap());
+    let iterations = std::env::var("TITLE_ITERATIONS")
+        .ok()
+        .map_or(200, |v| v.parse().unwrap());
+    let (baseline, _) = title_work(0, iterations);
+    for size in [0, rows / 10, rows] {
+        let (crossings, elapsed) = title_work(size, iterations);
+        assert_eq!(crossings, baseline);
+        println!("title rows={size} iterations={iterations} native_crossings={crossings} elapsed_ms={:.3}", elapsed.as_secs_f64() * 1000.0);
+    }
+}
+
+#[test]
+fn title_search_keeps_document_order_and_mutation_semantics() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    {
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_with_html(scope, "<!doctype html><title>head</title><body>");
+        assert_eq!(
+            run(
+                scope,
+                r"(() => {
+          const out = [document.title];
+          const first = document.querySelector('title'); first.remove();
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+          svg.textContent = 'svg'; document.body.append(svg);
+          const later = document.createElement('title'); later.textContent = ' body\n title ';
+          document.body.append(later); out.push(document.title);
+          document.title = 'changed'; out.push(later.textContent, svg.textContent);
+          document.head.append(first); out.push(document.title);
+          first.remove(); later.remove(); out.push(document.title);
+          document.title = 'inserted'; out.push(document.head.firstChild.localName, document.title);
+          document.head.remove();
+          document.title = 'no head'; out.push(document.title);
+          return JSON.stringify(out);
+        })()"
+            ),
+            r#"["head","body title","changed","svg","head","","title","inserted",""]"#
+        );
+        reset();
+    }
+    clear_interface_records(isolate);
+}
