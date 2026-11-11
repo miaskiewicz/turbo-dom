@@ -294,6 +294,8 @@ pub struct ScreenshotOptions<'a> {
     /// Paint the full content height instead of the viewport height (see
     /// [`screenshot_png_with_assets`]).
     pub full_page: bool,
+    /// Leave unauthored canvas pixels transparent, retaining authored backgrounds.
+    pub omit_background: bool,
     /// Resolve fonts against the installed system fonts too (see
     /// [`screenshot_png_with_opts`]).
     pub system_fonts: bool,
@@ -357,7 +359,7 @@ pub fn screenshot_png_with_options(
     let tree = parse_document(html, &mut decoded, options);
     let galley = options
         .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = canvas_background(&galley);
+    let bg = screenshot_canvas_background(&galley, options.omit_background);
     let height = paint_height(&galley, viewport, options.full_page);
     paint_png::paint(&galley, viewport.width, height, bg, &decoded)
 }
@@ -376,7 +378,7 @@ pub fn screenshot_svg_with_options(
     let tree = parse_document(html, &mut decoded, options);
     let galley = options
         .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = canvas_background(&galley);
+    let bg = screenshot_canvas_background(&galley, options.omit_background);
     let height = paint_height(&galley, viewport, options.full_page);
     Ok(paint_svg::paint(
         &galley,
@@ -449,6 +451,24 @@ pub fn measure_canvas_text_with_fonts(text: &str, font: &str, fonts: &FontRegist
 /// turbo-dom-layout's HTML drive propagated from the root element (or `<body>`) onto
 /// the galley root, composited over the white initial canvas; white when the page
 /// sets none.
+fn screenshot_canvas_background(galley: &Fragment, omit_background: bool) -> Rgba {
+    if !omit_background {
+        return canvas_background(galley);
+    }
+    match &galley.content {
+        FragmentContent::Box {
+            background: Some(bg),
+            ..
+        } => *bg,
+        _ => Rgba {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        },
+    }
+}
+
 fn canvas_background(galley: &Fragment) -> Rgba {
     let white = Rgba {
         r: 255,

@@ -56,6 +56,7 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 
     | field | type | effect |
     |---|---|---|
+    | `omit_background` | `bool` | leave the initial canvas transparent; authored root/body backgrounds still paint |
     | `full_page` | `bool` | paint the full content height instead of the viewport |
     | `system_fonts` | `bool` | resolve against installed system fonts (`FontRegistry::system`) |
     | `canvases` | `Option<&'a CanvasContents>` | the embedder's canvas pixels (below) |
