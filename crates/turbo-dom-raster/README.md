@@ -43,6 +43,12 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 ```
 
 - **Screenshots:**
+  - `PreparedScreenshot::new(html, external_css, viewport, images, &options)` owns an
+    immutable prepared layout and decoded image pixels. Repeated `.png()` / `.svg()`
+    calls skip parse, image decode and layout. Prepare a replacement whenever HTML,
+    CSS, viewport, assets, fonts, canvas contents or IDL state changes; old scenes
+    retain their original output independently and release resources on drop. This
+    explicit snapshot API has no shared mutable cache or revision-key contract.
   - `screenshot(html, viewport, Format::{Png, Svg})`, `screenshot_png`, `screenshot_svg`;
   - `*_with_css` adds external CSS;
   - `*_with_assets` adds caller-fetched images (`ImageAssets` = URL → bytes) and
@@ -159,11 +165,16 @@ size-only fallback is one branch shared by both features.
 
 ```bash
 cargo test -p turbo-dom-raster                    # unit tests, tests/screenshot.rs, Chrome 156 controls
+cargo run --release -p turbo-dom-raster --example retained_capture -- 5000 10
 cargo test -p turbo-dom-raster --features avif
 cargo test -p turbo-dom-raster --features jxl
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
 cargo tarpaulin --engine llvm -p turbo-dom-raster [--features avif|jxl] --include-files 'crates/turbo-dom-raster/src/*'
 ```
+
+The offline `retained_capture` harness accepts row count and repeat count, checks
+pixel/byte equivalence and snapshot isolation, and prints timings plus layout-pass
+counts. Timings are diagnostic; normal tests gate deterministic work and output.
 
 Pixel expectations come from **Chrome 156 controls**, recorded by the repository's
 `scripts/*-chrome-control.mjs`. Each test pairs with one script:

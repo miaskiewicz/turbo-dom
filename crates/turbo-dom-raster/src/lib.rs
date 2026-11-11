@@ -39,6 +39,8 @@ mod paint_canvas_coretext;
 mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
+mod prepared;
+pub use prepared::PreparedScreenshot;
 mod rrect;
 mod style_extract;
 mod tile_cell;
@@ -360,17 +362,7 @@ pub fn screenshot_png_with_options(
     images: &ImageAssets,
     options: &ScreenshotOptions,
 ) -> Result<Vec<u8>, String> {
-    let mut decoded = image_paint::decode_all(images);
-    capture_resources::add_metadata(&mut decoded, options.image_metadata);
-    // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
-    // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
-    image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded, options);
-    let galley = options
-        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = screenshot_canvas_background(&galley, options.omit_background);
-    let height = paint_height(&galley, viewport, options.full_page);
-    paint_png::paint(&galley, viewport.width, height, bg, &decoded)
+    PreparedScreenshot::new(html, external_css, viewport, images, options).png()
 }
 
 /// [`screenshot_png_with_options`] as a standalone SVG document (images embed as base64
@@ -382,21 +374,7 @@ pub fn screenshot_svg_with_options(
     images: &ImageAssets,
     options: &ScreenshotOptions,
 ) -> Result<String, String> {
-    let mut decoded = image_paint::decode_all(images);
-    capture_resources::add_metadata(&mut decoded, options.image_metadata);
-    image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded, options);
-    let galley = options
-        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = screenshot_canvas_background(&galley, options.omit_background);
-    let height = paint_height(&galley, viewport, options.full_page);
-    Ok(paint_svg::paint(
-        &galley,
-        viewport.width,
-        height,
-        bg,
-        &decoded,
-    ))
+    Ok(PreparedScreenshot::new(html, external_css, viewport, images, options).svg())
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every
@@ -542,6 +520,11 @@ fn parse_document(
     tree
 }
 
+#[cfg(test)]
+thread_local! {
+    static LAYOUT_PASSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// Drive the borrowed layout engine: lay the parsed document out at viewport width
 /// `viewport` width over `fonts`. The page's own `<style>` sheets (head and body) are
 /// collected by the layout's HTML drive (which never lays out
@@ -555,6 +538,8 @@ fn lay_out(
     fonts: &FontRegistry,
     screenshot_options: &ScreenshotOptions,
 ) -> Fragment {
+    #[cfg(test)]
+    LAYOUT_PASSES.with(|passes| passes.set(passes.get() + 1));
     let Viewport { width, height } = viewport;
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
     // conditions evaluate correctly (else every height feature is ignored and its
