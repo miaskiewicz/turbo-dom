@@ -1111,6 +1111,86 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
     reset();
 }
 
+/// turbo-dom#487: `drainMicrotasksAcrossDispatch` saves `record.target` and
+/// restores it after the checkpoint, so a microtask that re-dispatches the
+/// same event object on a DIFFERENT EventTarget does not leak the inner
+/// dispatch's target into the outer's remaining listeners. Without the
+/// save/restore, `dispatchTarget`'s entry writes `record.target = innerTarget`
+/// and the outer's bubble listeners would see `event.target === other` instead
+/// of the original child.
+#[test]
+fn nested_re_dispatch_on_different_target_preserves_outer_event_target() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Chain: child -> parent.  Separate: other (no parent chain).
+    // Host-dispatch on child. child's capture listener queues a microtask
+    // that dispatches the same event on `other` (a completely separate
+    // target). After the microtask returns, the outer's bubble listener
+    // on parent must see event.target === child, not other.
+    let source = r#"(() => {
+      const child = new EventTarget(), parent = new EventTarget();
+      const other = new EventTarget();
+      globalThis.__testSetParent(child, () => parent);
+      const trace = [];
+      child.addEventListener('x', (event) => {
+        trace.push('child:target=' + (event.target === child ? 'child' : 'other'));
+        Promise.resolve().then(() => {
+          try { other.dispatchEvent(event); }
+          catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+        });
+      }, { capture: true });
+      parent.addEventListener('x', (event) => {
+        trace.push('parent-bubble:target=' + (event.target === child ? 'child' : event.target === other ? 'other' : 'unknown'));
+      });
+      globalThis.__hostDispatchTarget(new Event('x', { bubbles: true }), child);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "target-leak script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    assert!(
+        has("child:target=child"),
+        "outer:child must see event.target === child. Trace: {trace}",
+    );
+    assert!(
+        has("parent-bubble:target=child"),
+        "outer:parent-bubble must see event.target === child — the inner \
+         dispatch's re-targeting to `other` must NOT leak into the outer \
+         (record.target restore in drainMicrotasksAcrossDispatch). \
+         Trace: {trace}",
+    );
+    reset();
+}
+
 /// turbo-dom#452: the `collectPath` 10 000-hop cap (R1 H1) was only exercised at 101 hops
 /// (the pre-fix silent-truncation boundary). The band between 101 and 10 000 — where Chrome
 /// still walks and the fix's raised ceiling matters — was untested, as was the 10 001-hop
