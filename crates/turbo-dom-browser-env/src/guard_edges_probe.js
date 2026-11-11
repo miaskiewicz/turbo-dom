@@ -94,8 +94,9 @@
   {
     const r = {};
     const el = box.appendChild(document.createElement('div'));
+    const probeKeyframe = (value) => { const frames = el.animate([{ width: value }, { width: '2px' }]).effect.getKeyframes(); return [frames[0].width === undefined ? 'none' : frames[0].width, frames.length]; };
     for (const value of ['1px)', '1px]', '1px}', '1px;', 'var(--x))', '(1px', 'red !important']) {
-      r[value] = caught(() => { const frames = el.animate([{ width: value }, { width: '2px' }]).effect.getKeyframes(); return [frames[0].width === undefined ? 'none' : frames[0].width, frames.length]; });
+      r[value] = caught(() => probeKeyframe(value));
     }
     el.getAnimations().forEach(animation => animation.cancel());
     out.keyframes = r;
@@ -144,15 +145,18 @@
       inlineBlock: () => make('span', 'display: inline-block'),
       inHiddenSvg: () => box.appendChild(document.createElementNS(svg, 'svg')).appendChild(document.createElementNS(svg, 'svg')).appendChild(document.createElement('div')),
     };
-    for (const [name, create] of Object.entries(cases)) {
+    const probeTransition = async (name, create) => {
       const element = create();
       if (element.namespaceURI === document.documentElement.namespaceURI && element.localName !== 'input') element.textContent = 'x';
       let transition;
-      try { transition = element.startViewTransition(); } catch (error) { r[name] = 'E:' + error.name; box.replaceChildren(); continue; }
+      try { transition = element.startViewTransition(); } catch (error) { r[name] = 'E:' + error.name; box.replaceChildren(); return; }
       const ready = await settle(transition.ready);
       transition.skipTransition();
       r[name] = [ready, await settle(transition.finished)];
       box.replaceChildren();
+    };
+    for (const [name, create] of Object.entries(cases)) {
+      await probeTransition(name, create);
     }
     out.transitions = r;
   }

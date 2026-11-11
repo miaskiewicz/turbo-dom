@@ -113,6 +113,16 @@ fn document_validity(
     remove: &[Handle],
     replace_all: bool,
 ) -> Result<(), &'static str> {
+    let children = merge_children(original, incoming, reference, remove, replace_all);
+    validate_document_children(&children)
+}
+fn merge_children(
+    original: Vec<(Option<Handle>, u8)>,
+    incoming: &[(Option<Handle>, u8)],
+    reference: Option<Handle>,
+    remove: &[Handle],
+    replace_all: bool,
+) -> Vec<u8> {
     let mut children = Vec::new();
     let mut placed = false;
     for (node, kind) in original {
@@ -127,9 +137,12 @@ fn document_validity(
     if !placed {
         children.extend(incoming.iter().map(|(_, kind)| *kind));
     }
+    children
+}
+fn validate_document_children(children: &[u8]) -> Result<(), &'static str> {
     let mut element = false;
     let mut doctype = false;
-    for kind in children {
+    for &kind in children {
         match kind {
             1 if !element => element = true,
             10 if !doctype && !element => doctype = true,
@@ -407,6 +420,16 @@ pub(super) fn convert_variadic<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     incoming: &[Incoming<'s>],
 ) -> Option<Vec<Incoming<'s>>> {
+    let mut nodes = expand_fragments(scope, incoming)?;
+    if nodes.len() > 1 {
+        detach_and_dedup(scope, &mut nodes)?;
+    }
+    Some(nodes)
+}
+fn expand_fragments<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    incoming: &[Incoming<'s>],
+) -> Option<Vec<Incoming<'s>>> {
     let mut nodes = Vec::new();
     for input in incoming {
         match input {
@@ -424,26 +447,30 @@ pub(super) fn convert_variadic<'s>(
             }
         }
     }
-    if nodes.len() > 1 {
-        let mut detached = std::collections::HashSet::new();
-        for input in &nodes {
-            if let Incoming::Node(object) = input {
-                let identity = NodeIdentity(dom_id_of(scope, *object), handle_of(scope, *object)?);
-                if detached.insert(identity) {
-                    detach_input(scope, *object)?;
-                }
+    Some(nodes)
+}
+fn detach_and_dedup<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    nodes: &mut Vec<Incoming<'s>>,
+) -> Option<()> {
+    let mut detached = std::collections::HashSet::new();
+    for input in nodes.iter() {
+        if let Incoming::Node(object) = input {
+            let identity = NodeIdentity(dom_id_of(scope, *object), handle_of(scope, *object)?);
+            if detached.insert(identity) {
+                detach_input(scope, *object)?;
             }
         }
-        let mut seen = std::collections::HashSet::new();
-        nodes.reverse();
-        nodes.retain(|input| match input {
-            Incoming::Node(object) => handle_of(scope, *object)
-                .is_some_and(|handle| seen.insert(NodeIdentity(dom_id_of(scope, *object), handle))),
-            Incoming::Text(..) => true,
-        });
-        nodes.reverse();
     }
-    Some(nodes)
+    let mut seen = std::collections::HashSet::new();
+    nodes.reverse();
+    nodes.retain(|input| match input {
+        Incoming::Node(object) => handle_of(scope, *object)
+            .is_some_and(|handle| seen.insert(NodeIdentity(dom_id_of(scope, *object), handle))),
+        Incoming::Text(..) => true,
+    });
+    nodes.reverse();
+    Some(())
 }
 
 fn collect_incoming_input<'s>(
@@ -455,48 +482,65 @@ fn collect_incoming_input<'s>(
     consumed: &mut std::collections::HashSet<NodeIdentity>,
     fragments: &mut std::collections::HashSet<NodeIdentity>,
 ) -> Result<(), &'static str> {
-    match input {
+    let node = match input {
         Prepared::Text(..) => {
             result.push(input.clone());
             return Ok(());
         }
-        Prepared::Node(node) => {
-            if !matches!(node.kind, 1 | 3 | 4 | 7 | 8 | 10 | 11) {
-                return Err("HierarchyRequestError");
-            }
-            if node.identity.0 == owner {
-                let mut ancestor = Some(parent);
-                let mut visited = std::collections::HashSet::new();
-                while let Some(current) = ancestor {
-                    if current == node.identity.1 || !visited.insert(current) {
-                        return Err("HierarchyRequestError");
-                    }
-                    ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
-                }
-            }
-            let expanded = if node.kind == 11 {
-                if !fragments.insert(node.identity) {
-                    return Ok(());
-                }
-                node.children
-                    .iter()
-                    .filter(|child| !consumed.contains(&child.identity))
-                    .cloned()
-                    .collect::<Vec<_>>()
-            } else {
-                vec![node.clone()]
-            };
-            for child in expanded {
-                if child.shadow || !matches!(child.kind, 1 | 3 | 4 | 7 | 8 | 10) {
-                    return Err("HierarchyRequestError");
-                }
-                result.retain(|prior| prior.identity() != Some(child.identity));
-                consumed.insert(child.identity);
-                result.push(Prepared::Node(child));
-            }
+        Prepared::Node(node) => node,
+    };
+    if !matches!(node.kind, 1 | 3 | 4 | 7 | 8 | 10 | 11) {
+        return Err("HierarchyRequestError");
+    }
+    check_ancestor_cycle(tree, owner, parent, node.identity)?;
+    let expanded = expand_incoming_node(node, consumed, fragments)?;
+    for child in expanded {
+        if child.shadow || !matches!(child.kind, 1 | 3 | 4 | 7 | 8 | 10) {
+            return Err("HierarchyRequestError");
         }
+        result.retain(|prior| prior.identity() != Some(child.identity));
+        consumed.insert(child.identity);
+        result.push(Prepared::Node(child));
     }
     Ok(())
+}
+fn check_ancestor_cycle(
+    tree: &Tree,
+    owner: u64,
+    parent: Handle,
+    identity: NodeIdentity,
+) -> Result<(), &'static str> {
+    if identity.0 != owner {
+        return Ok(());
+    }
+    let mut ancestor = Some(parent);
+    let mut visited = std::collections::HashSet::new();
+    while let Some(current) = ancestor {
+        if current == identity.1 || !visited.insert(current) {
+            return Err("HierarchyRequestError");
+        }
+        ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
+    }
+    Ok(())
+}
+fn expand_incoming_node<'s>(
+    node: &NodeView<'s>,
+    consumed: &mut std::collections::HashSet<NodeIdentity>,
+    fragments: &mut std::collections::HashSet<NodeIdentity>,
+) -> Result<Vec<NodeView<'s>>, &'static str> {
+    if node.kind == 11 {
+        if !fragments.insert(node.identity) {
+            return Ok(Vec::new());
+        }
+        Ok(node
+            .children
+            .iter()
+            .filter(|child| !consumed.contains(&child.identity))
+            .cloned()
+            .collect())
+    } else {
+        Ok(vec![node.clone()])
+    }
 }
 
 fn incoming_plan<'s>(
@@ -613,6 +657,31 @@ fn insert_inputs_mode<'s>(
     remove: &[Handle],
     replace_all: bool,
 ) -> bool {
+    if !check_template_host(scope, parent, incoming) {
+        return false;
+    }
+    let owner = DOM_ID.with(|id| id.get());
+    let prepared = prepare(scope, incoming).expect("wrapped incoming nodes");
+    let planned = plan_inputs(scope, owner, parent, &prepared, reference, remove, replace_all);
+    let planned = match planned {
+        Ok(nodes) => nodes,
+        Err(name) => {
+            throw_dom_error(scope, name, "The requested mutation would create an invalid DOM tree");
+            return false;
+        }
+    };
+    drain_prepared_fragments(scope, &prepared);
+    if !adopt_foreign_nodes(scope, &planned, owner) {
+        return false;
+    }
+    let handles = materialize_planned(scope, owner, planned);
+    insert_mode(scope, parent, &handles, reference, remove, replace_all)
+}
+fn check_template_host<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    parent: Handle,
+    incoming: &[Incoming<'s>],
+) -> bool {
     let parent_object = wrap(scope, parent);
     for input in incoming {
         if let Incoming::Node(node) = input {
@@ -626,45 +695,37 @@ fn insert_inputs_mode<'s>(
             }
         }
     }
-    let owner = DOM_ID.with(|id| id.get());
-    // incoming_node() admitted every Incoming::Node as a wrapped node, so view() succeeds.
-    let prepared = prepare(scope, incoming).expect("wrapped incoming nodes");
-    let planned = with_tree(|tree| {
-        incoming_plan(
-            tree,
-            owner,
-            parent,
-            &prepared,
-            reference,
-            remove,
-            replace_all,
-        )
-    })
-    .expect("installed document");
-    let planned = match planned {
-        Ok(nodes) => nodes,
-        Err(name) => {
-            throw_dom_error(
-                scope,
-                name,
-                "The requested mutation would create an invalid DOM tree",
-            );
-            return false;
-        }
-    };
-    // invariant: an installed DOM tree is in scope
-    let root = with_tree(|tree| tree.root()).unwrap();
-    let document = wrap(scope, root);
-    for input in &prepared {
+    true
+}
+fn plan_inputs<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    owner: u64,
+    parent: Handle,
+    prepared: &[Prepared<'s>],
+    reference: Option<Handle>,
+    remove: &[Handle],
+    replace_all: bool,
+) -> Result<Vec<Prepared<'s>>, &'static str> {
+    with_tree(|tree| incoming_plan(tree, owner, parent, prepared, reference, remove, replace_all))
+        .expect("installed document")
+}
+fn drain_prepared_fragments(scope: &mut v8::PinScope, prepared: &[Prepared]) {
+    for input in prepared {
         if let Prepared::Node(node) = input {
             if node.kind == 11 {
                 drain_fragment(scope, node);
             }
         }
     }
-    // Fragment/ShadowRoot containers stay in their original document. Adopt
-    // exactly the expanded children, preserving the container's native identity.
-    for input in &planned {
+}
+fn adopt_foreign_nodes<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    planned: &[Prepared<'s>],
+    owner: u64,
+) -> bool {
+    let root = with_tree(|tree| tree.root()).unwrap();
+    let document = wrap(scope, root);
+    for input in planned {
         if let Prepared::Node(node) = input {
             if dom_id_of(scope, node.object) != owner {
                 if let Err(error) = document_basics::adopt(scope, document, node.object) {
@@ -674,8 +735,7 @@ fn insert_inputs_mode<'s>(
             }
         }
     }
-    let handles = materialize_planned(scope, owner, planned);
-    insert_mode(scope, parent, &handles, reference, remove, replace_all)
+    true
 }
 
 /// Turn each planned input into its concrete `Handle`: adopted nodes come across by handle,

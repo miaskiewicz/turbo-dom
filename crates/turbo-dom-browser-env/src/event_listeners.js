@@ -25,7 +25,7 @@
   const method=(object,name,fn,length)=>define(object,name,{value:make(fn,name,length),writable:true,configurable:true,enumerable:true});
   const getter=(object,name,fn)=>define(object,name,{get:make(fn,'get '+name,0),configurable:true,enumerable:true});
   const string=value=>{if(typeof value==='symbol')throw new ErrorType('Cannot convert a Symbol to a string');return StringValue(value);};
-  if(!Object.getOwnPropertyDescriptor(g.ErrorEvent.prototype,'message')?.get){
+  function installErrorEvent(){
     const states=new WeakMap(),read=states.get.bind(states),write=states.set.bind(states);
     const fields=['message','filename','lineno','colno','error'];
     class ErrorImplementation extends EventType{
@@ -35,10 +35,11 @@
     for(const name of fields)getter(ErrorCtor.prototype,name,function(){const state=read(this);if(!state)throw new ErrorType('Illegal invocation');return state[name];});
     define(g,'ErrorEvent',{value:ErrorCtor,writable:true,configurable:true});
   }
+  if(!Object.getOwnPropertyDescriptor(g.ErrorEvent.prototype,'message')?.get)installErrorEvent();
   let signalGetter=Object.getOwnPropertyDescriptor(g.AbortSignal.prototype,'aborted')?.get;
   // Preserve an embedding runtime's genuine implementation. The standalone DOM
   // supplies a real abort primitive instead of its old empty constructor shells.
-  if(!signalGetter){
+  function installAbortPrimitives(){
     const Signal=make(function(){throw new ErrorType('Illegal constructor');},'AbortSignal',0,true,true);
     Object.setPrototypeOf(Signal.prototype,BaseTarget.prototype);Object.setPrototypeOf(Signal,NativeTarget);define(Signal.prototype,Symbol.toStringTag,{value:'AbortSignal',configurable:true});define(Signal,'prototype',{writable:false});
     const read=signal=>{const record=native('signalGet',signal);if(!record)throw new ErrorType('Illegal invocation');return record;};
@@ -54,6 +55,7 @@
     define(g,'AbortSignal',{value:Signal,writable:true,configurable:true});define(g,'AbortController',{value:Controller,writable:true,configurable:true});
     signalGetter=Object.getOwnPropertyDescriptor(Signal.prototype,'aborted').get;
   }
+  if(!signalGetter)installAbortPrimitives();
   const localAborted=signal=>apply(signalGetter,signal,[]);
   const aborted=signal=>{const value=native("aborted",signal);if(typeof value!=="boolean")throw new ErrorType("Signal must be an AbortSignal");return value;};
   let signalAdd=g.AbortSignal.prototype.addEventListener,signalRemove=g.AbortSignal.prototype.removeEventListener;
@@ -65,10 +67,12 @@
       if(!remove){record.once=!!options.once;const value=options.passive;if(value!==undefined)record.passive=!!value;let signal=options.signal;if(signal===undefined)signal=null;else aborted(signal);record.signal=signal;}
     }else record.capture=!!options;
   }
+  const PASSIVE_DEFAULTS={__proto__:null,touchstart:1,touchmove:1,wheel:1,mousewheel:1};
+  function defaultPassive(passiveDefault,type){return passiveDefault&&!!PASSIVE_DEFAULTS[type];}
   function flatten(type,callback,options,remove=false,passiveDefault=false){
     type=string(type);
     if(callback!=null&&typeof callback!=='function'&&typeof callback!=='object')throw new ErrorType('Listener must be an object');
-    const record={__proto__:null,type,callback:callback??null,capture:false,once:false,passive:passiveDefault&&(type==='touchstart'||type==='touchmove'||type==='wheel'||type==='mousewheel'),signal:null,removed:false,abortHook:null};
+    const record={__proto__:null,type,callback:callback??null,capture:false,once:false,passive:defaultPassive(passiveDefault,type),signal:null,removed:false,abortHook:null};
     readOptions(record,options,remove);
     return record;
   }
@@ -278,12 +282,15 @@
   // Multi-level dispatch across the parent chain: capture -> AT_TARGET -> bubble, with the
   // listener-less fast-skip. `host` keeps the listener-less fast-skip from applying to
   // host-initiated dispatch (bubbling reaches side-effects on empty paths; preserved).
+  function stopped(record){return record.stop||record.stopImmediate;}
+  function capturePhase(event,record,path){for(let i=path.length-1;i>0;i--){if(stopped(record))return;invokeAt(event,record,path[i],true,1);}}
+  function bubblePhase(event,record,path){for(let i=1;i<path.length;i++){if(stopped(record))return;invokeAt(event,record,path[i],false,3);}}
   function dispatchMulti(event,record,target,state,host){
     const path=collectPath(target,state);
     if(!host&&!anyPathListener(path,record.type))return;
-    for(let i=path.length-1;i>0;i--){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],true,1);}
-    if(!record.stop&&!record.stopImmediate)invokeAt(event,record,target,null,2);
-    if(record.bubbles)for(let i=1;i<path.length;i++){if(record.stop||record.stopImmediate)return;invokeAt(event,record,path[i],false,3);}
+    capturePhase(event,record,path);
+    if(!stopped(record))invokeAt(event,record,target,null,2);
+    if(record.bubbles)bubblePhase(event,record,path);
   }
   function dispatchTarget(event,target,host=false){
     const state=targetRecord(target),record=readEvent(event);if(record.dispatching||!record.type)throw new Exception('The event is already being dispatched or uninitialized','InvalidStateError');record.dispatching=true;record.trusted=host;record.target=target;record.currentTarget=target;record.eventPhase=2;record.path=objectFreeze([target]);
@@ -306,11 +313,15 @@
   }
   // An on* handler: error events pass their five arguments and cancel on true.
   function callHandler(event,state,record){let args,special=false;if(state.type==='error'){const values=native('error',event);if(values){args=values;special=true;}}const result=native('call',event,record.callback,g,args);if(state.cancelable&&(special?result===true:result===false))state.defaultPrevented=true;}
+  function skipWindowListener(record,capture){return record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal);}
+  function invokeWindowListener(event,state,record){
+    listenerDepth++;
+    try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{listenerDepth--;state.passive=false;}
+  }
   function invoke(event,capture,phase){
     const state=readEvent(event),records=slice(get(state.type)||[]);state.currentTarget=g;state.eventPhase=phase;
-    for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(record.removed||(capture!==null&&record.capture!==capture)||record.signal&&aborted(record.signal))continue;if(record.once)remove(record);state.passive=record.passive;
-      listenerDepth++;
-      try{if(record.handler)callHandler(event,state,record);else native('call',event,record.callback,g);}finally{listenerDepth--;state.passive=false;}
+    for(let index=0;index<records.length;index++){const record=records[index];if(state.stopImmediate)break;if(skipWindowListener(record,capture))continue;if(record.once)remove(record);state.passive=record.passive;
+      invokeWindowListener(event,state,record);
     }
   }
   function dispatch(event,host=false){

@@ -46,14 +46,20 @@
   define(MutationRecord,'prototype',{__proto__:null,writable:false});
   define(g,'MutationRecord',{__proto__:null,value:MutationRecord,writable:true,configurable:true});
   // attributeFilter as a sequence<DOMString> (undefined when absent).
-  function sequenceFilter(filter) {
-    if(filter===undefined)return undefined;
+  function requireIterable(filter) {
     if(filter==null||typeof filter!=='object'&&typeof filter!=='function')throw new TypeErrorValue('attributeFilter must be a sequence');
     const iterator=filter[iteratorSymbol];if(typeof iterator!=='function')throw new TypeErrorValue('attributeFilter must be iterable');
-    const cursor=apply(iterator,filter,[]),next=cursor.next,attributeFilter=[];
-    for(;;){const row=apply(next,cursor,[]);if(row==null||typeof row!=='object'&&typeof row!=='function')throw new TypeErrorValue('Iterator result is not an object');if(row.done)break;
-      append(attributeFilter,string(row.value));
-    }
+    return apply(iterator,filter,[]);
+  }
+  function iteratorStep(cursor) {
+    const row=apply(cursor.next,cursor,[]);
+    if(row==null||typeof row!=='object'&&typeof row!=='function')throw new TypeErrorValue('Iterator result is not an object');
+    return row;
+  }
+  function sequenceFilter(filter) {
+    if(filter===undefined)return undefined;
+    const cursor=requireIterable(filter),attributeFilter=[];
+    for(;;){const row=iteratorStep(cursor);if(row.done)break;append(attributeFilter,string(row.value));}
     return attributeFilter;
   }
   function invalidOptions(option) {
@@ -79,33 +85,47 @@
     release(observer,value.transients);value.transients=[];
     for(let index=0;index<value.registrations.length;index++){const target=read(value.registrations[index].target);if(target)native('anchor',observer,target,true);}
   }
-  function matching(registration,event) {
-    const target=read(registration.target),option=registration.options;
-    if(!target||!contains(event.ancestors,target)||event.target!==target&&!option.subtree)return false;
+  function matchesType(option,event) {
     if(event.type==='attributes')return option.attributes&&(option.attributeFilter===undefined||event.attributeNamespace===null&&contains(option.attributeFilter,event.attributeName));
     if(event.type==='characterData')return option.characterData;
     return option.childList;
   }
+  function matching(registration,event) {
+    const target=read(registration.target),option=registration.options;
+    if(!target||!contains(event.ancestors,target)||event.target!==target&&!option.subtree)return false;
+    return matchesType(option,event);
+  }
   // A removal under a subtree registration gives each removed node a transient registration.
-  function addTransients(observer,value,event,groups) {
+  function collectSubtreeSources(groups,event) {
     const sources=[];
     for(let group=0;group<groups.length;group++){const rows=groups[group];for(let index=0;index<rows.length;index++){
       const registration=rows[index],target=read(registration.target);
       if(target&&registration.options.subtree&&contains(event.ancestors,target))append(sources,registration);
     }}
+    return sources;
+  }
+  function addTransients(observer,value,event,groups) {
+    const sources=collectSubtreeSources(groups,event);
     for(let index=0;index<sources.length;index++)for(let at=0;at<event.removed.length;at++){
       const target=event.removed[at];append(value.transients,{__proto__:null,target:new WeakRefValue(target),options:sources[index].options,source:sources[index].source||sources[index]});
       native('anchor',observer,target,true);
     }
     if(sources.length)native('schedule',observer);
   }
-  function queue(observer,value,event) {
+  function oldValueFlag(registration,event) {
+    return event.type==='attributes'?registration.options.attributeOldValue:registration.options.characterDataOldValue;
+  }
+  function scanRegistrations(groups,event) {
     let interested=false,old=false;
-    const groups=[value.registrations,value.transients];
     for(let group=0;group<groups.length;group++){const rows=groups[group];for(let index=0;index<rows.length;index++){
       const registration=rows[index];
-      if(matching(registration,event)){interested=true;old=old||(event.type==='attributes'?registration.options.attributeOldValue:registration.options.characterDataOldValue);}
+      if(matching(registration,event)){interested=true;old=old||oldValueFlag(registration,event);}
     }}
+    return {interested,old};
+  }
+  function queue(observer,value,event) {
+    const groups=[value.registrations,value.transients];
+    const {interested,old}=scanRegistrations(groups,event);
     if(event.type==='childList'&&event.removed.length)addTransients(observer,value,event,groups);
     if(!interested)return;
     const record=create(recordPrototype);
@@ -123,16 +143,21 @@
   },'MutationObserver',1,true,true);
   const prototype=MutationObserver.prototype;
   function method(name,length,fn){define(prototype,name,{__proto__:null,value:make(fn,name,length),writable:true,enumerable:true,configurable:true});}
+  function findRegistration(registrations,target) {
+    for(let index=0;index<registrations.length;index++)if(read(registrations[index].target)===target)return registrations[index];
+    return undefined;
+  }
+  function updateTransients(observer,value,registration,option) {
+    const keep=[];for(let index=0;index<value.transients.length;index++){const row=value.transients[index];if(row.source===registration){const node=read(row.target);if(node)native('anchor',observer,node,false);}else append(keep,row);}
+    value.transients=keep;registration.options=option;
+    for(let index=0;index<keep.length;index++){const node=read(keep[index].target);if(node)native('anchor',observer,node,true);}
+  }
   method('observe',1,function(target,init){
     const value=state(this);if(!arguments.length)throw new TypeErrorValue('observe requires a target');apply(type,target,[]);
     const option=options(init);native('flush');
-    let registration;
-    for(let index=0;index<value.registrations.length;index++)if(read(value.registrations[index].target)===target){registration=value.registrations[index];break;}
-    if(registration){
-      const keep=[];for(let index=0;index<value.transients.length;index++){const row=value.transients[index];if(row.source===registration){const node=read(row.target);if(node)native('anchor',this,node,false);}else append(keep,row);}
-      value.transients=keep;registration.options=option;
-      for(let index=0;index<keep.length;index++){const node=read(keep[index].target);if(node)native('anchor',this,node,true);}
-    }else append(value.registrations,{__proto__:null,target:new WeakRefValue(target),options:option});
+    const registration=findRegistration(value.registrations,target);
+    if(registration)updateTransients(this,value,registration,option);
+    else append(value.registrations,{__proto__:null,target:new WeakRefValue(target),options:option});
     native('anchor',this,target,true);native('recordTree',target);
   });
   method('disconnect',0,function(){const value=state(this);native('flush');release(this,value.registrations);value.registrations=[];removeTransients(this,value);value.queue=[];});

@@ -86,32 +86,39 @@
       type(value); state[name] = value;
     } else state[name] = (+value) >>> 0;
   }
-  const StaticRange = make(function (init) {
-    required(arguments, 1);
+  function validateDictionary(init) {
     if (init !== null && init !== undefined && typeof init !== "object" && typeof init !== "function")
       throw new TypeErrorClass("StaticRangeInit must be a dictionary");
+  }
+  const STATIC_RANGE_INVALID = {__proto__: null, 2: 1, 10: 1};
+  function validateStaticRangeTypes(state) {
+    if (STATIC_RANGE_INVALID[type(state.startContainer)] || STATIC_RANGE_INVALID[type(state.endContainer)])
+      fail("InvalidNodeTypeError");
+  }
+  const StaticRange = make(function (init) {
+    required(arguments, 1); validateDictionary(init);
     const state = {__proto__: null};
-    // Web IDL reads and converts dictionary members in lexicographic order.
     const names = ["endContainer", "endOffset", "startContainer", "startOffset"];
     for (let index = 0; index < names.length; index++) readStaticRangeMember(init, names[index], state);
-    const startType = type(state.startContainer), endType = type(state.endContainer);
-    if (startType === 2 || startType === 10 || endType === 2 || endType === 10)
-      fail("InvalidNodeTypeError");
+    validateStaticRangeTypes(state);
     return staticRecord(undefined, state, getPrototype(this));
   }, "StaticRange", 1, true);
   setPrototype(NodeRange.prototype, AbstractRange.prototype);
   setPrototype(NodeRange, AbstractRange);
-  for (const constructor of [LocalRange, StaticRange]) {
-    setPrototype(constructor.prototype, NodeRange.prototype);
-    setPrototype(constructor, NodeRange);
+  function wirePrototypeChain(constructors, abstractRange, nodeRange) {
+    for (const constructor of constructors) {
+      setPrototype(constructor.prototype, nodeRange.prototype);
+      setPrototype(constructor, nodeRange);
+    }
+    for (const c of [abstractRange, nodeRange, ...constructors]) {
+      define(c, "prototype", {writable: false});
+      define(c.prototype, Symbol.toStringTag, {value: c.name, configurable: true});
+      define(globalThis, c.name, {value: c, configurable: true, writable: true, enumerable: false});
+    }
   }
+  wirePrototypeChain([LocalRange, StaticRange], AbstractRange, NodeRange);
   for (const name of ["startContainer", "endContainer", "startOffset", "endOffset", "collapsed"])
     delete LocalRange.prototype[name];
-  for (const constructor of [AbstractRange, NodeRange, LocalRange, StaticRange]) {
-    define(constructor, "prototype", {writable: false});
-    define(constructor.prototype, Symbol.toStringTag, {value: constructor.name, configurable: true});
-    define(globalThis, constructor.name, {value: constructor, configurable: true, writable: true, enumerable: false});
-  }
   function root(node) {
     let ancestor;
     while ((ancestor = parent(node))) node = ancestor;
@@ -134,19 +141,18 @@
     while (!ancestor(left, right)) left = parent(left);
     return left;
   }
+  function childUnder(node, shared) {
+    while (parent(node) !== shared) node = parent(node);
+    return node;
+  }
+  function compareShared(left, leftOffset, right, rightOffset, shared) {
+    if (shared === left) return leftOffset <= index(childUnder(right, shared)) ? -1 : 1;
+    if (shared === right) return -compareShared(right, rightOffset, left, leftOffset, shared);
+    return index(childUnder(left, shared)) < index(childUnder(right, shared)) ? -1 : 1;
+  }
   function compare(left, leftOffset, right, rightOffset) {
     if (left === right) return leftOffset < rightOffset ? -1 : leftOffset > rightOffset ? 1 : 0;
-    const shared = common(left, right);
-    if (shared === left) {
-      let child = right;
-      while (parent(child) !== shared) child = parent(child);
-      return leftOffset <= index(child) ? -1 : 1;
-    }
-    if (shared === right) return -compare(right, rightOffset, left, leftOffset);
-    let leftChild = left, rightChild = right;
-    while (parent(leftChild) !== shared) leftChild = parent(leftChild);
-    while (parent(rightChild) !== shared) rightChild = parent(rightChild);
-    return index(leftChild) < index(rightChild) ? -1 : 1;
+    return compareShared(left, leftOffset, right, rightOffset, common(left, right));
   }
   function validate(node, offset) {
     if (type(node) === 10) fail("InvalidNodeTypeError");
@@ -181,20 +187,20 @@
     while (!ancestor(parent(node), state.endContainer)) node = parent(node);
     return {node: parent(node), offset: index(node) + 1};
   }
-  // Decide containment before moving any nodes; mutation changes sibling indexes.
+  function fullyContained(state, container, at) {
+    return compare(container, at, state.startContainer, state.startOffset) >= 0 &&
+        compare(container, at + 1, state.endContainer, state.endOffset) <= 0;
+  }
+  function characterPlan(state, node, kind) {
+    const from = node === state.startContainer ? state.startOffset : 0,
+      to = node === state.endContainer ? state.endOffset : length(node);
+    return {__proto__: null, node, kind, from, count: to - from};
+  }
   function plan(state, node, container, at) {
     const kind = type(node), starts = ancestor(node, state.startContainer),
       ends = ancestor(node, state.endContainer);
-    if (!starts && !ends &&
-        compare(container, at, state.startContainer, state.startOffset) >= 0 &&
-        compare(container, at + 1, state.endContainer, state.endOffset) <= 0)
-      return {__proto__: null, node, kind, full: true};
-    if (!starts && !ends) return null;
-    if (character(kind)) {
-      const from = node === state.startContainer ? state.startOffset : 0,
-        to = node === state.endContainer ? state.endOffset : length(node);
-      return {__proto__: null, node, kind, from, count: to - from};
-    }
+    if (!starts && !ends) return fullyContained(state, container, at) ? {__proto__: null, node, kind, full: true} : null;
+    if (character(kind)) return characterPlan(state, node, kind);
     const rows = [], nodes = children(node);
     for (let i = 0; i < nodes.length; i++) {
       const child = plan(state, nodes[i], node, i);
@@ -272,11 +278,14 @@
     ensureInsertion(container, node, reference);
     return {container, reference};
   }
+  function insertNodeInvalid(kind, node, startContainer) {
+    return kind === 7 || kind === 8 || node === startContainer ||
+        (kind === 3 && !parent(startContainer));
+  }
   function insertNode(state, node) {
     const kind = type(state.startContainer);
     type(node);
-    if (kind === 7 || kind === 8 || node === state.startContainer ||
-        (kind === 3 && !parent(state.startContainer))) fail("HierarchyRequestError");
+    if (insertNodeInvalid(kind, node, state.startContainer)) fail("HierarchyRequestError");
     const wasCollapsed = collapsed(state), count = type(node) === 11 ? length(node) : 1;
     let {container, reference} = resolveInsertionTarget(state, node, kind);
     if (node === reference) reference = next(reference);
@@ -286,10 +295,10 @@
     apply(insert, container, [node, reference]);
     if (wasCollapsed) { state.endContainer = container; state.endOffset = offset + count; }
   }
+  const CONTAINER_KINDS = {__proto__: null, 1: 1, 9: 1, 11: 1};
+  const CHILD_KINDS = {__proto__: null, 1: 1, 3: 1, 4: 1, 7: 1, 8: 1, 10: 1, 11: 1};
   function insertionBaseInvalid(containerKind, kind) {
-    return (containerKind !== 1 && containerKind !== 9 && containerKind !== 11) ||
-      (kind !== 1 && kind !== 3 && kind !== 4 && kind !== 7 && kind !== 8 && kind !== 10 && kind !== 11) ||
-      (kind === 10 && containerKind !== 9);
+    return !CONTAINER_KINDS[containerKind] || !CHILD_KINDS[kind] || (kind === 10 && containerKind !== 9);
   }
   function buildInsertionSequence(container, node, reference, kind) {
     const sequence = [], existing = children(container);
@@ -393,14 +402,17 @@
   method("extractContents", 0, function () { return contents(this, "extract"); });
   method("deleteContents", 0, function () { contents(this, "delete"); });
   method("insertNode", 1, function (node) { required(arguments, 1); insertNode(this, node); });
+  function checkBoundaryWalk(start, shared) {
+    for (let boundary = start; boundary !== shared; boundary = parent(boundary))
+      if (type(boundary) !== 3 && type(boundary) !== 4) fail("InvalidStateError");
+  }
+  const SURROUND_INVALID = {__proto__: null, 9: 1, 10: 1, 11: 1};
   method("surroundContents", 1, function (node) {
     required(arguments, 1); const kind = type(node);
     const shared = common(this.startContainer, this.endContainer);
-    for (let boundary = this.startContainer; boundary !== shared; boundary = parent(boundary))
-      if (type(boundary) !== 3 && type(boundary) !== 4) fail("InvalidStateError");
-    for (let boundary = this.endContainer; boundary !== shared; boundary = parent(boundary))
-      if (type(boundary) !== 3 && type(boundary) !== 4) fail("InvalidStateError");
-    if (kind === 9 || kind === 10 || kind === 11) fail("InvalidNodeTypeError");
+    checkBoundaryWalk(this.startContainer, shared);
+    checkBoundaryWalk(this.endContainer, shared);
+    if (SURROUND_INVALID[kind]) fail("InvalidNodeTypeError");
     const selected = contents(this, "extract");
     let child;
     while ((child = first(node))) apply(remove, node, [child]);

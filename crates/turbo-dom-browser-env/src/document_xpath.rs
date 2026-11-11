@@ -122,10 +122,8 @@ fn snapshot_attributes(
     Ok(attrs)
 }
 
-fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> {
+fn xpath_root(tree: &Tree, context: Handle) -> Result<Handle, &'static str> {
     let mut root = tree.attribute_owner(context).unwrap_or(context);
-    // The context's root: the document, a DocumentFragment, a shadow root (XPath's
-    // parent axis stops there like `parentNode`), or a detached subtree's top node.
     for depth in 0..=DEPTH_LIMIT {
         if tree.shadow_host(root).is_some() {
             break;
@@ -136,6 +134,11 @@ fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> 
             None => break,
         }
     }
+    Ok(root)
+}
+
+fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> {
+    let root = xpath_root(tree, context)?;
     let mut stack = vec![(tree.root(), None, 0usize)];
     if root != tree.root() {
         stack.push((root, None, 0));
@@ -232,23 +235,33 @@ fn dispatch_record_ops(
         }
     }
     if operation == "interfaces" || operation == "registerInterfaces" {
-        let owner = dom_id_of(scope, object);
-        let context = DOM_CONTEXTS.with(|contexts| contexts.borrow().get(&owner).cloned());
-        if let Some(context) = context {
-            let context = dom_ownership::local(scope, &context);
-            let scope = &mut v8::ContextScope::new(scope, context);
-            let global = context.global(scope);
-            let key = record_key(scope, "interfaces");
-            if operation == "registerInterfaces" {
-                global.set_private(scope, key, args.get(2));
-            }
-            if let Some(value) = global.get_private(scope, key) {
-                rv.set(value);
-            }
-        }
+        dispatch_interfaces(scope, operation, args, object, rv);
         return true;
     }
     false
+}
+
+fn dispatch_interfaces(
+    scope: &mut v8::PinScope,
+    operation: &str,
+    args: &v8::FunctionCallbackArguments,
+    object: v8::Local<v8::Object>,
+    rv: &mut v8::ReturnValue,
+) {
+    let owner = dom_id_of(scope, object);
+    let context = DOM_CONTEXTS.with(|contexts| contexts.borrow().get(&owner).cloned());
+    if let Some(context) = context {
+        let context = dom_ownership::local(scope, &context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let global = context.global(scope);
+        let key = record_key(scope, "interfaces");
+        if operation == "registerInterfaces" {
+            global.set_private(scope, key, args.get(2));
+        }
+        if let Some(value) = global.get_private(scope, key) {
+            rv.set(value);
+        }
+    }
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {

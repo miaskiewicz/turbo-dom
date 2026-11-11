@@ -101,6 +101,20 @@ impl Default for Viewport {
 /// (portrait|landscape). Multiple features AND together. A query with no
 /// recognized feature (e.g. `"screen"`) returns `false` — matching the JS,
 /// which returns `any && matched` (and `any` is false for feature-less queries).
+fn matches_feature(feat: &str, val: &str, w: f64, h: f64) -> bool {
+    match feat {
+        "min-width" => parse_px(val).is_some_and(|n| w >= n),
+        "max-width" => parse_px(val).is_some_and(|n| w <= n),
+        "min-height" => parse_px(val).is_some_and(|n| h >= n),
+        "max-height" => parse_px(val).is_some_and(|n| h <= n),
+        "orientation" => {
+            let want = if w > h { "landscape" } else { "portrait" };
+            val == want
+        }
+        _ => false,
+    }
+}
+
 #[must_use]
 pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
     let w = vp.width;
@@ -111,18 +125,8 @@ pub fn eval_media_query(query: &str, vp: &Viewport) -> bool {
 
     for (feat, val) in scan_features(&q) {
         any = true;
-        match feat.as_str() {
-            "min-width" => matched = matched && parse_px(&val).is_some_and(|n| w >= n),
-            "max-width" => matched = matched && parse_px(&val).is_some_and(|n| w <= n),
-            "min-height" => matched = matched && parse_px(&val).is_some_and(|n| h >= n),
-            "max-height" => matched = matched && parse_px(&val).is_some_and(|n| h <= n),
-            "orientation" => {
-                let want = if w > h { "landscape" } else { "portrait" };
-                matched = matched && val == want;
-            }
-            // An unrecognized media feature can never match (browsers treat an
-            // unknown feature in an `and` chain as a non-match).
-            _ => matched = false,
+        if !matches_feature(&feat, &val, w, h) {
+            matched = false;
         }
     }
 

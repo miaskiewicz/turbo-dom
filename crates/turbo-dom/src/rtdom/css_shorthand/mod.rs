@@ -183,13 +183,13 @@ pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
     if let Some(text) = uniform_shorthand_value(&values, entry) {
         return text;
     }
-    for value in &values {
-        if value.pending.is_some()
+    let blocked = |value: &Declaration<'_>| {
+        value.pending.is_some()
             || (CSS_WIDE.contains(&value.value)
                 && (value.value != "initial" || !entry.allow_initial))
-        {
-            return String::new();
-        }
+    };
+    if values.iter().any(blocked) {
+        return String::new();
     }
     let texts: Vec<&str> = values.iter().map(|value| value.value).collect();
     serialize::value(entry.grammar, &texts)

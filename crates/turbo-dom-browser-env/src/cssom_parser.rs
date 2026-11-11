@@ -17,59 +17,40 @@ use lightningcss::traits::ToCss;
 // The `zoom` grammar lives in base turbo-dom so native layout consumers share it.
 pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 
-pub fn is_supported_property(name: &str) -> bool {
-    // Chrome 156 refuses every `-moz-*` vendor-prefixed name, even the ones Lightning CSS
-    // maps to a known PropertyId (e.g. `-moz-appearance`): see turbo-dom#390.
-    //
-    // Review R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
-    // case-insensitive; `CSS.supports("-MOZ-appearance", "none")` and
-    // `-MOZ-APPEARANCE: none` in a stylesheet must be rejected like `-moz-`.
-    // Lightning CSS normalises for its own lookup, so without an
-    // ASCII-case-insensitive check here the rejection leaked. Match the
-    // `-moz-` prefix case-insensitively.
-    if name.len() > 5
+fn is_moz_prefix(name: &str) -> bool {
+    name.len() > 5
         && name.as_bytes()[0] == b'-'
         && name.as_bytes()[1..5].eq_ignore_ascii_case(b"moz-")
-    {
-        return false;
+}
+
+fn webkit_prefix_override(name: &str) -> Option<bool> {
+    if name.len() <= 1 || name.as_bytes()[0] != b'-' {
+        return None;
     }
-    // turbo-dom#441: a -webkit-* name whose Chrome 156 acceptance disagrees with Lightning
-    // CSS is pinned here against `css_webkit_prefix_chrome156.json`. Accept the seven
-    // properties Chrome serves but Lightning CSS models as Custom (ASCII case-insensitive
-    // per CSS 2.2 §4.1.1 — the Chrome page admits `-WEBKIT-LINE-CLAMP`); reject
-    // `-webkit-backdrop-filter`, the one Lightning CSS models but Chrome 156 does not.
-    if name.len() > 1 && name.as_bytes()[0] == b'-' {
-        // R1 L3: match the -webkit-* allowlist case-insensitively on the borrowed
-        // name instead of allocating a lowercase copy on this hot path.
-        // CSS 2.2 §4.1.1 says property names are ASCII case-insensitive,
-        // so `-WEBKIT-text-fill-color` must still be accepted.
-        let admitted = [
-            "-webkit-text-fill-color",
-            "-webkit-text-stroke",
-            "-webkit-text-stroke-color",
-            "-webkit-text-stroke-width",
-            "-webkit-font-smoothing",
-            "-webkit-tap-highlight-color",
-            "-webkit-line-clamp",
-            // turbo-dom R1 M1: Chrome 156 admits -webkit- aliases of the
-            // CSS Multicol 1 column-* longhands + shorthand (the
-            // css_webkit_prefix_chrome156.json control). Lightning CSS
-            // models them as Custom (no -webkit- alias to the
-            // column-* PropertyId), so admit the names here.
-            "-webkit-column-count",
-            "-webkit-column-width",
-            "-webkit-column-gap",
-            "-webkit-column-rule",
-        ];
-        if admitted.iter().any(|n| name.eq_ignore_ascii_case(n)) {
-            return true;
-        }
-        if name.eq_ignore_ascii_case("-webkit-backdrop-filter") {
-            return false;
-        }
+    const ADMITTED: [&str; 11] = [
+        "-webkit-text-fill-color",
+        "-webkit-text-stroke",
+        "-webkit-text-stroke-color",
+        "-webkit-text-stroke-width",
+        "-webkit-font-smoothing",
+        "-webkit-tap-highlight-color",
+        "-webkit-line-clamp",
+        "-webkit-column-count",
+        "-webkit-column-width",
+        "-webkit-column-gap",
+        "-webkit-column-rule",
+    ];
+    if ADMITTED.iter().any(|n| name.eq_ignore_ascii_case(n)) {
+        return Some(true);
     }
-    !matches!(PropertyId::from(name), PropertyId::Custom(_))
-        || interest_delay_arity(name).is_some()
+    if name.eq_ignore_ascii_case("-webkit-backdrop-filter") {
+        return Some(false);
+    }
+    None
+}
+
+fn is_known_custom_property(name: &str) -> bool {
+    interest_delay_arity(name).is_some()
         || name == "writing-mode"
         || matches!(
             name,
@@ -98,6 +79,17 @@ pub fn is_supported_property(name: &str) -> bool {
         || SCROLL_KEYWORD_PROPERTIES.contains(&name)
 }
 
+pub fn is_supported_property(name: &str) -> bool {
+    if is_moz_prefix(name) {
+        return false;
+    }
+    if let Some(result) = webkit_prefix_override(name) {
+        return result;
+    }
+    !matches!(PropertyId::from(name), PropertyId::Custom(_))
+        || is_known_custom_property(name)
+}
+
 // Lightning CSS does not model these CSSOM View / CSS Scroll Snap keyword
 // properties; admit exactly their grammar with Chrome156's serialization.
 const SCROLL_KEYWORD_PROPERTIES: [&str; 4] = [
@@ -106,6 +98,23 @@ const SCROLL_KEYWORD_PROPERTIES: [&str; 4] = [
     "scroll-snap-stop",
     "scroll-snap-type",
 ];
+fn scroll_snap_align_value(words: &[&str]) -> Option<String> {
+    let [first, rest @ ..] = words else {
+        return None;
+    };
+    if rest.len() > 1 {
+        return None;
+    }
+    let align = ["none", "start", "end", "center"];
+    if !align.contains(first) || rest.iter().any(|word| !align.contains(word)) {
+        return None;
+    }
+    match rest {
+        [second] if second != first => Some(format!("{first} {second}")),
+        _ => Some((*first).into()),
+    }
+}
+
 fn scroll_keyword_value(name: &str, value: &str) -> Option<String> {
     let lower = value.to_ascii_lowercase();
     if lower.contains("var(") || lower.contains("env(") {
@@ -118,13 +127,14 @@ fn scroll_keyword_value(name: &str, value: &str) -> Option<String> {
             return Some((*word).to_string());
         }
     }
-    let one_of = |word: &&str, options: &[&str]| options.contains(word);
     match (name, words.as_slice()) {
-        ("scroll-behavior", [word]) if one_of(word, &["auto", "smooth"]) => Some((*word).into()),
-        ("scroll-snap-stop", [word]) if one_of(word, &["normal", "always"]) => Some((*word).into()),
+        ("scroll-behavior", [word]) if ["auto", "smooth"].contains(word) => Some((*word).into()),
+        ("scroll-snap-stop", [word]) if ["normal", "always"].contains(word) => {
+            Some((*word).into())
+        }
         ("scroll-snap-type", ["none"]) => Some("none".into()),
         ("scroll-snap-type", [axis, rest @ ..])
-            if one_of(axis, &["x", "y", "block", "inline", "both"]) =>
+            if ["x", "y", "block", "inline", "both"].contains(axis) =>
         {
             match rest {
                 [] | ["proximity"] => Some((*axis).into()),
@@ -132,16 +142,7 @@ fn scroll_keyword_value(name: &str, value: &str) -> Option<String> {
                 _ => None,
             }
         }
-        ("scroll-snap-align", [first, rest @ ..]) if rest.len() <= 1 => {
-            let align = ["none", "start", "end", "center"];
-            if !one_of(first, &align) || rest.iter().any(|word| !one_of(word, &align)) {
-                return None;
-            }
-            match rest {
-                [second] if second != first => Some(format!("{first} {second}")),
-                _ => Some((*first).into()),
-            }
-        }
+        ("scroll-snap-align", words) => scroll_snap_align_value(words),
         _ => None,
     }
 }
@@ -480,6 +481,28 @@ impl<'i> QualifiedRuleParser<'i> for CssParser {
 
 // Font descriptors have their own grammar: ordinary property validation drops
 // `src` and wrongly admits layout properties inside @font-face.
+fn custom_font_descriptor_valid(name: &str, value: &str) -> bool {
+    let mut source = ParserInput::new(value);
+    let mut input = Parser::new(&mut source);
+    let valid = match name {
+        "font-display" => input.expect_ident().is_ok_and(|value| {
+            matches!(
+                value.as_ref(),
+                "auto" | "block" | "swap" | "fallback" | "optional"
+            )
+        }),
+        "size-adjust" | "ascent-override" | "descent-override" | "line-gap-override" => {
+            (name != "size-adjust"
+                && input
+                    .try_parse(|input| input.expect_ident_matching("normal"))
+                    .is_ok())
+                || input.expect_percentage().is_ok_and(|value| value >= 0.0)
+        }
+        _ => false,
+    };
+    valid && input.expect_exhausted().is_ok()
+}
+
 fn font_descriptor(name: &str, value: &str) -> Option<String> {
     let source = format!("@font-face {{ {name}: {value}; }}");
     let sheet = StyleSheet::parse(&source, ParserOptions::default()).ok()?;
@@ -497,30 +520,14 @@ fn font_descriptor(name: &str, value: &str) -> Option<String> {
             Some(format!("{name}: {value};"))
         };
     }
-    let mut source = ParserInput::new(value);
-    let mut input = Parser::new(&mut source);
-    let valid = match name {
-        "font-display" => input.expect_ident().is_ok_and(|value| {
-            matches!(
-                value.as_ref(),
-                "auto" | "block" | "swap" | "fallback" | "optional"
-            )
-        }),
-        "size-adjust" | "ascent-override" | "descent-override" | "line-gap-override" => {
-            (name != "size-adjust"
-                && input
-                    .try_parse(|input| input.expect_ident_matching("normal"))
-                    .is_ok())
-                || input.expect_percentage().is_ok_and(|value| value >= 0.0)
-        }
-        "font-feature-settings" | "font-variation-settings" => {
-            return font_settings(name == "font-feature-settings", &mut input)
-                .filter(|_| input.expect_exhausted().is_ok())
-                .map(|value| format!("{name}: {value};"));
-        }
-        _ => false,
-    };
-    (valid && input.expect_exhausted().is_ok()).then(|| format!("{name}: {value};"))
+    if matches!(name, "font-feature-settings" | "font-variation-settings") {
+        let mut source = ParserInput::new(value);
+        let mut input = Parser::new(&mut source);
+        return font_settings(name == "font-feature-settings", &mut input)
+            .filter(|_| input.expect_exhausted().is_ok())
+            .map(|value| format!("{name}: {value};"));
+    }
+    custom_font_descriptor_valid(name, value).then(|| format!("{name}: {value};"))
 }
 
 /// `font-feature-settings` (`normal | [<string> [<integer> | on | off]?]#`) or
@@ -592,17 +599,23 @@ impl<'i> DeclarationParser<'i> for CssParser {
         }
         let value = input.slice_from(start).trim().to_string();
         let important = important(input)?;
-        if self.keyframes && (!important.is_empty() || keyframe_ignored(&name)) {
-            // Keyframe blocks ignore !important declarations and the animation properties
-            // other than timing-function / composition / timeline (Chrome 156).
+        if keyframe_rejected(self.keyframes, &important, &name) {
             return Err(input.new_custom_error(()));
         }
-        let name = if name.starts_with("--") {
-            name.to_string()
-        } else {
-            name.to_ascii_lowercase()
-        };
+        let name = normalize_property_name(&name);
         Ok(format!("{name}: {value}{important};"))
+    }
+}
+
+fn keyframe_rejected(keyframes: bool, important: &str, name: &str) -> bool {
+    keyframes && (!important.is_empty() || keyframe_ignored(name))
+}
+
+fn normalize_property_name(name: &str) -> String {
+    if name.starts_with("--") {
+        name.to_string()
+    } else {
+        name.to_ascii_lowercase()
     }
 }
 
@@ -632,15 +645,43 @@ fn parse_value_early<'i, 't>(
     }
     let property = name.to_ascii_lowercase();
     if SCROLL_KEYWORD_PROPERTIES.contains(&property.as_str()) {
-        let text = input.parse_until_before(Delimiter::Bang, |input| {
-            Ok::<_, ParseError<'i, ()>>(consume(input))
-        })?;
-        let value =
-            scroll_keyword_value(&property, &text).ok_or_else(|| input.new_custom_error(()))?;
-        let important = important(input)?;
-        return Ok(Some(format!("{property}: {value}{important};")));
+        return parse_scroll_keyword_declaration(&property, input).map(Some);
     }
     Ok(None)
+}
+
+fn parse_scroll_keyword_declaration<'i>(
+    property: &str,
+    input: &mut Parser<'i, '_>,
+) -> Result<String, ParseError<'i, ()>> {
+    let text = input.parse_until_before(Delimiter::Bang, |input| {
+        Ok::<_, ParseError<'i, ()>>(consume(input))
+    })?;
+    let value = scroll_keyword_value(property, &text).ok_or_else(|| input.new_custom_error(()))?;
+    let important = important(input)?;
+    Ok(format!("{property}: {value}{important};"))
+}
+
+fn interest_delay_valid(count: usize, input: &mut Parser<'_, '_>) -> bool {
+    let mut values = 0;
+    while !input.is_exhausted() {
+        let valid = input
+            .try_parse(|input| input.expect_ident_matching("normal"))
+            .is_ok()
+            || input.try_parse(time).is_ok();
+        if !valid {
+            return false;
+        }
+        values += 1;
+    }
+    values >= 1 && values <= count
+}
+
+fn is_shadow_none(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "box-shadow" | "-webkit-box-shadow" | "text-shadow"
+    )
 }
 
 fn parse_value_body<'i>(
@@ -653,32 +694,16 @@ fn parse_value_body<'i>(
     if let Some(valid) = keyword_property(name, input) {
         return valid;
     }
-    // Lightning CSS does not model interest-invoker delays: `normal | <time>`, and the
-    // shorthand takes one or two of those.
     if let Some(count) = interest_delay_arity(name) {
-        let mut values = 0;
-        while !input.is_exhausted() {
-            let valid = input
-                .try_parse(|input| input.expect_ident_matching("normal"))
-                .is_ok()
-                || input.try_parse(time).is_ok();
-            if !valid {
-                return Ok(false);
-            }
-            values += 1;
-        }
-        return Ok(values >= 1 && values <= count);
+        return Ok(interest_delay_valid(count, input));
     }
-    // Lightning CSS reads a shadow's `none` as an unparsed value; Chrome keeps it.
-    if matches!(
-        name.to_ascii_lowercase().as_str(),
-        "box-shadow" | "-webkit-box-shadow" | "text-shadow"
-    ) && input
-        .try_parse(|input| {
-            input.expect_ident_matching("none")?;
-            input.expect_exhausted()
-        })
-        .is_ok()
+    if is_shadow_none(name)
+        && input
+            .try_parse(|input| {
+                input.expect_ident_matching("none")?;
+                input.expect_exhausted()
+            })
+            .is_ok()
     {
         return Ok(true);
     }
@@ -922,61 +947,82 @@ impl<'i> AtRuleParser<'i> for CssParser {
             return typed_descriptor_rule(&name, &prelude, &body)
                 .ok_or_else(|| input.new_custom_error(()));
         }
-        let test = format!("@{name} {prelude} {{}}");
-        if !valid_rule(&test) || (name == "counter-style" && reserved_counter_style(&prelude)) {
+        if !at_rule_prelude_valid(&name, &prelude) {
             return Err(input.new_custom_error(()));
         }
-        let prelude = if name == "keyframes" || name.ends_with("-keyframes") {
-            keyframes_name(&prelude).ok_or_else(|| input.new_custom_error(()))?
-        } else {
-            prelude
-        };
-        let body = if matches!(
-            name.as_str(),
-            "font-face"
-                | "page"
-                | "property"
-                | "counter-style"
-                | "font-palette-values"
-                | "viewport"
-                | "position-try"
-                | "view-transition"
-        ) {
-            let mut declarations = CssParser {
-                font_face: name == "font-face",
-                ..Default::default()
-            };
-            RuleBodyParser::new(input, &mut declarations)
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>()
-                .join(" ")
-        } else if self.nested
-            && matches!(
-                name.as_str(),
-                "media" | "supports" | "container" | "scope" | "starting-style" | "layer"
-            )
-        {
-            // Nested inside a style rule's body (turbo-dom#358): the group at-rule admits
-            // bare declarations (CSSNestedDeclarations) and nested style rules.
-            let mut nested = CssParser {
-                nested: true,
-                ..Default::default()
-            };
-            RuleBodyParser::new(input, &mut nested)
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>()
-                .join(" ")
-        } else {
-            let mut nested = CssParser {
-                keyframes: name == "keyframes" || name.ends_with("-keyframes"),
-                ..Default::default()
-            };
-            StyleSheetParser::new(input, &mut nested)
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>()
-                .join(" ")
-        };
+        let prelude = resolve_keyframes_prelude(&name, prelude)
+            .ok_or_else(|| input.new_custom_error(()))?;
+        let body = at_rule_body(&name, self.nested, input);
         Ok(format!("@{name} {prelude} {{ {body} }}"))
+    }
+}
+
+fn at_rule_prelude_valid(name: &str, prelude: &str) -> bool {
+    let test = format!("@{name} {prelude} {{}}");
+    valid_rule(&test) && !(name == "counter-style" && reserved_counter_style(prelude))
+}
+
+fn resolve_keyframes_prelude(name: &str, prelude: String) -> Option<String> {
+    if name == "keyframes" || name.ends_with("-keyframes") {
+        keyframes_name(&prelude)
+    } else {
+        Some(prelude)
+    }
+}
+
+fn is_descriptor_at_rule(name: &str) -> bool {
+    matches!(
+        name,
+        "font-face"
+            | "page"
+            | "property"
+            | "counter-style"
+            | "font-palette-values"
+            | "viewport"
+            | "position-try"
+            | "view-transition"
+    )
+}
+
+fn is_nestable_group_at_rule(name: &str) -> bool {
+    matches!(
+        name,
+        "media" | "supports" | "container" | "scope" | "starting-style" | "layer"
+    )
+}
+
+fn is_keyframes_at_rule(name: &str) -> bool {
+    name == "keyframes" || name.ends_with("-keyframes")
+}
+
+fn at_rule_body(name: &str, nested: bool, input: &mut Parser<'_, '_>) -> String {
+    if is_descriptor_at_rule(name) {
+        let mut declarations = CssParser {
+            font_face: name == "font-face",
+            ..Default::default()
+        };
+        RuleBodyParser::new(input, &mut declarations)
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>()
+            .join(" ")
+    } else if nested && is_nestable_group_at_rule(name) {
+        let mut nested = CssParser {
+            nested: true,
+            ..Default::default()
+        };
+        RuleBodyParser::new(input, &mut nested)
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>()
+            .join(" ")
+    } else {
+        let mut nested = CssParser {
+            keyframes: is_keyframes_at_rule(name),
+            ..Default::default()
+        };
+        StyleSheetParser::new(input, &mut nested)
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 

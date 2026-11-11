@@ -139,6 +139,33 @@ impl CssStyleSheet {
     }
 }
 
+/// Find the next `{` or `}` from `start`.
+fn find_brace(bytes: &[u8], start: usize) -> Option<(usize, u8)> {
+    let mut j = start;
+    while j < bytes.len() {
+        if bytes[j] == b'{' || bytes[j] == b'}' {
+            return Some((j, bytes[j]));
+        }
+        j += 1;
+    }
+    None
+}
+
+/// Scan from just after an opening `{` to the byte AFTER the matching `}`.
+fn scan_matching_close(bytes: &[u8], start: usize) -> usize {
+    let mut depth = 1usize;
+    let mut k = start;
+    while k < bytes.len() && depth > 0 {
+        match bytes[k] {
+            b'{' => depth += 1,
+            b'}' => depth -= 1,
+            _ => {}
+        }
+        k += 1;
+    }
+    k
+}
+
 /// Split a stylesheet string into top-level `selector { decls }` rules and parse
 /// each. Brace-depth aware; skips `/* ... */` comments. Mirrors `splitTopLevelRules`
 /// in cascade.mjs / cssom.mjs (depth scan) plus comment stripping.
@@ -146,38 +173,17 @@ impl CssStyleSheet {
 pub fn parse_stylesheet(css: &str) -> Vec<CssStyleRule> {
     let cleaned = strip_comments(css);
     let bytes = cleaned.as_bytes();
-    let n = bytes.len();
     let mut out = Vec::new();
     let mut i = 0usize;
-    while i < n {
-        // advance to the next '{' or '}'
-        let mut j = i;
-        while j < n && bytes[j] != b'{' && bytes[j] != b'}' {
-            j += 1;
-        }
-        if j >= n {
-            break;
-        }
-        if bytes[j] == b'}' {
-            // stray close brace — skip past it
+    while let Some((j, brace)) = find_brace(bytes, i) {
+        if brace == b'}' {
             i = j + 1;
             continue;
         }
-        // bytes[j] == '{' : scan the matching close, brace-depth aware
-        let mut depth = 1usize;
-        let mut k = j + 1;
-        while k < n && depth > 0 {
-            match bytes[k] {
-                b'{' => depth += 1,
-                b'}' => depth -= 1,
-                _ => {}
-            }
-            k += 1;
-        }
+        let k = scan_matching_close(bytes, j + 1);
         let piece = cleaned[i..k].trim();
         if !piece.is_empty() {
             let rule = CssStyleRule::parse(piece);
-            // skip pieces with neither selector nor decls (defensive)
             if !rule.selector_text.is_empty() || !rule.declarations.is_empty() {
                 out.push(rule);
             }
@@ -187,24 +193,30 @@ pub fn parse_stylesheet(css: &str) -> Vec<CssStyleRule> {
     out
 }
 
+/// Find the end of a `/* ... */` comment starting at `open` (the `/` of `/*`).
+/// Returns the index just past `*/`, or `bytes.len()` if unterminated.
+fn find_comment_end(bytes: &[u8], open: usize) -> usize {
+    let mut k = open + 2;
+    while k + 1 < bytes.len() {
+        if bytes[k] == b'*' && bytes[k + 1] == b'/' {
+            return k + 2;
+        }
+        k += 1;
+    }
+    bytes.len()
+}
+
 /// Remove `/* ... */` comments (CSS has no nested comments). Hand-scanned, no regex.
 fn strip_comments(css: &str) -> String {
     if !css.contains("/*") {
         return css.to_string();
     }
     let bytes = css.as_bytes();
-    let n = bytes.len();
-    let mut out = String::with_capacity(n);
+    let mut out = String::with_capacity(bytes.len());
     let mut i = 0usize;
-    while i < n {
-        if i + 1 < n && bytes[i] == b'/' && bytes[i + 1] == b'*' {
-            // find closing */
-            let mut k = i + 2;
-            while k + 1 < n && !(bytes[k] == b'*' && bytes[k + 1] == b'/') {
-                k += 1;
-            }
-            // jump past the closing */ (or to end if unterminated)
-            i = if k + 1 < n { k + 2 } else { n };
+    while i < bytes.len() {
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            i = find_comment_end(bytes, i);
         } else {
             out.push(bytes[i] as char);
             i += 1;

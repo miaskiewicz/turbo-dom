@@ -235,6 +235,33 @@ fn rendered_up_to_dialog(
 /// Per-element gate for `rendered_up_to_dialog`. Returns false when `element` blocks the walk
 /// (inert ancestor, suppressed style, intervening closed modal dialog, closed `<details>` whose
 /// walk entered a non-summary child).
+fn is_closed_intervening_dialog(
+    tree: &Tree,
+    element: Handle,
+    node: Handle,
+    dialog: Handle,
+) -> bool {
+    element != node
+        && html(tree, element, "dialog")
+        && element != dialog
+        && !tree.has_attribute(element, "open")
+}
+
+fn is_closed_details_blocking(
+    tree: &Tree,
+    element: Handle,
+    child: Option<Handle>,
+) -> bool {
+    if !html(tree, element, "details") || tree.has_attribute(element, "open") {
+        return false;
+    }
+    let summary = tree
+        .children(element)
+        .into_iter()
+        .find(|&candidate| html(tree, candidate, "summary"));
+    child.is_some() && child != summary
+}
+
 fn element_rendered_up_to_dialog(
     tree: &Tree,
     element: Handle,
@@ -249,23 +276,10 @@ fn element_rendered_up_to_dialog(
     if suppressed(tree, element, policy) {
         return false;
     }
-    if element != node
-        && html(tree, element, "dialog")
-        && element != dialog
-        && !tree.has_attribute(element, "open")
-    {
+    if is_closed_intervening_dialog(tree, element, node, dialog) {
         return false;
     }
-    if html(tree, element, "details") && !tree.has_attribute(element, "open") {
-        let summary = tree
-            .children(element)
-            .into_iter()
-            .find(|&candidate| html(tree, candidate, "summary"));
-        if child.is_some() && child != summary {
-            return false;
-        }
-    }
-    true
+    !is_closed_details_blocking(tree, element, child)
 }
 
 /// Flat-tree-ish descendants: a shadow host's shadow tree precedes its light children.
@@ -406,6 +420,10 @@ fn pseudo_kind(name: &str) -> Option<Pseudo> {
     }
 }
 
+fn is_forgiving_combinator(name: &str) -> bool {
+    name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")
+}
+
 /// Each comma-separated item of a forgiving list is parsed on its own; an invalid item is
 /// replaced rather than invalidating the whole selector.
 fn forgiving_list<'i, 't>(
@@ -427,6 +445,23 @@ fn forgiving_list<'i, 't>(
         }
         input.next()?;
     }
+}
+
+fn handle_function_token<'i, 't>(
+    input: &mut cssparser::Parser<'i, 't>,
+    name: &cssparser::CowRcStr<'i>,
+    ranges: &mut Vec<(usize, usize, Pseudo)>,
+    colon: &mut Option<usize>,
+) -> Result<bool, cssparser::ParseError<'i, ()>> {
+    if colon.is_some() && pseudo_kind(name).is_some() {
+        return Err(input.new_custom_error(()));
+    }
+    if is_forgiving_combinator(name) && colon.is_some() {
+        *colon = None;
+        input.parse_nested_block(|nested| forgiving_list(nested, ranges))?;
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 fn pseudo_ranges<'i, 't>(
@@ -452,16 +487,8 @@ fn pseudo_ranges<'i, 't>(
                 colon = None;
                 double_colon = false;
             }
-            // `:modal()` / `:open()` are invalid selectors.
-            Token::Function(ref name) if colon.is_some() && pseudo_kind(name).is_some() => {
-                return Err(input.new_custom_error(()));
-            }
-            Token::Function(ref name)
-                if colon.is_some()
-                    && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where")) =>
-            {
-                colon = None;
-                input.parse_nested_block(|nested| forgiving_list(nested, ranges))?;
+            Token::Function(ref name) if handle_function_token(input, name, ranges, &mut colon)? => {
+                double_colon = false;
             }
             Token::Function(_) | Token::ParenthesisBlock => {
                 colon = None;

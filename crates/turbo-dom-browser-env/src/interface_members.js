@@ -71,15 +71,16 @@
       const hex = apply(trim, escape, []);
       return apply(exec, /^[0-9a-fA-F]+$/, [hex]) ? fromCodePoint(minimum(parseInteger(hex, 16), 0x10ffff) || 0xfffd) : escape;
     }]);
+    const parseSingleColon = (kind) => (kind === 'before' || kind === 'after') ? { kind, name: null } : null;
+    const parseNamed = (kind, arg) => named.indexOf(kind) >= 0 && apply(exec, ident, [arg]) ? { kind, name: unescape(arg) } : null;
     const parse = (type) => {
       type = apply(trim, string(type), []);
       const match = apply(exec, /^(::?)([a-zA-Z-]+)(?:\((.*)\))?$/, [type]);
       if (!match) return null;
       const kind = apply(lower, match[2], []);
-      if (match[1] === ':' && (match[3] !== undefined || (kind !== 'before' && kind !== 'after'))) return null;
+      if (match[1] === ':') return match[3] === undefined ? parseSingleColon(kind) : null;
       if (match[3] === undefined) return plain.indexOf(kind) >= 0 ? { kind, name: null } : null;
-      if (named.indexOf(kind) < 0 || !apply(exec, ident, [match[3]])) return null;
-      return { kind, name: unescape(match[3]) };
+      return parseNamed(kind, match[3]);
     };
     const pseudoOf = (element, parent, kind, name) => {
       const owner = parent || element, key = kind + (name === null ? '' : '(' + name + ')');

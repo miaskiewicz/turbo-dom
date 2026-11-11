@@ -688,6 +688,21 @@ fn section_col_h(measured: &[Fragment], flags: &[KidFlags], used_count: u32) -> 
 /// (when it fits in one); a kid taller than `col_h` fragments like any
 /// other block — "If the fragment does not fit, the user agent may ignore
 /// the value" (CSS Fragmentation 3 §5.2).
+fn apply_breaks_before(f: KidFlags, h: f32, col_h: f32, col: &mut u32, cursor: &mut f32) {
+    if f.break_before_column && *cursor > 0.0 {
+        *col += 1;
+        *cursor = 0.0;
+    }
+    if f.break_inside_avoid
+        && h + FRAG_EPS <= col_h
+        && *cursor + h > col_h + FRAG_EPS
+        && *cursor > 0.0
+    {
+        *col += 1;
+        *cursor = 0.0;
+    }
+}
+
 fn fits_in_count(heights: &[f32], flags: &[KidFlags], col_h: f32, used_count: u32) -> bool {
     if col_h <= 0.0 {
         return false;
@@ -696,26 +711,11 @@ fn fits_in_count(heights: &[f32], flags: &[KidFlags], col_h: f32, used_count: u3
     let mut cursor: f32 = 0.0;
     let last = heights.len().saturating_sub(1);
     for (i, h) in heights.iter().enumerate() {
-        let f = flags[i];
-        if f.break_before_column && cursor > 0.0 {
-            col += 1;
-            cursor = 0.0;
-        }
-        if f.break_inside_avoid
-            && *h + FRAG_EPS <= col_h
-            && cursor + *h > col_h + FRAG_EPS
-            && cursor > 0.0
-        {
-            col += 1;
-            cursor = 0.0;
-        }
+        apply_breaks_before(flags[i], *h, col_h, &mut col, &mut cursor);
         let (c_after, cur_after) = place_in_flow(col, cursor, *h, col_h);
         col = c_after;
         cursor = cur_after;
-        // `break-after: column` on the last kid is a no-op (nothing
-        // follows to break), so skip it rather than counting a trailing
-        // empty strip as an overflow and growing `col_h` unnecessarily.
-        if f.break_after_column && i < last {
+        if flags[i].break_after_column && i < last {
             col += 1;
             cursor = 0.0;
         }

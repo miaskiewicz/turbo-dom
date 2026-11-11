@@ -107,6 +107,16 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
     changed.then_some(out)
 }
 
+fn normalize_bracket(code: u32, open: &mut Vec<u8>) {
+    if code == u32::from(b'[') {
+        open.push(b']');
+    } else if code == u32::from(b'(') {
+        open.push(b')');
+    } else if open.last().is_some_and(|&close| code == u32::from(close)) {
+        open.pop();
+    }
+}
+
 /// Classify the current character into a bracket/quote/comment update.
 /// Returns true when the caller should `continue` (comment skip).
 fn normalize_consume<T: Unit, F: Fn(usize, u8) -> bool>(
@@ -128,12 +138,8 @@ fn normalize_consume<T: Unit, F: Fn(usize, u8) -> bool>(
     } else if code == u32::from(b'/') && is(*i + 1, b'*') {
         skip_comment(source, i, out, open, changed);
         return true;
-    } else if code == u32::from(b'[') {
-        open.push(b']');
-    } else if code == u32::from(b'(') {
-        open.push(b')');
-    } else if open.last().is_some_and(|&close| code == u32::from(close)) {
-        open.pop();
+    } else {
+        normalize_bracket(code, open);
     }
     false
 }

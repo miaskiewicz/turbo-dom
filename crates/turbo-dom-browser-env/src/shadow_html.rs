@@ -430,6 +430,18 @@ pub(super) fn set_html_unsafe<'s>(
     custom_elements::parser_inserted(scope, target, &parsed, mark);
 }
 
+fn append_shadow_attrs(tag: &mut String, init: &Init) {
+    if init.delegates_focus {
+        tag.push_str(" shadowrootdelegatesfocus=\"\"");
+    }
+    if init.serializable {
+        tag.push_str(" shadowrootserializable=\"\"");
+    }
+    if init.clonable {
+        tag.push_str(" shadowrootclonable=\"\"");
+    }
+}
+
 /// Serialization options of `getHTML`.
 pub(super) struct Serialization<'s> {
     pub serializable: bool,
@@ -455,15 +467,7 @@ pub(super) fn serialized_root<'s>(
         return None;
     }
     let mut tag = format!("<template shadowrootmode=\"{}\"", mode_of(root)?);
-    if init.delegates_focus {
-        tag.push_str(" shadowrootdelegatesfocus=\"\"");
-    }
-    if init.serializable {
-        tag.push_str(" shadowrootserializable=\"\"");
-    }
-    if init.clonable {
-        tag.push_str(" shadowrootclonable=\"\"");
-    }
+    append_shadow_attrs(&mut tag, &init);
     let mut tag: Vec<u16> = tag.encode_utf16().collect();
     if let Some(target) = reference_target::serialized(scope, object) {
         tag.extend(target);
@@ -506,6 +510,13 @@ fn illegal(scope: &mut v8::PinScope) {
         scope.throw_exception(error);
     }
 }
+fn flag_name(operation: &str) -> &str {
+    if operation == "delegatesFocus" {
+        "delegates-focus"
+    } else {
+        operation
+    }
+}
 fn shadow_root(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> Option<Handle> {
     let _owner = DomScope::for_object(scope, object);
     handle_of(scope, object)
@@ -526,12 +537,7 @@ fn native<'s>(
                 illegal(scope);
                 return;
             }
-            let name = if operation == "delegatesFocus" {
-                "delegates-focus"
-            } else {
-                operation.as_str()
-            };
-            rv.set_bool(flag(scope, object, name));
+            rv.set_bool(flag(scope, object, flag_name(&operation)));
         }
         "pointerLockElement" => {
             if shadow_root(scope, object).is_none() {

@@ -291,6 +291,28 @@ fn capture(scope: &mut v8::PinScope, root: Handle, document_scope: bool) -> &'st
     .unwrap_or("layout")
 }
 
+fn transition_name_of(
+    style: &std::collections::HashMap<String, String>,
+    node: Handle,
+    root: Handle,
+    document_scope: bool,
+) -> String {
+    let mut name = get_property_value(style, "view-transition-name")
+        .trim()
+        .to_owned();
+    if name.is_empty() && document_scope && node == root {
+        name = "root".into();
+    }
+    name
+}
+
+fn is_duplicate_transition_name(
+    name: &str,
+    names: &mut std::collections::HashSet<String>,
+) -> bool {
+    !matches!(name, "" | "none" | "auto" | "match-element") && !names.insert(name.to_owned())
+}
+
 fn collect_capture_names(
     tree: &Tree,
     boxes: &Boxes<'_>,
@@ -309,15 +331,8 @@ fn collect_capture_names(
             continue;
         }
         if display != Display::Contents {
-            let mut name = get_property_value(&style, "view-transition-name")
-                .trim()
-                .to_owned();
-            if name.is_empty() && document_scope && node == root {
-                name = "root".into();
-            }
-            if !matches!(name.as_str(), "" | "none" | "auto" | "match-element")
-                && !names.insert(name)
-            {
+            let name = transition_name_of(&style, node, root, document_scope);
+            if is_duplicate_transition_name(&name, &mut names) {
                 return "names";
             }
         }
@@ -505,6 +520,16 @@ fn pseudo_ranges<'i, 't>(
 /// Recurse into a function or parenthesis block for `pseudo_ranges`. Handles the view-transition
 /// pseudo-functions (`active-view-transition`, `active-view-transition-type`), the forgiving
 /// `:is()` / `:where()` lists, and ordinary nested selector contexts.
+fn parse_transition_type<'i, 't>(
+    input: &mut cssparser::Parser<'i, 't>,
+    ranges: &mut Vec<(usize, usize, Pseudo)>,
+    start: usize,
+) -> Result<(), cssparser::ParseError<'i, ()>> {
+    let types = input.parse_nested_block(type_list)?;
+    ranges.push((start, input.position().byte_index(), Pseudo::Types(types)));
+    Ok(())
+}
+
 fn visit_function_token<'i, 't>(
     input: &mut cssparser::Parser<'i, 't>,
     token: &cssparser::Token<'i>,
@@ -519,9 +544,7 @@ fn visit_function_token<'i, 't>(
         }
         if colon.is_some() && name.eq_ignore_ascii_case("active-view-transition-type") {
             let start = colon.take().unwrap_or(position);
-            let types = input.parse_nested_block(type_list)?;
-            ranges.push((start, input.position().byte_index(), Pseudo::Types(types)));
-            return Ok(());
+            return parse_transition_type(input, ranges, start);
         }
         if colon.is_some()
             && (name.eq_ignore_ascii_case("is") || name.eq_ignore_ascii_case("where"))

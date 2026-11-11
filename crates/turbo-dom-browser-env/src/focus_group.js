@@ -16,13 +16,17 @@
   const assignedSlot = slotOf && slotOf.get;
   const up = node => { try { const slot = assignedSlot && apply(assignedSlot, node, []); if (slot) return slot; } catch {} const parent = apply(parentNode, node, []); if (parent) return parent; try { return apply(hostOf, node, []); } catch { return null; } };
   // `writing-mode` is inherited; the snapshot holds authored values, so take the nearest one.
+  const readWritingMode = element => {
+    let value = '';
+    try { const style = computed(element); value = getPropertyValue ? apply(getPropertyValue, style, ['writing-mode']) : style['writing-mode']; } catch {}
+    return apply(lower, apply(trim, StringValue(value || ''), []), []);
+  };
+  const isResolved = value => value && value !== 'inherit' && value !== 'unset' && value !== 'revert';
   const writingMode = node => {
     for (let current = node; current; current = up(current)) {
       if (apply(nodeType, current, []) !== 1) continue;
-      let value = '';
-      try { const style = computed(current); value = getPropertyValue ? apply(getPropertyValue, style, ['writing-mode']) : style['writing-mode']; } catch {}
-      value = apply(lower, apply(trim, StringValue(value || ''), []), []);
-      if (value && value !== 'inherit' && value !== 'unset' && value !== 'revert') return value === 'initial' ? 'horizontal-tb' : value;
+      const value = readWritingMode(current);
+      if (isResolved(value)) return value === 'initial' ? 'horizontal-tb' : value;
     }
     return 'horizontal-tb';
   };

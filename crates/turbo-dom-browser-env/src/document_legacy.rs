@@ -439,11 +439,7 @@ fn ends_in_number(host: &str) -> bool {
 /// Chromium's host canonicalizer as measured for document.domain: escapes are
 /// decoded, non-ASCII input takes the IDNA path, a handful of ASCII characters
 /// are escaped rather than rejected, and numeric hosts are IPv4 addresses.
-fn canonical_host(raw: &str) -> Option<String> {
-    // A bracketed host parses as an IPv6 address or fails; it is never a domain.
-    if raw.starts_with('[') {
-        return url::Host::parse(raw).ok().map(|host| host.to_string());
-    }
+fn percent_decode(raw: &str) -> Vec<u8> {
     let bytes = raw.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
     let mut index = 0;
@@ -462,15 +458,10 @@ fn canonical_host(raw: &str) -> Option<String> {
             }
         }
     }
-    let decoded = String::from_utf8(decoded).ok()?;
-    let ascii = if decoded.is_ascii() {
-        decoded
-    } else {
-        match url::Host::parse(&decoded).ok()? {
-            url::Host::Domain(name) => name,
-            host => host.to_string(),
-        }
-    };
+    decoded
+}
+
+fn escape_host_bytes(ascii: &str) -> Option<String> {
     let mut host = String::with_capacity(ascii.len());
     for byte in ascii.bytes() {
         match byte {
@@ -494,7 +485,23 @@ fn canonical_host(raw: &str) -> Option<String> {
             _ => host.push(byte.to_ascii_lowercase() as char),
         }
     }
-    // A host that ends in a number parses as an IPv4 address or fails (WHATWG host parser).
+    Some(host)
+}
+
+fn canonical_host(raw: &str) -> Option<String> {
+    if raw.starts_with('[') {
+        return url::Host::parse(raw).ok().map(|host| host.to_string());
+    }
+    let decoded = String::from_utf8(percent_decode(raw)).ok()?;
+    let ascii = if decoded.is_ascii() {
+        decoded
+    } else {
+        match url::Host::parse(&decoded).ok()? {
+            url::Host::Domain(name) => name,
+            host => host.to_string(),
+        }
+    };
+    let host = escape_host_bytes(&ascii)?;
     if ends_in_number(&host) {
         return url::Host::parse(&host).ok().map(|host| host.to_string());
     }
@@ -504,17 +511,44 @@ fn is_public_suffix(domain: &str) -> bool {
     psl::suffix(domain.as_bytes()).is_some_and(|suffix| suffix.as_bytes() == domain.as_bytes())
 }
 /// Blink's Document::setDomain; returns the SecurityError message on refusal.
+fn validate_domain_match(exact: bool, suffix: bool, new_domain: &str, current: &str) -> Option<String> {
+    if !exact && !suffix {
+        return Some(format!("'{new_domain}' is not a suffix of '{current}'."));
+    }
+    if suffix && is_public_suffix(new_domain) {
+        return Some(format!("'{new_domain}' is a top-level domain."));
+    }
+    None
+}
+
+fn is_domain_suffix(host: &str, new_domain: &str) -> bool {
+    host.len() > new_domain.len()
+        && host.ends_with(new_domain)
+        && host.as_bytes()[host.len() - new_domain.len() - 1] == b'.'
+}
+
+fn validate_domain_preconditions<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<'s, v8::Object>,
+    owner: &OwnerState,
+) -> Option<String> {
+    if !owner.active || !owner.browsing {
+        return Some("A browsing context is required to set a domain.".into());
+    }
+    if private_value(scope, document, DOMAIN_SANDBOXED).is_some_and(|value| value.is_true()) {
+        return Some("Assignment is forbidden for sandboxed iframes.".into());
+    }
+    None
+}
+
 fn set_domain<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     document: v8::Local<'s, v8::Object>,
     raw: &str,
 ) -> Option<String> {
     let owner = owner(scope, document)?;
-    if !owner.active || !owner.browsing {
-        return Some("A browsing context is required to set a domain.".into());
-    }
-    if private_value(scope, document, DOMAIN_SANDBOXED).is_some_and(|value| value.is_true()) {
-        return Some("Assignment is forbidden for sandboxed iframes.".into());
+    if let Some(err) = validate_domain_preconditions(scope, document, &owner) {
+        return Some(err);
     }
     let Some(new_domain) = canonical_host(raw) else {
         return Some(format!("'{raw}' could not be parsed properly."));
@@ -524,29 +558,17 @@ fn set_domain<'s>(
     }
     let current = effective_domain(scope, &owner);
     let (source, url) = origin_source(scope, document, &owner.url);
-    // The match runs against the origin's own host, so a relaxed document may
-    // restore any suffix of it; the message names the current effective domain.
     let host = origin_host(&url).map(|host| host.to_string());
     let ip = url::Host::parse(&new_domain).is_ok_and(|host| !matches!(host, url::Host::Domain(_)));
     let exact = host.as_deref() == Some(new_domain.as_str());
-    let suffix = !ip
-        && host.as_deref().is_some_and(|host| {
-            host.len() > new_domain.len()
-                && host.ends_with(new_domain.as_str())
-                && host.as_bytes()[host.len() - new_domain.len() - 1] == b'.'
-        });
-    if !exact && !suffix {
-        return Some(format!("'{new_domain}' is not a suffix of '{current}'."));
-    }
-    if suffix && is_public_suffix(&new_domain) {
-        return Some(format!("'{new_domain}' is a top-level domain."));
+    let suffix = !ip && host.as_deref().is_some_and(|host| is_domain_suffix(host, &new_domain));
+    if let Some(err) = validate_domain_match(exact, suffix, &new_domain, &current) {
+        return Some(err);
     }
     let keyed = private_value(scope, source, ORIGIN_KEYED)
         .map(|value| value.is_true())
         .unwrap_or_else(|| trustworthy(&url));
-    // An origin-keyed agent cluster ignores the assignment (Chrome only warns).
     if !keyed {
-        // turbo-dom#183: fails only past V8's string length limit
         let value = super::utf8_string(scope, &new_domain);
         set_private_value(scope, source, RELAXED_DOMAIN, value.into());
     }
@@ -695,10 +717,7 @@ fn dispatch<'s>(
         _ => {}
     }
     if operation == "all" {
-        if let Some(value) = all_of(scope, node) {
-            rv.set(value);
-        }
-        return;
+        return dispatch_all(scope, node, &mut rv);
     }
     let _dom = DomScope::for_object(scope, node);
     let Some(handle) = handle_of(scope, node) else {
@@ -723,6 +742,12 @@ fn dispatch<'s>(
             rv.set(v8::Array::new_with_elements(scope, &values).into());
         }
         _ => {}
+    }
+}
+
+fn dispatch_all(scope: &mut v8::PinScope, node: v8::Local<v8::Object>, rv: &mut v8::ReturnValue) {
+    if let Some(value) = all_of(scope, node) {
+        rv.set(value);
     }
 }
 

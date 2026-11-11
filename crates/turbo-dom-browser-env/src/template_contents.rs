@@ -132,6 +132,40 @@ fn associated<'s>(
     put(scope, owner, "turbo.template.associated-document", document)?;
     Some(document)
 }
+fn template_contents_enabled() -> bool {
+    DOM.with(|dom| {
+        dom.borrow()
+            .as_ref()
+            .is_some_and(|dom| dom.template_contents.enabled)
+    })
+}
+
+fn create_fragment(scope: &mut v8::PinScope, host: v8::Local<v8::Object>) -> Option<v8::Local<v8::Object>> {
+    let _owner = DomScope::for_object(scope, host);
+    let node = handle_of(scope, host)?;
+    if !template_contents_enabled() {
+        return None;
+    }
+    let fragment = with_tree_mut(|tree| {
+        tree.take_template_contents(node)
+            .unwrap_or_else(|| tree.create_document_fragment())
+    })?;
+    Some(wrap(scope, fragment))
+}
+
+fn adopt_fragment<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    host: v8::Local<'s, v8::Object>,
+    fragment: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Object>> {
+    let owner = document(scope, host)?;
+    let target = associated(scope, owner)?;
+    put(scope, host, "turbo.template.content", fragment)?;
+    put(scope, fragment, "turbo.template.host", host)?;
+    document_basics::adopt(scope, target, fragment).ok()?;
+    Some(fragment)
+}
+
 pub(super) fn ensure<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     host: v8::Local<'s, v8::Object>,
@@ -142,30 +176,8 @@ pub(super) fn ensure<'s>(
     if let Some(content) = edge(scope, host, "turbo.template.content") {
         return Some(content);
     }
-    let fragment = {
-        let _owner = DomScope::for_object(scope, host);
-        let node = handle_of(scope, host)?;
-        let enabled = DOM.with(|dom| {
-            dom.borrow()
-                .as_ref()
-                .is_some_and(|dom| dom.template_contents.enabled)
-        });
-        if !enabled {
-            return None;
-        }
-        let fragment = with_tree_mut(|tree| {
-            tree.take_template_contents(node)
-                .unwrap_or_else(|| tree.create_document_fragment())
-        })?;
-        wrap(scope, fragment)
-    };
-    let owner = document(scope, host)?;
-    let target = associated(scope, owner)?;
-    // Publish both private edges before migration can wrap a nested template.
-    put(scope, host, "turbo.template.content", fragment)?;
-    put(scope, fragment, "turbo.template.host", host)?;
-    document_basics::adopt(scope, target, fragment).ok()?;
-    Some(fragment)
+    let fragment = create_fragment(scope, host)?;
+    adopt_fragment(scope, host, fragment)
 }
 fn children<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -495,6 +507,30 @@ fn shadow<'s>(
     }
 }
 
+fn push_inner_children<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    root: v8::Local<'s, v8::Object>,
+    raw: &impl Fn(&str) -> bool,
+    shadows: Option<&shadow_html::Serialization<'s>>,
+    pending: &mut Vec<Task<'s>>,
+    out: &mut Vec<u16>,
+) {
+    let source = ensure(scope, root).unwrap_or(root);
+    let is_raw = {
+        let _owner = DomScope::for_object(scope, root);
+        handle_of(scope, root)
+            .and_then(|node| with_tree(|tree| tree.local_name(node).map(raw)))
+            .flatten()
+            .unwrap_or(false)
+    };
+    for child in children(scope, source).into_iter().rev() {
+        pending.push(Task::Node(child, is_raw));
+    }
+    if let Some(options) = shadows {
+        shadow(scope, root, options, pending, out);
+    }
+}
+
 /// Serialize with `getHTML` shadow options; hosts whose root is selected emit a
 /// declarative `<template>` before their light children.
 pub(super) fn serialize_with<'s>(
@@ -516,20 +552,7 @@ pub(super) fn serialize_with<'s>(
     if outer {
         pending.push(Task::Node(root, false))
     } else {
-        let source = ensure(scope, root).unwrap_or(root);
-        let raw = {
-            let _owner = DomScope::for_object(scope, root);
-            handle_of(scope, root)
-                .and_then(|node| with_tree(|tree| tree.local_name(node).map(raw)))
-                .flatten()
-                .unwrap_or(false)
-        };
-        for child in children(scope, source).into_iter().rev() {
-            pending.push(Task::Node(child, raw));
-        }
-        if let Some(options) = shadows {
-            shadow(scope, root, options, &mut pending, &mut out);
-        }
+        push_inner_children(scope, root, &raw, shadows, &mut pending, &mut out);
     }
     while let Some(task) = pending.pop() {
         if scope.is_execution_terminating() {

@@ -39,7 +39,8 @@
   const E = g.Element.prototype, N = g.Node.prototype;
   const getAttribute = E.getAttribute, hasAttribute = E.hasAttribute, firstChild = describe(N, 'firstChild').get, nextSibling = describe(N, 'nextSibling').get, parentNode = describe(N, 'parentNode').get;
   const nodeType = describe(N, 'nodeType').get, localName = describe(E, 'localName').get, namespaceURI = describe(E, 'namespaceURI').get;
-  const now = g.performance && g.performance.now ? Function.prototype.call.bind(g.performance.now, g.performance) : () => 0;
+  const performanceNow = g.performance ? g.performance.now : null;
+  const now = performanceNow ? Function.prototype.call.bind(performanceNow, g.performance) : () => 0;
   const P = g.HTMLMediaElement.prototype, V = g.HTMLVideoElement.prototype;
   const mediaBrand = accessorOf('nodeType', false, 'HTML:audio|video'), videoBrand = accessorOf('nodeType', false, 'HTML:video');
   const canPlayType = P.canPlayType;
@@ -126,9 +127,11 @@
 
   // ---- MediaError ----
   const MediaErrorType = iface('MediaError'), errors = table();
-  for (const [name, value] of [['MEDIA_ERR_ABORTED', 1], ['MEDIA_ERR_NETWORK', 2], ['MEDIA_ERR_DECODE', 3], ['MEDIA_ERR_SRC_NOT_SUPPORTED', 4]]) {
-    for (const object of [MediaErrorType, MediaErrorType.prototype]) define(object, name, { value, writable: false, enumerable: true, configurable: true });
+  function defineErrorConstants(ctor) {
+    for (const [name, value] of [['MEDIA_ERR_ABORTED', 1], ['MEDIA_ERR_NETWORK', 2], ['MEDIA_ERR_DECODE', 3], ['MEDIA_ERR_SRC_NOT_SUPPORTED', 4]])
+      for (const object of [ctor, ctor.prototype]) define(object, name, { value, writable: false, enumerable: true, configurable: true });
   }
+  defineErrorConstants(MediaErrorType);
   getter(MediaErrorType.prototype, 'code', function () { return errors.brand(this).code; });
   getter(MediaErrorType.prototype, 'message', function () { return errors.brand(this).message; });
   const newError = (code, message) => errors.add(create(MediaErrorType.prototype), { code, message });

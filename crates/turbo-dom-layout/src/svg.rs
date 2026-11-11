@@ -207,31 +207,33 @@ pub const MAX_DEPTH: usize = 1024;
 /// by a flat scan: the deepest `<tag` nesting in the document, plus ten times the
 /// number of element starts inside a DOCTYPE internal subset (an entity may expand to
 /// markup, and roxmltree allows entity references ten deep).
+fn skip_to_end(bytes: &[u8], rest: &[u8], i: usize, end: &[u8]) -> usize {
+    find(rest, end).map_or(bytes.len(), |e| i + e + end.len())
+}
+
+fn scan_doctype(bytes: &[u8], rest: &[u8], i: usize, dtd_opens: &mut usize) -> usize {
+    let internal = rest.iter().position(|&b| b == b'[') < rest.iter().position(|&b| b == b'>');
+    let end = skip_to_end(bytes, rest, i, if internal { b"]>" } else { b">" });
+    *dtd_opens += bytes[i + 1..end].windows(2).filter(|w| is_open(w)).count();
+    end
+}
+
 fn markup_depth(bytes: &[u8]) -> usize {
     let (mut i, mut depth, mut deepest, mut dtd_opens) = (0, 0usize, 0, 0);
     while let Some(off) = bytes[i..].iter().position(|&b| b == b'<') {
         i += off;
         let rest = &bytes[i..];
-        let skip_to = |end: &[u8]| find(rest, end).map_or(bytes.len(), |e| i + e + end.len());
         if rest.starts_with(b"<!--") {
-            i = skip_to(b"-->");
+            i = skip_to_end(bytes, rest, i, b"-->");
         } else if rest.starts_with(b"<![CDATA[") {
-            i = skip_to(b"]]>");
+            i = skip_to_end(bytes, rest, i, b"]]>");
         } else if rest.starts_with(b"<?") {
-            i = skip_to(b"?>");
+            i = skip_to_end(bytes, rest, i, b"?>");
         } else if rest.starts_with(b"<!") {
-            let internal =
-                rest.iter().position(|&b| b == b'[') < rest.iter().position(|&b| b == b'>');
-            let end = if internal {
-                skip_to(b"]>")
-            } else {
-                skip_to(b">")
-            };
-            dtd_opens += bytes[i + 1..end].windows(2).filter(|w| is_open(w)).count();
-            i = end;
+            i = scan_doctype(bytes, rest, i, &mut dtd_opens);
         } else if rest.starts_with(b"</") {
             depth = depth.saturating_sub(1);
-            i = skip_to(b">");
+            i = skip_to_end(bytes, rest, i, b">");
         } else {
             let end = tag_end(rest);
             if rest[..end].ends_with(b"/") {

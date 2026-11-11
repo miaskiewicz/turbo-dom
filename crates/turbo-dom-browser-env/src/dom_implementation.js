@@ -18,8 +18,9 @@
     const first=local[0],rest=apply(stringSlice,local,[1]);
     return !apply(regexTest,asciiAlpha,[first])&&(!apply(regexTest,looseStart,[first])||apply(regexTest,strictRest,[rest]));
   }
+  function xmlnsRequired(effective,prefix) { return effective==='xmlns'||prefix==='xmlns'; }
   function invalidNamespace(namespace,prefix,effective) {
-    return prefix!==null&&!namespace||prefix==='xml'&&namespace!==namespaceXML||(effective==='xmlns'||prefix==='xmlns')&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&effective!=='xmlns'&&prefix!=='xmlns';
+    return prefix!==null&&!namespace||prefix==='xml'&&namespace!==namespaceXML||xmlnsRequired(effective,prefix)&&namespace!==namespaceXMLNS||namespace===namespaceXMLNS&&!xmlnsRequired(effective,prefix);
   }
   function qualified(namespace,name) {
     const parts=apply(stringSplit,name,[':']);
@@ -34,13 +35,14 @@
   const prototype=DOMImplementation.prototype;
   define(prototype,Symbol.toStringTag,{__proto__:null,value:'DOMImplementation',configurable:true});
   function method(name,length,implementation){define(prototype,name,{__proto__:null,value:make(implementation,name,length),writable:true,enumerable:true,configurable:true});}
+  const DOCTYPE_FORBIDDEN={__proto__:null,'\0':1,'>':1,'\t':1,'\n':1,'\f':1,'\r':1,' ':1};
+  function validateDoctypeName(name){
+    for(let index=0;index<name.length;index++){if(DOCTYPE_FORBIDDEN[name[index]])throw new Exception('Invalid doctype name','InvalidCharacterError');}
+  }
   method('createDocumentType',3,function(name,publicId,systemId){
     native('check',this);if(arguments.length<3)throw new TypeErrorValue('createDocumentType requires 3 arguments');
     name=string(name);publicId=string(publicId);systemId=string(systemId);
-    for(let index=0;index<name.length;index++){
-      const character=name[index];
-      if(character==='\0'||character==='>'||character==='\t'||character==='\n'||character==='\f'||character==='\r'||character===' ')throw new Exception('Invalid doctype name','InvalidCharacterError');
-    }
+    validateDoctypeName(name);
     return native('doctype',this,name,publicId,systemId);
   });
   method('createDocument',2,function(namespace,name,doctype){

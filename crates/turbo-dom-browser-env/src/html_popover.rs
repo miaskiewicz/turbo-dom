@@ -409,6 +409,10 @@ fn show_steps<'s>(
 }
 /// Invoker activation: the popover algorithms with an invoker source and exceptions
 /// suppressed. `action` is the canonical toggle/show/hide keyword.
+fn invoke_noop(action: &str, open: bool) -> bool {
+    (action == "show" && open) || (action == "hide" && !open)
+}
+
 pub(super) fn invoke<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: Handle,
@@ -419,7 +423,7 @@ pub(super) fn invoke<'s>(
         return;
     }
     let open = opened(node);
-    if (action == "show" && open) || (action == "hide" && !open) || busy(node) {
+    if invoke_noop(action, open) || busy(node) {
         return;
     }
     v8::tc_scope!(let scope, scope);
@@ -518,24 +522,32 @@ pub(super) fn dispatch<'s>(
             }
         }
         // The last operation the hook sends: "toggle".
-        _ => {
-            let showing = if args.get(2).is_undefined() {
-                !opened(node)
-            } else {
-                args.get(2).boolean_value(scope)
-            };
-            if check(scope, node, "togglePopover", true, false).is_none() {
-                return;
-            }
-            if showing && !opened(node) {
-                show(scope, node, source, "togglePopover");
-            } else if !showing {
-                hide(scope, node, true);
-            }
-            rv.set_bool(opened(node));
-        }
+        _ => dispatch_toggle(scope, node, &args, source, &mut rv),
     }
 }
+fn dispatch_toggle<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: Handle,
+    args: &v8::FunctionCallbackArguments<'s>,
+    source: Option<v8::Local<'s, v8::Object>>,
+    rv: &mut v8::ReturnValue,
+) {
+    let showing = if args.get(2).is_undefined() {
+        !opened(node)
+    } else {
+        args.get(2).boolean_value(scope)
+    };
+    if check(scope, node, "togglePopover", true, false).is_none() {
+        return;
+    }
+    if showing && !opened(node) {
+        show(scope, node, source, "togglePopover");
+    } else if !showing {
+        hide(scope, node, true);
+    }
+    rv.set_bool(opened(node));
+}
+
 pub(super) fn install(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__popoverNative", dispatch);

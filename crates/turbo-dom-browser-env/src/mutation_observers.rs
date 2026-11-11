@@ -79,6 +79,39 @@ pub(super) fn quiet<R>(
     operation(scope)
 }
 
+fn inclusive_ancestors(parent: Handle) -> Vec<Handle> {
+    with_tree(|tree| {
+        let mut ancestors = Vec::new();
+        let mut node = Some(parent);
+        while let Some(handle) = node {
+            ancestors.push(handle);
+            node = tree.parent(handle);
+        }
+        ancestors
+    })
+    .unwrap_or_default()
+}
+
+fn dispatch_child_list(
+    scope: &mut v8::PinScope,
+    native_event: &MutationEvent,
+    observers: &[v8::Local<v8::Object>],
+) {
+    #[cfg(test)]
+    PAYLOADS_BUILT.with(|built| built.set(built.get() + 1));
+    let event = payload(scope, native_event);
+    custom_elements::mutation(scope, event);
+    for observer in observers {
+        if let Some(queue) = function(scope, *observer, "queue") {
+            let receiver = v8::undefined(scope);
+            queue.call(scope, receiver.into(), &[event.into()]);
+        }
+    }
+    if let Some(consumer) = consumer(scope) {
+        consume(scope, consumer, event);
+    }
+}
+
 pub(super) fn child_list(
     scope: &mut v8::PinScope,
     parent: Handle,
@@ -90,23 +123,13 @@ pub(super) fn child_list(
     if !recording() || added.is_empty() && removed.is_empty() {
         return;
     }
-    let ancestors = with_tree(|tree| {
-        let mut ancestors = Vec::new();
-        let mut node = Some(parent);
-        while let Some(handle) = node {
-            ancestors.push(handle);
-            node = tree.parent(handle);
-        }
-        ancestors
-    })
-    .unwrap_or_default();
     let event = MutationEvent {
         record: MutationRecord::ChildList {
             target: parent,
             added,
             removed,
         },
-        inclusive_ancestors: ancestors,
+        inclusive_ancestors: inclusive_ancestors(parent),
         previous_sibling,
         next_sibling,
         attribute_namespace: None,
@@ -123,26 +146,12 @@ pub(super) fn child_list(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    let native_event = event;
-    shadow_slots::mutation(scope, &native_event);
-    html_media::mutation(&native_event);
-    let consumer = consumer(scope);
-    if !observers.is_empty() || custom_elements::reactions_active(scope) || consumer.is_some() {
-        #[cfg(test)]
-        PAYLOADS_BUILT.with(|built| built.set(built.get() + 1));
-        let event = payload(scope, &native_event);
-        custom_elements::mutation(scope, event);
-        for observer in observers {
-            if let Some(queue) = function(scope, observer, "queue") {
-                let receiver = v8::undefined(scope);
-                queue.call(scope, receiver.into(), &[event.into()]);
-            }
-        }
-        if let Some(consumer) = consumer {
-            consume(scope, consumer, event);
-        }
+    shadow_slots::mutation(scope, &event);
+    html_media::mutation(&event);
+    if !observers.is_empty() || custom_elements::reactions_active(scope) || consumer(scope).is_some() {
+        dispatch_child_list(scope, &event, &observers);
     }
-    script_state::inactive_mutation(&native_event);
+    script_state::inactive_mutation(&event);
 }
 
 fn key<'s>(scope: &mut v8::PinScope<'s, '_>, name: &str) -> v8::Local<'s, v8::Private> {
@@ -526,20 +535,11 @@ pub(super) fn payloads_built() -> usize {
 /// element reactions, the trusted document consumer) read is built only when one of them is
 /// present, so a recording page without observers pays no V8 allocation per mutation
 /// (turbo-dom 0.7.0 perf item 6).
-pub(super) fn flush(scope: &mut v8::PinScope) {
-    form_checked_state::owner_changes();
-    if !recording() && !other_document_recording() || scope.is_execution_terminating() {
-        return;
-    }
+fn claim_batches() -> Vec<(u64, Vec<turbo_dom_parser::rtdom::tree::Utf16MutationEvent>)> {
     let current = DOM_ID.with(std::cell::Cell::get);
     let mut ids = OTHER_DOMS.with(|doms| doms.borrow().keys().copied().collect::<Vec<_>>());
     ids.push(current);
-    // Claim every document's pending batch before invoking any consumer. A
-    // consumer can query another document, which reenters this fanout. Leaving
-    // its old events in Tree would move them into the inner CE reaction scope
-    // and run adoption callbacks before ownerDocument has been updated.
-    let batches = ids
-        .into_iter()
+    ids.into_iter()
         .filter_map(|id| {
             let _owner = DomScope::enter(id);
             let events = DOM
@@ -551,7 +551,37 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
                 .unwrap_or_default();
             (!events.is_empty()).then_some((id, events))
         })
-        .collect::<Vec<_>>();
+        .collect()
+}
+
+fn flush_batches(
+    scope: &mut v8::PinScope,
+    batches: Vec<(u64, Vec<turbo_dom_parser::rtdom::tree::Utf16MutationEvent>)>,
+    observers: &[v8::Local<v8::Object>],
+) {
+    for (id, events) in batches {
+        let _owner = DomScope::enter(id);
+        for native_event in events {
+            shadow_slots::mutation(scope, &native_event.event);
+            html_media::mutation(&native_event.event);
+            let consumer = consumer(scope);
+            if !observers.is_empty()
+                || custom_elements::reactions_active(scope)
+                || consumer.is_some()
+            {
+                deliver_event(scope, &native_event, observers, consumer);
+            }
+            script_state::inactive_mutation(&native_event.event);
+        }
+    }
+}
+
+pub(super) fn flush(scope: &mut v8::PinScope) {
+    form_checked_state::owner_changes();
+    if !recording() && !other_document_recording() || scope.is_execution_terminating() {
+        return;
+    }
+    let batches = claim_batches();
     if batches.is_empty() {
         return;
     }
@@ -567,21 +597,7 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    for (id, events) in batches {
-        let _owner = DomScope::enter(id);
-        for native_event in events {
-            shadow_slots::mutation(scope, &native_event.event);
-            html_media::mutation(&native_event.event);
-            let consumer = consumer(scope);
-            if !observers.is_empty()
-                || custom_elements::reactions_active(scope)
-                || consumer.is_some()
-            {
-                deliver_event(scope, &native_event, &observers, consumer);
-            }
-            script_state::inactive_mutation(&native_event.event);
-        }
-    }
+    flush_batches(scope, batches, &observers);
 }
 
 /// Build one event's record object and hand it to the JS consumers.

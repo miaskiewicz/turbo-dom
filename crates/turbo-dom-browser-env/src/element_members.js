@@ -20,6 +20,10 @@
     }, 'webkitMatchesSelector', 1),
     writable: true, enumerable: true, configurable: true,
   });
+  const updateHandlerListener = (target, type, callback, previous, next) => {
+    if (next && !previous) apply(listen, target, [type, callback]);
+    if (!next && previous) apply(unlisten, target, [type, callback]);
+  };
   // Chrome keeps these on Element, not GlobalEventHandlers: SVG and MathML share them.
   const types = ['beforecopy', 'beforecut', 'beforepaste', 'search', 'fullscreenchange', 'fullscreenerror', 'webkitfullscreenchange', 'webkitfullscreenerror'];
   for (const type of types) {
@@ -42,8 +46,7 @@
         let record = read(this);
         if (!record) { record = { __proto__: null }; store(this, record); }
         const entry = record[name] || (record[name] = { value: null });
-        if (value && !entry.value) apply(listen, this, [type, callback]);
-        if (!value && entry.value) apply(unlisten, this, [type, callback]);
+        updateHandlerListener(this, type, callback, entry.value, value);
         entry.value = value;
       }, 'set ' + name, 1),
     });

@@ -105,22 +105,27 @@ fn axis_line(comps: &[Comp], sides: &[&str]) -> Option<String> {
 }
 
 /// `arc <end> [of <lp>{1,2}] && [cw | ccw]? && [large | small]? && [rotate <angle>]?`.
+fn arc_of_radii(rest: &[Comp]) -> Option<(String, usize)> {
+    let values: Vec<String> = rest
+        .iter()
+        .take(2)
+        .map_while(|comp| comp.length_percentage(true))
+        .collect();
+    (!values.is_empty()).then(|| {
+        let len = values.len();
+        (values.join(" "), len + 1)
+    })
+}
+
 fn arc(comps: &[Comp]) -> Option<String> {
     let (end, _, mut rest) = split_end(comps, &["of", "cw", "ccw", "large", "small", "rotate"])?;
     let (mut radii, mut sweep, mut size, mut rotate) = (None, None, None, None);
     while let Some(first) = rest.first() {
         let used = match first.ident()?.as_str() {
             "of" if radii.is_none() => {
-                let values: Vec<String> = rest[1..]
-                    .iter()
-                    .take(2)
-                    .map_while(|comp| comp.length_percentage(true))
-                    .collect();
-                if values.is_empty() {
-                    return None;
-                }
-                radii = Some(values.join(" "));
-                values.len() + 1
+                let (r, used) = arc_of_radii(&rest[1..])?;
+                radii = Some(r);
+                used
             }
             keyword @ ("cw" | "ccw") if sweep.is_none() => {
                 sweep = Some(keyword == "cw");
@@ -140,7 +145,11 @@ fn arc(comps: &[Comp]) -> Option<String> {
         };
         rest = &rest[used..];
     }
-    let mut out = format!("{end} of {}", radii?);
+    Some(arc_text(&end, &radii?, sweep, size, rotate))
+}
+
+fn arc_text(end: &str, radii: &str, sweep: Option<bool>, size: Option<bool>, rotate: Option<&Comp>) -> String {
+    let mut out = format!("{end} of {radii}");
     if sweep == Some(true) {
         out.push_str(" cw");
     }
@@ -150,7 +159,7 @@ fn arc(comps: &[Comp]) -> Option<String> {
     if let Some(angle) = rotate.filter(|angle| !zero_angle(angle)) {
         out = format!("{out} rotate {}", angle.text);
     }
-    Some(out)
+    out
 }
 
 fn zero_angle(angle: &Comp) -> bool {
@@ -158,25 +167,31 @@ fn zero_angle(angle: &Comp) -> bool {
 }
 
 /// One `<shape-command>`.
+fn curve_smooth(name: &str, rest: &[Comp]) -> Option<String> {
+    let (end, absolute, rest) = split_end(rest, &["with"])?;
+    if rest.is_empty() && name == "smooth" {
+        Some(end)
+    } else {
+        Some(format!("{end} {}", controls(rest, absolute, name == "curve")?))
+    }
+}
+
+fn command_text(name: &str, rest: &[Comp]) -> Option<String> {
+    match name {
+        "close" if rest.is_empty() => Some(String::new()),
+        "move" | "line" => Some(end_point(rest)?.0),
+        "hline" => axis_line(rest, &["left", "center", "right", "x-start", "x-end"]),
+        "vline" => axis_line(rest, &["top", "center", "bottom", "y-start", "y-end"]),
+        "curve" | "smooth" => curve_smooth(name, rest),
+        "arc" => arc(rest),
+        _ => None,
+    }
+}
+
 fn command(comps: &[Comp]) -> Option<String> {
-    let (name, rest) = comps.split_first()?;
-    let name = name.ident()?;
-    let text = match name.as_str() {
-        "close" if rest.is_empty() => String::new(),
-        "move" | "line" => end_point(rest)?.0,
-        "hline" => axis_line(rest, &["left", "center", "right", "x-start", "x-end"])?,
-        "vline" => axis_line(rest, &["top", "center", "bottom", "y-start", "y-end"])?,
-        "curve" | "smooth" => {
-            let (end, absolute, rest) = split_end(rest, &["with"])?;
-            if rest.is_empty() && name == "smooth" {
-                end
-            } else {
-                format!("{end} {}", controls(rest, absolute, name == "curve")?)
-            }
-        }
-        "arc" => arc(rest)?,
-        _ => return None,
-    };
+    let (first, rest) = comps.split_first()?;
+    let name = first.ident()?;
+    let text = command_text(&name, rest)?;
     Some(if text.is_empty() {
         name
     } else {
@@ -185,22 +200,26 @@ fn command(comps: &[Comp]) -> Option<String> {
 }
 
 /// A `shape()` function `comp` in Chrome's spelling, `None` when Chrome rejects it.
+fn shape_head(head: &[Comp]) -> Option<(Option<String>, &[Comp])> {
+    let (rule, head) = match head.first() {
+        Some(first) if first.is_ident(&["nonzero", "evenodd"]) => (first.ident(), &head[1..]),
+        _ => (None, head),
+    };
+    let (from, start) = head.split_first()?;
+    if !from.is_ident(&["from"]) {
+        return None;
+    }
+    Some((rule, start))
+}
+
 pub(super) fn shape_text(comp: &Comp) -> Option<String> {
     let inner = components(&comp.text[6..comp.text.len() - 1])?;
     let mut items: Vec<&[Comp]> = inner.split(Comp::is_comma).collect();
-    // One trailing comma is dropped.
     if items.len() > 2 && items.last().is_some_and(|item| item.is_empty()) {
         items.pop();
     }
-    let (head, commands) = items.split_first()?;
-    let (rule, head) = match head.first() {
-        Some(first) if first.is_ident(&["nonzero", "evenodd"]) => (first.ident(), &head[1..]),
-        _ => (None, *head),
-    };
-    let (from, start) = head.split_first()?;
-    if !from.is_ident(&["from"]) || commands.is_empty() {
-        return None;
-    }
+    let (head, commands) = items.split_first().filter(|(_, cmds)| !cmds.is_empty())?;
+    let (rule, start) = shape_head(head)?;
     let mut parts = vec![format!("from {}", position_text(start)?)];
     for item in commands {
         parts.push(command(item)?);

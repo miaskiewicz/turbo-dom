@@ -170,6 +170,31 @@ fn clip_blockers(
     (blocked_x, blocked_y)
 }
 
+fn apply_in_flow_margins(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    used: crate::layout_snapshot::UsedBoxMetrics,
+    blocked_x: bool,
+    blocked_y: bool,
+    right: &mut f32,
+    left: &mut f32,
+    bottom: &mut f32,
+) {
+    let Some(metrics) = fragment.used_box else {
+        return;
+    };
+    if metrics.position == Position::Absolute || metrics.position == Position::Fixed {
+        return;
+    }
+    let rect = fragment.rect;
+    if !blocked_x {
+        *right = right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
+        *left = left.min(rect.x - metrics.margin.left - used.padding.left);
+    }
+    if !blocked_y {
+        *bottom = bottom.max(rect.y + rect.height + metrics.margin.bottom + used.padding.bottom);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn extend_scroll_bounds(
     _snapshot: &LayoutSnapshot,
@@ -202,18 +227,46 @@ fn extend_scroll_bounds(
         *bottom = bottom.max(transformed[1]).max(untransformed[1]);
     }
     [*right, *bottom] = own_line_extent((fragment, id, used), scroll_container, [*right, *bottom]);
-    if let Some(metrics) = fragment.used_box {
-        if metrics.position != Position::Absolute && metrics.position != Position::Fixed {
-            if !blocked_x && scroll_container {
-                *right = right.max(rect.x + rect.width + metrics.margin.right + used.padding.right);
-                *left = left.min(rect.x - metrics.margin.left - used.padding.left);
-            }
-            if !blocked_y && scroll_container {
-                *bottom =
-                    bottom.max(rect.y + rect.height + metrics.margin.bottom + used.padding.bottom);
-            }
-        }
+    if scroll_container {
+        apply_in_flow_margins(fragment, used, blocked_x, blocked_y, right, left, bottom);
     }
+}
+
+fn scroll_metrics_preconditions<'a>(
+    snapshot: &'a LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+) -> Result<
+    (
+        &'a crate::layout_snapshot::SnapshotSource,
+        &'a crate::layout_snapshot::SnapshotFragment,
+        crate::layout_snapshot::UsedBoxMetrics,
+    ),
+    Result<ScrollMetrics, String>,
+> {
+    let Some(source) = snapshot.source(id) else {
+        return Err(Err("native scroll source missing".into()));
+    };
+    if is_zero_scroll_source(snapshot, styles, id, source) {
+        return Err(Ok(zero_scroll_metrics()));
+    }
+    if snapshot.unsupported_svg_source_geometry(id) {
+        return Err(Err(
+            "native SVG descendant scroll geometry is unsupported".into(),
+        ));
+    }
+    let Some(first) = source
+        .fragment_indices
+        .iter()
+        .map(|&i| &snapshot.fragments()[i])
+        .find(|fragment| fragment.kind == GeometryKind::BorderBox)
+    else {
+        return Err(Err("native scroll requires inline border provenance".into()));
+    };
+    let Some(used) = first.used_box else {
+        return Err(Err("native scroll used box missing".into()));
+    };
+    Ok((source, first, used))
 }
 
 pub fn scroll_metrics(
@@ -221,20 +274,10 @@ pub fn scroll_metrics(
     styles: &SourceStyles,
     id: SourceId,
 ) -> Result<ScrollMetrics, String> {
-    let source = snapshot.source(id).ok_or("native scroll source missing")?;
-    if is_zero_scroll_source(snapshot, styles, id, source) {
-        return Ok(zero_scroll_metrics());
-    }
-    if snapshot.unsupported_svg_source_geometry(id) {
-        return Err("native SVG descendant scroll geometry is unsupported".into());
-    }
-    let first = source
-        .fragment_indices
-        .iter()
-        .map(|&i| &snapshot.fragments()[i])
-        .find(|fragment| fragment.kind == GeometryKind::BorderBox)
-        .ok_or("native scroll requires inline border provenance")?;
-    let used = first.used_box.ok_or("native scroll used box missing")?;
+    let (source, first, used) = match scroll_metrics_preconditions(snapshot, styles, id) {
+        Ok(tuple) => tuple,
+        Err(result) => return result,
+    };
     let padding = used.padding_rect(first.rect);
     let own = styles
         .get(&id)
@@ -923,6 +966,30 @@ fn layout_unit(value: f64) -> f64 {
     (value * 64.0).round() / 64.0
 }
 
+fn select_behavior(
+    intersection: f64,
+    length: f64,
+    visible: f64,
+    behaviors: [Align; 3],
+) -> Align {
+    if intersection == length || intersection == visible {
+        behaviors[0]
+    } else if intersection > 0.0 {
+        behaviors[2]
+    } else {
+        behaviors[1]
+    }
+}
+
+fn resolve_closest(end: f64, length: f64, current: f64, visible: f64) -> Align {
+    let visible_end = current + visible;
+    if (end > visible_end && length < visible) || (end < visible_end && length > visible) {
+        Align::End
+    } else {
+        Align::Start
+    }
+}
+
 /// Scroll position exposing `[start, start + length)` in one scroller axis whose
 /// visible content range is `[current, current + visible)`.
 #[must_use]
@@ -935,23 +1002,9 @@ pub fn expose(start: f64, length: f64, current: f64, visible: f64, behaviors: [A
     );
     let end = start + length;
     let intersection = (end.min(current + visible) - start.max(current)).max(0.0);
-    // A target covering the whole visible range counts as fully visible: Chrome 156
-    // still centers it for `center` (miaskiewicz/turbo-dom#125).
-    let mut behavior = if intersection == length || intersection == visible {
-        behaviors[0]
-    } else if intersection > 0.0 {
-        behaviors[2]
-    } else {
-        behaviors[1]
-    };
+    let mut behavior = select_behavior(intersection, length, visible, behaviors);
     if behavior == Align::Closest {
-        let visible_end = current + visible;
-        behavior =
-            if (end > visible_end && length < visible) || (end < visible_end && length > visible) {
-                Align::End
-            } else {
-                Align::Start
-            };
+        behavior = resolve_closest(end, length, current, visible);
     }
     match behavior {
         Align::None | Align::Closest => current,

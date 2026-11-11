@@ -27,6 +27,32 @@ fn hex(c: Rgba) -> String {
     format!("#{:02x}{:02x}{:02x}", mix(c.r), mix(c.g), mix(c.b))
 }
 
+fn compare_boxes(
+    id: &str,
+    case: &Value,
+    got: &[turbo_dom_layout::CidBox],
+    measure: &str,
+    failures: &mut Vec<String>,
+) {
+    for want in case["boxes"].as_array().unwrap() {
+        let cid = want["cid"].as_str().unwrap();
+        let Some(b) = got.iter().find(|b| b.cid == cid) else {
+            failures.push(format!("{id}: no box for data-cid={cid}"));
+            continue;
+        };
+        for (key, value) in [("x", b.x), ("y", b.y), ("w", b.width), ("h", b.height)] {
+            if !measure.contains(key) {
+                continue;
+            }
+            let field = match key { "w" => "width", "h" => "height", k => k };
+            let chrome = want[field].as_f64().unwrap() as f32;
+            if (value - chrome).abs() > 0.01 {
+                failures.push(format!("{id}: {cid}.{field} = {value}, Chrome {chrome}"));
+            }
+        }
+    }
+}
+
 /// Lay out every fixture case `select` picks and compare it with Chrome.
 fn compare_cases(select: impl Fn(&str) -> bool) {
     let fixture = fixture();
@@ -44,34 +70,11 @@ fn compare_cases(select: impl Fn(&str) -> bool) {
         let measure = case["measure"].as_str().unwrap();
         let mut diags = Diagnostics::default();
         let got = layout_boxes(html, "", 1280.0, 800.0, &fonts, &mut diags).unwrap();
-        for want in case["boxes"].as_array().unwrap() {
-            let cid = want["cid"].as_str().unwrap();
-            let Some(b) = got.iter().find(|b| b.cid == cid) else {
-                failures.push(format!("{id}: no box for data-cid={cid}"));
-                continue;
-            };
-            for (key, value) in [("x", b.x), ("y", b.y), ("w", b.width), ("h", b.height)] {
-                if !measure.contains(key) {
-                    continue;
-                }
-                let field = match key {
-                    "w" => "width",
-                    "h" => "height",
-                    k => k,
-                };
-                let chrome = want[field].as_f64().unwrap() as f32;
-                if (value - chrome).abs() > 0.01 {
-                    failures.push(format!("{id}: {cid}.{field} = {value}, Chrome {chrome}"));
-                }
-            }
-        }
+        compare_boxes(id, case, &got, measure, &mut failures);
         let mut diags = Diagnostics::default();
         let galley = layout_html(html, "", 1280.0, &fonts, &mut diags).unwrap();
         let canvas = match &galley.content {
-            FragmentContent::Box {
-                background: Some(c),
-                ..
-            } => hex(*c),
+            FragmentContent::Box { background: Some(c), .. } => hex(*c),
             _ => "#ffffff".to_string(),
         };
         if canvas != case["canvas"].as_str().unwrap() {

@@ -27,6 +27,12 @@ export class CSSStyleRule {
 // Split a stylesheet string into top-level rule strings (brace-depth aware), used
 // by replaceSync/constructor text. Mirrors cascade.mjs's depth scan but keeps the
 // braces so each piece is a self-contained cssText.
+function scanBlockEnd(css, start, n) {
+  let depth = 1, k = start;
+  while (k < n && depth > 0) { const ch = css[k]; if (ch === '{') depth++; else if (ch === '}') depth--; k++; }
+  return k;
+}
+
 function splitTopLevelRules(css) {
   const out = [];
   const n = css.length;
@@ -36,8 +42,7 @@ function splitTopLevelRules(css) {
     while (j < n && css[j] !== '{' && css[j] !== '}') j++;
     if (j >= n) break;
     if (css[j] === '}') { i = j + 1; continue; }
-    let depth = 1, k = j + 1;
-    while (k < n && depth > 0) { const ch = css[k]; if (ch === '{') depth++; else if (ch === '}') depth--; k++; }
+    const k = scanBlockEnd(css, j + 1, n);
     const piece = css.slice(i, k).trim();
     if (piece) out.push(piece);
     i = k;

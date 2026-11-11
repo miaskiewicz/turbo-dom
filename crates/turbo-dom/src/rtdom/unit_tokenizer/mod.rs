@@ -17,6 +17,7 @@ pub use self::interface::{TokenSink, TokenSinkResult};
 use self::states::{DoctypeIdKind, Public, System};
 use self::states::{DoubleEscaped, Escaped};
 use self::states::{DoubleQuoted, SingleQuoted, Unquoted};
+use self::states::{RawKind, ScriptEscapeKind};
 use self::states::{Rawtext, Rcdata, ScriptData, ScriptDataEscaped};
 
 use self::char_ref::{CharRef, CharRefTokenizer};
@@ -732,60 +733,58 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    fn step_data_state(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            let set = small_char_set!('\r' '\0' '&' '<' '\n');
+            let set_result = self.data_state_pop(input, set);
+            let Some(set_result) = set_result else {
+                return ProcessResult::Suspend;
+            };
+            match set_result {
+                FromSet('\0') => {
+                    self.bad_char_error();
+                    self.emit_char('\0');
+                }
+                FromSet('&') => go!(self: consume_char_ref),
+                FromSet('<') => go!(self: to TagOpen),
+                FromSet(c) => self.emit_char(c),
+                NotFromSet(b) => self.emit_chars(b),
+            }
+        }
+    }
+
+    fn data_state_pop(
+        &self,
+        input: &BufferQueue,
+        set: SmallCharSet,
+    ) -> Option<SetResult> {
+        if self.reconsume.get() || self.ignore_lf.get() {
+            return self.pop_except_from(input, set);
+        }
+        let front_buffer = input.peek_front_chunk_mut();
+        let mut front_buffer = front_buffer?;
+        let first_char = front_buffer
+            .chars()
+            .next()
+            .expect("Input buffers are never empty");
+        if matches!(first_char, '\r' | '\0' | '&' | '<' | '\n') {
+            drop(front_buffer);
+            return self.pop_except_from(input, set);
+        }
+        let result = self.data_state_fast_path(&mut front_buffer);
+        if front_buffer.is_empty() {
+            drop(front_buffer);
+            input.pop_front();
+        }
+        Some(result)
+    }
+
     /// `step` for the states [`Self::step_group`] routes to group 0.
     #[allow(clippy::never_loop)]
     fn step_group_0(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ data-state
-            states::Data => loop {
-                let set = small_char_set!('\r' '\0' '&' '<' '\n');
-
-                let set_result = if self.reconsume.get() || self.ignore_lf.get() {
-                    self.pop_except_from(input, set)
-                } else {
-                    let front_buffer = input.peek_front_chunk_mut();
-                    let Some(mut front_buffer) = front_buffer else {
-                        return ProcessResult::Suspend;
-                    };
-
-                    // Special case: The fast path is not worth taking if the first character is already in the set,
-                    // which is fairly common
-                    let first_char = front_buffer
-                        .chars()
-                        .next()
-                        .expect("Input buffers are never empty");
-
-                    if matches!(first_char, '\r' | '\0' | '&' | '<' | '\n') {
-                        drop(front_buffer);
-                        self.pop_except_from(input, set)
-                    } else {
-                        let result = self.data_state_fast_path(&mut front_buffer);
-
-                        if front_buffer.is_empty() {
-                            drop(front_buffer);
-                            input.pop_front();
-                        }
-
-                        Some(result)
-                    }
-                };
-
-                let Some(set_result) = set_result else {
-                    return ProcessResult::Suspend;
-                };
-                match set_result {
-                    FromSet('\0') => {
-                        self.bad_char_error();
-                        self.emit_char('\0');
-                    }
-                    FromSet('&') => go!(self: consume_char_ref),
-                    FromSet('<') => go!(self: to TagOpen),
-                    FromSet(c) => {
-                        self.emit_char(c);
-                    }
-                    NotFromSet(b) => self.emit_chars(b),
-                }
-            },
+            states::Data => self.step_data_state(input),
 
             //§ rcdata-state
             states::RawData(Rcdata) => loop {
@@ -886,31 +885,76 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ tag-open-state
-            states::TagOpen => loop {
-                match get_char!(self, input) {
-                    '!' => go!(self: to MarkupDeclarationOpen),
-                    '/' => go!(self: to EndTagOpen),
-                    '?' if self.processing_instructions => {
-                        self.instruction.set(Instruction::Start);
-                        go!(self: clear_comment; push_comment '?'; to BogusComment)
-                    }
-                    '?' => {
-                        self.bad_char_error();
-                        go!(self: clear_comment; reconsume BogusComment)
-                    }
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => go!(self: create_tag StartTag cl; to TagName),
-                        None => {
-                            self.bad_char_error();
-                            self.emit_char('<');
-                            go!(self: reconsume Data)
-                        }
-                    },
-                }
-            },
+            states::TagOpen => self.step_tag_open(input),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 1"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_tag_open(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '!' => go!(self: to MarkupDeclarationOpen),
+                '/' => go!(self: to EndTagOpen),
+                '?' if self.processing_instructions => {
+                    self.instruction.set(Instruction::Start);
+                    go!(self: clear_comment; push_comment '?'; to BogusComment)
+                }
+                '?' => {
+                    self.bad_char_error();
+                    go!(self: clear_comment; reconsume BogusComment)
+                }
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => go!(self: create_tag StartTag cl; to TagName),
+                    None => {
+                        self.bad_char_error();
+                        self.emit_char('<');
+                        go!(self: reconsume Data)
+                    }
+                },
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_end_tag_open(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: to Data)
+                }
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => go!(self: create_tag EndTag cl; to TagName),
+                    None => {
+                        self.bad_char_error();
+                        go!(self: clear_comment; reconsume BogusComment)
+                    }
+                },
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_raw_less_than_escaped(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '/' => go!(self: clear_temp; to RawEndTagOpen ScriptDataEscaped Escaped),
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => {
+                        go!(self: clear_temp; push_temp cl);
+                        self.emit_char('<');
+                        self.emit_char(c);
+                        go!(self: to ScriptDataEscapeStart DoubleEscaped);
+                    }
+                    None => {
+                        self.emit_char('<');
+                        go!(self: reconsume RawData ScriptDataEscaped Escaped);
+                    }
+                },
+            }
         }
     }
 
@@ -919,21 +963,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     fn step_group_2(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ end-tag-open-state
-            states::EndTagOpen => loop {
-                match get_char!(self, input) {
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: to Data)
-                    }
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => go!(self: create_tag EndTag cl; to TagName),
-                        None => {
-                            self.bad_char_error();
-                            go!(self: clear_comment; reconsume BogusComment)
-                        }
-                    },
-                }
-            },
+            states::EndTagOpen => self.step_end_tag_open(input),
 
             //§ tag-name-state
             states::TagName => loop {
@@ -950,23 +980,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ script-data-escaped-less-than-sign-state
-            states::RawLessThanSign(ScriptDataEscaped(Escaped)) => loop {
-                match get_char!(self, input) {
-                    '/' => go!(self: clear_temp; to RawEndTagOpen ScriptDataEscaped Escaped),
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => {
-                            go!(self: clear_temp; push_temp cl);
-                            self.emit_char('<');
-                            self.emit_char(c);
-                            go!(self: to ScriptDataEscapeStart DoubleEscaped);
-                        }
-                        None => {
-                            self.emit_char('<');
-                            go!(self: reconsume RawData ScriptDataEscaped Escaped);
-                        }
-                    },
-                }
-            },
+            states::RawLessThanSign(ScriptDataEscaped(Escaped)) => {
+                self.step_raw_less_than_escaped(input)
+            }
 
             //§ script-data-double-escaped-less-than-sign-state
             states::RawLessThanSign(ScriptDataEscaped(DoubleEscaped)) => loop {
@@ -982,6 +998,36 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 2"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_raw_end_tag_name(
+        &self,
+        input: &BufferQueue,
+        kind: RawKind,
+    ) -> ProcessResult<Sink::Handle> {
+        loop {
+            let c = get_char!(self, input);
+            if self.have_appropriate_end_tag() {
+                match c {
+                    '\t' | '\n' | '\x0C' | ' ' => go!(self: clear_temp; to BeforeAttributeName),
+                    '/' => go!(self: clear_temp; to SelfClosingStartTag),
+                    '>' => go!(self: clear_temp; emit_tag Data),
+                    _ => (),
+                }
+            }
+
+            match lower_ascii_letter(c) {
+                Some(cl) => go!(self: push_tag cl; push_temp c),
+                None => {
+                    go!(self: discard_tag);
+                    self.emit_char('<');
+                    self.emit_char('/');
+                    self.emit_temp_buf();
+                    go!(self: reconsume RawData kind);
+                }
+            }
         }
     }
 
@@ -1020,31 +1066,66 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ rcdata-end-tag-name-state rawtext-end-tag-name-state script-data-end-tag-name-state script-data-escaped-end-tag-name-state
-            states::RawEndTagName(kind) => loop {
-                let c = get_char!(self, input);
-                if self.have_appropriate_end_tag() {
-                    match c {
-                        '\t' | '\n' | '\x0C' | ' ' => go!(self: clear_temp; to BeforeAttributeName),
-                        '/' => go!(self: clear_temp; to SelfClosingStartTag),
-                        '>' => go!(self: clear_temp; emit_tag Data),
-                        _ => (),
-                    }
-                }
-
-                match lower_ascii_letter(c) {
-                    Some(cl) => go!(self: push_tag cl; push_temp c),
-                    None => {
-                        go!(self: discard_tag);
-                        self.emit_char('<');
-                        self.emit_char('/');
-                        self.emit_temp_buf();
-                        go!(self: reconsume RawData kind);
-                    }
-                }
-            },
+            states::RawEndTagName(kind) => self.step_raw_end_tag_name(input, kind),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 3"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_double_escape_start(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            let c = get_char!(self, input);
+            match c {
+                '\t' | '\n' | '\x0C' | ' ' | '/' | '>' => {
+                    let esc = if &**self.temp_buf.borrow() == "script" {
+                        DoubleEscaped
+                    } else {
+                        Escaped
+                    };
+                    self.emit_char(c);
+                    go!(self: to RawData ScriptDataEscaped esc);
+                }
+                _ => match lower_ascii_letter(c) {
+                    Some(cl) => {
+                        go!(self: push_temp cl);
+                        self.emit_char(c);
+                    }
+                    None => go!(self: reconsume RawData ScriptDataEscaped Escaped),
+                },
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_escaped_dash(
+        &self,
+        input: &BufferQueue,
+        kind: ScriptEscapeKind,
+    ) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => {
+                    self.emit_char('-');
+                    go!(self: to ScriptDataEscapedDashDash kind);
+                }
+                '<' => {
+                    if kind == DoubleEscaped {
+                        self.emit_char('<');
+                    }
+                    go!(self: to RawLessThanSign ScriptDataEscaped kind);
+                }
+                '\0' => {
+                    self.bad_char_error();
+                    self.emit_char('\u{fffd}');
+                    go!(self: to RawData ScriptDataEscaped kind)
+                }
+                c => {
+                    self.emit_char(c);
+                    go!(self: to RawData ScriptDataEscaped kind);
+                }
+            }
         }
     }
 
@@ -1053,27 +1134,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     fn step_group_4(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ script-data-double-escape-start-state
-            states::ScriptDataEscapeStart(DoubleEscaped) => loop {
-                let c = get_char!(self, input);
-                match c {
-                    '\t' | '\n' | '\x0C' | ' ' | '/' | '>' => {
-                        let esc = if &**self.temp_buf.borrow() == "script" {
-                            DoubleEscaped
-                        } else {
-                            Escaped
-                        };
-                        self.emit_char(c);
-                        go!(self: to RawData ScriptDataEscaped esc);
-                    }
-                    _ => match lower_ascii_letter(c) {
-                        Some(cl) => {
-                            go!(self: push_temp cl);
-                            self.emit_char(c);
-                        }
-                        None => go!(self: reconsume RawData ScriptDataEscaped Escaped),
-                    },
-                }
-            },
+            states::ScriptDataEscapeStart(DoubleEscaped) => self.step_double_escape_start(input),
 
             //§ script-data-escape-start-state
             states::ScriptDataEscapeStart(Escaped) => loop {
@@ -1098,32 +1159,69 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ script-data-escaped-dash-state script-data-double-escaped-dash-state
-            states::ScriptDataEscapedDash(kind) => loop {
-                match get_char!(self, input) {
-                    '-' => {
-                        self.emit_char('-');
-                        go!(self: to ScriptDataEscapedDashDash kind);
-                    }
-                    '<' => {
-                        if kind == DoubleEscaped {
-                            self.emit_char('<');
-                        }
-                        go!(self: to RawLessThanSign ScriptDataEscaped kind);
-                    }
-                    '\0' => {
-                        self.bad_char_error();
-                        self.emit_char('\u{fffd}');
-                        go!(self: to RawData ScriptDataEscaped kind)
-                    }
-                    c => {
-                        self.emit_char(c);
-                        go!(self: to RawData ScriptDataEscaped kind);
-                    }
-                }
-            },
+            states::ScriptDataEscapedDash(kind) => self.step_escaped_dash(input, kind),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 4"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_escaped_dash_dash(
+        &self,
+        input: &BufferQueue,
+        kind: ScriptEscapeKind,
+    ) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => {
+                    self.emit_char('-');
+                }
+                '<' => {
+                    if kind == DoubleEscaped {
+                        self.emit_char('<');
+                    }
+                    go!(self: to RawLessThanSign ScriptDataEscaped kind);
+                }
+                '>' => {
+                    self.emit_char('>');
+                    go!(self: to RawData ScriptData);
+                }
+                '\0' => {
+                    self.bad_char_error();
+                    self.emit_char('\u{fffd}');
+                    go!(self: to RawData ScriptDataEscaped kind)
+                }
+                c => {
+                    self.emit_char(c);
+                    go!(self: to RawData ScriptDataEscaped kind);
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_before_attribute_name(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => (),
+                '/' => go!(self: to SelfClosingStartTag),
+                '>' => go!(self: emit_tag Data),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: create_attr '\u{fffd}'; to AttributeName)
+                }
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => go!(self: create_attr cl; to AttributeName),
+                    None => {
+                        if matches!(c, '"' | '\'' | '<' | '=') {
+                            self.bad_char_error();
+                        }
+
+                        go!(self: create_attr c; to AttributeName);
+                    }
+                },
+            }
         }
     }
 
@@ -1132,32 +1230,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     fn step_group_5(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ script-data-escaped-dash-dash-state script-data-double-escaped-dash-dash-state
-            states::ScriptDataEscapedDashDash(kind) => loop {
-                match get_char!(self, input) {
-                    '-' => {
-                        self.emit_char('-');
-                    }
-                    '<' => {
-                        if kind == DoubleEscaped {
-                            self.emit_char('<');
-                        }
-                        go!(self: to RawLessThanSign ScriptDataEscaped kind);
-                    }
-                    '>' => {
-                        self.emit_char('>');
-                        go!(self: to RawData ScriptData);
-                    }
-                    '\0' => {
-                        self.bad_char_error();
-                        self.emit_char('\u{fffd}');
-                        go!(self: to RawData ScriptDataEscaped kind)
-                    }
-                    c => {
-                        self.emit_char(c);
-                        go!(self: to RawData ScriptDataEscaped kind);
-                    }
-                }
-            },
+            states::ScriptDataEscapedDashDash(kind) => self.step_escaped_dash_dash(input, kind),
 
             //§ script-data-double-escape-end-state
             states::ScriptDataDoubleEscapeEnd => loop {
@@ -1183,30 +1256,61 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ before-attribute-name-state
-            states::BeforeAttributeName => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => (),
-                    '/' => go!(self: to SelfClosingStartTag),
-                    '>' => go!(self: emit_tag Data),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: create_attr '\u{fffd}'; to AttributeName)
-                    }
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => go!(self: create_attr cl; to AttributeName),
-                        None => {
-                            if matches!(c, '"' | '\'' | '<' | '=') {
-                                self.bad_char_error();
-                            }
-
-                            go!(self: create_attr c; to AttributeName);
-                        }
-                    },
-                }
-            },
+            states::BeforeAttributeName => self.step_before_attribute_name(input),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 5"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_attribute_name(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => go!(self: to AfterAttributeName),
+                '/' => go!(self: to SelfClosingStartTag),
+                '=' => go!(self: to BeforeAttributeValue),
+                '>' => go!(self: emit_tag Data),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: push_name '\u{fffd}')
+                }
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => go!(self: push_name cl),
+                    None => {
+                        if matches!(c, '"' | '\'' | '<') {
+                            self.bad_char_error();
+                        }
+                        go!(self: push_name c);
+                    }
+                },
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_after_attribute_name(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => (),
+                '/' => go!(self: to SelfClosingStartTag),
+                '=' => go!(self: to BeforeAttributeValue),
+                '>' => go!(self: emit_tag Data),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: create_attr '\u{fffd}'; to AttributeName)
+                }
+                c => match lower_ascii_letter(c) {
+                    Some(cl) => go!(self: create_attr cl; to AttributeName),
+                    None => {
+                        if matches!(c, '"' | '\'' | '<') {
+                            self.bad_char_error();
+                        }
+
+                        go!(self: create_attr c; to AttributeName);
+                    }
+                },
+            }
         }
     }
 
@@ -1215,51 +1319,10 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     fn step_group_6(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ attribute-name-state
-            states::AttributeName => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => go!(self: to AfterAttributeName),
-                    '/' => go!(self: to SelfClosingStartTag),
-                    '=' => go!(self: to BeforeAttributeValue),
-                    '>' => go!(self: emit_tag Data),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: push_name '\u{fffd}')
-                    }
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => go!(self: push_name cl),
-                        None => {
-                            if matches!(c, '"' | '\'' | '<') {
-                                self.bad_char_error();
-                            }
-                            go!(self: push_name c);
-                        }
-                    },
-                }
-            },
+            states::AttributeName => self.step_attribute_name(input),
 
             //§ after-attribute-name-state
-            states::AfterAttributeName => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => (),
-                    '/' => go!(self: to SelfClosingStartTag),
-                    '=' => go!(self: to BeforeAttributeValue),
-                    '>' => go!(self: emit_tag Data),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: create_attr '\u{fffd}'; to AttributeName)
-                    }
-                    c => match lower_ascii_letter(c) {
-                        Some(cl) => go!(self: create_attr cl; to AttributeName),
-                        None => {
-                            if matches!(c, '"' | '\'' | '<') {
-                                self.bad_char_error();
-                            }
-
-                            go!(self: create_attr c; to AttributeName);
-                        }
-                    },
-                }
-            },
+            states::AfterAttributeName => self.step_after_attribute_name(input),
 
             //§ before-attribute-value-state
             // Use peek so we can handle the first attr character along with the rest,
@@ -1297,6 +1360,65 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    #[allow(clippy::never_loop)]
+    fn step_attr_value_unquoted(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match pop_except_from!(
+                self,
+                input,
+                small_char_set!('\r' '\t' '\n' '\x0C' ' ' '&' '>' '\0')
+            ) {
+                FromSet('\t') | FromSet('\n') | FromSet('\x0C') | FromSet(' ') => {
+                    go!(self: to BeforeAttributeName)
+                }
+                FromSet('&') => go!(self: consume_char_ref),
+                FromSet('>') => go!(self: emit_tag Data),
+                FromSet('\0') => {
+                    self.bad_char_error();
+                    go!(self: push_value '\u{fffd}')
+                }
+                FromSet(_) => unreachable!("unquoted attribute value slow path"),
+                NotFromSet(ref b) => go!(self: append_value b),
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment_start(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => go!(self: to CommentStartDash),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: push_comment '\u{fffd}'; to Comment)
+                }
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: emit_comment; to Data)
+                }
+                c => go!(self: push_comment c; to Comment),
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment_start_dash(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => go!(self: to CommentEnd),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: append_comment "-\u{fffd}"; to Comment)
+                }
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: emit_comment; to Data)
+                }
+                c => go!(self: push_comment '-'; push_comment c; to Comment),
+            }
+        }
+    }
+
     /// `step` for the states [`Self::step_group`] routes to group 7.
     #[allow(clippy::never_loop)]
     fn step_group_7(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
@@ -1316,30 +1438,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ attribute-value-(unquoted)-state
-            states::AttributeValue(Unquoted) => loop {
-                match pop_except_from!(
-                    self,
-                    input,
-                    small_char_set!('\r' '\t' '\n' '\x0C' ' ' '&' '>' '\0')
-                ) {
-                    FromSet('\t') | FromSet('\n') | FromSet('\x0C') | FromSet(' ') => {
-                        go!(self: to BeforeAttributeName)
-                    }
-                    FromSet('&') => go!(self: consume_char_ref),
-                    FromSet('>') => go!(self: emit_tag Data),
-                    FromSet('\0') => {
-                        self.bad_char_error();
-                        go!(self: push_value '\u{fffd}')
-                    }
-                    // Every set member is matched above ('\r' arrives normalized to
-                    // '\n'), and the slow path that yields other characters as FromSet
-                    // never runs here: this state is entered only from the peek-based
-                    // before-attribute-value state (no reconsume, no pending '\r') and
-                    // left on the first '\r'. Upstream's FromSet(c) arm is not carried.
-                    FromSet(_) => unreachable!("unquoted attribute value slow path"),
-                    NotFromSet(ref b) => go!(self: append_value b),
-                }
-            },
+            states::AttributeValue(Unquoted) => self.step_attr_value_unquoted(input),
 
             //§ after-attribute-value-(quoted)-state
             states::AfterAttributeValueQuoted => loop {
@@ -1369,39 +1468,53 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ comment-start-state
-            states::CommentStart => loop {
-                match get_char!(self, input) {
-                    '-' => go!(self: to CommentStartDash),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: push_comment '\u{fffd}'; to Comment)
-                    }
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: emit_comment; to Data)
-                    }
-                    c => go!(self: push_comment c; to Comment),
-                }
-            },
+            states::CommentStart => self.step_comment_start(input),
 
             //§ comment-start-dash-state
-            states::CommentStartDash => loop {
-                match get_char!(self, input) {
-                    '-' => go!(self: to CommentEnd),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: append_comment "-\u{fffd}"; to Comment)
-                    }
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: emit_comment; to Data)
-                    }
-                    c => go!(self: push_comment '-'; push_comment c; to Comment),
-                }
-            },
+            states::CommentStartDash => self.step_comment_start_dash(input),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 7"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                c @ '<' => go!(self: push_comment c; to CommentLessThanSign),
+                '-' => go!(self: to CommentEndDash),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: push_comment '\u{fffd}')
+                }
+                c => go!(self: push_comment c),
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment_less_than_sign(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                c @ '!' => go!(self: push_comment c; to CommentLessThanSignBang),
+                c @ '<' => go!(self: push_comment c),
+                _ => go!(self: reconsume Comment),
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment_end_dash(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => go!(self: to CommentEnd),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: append_comment "-\u{fffd}"; to Comment)
+                }
+                c => go!(self: push_comment '-'; push_comment c; to Comment),
+            }
         }
     }
 
@@ -1410,26 +1523,10 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
     fn step_group_8(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ comment-state
-            states::Comment => loop {
-                match get_char!(self, input) {
-                    c @ '<' => go!(self: push_comment c; to CommentLessThanSign),
-                    '-' => go!(self: to CommentEndDash),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: push_comment '\u{fffd}')
-                    }
-                    c => go!(self: push_comment c),
-                }
-            },
+            states::Comment => self.step_comment(input),
 
             //§ comment-less-than-sign-state
-            states::CommentLessThanSign => loop {
-                match get_char!(self, input) {
-                    c @ '!' => go!(self: push_comment c; to CommentLessThanSignBang),
-                    c @ '<' => go!(self: push_comment c),
-                    _ => go!(self: reconsume Comment),
-                }
-            },
+            states::CommentLessThanSign => self.step_comment_less_than_sign(input),
 
             //§ comment-less-than-sign-bang
             states::CommentLessThanSignBang => loop {
@@ -1459,19 +1556,48 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ comment-end-dash-state
-            states::CommentEndDash => loop {
-                match get_char!(self, input) {
-                    '-' => go!(self: to CommentEnd),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: append_comment "-\u{fffd}"; to Comment)
-                    }
-                    c => go!(self: push_comment '-'; push_comment c; to Comment),
-                }
-            },
+            states::CommentEndDash => self.step_comment_end_dash(input),
 
             // `step_group` routes only this group's states here.
             _ => unreachable!("state not in step group 8"),
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_comment_end_bang(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '-' => go!(self: append_comment "--!"; to CommentEndDash),
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: emit_comment; to Data)
+                }
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: append_comment "--!\u{fffd}"; to Comment)
+                }
+                c => go!(self: append_comment "--!"; push_comment c; to Comment),
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_before_doctype_name(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => (),
+                '\0' => {
+                    self.bad_char_error();
+                    go!(self: create_doctype; push_doctype_name '\u{fffd}'; to DoctypeName)
+                }
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: create_doctype; force_quirks; emit_doctype; to Data)
+                }
+                c => {
+                    go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase()); to DoctypeName)
+                }
+            }
         }
     }
 
@@ -1490,20 +1616,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ comment-end-bang-state
-            states::CommentEndBang => loop {
-                match get_char!(self, input) {
-                    '-' => go!(self: append_comment "--!"; to CommentEndDash),
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: emit_comment; to Data)
-                    }
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: append_comment "--!\u{fffd}"; to Comment)
-                    }
-                    c => go!(self: append_comment "--!"; push_comment c; to Comment),
-                }
-            },
+            states::CommentEndBang => self.step_comment_end_bang(input),
 
             //§ doctype-state
             states::Doctype => loop {
@@ -1518,22 +1631,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ before-doctype-name-state
-            states::BeforeDoctypeName => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => (),
-                    '\0' => {
-                        self.bad_char_error();
-                        go!(self: create_doctype; push_doctype_name '\u{fffd}'; to DoctypeName)
-                    }
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: create_doctype; force_quirks; emit_doctype; to Data)
-                    }
-                    c => {
-                        go!(self: create_doctype; push_doctype_name (c.to_ascii_lowercase()); to DoctypeName)
-                    }
-                }
-            },
+            states::BeforeDoctypeName => self.step_before_doctype_name(input),
 
             //§ doctype-name-state
             states::DoctypeName => loop {
@@ -1553,67 +1651,92 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    #[allow(clippy::never_loop)]
+    fn step_after_doctype_name(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            if eat!(self, input, "public") {
+                go!(self: to AfterDoctypeKeyword Public);
+            } else if eat!(self, input, "system") {
+                go!(self: to AfterDoctypeKeyword System);
+            } else {
+                match get_char!(self, input) {
+                    '\t' | '\n' | '\x0C' | ' ' => (),
+                    '>' => go!(self: emit_doctype; to Data),
+                    _ => {
+                        self.bad_char_error();
+                        go!(self: force_quirks; reconsume BogusDoctype)
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_after_doctype_keyword(
+        &self,
+        input: &BufferQueue,
+        kind: DoctypeIdKind,
+    ) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => go!(self: to BeforeDoctypeIdentifier kind),
+                '"' => {
+                    self.bad_char_error();
+                    go!(self: clear_doctype_id kind; to DoctypeIdentifierDoubleQuoted kind)
+                }
+                '\'' => {
+                    self.bad_char_error();
+                    go!(self: clear_doctype_id kind; to DoctypeIdentifierSingleQuoted kind)
+                }
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; emit_doctype; to Data)
+                }
+                _ => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; reconsume BogusDoctype)
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_before_doctype_identifier(
+        &self,
+        input: &BufferQueue,
+        kind: DoctypeIdKind,
+    ) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => (),
+                '"' => go!(self: clear_doctype_id kind; to DoctypeIdentifierDoubleQuoted kind),
+                '\'' => go!(self: clear_doctype_id kind; to DoctypeIdentifierSingleQuoted kind),
+                '>' => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; emit_doctype; to Data)
+                }
+                _ => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; reconsume BogusDoctype)
+                }
+            }
+        }
+    }
+
     /// `step` for the states [`Self::step_group`] routes to group 10.
     #[allow(clippy::never_loop)]
     fn step_group_10(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ after-doctype-name-state
-            states::AfterDoctypeName => loop {
-                if eat!(self, input, "public") {
-                    go!(self: to AfterDoctypeKeyword Public);
-                } else if eat!(self, input, "system") {
-                    go!(self: to AfterDoctypeKeyword System);
-                } else {
-                    match get_char!(self, input) {
-                        '\t' | '\n' | '\x0C' | ' ' => (),
-                        '>' => go!(self: emit_doctype; to Data),
-                        _ => {
-                            self.bad_char_error();
-                            go!(self: force_quirks; reconsume BogusDoctype)
-                        }
-                    }
-                }
-            },
+            states::AfterDoctypeName => self.step_after_doctype_name(input),
 
             //§ after-doctype-public-keyword-state after-doctype-system-keyword-state
-            states::AfterDoctypeKeyword(kind) => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => go!(self: to BeforeDoctypeIdentifier kind),
-                    '"' => {
-                        self.bad_char_error();
-                        go!(self: clear_doctype_id kind; to DoctypeIdentifierDoubleQuoted kind)
-                    }
-                    '\'' => {
-                        self.bad_char_error();
-                        go!(self: clear_doctype_id kind; to DoctypeIdentifierSingleQuoted kind)
-                    }
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; emit_doctype; to Data)
-                    }
-                    _ => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; reconsume BogusDoctype)
-                    }
-                }
-            },
+            states::AfterDoctypeKeyword(kind) => self.step_after_doctype_keyword(input, kind),
 
             //§ before-doctype-public-identifier-state before-doctype-system-identifier-state
-            states::BeforeDoctypeIdentifier(kind) => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => (),
-                    '"' => go!(self: clear_doctype_id kind; to DoctypeIdentifierDoubleQuoted kind),
-                    '\'' => go!(self: clear_doctype_id kind; to DoctypeIdentifierSingleQuoted kind),
-                    '>' => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; emit_doctype; to Data)
-                    }
-                    _ => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; reconsume BogusDoctype)
-                    }
-                }
-            },
+            states::BeforeDoctypeIdentifier(kind) => {
+                self.step_before_doctype_identifier(input, kind)
+            }
 
             //§ doctype-public-identifier-(double-quoted)-state doctype-system-identifier-(double-quoted)-state
             states::DoctypeIdentifierDoubleQuoted(kind) => loop {
@@ -1652,31 +1775,56 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    #[allow(clippy::never_loop)]
+    fn step_after_doctype_public_id(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => {
+                    go!(self: to BetweenDoctypePublicAndSystemIdentifiers)
+                }
+                '>' => go!(self: emit_doctype; to Data),
+                '"' => {
+                    self.bad_char_error();
+                    go!(self: clear_doctype_id System; to DoctypeIdentifierDoubleQuoted System)
+                }
+                '\'' => {
+                    self.bad_char_error();
+                    go!(self: clear_doctype_id System; to DoctypeIdentifierSingleQuoted System)
+                }
+                _ => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; reconsume BogusDoctype)
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    fn step_between_doctype_ids(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            match get_char!(self, input) {
+                '\t' | '\n' | '\x0C' | ' ' => (),
+                '>' => go!(self: emit_doctype; to Data),
+                '"' => {
+                    go!(self: clear_doctype_id System; to DoctypeIdentifierDoubleQuoted System)
+                }
+                '\'' => {
+                    go!(self: clear_doctype_id System; to DoctypeIdentifierSingleQuoted System)
+                }
+                _ => {
+                    self.bad_char_error();
+                    go!(self: force_quirks; reconsume BogusDoctype)
+                }
+            }
+        }
+    }
+
     /// `step` for the states [`Self::step_group`] routes to group 11.
     #[allow(clippy::never_loop)]
     fn step_group_11(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ after-doctype-public-identifier-state
-            states::AfterDoctypeIdentifier(Public) => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => {
-                        go!(self: to BetweenDoctypePublicAndSystemIdentifiers)
-                    }
-                    '>' => go!(self: emit_doctype; to Data),
-                    '"' => {
-                        self.bad_char_error();
-                        go!(self: clear_doctype_id System; to DoctypeIdentifierDoubleQuoted System)
-                    }
-                    '\'' => {
-                        self.bad_char_error();
-                        go!(self: clear_doctype_id System; to DoctypeIdentifierSingleQuoted System)
-                    }
-                    _ => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; reconsume BogusDoctype)
-                    }
-                }
-            },
+            states::AfterDoctypeIdentifier(Public) => self.step_after_doctype_public_id(input),
 
             //§ after-doctype-system-identifier-state
             states::AfterDoctypeIdentifier(System) => loop {
@@ -1691,22 +1839,9 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
             },
 
             //§ between-doctype-public-and-system-identifiers-state
-            states::BetweenDoctypePublicAndSystemIdentifiers => loop {
-                match get_char!(self, input) {
-                    '\t' | '\n' | '\x0C' | ' ' => (),
-                    '>' => go!(self: emit_doctype; to Data),
-                    '"' => {
-                        go!(self: clear_doctype_id System; to DoctypeIdentifierDoubleQuoted System)
-                    }
-                    '\'' => {
-                        go!(self: clear_doctype_id System; to DoctypeIdentifierSingleQuoted System)
-                    }
-                    _ => {
-                        self.bad_char_error();
-                        go!(self: force_quirks; reconsume BogusDoctype)
-                    }
-                }
-            },
+            states::BetweenDoctypePublicAndSystemIdentifiers => {
+                self.step_between_doctype_ids(input)
+            }
 
             //§ bogus-doctype-state
             states::BogusDoctype => loop {
@@ -1739,28 +1874,33 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
+    #[allow(clippy::never_loop)]
+    fn step_markup_declaration_open(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
+        loop {
+            if eat_exact!(self, input, "--") {
+                go!(self: clear_comment; to CommentStart);
+            } else if eat!(self, input, "doctype") {
+                go!(self: to Doctype);
+            } else {
+                if self
+                    .sink
+                    .adjusted_current_node_present_but_not_in_html_namespace()
+                    && eat_exact!(self, input, "[CDATA[")
+                {
+                    go!(self: clear_temp; to CdataSection);
+                }
+                self.bad_char_error();
+                go!(self: clear_comment; to BogusComment);
+            }
+        }
+    }
+
     /// `step` for the states [`Self::step_group`] routes to group 12.
     #[allow(clippy::never_loop)]
     fn step_group_12(&self, input: &BufferQueue) -> ProcessResult<Sink::Handle> {
         match self.state.get() {
             //§ markup-declaration-open-state
-            states::MarkupDeclarationOpen => loop {
-                if eat_exact!(self, input, "--") {
-                    go!(self: clear_comment; to CommentStart);
-                } else if eat!(self, input, "doctype") {
-                    go!(self: to Doctype);
-                } else {
-                    if self
-                        .sink
-                        .adjusted_current_node_present_but_not_in_html_namespace()
-                        && eat_exact!(self, input, "[CDATA[")
-                    {
-                        go!(self: clear_temp; to CdataSection);
-                    }
-                    self.bad_char_error();
-                    go!(self: clear_comment; to BogusComment);
-                }
-            },
+            states::MarkupDeclarationOpen => self.step_markup_declaration_open(input),
 
             //§ cdata-section-state
             states::CdataSection => loop {

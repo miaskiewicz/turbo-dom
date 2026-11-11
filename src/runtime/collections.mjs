@@ -1,29 +1,26 @@
 // Live collections. Each reads its backing array on every access, so they
 // reflect mutations immediately — the exact place happy-dom bleeds liveness bugs.
 
+function stringKeyMethod(key, getArray, extra, tag) {
+  if (key === 'length') return getArray().length;
+  if (key === 'item') return (i) => getArray()[i] ?? null;
+  if (key === 'forEach') return (cb, thisArg) => getArray().forEach(cb, thisArg);
+  if (key === 'entries') return () => getArray().entries();
+  if (key === 'keys') return () => getArray().keys();
+  if (key === 'values') return () => getArray()[Symbol.iterator]();
+  if (key === 'toString') return () => `[object ${tag}]`;
+  if (key in extra) return extra[key](getArray());
+  return undefined;
+}
+
 function makeLive(getArray, extra = {}, tag = 'NodeList') {
-  // Plain-object target: it has no non-configurable own keys, so ownKeys can
-  // report indices + length without tripping the proxy invariant (a function
-  // target carries a non-configurable `prototype`, which made Object.keys(coll)
-  // throw and `typeof coll` wrongly 'function' — HTMLCollection is an object).
   const target = {};
   return new Proxy(target, {
     get(_t, key) {
       if (typeof key === 'string') {
-        // hot path: indexed access coll[i]. A property key starting with a digit
-        // is a numeric index — detect via charCode, no regex, no string-compare
-        // chain. getArray() is called only when actually needed.
         const c = key.charCodeAt(0);
         if (c >= 48 && c <= 57) return getArray()[+key];
-        if (key === 'length') return getArray().length;
-        if (key === 'item') return (i) => getArray()[i] ?? null;
-        if (key === 'forEach') return (cb, thisArg) => getArray().forEach(cb, thisArg);
-        if (key === 'entries') return () => getArray().entries();
-        if (key === 'keys') return () => getArray().keys();
-        if (key === 'values') return () => getArray()[Symbol.iterator]();
-        if (key === 'toString') return () => `[object ${tag}]`;
-        if (key in extra) return extra[key](getArray());
-        return undefined;
+        return stringKeyMethod(key, getArray, extra, tag);
       }
       if (key === Symbol.iterator) return () => getArray()[Symbol.iterator]();
       return undefined;

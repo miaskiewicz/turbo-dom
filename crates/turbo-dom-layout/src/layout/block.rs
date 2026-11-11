@@ -3543,6 +3543,76 @@ fn inline_atomic(it: &InlineItem) -> Option<&LayoutBox> {
 /// Build the fragment for a replaced `<img>` box, or `None` when the box is not
 /// a (resolvable) replaced image. The box size is the capped image size; the
 /// image is the fragment's own content (no children flow inside an `<img>`).
+fn media_viewport_fragment(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    bx: f32,
+    by: f32,
+    cb_width: f32,
+    intrinsic: &crate::image::Intrinsic,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let natural = (intrinsic.width as f32, intrinsic.height as f32);
+    let mut fragment = embedded_viewport_fragment(lb, bs, (bx, by), cb_width, natural, ctx);
+    if lb.audio_controls() {
+        let b = bs.border.widths();
+        let content = (
+            fragment.x + b.left + bs.padding.left,
+            fragment.y + b.top + bs.padding.top,
+            fragment.width - b.horizontal() - bs.padding.horizontal(),
+            fragment.height - b.vertical() - bs.padding.vertical(),
+        );
+        super::media_paint::audio_panel(&mut fragment, content, ctx.writing.vertical(), ctx.fonts);
+    }
+    fragment
+}
+
+#[allow(clippy::too_many_arguments)]
+fn replaced_live_fragment(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    bx: f32,
+    by: f32,
+    name: &str,
+    intrinsic: crate::image::Intrinsic,
+    sizing: &super::imgsize::SizeCtx,
+    loaded: bool,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let scale = ctx.html_font_scale.unwrap_or(1.0);
+    let mut sized = super::imgsize::size_replaced_live(name.to_string(), intrinsic, sizing, scale);
+    record_metrics(lb, bs, sized.width, sized.height, ctx);
+    physical_placement(&mut sized.placement, ctx);
+    let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
+    if !loaded {
+        fragment.children.clear();
+    }
+    fragment
+}
+
+#[allow(clippy::too_many_arguments)]
+fn replaced_canvas_fragment(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    bx: f32,
+    by: f32,
+    name: &str,
+    intrinsic: crate::image::Intrinsic,
+    sizing: &super::imgsize::SizeCtx,
+    loaded: bool,
+    ctx: &mut Ctx,
+) -> Fragment {
+    let mut sized = super::imgsize::size_replaced_live(name.to_string(), intrinsic, sizing, 1.0);
+    let content = (sized.width, sized.height);
+    let mut fragment = viewport_fragment(lb, bs, bx, by, content, ctx);
+    if loaded {
+        physical_placement(&mut sized.placement, ctx);
+        let placement = sized.placement;
+        super::canvas_content::attach(&mut fragment, &lb.style, bs, placement, ctx.writing);
+    }
+    fragment
+}
+
 fn replaced_image_box(
     lb: &LayoutBox,
     bs: &BoxStyle,
@@ -3558,60 +3628,20 @@ fn replaced_image_box(
     let (intrinsic, loaded) =
         super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
     if !loaded && src.media == super::boxgen::Media::Viewport {
-        // A media default box: no aspect ratio, like an iframe's (#252).
-        let natural = (intrinsic.width as f32, intrinsic.height as f32);
-        let mut fragment = embedded_viewport_fragment(lb, bs, (bx, by), cb_width, natural, ctx);
-        if lb.audio_controls() {
-            let b = bs.border.widths();
-            let content = (
-                fragment.x + b.left + bs.padding.left,
-                fragment.y + b.top + bs.padding.top,
-                fragment.width - b.horizontal() - bs.padding.horizontal(),
-                fragment.height - b.vertical() - bs.padding.vertical(),
-            );
-            super::media_paint::audio_panel(
-                &mut fragment,
-                content,
-                ctx.writing.vertical(),
-                ctx.fonts,
-            );
-        }
-        return Some(fragment);
+        return Some(media_viewport_fragment(lb, bs, bx, by, cb_width, &intrinsic, ctx));
     }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        let scale = ctx.html_font_scale.unwrap_or(1.0);
-        let mut sized =
-            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, scale);
-        record_metrics(lb, bs, sized.width, sized.height, ctx);
-        physical_placement(&mut sized.placement, ctx);
-        let mut fragment = live_image_fragment(lb, bx, by, &sized, bs);
-        if !loaded {
-            fragment.children.clear();
-        }
-        return Some(fragment);
+        return Some(replaced_live_fragment(lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx));
     }
     if src.media == super::boxgen::Media::Canvas {
-        // A canvas is sized like Chrome's replaced boxes (`box-sizing`, min / max) on
-        // this path too: a content box inside its padding and border (#252), which its
-        // drawn content, when the embedder supplies it, fills (#291).
-        let mut sized =
-            super::imgsize::size_replaced_live(src.name.clone(), intrinsic, &sizing, 1.0);
-        let content = (sized.width, sized.height);
-        let mut fragment = viewport_fragment(lb, bs, bx, by, content, ctx);
-        if loaded {
-            physical_placement(&mut sized.placement, ctx);
-            let placement = sized.placement;
-            super::canvas_content::attach(&mut fragment, &lb.style, bs, placement, ctx.writing);
-        }
-        return Some(fragment);
+        return Some(replaced_canvas_fragment(lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx));
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);
     let mut fragment = image_fragment(lb, bx, by, &sized, bs);
     if !loaded {
-        // A broken image's box paints its own background and border, no image.
         fragment.content = content_kind(lb, bs, fragment.width, fragment.height);
         return Some(fragment);
     }

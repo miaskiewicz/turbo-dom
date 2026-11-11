@@ -61,18 +61,23 @@
   const requestPrefix = "Failed to execute 'requestFullscreen' on 'Element': ";
   const navigationUIs = { auto: 1, show: 1, hide: 1 };
   const ScreenType = g.Screen;
+  function validateNavigationUI(ui) {
+    if (ui === undefined) return null;
+    if (typeof ui === 'symbol') return "Failed to read the 'navigationUI' property from 'FullscreenOptions': Cannot convert a Symbol value to a string";
+    const value = StringValue(ui);
+    if (navigationUIs[value] !== 1) return "Failed to read the 'navigationUI' property from 'FullscreenOptions': The provided value '" + value + "' is not a valid enum value of type FullscreenNavigationUI.";
+    return null;
+  }
+  function validateScreen(screen) {
+    if (screen !== undefined && !(typeof ScreenType === 'function' && screen instanceof ScreenType)) return "Failed to read the 'screen' property from 'FullscreenOptions': Failed to convert value to 'Screen'.";
+    return null;
+  }
   function convertOptions(options) {
     if (options === undefined || options === null) return null;
     if (typeof options !== 'object' && typeof options !== 'function') return "The provided value is not of type 'FullscreenOptions'.";
-    const ui = options.navigationUI;
-    if (ui !== undefined) {
-      if (typeof ui === 'symbol') return "Failed to read the 'navigationUI' property from 'FullscreenOptions': Cannot convert a Symbol value to a string";
-      const value = StringValue(ui);
-      if (navigationUIs[value] !== 1) return "Failed to read the 'navigationUI' property from 'FullscreenOptions': The provided value '" + value + "' is not a valid enum value of type FullscreenNavigationUI.";
-    }
-    const screen = options.screen;
-    if (screen !== undefined && !(typeof ScreenType === 'function' && screen instanceof ScreenType)) return "Failed to read the 'screen' property from 'FullscreenOptions': Failed to convert value to 'Screen'.";
-    return null;
+    const uiError = validateNavigationUI(options.navigationUI);
+    if (uiError !== null) return uiError;
+    return validateScreen(options.screen);
   }
   // https://fullscreen.spec.whatwg.org/#fullscreen-element-ready-check, Chrome's order.
   function readyError(element) {

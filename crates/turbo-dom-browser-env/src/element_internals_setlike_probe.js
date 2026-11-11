@@ -10,12 +10,13 @@
     state = host.i.states,
     proto = CustomStateSet.prototype,
     result = {};
+  const pick = (d, key) => d.value?.[key] ?? d.get?.[key] ?? null;
   const shape = (d) => [
     d.enumerable,
     d.configurable,
     d.writable ?? null,
-    d.value?.name ?? d.get?.name ?? null,
-    d.value?.length ?? d.get?.length ?? null,
+    pick(d, 'name'),
+    pick(d, 'length'),
   ];
   result.descriptors = Object.getOwnPropertyNames(proto).map((name) => [
     name,

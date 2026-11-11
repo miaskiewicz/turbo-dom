@@ -48,17 +48,20 @@
   }
 
   const records = new WeakMapValue(), read = records.get.bind(records), store = records.set.bind(records);
+  function validateInterestInit(init) {
+    if (init != null && typeof init !== 'object' && typeof init !== 'function') throw new TypeError("Failed to construct 'InterestEvent': The provided value is not of type 'InterestEventInit'.");
+    init = init == null ? {} : init;
+    const sourceValue = init.source, source = sourceValue === undefined || sourceValue === null ? null : sourceValue;
+    if (source !== null && !element(source)) throw new TypeError("Failed to construct 'InterestEvent': Failed to read the 'source' property from 'InterestEventInit': Failed to convert value to 'Element'.");
+    return { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed, source };
+  }
   const Delegate = function (type, init) {
     if (!new.target) throw new TypeError("Failed to construct 'InterestEvent': Please use the 'new' operator, this DOM object constructor cannot be called as a function.");
     if (!arguments.length) throw new TypeError("Failed to construct 'InterestEvent': 1 argument required, but only 0 present.");
     const convertedType = string(type);
-    if (init != null && typeof init !== 'object' && typeof init !== 'function') throw new TypeError("Failed to construct 'InterestEvent': The provided value is not of type 'InterestEventInit'.");
-    init = init == null ? {} : init;
-    const eventInit = { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed };
-    const sourceValue = init.source, source = sourceValue === undefined || sourceValue === null ? null : sourceValue;
-    if (source !== null && !element(source)) throw new TypeError("Failed to construct 'InterestEvent': Failed to read the 'source' property from 'InterestEventInit': Failed to convert value to 'Element'.");
-    const event = construct(Event, [convertedType, eventInit], new.target);
-    store(event, { source });
+    const parsed = validateInterestInit(init);
+    const event = construct(Event, [convertedType, parsed], new.target);
+    store(event, { source: parsed.source });
     return event;
   };
   Object.setPrototypeOf(Delegate.prototype, Event.prototype);
@@ -203,20 +206,20 @@
     for (let at = 0; at < entries.length; at++) { const target = entries[at][0], invoker = entries[at][1]; if (!recordOf(invoker) && (inside(target) || inside(invoker))) apply(ownerDelete, owners, [target]); }
     engaged();
   };
-  // Native hooks: trusted focus/blur/mouseover/mouseout/keydown, removal and attribute changes.
-  const hook = (kind, node, event, extra) => {
-    switch (kind) {
-      case 'focus': enter(node, null); return;
-      case 'blur': leave(node, Native('focused')); return;
-      case 'mouseover': enter(node, related(event)); return;
-      case 'mouseout': leave(node, related(event)); return;
-      case 'keydown': keydown(event); return;
-      case 'disconnect': disconnect(node, extra); return;
-      // Removing `interestfor` ends the interest; pointing it elsewhere ends only the source.
-      case 'attribute': if (recordOf(node)) clear(node, apply(hasAttribute, node, ['interestfor'])); return;
-      case 'sources': { const list = new ArrayValue(); each(invoker => { list[list.length] = invoker; }); return list; }
-      case 'targets': { const list = new ArrayValue(); const keys = drain(apply(ownerKeys, owners, []), mapNext); for (let at = 0; at < keys.length; at++) list[list.length] = keys[at]; return list; }
-    }
+  function hookAttribute(node) { if (recordOf(node)) clear(node, apply(hasAttribute, node, ['interestfor'])); }
+  function hookSources() { const list = new ArrayValue(); each(invoker => { list[list.length] = invoker; }); return list; }
+  function hookTargets() { const list = new ArrayValue(); const keys = drain(apply(ownerKeys, owners, []), mapNext); for (let at = 0; at < keys.length; at++) list[list.length] = keys[at]; return list; }
+  const hookDispatch = { __proto__: null,
+    focus: (node) => enter(node, null),
+    blur: (node) => leave(node, Native('focused')),
+    mouseover: (node, event) => enter(node, related(event)),
+    mouseout: (node, event) => leave(node, related(event)),
+    keydown: (_node, event) => keydown(event),
+    disconnect: (node, _event, extra) => disconnect(node, extra),
+    attribute: (node) => hookAttribute(node),
+    sources: () => hookSources(),
+    targets: () => hookTargets(),
   };
+  const hook = (kind, node, event, extra) => { const fn = hookDispatch[kind]; if (fn) return fn(node, event, extra); };
   g.__captureInterestHook = hook;
 })();

@@ -39,6 +39,32 @@ fn run_in_mode(
     let host = record.get(scope, key.into()).unwrap();
     let key = v8::String::new(scope, "__cssTestHost").unwrap();
     global.set(scope, key.into(), host);
+    install_test_helpers(scope, global, code);
+    let code = v8::String::new(scope, code).unwrap();
+    v8::tc_scope!(let scope,scope);
+    let value = v8::Script::compile(scope, code, None)
+        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
+        .run(scope)
+        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)));
+    let value = value.to_rust_string_lossy(scope);
+    reset();
+    serde_json::from_str(&value).unwrap()
+}
+
+fn install_test_helpers(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    code: &str,
+) {
+    install_counter_helpers(scope, global, code);
+    install_extra_helpers(scope, global, code);
+}
+
+fn install_counter_helpers(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    code: &str,
+) {
     if code.contains("__cssTestNs") {
         let namespace = engine_namespace(scope).unwrap();
         let key = v8::String::new(scope, "__cssTestNs").unwrap();
@@ -61,8 +87,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestCascadeRuns") {
-        // The cascade-run counter behind the test-only `__noteCascadeRun` hook: how many
-        // fresh computed-style calculations the page has caused so far (never page-visible).
         fn cascade_runs(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -75,8 +99,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestCssUpdates") {
-        // The CSS animation / transition update passes behind the test-only
-        // `__noteCssUpdatePass` hook (never page-visible).
         fn css_updates(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -89,7 +111,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestStyleLookups") {
-        // The computed-style cache lookups behind the test-only `__noteStyleLookup` hook.
         fn style_lookups(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -101,8 +122,14 @@ fn run_in_mode(
         let key = v8::String::new(scope, "__cssTestStyleLookups").unwrap();
         global.set(scope, key.into(), getter.into());
     }
+}
+
+fn install_extra_helpers(
+    scope: &mut v8::PinScope,
+    global: v8::Local<v8::Object>,
+    code: &str,
+) {
     if code.contains("__cssTestEntryBuilds") {
-        // The cascade rule-entry list builds behind the test-only `__noteEntryBuild` hook.
         fn entry_builds(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -115,7 +142,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestRuleProbes") {
-        // The style rules tested behind the test-only `__noteRuleProbe` hook (turbo-dom#307).
         fn rule_probes(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -128,7 +154,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestStyleShares") {
-        // The shared computed styles behind the test-only `__noteStyleShare` hook (turbo-dom#307).
         fn shares(
             scope: &mut v8::PinScope,
             _args: v8::FunctionCallbackArguments,
@@ -141,7 +166,6 @@ fn run_in_mode(
         global.set(scope, key.into(), getter.into());
     }
     if code.contains("__cssTestStyleShareOff") {
-        // Switches style sharing off (argument true) or on: the fresh-cascade oracle.
         fn share_off(
             scope: &mut v8::PinScope,
             args: v8::FunctionCallbackArguments,
@@ -158,15 +182,6 @@ fn run_in_mode(
         let key = v8::String::new(scope, "__fontInertDoc").unwrap();
         global.set(scope, key.into(), document.into());
     }
-    let code = v8::String::new(scope, code).unwrap();
-    v8::tc_scope!(let scope,scope);
-    let value = v8::Script::compile(scope, code, None)
-        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)))
-        .run(scope)
-        .unwrap_or_else(|| panic!("{}", scope.exception().unwrap().to_rust_string_lossy(scope)));
-    let value = value.to_rust_string_lossy(scope);
-    reset();
-    serde_json::from_str(&value).unwrap()
 }
 
 #[test]

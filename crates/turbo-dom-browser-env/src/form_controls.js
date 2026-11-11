@@ -42,13 +42,15 @@
   const attr = (element, name) => apply(attribute, element, [name]);
   const parent = element => apply(parentGetter, element, []);
   const owner = element => bridge('owner', element);
-  for(const [interfaceName,localName] of [['HTMLInputElement','input'],['HTMLButtonElement','button'],['HTMLTextAreaElement','textarea'],['HTMLSelectElement','select'],['HTMLFieldSetElement','fieldset'],['HTMLObjectElement','object'],['HTMLOutputElement','output']]){
-    const constructor=g[interfaceName];if(typeof constructor!=='function')continue;
+  const installFormGetter = (interfaceName, localName) => {
+    const constructor=g[interfaceName];if(typeof constructor!=='function')return;
     define(constructor.prototype,'form',{configurable:true,enumerable:true,get:native(function(){
       if(!bridge('html-element',this)||apply(localNameGetter,this,[])!==localName)throw new ErrorType('Illegal invocation');
       return owner(this);
     },'get form',0)});
-  }
+  };
+  for(const [interfaceName,localName] of [['HTMLInputElement','input'],['HTMLButtonElement','button'],['HTMLTextAreaElement','textarea'],['HTMLSelectElement','select'],['HTMLFieldSetElement','fieldset'],['HTMLObjectElement','object'],['HTMLOutputElement','output']])
+    installFormGetter(interfaceName,localName);
   // label.form is its labeled control's form owner; option.form is its select's (directly or
   // through one optgroup). Neither element is itself form-associated.
   const formAssociated = ['button','fieldset','input','object','output','select','textarea'];
@@ -58,15 +60,14 @@
     if (container && bridge('html-element', container) && apply(localNameGetter, container, []) === 'optgroup') container = parent(container);
     return container && bridge('html-element', container) && apply(localNameGetter, container, []) === 'select' ? container : null;
   };
-  for (const [interfaceName, localName, read] of [
-    ['HTMLLabelElement', 'label', label => { const control = internals.labelControl(label); if (!control) return null; const kind = apply(localNameGetter, control, []); return bridge('html-element', control) && apply(controlIndexOf, formAssociated, [kind]) >= 0 || associatedGet(control) ? owner(control) : null; }],
-    ['HTMLOptionElement', 'option', option => { const select = selectOf(option); return select ? owner(select) : null; }],
-  ]) {
+  const installFormGetterRead = (interfaceName, localName, read) => {
     define(g[interfaceName].prototype, 'form', {configurable:true, enumerable:true, get:native(function(){
       if(!bridge('html-element',this)||apply(localNameGetter,this,[])!==localName)throw new ErrorType('Illegal invocation');
       return read(this);
     },'get form',0)});
-  }
+  };
+  installFormGetterRead('HTMLLabelElement', 'label', label => { const control = internals.labelControl(label); if (!control) return null; const kind = apply(localNameGetter, control, []); return bridge('html-element', control) && apply(controlIndexOf, formAssociated, [kind]) >= 0 || associatedGet(control) ? owner(control) : null; });
+  installFormGetterRead('HTMLOptionElement', 'option', option => { const select = selectOf(option); return select ? owner(select) : null; });
   const present = (element, name) => attr(element, name) !== null;
   const type = element => {
     if(tag(element)!=='button')return lower(attr(element,'type')||'text');
@@ -131,27 +132,30 @@
   }
   // A radio group is required, and missing a value, as a whole: any member's required
   // attribute applies to all of them. An unnamed radio is its own group.
+  function scanRadioGroup(element, name, state) {
+    const root = apply(getRoot, element, []), radios = queryAll(root,'input');
+    for (let index = 0; index < radios.length; index++) {
+      const radio = radios[index];
+      if (type(radio) !== 'radio' || attr(radio,'name') !== name || owner(radio) !== owner(element)) continue;
+      if (present(radio,'required')) state.groupRequired = true;
+      if (checkedValue(radio)) state.checked = true;
+    }
+  }
   function radioGroupMissing(element, required, mutable) {
     const name = attr(element,'name');
-    let groupRequired = required, checked = checkedValue(element);
-    if (name) {
-      const root = apply(getRoot, element, []), radios = queryAll(root,'input');
-      for (let index = 0; index < radios.length; index++) {
-        const radio = radios[index];
-        if (type(radio) !== 'radio' || attr(radio,'name') !== name || owner(radio) !== owner(element)) continue;
-        if (present(radio,'required')) groupRequired = true;
-        if (checkedValue(radio)) checked = true;
-      }
-    }
-    return mutable && groupRequired && !checked;
+    const state = { groupRequired: required, checked: checkedValue(element) };
+    if (name) scanRadioGroup(element, name, state);
+    return mutable && state.groupRequired && !state.checked;
+  }
+  const valueMissingExempt = /^(range|color|hidden|button|submit|reset|image)$/;
+  function valueMissingApplies(kind, inputType) {
+    return kind === 'textarea' || kind === 'select' || (kind === 'input' && !regexTest(valueMissingExempt, inputType));
   }
   function valueMissingFlag(element, kind, inputType, value, required, mutable) {
     if (kind === 'input' && inputType === 'radio') return radioGroupMissing(element, required, mutable);
-    if (mutable && required && (kind === 'textarea' || kind === 'select' || kind === 'input' && !regexTest(/^(range|color|hidden|button|submit|reset|image)$/,inputType))) {
-      if (inputType === 'checkbox') return !checkedValue(element);
-      return value === '';
-    }
-    return false;
+    if (!mutable || !required || !valueMissingApplies(kind, inputType)) return false;
+    if (inputType === 'checkbox') return !checkedValue(element);
+    return value === '';
   }
   function emailMismatch(element, value) {
     let mismatch = !regexTest(EMAIL,value);
@@ -198,8 +202,11 @@
       if (range) {state.rangeUnderflow=range.underflow;state.rangeOverflow=range.overflow;state.stepMismatch=range.mismatch;}
     }
   }
+  function anyInputFlag(state) {
+    return state.tooLong||state.tooShort||state.rangeUnderflow||state.rangeOverflow||state.stepMismatch||state.badInput||state.customError;
+  }
   function anyFlag(state) {
-    return state.valueMissing||state.typeMismatch||state.patternMismatch||state.tooLong||state.tooShort||state.rangeUnderflow||state.rangeOverflow||state.stepMismatch||state.badInput||state.customError;
+    return state.valueMissing||state.typeMismatch||state.patternMismatch||anyInputFlag(state);
   }
   function flags(element) {
     const associatedRecord=associatedGet(element);if(associatedRecord)return associatedRecord.flags;
@@ -347,8 +354,9 @@
     if(inputType==='hidden'&&name==='_charset_')charsetEntries[charsetEntries.length]=entries.length;
     append(name,inputType==='checkbox'||inputType==='radio'?attr(control,'value')??'on':readValue(control));
   }
+  const nonSubmittableKinds = new Set(['fieldset','object','output']);
   function controlEntriesSkipped(control,kind,inputType,name,submitter,append) {
-    if(disabled(control)||!name||kind==='fieldset'||kind==='object'||kind==='output')return true;
+    if(disabled(control)||!name||nonSubmittableKinds.has(kind))return true;
     if(buttonEntriesDone(control,kind,inputType,name,submitter,append))return true;
     if(kind==='input'&&regexTest(/^(checkbox|radio)$/,inputType)&&!checkedValue(control))return true;
     return false;
@@ -455,21 +463,33 @@
   method(formPrototype,'reset',function(){checkForm(this);const event=new EventClass('reset',{bubbles:true,cancelable:true});if(!bridge('emit',this,event))return;const controls=formControls(this);for(let i=0;i<controls.length;i++){ns.bumpStyleState(),privateSet(controls[i],'userValidity',false);const record=associatedGet(controls[i]);if(record){if(record.reset)record.reset();}else resetControl(controls[i]);}},0);
   method(formPrototype,'requestSubmit',function(submitter){return request(this,submitter);},0);
   method(formPrototype,'submit',function(){checkForm(this);if(!bridge('allowed',this)||!bridge('active',this))return;return queue(this,null);},0);
-  for(const [proto,property,attributeName] of [[formPrototype,'noValidate','novalidate'],[HTMLButtonElement.prototype,'formNoValidate','formnovalidate'],[HTMLInputElement.prototype,'formNoValidate','formnovalidate']]) {
+  const installNoValidate = (proto, property, attributeName) => {
     const setAttribute=Element.prototype.setAttribute,removeAttribute=Element.prototype.removeAttribute;
     define(proto,property,{get:native(function(){return present(this,attributeName);},'get '+property,0),set:native(function(value){if(value)apply(setAttribute,this,[attributeName,'']);else apply(removeAttribute,this,[attributeName]);},'set '+property,1),enumerable:true,configurable:true});
+  };
+  installNoValidate(formPrototype,'noValidate','novalidate');
+  installNoValidate(HTMLButtonElement.prototype,'formNoValidate','formnovalidate');
+  installNoValidate(HTMLInputElement.prototype,'formNoValidate','formnovalidate');
+  function validateFormSubmitter(form, submitter) {
+    if(form===undefined){
+      if(submitter!==undefined&&submitter!==null&&!bridge('html-element',submitter))throw new ErrorType('The submitter is not an HTMLElement.');
+      return null;
+    }
+    checkForm(form);return normalizeSubmitter(form,submitter);
+  }
+  function buildEntries(form, submitter) {
+    const payload=submission(form,submitter),entries=[];
+    for(let i=0;i<payload.entries.length;i++)entries[i]=payload.entries[i];
+    for(let i=0;i<payload.charsetEntries.length;i++){const at=payload.charsetEntries[i];entries[at]=freeze([entries[at][0],'UTF-8']);}
+    return freeze(entries);
   }
   g.__captureFormEntries=(form,submitter,hold=false)=>{
-    if(form===undefined){if(submitter!==undefined&&submitter!==null&&!bridge('html-element',submitter))throw new ErrorType('The submitter is not an HTMLElement.');return freeze([]);}
-    checkForm(form);submitter=normalizeSubmitter(form,submitter);
+    const resolved=validateFormSubmitter(form,submitter);
+    if(form===undefined)return freeze([]);
     if(privateGet(form,'constructing-entries'))throw new Exception('The form entry list is already being constructed.','InvalidStateError');
     privateSet(form,'constructing-entries',true);let complete=false;
-    try {
-      const payload=submission(form,submitter),entries=[];
-      for(let i=0;i<payload.entries.length;i++)entries[i]=payload.entries[i];
-      for(let i=0;i<payload.charsetEntries.length;i++){const at=payload.charsetEntries[i];entries[at]=freeze([entries[at][0],'UTF-8']);}
-      complete=true;return freeze(entries);
-    } finally {if(!hold||!complete)privateSet(form,'constructing-entries',false);}
+    try {const result=buildEntries(form,resolved);complete=true;return result;}
+    finally {if(!hold||!complete)privateSet(form,'constructing-entries',false);}
   };
   g.__captureFormCollections={bridge,privateGet,privateSet,formControls,checkForm,attr,tag,type,readValue,checkedValue,queryAll,getRoot,owner,associatedGet,localNameGetter};
   g.__captureFormInternals = Object.assign(internals, {

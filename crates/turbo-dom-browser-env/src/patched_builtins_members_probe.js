@@ -74,17 +74,22 @@
     [CSSStyleDeclaration.prototype, 'CSSStyleDeclaration.prototype'], [ShadowRoot.prototype, 'ShadowRoot.prototype'], [RegExp, 'RegExp'], [Event.prototype, 'Event.prototype'],
     [KeyboardEvent.prototype, 'KeyboardEvent.prototype'], [MouseEvent.prototype, 'MouseEvent.prototype']];
   const skip = { __proto__: null, constructor: 1, prototype: 1, length: 1, name: 1, __proto__x: 1 };
+  const shouldSkipKey = (k) => {
+    if (typeof k === 'string' && (skip[k] || k === '__proto__')) return true;
+    return k === Symbol.hasInstance;
+  };
+  const patchMember = (o, k, label) => {
+    const d = gopd(o, k); if (!d.configurable) return;
+    const n = label + '.' + (typeof k === 'symbol' ? '@@' + String(k) : k);
+    if (DRIVER_NEEDS[n]) return;
+    if (typeof d.value === 'function') { saved[saved.length] = [o, k, d]; count++; def(o, k, { value: thrower(n), writable: true, configurable: true, enumerable: d.enumerable }); }
+    else if (d.get || d.set) { saved[saved.length] = [o, k, d]; count++; def(o, k, { get: thrower('get ' + n), set: thrower('set ' + n), configurable: true, enumerable: d.enumerable }); }
+  };
   for (let t = 0; t < patchTargets.length; t++) {
     const o = patchTargets[t][0], label = patchTargets[t][1], ks = own(o);
     for (let i = 0; i < ks.length; i++) {
-      const k = ks[i];
-      if (typeof k === 'string' && (skip[k] || k === '__proto__')) continue;
-      if (k === Symbol.hasInstance) continue;
-      const d = gopd(o, k); if (!d.configurable) continue;
-      const n = label + '.' + (typeof k === 'symbol' ? '@@' + String(k) : k);
-      if (DRIVER_NEEDS[n]) continue;
-      if (typeof d.value === 'function') { saved[saved.length] = [o, k, d]; count++; def(o, k, { value: thrower(n), writable: true, configurable: true, enumerable: d.enumerable }); }
-      else if (d.get || d.set) { saved[saved.length] = [o, k, d]; count++; def(o, k, { get: thrower('get ' + n), set: thrower('set ' + n), configurable: true, enumerable: d.enumerable }); }
+      if (shouldSkipKey(ks[i])) continue;
+      patchMember(o, ks[i], label);
     }
   }
   const out = { __proto__: null };

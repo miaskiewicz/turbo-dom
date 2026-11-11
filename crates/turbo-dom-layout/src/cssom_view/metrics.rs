@@ -322,19 +322,28 @@ fn offset_parent_stops(
     style: &super::scroll::SourceStyle,
     used: crate::layout_snapshot::UsedBoxMetrics,
 ) -> bool {
-    let positioned = parent_style
-        .style
-        .get("position")
-        .is_some_and(|value| value != "static");
-    let transformed = parent_style
-        .style
-        .get("transform")
-        .is_some_and(|value| value != "none")
-        && !is_inline_fragment(snapshot, parent);
+    let (positioned, transformed) = is_positioned_or_transformed(snapshot, parent, parent_style);
     let table = used.position == crate::layout::value::Position::Static
         && matches!(parent_style.tag.as_str(), "table" | "td" | "th");
     let zoomed = parent_style.zoom != style.zoom;
     positioned || transformed || table || zoomed || parent_style.tag == "body"
+}
+
+fn is_positioned_or_transformed(
+    snapshot: &LayoutSnapshot,
+    id: SourceId,
+    style: &super::scroll::SourceStyle,
+) -> (bool, bool) {
+    let positioned = style
+        .style
+        .get("position")
+        .is_some_and(|value| value != "static");
+    let transformed = style
+        .style
+        .get("transform")
+        .is_some_and(|value| value != "none")
+        && !is_inline_fragment(snapshot, id);
+    (positioned, transformed)
 }
 
 fn offset_parent_origin(
@@ -342,15 +351,7 @@ fn offset_parent_origin(
     parent: SourceId,
     parent_style: &super::scroll::SourceStyle,
 ) -> Result<(f32, f32), String> {
-    let positioned = parent_style
-        .style
-        .get("position")
-        .is_some_and(|value| value != "static");
-    let transformed = parent_style
-        .style
-        .get("transform")
-        .is_some_and(|value| value != "none")
-        && !is_inline_fragment(snapshot, parent);
+    let (positioned, transformed) = is_positioned_or_transformed(snapshot, parent, parent_style);
     if parent_style.tag == "body" && !positioned && !transformed {
         return Ok((0.0, 0.0));
     }
@@ -366,19 +367,10 @@ fn offset_parent_origin(
     let metrics = box_
         .used_box
         .ok_or("native offset parent used box missing")?;
+    let border_offset = |inline: bool, value: f32| if inline { 0.0 } else { value };
     Ok((
-        box_.rect.x
-            + if metrics.inline_fragment {
-                0.0
-            } else {
-                metrics.border.left
-            },
-        box_.rect.y
-            + if metrics.inline_fragment {
-                0.0
-            } else {
-                metrics.border.top
-            },
+        box_.rect.x + border_offset(metrics.inline_fragment, metrics.border.left),
+        box_.rect.y + border_offset(metrics.inline_fragment, metrics.border.top),
     ))
 }
 

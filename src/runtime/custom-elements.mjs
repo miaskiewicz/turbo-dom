@@ -201,10 +201,7 @@ function enqueueOwn(el, def, name, args) {
   if (fn !== undefined) el.__ceReactions.push({ def, fn, args });
 }
 
-// HTML "upgrade an element": run the definition's constructor on the existing element.
-function upgrade(el, def) {
-  if (customElementState(el) !== UNDEFINED) return;
-  setCustomElementState(el, PRECUSTOMIZED);
+function runConstruct(el, def) {
   def.stack.push(el);
   let result, error, threw = false;
   try { result = Reflect.construct(def.ctor, []); } catch (e) { threw = true; error = e; }
@@ -213,14 +210,10 @@ function upgrade(el, def) {
     threw = true;
     error = new TypeError('Custom element constructors must call super() first and must not return a different object');
   }
-  if (threw) {
-    setCustomElementState(el, FAILED);
-    report(el.ownerDocument, error);
-    return;
-  }
-  el.__ceDef = def;
-  setCustomElementState(el, CUSTOM);
-  if (el.__ceReactions === undefined) el.__ceReactions = [];
+  return threw ? { error } : null;
+}
+
+function enqueueInitialReactions(el, def) {
   if (def.attributeChangedCallback !== undefined) {
     for (const name of def.observed) {
       const value = el.getAttribute(name);
@@ -228,6 +221,17 @@ function upgrade(el, def) {
     }
   }
   if (el.isConnected) enqueueOwn(el, def, 'connectedCallback', []);
+}
+
+function upgrade(el, def) {
+  if (customElementState(el) !== UNDEFINED) return;
+  setCustomElementState(el, PRECUSTOMIZED);
+  const fail = runConstruct(el, def);
+  if (fail) { setCustomElementState(el, FAILED); report(el.ownerDocument, fail.error); return; }
+  el.__ceDef = def;
+  setCustomElementState(el, CUSTOM);
+  if (el.__ceReactions === undefined) el.__ceReactions = [];
+  enqueueInitialReactions(el, def);
 }
 
 // HTML "try to upgrade an element": queue an upgrade when its definition exists.
@@ -354,6 +358,26 @@ export function adoptedNode(node, oldDocument, newDocument) {
 
 // --------------------------------------------------- CustomElementRegistry ----
 
+function buildDefinition(reg, name, localName, ctor) {
+  const proto = ctor.prototype;
+  const def = { registry: reg, name, localName, ctor, stack: [], observed: [] };
+  for (const key of ['connectedCallback', 'disconnectedCallback', 'adoptedCallback', 'attributeChangedCallback']) {
+    const fn = proto[key];
+    def[key] = typeof fn === 'function' ? fn : undefined;
+  }
+  if (def.attributeChangedCallback !== undefined) {
+    const observed = ctor.observedAttributes;
+    if (observed != null) def.observed = Array.from(observed, String);
+  }
+  return def;
+}
+
+function upgradeExistingCandidates(document, reg, localName, def) {
+  if (document && document.__ceRegistry === reg) withReactions(eachElement, null, [document, (el) => {
+    if (el.localName === localName && customElementState(el) === UNDEFINED && lookup(reg, localName, isValue(el)) === def) enqueueUpgrade(el, def);
+  }]);
+}
+
 // The window's registry over `document`: define / get / getName / whenDefined / upgrade.
 export function makeCustomElements(document) {
   const reg = { document, defs: new Map() };
@@ -365,22 +389,10 @@ export function makeCustomElements(document) {
       if (typeof ctor !== 'function') throw new TypeError("Failed to execute 'define' on 'CustomElementRegistry': The provided value is not a constructor");
       if (reg.defs.has(name)) throw new Error(`'${name}' already defined`);
       const localName = options && options.extends != null ? String(options.extends) : name;
-      const proto = ctor.prototype;
-      const def = { registry: reg, name, localName, ctor, stack: [], observed: [] };
-      for (const key of ['connectedCallback', 'disconnectedCallback', 'adoptedCallback', 'attributeChangedCallback']) {
-        const fn = proto[key];
-        def[key] = typeof fn === 'function' ? fn : undefined;
-      }
-      if (def.attributeChangedCallback !== undefined) {
-        const observed = ctor.observedAttributes;
-        if (observed != null) def.observed = Array.from(observed, String);
-      }
+      const def = buildDefinition(reg, name, localName, ctor);
       reg.defs.set(name, def);
       definitions.set(ctor, def);
-      // upgrade the document's candidates in shadow-including tree order
-      if (document && document.__ceRegistry === reg) withReactions(eachElement, null, [document, (el) => {
-        if (el.localName === localName && customElementState(el) === UNDEFINED && lookup(reg, localName, isValue(el)) === def) enqueueUpgrade(el, def);
-      }]);
+      upgradeExistingCandidates(document, reg, localName, def);
       const w = waiters.get(name);
       if (w) { w.forEach((resolve) => resolve(ctor)); waiters.delete(name); }
     },

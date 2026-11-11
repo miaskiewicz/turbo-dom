@@ -235,11 +235,12 @@
   };
 
   // "Canonicalize the configuration" (members were canonicalized on conversion).
+  function defaultList(config, allow, remove) {
+    if (config[allow] === undefined && config[remove] === undefined) config[remove] = [];
+  }
   function canonicalize(config, allowCommentsAndDataAttributes) {
-    if (config.elements === undefined && config.removeElements === undefined) config.removeElements = [];
-    if (config.attributes === undefined && config.removeAttributes === undefined) config.removeAttributes = [];
-    // Like comments, Chrome 156 allows every processing instruction by default only
-    // where it allows comments by default (a safe setHTML dictionary allows none).
+    defaultList(config, 'elements', 'removeElements');
+    defaultList(config, 'attributes', 'removeAttributes');
     if (config.processingInstructions === undefined && config.removeProcessingInstructions === undefined) {
       if (allowCommentsAndDataAttributes) config.removeProcessingInstructions = [];
       else config.processingInstructions = [];
@@ -269,16 +270,15 @@
     if (replace !== undefined && !disjoint(replace, nonReplaceable)) return false;
     return disjoint(config.elements, replace) && disjoint(config.removeElements, replace);
   }
+  function validItemWithAllow(config, item) {
+    if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
+    if (!disjoint(config.attributes, item.attributes)) return false;
+    const removed = item.removeAttributes || [];
+    if (filter(removed, (attr) => !contains(config.attributes, attr)).length) return false;
+    return !(config.dataAttributes === true && item.attributes !== undefined && filter(item.attributes, isData).length);
+  }
   function validWithAllowAttributes(config, elements) {
-    for (let index = 0; index < elements.length; index++) {
-      const item = elements[index];
-      if (duplicates(item.attributes) || duplicates(item.removeAttributes)) return false;
-      if (!disjoint(config.attributes, item.attributes)) return false;
-      const removed = item.removeAttributes || [];
-      if (filter(removed, (attr) => !contains(config.attributes, attr)).length) return false;
-      if (config.dataAttributes === true && item.attributes !== undefined && filter(item.attributes, isData).length)
-        return false;
-    }
+    for (let index = 0; index < elements.length; index++) if (!validItemWithAllow(config, elements[index])) return false;
     return !(config.dataAttributes === true && filter(config.attributes, isData).length);
   }
   function validWithoutAllowAttributes(config, elements) {

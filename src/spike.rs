@@ -237,6 +237,14 @@ struct Compound<'a> {
     classes: Vec<&'a str>,
 }
 
+fn scan_to_delim(bytes: &[u8], start: usize) -> usize {
+    let mut i = start;
+    while i < bytes.len() && bytes[i] != b'.' && bytes[i] != b'#' {
+        i += 1;
+    }
+    i
+}
+
 fn parse_compound(sel: &str) -> Compound<'_> {
     let s = sel.trim();
     let mut c = Compound {
@@ -244,24 +252,19 @@ fn parse_compound(sel: &str) -> Compound<'_> {
         id: None,
         classes: Vec::new(),
     };
-    let mut i = 0;
     let bytes = s.as_bytes();
-    // leading type selector
+    let mut i = 0;
     if i < bytes.len() && bytes[i] != b'.' && bytes[i] != b'#' {
-        let start = i;
-        while i < bytes.len() && bytes[i] != b'.' && bytes[i] != b'#' {
-            i += 1;
-        }
-        c.tag = Some(&s[start..i]);
+        let end = scan_to_delim(bytes, i);
+        c.tag = Some(&s[i..end]);
+        i = end;
     }
     while i < bytes.len() {
         let kind = bytes[i];
         i += 1;
-        let start = i;
-        while i < bytes.len() && bytes[i] != b'.' && bytes[i] != b'#' {
-            i += 1;
-        }
-        let tok = &s[start..i];
+        let end = scan_to_delim(bytes, i);
+        let tok = &s[i..end];
+        i = end;
         match kind {
             b'.' => c.classes.push(tok),
             b'#' => c.id = Some(tok),
@@ -293,6 +296,14 @@ fn has_class(class_attr: &str, cls: &str) -> bool {
     }
 }
 
+fn classes_match(soa: &Soa, i: usize, classes: &[&str]) -> bool {
+    let cv = match attr_value_id(soa, i, "class") {
+        Some(v) => &soa.attr_values[v as usize],
+        None => return false,
+    };
+    classes.iter().all(|cls| has_class(cv, cls))
+}
+
 fn matches(soa: &Soa, i: usize, c: &Compound) -> bool {
     if soa.node_type[i] != ELEMENT_NODE {
         return false;
@@ -308,16 +319,8 @@ fn matches(soa: &Soa, i: usize, c: &Compound) -> bool {
             _ => return false,
         }
     }
-    if !c.classes.is_empty() {
-        let cv = match attr_value_id(soa, i, "class") {
-            Some(v) => &soa.attr_values[v as usize],
-            None => return false,
-        };
-        for cls in &c.classes {
-            if !has_class(cv, cls) {
-                return false;
-            }
-        }
+    if !c.classes.is_empty() && !classes_match(soa, i, &c.classes) {
+        return false;
     }
     true
 }

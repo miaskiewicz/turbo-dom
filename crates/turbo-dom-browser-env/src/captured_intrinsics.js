@@ -76,16 +76,16 @@
     }
     return table;
   };
-  for (let i = 0; i < names.length; i++) {
-    const name = names[i];
-    if (typeof name !== 'string') continue;
+  const collectHandlerTable = function (name) {
+    if (typeof name !== 'string') return;
     const global = gopd(g, name), ctor = global && global.value;
-    if (typeof ctor !== 'function') continue;
+    if (typeof ctor !== 'function') return;
     const prototype = gopd(ctor, 'prototype');
-    if (!prototype || prototype.value === null || typeof prototype.value !== 'object') continue;
+    if (!prototype || prototype.value === null || typeof prototype.value !== 'object') return;
     const table = handlerSetters(prototype.value);
     if (table !== null) apply(mapSet, tables, [prototype.value, table]);
-  }
+  };
+  for (let i = 0; i < names.length; i++) collectHandlerTable(names[i]);
   g.__setInlineHandler = function (element, name, value) {
     for (let p = getProto(element); p !== null; p = getProto(p)) {
       const table = apply(mapGet, tables, [p]);

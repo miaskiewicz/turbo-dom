@@ -36,6 +36,14 @@ pub fn property<'a>(styles: &'a SourceStyles, mut id: SourceId, name: &str) -> O
 fn clip_axis(style: &crate::ComputedStyle, name: &str) -> bool {
     super::scroll::overflow(style, name) != "visible"
 }
+fn point_in_viewport(point: [f64; 2], width: f32, height: f32) -> bool {
+    point.iter().all(|v| v.is_finite())
+        && point[0] >= 0.0
+        && point[1] >= 0.0
+        && point[0] < f64::from(width)
+        && point[1] < f64::from(height)
+}
+
 pub fn elements_at_point(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -43,12 +51,7 @@ pub fn elements_at_point(
     point: [f64; 2],
 ) -> Result<Vec<SourceId>, String> {
     let (width, height) = snapshot.viewport();
-    if !point.iter().all(|v| v.is_finite())
-        || point[0] < 0.0
-        || point[1] < 0.0
-        || point[0] >= f64::from(width)
-        || point[1] >= f64::from(height)
-    {
+    if !point_in_viewport(point, width, height) {
         return Ok(Vec::new());
     }
     let mut result = Vec::new();
@@ -133,6 +136,21 @@ fn process_fragment_hit(
 
 /// The border-box arm of [`process_fragment_hit`]: only `BorderBox` fragments
 /// with a source hit-test against the fragment's own rect.
+fn border_box_candidate(
+    fragment: &crate::layout_snapshot::SnapshotFragment,
+    styles: &SourceStyles,
+    seen: &BTreeSet<SourceId>,
+) -> Option<SourceId> {
+    if fragment.kind != GeometryKind::BorderBox {
+        return None;
+    }
+    let id = fragment.source_id?;
+    if seen.contains(&id) || owns_no_hit_area(styles, id) || !hittable(styles, id) {
+        return None;
+    }
+    Some(id)
+}
+
 fn process_border_box_hit(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -142,15 +160,9 @@ fn process_border_box_hit(
     result: &mut Vec<SourceId>,
     seen: &mut BTreeSet<SourceId>,
 ) -> Result<(), String> {
-    if fragment.kind != GeometryKind::BorderBox {
-        return Ok(());
-    }
-    let Some(id) = fragment.source_id else {
+    let Some(id) = border_box_candidate(fragment, styles, seen) else {
         return Ok(());
     };
-    if seen.contains(&id) || owns_no_hit_area(styles, id) || !hittable(styles, id) {
-        return Ok(());
-    }
     let translation = scroll_translation(snapshot, styles, id, offsets)?;
     if !contains(
         fragment.rect,
@@ -162,16 +174,44 @@ fn process_border_box_hit(
     ) {
         return Ok(());
     }
-    let clipped = hidden_by_clip(
+    if !hidden_by_clip(
         snapshot,
         styles,
         (&fragment.source_ancestors, Some(id)),
         offsets,
         point,
-    )?;
-    if !clipped {
+    )? {
         seen.insert(id);
         result.push(id);
+    }
+    Ok(())
+}
+
+fn collect_inline_ancestor_hits(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+    run: &crate::layout_snapshot::SnapshotTextRun,
+    result: &mut Vec<SourceId>,
+    seen: &mut BTreeSet<SourceId>,
+) -> Result<(), String> {
+    for id in run.source_ancestors.iter().rev() {
+        match styles.get(id).and_then(|style| style.style.get("display")) {
+            Some("inline") => {}
+            Some("contents") => continue,
+            _ => break,
+        }
+        if seen.contains(id)
+            || property(styles, *id, "pointer-events") == Some("none")
+            || property(styles, *id, "visibility").is_some_and(|value| value != "visible")
+        {
+            continue;
+        }
+        if !hidden_by_clip(snapshot, styles, (&run.source_ancestors, None), offsets, point)? {
+            seen.insert(*id);
+            result.push(*id);
+        }
     }
     Ok(())
 }
@@ -204,33 +244,7 @@ fn process_run_hit(
     ) {
         return Ok(());
     }
-    // Text hits its inline ancestors (a `display: contents` one has no box
-    // and is passed over), up to the first block-level one, which only its
-    // own box hits — not text overflowing it (Chrome; turbo-dom#146).
-    for id in run.source_ancestors.iter().rev() {
-        match styles.get(id).and_then(|style| style.style.get("display")) {
-            Some("inline") => {}
-            Some("contents") => continue,
-            _ => break,
-        }
-        if seen.contains(id)
-            || property(styles, *id, "pointer-events") == Some("none")
-            || property(styles, *id, "visibility").is_some_and(|value| value != "visible")
-        {
-            continue;
-        }
-        if !hidden_by_clip(
-            snapshot,
-            styles,
-            (&run.source_ancestors, None),
-            offsets,
-            point,
-        )? {
-            seen.insert(*id);
-            result.push(*id);
-        }
-    }
-    Ok(())
+    collect_inline_ancestor_hits(snapshot, styles, offsets, point, run, result, seen)
 }
 
 /// Whether `id` is a table row or row group, whose box is not a hit target: only its
@@ -304,6 +318,59 @@ pub fn hidden_by_clip(
     clipped(snapshot, styles, ancestors, offsets, point)
 }
 
+/// Whether a single ancestor's overflow clips the point. Returns `Ok(None)` when this
+/// ancestor does not clip (contents, visible, or point inside), `Ok(Some(true))` when
+/// clipped, `Err` on asymmetric overflow or missing layout data.
+fn ancestor_clips_axis(styles: &SourceStyles, ancestor: SourceId) -> Result<Option<bool>, String> {
+    let Some(style) = styles.get(&ancestor) else {
+        return Ok(None);
+    };
+    if style.style.get("display") == Some("contents") {
+        return Ok(None);
+    }
+    let clip_x = clip_axis(&style.style, "overflow-x");
+    let clip_y = clip_axis(&style.style, "overflow-y");
+    if !clip_x && !clip_y {
+        return Ok(None);
+    }
+    if clip_x != clip_y {
+        return Err("native hit testing asymmetric overflow clipping pending".into());
+    }
+    Ok(Some(true))
+}
+
+fn ancestor_overflow_clips(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    ancestor: SourceId,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<Option<bool>, String> {
+    if ancestor_clips_axis(styles, ancestor)? != Some(true) {
+        return Ok(None);
+    }
+    let source = snapshot
+        .source(ancestor)
+        .ok_or("native hit clip source missing")?;
+    let border = source
+        .fragment_indices
+        .iter()
+        .map(|&index| &snapshot.fragments()[index])
+        .find(|fragment| fragment.kind == GeometryKind::BorderBox)
+        .ok_or("native hit clip border missing")?;
+    let used = border.used_box.ok_or("native hit clip used box missing")?;
+    let translation = scroll_translation(snapshot, styles, ancestor, offsets)?;
+    let inside = contains(
+        used.padding_rect(border.rect),
+        snapshot
+            .native_hit_transform(border.index)
+            .ok_or("native clip transform unavailable")?,
+        translation,
+        point,
+    );
+    Ok(if inside { None } else { Some(true) })
+}
+
 /// Whether an ancestor's `overflow` clips `point` away.
 pub fn clipped(
     snapshot: &LayoutSnapshot,
@@ -312,46 +379,14 @@ pub fn clipped(
     offsets: &BTreeMap<SourceId, [f64; 2]>,
     point: [f64; 2],
 ) -> Result<bool, String> {
-    let mut clipped = false;
     for ancestor in ancestors {
-        let Some(style) = styles.get(ancestor) else {
-            continue;
-        };
-        if style.style.get("display") == Some("contents") {
-            continue;
-        }
-        let clip_x = clip_axis(&style.style, "overflow-x");
-        let clip_y = clip_axis(&style.style, "overflow-y");
-        if !clip_x && !clip_y {
-            continue;
-        }
-        if clip_x != clip_y {
-            return Err("native hit testing asymmetric overflow clipping pending".into());
-        }
-        let source = snapshot
-            .source(*ancestor)
-            .ok_or("native hit clip source missing")?;
-        let border = source
-            .fragment_indices
-            .iter()
-            .map(|&index| &snapshot.fragments()[index])
-            .find(|fragment| fragment.kind == GeometryKind::BorderBox)
-            .ok_or("native hit clip border missing")?;
-        let used = border.used_box.ok_or("native hit clip used box missing")?;
-        let translation = scroll_translation(snapshot, styles, *ancestor, offsets)?;
-        if !contains(
-            used.padding_rect(border.rect),
-            snapshot
-                .native_hit_transform(border.index)
-                .ok_or("native clip transform unavailable")?,
-            translation,
-            point,
-        ) {
-            clipped = true;
-            break;
+        if let Some(true) =
+            ancestor_overflow_clips(snapshot, styles, *ancestor, offsets, point)?
+        {
+            return Ok(true);
         }
     }
-    Ok(clipped)
+    Ok(false)
 }
 /// Whether `id`'s `clip: rect()` (it and its descendants) leaves `point` out.
 fn clip_rect_excludes(

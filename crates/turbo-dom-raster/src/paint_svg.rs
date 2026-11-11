@@ -10,7 +10,7 @@ use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
-    FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
+    FragmentContent, LinearGradient as CssGradient, NodeId, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
@@ -382,6 +382,43 @@ const MAX_LISTED_TILES: usize = 4096;
 /// that does not repeat). Tiles without a whole-pixel period (a `round` or `space` step
 /// off the pixel grid) are written one by one when there are at most
 /// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
+fn paint_listed_tiles(svg: &mut String, node_id: NodeId, pattern: &TilePattern, area: (f32, f32, f32, f32), images: &DecodedAssets) {
+    for (x, y, w, h) in pattern.tiles(area) {
+        let tile = Fragment::new(node_id, x, y, w, h, (*pattern.tile).clone());
+        paint_subtree(svg, &tile, images);
+    }
+}
+
+fn paint_pattern_tiles(
+    svg: &mut String, f: &Fragment, pattern: &TilePattern,
+    first: (f32, f32, f32, f32), images: &DecodedAssets,
+) {
+    let cell = TileCell::new(pattern, first);
+    let ((x, y), (pw, ph)) = (cell.origin, cell.size);
+    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
+        if repeats { (from, len) } else { (at, size) }
+    };
+    let (fx, fw) = along(cell.repeats.0, (f.x, f.width), (first.0, first.2));
+    let (fy, fh) = along(cell.repeats.1, (f.y, f.height), (first.1, first.3));
+    let id = svg.len();
+    let _ = write!(
+        svg,
+        "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
+         width=\"{pw}\" height=\"{ph}\">"
+    );
+    SHARED.with(|memo| memo.borrow_mut().take());
+    svg.push_str("<g shape-rendering=\"crispEdges\">");
+    for (tx, ty, w, h) in cell.tiles(pattern) {
+        let tile = Fragment::new(f.node_id, tx, ty, w, h, (*pattern.tile).clone());
+        paint_subtree(svg, &tile, images);
+    }
+    SHARED.with(|memo| memo.borrow_mut().take());
+    let _ = writeln!(
+        svg,
+        "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
+    );
+}
+
 fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
     if !fragment_finite_positive(f) {
         return;
@@ -398,44 +435,10 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
         return;
     }
     if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
-        for (x, y, w, h) in pattern.tiles(area) {
-            let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
-            paint_subtree(svg, &tile, images);
-        }
+        paint_listed_tiles(svg, f.node_id, pattern, area, images);
         return;
     }
-    let cell = TileCell::new(pattern, first);
-    let ((x, y), (pw, ph)) = (cell.origin, cell.size);
-    let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
-        if repeats {
-            (from, len)
-        } else {
-            (at, size)
-        }
-    };
-    let (fx, fw) = along(cell.repeats.0, (f.x, f.width), (first.0, first.2));
-    let (fy, fh) = along(cell.repeats.1, (f.y, f.height), (first.1, first.3));
-    let id = svg.len();
-    let _ = write!(
-        svg,
-        "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
-         width=\"{pw}\" height=\"{ph}\">"
-    );
-    // A tile's `<image>` lives in the pattern: no `<use>` outside may share it.
-    SHARED.with(|memo| memo.borrow_mut().take());
-    // The cell's tiles meet edge to edge on whole pixels: drawn without anti-aliasing
-    // their shared edges leave no seam however small a viewer draws the cell (a
-    // `scale(0.25)` box: 0.75 device px).
-    svg.push_str("<g shape-rendering=\"crispEdges\">");
-    for (tx, ty, w, h) in cell.tiles(pattern) {
-        let tile = Fragment::new(f.node_id, tx, ty, w, h, (*pattern.tile).clone());
-        paint_subtree(svg, &tile, images);
-    }
-    SHARED.with(|memo| memo.borrow_mut().take());
-    let _ = writeln!(
-        svg,
-        "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
-    );
+    paint_pattern_tiles(svg, f, pattern, first, images);
 }
 
 /// The most pixels of one fractional tile's image [`paint_tile_texture`] embeds.

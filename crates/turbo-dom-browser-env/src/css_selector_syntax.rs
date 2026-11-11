@@ -357,6 +357,29 @@ fn combinator(input: &mut Parser<'_, '_>) -> Option<char> {
     }
 }
 
+fn emit_combinator(joined: Option<char>, out: &mut String) {
+    match joined {
+        Some(value) => {
+            out.push(' ');
+            out.push(value);
+            out.push(' ');
+        }
+        None => out.push(' '),
+    }
+}
+
+fn complex_relative_prefix(input: &mut Parser<'_, '_>, out: &mut String) {
+    if let Some(value) = combinator(input) {
+        out.push(value);
+        out.push(' ');
+        skip_whitespace(input);
+    }
+}
+
+fn complex_ends_here(element: Option<Element>, compound_only: bool) -> bool {
+    element.is_some() || compound_only
+}
+
 fn complex<'i>(
     input: &mut Parser<'i, '_>,
     context: Context,
@@ -365,11 +388,7 @@ fn complex<'i>(
 ) -> Fallible<'i> {
     skip_whitespace(input);
     if context.relative {
-        if let Some(value) = combinator(input) {
-            out.push(value);
-            out.push(' ');
-            skip_whitespace(input);
-        }
+        complex_relative_prefix(input, out);
     }
     loop {
         let element = compound(input, context, out, state)?;
@@ -381,19 +400,10 @@ fn complex<'i>(
         if joined.is_none() && !spaced {
             return fail(input);
         }
-        // Pseudo-elements end a complex selector; compound-only arguments
-        // (:host(), ::slotted(), :-webkit-any()) never take combinators.
-        if element.is_some() || context.compound {
+        if complex_ends_here(element, context.compound) {
             return fail(input);
         }
-        match joined {
-            Some(value) => {
-                out.push(' ');
-                out.push(value);
-                out.push(' ');
-            }
-            None => out.push(' '),
-        }
+        emit_combinator(joined, out);
         skip_whitespace(input);
         if input.is_exhausted() {
             return fail(input);
@@ -491,6 +501,18 @@ fn attribute_name<'i>(input: &mut Parser<'i, '_>, name: &mut String) -> Fallible
     Ok(())
 }
 
+fn attribute_operator(token: &Token<'_>) -> Option<&'static str> {
+    match token {
+        Token::Delim('=') => Some("="),
+        Token::IncludeMatch => Some("~="),
+        Token::DashMatch => Some("|="),
+        Token::PrefixMatch => Some("^="),
+        Token::SuffixMatch => Some("$="),
+        Token::SubstringMatch => Some("*="),
+        _ => None,
+    }
+}
+
 fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
     skip_whitespace(input);
     let mut name = String::new();
@@ -502,15 +524,8 @@ fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
         out.push(']');
         return Ok(());
     }
-    let operator = match input.next_including_whitespace().map_err(basic)?.clone() {
-        Token::Delim('=') => "=",
-        Token::IncludeMatch => "~=",
-        Token::DashMatch => "|=",
-        Token::PrefixMatch => "^=",
-        Token::SuffixMatch => "$=",
-        Token::SubstringMatch => "*=",
-        _ => return fail(input),
-    };
+    let token = input.next_including_whitespace().map_err(basic)?.clone();
+    let operator = attribute_operator(&token).ok_or_else(|| input.new_custom_error(()))?;
     skip_whitespace(input);
     let value = match input.next_including_whitespace().map_err(basic)?.clone() {
         Token::Ident(value) | Token::QuotedString(value) => value.to_string(),
@@ -518,6 +533,12 @@ fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
     };
     out.push_str(operator);
     cssparser::serialize_string(&value, out).map_err(|_| input.new_custom_error(()))?;
+    attribute_flag(input, out)?;
+    out.push(']');
+    Ok(())
+}
+
+fn attribute_flag<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
     skip_whitespace(input);
     if !input.is_exhausted() {
         let flag = identifier(input)?;
@@ -528,8 +549,70 @@ fn attribute<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
         skip_whitespace(input);
     }
     input.expect_exhausted().map_err(basic)?;
-    out.push(']');
     Ok(())
+}
+
+fn compound_simple_token<'i>(
+    input: &mut Parser<'i, '_>,
+    token: &Token<'i>,
+    position: cssparser::SourcePosition,
+    element: Option<Element>,
+    out: &mut String,
+) -> Fallible<'i, bool> {
+    match token {
+        Token::IDHash(_) | Token::Delim('&') if element.is_none() => {
+            out.push_str(input.slice_from(position));
+            Ok(true)
+        }
+        Token::Delim('.') if element.is_none() => {
+            if !matches!(input.next_including_whitespace(), Ok(Token::Ident(_))) {
+                return fail(input);
+            }
+            out.push_str(input.slice_from(position));
+            Ok(true)
+        }
+        Token::SquareBracketBlock if element.is_none() => {
+            input.parse_nested_block(|input| attribute(input, out))?;
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn is_combinator_or_space(token: &Token<'_>) -> bool {
+    matches!(token, Token::WhiteSpace(_) | Token::Delim('>' | '+' | '~'))
+}
+
+enum CompoundStep {
+    Matched,
+    EndOfInput,
+    Combinator,
+}
+
+fn compound_step<'i>(
+    input: &mut Parser<'i, '_>,
+    context: Context,
+    element: &mut Option<Element>,
+    out: &mut String,
+    state: &mut State,
+) -> Fallible<'i, CompoundStep> {
+    let start = input.state();
+    let position = input.position();
+    let Ok(token) = input.next_including_whitespace() else {
+        return Ok(CompoundStep::EndOfInput);
+    };
+    let token = token.clone();
+    if compound_simple_token(input, &token, position, *element, out)? {
+        Ok(CompoundStep::Matched)
+    } else if matches!(token, Token::Colon) {
+        pseudo(input, context, out, element, state)?;
+        Ok(CompoundStep::Matched)
+    } else if is_combinator_or_space(&token) {
+        input.reset(&start);
+        Ok(CompoundStep::Combinator)
+    } else {
+        fail(input)
+    }
 }
 
 fn compound<'i>(
@@ -544,32 +627,10 @@ fn compound<'i>(
         return fail(input);
     }
     loop {
-        let start = input.state();
-        let position = input.position();
-        let Ok(token) = input.next_including_whitespace() else {
-            break;
-        };
-        match token.clone() {
-            Token::IDHash(_) | Token::Delim('&') if element.is_none() => {
-                out.push_str(input.slice_from(position));
-            }
-            Token::Delim('.') if element.is_none() => {
-                if !matches!(input.next_including_whitespace(), Ok(Token::Ident(_))) {
-                    return fail(input);
-                }
-                out.push_str(input.slice_from(position));
-            }
-            Token::SquareBracketBlock if element.is_none() => {
-                input.parse_nested_block(|input| attribute(input, out))?;
-            }
-            Token::Colon => pseudo(input, context, out, &mut element, state)?,
-            Token::WhiteSpace(_) | Token::Delim('>' | '+' | '~') => {
-                input.reset(&start);
-                break;
-            }
-            _ => return fail(input),
+        match compound_step(input, context, &mut element, out, state)? {
+            CompoundStep::Matched => any = true,
+            CompoundStep::EndOfInput | CompoundStep::Combinator => break,
         }
-        any = true;
     }
     if !any {
         return fail(input);
@@ -612,6 +673,22 @@ fn element_kind(name: &str) -> Element {
     }
 }
 
+fn validate_nonfunctional_element<'i>(
+    input: &mut Parser<'i, '_>,
+    state: &mut State,
+    name: &str,
+) -> Fallible<'i> {
+    if let Some(webkit) = name.strip_prefix("-webkit-") {
+        if CLASSES.contains(&name) {
+            return fail(input);
+        }
+        state.supported &= WEBKIT_ELEMENTS.contains(&webkit);
+    } else if !ELEMENTS.contains(&name) {
+        return fail(input);
+    }
+    Ok(())
+}
+
 fn pseudo_element<'i>(
     input: &mut Parser<'i, '_>,
     context: Context,
@@ -638,13 +715,8 @@ fn pseudo_element<'i>(
         out.push('(');
         input.parse_nested_block(|input| element_arguments(input, name, out, state))?;
         out.push(')');
-    } else if let Some(webkit) = name.strip_prefix("-webkit-") {
-        if CLASSES.contains(&name) {
-            return fail(input);
-        }
-        state.supported &= WEBKIT_ELEMENTS.contains(&webkit);
-    } else if !ELEMENTS.contains(&name) {
-        return fail(input);
+    } else {
+        validate_nonfunctional_element(input, state, name)?;
     }
     *element = Some(element_kind(name));
     Ok(())
@@ -673,6 +745,12 @@ fn pseudo<'i>(
     pseudo_class(input, context, out, element, state, &name, functional)
 }
 
+fn class_allowed_after_element(previous: Element, name: &str, functional: bool) -> bool {
+    let wrapper = functional && matches!(name, "is" | "where");
+    let negation = functional && name == "not" && previous == Element::Shadow;
+    wrapper || negation || class_follows(previous, name)
+}
+
 fn pseudo_class<'i>(
     input: &mut Parser<'i, '_>,
     context: Context,
@@ -683,11 +761,7 @@ fn pseudo_class<'i>(
     functional: bool,
 ) -> Fallible<'i> {
     if let Some(previous) = *element {
-        // :is()/:where() survive after any pseudo-element, filtering their
-        // branches by what that pseudo-element accepts.
-        let wrapper = functional && matches!(name, "is" | "where");
-        let negation = functional && name == "not" && previous == Element::Shadow;
-        if !wrapper && !negation && !class_follows(previous, name) {
+        if !class_allowed_after_element(previous, name, functional) {
             return fail(input);
         }
     }
@@ -714,6 +788,50 @@ fn joined(out: &mut String, items: Vec<String>) {
     out.push_str(&items.join(", "));
 }
 
+fn class_arguments_body<'i>(
+    input: &mut Parser<'i, '_>,
+    name: &str,
+    context: Context,
+    nested: Context,
+    out: &mut String,
+    state: &mut State,
+) -> Fallible<'i> {
+    let compound_ctx = Context { compound: true, ..nested };
+    match name {
+        "is" | "where" => joined(out, list(input, nested, true, state)?),
+        "not" | "has" => class_arg_not_or_has(input, name, context, nested, out, state)?,
+        "host" | "host-context" => complex(input, compound_ctx, out, state)?,
+        "-webkit-any" => joined(out, list(input, compound_ctx, false, state)?),
+        "nth-child" | "nth-last-child" | "nth-of-type" | "nth-last-of-type" => {
+            class_arg_nth(input, name, nested, out, state)?;
+        }
+        "dir" | "lang" | "state" => class_arg_ident(input, out)?,
+        "active-view-transition-type" => class_arg_view_transition(input, out)?,
+        _ => return fail(input),
+    }
+    Ok(())
+}
+
+fn class_arg_not_or_has<'i>(
+    input: &mut Parser<'i, '_>,
+    name: &str,
+    context: Context,
+    nested: Context,
+    out: &mut String,
+    state: &mut State,
+) -> Fallible<'i> {
+    if name == "has" && context.in_has {
+        return fail(input);
+    }
+    let nested = if name == "has" {
+        Context { relative: true, in_has: true, ..nested }
+    } else {
+        nested
+    };
+    joined(out, list(input, nested, false, state)?);
+    Ok(())
+}
+
 fn class_arguments<'i>(
     input: &mut Parser<'i, '_>,
     name: &str,
@@ -728,42 +846,7 @@ fn class_arguments<'i>(
         after,
         ..Default::default()
     };
-    match name {
-        "is" | "where" => joined(out, list(input, nested, true, state)?),
-        "not" => joined(out, list(input, nested, false, state)?),
-        "has" if !context.in_has => {
-            let nested = Context {
-                relative: true,
-                in_has: true,
-                ..nested
-            };
-            joined(out, list(input, nested, false, state)?);
-        }
-        "host" | "host-context" => {
-            let nested = Context {
-                compound: true,
-                ..nested
-            };
-            complex(input, nested, out, state)?;
-        }
-        "-webkit-any" => {
-            let nested = Context {
-                compound: true,
-                ..nested
-            };
-            joined(out, list(input, nested, false, state)?);
-        }
-        "nth-child" | "nth-last-child" | "nth-of-type" | "nth-last-of-type" => {
-            class_arg_nth(input, name, nested, out, state)?;
-        }
-        "dir" | "lang" | "state" => {
-            class_arg_ident(input, out)?;
-        }
-        "active-view-transition-type" => {
-            class_arg_view_transition(input, out)?;
-        }
-        _ => return fail(input),
-    }
+    class_arguments_body(input, name, context, nested, out, state)?;
     input.expect_exhausted().map_err(basic)
 }
 
@@ -836,7 +919,7 @@ fn nth(a: i32, b: i32) -> String {
     text
 }
 
-fn element_arguments<'i>(
+fn element_arguments_body<'i>(
     input: &mut Parser<'i, '_>,
     name: &str,
     out: &mut String,
@@ -846,15 +929,8 @@ fn element_arguments<'i>(
         no_elements: true,
         ..Default::default()
     };
-    skip_whitespace(input);
     match name {
-        "slotted" => {
-            let nested = Context {
-                compound: true,
-                ..nested
-            };
-            complex(input, nested, out, state)?;
-        }
+        "slotted" => complex(input, Context { compound: true, ..nested }, out, state)?,
         "cue" => joined(out, list(input, nested, false, state)?),
         "part" => element_arg_part(input, out)?,
         "highlight" => {
@@ -862,15 +938,29 @@ fn element_arguments<'i>(
             identifier(input)?;
             out.push_str(input.slice_from(start));
         }
-        "picker" => {
-            if !identifier(input)?.eq_ignore_ascii_case("select") {
-                return fail(input);
-            }
-            out.push_str("select");
-        }
+        "picker" => element_arg_picker(input, out)?,
         "scroll-button" => element_arg_scroll_button(input, out)?,
         _ => element_arg_pt_name(input, out)?,
     }
+    Ok(())
+}
+
+fn element_arg_picker<'i>(input: &mut Parser<'i, '_>, out: &mut String) -> Fallible<'i> {
+    if !identifier(input)?.eq_ignore_ascii_case("select") {
+        return fail(input);
+    }
+    out.push_str("select");
+    Ok(())
+}
+
+fn element_arguments<'i>(
+    input: &mut Parser<'i, '_>,
+    name: &str,
+    out: &mut String,
+    state: &mut State,
+) -> Fallible<'i> {
+    skip_whitespace(input);
+    element_arguments_body(input, name, out, state)?;
     skip_whitespace(input);
     input.expect_exhausted().map_err(basic)
 }

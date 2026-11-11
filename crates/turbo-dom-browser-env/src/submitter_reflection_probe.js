@@ -5,23 +5,27 @@
     const path=value.replace(/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?/,"");
     return path==="/"||path==="/?case=0"?"<document>":"<origin>"+path;
   };
+  const probeField = (element, name, kind, field, other) => {
+    const descriptor=Object.getOwnPropertyDescriptor(globalThis[name].prototype,field);
+    const attribute=field.toLowerCase();
+    const record={descriptor:[descriptor.enumerable,descriptor.configurable,descriptor.get.name,descriptor.get.length,descriptor.set.name,descriptor.set.length],missing:normalize(element[field]),values:[],errors:[]};
+    for(const value of ["","POST","dialog","invalid","TEXT/PLAIN","multipart/form-data","_blank",null,undefined,"a\ud800b"]) {
+      element[field]=value;record.values.push([normalize(element[field]),element.getAttribute(attribute)]);
+    }
+    for(const receiver of [{},document.createElement(other),document.createElementNS("http://www.w3.org/2000/svg",kind),document.createElementNS("http://www.w3.org/1999/xhtml",kind.toUpperCase()),Object.create(globalThis[name].prototype)]) {
+      for(const method of [descriptor.get,descriptor.set])try{method.call(receiver,"x");record.errors.push("accepted");}catch(error){record.errors.push(error.name);}
+    }
+    try{element[field]=Symbol();record.symbol="accepted";}catch(error){record.symbol=error.name;}
+    element.removeAttribute(attribute);
+    element.setAttribute(attribute,"POST");record.attributeWrite=normalize(element[field]);element.removeAttribute(attribute);
+    const borrowed=Object.create(null);borrowed.value=descriptor.get.call(element);record.borrowed=normalize(borrowed.value);
+    return record;
+  };
   for(const [name,kind,other] of [["HTMLButtonElement","button","input"],["HTMLInputElement","input","button"]]) {
     const element=document.createElement(kind);document.body.append(element);
     const output=result[name]={fields:{},actions:[],poison:{}};
     for(const field of fields) {
-      const descriptor=Object.getOwnPropertyDescriptor(globalThis[name].prototype,field);
-      const attribute=field.toLowerCase();
-      const record=output.fields[field]={descriptor:[descriptor.enumerable,descriptor.configurable,descriptor.get.name,descriptor.get.length,descriptor.set.name,descriptor.set.length],missing:normalize(element[field]),values:[],errors:[]};
-      for(const value of ["","POST","dialog","invalid","TEXT/PLAIN","multipart/form-data","_blank",null,undefined,"a\ud800b"]) {
-        element[field]=value;record.values.push([normalize(element[field]),element.getAttribute(attribute)]);
-      }
-      for(const receiver of [{},document.createElement(other),document.createElementNS("http://www.w3.org/2000/svg",kind),document.createElementNS("http://www.w3.org/1999/xhtml",kind.toUpperCase()),Object.create(globalThis[name].prototype)]) {
-        for(const method of [descriptor.get,descriptor.set])try{method.call(receiver,"x");record.errors.push("accepted");}catch(error){record.errors.push(error.name);}
-      }
-      try{element[field]=Symbol();record.symbol="accepted";}catch(error){record.symbol=error.name;}
-      element.removeAttribute(attribute);
-      element.setAttribute(attribute,"POST");record.attributeWrite=normalize(element[field]);element.removeAttribute(attribute);
-      const borrowed=Object.create(null);borrowed.value=descriptor.get.call(element);record.borrowed=normalize(borrowed.value);
+      output.fields[field]=probeField(element,name,kind,field,other);
     }
     const base=document.createElement("base");base.href="https://base.example/dir/";document.head.append(base);
     for(const value of [null,"","child?q=1","../up","http://[","https://","http://bad host","https://[::1","http://%zz","https://a:bad","nosuch:abc","#fragment"]) {

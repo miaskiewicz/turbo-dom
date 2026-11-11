@@ -133,54 +133,42 @@ fn border_boxes(snapshot: &LayoutSnapshot, id: SourceId) -> Vec<[f64; 4]> {
         .unwrap_or_default()
 }
 
-/// Compare one case with Chrome; the differences, one line each.
-fn compare(case: &Value) -> Vec<String> {
-    let id = case["id"].as_str().unwrap();
-    let (snapshot, ids) = capture(case);
+fn compare_elements(case: &Value, id: &str, snapshot: &turbo_dom_layout::layout_snapshot::LayoutSnapshot, ids: &Ids) -> Vec<String> {
     let mut failures = Vec::new();
     for element in case["elements"].as_array().unwrap() {
         let name = element["id"].as_str().unwrap();
-        let want: Vec<_> = element["rects"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(rect)
-            .collect();
-        let got = border_boxes(&snapshot, ids.named[name]);
+        let want: Vec<_> = element["rects"].as_array().unwrap().iter().map(rect).collect();
+        let got = border_boxes(snapshot, ids.named[name]);
         if got.len() != want.len() || !got.iter().zip(&want).all(|(g, w)| close(*g, *w)) {
             failures.push(format!("{id}: #{name} rects {got:?}, Chrome {want:?}"));
         }
     }
+    failures
+}
+
+fn compare_texts(case: &Value, id: &str, snapshot: &turbo_dom_layout::layout_snapshot::LayoutSnapshot, ids: &Ids) -> Vec<String> {
+    let mut failures = Vec::new();
     for text in case["texts"].as_array().unwrap() {
-        let path: Vec<usize> = text["path"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_u64().unwrap() as usize)
-            .collect();
+        let path: Vec<usize> = text["path"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as usize).collect();
         let source = ids.texts[&path];
         for (unit, want) in text["chars"].as_array().unwrap().iter().enumerate() {
             let want: Vec<_> = want.as_array().unwrap().iter().map(rect).collect();
             let got: Vec<_> = snapshot
                 .text_range_boxes(source, unit, unit + 1)
-                .map(|boxes| {
-                    boxes
-                        .iter()
-                        .map(|b| [b.rect.x, b.rect.y, b.rect.width, b.rect.height].map(f64::from))
-                        .collect()
-                })
+                .map(|boxes| boxes.iter().map(|b| [b.rect.x, b.rect.y, b.rect.width, b.rect.height].map(f64::from)).collect())
                 .unwrap_or_default();
             if got.len() != want.len() || !got.iter().zip(&want).all(|(g, w)| close(*g, *w)) {
-                failures.push(format!(
-                    "{id}: text {path:?}[{unit}] {got:?}, Chrome {want:?}"
-                ));
+                failures.push(format!("{id}: text {path:?}[{unit}] {got:?}, Chrome {want:?}"));
             }
         }
     }
+    failures
+}
+
+fn compare_carets(case: &Value, id: &str, snapshot: &turbo_dom_layout::layout_snapshot::LayoutSnapshot, ids: &Ids) -> Vec<String> {
+    let mut failures = Vec::new();
     for caret in case["carets"].as_array().unwrap() {
-        let Some(path) = caret[2].as_array() else {
-            continue;
-        };
+        let Some(path) = caret[2].as_array() else { continue };
         let path: Vec<usize> = path.iter().map(|v| v.as_u64().unwrap() as usize).collect();
         let point = turbo_dom_layout::layout_snapshot::Point {
             x: caret[0].as_f64().unwrap() as f32,
@@ -192,6 +180,16 @@ fn compare(case: &Value) -> Vec<String> {
             failures.push(format!("{id}: caret at {point:?} {got:?}, Chrome {want}"));
         }
     }
+    failures
+}
+
+/// Compare one case with Chrome; the differences, one line each.
+fn compare(case: &Value) -> Vec<String> {
+    let id = case["id"].as_str().unwrap();
+    let (snapshot, ids) = capture(case);
+    let mut failures = compare_elements(case, id, &snapshot, &ids);
+    failures.extend(compare_texts(case, id, &snapshot, &ids));
+    failures.extend(compare_carets(case, id, &snapshot, &ids));
     failures
 }
 

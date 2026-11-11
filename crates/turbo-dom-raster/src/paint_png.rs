@@ -1079,41 +1079,45 @@ fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Trans
 /// Paint each border side as a filled edge band (no line styles — width + colour only).
 /// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
 /// right bands first, then the top and bottom ones mitred on the corner diagonals.
-fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
-    if !fragment_finite_positive(f) {
-        return;
-    }
-    let side = |s: &BorderSide| {
-        s.color
-            .filter(|_| s.width > 0)
-            .map(|c| (f32::from(s.width), c))
-    };
-    let mitred = rrect::mixed_colours(b);
-    if !mitred {
-        if let Some((w, c)) = side(&b.top) {
-            fill_rect(pm, f.x, f.y, f.width, w, c, xf);
-        }
-        if let Some((w, c)) = side(&b.bottom) {
-            fill_rect(pm, f.x, f.y + f.height - w, f.width, w, c, xf);
-        }
-    }
-    if let Some((w, c)) = side(&b.left) {
-        fill_rect(pm, f.x, f.y, w, f.height, c, xf);
-    }
-    if let Some((w, c)) = side(&b.right) {
-        fill_rect(pm, f.x + f.width - w, f.y, w, f.height, c, xf);
-    }
-    if !mitred {
-        return;
-    }
+fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
+    s.color
+        .filter(|_| s.width > 0)
+        .map(|c| (f32::from(s.width), c))
+}
+
+fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     for (top, s) in [(true, &b.top), (false, &b.bottom)] {
-        let Some((_, c)) = side(s) else { continue };
+        let Some((_, c)) = border_side(*s) else { continue };
         let band = rrect::mitred_band((f.x, f.y, f.width, f.height), rrect::widths(b), top);
         let mut path = PathBuilder::new();
         trace(&mut path, &rrect::polygon(&band));
         if let Some(path) = path.finish() {
             pm.fill_path(&path, &solid(c), FillRule::Winding, xf, None);
         }
+    }
+}
+
+fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
+    let mitred = rrect::mixed_colours(b);
+    if !mitred {
+        if let Some((w, c)) = border_side(b.top) {
+            fill_rect(pm, f.x, f.y, f.width, w, c, xf);
+        }
+        if let Some((w, c)) = border_side(b.bottom) {
+            fill_rect(pm, f.x, f.y + f.height - w, f.width, w, c, xf);
+        }
+    }
+    if let Some((w, c)) = border_side(b.left) {
+        fill_rect(pm, f.x, f.y, w, f.height, c, xf);
+    }
+    if let Some((w, c)) = border_side(b.right) {
+        fill_rect(pm, f.x + f.width - w, f.y, w, f.height, c, xf);
+    }
+    if mitred {
+        paint_mitred_bands(pm, f, b, xf);
     }
 }
 

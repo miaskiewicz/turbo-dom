@@ -527,19 +527,14 @@ pub(super) fn disconnect(scope: &mut v8::PinScope, root: Handle, include_root: b
 }
 
 /// https://html.spec.whatwg.org/#close-watcher-request-close
-fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bool) -> bool {
-    if !watching(watcher) || !enabled(watcher) || !fully_active() {
-        return true;
-    }
-    if state(|state| state.watchers.canceling.contains(&watcher)).unwrap_or(true) {
-        return true;
-    }
-    let can_prevent = !require_history
+fn request_close_can_prevent(scope: &mut v8::PinScope, require_history: bool) -> bool {
+    !require_history
         || (state(|state| state.watchers.groups.len() < state.watchers.allowed).unwrap_or(false)
-            && query(scope, ActivationQuery::HistoryAction));
-    let id = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
-    state(|state| state.watchers.canceling.insert(watcher));
-    let proceed = match watcher {
+            && query(scope, ActivationQuery::HistoryAction))
+}
+
+fn request_close_cancel(scope: &mut v8::PinScope, watcher: Watcher, can_prevent: bool) -> bool {
+    match watcher {
         Watcher::Dialog(node) => {
             let node = wrap(scope, node);
             let can_prevent = v8::Boolean::new(scope, can_prevent);
@@ -547,17 +542,10 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
                 .is_none_or(|value| value.is_true())
         }
         Watcher::Popover(_) => true,
-    };
-    state(|state| state.watchers.canceling.remove(&watcher));
-    if !proceed {
-        query(scope, ActivationQuery::ConsumeHistoryAction);
-        return false;
     }
-    // The cancel action may have destroyed the watcher, or closed and reopened its dialog.
-    let current = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
-    if current != id || !fully_active() {
-        return true;
-    }
+}
+
+fn request_close_action(scope: &mut v8::PinScope, watcher: Watcher) {
     destroy(watcher);
     match watcher {
         Watcher::Dialog(node) => {
@@ -566,6 +554,29 @@ fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bo
         }
         Watcher::Popover(node) => html_popover::hide_popover(scope, node),
     }
+}
+
+fn request_close(scope: &mut v8::PinScope, watcher: Watcher, require_history: bool) -> bool {
+    if !watching(watcher) || !enabled(watcher) || !fully_active() {
+        return true;
+    }
+    if state(|state| state.watchers.canceling.contains(&watcher)).unwrap_or(true) {
+        return true;
+    }
+    let can_prevent = request_close_can_prevent(scope, require_history);
+    let id = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
+    state(|state| state.watchers.canceling.insert(watcher));
+    let proceed = request_close_cancel(scope, watcher, can_prevent);
+    state(|state| state.watchers.canceling.remove(&watcher));
+    if !proceed {
+        query(scope, ActivationQuery::ConsumeHistoryAction);
+        return false;
+    }
+    let current = state(|state| state.watchers.ids.get(&watcher).copied()).flatten();
+    if current != id || !fully_active() {
+        return true;
+    }
+    request_close_action(scope, watcher);
     true
 }
 
@@ -667,8 +678,35 @@ fn nearest_clicked_dialog(node: Handle, backdrop: bool) -> Option<Handle> {
     .flatten()
 }
 
+fn hit_target<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    record: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Object>> {
+    get_prop(scope, record, "hitTarget")
+        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        .or_else(|| {
+            get_prop(scope, record, "target")
+                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+        })
+}
+
 /// Light dismiss for a trusted `pointerdown`/`pointerup` the embedder dispatched:
 /// https://html.spec.whatwg.org/#popover-light-dismiss and #light-dismiss-open-dialogs.
+fn popover_light_dismiss(scope: &mut v8::PinScope, node: Handle, down: bool) {
+    if !html_popover::any_auto_showing() {
+        return;
+    }
+    let ancestor = topmost_clicked_popover(scope, node);
+    if down {
+        state(|state| state.popover_pointerdown = ancestor);
+    } else {
+        let same = state(|state| state.popover_pointerdown.take() == ancestor).unwrap_or(false);
+        if same {
+            html_popover::hide_until(scope, ancestor);
+        }
+    }
+}
+
 pub fn light_dismiss(scope: &mut v8::PinScope, event: v8::Local<v8::Object>, backdrop: bool) {
     let Some(record) = event_record(scope, event) else {
         return;
@@ -682,32 +720,14 @@ pub fn light_dismiss(scope: &mut v8::PinScope, event: v8::Local<v8::Object>, bac
         "pointerup" => false,
         _ => return,
     };
-    // The hit-tested node (turbo-dom#119): `target` is retargeted out of shadow trees by the
-    // dispatch, or cleared after it.
-    let Some(target) = get_prop(scope, record, "hitTarget")
-        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-        .or_else(|| {
-            get_prop(scope, record, "target")
-                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-        })
-    else {
+    let Some(target) = hit_target(scope, record) else {
         return;
     };
     let _dom = DomScope::for_object(scope, target);
     let Some(node) = handle_of(scope, target) else {
         return;
     };
-    if html_popover::any_auto_showing() {
-        let ancestor = topmost_clicked_popover(scope, node);
-        if down {
-            state(|state| state.popover_pointerdown = ancestor);
-        } else {
-            let same = state(|state| state.popover_pointerdown.take() == ancestor).unwrap_or(false);
-            if same {
-                html_popover::hide_until(scope, ancestor);
-            }
-        }
-    }
+    popover_light_dismiss(scope, node, down);
     let Some(topmost) = state(|state| state.open_dialogs.last().copied()).flatten() else {
         return;
     };

@@ -19,6 +19,8 @@ import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 import { blockText, canonical, declarations, expand, longhandAlias, longhands, longhandValue, shorthandValue } from './css-shorthand.mjs';
 import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
 
+const EVENT_CTORS = { CustomEvent, MouseEvent, MouseEvents: MouseEvent, KeyboardEvent, KeyEvents: KeyboardEvent, UIEvent, UIEvents: UIEvent, FocusEvent };
+
 // Per-node query-result cache keyed by (selector, document version). querySelectorAll
 // returns a STATIC list per spec, so caching is safe until the next mutation bumps
 // Document.__version (which invalidates every cached query). Big win for the repeated
@@ -117,6 +119,10 @@ function insertNeedsReactions(parent, node) {
 function hasCeRegistry(doc) {
   return doc !== null && doc.__ceRegistry !== undefined;
 }
+function hasCeConnected(parent) {
+  const doc = parent.ownerDocument;
+  return doc !== null && doc.__ceRegistry !== undefined && parent.isConnected;
+}
 // The previous sibling of a node just inserted into `kids` (at `i` before `ref`, or last).
 function insertedPrevious(kids, ref, i) {
   return ref ? kids[i - 1] ?? null : kids[kids.length - 2] ?? null;
@@ -145,12 +151,27 @@ function extractPartial(doc, frag, move, node, from, fromOff, to, toOff) {
   sub.startContainer = from; sub.startOffset = fromOff; sub.endContainer = to; sub.endOffset = toOff;
   copy.appendChild(sub.__extract(move));
 }
+function assertNoDoctype(contained) {
+  if (contained.some((c) => c.nodeType === DOCUMENT_TYPE_NODE)) throw domError('HierarchyRequestError', 'A doctype cannot be extracted.');
+}
+function extractSpanBody(doc, frag, move, firstPartial, lastPartial, contained, sc, so, ec, eo) {
+  if (firstPartial) extractPartial(doc, frag, move, firstPartial, sc, so, firstPartial, nodeLength(firstPartial));
+  for (const c of contained) frag.appendChild(move ? c : c.cloneNode(true));
+  if (lastPartial) extractPartial(doc, frag, move, lastPartial, lastPartial, 0, ec, eo);
+}
 // Range.insertNode pre-check: a Comment start, a parentless Text start, or inserting the
 // range's start node into itself is a HierarchyRequestError.
 function assertInsertableAt(sc, node) {
   if (sc.nodeType === COMMENT_NODE || (sc.nodeType === TEXT_NODE && !sc.parentNode) || sc === node) {
     throw domError('HierarchyRequestError', 'The node cannot be inserted at the range start.');
   }
+}
+function resolveInsertRef(sc, so, node) {
+  let ref = sc.nodeType === TEXT_NODE ? sc : (sc.__children()[so] ?? null);
+  const parent = ref ? ref.parentNode : sc;
+  if (sc.nodeType === TEXT_NODE) ref = sc.splitText(so);
+  if (node === ref) ref = ref.nextSibling;
+  return [parent, ref];
 }
 // DOM "valid element local name" (createElement / createElementNS, Chrome 156): an ASCII
 // letter followed by anything but ASCII whitespace, NULL, '/' and '>'; or ':', '_' or a
@@ -165,12 +186,13 @@ function validLocalName(name) {
   for (let i = 1; i < n; i++) if (!isLocalNameCodeUnit(name.charCodeAt(i))) return false;
   return true;
 }
-// After a leading ASCII letter: anything but ASCII whitespace, NULL, '/' and '>'.
+// ASCII whitespace (9,10,12,13,32), NULL, '/' or '>': forbidden in element names and prefixes.
+function isForbiddenNameChar(c) {
+  return c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 || c === 47 || c === 62;
+}
+// After a leading ASCII letter: anything but a forbidden name char.
 function lettersNameRestValid(name) {
-  for (let i = 1; i < name.length; i++) {
-    const c = name.charCodeAt(i);
-    if (c <= 32 ? c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 : c === 47 || c === 62) return false;
-  }
+  for (let i = 1; i < name.length; i++) if (isForbiddenNameChar(name.charCodeAt(i))) return false;
   return true;
 }
 // After a leading ':', '_' or non-ASCII code point: ASCII alphanumerics, '-', '.', ':',
@@ -178,13 +200,10 @@ function lettersNameRestValid(name) {
 function isLocalNameCodeUnit(c) {
   return c >= 0x80 || c === 45 || c === 46 || c === 58 || c === 95 || (c >= 48 && c <= 57) || ((c | 0x20) >= 97 && (c | 0x20) <= 122);
 }
-// DOM "valid namespace prefix": non-empty, no ASCII whitespace, NULL, '/' or '>'.
+// DOM "valid namespace prefix": non-empty, no forbidden name chars.
 function validPrefix(prefix) {
   if (prefix.length === 0) return false;
-  for (let i = 0; i < prefix.length; i++) {
-    const c = prefix.charCodeAt(i);
-    if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 0 || c === 47 || c === 62) return false;
-  }
+  for (let i = 0; i < prefix.length; i++) if (isForbiddenNameChar(prefix.charCodeAt(i))) return false;
   return true;
 }
 // createElementNS "validate and extract": { prefix (null without a colon), local }; throws
@@ -285,18 +304,7 @@ export class Node extends EventTarget {
     if (ref === node) ref = node.nextSibling;
     if (node.nodeType === DOCUMENT_FRAGMENT_NODE) { insertBatch(this, [node], ref, EMPTY_NODES); return node; }
     if (node.parentNode) node.parentNode.removeChild(node);
-    const kids = this.__children();
-    const i = ref ? kids.indexOf(ref) : -1;
-    // a node from another document is adopted first (DOM "insert" step 7.1)
-    if (node.ownerDocument !== this.ownerDocument) adopt(node, this.ownerDocument);
-    if (liveRanges.length !== 0) liveInsert(this, ref ? i : kids.length, 1);
-    if (ref) kids.splice(i, 0, node); else kids.push(node);
-    node.parentNode = this;
-    if (moQuiet === 0) notifyMutation(this, 'childList', node, null, ref || null, null, null, insertedPrevious(kids, ref, i));
-    else this.__touch();
-    // custom elements (custom-elements.mjs): upgrades + connectedCallback, only once a
-    // registry exists — one predicted-false read otherwise
-    if (hasCeRegistry(this.ownerDocument)) insertedNode(node);
+    insertSingle(this, node, ref);
     return node;
   }
 
@@ -307,7 +315,7 @@ export class Node extends EventTarget {
     if (i === -1) throw new Error('NotFoundError: node is not a child');
     const next = kids[i + 1] || null, previous = kids[i - 1] ?? null;
     if (liveRanges.length !== 0) liveRemove(this, node, i);
-    const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && this.isConnected;
+    const ce = hasCeConnected(this);
     kids.splice(i, 1);
     node.parentNode = null;
     if (moQuiet === 0) notifyMutation(this, 'childList', null, node, next, null, null, previous);
@@ -369,12 +377,7 @@ export class Node extends EventTarget {
       const k = kids[i];
       if (k.nodeType === TEXT_NODE) {
         if (k.data === '') { this.removeChild(k); continue; }
-        let more = '';
-        for (let j = i + 1; j < kids.length && kids[j].nodeType === TEXT_NODE; j++) more += kids[j].data;
-        const length = k.length;
-        if (more !== '') k.__replace(length, 0, more);
-        if (liveRanges.length !== 0) liveMerge(this, k, i, length);
-        while (i + 1 < kids.length && kids[i + 1].nodeType === TEXT_NODE) this.removeChild(kids[i + 1]);
+        normalizeTextRun(this, kids, k, i);
       } else if (k.nodeType === ELEMENT_NODE) k.normalize();
       i++;
     }
@@ -407,31 +410,11 @@ export class Node extends EventTarget {
   }
 
   get textContent() {
-    // <style> whose CSSOM sheet received insertRule() (emotion/styled-components
-    // "speedy" mode injects rules WITHOUT touching the node's text): reflect those
-    // rules in the serialized text, as browsers/jsdom do, so tests that scrape
-    // `querySelectorAll('style').map(s => s.textContent)` see the injected CSS.
     // __sheet is only ever set on <style> elements (sheet getter gates on it), so
     // this is one predicted-false read for every other element on the hot path.
     const sheet = this.__sheet;
-    if (sheet && sheet.cssRules.length) {
-      const kids = this.__children();
-      let css = '';
-      for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === TEXT_NODE) css += kids[i].data;
-      for (let i = 0; i < sheet.cssRules.length; i++) css += (css ? '\n' : '') + sheet.cssRules[i].cssText;
-      return css;
-    }
-    const kids = this.__children();
-    // hot leaf case (RTL getByText reads textContent on every element): a single
-    // text child → return its data directly, skipping the iterator + concat.
-    if (kids.length === 1 && kids[0].nodeType === TEXT_NODE) return kids[0].data;
-    let s = '';
-    for (let i = 0; i < kids.length; i++) {
-      const c = kids[i];
-      if (c.nodeType === TEXT_NODE) s += c.data;
-      else if (c.nodeType === ELEMENT_NODE || c.nodeType === DOCUMENT_FRAGMENT_NODE) s += c.textContent;
-    }
-    return s;
+    if (sheet && sheet.cssRules.length) return sheetTextContent(this, sheet);
+    return collectTextContent(this.__children());
   }
   set textContent(value) {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
@@ -439,7 +422,7 @@ export class Node extends EventTarget {
     this.__detachKids();
     this.__kids = [];
     this.__touch();
-    const text = value === '' || value == null ? null : this.ownerDocument.createTextNode(String(value));
+    const text = valueToTextNode(this.ownerDocument, value);
     if (text !== null) { moQuiet++; try { this.appendChild(text); } finally { moQuiet--; } }
     if (removed !== null && (text !== null || removed.length !== 0)) notifyMutation(this, 'childList', text === null ? EMPTY_NODES : [text], removed, null, null, null, null);
   }
@@ -710,24 +693,10 @@ export class Element extends Node {
     return this.querySelector('button,input,select,textarea,meter,output,progress') || null;
   }
   get labels() {
-    const labelable = /^(button|input|meter|output|progress|select|textarea)$/.test(this.localName) &&
-      !(this.localName === 'input' && this.getAttribute('type') === 'hidden');
-    if (!labelable) return undefined;
+    if (!isLabelable(this)) return undefined;
     const out = [];
-    // explicit association: <label for="thisId">
-    if (this.id) {
-      for (const l of this.ownerDocument.getElementsByTagName('label')) {
-        if (l.getAttribute('for') === this.id) out.push(l);
-      }
-    }
-    // implicit association: an ancestor <label> — but ONLY if THIS element is
-    // that label's labeled control (the first labelable descendant). A second
-    // control nested in the same label is NOT labeled by it.
-    let p = this.parentNode;
-    while (p) {
-      if (p.localName === 'label') { if (p.control === this && !out.includes(p)) out.push(p); break; }
-      p = p.parentNode;
-    }
+    if (this.id) collectExplicitLabels(this, out);
+    collectImplicitLabel(this, out);
     return out;
   }
   get className() { return this.getAttribute('class') || ''; }
@@ -753,16 +722,8 @@ export class Element extends Node {
   //      element.constructor.prototype descriptors — e.g. user-event — find them) ----
   get value() {
     const t = this.localName;
-    if (t === 'select') {
-      const list = Array.from(this.getElementsByTagName('option'));
-      const s = list.find((o) => o.selected);
-      if (s) return s.value;
-      return list.length && !this.multiple ? list[0].value : '';
-    }
+    if (t === 'select') return selectValue(this);
     if (t === 'option') return this.hasAttribute('value') ? this.getAttribute('value') : this.textContent;
-    // textarea has no value attribute — its raw value defaults to the child text
-    // content (the WHATWG "default value") until edited; input falls back to the
-    // value attribute (defaultValue).
     if (t === 'textarea') return this.__value !== undefined ? this.__value : this.textContent;
     if (t === 'input') return this.__value !== undefined ? this.__value : (this.getAttribute('value') ?? '');
     return undefined;
@@ -995,20 +956,8 @@ export class Element extends Node {
     const el = newElement(doc, this.localName, this.__ns);
     if (this.__prefix !== undefined) el.__prefix = this.__prefix;
     el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
-    // custom element state travels (an `is` value / custom name -> "undefined", upgraded
-    // when the clone's document has its definition — never in a template's inert
-    // document); plain HTML elements and foreign ones skip the call
-    if (this.__ns === '' && (this.__ce !== undefined || this.__ceIs !== undefined || this.__attrIdx >= 0 || this.localName.indexOf('-') !== -1)) clonedElement(this, el);
-    if (deep) {
-      // build the cloned child array directly — the clone is detached, so per-child
-      // appendChild's notifyMutation (version bump) + reparent check are pure waste.
-      el.__kids = cloneKids(this, el, doc);
-      // HTML template "cloning steps": the contents are cloned into the copy's contents
-      if (this.__ns === '' && this.localName === 'template') {
-        const content = el.content;
-        content.__kids = cloneKids(this.content, content, content.ownerDocument);
-      }
-    }
+    if (needsCeClone(this)) clonedElement(this, el);
+    if (deep) cloneDeep(this, el, doc);
     return el;
   }
 
@@ -1055,16 +1004,10 @@ export class Element extends Node {
   // default actions applied post-dispatch when not preventDefault'd
   __runDefaultAction(e) {
     if (e.type !== 'click') return;
-    if (this.localName === 'input') {
-      const t = (this.getAttribute('type') || 'text').toLowerCase();
-      if (t === 'submit') { const f = this.closest('form'); if (f) f.requestSubmit(); }
-    } else if (this.localName === 'button') {
-      const t = (this.getAttribute('type') || 'submit').toLowerCase();
-      if (t === 'submit') { const f = this.closest('form'); if (f) f.requestSubmit(); }
-    } else if (this.localName === 'label') {
-      const c = this.control;
-      if (c && c !== e.target) c.click();
-    }
+    const tag = this.localName;
+    if (tag === 'input') submitIfType(this, (this.getAttribute('type') || 'text').toLowerCase());
+    else if (tag === 'button') submitIfType(this, (this.getAttribute('type') || 'submit').toLowerCase());
+    else if (tag === 'label') { const c = this.control; if (c && c !== e.target) c.click(); }
   }
   focus() {
     const doc = this.ownerDocument;
@@ -1198,20 +1141,8 @@ export class Element extends Node {
   requestSubmit() { this.submit(); }
   reset() {
     if (this.localName !== 'form') return;
-    // abortable: if a listener preventDefault()s the reset event, controls keep state
     if (!this.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }))) return;
-    for (const el of this.elements) {
-      const tag = el.localName;
-      if (tag === 'input') {
-        const t = (el.getAttribute('type') || 'text').toLowerCase();
-        if (t === 'checkbox' || t === 'radio') el.__checked = el.hasAttribute('checked');
-        else el.__value = undefined; // fall back to the value attribute (defaultValue)
-      } else if (tag === 'textarea') {
-        el.__value = el.textContent;
-      } else if (tag === 'select') {
-        for (const o of el.getElementsByTagName('option')) o.__selected = o.hasAttribute('selected');
-      }
-    }
+    for (const el of this.elements) resetControl(el);
   }
 }
 
@@ -1414,6 +1345,35 @@ const observed = (node) => { const d = node.ownerDocument; return d !== null && 
 // Document.__inflateNested helpers: an element (attributes, `is`, template contents) and a
 // container's children (the template `content` fragment is not a child).
 const isContentFragment = (c) => c.nodeType === DOCUMENT_FRAGMENT_NODE && c.name === 'content';
+function inflateBufferNode(doc, idx, nt) {
+  const buf = doc.__buf;
+  if (nt === undefined) nt = buf.nodeType(idx);
+  let node;
+  switch (nt) {
+    case ELEMENT_NODE: node = inflateBufferElement(doc, buf, idx); break;
+    case TEXT_NODE: node = new Text(doc, buf.text(idx)); break;
+    case COMMENT_NODE: node = new Comment(doc, buf.text(idx)); break;
+    case DOCUMENT_TYPE_NODE: node = new DocumentType(doc, buf.text(idx), buf.publicId(idx), buf.systemId(idx)); break;
+    case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(doc); break;
+    default: node = new Comment(doc, ''); break;
+  }
+  node.__idx = idx;
+  return node;
+}
+function inflateBufferElement(doc, buf, idx) {
+  const tag = buf.tagName(idx);
+  const node = newElement(doc, tag, buf.ns(idx));
+  node.__attrIdx = idx;
+  if (tag === 'template') {
+    for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
+      if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
+        node.__content = doc.__templateDocument().__nodeAt(c);
+        break;
+      }
+    }
+  }
+  return node;
+}
 function inflateNestedElement(doc, raw) {
   const node = newElement(doc, raw.name, raw.namespace || '');
   node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
@@ -1453,10 +1413,111 @@ function detachForInsert(nodes) {
   }
   return flat;
 }
+// Collect text content from children (hot-path: single text child returns directly).
+function collectTextContent(kids) {
+  if (kids.length === 1 && kids[0].nodeType === TEXT_NODE) return kids[0].data;
+  let s = '';
+  for (let i = 0; i < kids.length; i++) {
+    const c = kids[i];
+    if (c.nodeType === TEXT_NODE) s += c.data;
+    else if (c.nodeType === ELEMENT_NODE || c.nodeType === DOCUMENT_FRAGMENT_NODE) s += c.textContent;
+  }
+  return s;
+}
+const LABELABLE_RE = /^(button|input|meter|output|progress|select|textarea)$/;
+function isLabelable(el) {
+  return LABELABLE_RE.test(el.localName) && !(el.localName === 'input' && el.getAttribute('type') === 'hidden');
+}
+function collectExplicitLabels(el, out) {
+  for (const l of el.ownerDocument.getElementsByTagName('label')) {
+    if (l.getAttribute('for') === el.id) out.push(l);
+  }
+}
+function resetControl(el) {
+  const tag = el.localName;
+  if (tag === 'input') {
+    const t = (el.getAttribute('type') || 'text').toLowerCase();
+    if (t === 'checkbox' || t === 'radio') el.__checked = el.hasAttribute('checked');
+    else el.__value = undefined;
+  } else if (tag === 'textarea') {
+    el.__value = el.textContent;
+  } else if (tag === 'select') {
+    for (const o of el.getElementsByTagName('option')) o.__selected = o.hasAttribute('selected');
+  }
+}
+function submitIfType(el, type) {
+  if (type === 'submit') { const f = el.closest('form'); if (f) f.requestSubmit(); }
+}
+function needsCeClone(el) {
+  return el.__ns === '' && (el.__ce !== undefined || el.__ceIs !== undefined || el.__attrIdx >= 0 || el.localName.indexOf('-') !== -1);
+}
+function cloneDeep(source, el, doc) {
+  el.__kids = cloneKids(source, el, doc);
+  if (source.__ns === '' && source.localName === 'template') {
+    const content = el.content;
+    content.__kids = cloneKids(source.content, content, content.ownerDocument);
+  }
+}
+function selectValue(el) {
+  const list = Array.from(el.getElementsByTagName('option'));
+  const s = list.find((o) => o.selected);
+  if (s) return s.value;
+  return list.length && !el.multiple ? list[0].value : '';
+}
+function collectImplicitLabel(el, out) {
+  let p = el.parentNode;
+  while (p) {
+    if (p.localName === 'label') { if (p.control === el && !out.includes(p)) out.push(p); break; }
+    p = p.parentNode;
+  }
+}
+function valueToTextNode(doc, value) {
+  return value === '' || value == null ? null : doc.createTextNode(String(value));
+}
+// <style> textContent when CSSOM sheet has injected rules (predicted-false path).
+function sheetTextContent(el, sheet) {
+  const kids = el.__children();
+  let css = '';
+  for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === TEXT_NODE) css += kids[i].data;
+  for (let i = 0; i < sheet.cssRules.length; i++) css += (css ? '\n' : '') + sheet.cssRules[i].cssText;
+  return css;
+}
+// Merge the text run starting at kids[i] (k = kids[i], known non-empty Text).
+function normalizeTextRun(parent, kids, k, i) {
+  let more = '';
+  for (let j = i + 1; j < kids.length && kids[j].nodeType === TEXT_NODE; j++) more += kids[j].data;
+  const length = k.length;
+  if (more !== '') k.__replace(length, 0, more);
+  if (liveRanges.length !== 0) liveMerge(parent, k, i, length);
+  while (i + 1 < kids.length && kids[i + 1].nodeType === TEXT_NODE) parent.removeChild(kids[i + 1]);
+}
+// Single-node insert into `parent` before `ref` (null = append). Called after pre-insert
+// validation and removal from the old parent. Module-scope helper — no per-call closure.
+function insertSingle(parent, node, ref) {
+  const kids = parent.__children();
+  const i = ref ? kids.indexOf(ref) : -1;
+  if (node.ownerDocument !== parent.ownerDocument) adopt(node, parent.ownerDocument);
+  if (liveRanges.length !== 0) liveInsert(parent, ref ? i : kids.length, 1);
+  if (ref) kids.splice(i, 0, node); else kids.push(node);
+  node.parentNode = parent;
+  if (moQuiet === 0) notifyMutation(parent, 'childList', node, null, ref || null, null, null, insertedPrevious(kids, ref, i));
+  else parent.__touch();
+  if (hasCeRegistry(parent.ownerDocument)) insertedNode(node);
+}
+function compareBoundaryByHow(r, source, how) {
+  const thisEnd = how === 1 || how === 2, srcEnd = how === 2 || how === 3;
+  return compareBoundary(
+    thisEnd ? r.endContainer : r.startContainer, thisEnd ? r.endOffset : r.startOffset,
+    srcEnd ? source.endContainer : source.startContainer, srcEnd ? source.endOffset : source.startOffset);
+}
+function resolveBefore(parent, ref, afterRef) {
+  if (!afterRef) return ref;
+  return ref === null ? parent.firstChild : ref.nextSibling;
+}
 function insertBatch(parent, nodes, ref, replaced, afterRef = false) {
   for (const n of nodes) assertNotAncestor(parent, n);
   const flat = detachForInsert(nodes);
-  const before = afterRef ? (ref === null ? parent.firstChild : ref.nextSibling) : ref;
+  const before = resolveBefore(parent, ref, afterRef);
   const gone = replaced.filter((c) => c.parentNode === parent);
   let previous;
   moQuiet++;
@@ -1506,6 +1567,14 @@ function findSlot(shadowRoot, name) {
 // The elements with qualified name `raw` (DOM "list of elements with qualified name"): HTML
 // elements compare against the lowercased `tag`, others (SVG camelCase, other namespaces)
 // against `raw` exactly. Only a name with a colon can match a prefixed element.
+function tagMatchesHtml(c, tag, colon) {
+  if (c.localName === tag) return c.__prefix === undefined;
+  return colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === tag;
+}
+function tagMatchesForeign(c, raw, colon) {
+  if (c.localName === raw) return c.__prefix === undefined;
+  return colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === raw;
+}
 function collectByTag(root, raw, tag = raw) {
   const out = [];
   const all = raw === '*';
@@ -1515,9 +1584,7 @@ function collectByTag(root, raw, tag = raw) {
     for (let i = 0; i < kids.length; i++) {
       const c = kids[i];
       if (c.nodeType !== ELEMENT_NODE) continue;
-      if (all) out.push(c);
-      else if (c.__ns === '') { if (c.localName === tag ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === tag) out.push(c); }
-      else if (c.localName === raw ? c.__prefix === undefined : colon && c.__prefix !== undefined && `${c.__prefix}:${c.localName}` === raw) out.push(c);
+      if (all || (c.__ns === '' ? tagMatchesHtml(c, tag, colon) : tagMatchesForeign(c, raw, colon))) out.push(c);
       visit(c);
     }
   };
@@ -1587,21 +1654,20 @@ function synthWidth(el) {
   el.__rw = { v, w };
   return w;
 }
+function synthTextHeight(el) {
+  const chars = (el.textContent || '').length;
+  const perLine = Math.max(1, Math.floor(synthWidth(el) / CHAR_W));
+  return Math.max(1, Math.ceil(chars / perLine)) * LINE_HEIGHT;
+}
 function synthHeight(el) {
   const doc = el.ownerDocument || el;
   const v = doc.__version || 0;
   const c = el.__rh;
   if (c && c.v === v) return c.h;
   const kids = el.__children ? el.__children() : [];
-  let elemKids = 0, stacked = 0;
-  for (let i = 0; i < kids.length; i++) { const k = kids[i]; if (k.nodeType === ELEMENT_NODE) { elemKids++; stacked += synthHeight(k); } }
-  let h;
-  if (elemKids) h = Math.max(LINE_HEIGHT, stacked);  // block flow: element children stack
-  else {
-    const chars = (el.textContent || '').length;
-    const perLine = Math.max(1, Math.floor(synthWidth(el) / CHAR_W));
-    h = Math.max(1, Math.ceil(chars / perLine)) * LINE_HEIGHT;
-  }
+  let stacked = 0;
+  for (let i = 0; i < kids.length; i++) { const k = kids[i]; if (k.nodeType === ELEMENT_NODE) stacked += synthHeight(k); }
+  const h = stacked ? Math.max(LINE_HEIGHT, stacked) : synthTextHeight(el);
   el.__rh = { v, h };
   return h;
 }
@@ -1702,10 +1768,7 @@ class Range {
     how = Number(how);
     if (!(how >= 0 && how <= 3)) throw domError('NotSupportedError', 'The comparison method is not supported.');
     if (rootOf(this.startContainer) !== rootOf(source.startContainer)) throw domError('WrongDocumentError', 'The two ranges are in different trees.');
-    const thisEnd = how === 1 || how === 2, srcEnd = how === 2 || how === 3;
-    return compareBoundary(
-      thisEnd ? this.endContainer : this.startContainer, thisEnd ? this.endOffset : this.startOffset,
-      srcEnd ? source.endContainer : source.startContainer, srcEnd ? source.endOffset : source.startOffset);
+    return compareBoundaryByHow(this, source, how);
   }
   comparePoint(node, offset) {
     if (rootOf(node) !== rootOf(this.startContainer)) throw domError('WrongDocumentError', 'The node is in a different tree.');
@@ -1754,11 +1817,9 @@ class Range {
     const firstPartial = isInclusiveAncestor(sc, ec) ? null : childOfAncestor(sc, common);
     const lastPartial = isInclusiveAncestor(ec, sc) ? null : childOfAncestor(ec, common);
     const contained = common.__children().filter((c) => this.__contains(c));
-    if (contained.some((c) => c.nodeType === DOCUMENT_TYPE_NODE)) throw domError('HierarchyRequestError', 'A doctype cannot be extracted.');
+    assertNoDoctype(contained);
     const [newNode, newOffset] = move ? this.__collapsePoint() : [null, 0];
-    if (firstPartial) extractPartial(this.__doc, frag, move, firstPartial, sc, so, firstPartial, nodeLength(firstPartial));
-    for (const c of contained) frag.appendChild(move ? c : c.cloneNode(true));
-    if (lastPartial) extractPartial(this.__doc, frag, move, lastPartial, lastPartial, 0, ec, eo);
+    extractSpanBody(this.__doc, frag, move, firstPartial, lastPartial, contained, sc, so, ec, eo);
     if (move) { this.startContainer = this.endContainer = newNode; this.startOffset = this.endOffset = newOffset; }
   }
   cloneContents() { return this.__extract(false); }
@@ -1786,11 +1847,7 @@ class Range {
     const sc = this.startContainer, so = this.startOffset;
     assertInsertableAt(sc, node);
     const wasCollapsed = this.collapsed;
-    let ref = sc.nodeType === TEXT_NODE ? sc : (sc.__children()[so] ?? null);
-    const parent = ref ? ref.parentNode : sc;
-    if (sc.nodeType === TEXT_NODE) ref = sc.splitText(so);
-    if (node === ref) ref = ref.nextSibling;
-    // the live-range steps (split, removal, insertion) move this range's end like any other's
+    const [parent, ref] = resolveInsertRef(sc, so, node);
     if (node.parentNode) node.parentNode.removeChild(node);
     const at = ref ? nodeIndex(ref) : nodeLength(parent);
     const count = node.nodeType === DOCUMENT_FRAGMENT_NODE ? nodeLength(node) : 1;
@@ -2037,12 +2094,7 @@ function makeStyle(el) {
     if (p && p !== 'important') return;
     const set = declarationEntries(prop, text);
     if (!set) return;
-    const all = parse();
-    for (const entry of set) {
-      const index = all.findIndex((e) => e.name === entry.name);
-      const next = { ...entry, important: p === 'important' };
-      if (index >= 0) all[index] = next; else all.push(next);
-    }
+    applyEntries(parse(), set, p === 'important');
     write();
   };
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
@@ -2061,12 +2113,11 @@ function makeStyle(el) {
     write();
     return removed.value;
   };
+  const methods = { getPropertyValue: value, getPropertyPriority: priority, setProperty, removeProperty };
   return new Proxy({}, {
     get(_t, key) {
-      if (key === 'getPropertyValue') return value;
-      if (key === 'getPropertyPriority') return priority;
-      if (key === 'setProperty') return setProperty;
-      if (key === 'removeProperty') return removeProperty;
+      const m = methods[key];
+      if (m) return m;
       if (key === 'item') return (i) => parse()[i]?.name ?? '';
       if (key === 'length') return parse().length;
       if (key === 'cssText') return blockText(parse());
@@ -2082,6 +2133,13 @@ function makeStyle(el) {
     },
     has(_t, key) { return typeof key === 'string'; },
   });
+}
+function applyEntries(all, set, important) {
+  for (const entry of set) {
+    const index = all.findIndex((e) => e.name === entry.name);
+    const next = { ...entry, important };
+    if (index >= 0) all[index] = next; else all.push(next);
+  }
 }
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()).replace(/^webkit-/, '-webkit-');
 // A property name as CSSOM keys it: custom properties as authored, others lowercase with
@@ -2339,35 +2397,7 @@ export class Document extends Node {
     if (idx < 0) return null;
     const cached = this.__cache[idx];
     if (cached !== undefined) return cached;
-    const buf = this.__buf;
-    let node;
-    if (nt === undefined) nt = buf.nodeType(idx);
-    switch (nt) {
-      case ELEMENT_NODE: {
-        const tag = buf.tagName(idx); // read once (was read twice — ctor + template check)
-        node = newElement(this, tag, buf.ns(idx));
-        node.__idx = idx;
-        node.__attrIdx = idx; // attrs lazy (constructor left __attrs undefined)
-        // template content fragment: a child node typed 11 named "content"
-        if (tag === 'template') {
-          for (let c = buf.firstChild(idx); c !== -1; c = buf.nextSib(c)) {
-            if (buf.nodeType(c) === DOCUMENT_FRAGMENT_NODE && buf.tagName(c) === 'content') {
-              node.__content = this.__templateDocument().__nodeAt(c); // owned by the inert document
-              break;
-            }
-          }
-        }
-        break;
-      }
-      case TEXT_NODE: node = new Text(this, buf.text(idx)); node.__idx = idx; break;
-      case COMMENT_NODE: node = new Comment(this, buf.text(idx)); node.__idx = idx; break;
-      case DOCUMENT_TYPE_NODE:
-        node = new DocumentType(this, buf.text(idx), buf.publicId(idx), buf.systemId(idx));
-        node.__idx = idx;
-        break;
-      case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); node.__idx = idx; break;
-      default: node = new Comment(this, ''); node.__idx = idx; break;
-    }
+    const node = inflateBufferNode(this, idx, nt);
     this.__cache[idx] = node;
     return node;
   }
@@ -2450,14 +2480,8 @@ export class Document extends Node {
   createComment(data) { return new Comment(this, String(data)); }
   createDocumentFragment() { return new DocumentFragment(this); }
   createEvent(type = 'Event') {
-    switch (String(type)) {
-      case 'CustomEvent': return new CustomEvent('');
-      case 'MouseEvent': case 'MouseEvents': return new MouseEvent('');
-      case 'KeyboardEvent': case 'KeyEvents': return new KeyboardEvent('');
-      case 'UIEvent': case 'UIEvents': return new UIEvent('');
-      case 'FocusEvent': return new FocusEvent('');
-      default: return new Event('');
-    }
+    const Ctor = EVENT_CTORS[String(type)];
+    return new (Ctor || Event)('');
   }
   createRange() { return new Range(this); }
   createAttribute(name) { return { name, value: '', ownerElement: null }; }

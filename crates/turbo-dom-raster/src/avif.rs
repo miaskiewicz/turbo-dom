@@ -155,51 +155,64 @@ mod av1 {
         frame
     }
 
+    /// Copy one plane out of a decoded picture as `u16` samples.
+    fn copy_plane(picture: &Dav1dPicture, i: usize, w: usize, h: usize, wide: bool) -> Option<Vec<u16>> {
+        let base = picture.data[i]?.as_ptr().cast::<u8>();
+        let stride = picture.stride[usize::from(i > 0)];
+        let row_bytes = w * if wide { 2 } else { 1 };
+        let mut out = Vec::with_capacity(w * h);
+        for y in 0..h {
+            // SAFETY: rows `0..h` of `row_bytes` bytes lie inside the plane at `stride`.
+            let row = unsafe {
+                std::slice::from_raw_parts(base.offset(stride * y as isize), row_bytes)
+            };
+            if wide {
+                out.extend(
+                    row.as_chunks::<2>()
+                        .0
+                        .iter()
+                        .map(|&b| u16::from_ne_bytes(b)),
+                );
+            } else {
+                out.extend(row.iter().map(|&b| u16::from(b)));
+            }
+        }
+        Some(out)
+    }
+
+    fn chroma_subsampling(layout: u32) -> Option<(usize, usize)> {
+        match layout {
+            DAV1D_PIXEL_LAYOUT_I400 => None,
+            DAV1D_PIXEL_LAYOUT_I420 => Some((1, 1)),
+            DAV1D_PIXEL_LAYOUT_I422 => Some((1, 0)),
+            _ => Some((0, 0)),
+        }
+    }
+
+    fn copy_chroma_planes(
+        picture: &Dav1dPicture,
+        sub: Option<(usize, usize)>,
+        w: usize,
+        h: usize,
+        wide: bool,
+    ) -> Option<(Vec<u16>, Vec<u16>)> {
+        let (sx, sy) = sub?;
+        let (cw, ch) = ((w + sx) >> sx, (h + sy) >> sy);
+        Some((copy_plane(picture, 1, cw, ch, wide)?, copy_plane(picture, 2, cw, ch, wide)?))
+    }
+
     /// Copy a picture's planes out as `u16` samples.
     fn copy_frame(picture: &Dav1dPicture) -> Option<Frame> {
         let width = usize::try_from(picture.p.w).ok()?;
         let height = usize::try_from(picture.p.h).ok()?;
         let bits = u32::try_from(picture.p.bpc).ok()?;
-        let chroma = match picture.p.layout {
-            DAV1D_PIXEL_LAYOUT_I400 => None,
-            DAV1D_PIXEL_LAYOUT_I420 => Some((1, 1)),
-            DAV1D_PIXEL_LAYOUT_I422 => Some((1, 0)),
-            _ => Some((0, 0)),
-        };
+        let chroma = chroma_subsampling(picture.p.layout);
         // SAFETY: a decoded picture carries its sequence header.
         let seq = unsafe { picture.seq_hdr?.as_ref() };
         let wide = bits > 8;
-        let plane = |i: usize, w: usize, h: usize| -> Option<Vec<u16>> {
-            let base = picture.data[i]?.as_ptr().cast::<u8>();
-            let stride = picture.stride[usize::from(i > 0)];
-            let row_bytes = w * if wide { 2 } else { 1 };
-            let mut out = Vec::with_capacity(w * h);
-            for y in 0..h {
-                // SAFETY: rows `0..h` of `row_bytes` bytes lie inside the plane at `stride`.
-                let row = unsafe {
-                    std::slice::from_raw_parts(base.offset(stride * y as isize), row_bytes)
-                };
-                if wide {
-                    out.extend(
-                        row.as_chunks::<2>()
-                            .0
-                            .iter()
-                            .map(|&b| u16::from_ne_bytes(b)),
-                    );
-                } else {
-                    out.extend(row.iter().map(|&b| u16::from(b)));
-                }
-            }
-            Some(out)
-        };
-        let luma = plane(0, width, height)?;
-        let (u, v) = match chroma {
-            Some((sx, sy)) => {
-                let (cw, ch) = ((width + sx) >> sx, (height + sy) >> sy);
-                (plane(1, cw, ch)?, plane(2, cw, ch)?)
-            }
-            None => (Vec::new(), Vec::new()),
-        };
+        let luma = copy_plane(picture, 0, width, height, wide)?;
+        let (u, v) = copy_chroma_planes(picture, chroma, width, height, wide)
+            .unwrap_or_default();
         Some(Frame {
             width,
             height,
@@ -340,34 +353,69 @@ mod tests {
     /// test in this process could not observe): every AVIF fixture truncated at each
     /// sixteenth and with single bytes flipped across the file, decoded end to end, and its
     /// AV1 streams corrupted the same way and fed to rav1d directly.
+    fn byte_flip_variants(base: &[u8], step: usize) -> Vec<Vec<u8>> {
+        let mut variants: Vec<Vec<u8>> = (1..16)
+            .map(|i| base[..base.len() * i / 16].to_vec())
+            .collect();
+        for at in (0..base.len()).step_by(step) {
+            for mask in [0x01, 0x80, 0xff] {
+                let mut v = base.to_vec();
+                v[at] ^= mask;
+                variants.push(v);
+            }
+        }
+        variants
+    }
+
+    fn fuzz_container(label: &str, avif: &[u8]) -> (usize, usize) {
+        let (mut decoded, mut rejected) = (0, 0);
+        for v in byte_flip_variants(avif, 3) {
+            match super::decode(&v) {
+                Some(img) => {
+                    assert_eq!(
+                        img.rgba.len(),
+                        img.width as usize * img.height as usize * 4,
+                        "{label}"
+                    );
+                    decoded += 1;
+                }
+                None => rejected += 1,
+            }
+        }
+        (decoded, rejected)
+    }
+
+    fn fuzz_stream(label: &str, stream: Vec<u8>) -> (usize, usize) {
+        let (mut decoded, mut rejected) = (0, 0);
+        let n = stream.len();
+        let mut variants = byte_flip_variants(&stream, 1);
+        let mut ones = stream;
+        ones[n / 2..].fill(0xff);
+        variants.push(ones);
+        for v in variants {
+            match av1::decode(&v) {
+                Some(frame) => {
+                    assert_eq!(
+                        frame.planes[0].len(),
+                        frame.width * frame.height,
+                        "{label}"
+                    );
+                    decoded += 1;
+                }
+                None => rejected += 1,
+            }
+        }
+        (decoded, rejected)
+    }
+
     #[test]
     #[ignore = "run in a child process by corrupt_avifs_are_broken_images_never_a_process_abort"]
     fn corrupt_avif_fuzz_child() {
         let (mut decoded, mut rejected) = (0, 0);
         for (label, avif) in fixtures() {
-            let mut variants: Vec<Vec<u8>> = (1..16)
-                .map(|i| avif[..avif.len() * i / 16].to_vec())
-                .collect();
-            for at in (0..avif.len()).step_by(3) {
-                for mask in [0x01, 0x80, 0xff] {
-                    let mut v = avif.clone();
-                    v[at] ^= mask;
-                    variants.push(v);
-                }
-            }
-            for v in variants {
-                match super::decode(&v) {
-                    Some(img) => {
-                        assert_eq!(
-                            img.rgba.len(),
-                            img.width as usize * img.height as usize * 4,
-                            "{label}"
-                        );
-                        decoded += 1;
-                    }
-                    None => rejected += 1,
-                }
-            }
+            let (d, r) = fuzz_container(&label, &avif);
+            decoded += d;
+            rejected += r;
             // Most container-level variants fail in the demuxer before rav1d sees them, so
             // the AV1 streams themselves are corrupted too: truncated at each sixteenth,
             // their second half overwritten with 0xFF (the issue's reproduction on q.avif's
@@ -376,32 +424,9 @@ mod tests {
                 continue;
             };
             for stream in std::iter::once(payload.color).chain(payload.alpha) {
-                let n = stream.len();
-                let mut variants: Vec<Vec<u8>> =
-                    (1..16).map(|i| stream[..n * i / 16].to_vec()).collect();
-                let mut ones = stream.clone();
-                ones[n / 2..].fill(0xff);
-                variants.push(ones);
-                for at in 0..n {
-                    for mask in [0x01, 0x80, 0xff] {
-                        let mut v = stream.clone();
-                        v[at] ^= mask;
-                        variants.push(v);
-                    }
-                }
-                for v in variants {
-                    match av1::decode(&v) {
-                        Some(frame) => {
-                            assert_eq!(
-                                frame.planes[0].len(),
-                                frame.width * frame.height,
-                                "{label}"
-                            );
-                            decoded += 1;
-                        }
-                        None => rejected += 1,
-                    }
-                }
+                let (d, r) = fuzz_stream(&label, stream);
+                decoded += d;
+                rejected += r;
             }
         }
         println!("FUZZ-DONE decoded={decoded} rejected={rejected}");

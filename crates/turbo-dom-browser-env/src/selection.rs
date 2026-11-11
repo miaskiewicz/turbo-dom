@@ -149,54 +149,64 @@ pub(super) fn textarea_children(scope: &mut v8::PinScope, parent: Handle, reset:
     hook.call(scope, receiver.into(), &[element.into(), reset.into()]);
 }
 
+fn is_disabled_control(tree: &Tree, element: Handle) -> bool {
+    tree.namespace_id(element) == 0
+        && matches!(
+            html_text::tag(tree, element),
+            "input" | "textarea" | "select" | "button" | "fieldset"
+        )
+        && tree.has_attribute(element, "disabled")
+}
+
+fn fieldset_blocks_focus(tree: &Tree, node: Handle) -> bool {
+    let mut current = tree.parent(node);
+    let mut child = node;
+    while let Some(ancestor) = current {
+        if tree.node_type_id(ancestor) == 1
+            && html_text::tag(tree, ancestor) == "fieldset"
+            && is_disabled_control(tree, ancestor)
+        {
+            let first_legend = tree.children(ancestor).into_iter().find(|&candidate| {
+                tree.node_type_id(candidate) == 1 && html_text::tag(tree, candidate) == "legend"
+            });
+            if first_legend != Some(child) {
+                return true;
+            }
+        }
+        child = ancestor;
+        current = tree.parent(ancestor).or_else(|| tree.shadow_host(ancestor));
+    }
+    false
+}
+
+fn ancestor_display_none(
+    tree: &Tree,
+    node: Handle,
+    policy: &turbo_dom_parser::rtdom::cascade::StylePolicy,
+) -> bool {
+    let mut element = Some(node);
+    while let Some(handle) = element {
+        if tree.node_type_id(handle) == 1 {
+            let style = turbo_dom_parser::rtdom::cascade::computed_style_with_policy(
+                tree, handle, policy,
+            );
+            if display_of(tree, handle, &style) == "none" {
+                return true;
+            }
+        }
+        element = tree.parent(handle).or_else(|| tree.shadow_host(handle));
+    }
+    false
+}
+
 /// Blink focusability for script focus of a form control: connected, enabled, rendered.
 fn focusable(scope: &mut v8::PinScope, node: Handle) -> bool {
     let policy = css_policy::cascade_policy(scope);
     with_tree(|tree| {
-        if !is_connected(tree, node) {
-            return false;
-        }
-        let disabled = |element: Handle| {
-            tree.namespace_id(element) == 0
-                && matches!(
-                    html_text::tag(tree, element),
-                    "input" | "textarea" | "select" | "button" | "fieldset"
-                )
-                && tree.has_attribute(element, "disabled")
-        };
-        if disabled(node) {
-            return false;
-        }
-        let mut current = tree.parent(node);
-        let mut child = node;
-        while let Some(ancestor) = current {
-            if tree.node_type_id(ancestor) == 1
-                && html_text::tag(tree, ancestor) == "fieldset"
-                && disabled(ancestor)
-            {
-                let first_legend = tree.children(ancestor).into_iter().find(|&candidate| {
-                    tree.node_type_id(candidate) == 1 && html_text::tag(tree, candidate) == "legend"
-                });
-                if first_legend != Some(child) {
-                    return false;
-                }
-            }
-            child = ancestor;
-            current = tree.parent(ancestor).or_else(|| tree.shadow_host(ancestor));
-        }
-        let mut element = Some(node);
-        while let Some(handle) = element {
-            if tree.node_type_id(handle) == 1 {
-                let style = turbo_dom_parser::rtdom::cascade::computed_style_with_policy(
-                    tree, handle, &policy,
-                );
-                if display_of(tree, handle, &style) == "none" {
-                    return false;
-                }
-            }
-            element = tree.parent(handle).or_else(|| tree.shadow_host(handle));
-        }
-        true
+        is_connected(tree, node)
+            && !is_disabled_control(tree, node)
+            && !fieldset_blocks_focus(tree, node)
+            && !ancestor_display_none(tree, node, &policy)
     })
     .unwrap_or(false)
 }
@@ -317,6 +327,10 @@ fn transformed(unit: u16, transform: Option<&str>, word_start: bool) -> (u16, [u
 }
 
 /// Units inside a word for `capitalize` (letters, digits and apostrophes).
+fn is_whitespace_unit(unit: u16) -> bool {
+    matches!(unit, 9 | 10 | 12 | 13 | 32)
+}
+
 fn word_unit(unit: u16) -> bool {
     char::from_u32(u32::from(unit))
         .is_some_and(|c| c.is_alphanumeric() || c == '\'' || c == '\u{2019}')
@@ -471,29 +485,9 @@ impl Flow<'_> {
         preserve_lines: bool,
     ) {
         if unit == 10 && preserve_lines {
-            if !preserve_spaces {
-                self.end_line();
-            }
-            self.piece(Piece::Text {
-                node,
-                offset,
-                unit,
-                collapsible: false,
-                more: [0; 2],
-            });
-            self.line_start = true;
-            self.space = false;
-        } else if !preserve_spaces && matches!(unit, 9 | 10 | 12 | 13 | 32) {
-            if !self.line_start && !self.space {
-                self.piece(Piece::Text {
-                    node,
-                    offset,
-                    unit: 32,
-                    collapsible: true,
-                    more: [0; 2],
-                });
-                self.space = true;
-            }
+            self.emit_preserved_newline(node, offset, unit, preserve_spaces);
+        } else if !preserve_spaces && is_whitespace_unit(unit) {
+            self.emit_collapsible_space(node, offset);
         } else {
             let word_start = self.line_start || self.space || !word_unit(self.previous);
             let (shown_unit, more) = transformed(unit, transform, word_start);
@@ -507,6 +501,34 @@ impl Flow<'_> {
             self.previous = unit;
             self.line_start = false;
             self.space = false;
+        }
+    }
+
+    fn emit_preserved_newline(&mut self, node: Handle, offset: usize, unit: u16, preserve_spaces: bool) {
+        if !preserve_spaces {
+            self.end_line();
+        }
+        self.piece(Piece::Text {
+            node,
+            offset,
+            unit,
+            collapsible: false,
+            more: [0; 2],
+        });
+        self.line_start = true;
+        self.space = false;
+    }
+
+    fn emit_collapsible_space(&mut self, node: Handle, offset: usize) {
+        if !self.line_start && !self.space {
+            self.piece(Piece::Text {
+                node,
+                offset,
+                unit: 32,
+                collapsible: true,
+                more: [0; 2],
+            });
+            self.space = true;
         }
     }
     fn element(&mut self, node: Handle, visible: bool) {
@@ -624,6 +646,17 @@ struct Segments {
     after: Vec<usize>,
 }
 
+fn needs_segment_break(pieces: &[Vec<Piece>], edges: &[Option<(Handle, bool)>]) -> bool {
+    !pieces.last().unwrap().is_empty() || edges.last().unwrap().is_some()
+}
+
+fn trim_trailing_empty(pieces: &mut Vec<Vec<Piece>>, edges: &mut Vec<Option<(Handle, bool)>>) {
+    while pieces.last().is_some_and(Vec::is_empty) && edges.last().is_some_and(Option::is_none) {
+        pieces.pop();
+        edges.pop();
+    }
+}
+
 fn segments(events: &[Event], count: usize) -> Segments {
     let mut pieces: Vec<Vec<Piece>> = vec![Vec::new()];
     let mut edges: Vec<Option<(Handle, bool)>> = vec![None];
@@ -631,35 +664,27 @@ fn segments(events: &[Event], count: usize) -> Segments {
     for event in events {
         match event {
             Event::Start(..) | Event::End(..) => {
-                // invariant: value produced by engine code, never page input
-                if !pieces.last().unwrap().is_empty() || edges.last().unwrap().is_some() {
+                if needs_segment_break(&pieces, &edges) {
                     pieces.push(Vec::new());
                     edges.push(None);
                 }
             }
             Event::Edge(node, after) => {
-                // invariant: value produced by engine code, never page input
-                if !pieces.last().unwrap().is_empty() || edges.last().unwrap().is_some() {
+                if needs_segment_break(&pieces, &edges) {
                     pieces.push(Vec::new());
                     edges.push(None);
                 }
-                // invariant: value produced by engine code, never page input
                 *edges.last_mut().unwrap() = Some((*node, *after));
                 pieces.push(Vec::new());
                 edges.push(None);
             }
-            // invariant: value produced by engine code, never page input
             Event::Piece(piece) => pieces.last_mut().unwrap().push(*piece),
             Event::Marker(index) => {
-                // invariant: value produced by engine code, never page input
                 raw[*index] = (pieces.len() - 1, pieces.last().unwrap().len());
             }
         }
     }
-    while pieces.last().is_some_and(Vec::is_empty) && edges.last().is_some_and(Option::is_none) {
-        pieces.pop();
-        edges.pop();
-    }
+    trim_trailing_empty(&mut pieces, &mut edges);
     let queries: Vec<Option<(usize, usize)>> = raw
         .iter()
         .map(|&(segment, slot)| {
@@ -950,6 +975,25 @@ fn plain_text_start(
     }
 }
 
+fn plain_text_block_end(
+    extra: bool,
+    emitted: bool,
+    text_node: bool,
+    last: &mut u16,
+    out: &mut Vec<u16>,
+    another: &mut bool,
+) {
+    if emitted && text_node {
+        if *last != 10 {
+            out.push(10);
+            *another = extra;
+        } else if extra {
+            out.push(10);
+        }
+        *last = 10;
+    }
+}
+
 fn plain_text_end(
     kind: Kind,
     emitted: bool,
@@ -961,15 +1005,7 @@ fn plain_text_end(
 ) {
     if let Kind::Block { body: false, extra } = kind {
         *row_end = false;
-        if emitted && text_node {
-            if *last != 10 {
-                out.push(10);
-                *another = extra;
-            } else if extra {
-                out.push(10);
-            }
-            *last = 10;
-        }
+        plain_text_block_end(extra, emitted, text_node, last, out, another);
     } else if (kind == Kind::Row || kind == Kind::Table) && emitted && text_node && *last != 10 {
         *row_end = true;
     }
@@ -1056,6 +1092,17 @@ fn model<'s>(
             .collect();
         (texts, slots, forward, resolved, edges)
     })?;
+    Some(build_model_v8_result(scope, &texts, &slots, &forward, &resolved, &edges))
+}
+
+fn build_model_v8_result<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    texts: &[Vec<u16>],
+    slots: &[Vec<(Handle, usize)>],
+    forward: &[Vec<(Handle, usize)>],
+    resolved: &[(i64, usize)],
+    edges: &[u8],
+) -> v8::Local<'s, v8::Value> {
     let texts: Vec<v8::Local<v8::Value>> = texts
         .iter()
         .map(|text| unit_string(scope, text).into())
@@ -1075,7 +1122,7 @@ fn model<'s>(
         forward_arrays.push(v8::Array::new_with_elements(scope, &flat).into());
     }
     let mut slot_arrays = Vec::new();
-    for segment in &slots {
+    for segment in slots {
         let mut flat = Vec::with_capacity(segment.len() * 2);
         for &(node, offset) in segment {
             flat.push(wrap(scope, node).into());
@@ -1084,7 +1131,7 @@ fn model<'s>(
         slot_arrays.push(v8::Array::new_with_elements(scope, &flat).into());
     }
     let mut query_arrays = Vec::new();
-    for &(segment, slot) in &resolved {
+    for &(segment, slot) in resolved {
         let segment = v8::Number::new(scope, segment as f64);
         let slot = v8::Number::new(scope, slot as f64);
         query_arrays
@@ -1105,7 +1152,7 @@ fn model<'s>(
     let forward_arrays = v8::Array::new_with_elements(scope, &forward_arrays);
     set_prop(scope, result, "forward", forward_arrays.into());
     set_prop(scope, result, "queries", query_arrays.into());
-    Some(result.into())
+    result.into()
 }
 
 /// `text(document, startNode, startOffset, endNode, endOffset)`: TextIterator plain text of a range.
@@ -1158,24 +1205,14 @@ fn editing_host(tree: &Tree, node: Handle) -> Option<Handle> {
     host
 }
 
-fn dispatch<'s>(
+fn dispatch_operation<'s>(
     scope: &mut v8::PinScope<'s, '_>,
-    args: v8::FunctionCallbackArguments<'s>,
-    mut rv: v8::ReturnValue,
+    args: &v8::FunctionCallbackArguments<'s>,
+    rv: &mut v8::ReturnValue,
+    operation: &str,
+    target: v8::Local<'s, v8::Object>,
 ) {
-    let operation = args.get(0).to_rust_string_lossy(scope);
-    if operation == "schedule" {
-        if let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(1)) {
-            html_popover::schedule(scope, callback);
-        }
-        return;
-    }
-    // selection.js (the only caller; it receives the native as an argument, never exposed to
-    // guest code) passes a document, a control or a model root for every other operation.
-    let target =
-        v8::Local::<v8::Object>::try_from(args.get(1)).expect("the selection hook passes a node");
-    let _dom = DomScope::for_object(scope, target);
-    match operation.as_str() {
+    match operation {
         "track" => {
             if let (Ok(record), Ok(notify)) = (
                 v8::Local::<v8::Object>::try_from(args.get(2)),
@@ -1222,18 +1259,35 @@ fn dispatch<'s>(
             }
         }
         "model" => {
-            if let Some(value) = model(scope, &args) {
+            if let Some(value) = model(scope, args) {
                 rv.set(value);
             }
         }
-        // The last operation the hook sends: "text".
         operation => {
             debug_assert_eq!(operation, "text");
-            if let Some(value) = text(scope, &args) {
+            if let Some(value) = text(scope, args) {
                 rv.set(value);
             }
         }
     }
+}
+
+fn dispatch<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
+    let operation = args.get(0).to_rust_string_lossy(scope);
+    if operation == "schedule" {
+        if let Ok(callback) = v8::Local::<v8::Function>::try_from(args.get(1)) {
+            html_popover::schedule(scope, callback);
+        }
+        return;
+    }
+    let target =
+        v8::Local::<v8::Object>::try_from(args.get(1)).expect("the selection hook passes a node");
+    let _dom = DomScope::for_object(scope, target);
+    dispatch_operation(scope, &args, &mut rv, operation.as_str(), target);
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {

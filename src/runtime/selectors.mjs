@@ -47,13 +47,15 @@ function validEscape(src, i) {
   return src[i] === '\\' && n !== '\n' && n !== '\r' && n !== '\f';
 }
 // CSS Syntax "would start an identifier" at `i`.
+function startsIdentAfterDash(src, i) {
+  const d = src[i + 1];
+  return d !== undefined && (d === '-' || isNameStart(d) || (d === '\\' && validEscape(src, i + 1)));
+}
 function startsIdent(src, i) {
   const c = src[i];
   if (c === undefined) return false;
   if (isNameStart(c) || (c === '\\' && validEscape(src, i))) return true;
-  if (c !== '-') return false;
-  const d = src[i + 1];
-  return d !== undefined && (d === '-' || isNameStart(d) || (d === '\\' && validEscape(src, i + 1)));
+  return c === '-' && startsIdentAfterDash(src, i);
 }
 // Advance past one hex-escape trailer (CRLF or a single whitespace) at `src[j]`.
 function escapeTrailer(src, j) {
@@ -113,16 +115,20 @@ function syntax(src, why) {
 
 // Scan from `start` (just past an opening `open`) to its matching `close`, honoring quotes,
 // escapes and nesting: { inner, end } with `end` the index of the closer (or src.length).
+function scanBalancedStep(d, state, open, close) {
+  if (state.quote) { if (d === state.quote) state.quote = null; return true; }
+  if (d === '"' || d === "'") { state.quote = d; return true; }
+  if (d === open) state.depth++;
+  else if (d === close) { state.depth--; if (state.depth === 0) return false; }
+  return true;
+}
 function scanBalanced(src, start, open, close) {
   const n = src.length;
-  let depth = 1, i = start, quote = null;
+  const state = { depth: 1, quote: null };
+  let i = start;
   for (; i < n; i++) {
-    const d = src[i];
-    if (d === '\\') { i++; continue; }
-    if (quote) { if (d === quote) quote = null; continue; }
-    if (d === '"' || d === "'") quote = d;
-    else if (d === open) depth++;
-    else if (d === close) { depth--; if (depth === 0) break; }
+    if (src[i] === '\\') { i++; continue; }
+    if (!scanBalancedStep(src[i], state, open, close)) break;
   }
   return { inner: src.slice(start, i), end: i };
 }
@@ -272,19 +278,21 @@ function parseAttrModifier(attr, s, i, src) {
   else throw syntax(src, 'attribute modifier');
   if (skipWsAt(s, i + 1) < s.length) throw syntax(src, 'attribute selector');
 }
+function parseAttrNsPrefix(s, i) {
+  if (s[i] === '*' && s[i + 1] === '|') return { ns: 'any', end: i + 2 };
+  if (s[i] === '|' && s[i + 1] !== '=') return { ns: null, end: i + 1 };
+  return { ns: null, end: i };
+}
 function parseAttr(raw, src) {
   const s = raw;
-  let i = skipWsAt(s, 0);
-  let ns = null;
-  if (s[i] === '*' && s[i + 1] === '|') { ns = 'any'; i += 2; }
-  else if (s[i] === '|' && s[i + 1] !== '=') { i += 1; }
+  const prefix = parseAttrNsPrefix(s, skipWsAt(s, 0));
+  let i = prefix.end;
   if (!startsIdent(s, i)) throw syntax(src, 'attribute name');
   const nameTok = scanIdent(s, i);
   i = nameTok.end;
   if (s[i] === '|' && s[i + 1] !== '=') throw syntax(src, 'undeclared namespace prefix');
   const attr = { name: nameTok.value, match: { op: 'present' } };
-  if (ns) attr.ns = ns;
-  // the HTML-element lookup name, folded once (non-enumerable: the AST stays `{ name, match }`)
+  if (prefix.ns) attr.ns = prefix.ns;
   Object.defineProperty(attr, 'lname', { value: nameTok.value.toLowerCase() });
   i = skipWsAt(s, i);
   if (i === s.length) return attr;
@@ -370,15 +378,17 @@ function allowedAfterElementLike(p) {
   if (p.arg !== null) return p.name === 'state' || p.name === 'lang' || p.name === 'dir';
   return ELEMENT_LIKE_PLAIN.has(p.name) || (NEVER.has(p.name) && !NOT_AFTER_ELEMENT_LIKE.has(p.name));
 }
-function allowedAfter(pe, p) {
-  const name = pe.name;
-  if ((p.name === 'is' || p.name === 'where') && p.arg !== null) return name !== 'column' && name !== 'slotted';
-  if (ELEMENT_LIKE.has(name)) return allowedAfterElementLike(p);
-  if (p.arg !== null) return false;
-  if (SCROLLBAR.has(name)) return AFTER_SCROLLBAR.has(p.name);
-  if (name.startsWith('-webkit-') || (name === 'cue' && pe.arg === null)) return USER_ACTION.has(p.name);
-  const plain = PLAIN_AFTER.get(name);
+function allowedAfterPlain(pe, p) {
+  if (SCROLLBAR.has(pe.name)) return AFTER_SCROLLBAR.has(p.name);
+  if (pe.name.startsWith('-webkit-') || (pe.name === 'cue' && pe.arg === null)) return USER_ACTION.has(p.name);
+  const plain = PLAIN_AFTER.get(pe.name);
   return plain !== undefined && plain.has(p.name);
+}
+function allowedAfter(pe, p) {
+  if ((p.name === 'is' || p.name === 'where') && p.arg !== null) return pe.name !== 'column' && pe.name !== 'slotted';
+  if (ELEMENT_LIKE.has(pe.name)) return allowedAfterElementLike(p);
+  if (p.arg !== null) return false;
+  return allowedAfterPlain(pe, p);
 }
 // May pseudo-element `next` follow pseudo-element `prev` (names)? (Chrome 156,
 // miaskiewicz/turbo-dom#195; mirrors the Rust allowed_after_pseudo_element_chain.)
@@ -401,15 +411,8 @@ const clampInt = (sign, digits) => {
   return sign < 0 ? Math.max(-v, INT_MIN - 1) : Math.min(v, INT_MAX + 1);
 };
 const clamp32 = (v) => Math.min(Math.max(v, INT_MIN), INT_MAX);
-function parseAnB(arg) {
-  const s = trimWs(arg).toLowerCase();
-  if (s === 'odd') return { a: 2, b: 1 };
-  if (s === 'even') return { a: 2, b: 0 };
-  let i = 0;
-  let sign = 1;
-  if (s[0] === '+' || s[0] === '-') { sign = s[0] === '-' ? -1 : 1; i = 1; }
-  const ds = i;
-  i = skipDigits(s, i);
+function parseAnBNumeric(s, sign, ds) {
+  let i = skipDigits(s, ds);
   const digits = s.slice(ds, i);
   if (s[i] !== 'n') {
     if (!digits || i !== s.length) return null;
@@ -417,6 +420,14 @@ function parseAnB(arg) {
   }
   const a = digits ? clamp32(clampInt(sign, digits)) : sign;
   return parseAnBTail(s, i + 1, a);
+}
+function parseAnB(arg) {
+  const s = trimWs(arg).toLowerCase();
+  if (s === 'odd') return { a: 2, b: 1 };
+  if (s === 'even') return { a: 2, b: 0 };
+  const sign = s[0] === '-' ? -1 : 1;
+  const start = (s[0] === '+' || s[0] === '-') ? 1 : 0;
+  return parseAnBNumeric(s, sign, start);
 }
 // `n-123` is one ident / dimension unit: its integer (after the `n` at i - 1) is converted
 // exactly and must fit.
@@ -460,20 +471,25 @@ function nthMatch(a, b, index) {
 // pseudo (name, arg) | pelem (name, arg).
 // The type / universal selector at `i` (src[i] is `*`, `|` or an identifier start), with
 // an optional `*|` / `|` namespace prefix: pushes its token, returns the next index.
+function scanTypeAfterPipe(src, i, ns, tokens) {
+  let name = null;
+  if (src[i] === '*') i++;
+  else if (startsIdent(src, i)) { const t = scanIdent(src, i); name = t.value; i = t.end; }
+  else throw syntax(src, 'type selector after a namespace prefix');
+  tokens.push({ k: 'type', ns, name: name === null ? null : name.toLowerCase() });
+  return i;
+}
 function scanTypeToken(src, i, tokens) {
   const c = src[i];
-  let ns = null, name = null;
+  let name = null;
   if (c === '*') i++;
   else if (c !== '|') { const t = scanIdent(src, i); name = t.value; i = t.end; }
   if (src[i] === '|' && src[i + 1] !== '=') {
     if (name !== null) throw syntax(src, 'undeclared namespace prefix');
-    ns = c === '*' ? 'any' : 'none';
-    i++;
-    if (src[i] === '*') i++;
-    else if (startsIdent(src, i)) { const t = scanIdent(src, i); name = t.value; i = t.end; }
-    else throw syntax(src, 'type selector after a namespace prefix');
-  } else if (c === '|') throw syntax(src, `unexpected '|'`);
-  tokens.push({ k: 'type', ns, name: name === null ? null : name.toLowerCase() });
+    return scanTypeAfterPipe(src, i + 1, c === '*' ? 'any' : 'none', tokens);
+  }
+  if (c === '|') throw syntax(src, `unexpected '|'`);
+  tokens.push({ k: 'type', ns: null, name: name === null ? null : name.toLowerCase() });
   return i;
 }
 // The pseudo-class / pseudo-element at `i` (src[i] is `:`): pushes its token, returns the
@@ -570,6 +586,11 @@ function parseListPseudo(name, arg, inHas, inCompound) {
 }
 const LIST_PSEUDO = new Set(['not', 'is', 'where', '-webkit-any']);
 // A functional pseudo-class: its `parsed`.
+function parseFunctionalPseudoValue(name, arg, src) {
+  if (name === 'lang' || name === 'dir') return { v: identArg(name, arg, src).toLowerCase() };
+  if (name === 'state') return { v: identArg(name, arg, src) };
+  throw syntax(src, `unknown pseudo-class :${name}()`);
+}
 function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
   if (PLAIN.has(name)) throw syntax(src, `:${name}() takes no argument`);
   if (NEVER_FUNCTIONAL.has(name)) return { never: true };
@@ -579,9 +600,7 @@ function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
     return { rel: parseRelative(arg, src) };
   }
   if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound);
-  if (name === 'lang' || name === 'dir') return { v: identArg(name, arg, src).toLowerCase() };
-  if (name === 'state') return { v: identArg(name, arg, src) };
-  throw syntax(src, `unknown pseudo-class :${name}()`);
+  return parseFunctionalPseudoValue(name, arg, src);
 }
 // The one identifier argument of `:name()` (throws otherwise).
 function identArg(name, arg, src) {
@@ -753,20 +772,21 @@ function parseComplexCompound(tokens, end, src, opts, state) {
   else state.rest.push({ combinator: state.combinator === null ? ' ' : state.combinator, compound });
   state.combinator = null;
 }
+function parseComplexStep(tokens, end, src, opts, state) {
+  const t = tokens[state.pos];
+  if (t.k === 'ws') { state.pos++; state.combinator = afterWhitespace(state.combinator, state.first); return; }
+  if (t.k === 'comb') {
+    if (state.first === null || isDangling(state.combinator)) throw syntax(src, 'dangling combinator');
+    state.combinator = t.v; state.pos++; return;
+  }
+  parseComplexCompound(tokens, end, src, opts, state);
+}
 function parseComplexTokens(tokens, lo, hi, src, opts) {
   const start = firstNonWs(tokens, lo, hi);
   const end = endNonWs(tokens, start, hi);
   if (start >= end) throw syntax(src, 'empty selector');
   const state = { first: null, rest: [], combinator: null, pos: start, sawPe: false };
-  while (state.pos < end) {
-    const t = tokens[state.pos];
-    if (t.k === 'ws') { state.pos++; state.combinator = afterWhitespace(state.combinator, state.first); continue; }
-    if (t.k === 'comb') {
-      if (state.first === null || isDangling(state.combinator)) throw syntax(src, 'dangling combinator');
-      state.combinator = t.v; state.pos++; continue;
-    }
-    parseComplexCompound(tokens, end, src, opts, state);
-  }
+  while (state.pos < end) parseComplexStep(tokens, end, src, opts, state);
   if (isDangling(state.combinator)) throw syntax(src, 'dangling combinator');
   if (opts.compound && state.rest.length) throw syntax(src, 'combinator inside :-webkit-any()');
   return { first: state.first, rest: state.rest };
@@ -951,17 +971,21 @@ function inputType(el) {
 }
 // HTML "actually disabled" (button/input/select/textarea/fieldset): own state or a disabled
 // fieldset ancestor outside its first legend child.
-function actuallyDisabled(el) {
-  if (boolAttr(el, 'disabled', 'disabled')) return true;
+function firstLegendChild(fieldset) {
+  const kids = rawChildren(fieldset);
+  for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === 1 && kids[i].localName === 'legend') return kids[i];
+  return null;
+}
+function disabledByFieldset(el) {
   let child = el;
   for (let a = el.parentNode; a && a.nodeType === 1; child = a, a = a.parentNode) {
     if (a.localName !== 'fieldset' || !isHtml(a) || !boolAttr(a, 'disabled', 'disabled')) continue;
-    const kids = rawChildren(a);
-    let legend = null;
-    for (let i = 0; i < kids.length && legend === null; i++) if (kids[i].nodeType === 1 && kids[i].localName === 'legend') legend = kids[i];
-    if (legend !== child) return true;
+    if (firstLegendChild(a) !== child) return true;
   }
   return false;
+}
+function actuallyDisabled(el) {
+  return boolAttr(el, 'disabled', 'disabled') || disabledByFieldset(el);
 }
 // :disabled / :enabled: undefined when neither applies, else whether `el` is disabled.
 function disabledState(el) {
@@ -1061,71 +1085,89 @@ function childText(el) {
   for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === 3) text += kids[i].data;
   return text;
 }
+function isAutoDirInput(el) {
+  const t = inputType(el);
+  return t === null || AUTO_DIR_INPUT_TYPES.has(t) || !KNOWN_INPUT_TYPES.has(t);
+}
+function autoDirValueRtl(value) {
+  const r = strongRtl(value);
+  return r !== null ? r : value !== '' ? false : null;
+}
+const DIR_SKIP = new Set(['bdi', 'script', 'style', 'textarea']);
+function walkDirRtl(node) {
+  const kids = rawChildren(node);
+  for (let i = 0; i < kids.length; i++) {
+    const c = kids[i];
+    if (c.nodeType === 3) { const r = strongRtl(c.data); if (r !== null) return r; continue; }
+    if (c.nodeType !== 1) continue;
+    if (isHtml(c) && (DIR_SKIP.has(c.localName) || dirState(c) !== null)) continue;
+    const r = walkDirRtl(c);
+    if (r !== null) return r;
+  }
+  return null;
+}
 function autoRtl(el) {
   const ln = el.localName;
-  if (ln === 'textarea' || (ln === 'input' && (inputType(el) === null || AUTO_DIR_INPUT_TYPES.has(inputType(el)) || !KNOWN_INPUT_TYPES.has(inputType(el))))) {
-    const value = ln === 'textarea' ? childText(el) : (el.getAttribute('value') || '');
-    const r = strongRtl(value);
-    return r !== null ? r : value !== '' ? false : null;
-  }
-  const walk = (node) => {
-    const kids = rawChildren(node);
-    for (let i = 0; i < kids.length; i++) {
-      const c = kids[i];
-      if (c.nodeType === 3) { const r = strongRtl(c.data); if (r !== null) return r; continue; }
-      if (c.nodeType !== 1) continue;
-      if (isHtml(c) && (c.localName === 'bdi' || c.localName === 'script' || c.localName === 'style' || c.localName === 'textarea' || dirState(c) !== null)) continue;
-      const r = walk(c);
-      if (r !== null) return r;
-    }
-    return null;
-  };
-  return walk(el);
+  if (ln === 'textarea') return autoDirValueRtl(childText(el));
+  if (ln === 'input' && isAutoDirInput(el)) return autoDirValueRtl(el.getAttribute('value') || '');
+  return walkDirRtl(el);
 }
 // HTML directionality: true = rtl. Mirrors the Rust query_cascade::is_rtl.
+function isRtlImplicitDir(n) {
+  if (n.localName === 'bdi') return autoRtl(n) === true;
+  if (n.localName === 'input' && inputType(n) === 'tel') return false;
+  return undefined;
+}
+function isRtlStep(n) {
+  if (!isHtml(n)) return undefined;
+  const d = dirState(n);
+  if (d === 'ltr') return false;
+  if (d === 'rtl') return true;
+  if (d === 'auto') return autoRtl(n) === true;
+  return d === null ? isRtlImplicitDir(n) : undefined;
+}
+function dirAncestor(n) {
+  const p = n.parentNode;
+  if (p && p.__isShadowRoot) return p.host;
+  return p && p.nodeType === 1 ? p : null;
+}
 function isRtl(el) {
-  for (let n = el; n;) {
-    if (isHtml(n)) {
-      const d = dirState(n);
-      if (d === 'ltr') return false;
-      if (d === 'rtl') return true;
-      if (d === 'auto' || (d === null && n.localName === 'bdi')) return autoRtl(n) === true;
-      if (d === null && n.localName === 'input' && inputType(n) === 'tel') return false;
-    }
-    const p = n.parentNode;
-    n = p && p.__isShadowRoot ? p.host : p && p.nodeType === 1 ? p : null;
+  for (let n = el; n; n = dirAncestor(n)) {
+    const r = isRtlStep(n);
+    if (r !== undefined) return r;
   }
   return false;
 }
 
 // ── matching ────────────────────────────────────────────────────────────────
+const MATCH_VALUE_OPS = {
+  equals: (v, t) => v === t,
+  prefix: (v, t) => t !== '' && v.startsWith(t),
+  suffix: (v, t) => t !== '' && v.endsWith(t),
+  substr: (v, t) => t !== '' && v.includes(t),
+  includes: (v, t) => t !== '' && !/\s/.test(t) && v.split(/[ \t\n\r\f]+/).includes(t),
+  dash: (v, t) => v === t || v.startsWith(t + '-'),
+};
 function matchValue(m, got, ci) {
   if (m.op === 'present') return true;
-  let v = got, t = m.value;
-  if (ci) { v = v.toLowerCase(); t = t.toLowerCase(); }
-  switch (m.op) {
-    case 'equals': return v === t;
-    case 'prefix': return t !== '' && v.startsWith(t);
-    case 'suffix': return t !== '' && v.endsWith(t);
-    case 'substr': return t !== '' && v.includes(t);
-    case 'includes': return t !== '' && !/\s/.test(t) && v.split(/[ \t\n\r\f]+/).includes(t);
-    default: return v === t || v.startsWith(t + '-'); // dash
-  }
+  const v = ci ? got.toLowerCase() : got;
+  const t = ci ? m.value.toLowerCase() : m.value;
+  return (MATCH_VALUE_OPS[m.op] || MATCH_VALUE_OPS.dash)(v, t);
 }
+function matchAttrAnyNs(el, name, match, ci) {
+  const at = attrList(el);
+  for (let i = 0; i < at.length; i++) if (at[i].name === name && matchValue(match, at[i].value, ci)) return true;
+  return false;
+}
+const IMPLICIT_CI_TYPE = new Set(['input', 'button', 'ol']);
 function matchAttr(el, a) {
   const html = !el.__ns;
   const name = html ? a.lname : a.name;
-  if (a.ns === 'any') {
-    const at = attrList(el);
-    for (let i = 0; i < at.length; i++) if (at[i].name === name && matchValue(a.match, at[i].value, a.ci === true)) return true;
-    return false;
-  }
+  if (a.ns === 'any') return matchAttrAnyNs(el, name, a.match, a.ci === true);
   const raw = html ? el.getAttribute(name) : plainAttr(el, name);
   if (raw === null) return false;
   if (a.match.op === 'present') return true;
-  // HTML `type` on input/button/ol compares case-insensitively by default (as Rust)
-  const implicit = html && name === 'type' && (el.localName === 'input' || el.localName === 'button' || el.localName === 'ol');
-  return matchValue(a.match, raw, a.ci === true || implicit);
+  return matchValue(a.match, raw, a.ci === true || (html && name === 'type' && IMPLICIT_CI_TYPE.has(el.localName)));
 }
 
 // The element `:scope` matches during the current match (null = stylesheet: `:root`).
@@ -1133,25 +1175,26 @@ let currentScope = null;
 
 // matchPseudo dispatches by family: tree-structural here, then the selector-argument and
 // language ones (matchLogicalPseudo), then element state (matchStatePseudo).
+function matchNthOfType(el, p) {
+  const [i, n] = position(el, true);
+  return nthMatch(p.parsed.a, p.parsed.b, p.name === 'nth-last-of-type' ? n - i + 1 : i);
+}
+const PSEUDO_TREE = {
+  'first-child': (el) => previousElement(el) === null,
+  'last-child': (el) => nextElement(el) === null,
+  'only-child': (el) => previousElement(el) === null && nextElement(el) === null,
+  'first-of-type': (el) => position(el, true)[0] === 1,
+  'last-of-type': (el) => { const [i, n] = position(el, true); return i === n; },
+  'only-of-type': (el) => position(el, true)[1] === 1,
+  'scope': (el) => currentScope === null ? isRootElement(el) : el === currentScope,
+};
 function matchPseudo(el, p) {
-  const parsed = p.parsed;
-  switch (p.name) {
-    // O(1) sibling steps (a parentless element is its own only sibling)
-    case 'first-child': return previousElement(el) === null;
-    case 'last-child': return nextElement(el) === null;
-    case 'only-child': return previousElement(el) === null && nextElement(el) === null;
-    case 'first-of-type': return position(el, true)[0] === 1;
-    case 'last-of-type': { const [i, n] = position(el, true); return i === n; }
-    case 'only-of-type': return position(el, true)[1] === 1;
-    case 'nth-child': return matchNthChild(el, parsed, false);
-    case 'nth-last-child': return matchNthChild(el, parsed, true);
-    case 'nth-of-type': case 'nth-last-of-type': {
-      const [i, n] = position(el, true);
-      return nthMatch(parsed.a, parsed.b, p.name === 'nth-last-of-type' ? n - i + 1 : i);
-    }
-    case 'scope': return currentScope === null ? isRootElement(el) : el === currentScope;
-    default: return matchLogicalPseudo(el, p);
-  }
+  const tree = PSEUDO_TREE[p.name];
+  if (tree) return tree(el);
+  if (p.name === 'nth-child') return matchNthChild(el, p.parsed, false);
+  if (p.name === 'nth-last-child') return matchNthChild(el, p.parsed, true);
+  if (p.name === 'nth-of-type' || p.name === 'nth-last-of-type') return matchNthOfType(el, p);
+  return matchLogicalPseudo(el, p);
 }
 function isRootElement(el) {
   return !!el.parentNode && el.parentNode.nodeType === 9;
@@ -1164,35 +1207,36 @@ function matchNthChild(el, parsed, last) {
   const [i, n] = position(el, false);
   return nthMatch(parsed.a, parsed.b, last ? n - i + 1 : i);
 }
-function matchLogicalPseudo(el, p) {
+function matchListPseudo(el, p) {
   const parsed = p.parsed;
-  switch (p.name) {
-    case 'not': return !parsed.list.some((cx) => matchComplex(el, cx));
-    case 'is': case 'where': case '-webkit-any': return parsed.list.some((cx) => matchComplex(el, cx));
-    case 'has': return parsed.rel.some((rel) => hasMatch(el, rel));
-    case 'link': case 'any-link': return isLink(el);
-    case 'defined': return isDefinedElement(el);
-    case 'lang': return langMatches(el, parsed.v);
-    case 'dir': return (parsed.v === 'rtl' || parsed.v === 'ltr') && isRtl(el) === (parsed.v === 'rtl');
-    default: return matchStatePseudo(el, p);
-  }
+  if (p.name === 'not') return !parsed.list.some((cx) => matchComplex(el, cx));
+  if (p.name === 'has') return parsed.rel.some((rel) => hasMatch(el, rel));
+  return parsed.list.some((cx) => matchComplex(el, cx));
+}
+const LIST_MATCH = new Set(['not', 'is', 'where', '-webkit-any', 'has']);
+function matchLogicalPseudo(el, p) {
+  if (LIST_MATCH.has(p.name)) return matchListPseudo(el, p);
+  if (p.name === 'link' || p.name === 'any-link') return isLink(el);
+  if (p.name === 'defined') return isDefinedElement(el);
+  if (p.name === 'lang') return langMatches(el, p.parsed.v);
+  if (p.name === 'dir') return (p.parsed.v === 'rtl' || p.parsed.v === 'ltr') && isRtl(el) === (p.parsed.v === 'rtl');
+  return matchStatePseudo(el, p);
 }
 // element state; form state reads the live PROPERTY first (what React sets), then the attribute
+const STATE_PSEUDO = {
+  'empty': (el) => isEmpty(el),
+  'root': (el) => isRootElement(el),
+  'checked': (el) => isChecked(el),
+  'disabled': (el) => disabledState(el) === true,
+  'enabled': (el) => disabledState(el) === false,
+  'required': (el) => boolAttr(el, 'required', 'required'),
+  'optional': (el) => isOptional(el),
+  'read-only': (el) => isHtml(el) && !readWrite(el),
+  'read-write': (el) => isHtml(el) && readWrite(el),
+};
 function matchStatePseudo(el, p) {
-  switch (p.name) {
-    case 'empty': return isEmpty(el);
-    case 'root': return isRootElement(el);
-    case 'checked': return isChecked(el);
-    case 'disabled': return disabledState(el) === true;
-    case 'enabled': return disabledState(el) === false;
-    case 'required': return boolAttr(el, 'required', 'required');
-    case 'optional': return isOptional(el);
-    case 'read-only': return isHtml(el) && !readWrite(el);
-    case 'read-write': return isHtml(el) && readWrite(el);
-    // `:state()` parses; this runtime has no ElementInternals custom states, so it never
-    // matches (falls through to the never-matching default)
-    default: return false; // the valid never-matching pseudo-classes (:hover, :focus, …)
-  }
+  const fn = STATE_PSEUDO[p.name];
+  return fn ? fn(el) : false;
 }
 function isChecked(el) {
   if (el.localName === 'option') return !!el.selected;
@@ -1232,16 +1276,20 @@ function classesMatch(el, classes) {
   return true;
 }
 
-function matchCompound(el, compound) {
-  if (!el || el.nodeType !== 1) return false;
-  if (compound.pe) return false; // a pseudo-element is never an element
-  if (compound.ns === 'none' && el.namespaceURI !== null) return false;
-  if (!tagMatches(el, compound.tag)) return false;
-  if (compound.id !== null && plainAttr(el, 'id') !== compound.id) return false;
-  if (compound.classes.length && !classesMatch(el, compound.classes)) return false;
+function matchAttrsAndPseudos(el, compound) {
   for (const a of compound.attrs) if (!matchAttr(el, a)) return false;
   for (const p of compound.pseudos) if (!matchPseudo(el, p)) return false;
   return true;
+}
+function matchCompoundSimple(el, compound) {
+  if (compound.ns === 'none' && el.namespaceURI !== null) return false;
+  if (!tagMatches(el, compound.tag)) return false;
+  if (compound.id !== null && plainAttr(el, 'id') !== compound.id) return false;
+  return !(compound.classes.length && !classesMatch(el, compound.classes));
+}
+function matchCompound(el, compound) {
+  if (!el || el.nodeType !== 1 || compound.pe) return false;
+  return matchCompoundSimple(el, compound) && matchAttrsAndPseudos(el, compound);
 }
 
 // The k-th compound of a Complex, indexed left-to-right (0 = `first`, the leftmost).
@@ -1258,20 +1306,22 @@ function matchComplex(el, cx) {
 // general-sibling ('~') combinators try EVERY candidate ancestor/sibling and backtrack.
 // `scope` supports `:has()`: `{ comb, node }` anchors the leftmost compound to the subject.
 // (Every caller passes `scope`: null outside `:has()`.)
-function matchChain(el, cx, k, scope) {
-  if (!matchCompound(el, compoundAt(cx, k))) return false;
-  if (k === 0) return scope === null ? true : relatesToScope(el, scope.comb, scope.node);
-  const comb = cx.rest[k - 1].combinator;
+function matchChainCombinator(el, cx, k, scope, comb) {
   if (comb === '>') {
     const p = el.parentNode;
-    return !!p && p.nodeType === 1 && matchChain(p, cx, k - 1, scope);
+    return !!p && p.nodeType === 1 && matchChain(p, cx, k, scope);
   }
   if (comb === '+') {
     const prev = previousElement(el);
-    return !!prev && matchChain(prev, cx, k - 1, scope);
+    return !!prev && matchChain(prev, cx, k, scope);
   }
-  if (comb === ' ') return someAncestorMatches(el, cx, k - 1, scope);
-  return somePrecedingSiblingMatches(el, cx, k - 1, scope);
+  if (comb === ' ') return someAncestorMatches(el, cx, k, scope);
+  return somePrecedingSiblingMatches(el, cx, k, scope);
+}
+function matchChain(el, cx, k, scope) {
+  if (!matchCompound(el, compoundAt(cx, k))) return false;
+  if (k === 0) return scope === null || relatesToScope(el, scope.comb, scope.node);
+  return matchChainCombinator(el, cx, k - 1, scope, cx.rest[k - 1].combinator);
 }
 // The descendant combinator: compounds 0..=k end at SOME element ancestor of `el`.
 function someAncestorMatches(el, cx, k, scope) {

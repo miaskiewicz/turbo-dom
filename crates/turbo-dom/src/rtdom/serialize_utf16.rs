@@ -21,11 +21,45 @@ fn escaped(out: &mut Vec<u16>, units: &[u16], attribute: bool) {
         }
     }
 }
-fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut Vec<u16>) {
-    enum Task<'a> {
-        Node(Handle, Option<&'a str>),
-        Close(Vec<u16>),
+enum Task<'a> {
+    Node(Handle, Option<&'a str>),
+    Close(Vec<u16>),
+}
+
+fn serialize_element<'a>(
+    tree: &'a Tree,
+    handle: Handle,
+    out: &mut Vec<u16>,
+    pending: &mut Vec<Task<'a>>,
+) {
+    let tag = tree.qualified_name_utf16(handle).unwrap_or_default();
+    scalar(out, "<");
+    out.extend_from_slice(&tag);
+    for attribute in tree.attributes_units(handle) {
+        scalar(out, " ");
+        out.extend_from_slice(&attribute.qualified_name);
+        scalar(out, "=\"");
+        escaped(out, &attribute.value, true);
+        scalar(out, "\"");
     }
+    scalar(out, ">");
+    let html = tree.namespace_uri(handle) == Some("http://www.w3.org/1999/xhtml");
+    let local = tree.local_name(handle).unwrap_or("");
+    if html && is_void(local) {
+        return;
+    }
+    pending.push(Task::Close(tag));
+    let raw_key = if html && tree.prefix(handle).is_none() {
+        local
+    } else {
+        ""
+    };
+    for child in tree.children(handle).into_iter().rev() {
+        pending.push(Task::Node(child, Some(raw_key)));
+    }
+}
+
+fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut Vec<u16>) {
     let mut pending = vec![Task::Node(handle, parent)];
     while let Some(task) = pending.pop() {
         let (handle, parent) = match task {
@@ -38,35 +72,7 @@ fn node<'a>(tree: &'a Tree, handle: Handle, parent: Option<&'a str>, out: &mut V
             }
         };
         match tree.node_type(handle) {
-            NodeType::Element => {
-                let tag = tree.qualified_name_utf16(handle).unwrap_or_default();
-                scalar(out, "<");
-                out.extend_from_slice(&tag);
-                for attribute in tree.attributes_units(handle) {
-                    scalar(out, " ");
-                    out.extend_from_slice(&attribute.qualified_name);
-                    scalar(out, "=\"");
-                    escaped(out, &attribute.value, true);
-                    scalar(out, "\"");
-                }
-                scalar(out, ">");
-                let html = tree.namespace_uri(handle) == Some("http://www.w3.org/1999/xhtml");
-                let local = tree.local_name(handle).unwrap_or("");
-                if html && is_void(local) {
-                    continue;
-                }
-                pending.push(Task::Close(tag));
-                // raw text keys on the qualified name, like Chrome 156 (<h:script> escapes)
-                let raw_key = if html && tree.prefix(handle).is_none() {
-                    local
-                } else {
-                    ""
-                };
-                for child in tree.children(handle).into_iter().rev() {
-                    pending.push(Task::Node(child, Some(raw_key)));
-                }
-            }
-            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            NodeType::Element => serialize_element(tree, handle, out, &mut pending),
             NodeType::Text | NodeType::CDataSection => {
                 let units = tree.node_value_utf16(handle).unwrap_or_default();
                 if parent.is_some_and(is_raw_text) {

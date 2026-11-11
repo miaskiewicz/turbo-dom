@@ -99,6 +99,14 @@ fn normalize(raw: &HashMap<&str, Vec<String>>) -> DatTest {
     }
 }
 
+fn eval_conformance_case(t: &DatTest) -> Option<(String, bool)> {
+    if t.script_on || t.fragment_context.is_some() {
+        return None;
+    }
+    let actual = dump_tree(&Tree::parse(&t.data));
+    Some((actual.clone(), actual == t.document))
+}
+
 #[test]
 fn rtdom_html5lib_conformance_full_document() {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/html5lib-tests");
@@ -122,18 +130,14 @@ fn rtdom_html5lib_conformance_full_document() {
             continue;
         };
         for t in parse_dat(&text) {
-            if t.script_on || t.fragment_context.is_some() {
+            let Some((actual, is_pass)) = eval_conformance_case(&t) else {
                 skip += 1;
                 continue;
-            }
-            let actual = dump_tree(&Tree::parse(&t.data));
-            if actual == t.document {
+            };
+            if is_pass {
                 pass += 1;
             } else {
                 fail += 1;
-                // The only accepted misses are the upstream <select>-family insertion
-                // -mode divergences (same as the JS gate). A non-<select> miss means an
-                // rtdom dump/traversal bug — fail loudly.
                 if !t.data.contains("select") {
                     bad.push((t.data.clone(), t.document.clone(), actual));
                 }

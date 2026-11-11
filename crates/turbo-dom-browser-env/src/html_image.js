@@ -328,23 +328,31 @@
     while (end > 0 && url[end - 1] === ",") end--;
     return slice(url, 0, end);
   };
+  const srcsetSkipLeading = (input, position) => {
+    while (position < input.length && (isSpace(input[position]) || input[position] === ",")) position++;
+    return position;
+  };
+  const srcsetExtractUrl = (input, position) => {
+    const start = position;
+    while (position < input.length && !isSpace(input[position])) position++;
+    let url = slice(input, start, position);
+    const descriptors = [];
+    if (url[url.length - 1] === ",") url = trimTrailingCommas(url);
+    else {
+      while (position < input.length && isSpace(input[position])) position++;
+      position = srcsetDescriptors(input, position, descriptors);
+    }
+    return { url, descriptors, position };
+  };
   const parseSrcset = (input) => {
     const candidates = [];
-    const length = input.length;
     let position = 0;
     for (;;) {
-      while (position < length && (isSpace(input[position]) || input[position] === ",")) position++;
-      if (position >= length) return candidates;
-      const start = position;
-      while (position < length && !isSpace(input[position])) position++;
-      let url = slice(input, start, position);
-      const descriptors = [];
-      if (url[url.length - 1] === ",") url = trimTrailingCommas(url);
-      else {
-        while (position < length && isSpace(input[position])) position++;
-        position = srcsetDescriptors(input, position, descriptors);
-      }
-      const candidate = srcsetCandidate(url, descriptors);
+      position = srcsetSkipLeading(input, position);
+      if (position >= input.length) return candidates;
+      const extracted = srcsetExtractUrl(input, position);
+      position = extracted.position;
+      const candidate = srcsetCandidate(extracted.url, extracted.descriptors);
       if (candidate) candidates[candidates.length] = candidate;
     }
   };
@@ -374,8 +382,16 @@
     tokens[tokens.length] = ["i", name];
     return m[0].length;
   };
-  const delimiterToken = (c) =>
-    c === "(" || c === ")" || c === ":" || c === "," || c === "/" || c === "<" || c === ">" || c === "=" || c === "+" || c === "*";
+  const DELIMITERS = { __proto__: null, "(": 1, ")": 1, ":": 1, ",": 1, "/": 1, "<": 1, ">": 1, "=": 1, "+": 1, "*": 1 };
+  const delimiterToken = (c) => DELIMITERS[c] === 1;
+  const tokenizeChar = (text, i, tokens) => {
+    const c = text[i];
+    if ((c === "<" || c === ">") && text[i + 1] === "=") { tokens[tokens.length] = [c + "="]; return i + 2; }
+    if (delimiterToken(c)) { tokens[tokens.length] = [c]; return i + 1; }
+    if (c === "-") { tokens[tokens.length] = ["-"]; return i + 1; }
+    tokens[tokens.length] = ["?", c];
+    return i + 1;
+  };
   const tokenize = (text) => {
     const tokens = [];
     let i = 0;
@@ -386,15 +402,7 @@
       let next = numberTokenAt(rest, c, tokens);
       if (next < 0) next = identTokenAt(text, i, rest, tokens);
       if (next >= 0) { i += next; continue; }
-      if ((c === "<" || c === ">") && text[i + 1] === "=") { tokens[tokens.length] = [c + "="]; i += 2; continue; }
-      if (delimiterToken(c)) {
-        tokens[tokens.length] = [c];
-        i++;
-        continue;
-      }
-      if (c === "-") { tokens[tokens.length] = ["-"]; i++; continue; }
-      tokens[tokens.length] = ["?", c];
-      i++;
+      i = tokenizeChar(text, i, tokens);
     }
     return tokens;
   };
@@ -426,53 +434,71 @@
     return [value, isLength, i];
   };
   // calc() / min() / max() / clamp() over lengths and numbers: [value, isLength] or null.
+  // The parser state `s` carries { i, tokens, env } so the recursive helpers are module-level.
+  const mathProductMul = (left, right) => {
+    if (left[1] && right[1]) return null;
+    return [left[0] * right[0], left[1] || right[1]];
+  };
+  const mathProductDiv = (left, right) => {
+    if (right[1] || right[0] === 0) return null;
+    return [left[0] / right[0], left[1]];
+  };
+  const mathUnitParen = (s) => {
+    s.i++;
+    const v = mathSum(s);
+    if (!v || !s.tokens[s.i] || s.tokens[s.i][0] !== ")") return null;
+    s.i++;
+    return v;
+  };
+  const mathUnitFunc = (s) => {
+    const r = mathFunction(s.tokens, s.i, s.env);
+    if (!r) return null;
+    s.i = r[2];
+    return [r[0], r[1]];
+  };
+  const mathUnit = (s) => {
+    const t = s.tokens[s.i];
+    if (!t) return null;
+    if (t[0] === "(") return mathUnitParen(s);
+    if (t[0] === "f") return mathUnitFunc(s);
+    if (t[0] !== "n") return null;
+    s.i++;
+    if (t[2] === "") return [t[1], false];
+    const l = lengthOf(t, s.env);
+    return l === null ? null : [l, true];
+  };
+  const mathProduct = (s) => {
+    let left = mathUnit(s);
+    while (left && s.i < s.tokens.length && (s.tokens[s.i][0] === "*" || s.tokens[s.i][0] === "/")) {
+      const op = s.tokens[s.i++][0], right = mathUnit(s);
+      if (!right) return null;
+      left = op === "*" ? mathProductMul(left, right) : mathProductDiv(left, right);
+    }
+    return left;
+  };
+  const mathSum = (s) => {
+    let left = mathProduct(s);
+    while (left && s.i < s.tokens.length && (s.tokens[s.i][0] === "+" || s.tokens[s.i][0] === "-")) {
+      const op = s.tokens[s.i++][0], right = mathProduct(s);
+      if (!right || right[1] !== left[1]) return null;
+      left = [op === "+" ? left[0] + right[0] : left[0] - right[0], left[1]];
+    }
+    return left;
+  };
   const mathFunction = (tokens, at, env) => {
-    // tokens[at] is ["f", name], tokens[at + 1] is "(".
     const name = tokens[at][1];
-    let i = at + 2;
-    const sum = () => {
-      let left = product();
-      while (left && i < tokens.length && (tokens[i][0] === "+" || tokens[i][0] === "-")) {
-        const op = tokens[i++][0], right = product();
-        if (!right || right[1] !== left[1]) return null;
-        left = [op === "+" ? left[0] + right[0] : left[0] - right[0], left[1]];
-      }
-      return left;
-    };
-    const product = () => {
-      let left = unit();
-      while (left && i < tokens.length && (tokens[i][0] === "*" || tokens[i][0] === "/")) {
-        const op = tokens[i++][0], right = unit();
-        if (!right) return null;
-        if (op === "*") { if (left[1] && right[1]) return null; left = [left[0] * right[0], left[1] || right[1]]; }
-        else { if (right[1] || right[0] === 0) return null; left = [left[0] / right[0], left[1]]; }
-      }
-      return left;
-    };
-    const unit = () => {
-      const t = tokens[i];
-      if (!t) return null;
-      if (t[0] === "(") { i++; const v = sum(); if (!v || !tokens[i] || tokens[i][0] !== ")") return null; i++; return v; }
-      if (t[0] === "f") { const r = mathFunction(tokens, i, env); if (!r) return null; i = r[2]; return [r[0], r[1]]; }
-      if (t[0] === "n") {
-        i++;
-        if (t[2] === "") return [t[1], false];
-        const l = lengthOf(t, env);
-        return l === null ? null : [l, true];
-      }
-      return null;
-    };
+    const s = { i: at + 2, tokens, env };
     const args = [];
     for (;;) {
-      const v = sum();
+      const v = mathSum(s);
       if (!v) return null;
       args[args.length] = v;
-      const t = tokens[i];
-      if (t && t[0] === ",") { i++; continue; }
-      if (t && t[0] === ")") { i++; break; }
+      const t = tokens[s.i];
+      if (t && t[0] === ",") { s.i++; continue; }
+      if (t && t[0] === ")") { s.i++; break; }
       return null;
     }
-    return reduceMathArgs(name, args, i);
+    return reduceMathArgs(name, args, s.i);
   };
   // A <source-size-value>: a non-negative length (a math function clamps to 0); null if invalid.
   const sourceSizeValue = (tokens, env) => {
@@ -500,10 +526,12 @@
   const plainNumber = (one) => one && one[0] === "n" && one[2] === "";
   const widthValue = (one, tokens, env) => { const l = lengthOf(one, env); return l === null ? undefined : [env.width, l]; };
   const heightValue = (one, tokens, env) => { const l = lengthOf(one, env); return l === null ? undefined : [env.height, l]; };
+  const isRatioTriple = (tokens) =>
+    tokens.length === 3 && tokens[0][0] === "n" && tokens[0][2] === "" && tokens[1][0] === "/" && tokens[2][0] === "n" && tokens[2][2] === "";
   const aspectRatioValue = (one, tokens, env) => {
     let ratio;
     if (tokens.length === 1 && one[0] === "n" && one[2] === "") ratio = one[1];
-    else if (tokens.length === 3 && tokens[0][0] === "n" && tokens[0][2] === "" && tokens[1][0] === "/" && tokens[2][0] === "n" && tokens[2][2] === "") ratio = tokens[0][1] / tokens[2][1];
+    else if (isRatioTriple(tokens)) ratio = tokens[0][1] / tokens[2][1];
     else return undefined;
     return [env.width / env.height, ratio];
   };
@@ -540,22 +568,25 @@
   const flip = { "<": ">", "<=": ">=", ">": "<", ">=": "<=", "=": "=" };
   const RANGE = { __proto__: null, width: 1, height: 1, "aspect-ratio": 1, resolution: 1, "device-width": 1, "device-height": 1, color: 1, monochrome: 1, "-webkit-device-pixel-ratio": 1 };
   // "name: value" (min- / max- prefixed for a range feature).
+  const colonIdentFeature = (name, value, env) => {
+    if (value.length !== 1 || value[0][0] !== "i") return undefined;
+    const actual = IDENT_FEATURES[name](env);
+    return actual === undefined ? undefined : actual === value[0][1];
+  };
+  const colonFeatureOp = (name) => {
+    if (name === "-webkit-min-device-pixel-ratio" || name === "-webkit-max-device-pixel-ratio")
+      return { op: name[9] === "i" ? ">=" : "<=", name: "-webkit-device-pixel-ratio" };
+    if (slice(name, 0, 4) === "min-") return { op: ">=", name: slice(name, 4) };
+    if (slice(name, 0, 4) === "max-") return { op: "<=", name: slice(name, 4) };
+    return { op: "=", name };
+  };
   const colonFeature = (tokens, env) => {
-    let name = tokens[0][1];
+    const rawName = tokens[0][1];
     const value = tokens.slice(2);
-    if (IDENT_FEATURES[name]) {
-      if (value.length !== 1 || value[0][0] !== "i") return undefined;
-      const actual = IDENT_FEATURES[name](env);
-      return actual === undefined ? undefined : actual === value[0][1];
-    }
-    let op = "=";
-    if (name === "-webkit-min-device-pixel-ratio" || name === "-webkit-max-device-pixel-ratio") {
-      op = name[9] === "i" ? ">=" : "<=";
-      name = "-webkit-device-pixel-ratio";
-    } else if (slice(name, 0, 4) === "min-") { op = ">="; name = slice(name, 4); }
-    else if (slice(name, 0, 4) === "max-") { op = "<="; name = slice(name, 4); }
-    const pair = featureValue(name, value, env);
-    return pair === undefined ? undefined : compare(pair[0], op, pair[1]);
+    if (IDENT_FEATURES[rawName]) return colonIdentFeature(rawName, value, env);
+    const resolved = colonFeatureOp(rawName);
+    const pair = featureValue(resolved.name, value, env);
+    return pair === undefined ? undefined : compare(pair[0], resolved.op, pair[1]);
   };
   const comparison = (k) => k === "<" || k === "<=" || k === ">" || k === ">=" || k === "=";
   // "value op name op value": both operators point the same way.
@@ -568,22 +599,29 @@
     return compare(a[0], flip[opsText[0]], a[1]) && compare(b[0], opsText[1], b[1]);
   };
   // Range syntax: "value op name", "name op value", "value op name op value".
-  const rangeFeature = (tokens, env) => {
-    const ops = [];
-    for (let i = 0; i < tokens.length; i++) if (comparison(tokens[i][0])) ops[ops.length] = i;
-    if (ops.length === 0 || ops.length > 2) return undefined;
+  const singleRange = (name, parts, op, nameAt, env) => {
+    if (nameAt === 0) { const v = featureValue(name, parts[1], env); return v === undefined ? undefined : compare(v[0], op, v[1]); }
+    const v = featureValue(name, parts[0], env);
+    return v === undefined ? undefined : compare(v[0], flip[op], v[1]);
+  };
+  const rangeParts = (tokens, ops) => {
     const parts = [];
     let from = 0;
     for (const at of ops) { parts[parts.length] = tokens.slice(from, at); from = at + 1; }
     parts[parts.length] = tokens.slice(from);
+    return parts;
+  };
+  const rangeFeature = (tokens, env) => {
+    const ops = [];
+    for (let i = 0; i < tokens.length; i++) if (comparison(tokens[i][0])) ops[ops.length] = i;
+    if (ops.length === 0 || ops.length > 2) return undefined;
+    const parts = rangeParts(tokens, ops);
     const opsText = ops.map((at) => tokens[at][0]);
     const nameAt = parts.findIndex((p) => p.length === 1 && p[0][0] === "i" && RANGE[p[0][1]]);
     if (nameAt < 0) return undefined;
     const name = parts[nameAt][0][1];
     if (ops.length === 2) return doubleRange(name, parts, opsText, nameAt, env);
-    if (nameAt === 0) { const v = featureValue(name, parts[1], env); return v === undefined ? undefined : compare(v[0], opsText[0], v[1]); }
-    const v = featureValue(name, parts[0], env);
-    return v === undefined ? undefined : compare(v[0], flip[opsText[0]], v[1]);
+    return singleRange(name, parts, opsText[0], nameAt, env);
   };
   // One "( … )" feature body: true / false, or undefined when it is not a valid feature.
   const feature = (tokens, env) => {
@@ -605,14 +643,17 @@
     }
     return -1;
   };
+  const isConditionStart = (t) => t[0] === "(" || (t[0] === "i" && t[1] === "not");
+  const inParensValue = (inner, env) => {
+    if (inner.length && isConditionStart(inner[0])) return condition(inner, env, true);
+    const value = feature(inner, env);
+    return value === undefined && inner.length ? false : value;
+  };
   const inParens = (tokens, start, env) => {
     if (!tokens[start] || tokens[start][0] !== "(") return undefined;
     const end = matching(tokens, start);
     if (end < 0) return undefined;
-    const inner = tokens.slice(start + 1, end);
-    let value;
-    if (inner.length && (inner[0][0] === "(" || (inner[0][0] === "i" && inner[0][1] === "not"))) value = condition(inner, env, true);
-    else { value = feature(inner, env); if (value === undefined && inner.length) value = false; }
+    const value = inParensValue(tokens.slice(start + 1, end), env);
     return value === undefined ? undefined : [value, end + 1];
   };
   // An "and" / "or" joining the conditions: never mixed, "or" only where allowed.
@@ -625,22 +666,25 @@
     const r = inParens(tokens, 1, env);
     return r && r[1] === tokens.length ? !r[0] : undefined;
   };
-  const condition = (tokens, env, allowOr) => {
-    if (tokens.length === 0) return undefined;
-    if (tokens[0][0] === "i" && tokens[0][1] === "not") return notCondition(tokens, env);
-    let r = inParens(tokens, 0, env);
-    if (!r) return undefined;
-    let value = r[0], at = r[1], joiner = null;
+  const conditionJoin = (tokens, env, allowOr, value, at) => {
+    let joiner = null;
     while (at < tokens.length) {
       const t = tokens[at];
       if (!joinerAllowed(t, joiner, allowOr)) return undefined;
       joiner = t[1];
-      r = inParens(tokens, at + 1, env);
+      const r = inParens(tokens, at + 1, env);
       if (!r) return undefined;
       value = joiner === "and" ? value && r[0] : value || r[0];
       at = r[1];
     }
     return value;
+  };
+  const condition = (tokens, env, allowOr) => {
+    if (tokens.length === 0) return undefined;
+    if (tokens[0][0] === "i" && tokens[0][1] === "not") return notCondition(tokens, env);
+    const r = inParens(tokens, 0, env);
+    if (!r) return undefined;
+    return conditionJoin(tokens, env, allowOr, r[0], r[1]);
   };
   const MEDIA_TYPES = { __proto__: null, all: true, screen: true, print: false, tty: false, tv: false, projection: false, handheld: false, braille: false, embossed: false, aural: false, speech: false };
   const conditionFirst = (tokens) =>
@@ -653,20 +697,23 @@
     if (rest === undefined) return undefined;
     return value && rest;
   };
+  const mediaQueryPrefix = (tokens) => {
+    if (tokens[0][0] === "i" && (tokens[0][1] === "not" || tokens[0][1] === "only"))
+      return { negate: tokens[0][1] === "not", at: 1 };
+    return { negate: false, at: 0 };
+  };
   const mediaQuery = (tokens, env) => {
     if (tokens.length === 0) return undefined;
     if (conditionFirst(tokens)) return condition(tokens, env, true);
-    let at = 0, negate = false;
-    if (tokens[0][0] === "i" && (tokens[0][1] === "not" || tokens[0][1] === "only")) { negate = tokens[0][1] === "not"; at = 1; }
-    const type = tokens[at];
+    const prefix = mediaQueryPrefix(tokens);
+    const type = tokens[prefix.at];
     if (invalidMediaType(type)) return undefined;
     let value = MEDIA_TYPES[type[1]] === true;
-    at++;
-    if (at < tokens.length) {
-      value = mediaQueryTail(tokens, env, at, value);
+    if (prefix.at + 1 < tokens.length) {
+      value = mediaQueryTail(tokens, env, prefix.at + 1, value);
       if (value === undefined) return undefined;
     }
-    return negate ? !value : value;
+    return prefix.negate ? !value : value;
   };
   const splitCommas = (tokens) => {
     const groups = [[]];
@@ -740,7 +787,7 @@
   // deduplicated (the first of equal densities; the src candidate dropped when any w
   // descriptor is present), then the first density at or above the device pixel ratio, else
   // the densest.
-  const pick = (candidates, size, dpr, src) => {
+  const buildDensityList = (candidates, size, src) => {
     let ignoreSrc = false;
     const list = [];
     for (const c of candidates) {
@@ -751,12 +798,20 @@
     }
     if (src !== null) list[list.length] = { url: src, density: 1, src: true };
     apply(arraySort, list, [(a, b) => (a.density < b.density ? -1 : a.density > b.density ? 1 : 0)]);
+    return { list, ignoreSrc };
+  };
+  const deduplicateList = (list, ignoreSrc) => {
     const unique = [];
     let previous = -1;
     for (const c of list) {
       if (c.density !== previous && (!ignoreSrc || !c.src)) unique[unique.length] = c;
       previous = c.density;
     }
+    return unique;
+  };
+  const pick = (candidates, size, dpr, src) => {
+    const built = buildDensityList(candidates, size, src);
+    const unique = deduplicateList(built.list, built.ignoreSrc);
     if (unique.length === 0) return null;
     for (let i = 0; i < unique.length; i++) if (unique[i].density >= dpr) return unique[i];
     return unique[unique.length - 1];
@@ -764,21 +819,34 @@
   // Parsed against the image's document base URL (<base href>, else the document URL).
   const resolve = (image, url) => resolveNative(image, url);
   // The first <source> before the image in its <picture> that yields a candidate, or null.
+  const trySource = (child, image, env) => {
+    const srcset = apply(getAttribute, child, ["srcset"]);
+    if (srcset === null) return null;
+    const candidates = parseSrcset(srcset);
+    if (candidates.length === 0) return null;
+    const media = apply(getAttribute, child, ["media"]);
+    if (media !== null && !mediaMatches(media, env)) return null;
+    const type = apply(getAttribute, child, ["type"]);
+    if (type !== null && !typeSupported(type)) return null;
+    const chosen = pick(candidates, sourceSize(apply(getAttribute, child, ["sizes"]), env), env.dpr, null);
+    return chosen ? { url: resolve(image, chosen.url), density: chosen.density } : null;
+  };
   const pictureSource = (image, parent, env) => {
     for (let child = apply(firstChildOf, parent, []); child && child !== image; child = apply(nextSiblingOf, child, [])) {
       if (!isHTML(child, "source")) continue;
-      const srcset = apply(getAttribute, child, ["srcset"]);
-      if (srcset === null) continue;
-      const candidates = parseSrcset(srcset);
-      if (candidates.length === 0) continue;
-      const media = apply(getAttribute, child, ["media"]);
-      if (media !== null && !mediaMatches(media, env)) continue;
-      const type = apply(getAttribute, child, ["type"]);
-      if (type !== null && !typeSupported(type)) continue;
-      const chosen = pick(candidates, sourceSize(apply(getAttribute, child, ["sizes"]), env), env.dpr, null);
-      if (chosen) return { url: resolve(image, chosen.url), density: chosen.density };
+      const result = trySource(child, image, env);
+      if (result) return result;
     }
     return null;
+  };
+  const selectFromSrcset = (image, env) => {
+    const srcset = apply(getAttribute, image, ["srcset"]);
+    const src = apply(getAttribute, image, ["src"]);
+    const source = src === null || src === "" ? null : src;
+    const candidates = srcset === null ? [] : parseSrcset(srcset);
+    if (candidates.length === 0) return source === null ? null : { url: resolve(image, source), density: 1 };
+    const chosen = pick(candidates, sourceSize(apply(getAttribute, image, ["sizes"]), env), env.dpr, source);
+    return chosen ? { url: resolve(image, chosen.url), density: chosen.density } : null;
   };
   const select = (image, overrides) => {
     const env = environment(overrides);
@@ -787,14 +855,7 @@
       const chosen = pictureSource(image, parent, env);
       if (chosen) return chosen;
     }
-    const srcset = apply(getAttribute, image, ["srcset"]);
-    const src = apply(getAttribute, image, ["src"]);
-    const source = src === null || src === "" ? null : src;
-    const candidates = srcset === null ? [] : parseSrcset(srcset);
-    if (candidates.length === 0) return source === null ? null : { url: resolve(image, source), density: 1 };
-    const chosen = pick(candidates, sourceSize(apply(getAttribute, image, ["sizes"]), env), env.dpr, source);
-    if (!chosen) return null;
-    return { url: resolve(image, chosen.url), density: chosen.density };
+    return selectFromSrcset(image, env);
   };
   // The natural size of a w x h resource selected at `density` (Blink: the size scaled by the
   // float reciprocal of the density, floored).
@@ -866,20 +927,25 @@
     const number = NumberValue(value) >>> 0;
     return number > 2147483647 ? 0 : number;
   };
+  const factoryArgCount = (args) => {
+    let count = args.length;
+    while (count > 0 && args[count - 1] === undefined) count--;
+    return count;
+  };
+  const factorySetPrototype = (image, target) => {
+    const prototype = getProperty(target, "prototype");
+    const usable = prototype !== null && (typeof prototype === "object" || typeof prototype === "function");
+    if (!usable) setPrototypeOf(image, objectPrototype);
+    else if (prototype !== P) setPrototypeOf(image, prototype);
+  };
   const ImageFactory = make(
     class {
       constructor(width, height) {
-        let count = arguments.length;
-        while (count > 0 && arguments[count - 1] === undefined) count--;
-        const w = count > 0 ? dimension(width) : undefined;
-        const h = count > 1 ? dimension(height) : undefined;
+        const count = factoryArgCount(arguments);
         const image = apply(createElement, realmDocument, ["img"]);
-        if (w !== undefined) apply(setAttribute, image, ["width", StringValue(w)]);
-        if (h !== undefined) apply(setAttribute, image, ["height", StringValue(h)]);
-        const prototype = getProperty(new.target, "prototype");
-        const usable = prototype !== null && (typeof prototype === "object" || typeof prototype === "function");
-        if (!usable) setPrototypeOf(image, objectPrototype);
-        else if (prototype !== P) setPrototypeOf(image, prototype);
+        if (count > 0) apply(setAttribute, image, ["width", StringValue(dimension(width))]);
+        if (count > 1) apply(setAttribute, image, ["height", StringValue(dimension(height))]);
+        factorySetPrototype(image, new.target);
         return image;
       }
     },

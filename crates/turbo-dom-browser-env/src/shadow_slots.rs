@@ -220,6 +220,38 @@ pub(super) fn composed_children<'s>(
             .collect(),
     )
 }
+fn shadow_host_of(handle: Handle) -> Option<Handle> {
+    with_tree(|tree| {
+        tree.is_shadow_root(handle)
+            .then(|| tree.shadow_host(handle))
+    })
+    .flatten()
+    .flatten()
+}
+
+fn is_slotted_child(parent: Handle) -> Option<bool> {
+    with_tree(|tree| slot(tree, parent) && root(tree, parent).is_some())
+}
+
+fn resolve_parent<'s>(
+    scope: &mut v8::ContextScope<'s, v8::PinScope<'s, '_>>,
+    node: v8::Local<'s, v8::Object>,
+    handle: Handle,
+) -> Option<v8::Local<'s, v8::Object>> {
+    if let Some(host) = shadow_host_of(handle) {
+        return Some(wrap(scope, host));
+    }
+    let parent = with_tree(|tree| tree.parent(handle)).flatten()?;
+    if with_tree(|tree| tree.shadow_root(parent).is_some())? {
+        return assigned_slot(scope, node);
+    }
+    if is_slotted_child(parent)? && !assigned(scope, parent).is_empty() {
+        return None;
+    }
+    let parent = with_tree(|tree| tree.shadow_host(parent).unwrap_or(parent))?;
+    Some(wrap(scope, parent))
+}
+
 pub(super) fn composed_parent<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
@@ -231,26 +263,7 @@ pub(super) fn composed_parent<'s>(
     let handle = handle_of(scope, node)?;
     let context = node.get_creation_context(scope)?;
     let scope = &mut v8::ContextScope::new(scope, context);
-    if let Some(host) = with_tree(|tree| {
-        tree.is_shadow_root(handle)
-            .then(|| tree.shadow_host(handle))
-    })
-    .flatten()
-    .flatten()
-    {
-        return Some(wrap(scope, host));
-    }
-    let parent = with_tree(|tree| tree.parent(handle)).flatten()?;
-    if with_tree(|tree| tree.shadow_root(parent).is_some())? {
-        return assigned_slot(scope, node);
-    }
-    if with_tree(|tree| slot(tree, parent) && root(tree, parent).is_some())?
-        && !assigned(scope, parent).is_empty()
-    {
-        return None;
-    }
-    let parent = with_tree(|tree| tree.shadow_host(parent).unwrap_or(parent))?;
-    Some(wrap(scope, parent))
+    resolve_parent(scope, node, handle)
 }
 pub(super) fn configure(scope: &mut v8::PinScope, root: v8::Local<v8::Object>, manual: bool) {
     let private = key(scope, "manual");

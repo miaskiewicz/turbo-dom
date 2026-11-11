@@ -57,17 +57,20 @@
   };
 
   // Brand checks on every accessor and operation with a foreign receiver.
-  out.brands = {};
-  for (const name of names) {
-    const prototype = globalThis[name].prototype;
-    for (const key of Object.getOwnPropertyNames(prototype)) {
-      if (key === "constructor") continue;
-      const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
-      if (descriptor.get) out.brands[`${name}.get ${key}`] = attempt(() => descriptor.get.call({}));
-      if (descriptor.set) out.brands[`${name}.set ${key}`] = attempt(() => descriptor.set.call({}, null));
-      if (typeof descriptor.value === "function") out.brands[`${name}.${key}`] = attempt(() => descriptor.value.call({}));
+  const probeBrands = (result, classNames) => {
+    for (const name of classNames) {
+      const prototype = globalThis[name].prototype;
+      for (const key of Object.getOwnPropertyNames(prototype)) {
+        if (key === "constructor") continue;
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+        if (descriptor.get) result[`${name}.get ${key}`] = attempt(() => descriptor.get.call({}));
+        if (descriptor.set) result[`${name}.set ${key}`] = attempt(() => descriptor.set.call({}, null));
+        if (typeof descriptor.value === "function") result[`${name}.${key}`] = attempt(() => descriptor.value.call({}));
+      }
     }
-  }
+  };
+  out.brands = {};
+  probeBrands(out.brands, names);
   out.brands.animate = attempt(() => Element.prototype.animate.call(document, null));
   out.brands.elementGetAnimations = attempt(() => Element.prototype.getAnimations.call(document));
   out.brands.documentGetAnimations = attempt(() => Document.prototype.getAnimations.call(t));

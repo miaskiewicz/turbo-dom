@@ -51,18 +51,23 @@
   define(g.HTMLButtonElement.prototype, 'type', function () { button(this); const type = buttonType(this); return type === 'auto' ? 'button' : type; }, function (value) { button(this); call(setAttribute, this, 'type', string(value)); });
 
   const records = new WeakMap(), read = records.get.bind(records), store = records.set.bind(records);
-  const Delegate = function (type, init) {
-    if (!new.target) throw new TypeError('CommandEvent requires new');
-    if (!arguments.length) throw new TypeError('CommandEvent requires 1 argument');
-    const convertedType = string(type);
+  const coerceDict = (init) => {
     if (init != null && typeof init !== 'object' && typeof init !== 'function') throw new TypeError('CommandEventInit must be a dictionary');
-    init = init == null ? {} : init;
-    const eventInit = { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed };
+    return init == null ? {} : init;
+  };
+  const parseCommandEventInit = (raw) => {
+    const init = coerceDict(raw);
     const commandValue = init.command, command = commandValue === undefined ? '' : string(commandValue);
     const sourceValue = init.source, source = sourceValue === undefined || sourceValue === null ? null : sourceValue;
     if (source !== null && !element(source)) throw new TypeError('CommandEvent source must be an Element');
-    const event = construct(Event, [convertedType, eventInit], new.target);
-    store(event, { source, command });
+    return { bubbles: !!init.bubbles, cancelable: !!init.cancelable, composed: !!init.composed, command, source };
+  };
+  const Delegate = function (type, init) {
+    if (!new.target) throw new TypeError('CommandEvent requires new');
+    if (!arguments.length) throw new TypeError('CommandEvent requires 1 argument');
+    const parsed = parseCommandEventInit(init);
+    const event = construct(Event, [string(type), { bubbles: parsed.bubbles, cancelable: parsed.cancelable, composed: parsed.composed }], new.target);
+    store(event, { source: parsed.source, command: parsed.command });
     return event;
   };
   Object.setPrototypeOf(Delegate.prototype, Event.prototype);
@@ -111,16 +116,21 @@
     popoverTargetActivation(node, eventTarget);
   }
   // A valid command: fire `command` at the target, then run the built-in command's steps.
-  function commandActivation(node, target, command) {
-    const event = new CommandEvent('command', { cancelable: true, composed: true, command, source: node });
-    if (!Native('dispatch', target, event) || !call(connected, target) || sliceText(command, 0, 2) === '--') return;
-    if (command === 'toggle-popover' || command === 'show-popover' || command === 'hide-popover') {
+  const popoverCommandSet = { 'toggle-popover': true, 'show-popover': true, 'hide-popover': true };
+  function runBuiltinCommand(target, command, node) {
+    if (popoverCommandSet[command]) {
       if (call(namespace, target) === HTML && call(popoverOf, target) !== null) Native('popover', target, sliceText(command, 0, -8), node);
     } else if (html(target, 'dialog')) dialogSteps(target, command, node);
   }
+  function commandActivation(node, target, command) {
+    const event = new CommandEvent('command', { cancelable: true, composed: true, command, source: node });
+    if (!Native('dispatch', target, event) || !call(connected, target) || sliceText(command, 0, 2) === '--') return;
+    runBuiltinCommand(target, command, node);
+  }
+  const inputActivationTypes = { 'button': true, 'reset': true, 'submit': true, 'image': true };
   function inputActivation(node, eventTarget) {
     const type = lower(attr(node, 'type') || '');
-    if (type !== 'button' && type !== 'reset' && type !== 'submit' && type !== 'image') return;
+    if (!inputActivationTypes[type]) return;
     if (disabled(node)) return;
     const form = call(inputFormOf, node);
     if (form !== null && type !== 'button') { if (type === 'reset') call(reset, form); return; }
@@ -135,12 +145,14 @@
   // Only a MouseEvent `click` has an activation target (isTrusted is irrelevant): the target
   // itself, or for bubbling events its nearest ancestor with activation behavior, crossing
   // shadow roots only when the event is composed.
+  const walkParent = (node, composed) => { const parent = call(parentNode, node); return parent && call(nodeType, parent) === 11 ? (composed ? shadowHost(parent) : null) : parent; };
   g.__captureActivationTarget = function (event, target) {
     try { call(mouseButton, event); } catch (_) { return null; }
-    let node = target;
-    if (activates(node)) return node;
+    if (activates(target)) return target;
     if (!call(bubblesOf, event)) return null;
-    do { const parent = call(parentNode, node); node = parent && call(nodeType, parent) === 11 ? (call(composedOf, event) ? shadowHost(parent) : null) : parent; } while (node && !activates(node));
+    const composed = call(composedOf, event);
+    let node = target;
+    do { node = walkParent(node, composed); } while (node && !activates(node));
     return node || null;
   };
   const labelPrototype = g.HTMLLabelElement.prototype, focus = g.HTMLElement.prototype.focus;
@@ -148,15 +160,14 @@
   const firstChild = accessor(g.Node.prototype, 'firstChild'), nextSibling = accessor(g.Node.prototype, 'nextSibling');
   // https://html.spec.whatwg.org/#interactive-content between the event target and its label.
   const alwaysInteractive = name => name === 'button' || name === 'details' || name === 'embed' || name === 'iframe' || name === 'label' || name === 'select' || name === 'textarea';
+  const interactiveAttrCheck = { 'a': 'href', 'audio': 'controls', 'video': 'controls', 'img': 'usemap' };
   const interactive = node => {
     if (!element(node) || call(namespace, node) !== HTML) return false;
     const name = call(localName, node);
     if (alwaysInteractive(name)) return true;
-    if (name === 'a') return call(hasAttribute, node, 'href');
     if (name === 'input') return lower(attr(node, 'type') || '') !== 'hidden';
-    if (name === 'audio' || name === 'video') return call(hasAttribute, node, 'controls');
-    if (name === 'img') return call(hasAttribute, node, 'usemap');
-    return false;
+    const needed = interactiveAttrCheck[name];
+    return needed ? call(hasAttribute, node, needed) : false;
   };
   // Chrome's label activation: focus the labeled control and fire a synthetic click at it,
   // trusted exactly when the activating click was.

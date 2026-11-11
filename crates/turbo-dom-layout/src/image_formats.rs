@@ -227,38 +227,40 @@ fn jpeg_segment(bytes: &[u8], at: usize) -> Option<(u8, &[u8], usize)> {
 
 /// A JPEG's size point: the end of the first start-of-scan (`SOS`) header after a frame
 /// header (libjpeg's `jpeg_read_header`). Every marker segment before it must be whole.
+fn jpeg_skip_fill(bytes: &[u8], mut at: usize) -> usize {
+    while bytes.get(at) == Some(&0xFF) && bytes.get(at + 1) == Some(&0xFF) {
+        at += 1;
+    }
+    at
+}
+
+fn jpeg_next_marker(bytes: &[u8], at: usize) -> Option<(u8, usize)> {
+    let &marker = bytes.get(at + 1).filter(|_| bytes.get(at) == Some(&0xFF))?;
+    if marker == 0x01 || (0xD0..=0xD7).contains(&marker) {
+        return Some((marker, at + 2));
+    }
+    if marker == 0xD8 || marker == 0xD9 {
+        return None;
+    }
+    let len = be_usize(bytes, at + 2, 2).filter(|&len| len >= 2)?;
+    let end = at + 2 + len;
+    (end <= bytes.len()).then_some((marker, end))
+}
+
 pub(super) fn jpeg_size_available(bytes: &[u8]) -> bool {
-    let mut at = 2; // past SOI
+    let mut at = 2;
     let mut frame = false;
     loop {
-        // Fill bytes (`FF FF …`) may precede a marker.
-        while bytes.get(at) == Some(&0xFF) && bytes.get(at + 1) == Some(&0xFF) {
-            at += 1;
-        }
-        let Some(&marker) = bytes.get(at + 1).filter(|_| bytes.get(at) == Some(&0xFF)) else {
+        at = jpeg_skip_fill(bytes, at);
+        let Some((marker, next)) = jpeg_next_marker(bytes, at) else {
             return false;
         };
-        // Standalone markers carry no length.
-        if marker == 0x01 || (0xD0..=0xD7).contains(&marker) {
-            at += 2;
-            continue;
-        }
-        if marker == 0xD8 || marker == 0xD9 {
-            return false;
-        }
-        let Some(len) = be_usize(bytes, at + 2, 2).filter(|&len| len >= 2) else {
-            return false;
-        };
-        let end = at + 2 + len;
-        if end > bytes.len() {
-            return false;
-        }
         match marker {
             0xC0..=0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF => frame = true,
             0xDA => return frame,
             _ => {}
         }
-        at = end;
+        at = next;
     }
 }
 

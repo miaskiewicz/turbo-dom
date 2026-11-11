@@ -254,6 +254,37 @@ fn owner(scope: &mut v8::PinScope, focused: Handle) -> Option<(Handle, Group)> {
         }
     }
 }
+fn arrow_index(
+    key: &str,
+    vertical: bool,
+    rtl: bool,
+    block_reversed: bool,
+    group: &FocusGroup,
+    index: usize,
+    len: usize,
+) -> Option<usize> {
+    let (inline, forward) = match (key, vertical) {
+        ("ArrowRight", false) => (true, !rtl),
+        ("ArrowLeft", false) => (true, rtl),
+        ("ArrowDown", false) => (false, true),
+        ("ArrowUp", false) => (false, false),
+        ("ArrowDown", true) => (true, !rtl),
+        ("ArrowUp", true) => (true, rtl),
+        ("ArrowLeft", true) => (false, block_reversed),
+        _ => (false, !block_reversed),
+    };
+    if (inline && !group.inline) || (!inline && !group.block) {
+        return None;
+    }
+    Some(match (forward, index) {
+        (true, index) if index + 1 < len => index + 1,
+        (true, _) if group.wrap => 0,
+        (false, 0) if group.wrap => len - 1,
+        (false, index) if index > 0 => index - 1,
+        _ => return None,
+    })
+}
+
 /// The next item for `key`, given the focused item's computed `writing-mode`.
 fn navigate(scope: &mut v8::PinScope, key: &str, mode: &str) -> Option<Handle> {
     let focused = focused()?;
@@ -272,31 +303,7 @@ fn navigate(scope: &mut v8::PinScope, key: &str, mode: &str) -> Option<Handle> {
     let next = match key {
         "Home" => 0,
         "End" => items.len() - 1,
-        // An arrow: focus_group.js navigates only the four arrows, Home and End.
-        _ => {
-            // (inline?, forward?) for each arrow in this writing mode.
-            let (inline, forward) = match (key, vertical) {
-                ("ArrowRight", false) => (true, !rtl),
-                ("ArrowLeft", false) => (true, rtl),
-                ("ArrowDown", false) => (false, true),
-                ("ArrowUp", false) => (false, false),
-                ("ArrowDown", true) => (true, !rtl),
-                ("ArrowUp", true) => (true, rtl),
-                ("ArrowLeft", true) => (false, block_reversed),
-                // ArrowRight in a vertical writing mode.
-                _ => (false, !block_reversed),
-            };
-            if (inline && !group.inline) || (!inline && !group.block) {
-                return None;
-            }
-            match (forward, index) {
-                (true, index) if index + 1 < items.len() => index + 1,
-                (true, _) if group.wrap => 0,
-                (false, 0) if group.wrap => items.len() - 1,
-                (false, index) if index > 0 => index - 1,
-                _ => return None,
-            }
-        }
+        _ => arrow_index(key, vertical, rtl, block_reversed, &group, index, items.len())?
     };
     (items[next] != focused).then_some(items[next])
 }

@@ -78,6 +78,13 @@
   // `fromCloseWatcher`: a close request (Esc) or light dismiss, whose `close` event Chrome
   // dispatches once the input event's processing ends, before already-queued toggle tasks
   // (a microtask here); close() and the other callers queue it as a task.
+  function restorePreviousFocus(node, state, wasModal) {
+    const previous = state.previous;
+    if (previous !== null) {
+      state.previous = null;
+      if ((Native('focus-within', node) || wasModal) && connected(previous)) apply(focus, previous, []);
+    }
+  }
   function close(node, result, source, fromCloseWatcher) {
     const state = record(node);
     if (!open(node) || state.closing) return;
@@ -92,15 +99,9 @@
       Native('closed', node);
       if (result !== null) state.returnValue = result;
       state.requestValue = null; state.requestSource = null;
-      const previous = state.previous;
-      if (previous !== null) {
-        state.previous = null;
-        if ((Native('focus-within', node) || wasModal) && connected(previous)) apply(focus, previous, []);
-      }
+      restorePreviousFocus(node, state, wasModal);
       const fire = () => dispatch(node, new EventType('close', { __proto__: null }));
       Native(fromCloseWatcher ? 'microtask' : 'schedule', node, fire);
-      // Focus fixup: focus left inside the closed (no longer rendered) dialog moves to the
-      // body once the update runs, after the queued toggle and close tasks.
       Native('schedule', node, () => {
         if (!open(node) && Native('focus-within', node)) apply(blur, Native('focused', node), []);
       });

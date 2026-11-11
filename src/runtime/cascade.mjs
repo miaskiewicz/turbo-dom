@@ -85,6 +85,16 @@ function parseDecls(text, into) {
 
 // Brace-depth scan: emit only depth-1 rules whose selector isn't an at-rule; the
 // bodies of @media/@keyframes (nested braces) are skipped wholesale.
+function parseStylesheetStep(css, j, i, order, rules) {
+  if (css[j] === ';') return { order: order + 1, i: j + 1 };
+  if (css[j] === '}') return { order, i: j + 1 };
+  const sel = css.slice(i, j).trim();
+  const k = blockEnd(css, j + 1);
+  if (sel && sel[0] !== '@') order = pushRules(sel, parseDecls(css.slice(j + 1, k - 1)), order, rules);
+  else order++;
+  return { order, i: k };
+}
+
 function parseStylesheet(css, startOrder, rules) {
   css = css.replace(/\/\*[\s\S]*?\*\//g, '');
   let order = startOrder, i = 0;
@@ -93,18 +103,8 @@ function parseStylesheet(css, startOrder, rules) {
     let j = i;
     while (j < n && css[j] !== '{' && css[j] !== '}' && css[j] !== ';') j++;
     if (j >= n) break;
-    // A `;` outside any block terminates a statement at-rule (@import/@charset/
-    // @namespace) or a stray semicolon — it has no block, so skip just the statement
-    // and keep scanning. Without this the statement is glued onto the following
-    // selector and (starting with `@`) drags that whole rule into the skip. Mirrors
-    // rtdom cascade::parse_stylesheet.
-    if (css[j] === ';') { order++; i = j + 1; continue; }
-    if (css[j] === '}') { i = j + 1; continue; }
-    const sel = css.slice(i, j).trim();
-    const k = blockEnd(css, j + 1);
-    if (sel && sel[0] !== '@') order = pushRules(sel, parseDecls(css.slice(j + 1, k - 1)), order, rules);
-    else order++;
-    i = k;
+    const step = parseStylesheetStep(css, j, i, order, rules);
+    order = step.order; i = step.i;
   }
   return order;
 }
@@ -217,23 +217,26 @@ function applyMatched(matched, out) {
   for (const r of matched) for (const [k, val] of r.decls) out.set(k, val);
 }
 
-function lookup(map, prop) {
+function resolveValue(map, prop) {
   let v = map.get(prop);
   if (v === undefined) {
     const sh = SHORTHAND_OF[prop];
     if (sh) { const s = map.get(sh); if (s !== undefined && !/\s/.test(s.trim())) v = s; }
   }
-  if (v === undefined) return '';
-  // px-normalize a bare `0` for length properties (browsers report `0px`)
+  return v;
+}
+
+function formatValue(v, prop) {
   if (v === '0' && LENGTH_PROPS.has(prop)) return '0px';
-  // font-family: browsers serialize the list with ", " regardless of source spacing
-  // (emotion minifies to "a",b,c). Scoped to font-family so we don't rewrite commas
-  // inside rgb()/cubic-bezier() values, which browsers leave compact.
   if (prop === 'font-family') return v.replace(/\s*,\s*/g, ', ');
-  // <color> properties: browsers serialize computed colors to rgb()/rgba() —
-  // names, hex, hsl all canonicalize (includeNamed=true). Unrecognized → passthrough.
   if (COLOR_PROPS.has(prop)) { const c = canonicalizeColor(v, true); if (c) return c; }
   return v;
+}
+
+function lookup(map, prop) {
+  const v = resolveValue(map, prop);
+  if (v === undefined) return '';
+  return formatValue(v, prop);
 }
 
 function makeProxy(map, v) {
@@ -275,6 +278,19 @@ function inheritFrom(map, ps) {
   }
 }
 
+function resolveCascade(el, doc, v, gcs) {
+  const map = new Map();
+  const matched = [];
+  collectMatched(el, getIndex(styleScope(doc, el), v), 'normal', matched);
+  if (doc.__hasShadow) collectShadowMatched(el, v, matched);
+  applyMatched(matched, map);
+  const inline = el.getAttribute && el.getAttribute('style');
+  if (inline) parseDecls(inline, map);
+  const parent = flattenedParent(el);
+  if (parent) inheritFrom(map, gcs(parent));
+  return map;
+}
+
 // getComputedStyle(el): resolves cascade, memoized per element on the current
 // Document.__version (any style/DOM mutation bumps it → cache auto-invalidates).
 export function makeGetComputedStyle() {
@@ -285,29 +301,7 @@ export function makeGetComputedStyle() {
     const cached = el.__computedStyle;
     if (cached && cached.__v === v) return cached;
 
-    const map = new Map();
-    if (!doc) { const p = makeProxy(map, v); el.__computedStyle = p; return p; }
-
-    const matched = [];
-    collectMatched(el, getIndex(styleScope(doc, el), v), 'normal', matched);
-    if (doc.__hasShadow) collectShadowMatched(el, v, matched);
-    applyMatched(matched, map);
-
-    // inline style wins over stylesheet rules
-    const inline = el.getAttribute && el.getAttribute('style');
-    if (inline) parseDecls(inline, map);
-
-    // Inheritance: an element inherits unset inheritable props from its flattened
-    // parent (DOM parent, hopping shadow-root→host at the boundary). This carries
-    // "CSS globals" (a rule on html/body/:root) down the tree AND propagates into
-    // shadow content. Honest partial: only the curated INHERITED set inherits, only
-    // from values a REAL rule/inline actually set (pv truthy) — never an initial
-    // value. Recursion is memoized per element/version and terminates at the root
-    // (flattenedParent → null). Test-time only; hot paths never call gcs. The
-    // flattened-parent hop crosses the host boundary for shadow content.
-    const parent = flattenedParent(el);
-    if (parent) inheritFrom(map, gcs(parent));
-
+    const map = doc ? resolveCascade(el, doc, v, gcs) : new Map();
     const proxy = makeProxy(map, v);
     el.__computedStyle = proxy;
     return proxy;

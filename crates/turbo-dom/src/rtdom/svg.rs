@@ -90,16 +90,18 @@ fn consume_digits_svg(bytes: &[u8], i: &mut usize, mut saw: bool) -> bool {
 }
 
 fn try_consume_svg_exponent(bytes: &[u8], i: &mut usize) {
-    let n = bytes.len();
-    if *i >= n || (bytes[*i] != b'e' && bytes[*i] != b'E') {
+    if *i >= bytes.len() {
+        return;
+    }
+    if !matches!(bytes[*i], b'e' | b'E') {
         return;
     }
     let mut j = *i + 1;
-    if j < n && (bytes[j] == b'+' || bytes[j] == b'-') {
+    if j < bytes.len() && matches!(bytes[j], b'+' | b'-') {
         j += 1;
     }
     let exp_start = j;
-    while j < n && bytes[j].is_ascii_digit() {
+    while j < bytes.len() && bytes[j].is_ascii_digit() {
         j += 1;
     }
     if j > exp_start {

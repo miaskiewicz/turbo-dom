@@ -86,32 +86,15 @@ fn caret_candidate(
     }))
 }
 
-pub fn caret(
+fn find_best_caret_run(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
     offsets: &BTreeMap<SourceId, [f64; 2]>,
     point: [f64; 2],
-) -> Result<Option<(SourceId, usize, Rect)>, String> {
-    let elements = super::hit::elements_at_point(snapshot, styles, offsets, point)?;
-    let Some(&owner) = elements.first() else {
-        return Ok(None);
-    };
-    if styles.get(&owner).is_some_and(|style| style.tag == "svg") {
-        return Err("native SVG caret hit testing is unsupported".into());
-    }
-    // Chrome descends from the hit element with untransformed layout positions
-    // (miaskiewicz/turbo-dom#127): every run is placed by the hit element's own
-    // transform, not by a transform between the element and the run.
-    let owner_matrix = snapshot.source(owner).and_then(|source| {
-        source
-            .fragment_indices
-            .iter()
-            .find_map(|&index| snapshot.native_hit_transform(snapshot.fragments()[index].index))
-    });
+    owner: SourceId,
+    owner_matrix: Option<[f64; 6]>,
+) -> Result<Option<Candidate>, String> {
     let mut best = None;
-    // No glyph budget here: a snapshot captures at most 1,000,000 clusters in all its
-    // runs (`layout_snapshot::text::TextCapture::record`, else the snapshot fails with
-    // its text budget error), and one glyph per cluster.
     for run in snapshot.text_runs() {
         if let Some(candidate) =
             caret_candidate(snapshot, styles, offsets, point, owner, owner_matrix, run)?
@@ -124,26 +107,21 @@ pub fn caret(
             }
         }
     }
-    let Some(Candidate {
+    Ok(best)
+}
+
+fn caret_at_best_run(
+    snapshot: &LayoutSnapshot,
+    point: [f64; 2],
+    owner_matrix: Option<[f64; 6]>,
+    candidate: Candidate,
+) -> Result<(SourceId, usize, Rect), String> {
+    let Candidate {
         source,
         translation,
         matrix: run_matrix,
         ..
-    }) = best
-    else {
-        // An element without text takes the caret itself, at offset 0 with an empty
-        // rect, like Chrome 156 (miaskiewicz/turbo-dom#127).
-        return Ok(Some((
-            owner,
-            0,
-            Rect {
-                x: 0.0,
-                y: 0.0,
-                width: 0.0,
-                height: 0.0,
-            },
-        )));
-    };
+    } = candidate;
     let world = [
         point[0] + f64::from(translation[0]),
         point[1] + f64::from(translation[1]),
@@ -171,7 +149,7 @@ pub fn caret(
             a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1]))
         })
         .ok_or("native caret edge is unplaced")?;
-    Ok(Some((
+    Ok((
         source,
         offset,
         Rect {
@@ -179,10 +157,37 @@ pub fn caret(
             y: rect.y - translation[1],
             ..rect
         },
-    )))
+    ))
+}
+
+pub fn caret(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<Option<(SourceId, usize, Rect)>, String> {
+    let elements = super::hit::elements_at_point(snapshot, styles, offsets, point)?;
+    let Some(&owner) = elements.first() else {
+        return Ok(None);
+    };
+    if styles.get(&owner).is_some_and(|style| style.tag == "svg") {
+        return Err("native SVG caret hit testing is unsupported".into());
+    }
+    let owner_matrix = snapshot.source(owner).and_then(|source| {
+        source
+            .fragment_indices
+            .iter()
+            .find_map(|&index| snapshot.native_hit_transform(snapshot.fragments()[index].index))
+    });
+    let best = find_best_caret_run(snapshot, styles, offsets, point, owner, owner_matrix)?;
+    let Some(candidate) = best else {
+        return Ok(Some((owner, 0, Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 })));
+    };
+    Ok(Some(caret_at_best_run(snapshot, point, owner_matrix, candidate)?))
 }
 
 /// A text run the caret may land in, ranked by [`Candidate::before`].
+#[derive(Clone, Copy)]
 struct Candidate {
     source: SourceId,
     /// The run's line lies wholly above the point.
@@ -284,6 +289,19 @@ mod tests {
     /// block's first line).
     const GAPS: &[[f64; 2]] = &[[50.0, 85.0], [40.0, 105.0], [5.0, 13.0]];
 
+    fn caret_matches_chrome(
+        got: Option<(SourceId, usize, Rect)>,
+        expected: (SourceId, usize),
+        chrome: [f32; 4],
+    ) -> bool {
+        matches!(got, Some((source, offset, r))
+            if (source, offset) == expected
+                && close(r.x, chrome[0])
+                && close(r.y, chrome[1])
+                && close(r.width, chrome[2])
+                && close(r.height, chrome[3]))
+    }
+
     fn caret_failures(id: &str, select: impl Fn([f64; 2]) -> bool) -> Vec<String> {
         let case = case(id);
         let offsets = case.offsets();
@@ -296,7 +314,6 @@ mod tests {
             }
             compared += 1;
             if want.get("cid").is_none() {
-                // Chrome: no caret (the point hits nothing).
                 let got = caret(&case.snapshot, &case.styles, &offsets, point).unwrap();
                 if got.is_some() {
                     failures.push(format!("{point:?}: {got:?}, Chrome null"));
@@ -309,14 +326,8 @@ mod tests {
                 chrome_node(&case, want),
                 want["offset"].as_u64().unwrap() as usize,
             );
-            match got {
-                Some((source, offset, r))
-                    if (source, offset) == expected
-                        && close(r.x, chrome[0])
-                        && close(r.y, chrome[1])
-                        && close(r.width, chrome[2])
-                        && close(r.height, chrome[3]) => {}
-                got => failures.push(format!("{point:?}: {got:?}, Chrome {want}")),
+            if !caret_matches_chrome(got, expected, chrome) {
+                failures.push(format!("{point:?}: {got:?}, Chrome {want}"));
             }
         }
         assert!(compared > 0);

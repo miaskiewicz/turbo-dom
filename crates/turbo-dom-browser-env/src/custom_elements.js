@@ -109,16 +109,9 @@
   ]);
   const codeUnit = String.prototype.charCodeAt;
   // Upper-case ASCII, NUL, whitespace, "/" and ">" never appear in a valid name.
+  const forbiddenCodes = new Set([0, 9, 10, 12, 13, 32, 47, 62]);
   const forbiddenCode = (c) =>
-    (c >= 65 && c <= 90) ||
-    c === 0 ||
-    c === 9 ||
-    c === 10 ||
-    c === 12 ||
-    c === 13 ||
-    c === 32 ||
-    c === 47 ||
-    c === 62;
+    (c >= 65 && c <= 90) || apply(setHas, forbiddenCodes, [c]);
   const valid = (name) => {
     if (!name.length) return false;
     const first = apply(codeUnit, name, [0]);
@@ -196,26 +189,35 @@
         : selected,
     );
   }
+  function resolveGlobal(associated) {
+    return associated && state(associated).global ? false : associated;
+  }
+  function nextAncestor(cursor) {
+    return (
+      read(parentNode, cursor) ||
+      (kind(cursor) === 11 && read(isShadowRoot, cursor) ? read(shadowHost, cursor) : null)
+    );
+  }
   function associationFor(node) {
     let cursor = node;
     while (cursor) {
       const associated = wget(associations, cursor);
       if (associated !== undefined) {
-        return kind(cursor) === 9 && associated && state(associated).global ? false : associated;
+        return kind(cursor) === 9 ? resolveGlobal(associated) : associated;
       }
-      cursor =
-        read(parentNode, cursor) ||
-        (kind(cursor) === 11 && read(isShadowRoot, cursor) ? read(shadowHost, cursor) : null);
+      cursor = nextAncestor(cursor);
     }
-    const associated = wget(associations, documentOf(node));
-    return associated && state(associated).global ? false : (associated ?? false);
+    return resolveGlobal(wget(associations, documentOf(node))) ?? false;
   }
   function registryFor(node) {
     const associated = associationFor(node);
     return associated === false ? (wget(associations, documentOf(node)) ?? null) : associated;
   }
+  function canLookupDefinition(node, selected) {
+    return kind(node) === 1 && read(namespace, node) === htmlNamespace && selected && nativeActive(selected);
+  }
   function definitionFor(node, selected) {
-    if (kind(node) !== 1 || read(namespace, node) !== htmlNamespace || !selected || !nativeActive(selected)) return;
+    if (!canLookupDefinition(node, selected)) return;
     const record = state(selected),
       tag = read(local, node),
       is = nativePrivate(node) ?? apply(getAttribute, node, ["is"]);
@@ -266,76 +268,72 @@
     if (record.connected) callback(node, record, "connectedCallback", []);
     if (updateInternals) updateInternals();
   }
-  function visit(node, selected, connect) {
-    if (kind(node) !== 1) return;
-    let record = wget(elementStates, node);
-    // Insertion tries to upgrade connected elements only (turbo-dom#42).
-    if (!record && !(connect && !read(connected, node))) {
-      const definition = definitionFor(node, selected);
-      if (definition) {
-        upgraded(node, definition);
-        return;
-      }
-    }
-    if (!record || record.status !== "custom") return;
+  function visitAdopted(node, record) {
     const next = documentOf(node);
     if (record.owner !== next) {
       const old = record.owner;
       record.owner = next;
       callback(node, record, "adoptedCallback", [old, next]);
     }
-    if (connect) {
-      const nextConnected = read(connected, node);
-      if (nextConnected !== record.connected) {
-        record.connected = nextConnected;
-        callback(node, record, nextConnected ? "connectedCallback" : "disconnectedCallback", []);
-      }
+  }
+  function visitConnected(node, record) {
+    const nextConnected = read(connected, node);
+    if (nextConnected !== record.connected) {
+      record.connected = nextConnected;
+      callback(node, record, nextConnected ? "connectedCallback" : "disconnectedCallback", []);
     }
   }
-  function mutation(event) {
-    if (event.type === "move") {
-      walk(event.target, (node) => {
-        const record = wget(elementStates, node);
-        if (record && record.status === "custom" && record.connected && read(connected, node)) {
-          nativeReact(node, undefined, []);
-          if (record.definition.callbacks.connectedMoveCallback) {
-            record.moving = true;
-            callback(node, record, "connectedMoveCallback", []);
-          }
+  function visit(node, selected, connect) {
+    if (kind(node) !== 1) return;
+    let record = wget(elementStates, node);
+    if (!record && !(connect && !read(connected, node))) {
+      const definition = definitionFor(node, selected);
+      if (definition) { upgraded(node, definition); return; }
+    }
+    if (!record || record.status !== "custom") return;
+    visitAdopted(node, record);
+    if (connect) visitConnected(node, record);
+  }
+  function mutationMove(event) {
+    walk(event.target, (node) => {
+      const record = wget(elementStates, node);
+      if (record && record.status === "custom" && record.connected && read(connected, node)) {
+        nativeReact(node, undefined, []);
+        if (record.definition.callbacks.connectedMoveCallback) {
+          record.moving = true;
+          callback(node, record, "connectedMoveCallback", []);
         }
+      }
+    });
+  }
+  function mutationParsed(event) {
+    for (let i = 0; i < event.nodes.length; i++)
+      walk(event.nodes[i], (node) => {
+        if (kind(node) !== 1 || wget(elementStates, node)) return;
+        const definition = definitionFor(node, registryFor(node));
+        if (definition) upgraded(node, definition);
       });
-      return;
-    }
-    if (event.type === "adoption") {
-      walk(event.target, (node) => visit(node, null, false));
-      return;
-    }
-    if (event.type === "parsed") {
-      // The fragment parser creates its elements (queueing their upgrades) before
-      // innerHTML / outerHTML / setHTMLUnsafe remove the old children (turbo-dom#43).
-      for (let i = 0; i < event.nodes.length; i++)
-        walk(event.nodes[i], (node) => {
-          if (kind(node) !== 1 || wget(elementStates, node)) return;
-          const definition = definitionFor(node, registryFor(node));
-          if (definition) upgraded(node, definition);
-        });
-      return;
-    }
-    if (event.type === "attributes") {
-      const node = event.target,
-        record = wget(elementStates, node);
-      if (
-        record &&
-        record.status === "custom" &&
-        includes(record.definition.observed, event.attributeName)
-      )
-        callback(node, record, "attributeChangedCallback", [
-          event.attributeName,
-          event.oldValue,
-          apply(getAttributeNS, node, [event.attributeNamespace, event.attributeName]),
-          event.attributeNamespace,
-        ]);
-      return;
+  }
+  function mutationAttributes(event) {
+    const node = event.target,
+      record = wget(elementStates, node);
+    if (
+      record &&
+      record.status === "custom" &&
+      includes(record.definition.observed, event.attributeName)
+    )
+      callback(node, record, "attributeChangedCallback", [
+        event.attributeName,
+        event.oldValue,
+        apply(getAttributeNS, node, [event.attributeNamespace, event.attributeName]),
+        event.attributeNamespace,
+      ]);
+  }
+  function mutation(event) {
+    if (event.type === "move") { mutationMove(event); return; }
+    if (event.type === "adoption") { walk(event.target, (node) => visit(node, null, false)); return; }
+    if (event.type === "parsed") { mutationParsed(event); return; }
+    if (event.type === "attributes") { mutationAttributes(event); return;
     }
     if (event.type !== "childList") return;
     for (let i = 0; i < event.removedNodes.length; i++)
@@ -725,26 +723,14 @@
     } catch {}
     return valid;
   }
-  function creation(node, options) {
-    let selected = options.selected === undefined ? registryFor(node) : options.selected,
-      is = options.is;
+  function checkForeignGlobal(selected, node) {
     if (selected && state(selected).global && selected !== wget(associations, documentOf(node)))
       throw new Exception(
         "A foreign global registry cannot create elements in this document",
         "NotSupportedError",
       );
-    if (is !== undefined) {
-      nativePrivate(node, is);
-      // an `is` value makes the element "undefined" until a definition upgrades it
-      nativeState(node, "undefined");
-    }
-    associate(node, selected, options.selected === undefined && associationFor(node) === false);
-    const definition = definitionFor(node, selected);
-    if (!definition) return node;
-    if (definition.name !== definition.local) {
-      upgraded(node, definition);
-      return node;
-    }
+  }
+  function constructAndValidate(node, definition, selected) {
     let custom;
     try {
       custom = constructCustom(node, definition, selected);
@@ -755,13 +741,24 @@
       return failedCreation(
         node,
         definition,
-        new Exception(
-          "The custom element constructor produced an invalid element",
-          "NotSupportedError",
-        ),
+        new Exception("The custom element constructor produced an invalid element", "NotSupportedError"),
       );
     associate(custom, selected);
     return custom;
+  }
+  function creation(node, options) {
+    let selected = options.selected === undefined ? registryFor(node) : options.selected,
+      is = options.is;
+    checkForeignGlobal(selected, node);
+    if (is !== undefined) {
+      nativePrivate(node, is);
+      nativeState(node, "undefined");
+    }
+    associate(node, selected, options.selected === undefined && associationFor(node) === false);
+    const definition = definitionFor(node, selected);
+    if (!definition) return node;
+    if (definition.name !== definition.local) { upgraded(node, definition); return node; }
+    return constructAndValidate(node, definition, selected);
   }
   define(Document.prototype, "createElement", {
     value: make(
@@ -836,25 +833,29 @@
       );
     return rawTarget === undefined || rawTarget === null ? null : StringValue(rawTarget);
   }
+  function parseShadowInit(raw) {
+    if (raw === null || (typeof raw !== "object" && typeof raw !== "function"))
+      throw new TypeErrorValue("Invalid options");
+    let selected = raw.customElementRegistry;
+    if (selected !== undefined && selected !== null) state(selected);
+    const rawAssignment = raw.slotAssignment;
+    return {
+      clonable: !!raw.clonable,
+      selected,
+      delegatesFocus: !!raw.delegatesFocus,
+      mode: shadowRootMode(raw.mode),
+      referenceTarget: shadowReferenceTarget(raw.referenceTarget),
+      serializable: !!raw.serializable,
+      slotAssignment: rawAssignment === undefined ? "named" : string(rawAssignment),
+    };
+  }
   define(Element.prototype, "attachShadow", {
     value: make(
       function (raw) {
         if (kind(this) !== 1) throw new TypeErrorValue("Illegal invocation");
-        if (raw === null || (typeof raw !== "object" && typeof raw !== "function"))
-          throw new TypeErrorValue("Invalid options");
-        const clonable = !!raw.clonable;
-        let selected = raw.customElementRegistry;
-        if (selected !== undefined && selected !== null) state(selected);
-        const delegatesFocus = !!raw.delegatesFocus,
-          rawMode = raw.mode;
-        const mode = shadowRootMode(rawMode);
-        const referenceTarget = shadowReferenceTarget(raw.referenceTarget),
-          serializable = !!raw.serializable,
-          rawAssignment = raw.slotAssignment,
-          slotAssignment = rawAssignment === undefined ? "named" : string(rawAssignment);
-        const shadow = apply(attach, this, [
-          { clonable, delegatesFocus, mode, referenceTarget, serializable, slotAssignment },
-        ]);
+        const init = parseShadowInit(raw);
+        const shadow = apply(attach, this, [init]);
+        let selected = init.selected;
         if (selected === undefined) selected = registryFor(this);
         associate(shadow, selected);
         if (selected) push(state(selected).roots, new WeakRefValue(shadow));
