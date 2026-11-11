@@ -85,6 +85,19 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 - **Resource discovery** (works on the parsed document, never on source text):
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
+- **Capture resource planning:** `capture_resources(html, css, viewport, &metadata, &options)`
+  returns sorted `pixel_urls` and deterministic `fragments_examined`. `ImageMetadata`
+  maps resolver keys to `turbo_dom_layout::image::Intrinsic` headers; retain these
+  independently of image bodies and set `options.image_metadata = Some(&metadata)`
+  when painting only selected bodies. Layout uses the same inputs and viewport as
+  screenshots. Unknown headers are always selected because their intrinsic sizes
+  can change layout. Positioned descendants are visited independently of ancestor
+  bounds; transforms, shadows and filters conservatively keep resources. Selection
+  ignores clipping and occlusion, so the result may contain extra URLs. No image
+  bytes or references are retained by the returned plan. Recompute after changing
+  markup, CSS, viewport, metadata, fonts or live IDL inputs.
+  Run the scalable offline correctness/timing harness with
+  `cargo run -p turbo-dom-raster --example capture_resources -- 1000`.
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`

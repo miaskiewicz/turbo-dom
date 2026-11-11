@@ -22,6 +22,8 @@
 
 mod avif;
 mod canvas_content;
+mod capture_resources;
+pub use capture_resources::{capture_resources, CaptureResources, ImageMetadata};
 mod canvas_ops;
 mod capture_geometry;
 #[cfg(test)]
@@ -295,6 +297,8 @@ pub fn screenshot_svg_with_opts(
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
 pub struct ScreenshotOptions<'a> {
+    /// Intrinsic headers retained independently of fetched pixel bytes.
+    pub image_metadata: Option<&'a ImageMetadata>,
     /// Paint the full content height instead of the viewport height (see
     /// [`screenshot_png_with_assets`]).
     pub full_page: bool,
@@ -357,6 +361,7 @@ pub fn screenshot_png_with_options(
     options: &ScreenshotOptions,
 ) -> Result<Vec<u8>, String> {
     let mut decoded = image_paint::decode_all(images);
+    capture_resources::add_metadata(&mut decoded, options.image_metadata);
     // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
     // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
@@ -378,6 +383,7 @@ pub fn screenshot_svg_with_options(
     options: &ScreenshotOptions,
 ) -> Result<String, String> {
     let mut decoded = image_paint::decode_all(images);
+    capture_resources::add_metadata(&mut decoded, options.image_metadata);
     image_paint::add_data_uri_images(&mut decoded, external_css, html);
     let tree = parse_document(html, &mut decoded, options);
     let galley = options
