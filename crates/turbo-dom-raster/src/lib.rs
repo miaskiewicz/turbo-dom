@@ -404,7 +404,10 @@ pub(crate) fn screenshot_pixel_size(
     }
     let axis = |n| (f64::from(n) * f64::from(scale)).ceil() as u32;
     let size = (axis(width), axis(height));
-    if size.0 == 0 || size.1 == 0 || canvas_too_large(size.0, size.1) {
+    if size.0 == 0 || size.1 == 0 {
+        return Err(format!("bad canvas {}x{}", size.0, size.1));
+    }
+    if canvas_too_large(size.0, size.1) {
         return Err("scaled screenshot exceeds the canvas size limit".into());
     }
     Ok(size)
