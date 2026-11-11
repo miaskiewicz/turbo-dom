@@ -227,3 +227,40 @@ exception is canvas `measureText`, which measures with turbo-dom-layout's text s
 [CHANGELOG](../../CHANGELOG.md)
 
 License: MIT.
+
+### Replacing a live document's contents
+
+`replace_document_content(scope, document, utf16)` is an additive host handoff for
+`Page.setContent`. It preserves the existing Window, document wrapper, detached
+old nodes, document listeners, URL, compatibility mode and installed host policies.
+It synchronously parses and replaces the document's children, then returns script
+nodes in parser order. No authored script executes inside the call.
+
+```rust,ignore
+let scripts = replace_document_content(scope, document, &html.encode_utf16().collect::<Vec<_>>())?;
+for node in scripts {
+    if let Some(script) = prepare_script(scope, node) {
+        // Apply the same CSP checks and module/external/inline scheduling as
+        // the initial document load, including parser-blocking order.
+        page_loader.enqueue(script);
+    }
+}
+// Resolve setContent only when page_loader reaches the requested load state.
+```
+
+The call's return means DOM replacement has completed, not that resources have
+loaded. The embedder must invalidate its layout/resource captures, update its
+ready-state tracking, execute admitted scripts through its existing loader, and
+emit DOMContentLoaded/load as that loader completes. `prepare_script` retains its
+one-shot admission semantics, parser-inserted flags, UTF-16 source, nonce and
+external/module metadata. Inline-handler authorization stays installed and is
+applied to the new attributes. Host script policy still belongs to the loader.
+
+This API replaces contents, not the full browser document-stream algorithm:
+ordinary guest `document.open/write/close` remains unsupported, compatibility mode
+is retained, document listeners are preserved, and parser insertion from nested
+`document.write` is not implemented. Embedders should call this host API directly
+for content replacement instead of evaluating those stub methods or reopening a
+PageSession. In particular turbo-surf must thread the returned scripts into its
+existing parser/CSP/resource scheduler and use that scheduler's completion signal;
+merely calling the replacement function cannot satisfy a load-state wait.

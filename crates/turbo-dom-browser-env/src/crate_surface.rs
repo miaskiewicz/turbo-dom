@@ -345,3 +345,76 @@ pub(super) fn expose_test_namespace(scope: &mut v8::PinScope) {
     let key = v8::String::new(scope, "__testNs").unwrap();
     global.set(scope, key.into(), namespace.into());
 }
+
+/// Replace the contents of a live HTML document without replacing its Window,
+/// native document identity, host policies, or existing document listeners.
+///
+/// This is the host handoff for `setContent`: parsing and DOM replacement finish
+/// synchronously; no authored script runs here. The returned nodes are in parser
+/// order, with fresh parser-inserted flags. Feed them through [`prepare_script`]
+/// and the embedder's existing CSP/module/resource scheduler. The embedder owns
+/// ready-state transitions and DOMContentLoaded/load completion, as on initial
+/// install. This does not implement the guest document.open/write/close stream.
+/// Detached old nodes remain usable. The document's URL and compatibility mode
+/// remain unchanged. Only live HTML browsing-context documents are accepted.
+pub fn replace_document_content<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<'s, v8::Object>,
+    units: &[u16],
+) -> Result<Vec<v8::Local<'s, v8::Object>>, &'static str> {
+    let owner = DomScope::for_object(scope, document);
+    let root = handle_of(scope, document).ok_or("Illegal invocation")?;
+    let valid = DOM.with(|dom| {
+        dom.borrow()
+            .as_ref()
+            .is_some_and(|state| state.tree.node_type_id(root) == 9 && state.browsing_context)
+    });
+    if !valid || dom_implementation::is_xml_document(scope, document) {
+        return Err("A browsing-context document is required");
+    }
+    let parsed = parse_html_document_units(scope, units, false);
+    let children = {
+        let _parsed = DomScope::for_object(scope, parsed);
+        let parsed_root = handle_of(scope, parsed).ok_or("Document tree unavailable")?;
+        with_tree(|tree| tree.children(parsed_root))
+            .unwrap_or_default()
+            .into_iter()
+            .map(|node| wrap(scope, node))
+            .collect::<Vec<_>>()
+    };
+    let mut incoming = Vec::with_capacity(children.len());
+    for child in children {
+        incoming.push(dom_mutations::Incoming::Node(import_document_node(
+            scope, document, child, true,
+        )?));
+    }
+    let remove = with_tree(|tree| tree.children(root)).unwrap_or_default();
+    if !dom_mutations::insert_inputs(scope, root, &incoming, None, &remove) {
+        return Err("Document replacement failed");
+    }
+    let scripts = DOM.with(|dom| {
+        let mut dom = dom.borrow_mut();
+        let state = dom.as_mut().unwrap();
+        let scripts = script_state::parse_order(&state.tree);
+        state.scripts.extend(script_state::initial(&state.tree));
+        state.parser_scripts = scripts.clone();
+        scripts
+    });
+    let attrs = with_tree(|tree| {
+        tree.query_selector_all("*")
+            .iter()
+            .copied()
+            .flat_map(|node| {
+                tree.attributes(node)
+                    .into_iter()
+                    .filter(|(name, _)| name.starts_with("on"))
+                    .map(move |(name, _)| (node, name.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+    for (node, name) in attrs {
+        event_handlers::record_set_phase(scope, node, &name);
+    }
+    Ok(scripts.into_iter().map(|node| wrap(scope, node)).collect())
+}
