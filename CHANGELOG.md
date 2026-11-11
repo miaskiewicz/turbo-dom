@@ -5,6 +5,22 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.3] — 2026-11-11
+
+Complexity ceiling drop: every function in the repo is now cc <= 9 (was cc <= 15).
+
+- **Complexity refactor (#379, #462, #463, #464)**: cyclomatic-complexity ceiling dropped from
+  cc <= 15 to cc <= 9 repo-wide. All 354 JS violations (browser-env: 339, src/runtime: 15) and
+  all Rust violations across turbo-dom, turbo-dom-layout, turbo-dom-raster and
+  turbo-dom-browser-env refactored to cc <= 9. CI config (`.oxlintrc.complexity.json`,
+  `package.json`, `ci.yml`) updated; both `complexity / rust` and `complexity / js` jobs now
+  gate at cc <= 9.
+- **browser-env (correctness)**: `AbortSignal.timeout`/`.any` polyfill moved to its own
+  `run_js` call so a missing `AbortSignal` no longer silently kills the entire init script
+  (#488).
+- **browser-env (test)**: `drainMicrotasksAcrossDispatch` now covers the `record.target` restore
+  path (#487).
+
 ## [0.8.2] — 2026-11-09
 
 Follow-up release addressing issues surfaced during the v0.8.1 R1-R4 adversarial reviews.
