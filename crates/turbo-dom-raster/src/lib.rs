@@ -296,7 +296,7 @@ pub fn screenshot_svg_with_opts(
 /// page, its stylesheets and its images. Start from [`ScreenshotOptions::default`] (every
 /// switch off, nothing supplied) and set the fields you need; new fields are added with a
 /// default that keeps today's render.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct ScreenshotOptions<'a> {
     /// Intrinsic headers retained independently of fetched pixel bytes.
@@ -306,6 +306,8 @@ pub struct ScreenshotOptions<'a> {
     pub full_page: bool,
     /// Leave unauthored canvas pixels transparent, retaining authored backgrounds.
     pub omit_background: bool,
+    /// Output pixels per CSS pixel, independent of the layout viewport. Default: 1.
+    pub device_scale: f32,
     /// Resolve fonts against the installed system fonts too (see
     /// [`screenshot_png_with_opts`]).
     pub system_fonts: bool,
@@ -342,6 +344,21 @@ pub struct IdlStates {
     pub indeterminate_inputs: HashSet<usize>,
 }
 
+impl Default for ScreenshotOptions<'_> {
+    fn default() -> Self {
+        Self {
+            image_metadata: None,
+            full_page: false,
+            omit_background: false,
+            device_scale: 1.0,
+            system_fonts: false,
+            canvases: None,
+            fonts: None,
+            idl_states: None,
+        }
+    }
+}
+
 impl ScreenshotOptions<'_> {
     /// Lay out with the caller's [`fonts`](Self::fonts), else the bundled (or, with
     /// `system_fonts`, system) registry.
@@ -374,7 +391,23 @@ pub fn screenshot_svg_with_options(
     images: &ImageAssets,
     options: &ScreenshotOptions,
 ) -> Result<String, String> {
-    Ok(PreparedScreenshot::new(html, external_css, viewport, images, options).svg())
+    PreparedScreenshot::new(html, external_css, viewport, images, options).svg()
+}
+
+pub(crate) fn screenshot_pixel_size(
+    width: u32,
+    height: u32,
+    scale: f32,
+) -> Result<(u32, u32), String> {
+    if !scale.is_finite() || scale <= 0.0 {
+        return Err("screenshot device scale must be finite and positive".into());
+    }
+    let axis = |n| (f64::from(n) * f64::from(scale)).ceil() as u32;
+    let size = (axis(width), axis(height));
+    if size.0 == 0 || size.1 == 0 || canvas_too_large(size.0, size.1) {
+        return Err("scaled screenshot exceeds the canvas size limit".into());
+    }
+    Ok(size)
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every

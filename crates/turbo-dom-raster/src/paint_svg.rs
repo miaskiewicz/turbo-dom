@@ -34,11 +34,26 @@ pub fn paint(
     bg: Rgba,
     images: &DecodedAssets,
 ) -> String {
+    paint_at_size(galley, (width, height), (width, height), bg, images, 1.0)
+}
+
+pub(crate) fn paint_at_size(
+    galley: &Fragment,
+    css_size: (u32, u32),
+    pixel_size: (u32, u32),
+    bg: Rgba,
+    images: &DecodedAssets,
+    scale: f32,
+) -> String {
+    let (width, height) = css_size;
+    let (pixel_width, pixel_height) = pixel_size;
+    let view_width = f64::from(pixel_width) / f64::from(scale);
+    let view_height = f64::from(pixel_height) / f64::from(scale);
     let mut svg = String::with_capacity(4096);
     let _ = writeln!(
         svg,
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" \
-         viewBox=\"0 0 {width} {height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{pixel_width}\" height=\"{pixel_height}\" \
+         viewBox=\"0 0 {view_width} {view_height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
         fill_attrs(bg)
     );
     SHARED.with(|memo| memo.borrow_mut().take());

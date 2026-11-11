@@ -32,7 +32,7 @@ fn repeated_prepared_captures_preserve_pixels_without_preparing_again() {
         assert_eq!(scene.png().unwrap(), png);
     }
     assert_eq!(
-        scene.svg(),
+        scene.svg().unwrap(),
         screenshot_svg_with_options(&html, "", viewport, &assets, &options).unwrap()
     );
     let pixels = tiny_skia::Pixmap::decode_png(&png).unwrap();

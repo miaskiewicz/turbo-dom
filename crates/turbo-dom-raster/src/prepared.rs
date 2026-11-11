@@ -21,6 +21,7 @@ pub struct PreparedScreenshot {
     width: u32,
     height: u32,
     background: Rgba,
+    scale: f32,
 }
 
 impl PreparedScreenshot {
@@ -47,30 +48,33 @@ impl PreparedScreenshot {
             width: viewport.width,
             height,
             background,
+            scale: options.device_scale,
         }
     }
 
     /// Paint the retained layout to PNG without re-reading any preparation input.
     pub fn png(&self) -> Result<Vec<u8>, String> {
-        paint_png::paint(
+        paint_png::paint_scaled(
             &self.galley,
             self.width,
             self.height,
             self.background,
             &self.decoded,
+            self.scale,
         )
     }
 
     /// Paint the same retained layout to a standalone SVG.
-    #[must_use]
-    pub fn svg(&self) -> String {
-        paint_svg::paint(
+    pub fn svg(&self) -> Result<String, String> {
+        let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
+        Ok(paint_svg::paint_at_size(
             &self.galley,
-            self.width,
-            self.height,
+            (self.width, self.height),
+            pixels,
             self.background,
             &self.decoded,
-        )
+            self.scale,
+        ))
     }
 }
 

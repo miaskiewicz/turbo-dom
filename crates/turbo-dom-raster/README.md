@@ -62,6 +62,7 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 
     | field | type | effect |
     |---|---|---|
+    | `device_scale` | `f32` | output pixels per CSS pixel (default 1), without changing layout; fractional dimensions round outward; finite positive values only |
     | `omit_background` | `bool` | leave the initial canvas transparent; authored root/body backgrounds still paint |
     | `full_page` | `bool` | paint the full content height instead of the viewport |
     | `system_fonts` | `bool` | resolve against installed system fonts (`FontRegistry::system`) |
