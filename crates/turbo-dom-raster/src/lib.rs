@@ -23,6 +23,7 @@
 mod avif;
 mod canvas_content;
 mod canvas_ops;
+mod capture_geometry;
 #[cfg(test)]
 mod form_native_chrome_tests;
 mod glyph;
@@ -219,7 +220,10 @@ fn paint_height(galley: &Fragment, viewport: Viewport, full_page: bool) -> u32 {
     if !full_page {
         return viewport.height;
     }
-    let content = galley.bottom().ceil().max(1.0) as u32;
+    let content = capture_geometry::content_bottom(galley)
+        .max(viewport.height as f32)
+        .ceil()
+        .max(1.0) as u32;
     content.min(MAX_FULL_PAGE_HEIGHT)
 }
 

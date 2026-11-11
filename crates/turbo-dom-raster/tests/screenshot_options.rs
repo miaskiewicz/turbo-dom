@@ -37,3 +37,45 @@ fn omitted_canvas_preserves_author_backgrounds() {
         [255; 4]
     );
 }
+
+#[test]
+fn full_page_includes_positioned_overflow_and_viewport_minimum() {
+    let viewport = Viewport {
+        width: 100,
+        height: 80,
+    };
+    let images = ImageAssets::new();
+    let mut options = ScreenshotOptions::default();
+    options.full_page = true;
+    for (html, height) in [
+        ("<body style='margin:0'>", 80),
+        ("<body style='margin:0'><div style='width:20px;height:20px;background:red;transform:translateY(220px)'></div>", 240),
+        ("<body style='margin:0'><div style='height:20px;overflow:hidden'><div style='position:relative;top:220px;width:20px;height:20px;background:red'></div></div>", 80),
+        ("<body style='margin:0'><div style='position:absolute;top:220px;width:20px;height:20px;background:red;clip:rect(0,0,0,0)'></div>", 80),
+        ("<body style='margin:0'><div style='position:absolute;top:220px;width:20px;height:20px;background:red'></div>", 240),
+        ("<body style='margin:0'><div style='position:relative;top:220px;width:20px;height:20px;background:red'></div>", 240),
+    ] {
+        let png = screenshot_png_with_options(html, "", viewport, &images, &options).unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgba8();
+        assert_eq!(pixels.dimensions(), (100, height));
+        if height == 240 { assert_eq!(pixels.get_pixel(5,235).0, [255,0,0,255]); }
+        let svg = screenshot_svg_with_options(html, "", viewport, &images, &options).unwrap();
+        assert!(svg.contains(&format!("height=\"{height}\"")));
+    }
+}
+
+#[test]
+fn full_page_extent_retains_the_safety_cap_and_viewport_capture() {
+    let html = "<body style='margin:0'><div style='position:absolute;top:30000px;width:1px;height:20px;background:red'></div>";
+    let viewport = Viewport {
+        width: 1,
+        height: 80,
+    };
+    let mut options = ScreenshotOptions::default();
+    for (full_page, height) in [(false, 80), (true, 24_000)] {
+        options.full_page = full_page;
+        let png =
+            screenshot_png_with_options(html, "", viewport, &ImageAssets::new(), &options).unwrap();
+        assert_eq!(image::load_from_memory(&png).unwrap().height(), height);
+    }
+}
