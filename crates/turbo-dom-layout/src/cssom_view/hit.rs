@@ -208,7 +208,13 @@ fn collect_inline_ancestor_hits(
         {
             continue;
         }
-        if !hidden_by_clip(snapshot, styles, (&run.source_ancestors, None), offsets, point)? {
+        if !hidden_by_clip(
+            snapshot,
+            styles,
+            (&run.source_ancestors, None),
+            offsets,
+            point,
+        )? {
             seen.insert(*id);
             result.push(*id);
         }
@@ -380,9 +386,7 @@ pub fn clipped(
     point: [f64; 2],
 ) -> Result<bool, String> {
     for ancestor in ancestors {
-        if let Some(true) =
-            ancestor_overflow_clips(snapshot, styles, *ancestor, offsets, point)?
-        {
+        if let Some(true) = ancestor_overflow_clips(snapshot, styles, *ancestor, offsets, point)? {
             return Ok(true);
         }
     }

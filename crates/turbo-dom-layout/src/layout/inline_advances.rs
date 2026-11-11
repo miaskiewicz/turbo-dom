@@ -135,10 +135,7 @@ pub(super) fn prepare(words: &mut [Word], scale: f32) {
 // word's first segment are one run (same source and font): a run boundary is a shaping
 // boundary in Chrome too. Returns the `[last glyph, space, next first glyph]` deltas in
 // px, from shaping `"{last} {first}"` against each character alone (each one glyph).
-fn space_kerning_pair<'a>(
-    word: &'a Word,
-    next: &'a Word,
-) -> Option<(&'a Seg, char, char)> {
+fn space_kerning_pair<'a>(word: &'a Word, next: &'a Word) -> Option<(&'a Seg, char, char)> {
     let space = word.spaces.first().or(word.advance_space.as_ref())?;
     word.native_space?;
     let (last, first) = (word.segs.last()?, next.segs.first()?);

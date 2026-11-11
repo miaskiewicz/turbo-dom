@@ -189,50 +189,87 @@ pub(super) fn expand(grammar: &str, comps: &[Comp]) -> Option<Parsed> {
 
 fn expand_box_grammars(grammar: &str, comps: &[Comp]) -> Option<Vec<(&'static str, String)>> {
     match grammar {
-        "margin" => box4(comps, margin_v)
-            .map(|v| named(&["margin-top", "margin-right", "margin-bottom", "margin-left"], v)),
-        "padding" => box4(comps, padding_v).map(|v| {
+        "margin" => box4(comps, margin_v).map(|v| {
             named(
-                &["padding-top", "padding-right", "padding-bottom", "padding-left"],
+                &["margin-top", "margin-right", "margin-bottom", "margin-left"],
                 v,
             )
         }),
-        "inset" => {
-            box4(comps, margin_v).map(|v| named(&["top", "right", "bottom", "left"], v))
-        }
+        "padding" => box4(comps, padding_v).map(|v| {
+            named(
+                &[
+                    "padding-top",
+                    "padding-right",
+                    "padding-bottom",
+                    "padding-left",
+                ],
+                v,
+            )
+        }),
+        "inset" => box4(comps, margin_v).map(|v| named(&["top", "right", "bottom", "left"], v)),
         "scroll-margin" => box4(comps, scroll_margin_v).map(|v| {
             named(
-                &["scroll-margin-top", "scroll-margin-right", "scroll-margin-bottom", "scroll-margin-left"],
+                &[
+                    "scroll-margin-top",
+                    "scroll-margin-right",
+                    "scroll-margin-bottom",
+                    "scroll-margin-left",
+                ],
                 v,
             )
         }),
         "scroll-padding" => box4(comps, scroll_padding_v).map(|v| {
             named(
-                &["scroll-padding-top", "scroll-padding-right", "scroll-padding-bottom", "scroll-padding-left"],
+                &[
+                    "scroll-padding-top",
+                    "scroll-padding-right",
+                    "scroll-padding-bottom",
+                    "scroll-padding-left",
+                ],
                 v,
             )
         }),
         "border-width" => box4(comps, line_width).map(|v| {
             named(
-                &["border-top-width", "border-right-width", "border-bottom-width", "border-left-width"],
+                &[
+                    "border-top-width",
+                    "border-right-width",
+                    "border-bottom-width",
+                    "border-left-width",
+                ],
                 v,
             )
         }),
         "border-style" => box4(comps, line_style).map(|v| {
             named(
-                &["border-top-style", "border-right-style", "border-bottom-style", "border-left-style"],
+                &[
+                    "border-top-style",
+                    "border-right-style",
+                    "border-bottom-style",
+                    "border-left-style",
+                ],
                 v,
             )
         }),
         "border-color" => box4(comps, color).map(|v| {
             named(
-                &["border-top-color", "border-right-color", "border-bottom-color", "border-left-color"],
+                &[
+                    "border-top-color",
+                    "border-right-color",
+                    "border-bottom-color",
+                    "border-left-color",
+                ],
                 v,
             )
         }),
         "corner-shape" => box4(comps, corner_shape).map(|v| {
             named(
-                &["corner-top-left-shape", "corner-top-right-shape", "corner-bottom-right-shape", "corner-bottom-left-shape"],
+                &[
+                    "corner-top-left-shape",
+                    "corner-top-right-shape",
+                    "corner-bottom-right-shape",
+                    "corner-bottom-left-shape",
+                ],
                 v,
             )
         }),
@@ -267,12 +304,24 @@ fn expand_logical_pair_grammars(
         }
         "scroll-margin-block" => pair(comps, scroll_margin_v)
             .map(|v| named(&["scroll-margin-block-start", "scroll-margin-block-end"], v)),
-        "scroll-margin-inline" => pair(comps, scroll_margin_v)
-            .map(|v| named(&["scroll-margin-inline-start", "scroll-margin-inline-end"], v)),
-        "scroll-padding-block" => pair(comps, scroll_padding_v)
-            .map(|v| named(&["scroll-padding-block-start", "scroll-padding-block-end"], v)),
-        "scroll-padding-inline" => pair(comps, scroll_padding_v)
-            .map(|v| named(&["scroll-padding-inline-start", "scroll-padding-inline-end"], v)),
+        "scroll-margin-inline" => pair(comps, scroll_margin_v).map(|v| {
+            named(
+                &["scroll-margin-inline-start", "scroll-margin-inline-end"],
+                v,
+            )
+        }),
+        "scroll-padding-block" => pair(comps, scroll_padding_v).map(|v| {
+            named(
+                &["scroll-padding-block-start", "scroll-padding-block-end"],
+                v,
+            )
+        }),
+        "scroll-padding-inline" => pair(comps, scroll_padding_v).map(|v| {
+            named(
+                &["scroll-padding-inline-start", "scroll-padding-inline-end"],
+                v,
+            )
+        }),
         _ => None,
     }
 }
@@ -316,12 +365,16 @@ fn expand_logical_border_grammars_2(
             .map(|v| named(&["overscroll-behavior-x", "overscroll-behavior-y"], v)),
         "border-spacing" => pair(comps, spacing_v).map(|v| {
             named(
-                &["-webkit-border-horizontal-spacing", "-webkit-border-vertical-spacing"],
+                &[
+                    "-webkit-border-horizontal-spacing",
+                    "-webkit-border-vertical-spacing",
+                ],
                 v,
             )
         }),
-        "interest-delay" => pair(comps, delay_v)
-            .map(|v| named(&["interest-delay-start", "interest-delay-end"], v)),
+        "interest-delay" => {
+            pair(comps, delay_v).map(|v| named(&["interest-delay-start", "interest-delay-end"], v))
+        }
         _ => None,
     }
 }
@@ -335,8 +388,12 @@ fn expand_corner_shape_grammars(
             .map(|v| named(&["corner-top-left-shape", "corner-top-right-shape"], v)),
         "corner-right-shape" => pair(comps, corner_shape)
             .map(|v| named(&["corner-top-right-shape", "corner-bottom-right-shape"], v)),
-        "corner-bottom-shape" => pair(comps, corner_shape)
-            .map(|v| named(&["corner-bottom-left-shape", "corner-bottom-right-shape"], v)),
+        "corner-bottom-shape" => pair(comps, corner_shape).map(|v| {
+            named(
+                &["corner-bottom-left-shape", "corner-bottom-right-shape"],
+                v,
+            )
+        }),
         "corner-left-shape" => pair(comps, corner_shape)
             .map(|v| named(&["corner-top-left-shape", "corner-bottom-left-shape"], v)),
         "corner-block-start-shape" => pair(comps, corner_shape)
@@ -356,11 +413,18 @@ fn expand_rule_and_corner_grammars(
     comps: &[Comp],
 ) -> Option<Vec<(&'static str, String)>> {
     match grammar {
-        "column-rule-inset-cap" => pair(comps, rule_inset_v)
-            .map(|v| named(&["column-rule-inset-cap-start", "column-rule-inset-cap-end"], v)),
+        "column-rule-inset-cap" => pair(comps, rule_inset_v).map(|v| {
+            named(
+                &["column-rule-inset-cap-start", "column-rule-inset-cap-end"],
+                v,
+            )
+        }),
         "column-rule-inset-junction" => pair(comps, rule_inset_v).map(|v| {
             named(
-                &["column-rule-inset-junction-start", "column-rule-inset-junction-end"],
+                &[
+                    "column-rule-inset-junction-start",
+                    "column-rule-inset-junction-end",
+                ],
                 v,
             )
         }),
@@ -368,27 +432,43 @@ fn expand_rule_and_corner_grammars(
             .map(|v| named(&["row-rule-inset-cap-start", "row-rule-inset-cap-end"], v)),
         "row-rule-inset-junction" => pair(comps, rule_inset_v).map(|v| {
             named(
-                &["row-rule-inset-junction-start", "row-rule-inset-junction-end"],
+                &[
+                    "row-rule-inset-junction-start",
+                    "row-rule-inset-junction-end",
+                ],
                 v,
             )
         }),
         "column-rule-inset-start" => single(comps, rule_inset_v).map(|v| {
             same(
-                &["column-rule-inset-cap-start", "column-rule-inset-junction-start"],
+                &[
+                    "column-rule-inset-cap-start",
+                    "column-rule-inset-junction-start",
+                ],
                 &v,
             )
         }),
         "column-rule-inset-end" => single(comps, rule_inset_v).map(|v| {
             same(
-                &["column-rule-inset-cap-end", "column-rule-inset-junction-end"],
+                &[
+                    "column-rule-inset-cap-end",
+                    "column-rule-inset-junction-end",
+                ],
                 &v,
             )
         }),
         "row-rule-inset-start" => single(comps, rule_inset_v).map(|v| {
-            same(&["row-rule-inset-cap-start", "row-rule-inset-junction-start"], &v)
+            same(
+                &["row-rule-inset-cap-start", "row-rule-inset-junction-start"],
+                &v,
+            )
         }),
-        "row-rule-inset-end" => single(comps, rule_inset_v)
-            .map(|v| same(&["row-rule-inset-cap-end", "row-rule-inset-junction-end"], &v)),
+        "row-rule-inset-end" => single(comps, rule_inset_v).map(|v| {
+            same(
+                &["row-rule-inset-cap-end", "row-rule-inset-junction-end"],
+                &v,
+            )
+        }),
         _ => None,
     }
 }
@@ -436,8 +516,10 @@ fn expand_rule_inset_grammars_2(
         "rule-inset-start" => single(comps, rule_inset_v).map(|v| {
             same(
                 &[
-                    "column-rule-inset-cap-start", "column-rule-inset-junction-start",
-                    "row-rule-inset-cap-start", "row-rule-inset-junction-start",
+                    "column-rule-inset-cap-start",
+                    "column-rule-inset-junction-start",
+                    "row-rule-inset-cap-start",
+                    "row-rule-inset-junction-start",
                 ],
                 &v,
             )
@@ -445,14 +527,17 @@ fn expand_rule_inset_grammars_2(
         "rule-inset-end" => single(comps, rule_inset_v).map(|v| {
             same(
                 &[
-                    "column-rule-inset-cap-end", "column-rule-inset-junction-end",
-                    "row-rule-inset-cap-end", "row-rule-inset-junction-end",
+                    "column-rule-inset-cap-end",
+                    "column-rule-inset-junction-end",
+                    "row-rule-inset-cap-end",
+                    "row-rule-inset-junction-end",
                 ],
                 &v,
             )
         }),
-        "rule-break" => single(comps, rule_break_v)
-            .map(|v| same(&["column-rule-break", "row-rule-break"], &v)),
+        "rule-break" => {
+            single(comps, rule_break_v).map(|v| same(&["column-rule-break", "row-rule-break"], &v))
+        }
         "rule-color" => {
             single(comps, color).map(|v| same(&["column-rule-color", "row-rule-color"], &v))
         }
@@ -463,7 +548,10 @@ fn expand_rule_inset_grammars_2(
             single(comps, line_width).map(|v| same(&["column-rule-width", "row-rule-width"], &v))
         }
         "rule-visibility-items" => single(comps, rule_visibility_v).map(|v| {
-            same(&["column-rule-visibility-items", "row-rule-visibility-items"], &v)
+            same(
+                &["column-rule-visibility-items", "row-rule-visibility-items"],
+                &v,
+            )
         }),
         "marker" => {
             single(comps, marker_v).map(|v| same(&["marker-start", "marker-mid", "marker-end"], &v))
@@ -580,16 +668,17 @@ fn expand_composite_grammars_2b(
     comps: &[Comp],
 ) -> Option<Vec<(&'static str, String)>> {
     match grammar {
-        "outline" => any_order(comps, &[&one(color), &one(outline_style), &one(line_width)])
-            .map(|parsed| names_or_initial(&["outline-color", "outline-style", "outline-width"], parsed)),
-        "-webkit-text-stroke" => {
-            any_order(comps, &[&one(line_width), &one(color)]).map(|parsed| {
-                names_or_initial(
-                    &["-webkit-text-stroke-width", "-webkit-text-stroke-color"],
-                    parsed,
-                )
+        "outline" => {
+            any_order(comps, &[&one(color), &one(outline_style), &one(line_width)]).map(|parsed| {
+                names_or_initial(&["outline-color", "outline-style", "outline-width"], parsed)
             })
         }
+        "-webkit-text-stroke" => any_order(comps, &[&one(line_width), &one(color)]).map(|parsed| {
+            names_or_initial(
+                &["-webkit-text-stroke-width", "-webkit-text-stroke-color"],
+                parsed,
+            )
+        }),
         "text-decoration" => text_decoration(comps),
         "text-emphasis" => text_emphasis(comps),
         "flex-flow" => any_order(
@@ -660,18 +749,20 @@ fn expand_composite_grammars_3b(
 ) -> Option<Vec<(&'static str, String)>> {
     match grammar {
         "grid" => grid(comps),
-        "border-image" => border_image(comps, false).map(|[source, slice, width, outset, repeat]| {
-            let pick = |value: Option<String>, index: usize| {
-                value.unwrap_or_else(|| BORDER_IMAGE_INITIAL[index].to_string())
-            };
-            vec![
-                ("border-image-source", pick(source, 0)),
-                ("border-image-slice", pick(slice, 1)),
-                ("border-image-width", pick(width, 2)),
-                ("border-image-outset", pick(outset, 3)),
-                ("border-image-repeat", pick(repeat, 4)),
-            ]
-        }),
+        "border-image" => {
+            border_image(comps, false).map(|[source, slice, width, outset, repeat]| {
+                let pick = |value: Option<String>, index: usize| {
+                    value.unwrap_or_else(|| BORDER_IMAGE_INITIAL[index].to_string())
+                };
+                vec![
+                    ("border-image-source", pick(source, 0)),
+                    ("border-image-slice", pick(slice, 1)),
+                    ("border-image-width", pick(width, 2)),
+                    ("border-image-outset", pick(outset, 3)),
+                    ("border-image-repeat", pick(repeat, 4)),
+                ]
+            })
+        }
         "-webkit-mask-box-image" => border_image(comps, true).map(|parts| {
             let names = [
                 "-webkit-mask-box-image-source",
@@ -3410,10 +3501,7 @@ fn timeline_trigger(comps: &[Comp]) -> Option<Out> {
     timeline_trigger_item(comps)
 }
 
-fn timeline_trigger_ranges(
-    rest: &[Comp],
-    more: &mut [(&str, String)],
-) -> Option<()> {
+fn timeline_trigger_ranges(rest: &[Comp], more: &mut [(&str, String)]) -> Option<()> {
     let parts = slashes(rest);
     if !(parts[0].is_empty() && parts.len() == 2) {
         let activation = range_pair(

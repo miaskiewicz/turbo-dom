@@ -86,8 +86,7 @@ pub fn is_supported_property(name: &str) -> bool {
     if let Some(result) = webkit_prefix_override(name) {
         return result;
     }
-    !matches!(PropertyId::from(name), PropertyId::Custom(_))
-        || is_known_custom_property(name)
+    !matches!(PropertyId::from(name), PropertyId::Custom(_)) || is_known_custom_property(name)
 }
 
 // Lightning CSS does not model these CSSOM View / CSS Scroll Snap keyword
@@ -129,9 +128,7 @@ fn scroll_keyword_value(name: &str, value: &str) -> Option<String> {
     }
     match (name, words.as_slice()) {
         ("scroll-behavior", [word]) if ["auto", "smooth"].contains(word) => Some((*word).into()),
-        ("scroll-snap-stop", [word]) if ["normal", "always"].contains(word) => {
-            Some((*word).into())
-        }
+        ("scroll-snap-stop", [word]) if ["normal", "always"].contains(word) => Some((*word).into()),
         ("scroll-snap-type", ["none"]) => Some("none".into()),
         ("scroll-snap-type", [axis, rest @ ..])
             if ["x", "y", "block", "inline", "both"].contains(axis) =>
@@ -950,8 +947,8 @@ impl<'i> AtRuleParser<'i> for CssParser {
         if !at_rule_prelude_valid(&name, &prelude) {
             return Err(input.new_custom_error(()));
         }
-        let prelude = resolve_keyframes_prelude(&name, prelude)
-            .ok_or_else(|| input.new_custom_error(()))?;
+        let prelude =
+            resolve_keyframes_prelude(&name, prelude).ok_or_else(|| input.new_custom_error(()))?;
         let body = at_rule_body(&name, self.nested, input);
         Ok(format!("@{name} {prelude} {{ {body} }}"))
     }

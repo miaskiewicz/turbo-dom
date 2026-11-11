@@ -753,11 +753,7 @@ impl<Sink: TokenSink> Tokenizer<Sink> {
         }
     }
 
-    fn data_state_pop(
-        &self,
-        input: &BufferQueue,
-        set: SmallCharSet,
-    ) -> Option<SetResult> {
+    fn data_state_pop(&self, input: &BufferQueue, set: SmallCharSet) -> Option<SetResult> {
         if self.reconsume.get() || self.ignore_lf.get() {
             return self.pop_except_from(input, set);
         }

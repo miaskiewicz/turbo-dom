@@ -928,7 +928,11 @@ fn font_prefix_ok(v: &Values<'_>) -> bool {
 }
 
 fn non_normal(value: &str) -> &str {
-    if value == "normal" { "" } else { value }
+    if value == "normal" {
+        ""
+    } else {
+        value
+    }
 }
 
 fn font(v: &Values<'_>) -> String {

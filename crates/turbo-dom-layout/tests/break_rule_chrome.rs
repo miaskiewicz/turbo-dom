@@ -32,9 +32,11 @@ fn check_break_inside(prop: &str, kw: &str, chrome_supports: bool, held: &str) -
     let got_avoid = break_inside_avoid_of(&s) || break_inside_column_avoid_of(&s);
     let expected_avoid =
         chrome_supports && (kw == "avoid" || kw == "avoid-page" || kw == "avoid-column");
-    (got_avoid != expected_avoid).then(|| format!(
+    (got_avoid != expected_avoid).then(|| {
+        format!(
         "{prop}: {kw}: ours_avoid={got_avoid} expected_avoid={expected_avoid} chrome_held={held:?}"
-    ))
+    )
+    })
 }
 
 fn check_break_rule(prop: &str, kw: &str, chrome_supports: bool, held: &str) -> Option<String> {
@@ -42,18 +44,17 @@ fn check_break_rule(prop: &str, kw: &str, chrome_supports: bool, held: &str) -> 
     let got = break_rule_of(&s, prop);
     let got_is_auto = matches!(got, BreakRule::Auto);
     if !chrome_supports {
-        return (!got_is_auto).then(|| format!(
-            "{prop}: {kw}: Chrome rejects (held={held:?}) but break_rule_of returned {got:?}"
-        ));
+        return (!got_is_auto).then(|| {
+            format!(
+                "{prop}: {kw}: Chrome rejects (held={held:?}) but break_rule_of returned {got:?}"
+            )
+        });
     }
     if kw == "auto" {
-        return (!got_is_auto).then(|| format!(
-            "{prop}: auto: expected BreakRule::Auto, got {got:?}"
-        ));
+        return (!got_is_auto)
+            .then(|| format!("{prop}: auto: expected BreakRule::Auto, got {got:?}"));
     }
-    got_is_auto.then(|| format!(
-        "{prop}: {kw}: Chrome accepts but break_rule_of resolved to Auto"
-    ))
+    got_is_auto.then(|| format!("{prop}: {kw}: Chrome accepts but break_rule_of resolved to Auto"))
 }
 
 #[test]

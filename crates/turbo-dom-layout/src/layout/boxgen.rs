@@ -314,7 +314,8 @@ impl Containment {
     }
 
     fn contain_size(style: &ComputedStyle) -> bool {
-        Self::style_has(style, "contain", "size") || Self::style_has(style, "contain", "strict")
+        Self::style_has(style, "contain", "size")
+            || Self::style_has(style, "contain", "strict")
             || Self::style_has(style, "container-type", "size")
     }
 

@@ -796,7 +796,10 @@ fn class_arguments_body<'i>(
     out: &mut String,
     state: &mut State,
 ) -> Fallible<'i> {
-    let compound_ctx = Context { compound: true, ..nested };
+    let compound_ctx = Context {
+        compound: true,
+        ..nested
+    };
     match name {
         "is" | "where" => joined(out, list(input, nested, true, state)?),
         "not" | "has" => class_arg_not_or_has(input, name, context, nested, out, state)?,
@@ -824,7 +827,11 @@ fn class_arg_not_or_has<'i>(
         return fail(input);
     }
     let nested = if name == "has" {
-        Context { relative: true, in_has: true, ..nested }
+        Context {
+            relative: true,
+            in_has: true,
+            ..nested
+        }
     } else {
         nested
     };
@@ -930,7 +937,15 @@ fn element_arguments_body<'i>(
         ..Default::default()
     };
     match name {
-        "slotted" => complex(input, Context { compound: true, ..nested }, out, state)?,
+        "slotted" => complex(
+            input,
+            Context {
+                compound: true,
+                ..nested
+            },
+            out,
+            state,
+        )?,
         "cue" => joined(out, list(input, nested, false, state)?),
         "part" => element_arg_part(input, out)?,
         "highlight" => {

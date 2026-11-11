@@ -328,6 +328,13 @@ mod tests {
     }
 
     #[test]
+    fn unterminated_comment_treated_as_eof() {
+        let rules = parse_stylesheet(".a { color: red } /* unterminated");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].selector_text, ".a");
+    }
+
+    #[test]
     fn sheet_css_text_joins_with_newline() {
         let sheet = CssStyleSheet::from_css(".a{color:red} .b{color:blue}");
         let txt = sheet.css_text();

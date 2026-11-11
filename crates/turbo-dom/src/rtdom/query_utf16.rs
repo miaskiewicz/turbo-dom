@@ -421,7 +421,14 @@ fn balanced<'a>(source: &'a [u16], index: &mut usize, open: u16, close: u16) -> 
     let start = *index;
     let (mut depth, mut quote, mut escaped) = (1, 0, false);
     while *index < source.len() {
-        if balanced_step(source[*index], open, close, &mut depth, &mut quote, &mut escaped) {
+        if balanced_step(
+            source[*index],
+            open,
+            close,
+            &mut depth,
+            &mut quote,
+            &mut escaped,
+        ) {
             break;
         }
         *index += 1;

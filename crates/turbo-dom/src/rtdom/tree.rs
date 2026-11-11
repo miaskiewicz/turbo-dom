@@ -2488,11 +2488,8 @@ impl Tree {
         }
         self.mutation_log = log;
         if self.is_recording() && !kids.is_empty() {
-            let rec = crate::rtdom::mutations::MutationRecord::child_list(
-                n,
-                Vec::new(),
-                kids.clone(),
-            );
+            let rec =
+                crate::rtdom::mutations::MutationRecord::child_list(n, Vec::new(), kids.clone());
             self.record_event(rec, None, None, None);
         }
         flat.extend(kids);

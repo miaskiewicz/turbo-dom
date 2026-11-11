@@ -3628,15 +3628,21 @@ fn replaced_image_box(
     let (intrinsic, loaded) =
         super::imgsize::replaced_intrinsic(ctx.images.resolver, src, &lb.style)?;
     if !loaded && src.media == super::boxgen::Media::Viewport {
-        return Some(media_viewport_fragment(lb, bs, bx, by, cb_width, &intrinsic, ctx));
+        return Some(media_viewport_fragment(
+            lb, bs, bx, by, cb_width, &intrinsic, ctx,
+        ));
     }
     let intrinsic = logical_intrinsic(intrinsic, ctx);
     let sizing = size_ctx(bs, cb_width, ctx);
     if ctx.live_geometry {
-        return Some(replaced_live_fragment(lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx));
+        return Some(replaced_live_fragment(
+            lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx,
+        ));
     }
     if src.media == super::boxgen::Media::Canvas {
-        return Some(replaced_canvas_fragment(lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx));
+        return Some(replaced_canvas_fragment(
+            lb, bs, bx, by, &src.name, intrinsic, &sizing, loaded, ctx,
+        ));
     }
     let mut sized = size_replaced(src.name.clone(), intrinsic, &sizing);
     physical_placement(&mut sized.placement, ctx);

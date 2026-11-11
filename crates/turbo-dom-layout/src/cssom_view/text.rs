@@ -181,9 +181,23 @@ pub fn caret(
     });
     let best = find_best_caret_run(snapshot, styles, offsets, point, owner, owner_matrix)?;
     let Some(candidate) = best else {
-        return Ok(Some((owner, 0, Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 })));
+        return Ok(Some((
+            owner,
+            0,
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+            },
+        )));
     };
-    Ok(Some(caret_at_best_run(snapshot, point, owner_matrix, candidate)?))
+    Ok(Some(caret_at_best_run(
+        snapshot,
+        point,
+        owner_matrix,
+        candidate,
+    )?))
 }
 
 /// A text run the caret may land in, ranked by [`Candidate::before`].

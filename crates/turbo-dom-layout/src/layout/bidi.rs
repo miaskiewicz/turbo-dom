@@ -387,7 +387,12 @@ fn emit_piece_edges(
         let line_box = &boxes[&piece.node];
         let has_edge = if start { piece.left } else { piece.right };
         let advance = if has_edge {
-            (if start { line_box.left() } else { line_box.right() }).unwrap_or(0.0)
+            (if start {
+                line_box.left()
+            } else {
+                line_box.right()
+            })
+            .unwrap_or(0.0)
         } else {
             0.0
         };

@@ -266,8 +266,7 @@ fn navigating_action(element: &Name, attribute: &Name) -> bool {
     element.is("form", Some(HTML)) && attribute.is("action", None)
 }
 fn navigating_svg(element: &Name, attribute: &Name) -> bool {
-    element.is("a", Some(SVG))
-        && (attribute.is("href", None) || attribute.is("href", Some(XLINK)))
+    element.is("a", Some(SVG)) && (attribute.is("href", None) || attribute.is("href", Some(XLINK)))
 }
 fn animating(element: &Name, attribute: &Name) -> bool {
     (element.is("animate", Some(SVG))

@@ -306,10 +306,7 @@ fn transition_name_of(
     name
 }
 
-fn is_duplicate_transition_name(
-    name: &str,
-    names: &mut std::collections::HashSet<String>,
-) -> bool {
+fn is_duplicate_transition_name(name: &str, names: &mut std::collections::HashSet<String>) -> bool {
     !matches!(name, "" | "none" | "auto" | "match-element") && !names.insert(name.to_owned())
 }
 

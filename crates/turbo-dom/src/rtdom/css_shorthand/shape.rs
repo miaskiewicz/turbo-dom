@@ -148,7 +148,13 @@ fn arc(comps: &[Comp]) -> Option<String> {
     Some(arc_text(&end, &radii?, sweep, size, rotate))
 }
 
-fn arc_text(end: &str, radii: &str, sweep: Option<bool>, size: Option<bool>, rotate: Option<&Comp>) -> String {
+fn arc_text(
+    end: &str,
+    radii: &str,
+    sweep: Option<bool>,
+    size: Option<bool>,
+    rotate: Option<&Comp>,
+) -> String {
     let mut out = format!("{end} of {radii}");
     if sweep == Some(true) {
         out.push_str(" cw");
@@ -172,7 +178,10 @@ fn curve_smooth(name: &str, rest: &[Comp]) -> Option<String> {
     if rest.is_empty() && name == "smooth" {
         Some(end)
     } else {
-        Some(format!("{end} {}", controls(rest, absolute, name == "curve")?))
+        Some(format!(
+            "{end} {}",
+            controls(rest, absolute, name == "curve")?
+        ))
     }
 }
 

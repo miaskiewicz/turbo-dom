@@ -162,7 +162,14 @@ fn update_entry(
         return None;
     }
     let record = entry.record.to_local(scope)?;
-    let start = apply_endpoint(scope, record, "startContainer", "startOffset", editor, change);
+    let start = apply_endpoint(
+        scope,
+        record,
+        "startContainer",
+        "startOffset",
+        editor,
+        change,
+    );
     let end = apply_endpoint(scope, record, "endContainer", "endOffset", editor, change);
     if (start || end) && kind != Change::Remove {
         if let Some(callback) = entry.editor.as_ref().and_then(|weak| weak.to_local(scope)) {

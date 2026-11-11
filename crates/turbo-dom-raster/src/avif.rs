@@ -156,16 +156,21 @@ mod av1 {
     }
 
     /// Copy one plane out of a decoded picture as `u16` samples.
-    fn copy_plane(picture: &Dav1dPicture, i: usize, w: usize, h: usize, wide: bool) -> Option<Vec<u16>> {
+    fn copy_plane(
+        picture: &Dav1dPicture,
+        i: usize,
+        w: usize,
+        h: usize,
+        wide: bool,
+    ) -> Option<Vec<u16>> {
         let base = picture.data[i]?.as_ptr().cast::<u8>();
         let stride = picture.stride[usize::from(i > 0)];
         let row_bytes = w * if wide { 2 } else { 1 };
         let mut out = Vec::with_capacity(w * h);
         for y in 0..h {
             // SAFETY: rows `0..h` of `row_bytes` bytes lie inside the plane at `stride`.
-            let row = unsafe {
-                std::slice::from_raw_parts(base.offset(stride * y as isize), row_bytes)
-            };
+            let row =
+                unsafe { std::slice::from_raw_parts(base.offset(stride * y as isize), row_bytes) };
             if wide {
                 out.extend(
                     row.as_chunks::<2>()
@@ -198,7 +203,10 @@ mod av1 {
     ) -> Option<(Vec<u16>, Vec<u16>)> {
         let (sx, sy) = sub?;
         let (cw, ch) = ((w + sx) >> sx, (h + sy) >> sy);
-        Some((copy_plane(picture, 1, cw, ch, wide)?, copy_plane(picture, 2, cw, ch, wide)?))
+        Some((
+            copy_plane(picture, 1, cw, ch, wide)?,
+            copy_plane(picture, 2, cw, ch, wide)?,
+        ))
     }
 
     /// Copy a picture's planes out as `u16` samples.
@@ -211,8 +219,7 @@ mod av1 {
         let seq = unsafe { picture.seq_hdr?.as_ref() };
         let wide = bits > 8;
         let luma = copy_plane(picture, 0, width, height, wide)?;
-        let (u, v) = copy_chroma_planes(picture, chroma, width, height, wide)
-            .unwrap_or_default();
+        let (u, v) = copy_chroma_planes(picture, chroma, width, height, wide).unwrap_or_default();
         Some(Frame {
             width,
             height,
@@ -395,11 +402,7 @@ mod tests {
         for v in variants {
             match av1::decode(&v) {
                 Some(frame) => {
-                    assert_eq!(
-                        frame.planes[0].len(),
-                        frame.width * frame.height,
-                        "{label}"
-                    );
+                    assert_eq!(frame.planes[0].len(), frame.width * frame.height, "{label}");
                     decoded += 1;
                 }
                 None => rejected += 1,

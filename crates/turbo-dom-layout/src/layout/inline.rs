@@ -2494,9 +2494,19 @@ fn native_seg_advances(seg: &Seg, shaped: &[crate::text::ShapedGlyph], device: f
     advances
 }
 
-fn glyph_advance(seg: &Seg, scale: f32, x_advance: i32, cluster_end: bool, letter_spacing: f32) -> f32 {
+fn glyph_advance(
+    seg: &Seg,
+    scale: f32,
+    x_advance: i32,
+    cluster_end: bool,
+    letter_spacing: f32,
+) -> f32 {
     if seg.upright {
-        if cluster_end { upright_advance(&seg.face, seg.font_size) + letter_spacing } else { 0.0 }
+        if cluster_end {
+            upright_advance(&seg.face, seg.font_size) + letter_spacing
+        } else {
+            0.0
+        }
     } else {
         scale * x_advance as f32 + letter_spacing
     }
@@ -2864,7 +2874,9 @@ impl LinePlacement {
         }
     }
     fn record_trailing_space(&mut self, x0: f32, runs: usize) {
-        let Some(record) = self.record.as_mut() else { return };
+        let Some(record) = self.record.as_mut() else {
+            return;
+        };
         if self.pen <= x0 && self.runs.len() <= runs {
             return;
         }

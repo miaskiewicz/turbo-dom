@@ -616,7 +616,16 @@ impl DecodedImage {
         let stride = self.width as usize * 4;
         let mut row = vec![[0.0_f32; 4]; to - from];
         for (out_y, y) in (y0..y0 + h).enumerate() {
-            accumulate_vertical(&self.rgba, stride, from, to, y, size.1, self.height, &mut row);
+            accumulate_vertical(
+                &self.rgba,
+                stride,
+                from,
+                to,
+                y,
+                size.1,
+                self.height,
+                &mut row,
+            );
             let out = &mut pm.pixels_mut()[out_y * w as usize..][..w as usize];
             resolve_horizontal(out, &columns, &row, from)?;
         }
@@ -626,8 +635,14 @@ impl DecodedImage {
 
 #[allow(clippy::too_many_arguments)]
 fn accumulate_vertical(
-    rgba: &[u8], stride: usize, from: usize, to: usize,
-    y: u32, dst_h: u32, src_h: u32, row: &mut [[f32; 4]],
+    rgba: &[u8],
+    stride: usize,
+    from: usize,
+    to: usize,
+    y: u32,
+    dst_h: u32,
+    src_h: u32,
+    row: &mut [[f32; 4]],
 ) {
     let taps = Taps::new(y, dst_h, src_h);
     row.fill([0.0; 4]);
@@ -644,7 +659,10 @@ fn accumulate_vertical(
 }
 
 fn resolve_horizontal(
-    out: &mut [PremultipliedColorU8], columns: &[Taps], row: &[[f32; 4]], from: usize,
+    out: &mut [PremultipliedColorU8],
+    columns: &[Taps],
+    row: &[[f32; 4]],
+    from: usize,
 ) -> Option<()> {
     for (dst, taps) in out.iter_mut().zip(columns) {
         let mut sum = [0.0_f32; 4];

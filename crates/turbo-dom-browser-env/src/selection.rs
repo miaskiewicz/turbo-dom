@@ -187,9 +187,8 @@ fn ancestor_display_none(
     let mut element = Some(node);
     while let Some(handle) = element {
         if tree.node_type_id(handle) == 1 {
-            let style = turbo_dom_parser::rtdom::cascade::computed_style_with_policy(
-                tree, handle, policy,
-            );
+            let style =
+                turbo_dom_parser::rtdom::cascade::computed_style_with_policy(tree, handle, policy);
             if display_of(tree, handle, &style) == "none" {
                 return true;
             }
@@ -504,7 +503,13 @@ impl Flow<'_> {
         }
     }
 
-    fn emit_preserved_newline(&mut self, node: Handle, offset: usize, unit: u16, preserve_spaces: bool) {
+    fn emit_preserved_newline(
+        &mut self,
+        node: Handle,
+        offset: usize,
+        unit: u16,
+        preserve_spaces: bool,
+    ) {
         if !preserve_spaces {
             self.end_line();
         }
@@ -1092,7 +1097,9 @@ fn model<'s>(
             .collect();
         (texts, slots, forward, resolved, edges)
     })?;
-    Some(build_model_v8_result(scope, &texts, &slots, &forward, &resolved, &edges))
+    Some(build_model_v8_result(
+        scope, &texts, &slots, &forward, &resolved, &edges,
+    ))
 }
 
 fn build_model_v8_result<'s>(

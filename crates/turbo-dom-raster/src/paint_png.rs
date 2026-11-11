@@ -1087,7 +1087,9 @@ fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
 
 fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     for (top, s) in [(true, &b.top), (false, &b.bottom)] {
-        let Some((_, c)) = border_side(*s) else { continue };
+        let Some((_, c)) = border_side(*s) else {
+            continue;
+        };
         let band = rrect::mitred_band((f.x, f.y, f.width, f.height), rrect::widths(b), top);
         let mut path = PathBuilder::new();
         trace(&mut path, &rrect::polygon(&band));

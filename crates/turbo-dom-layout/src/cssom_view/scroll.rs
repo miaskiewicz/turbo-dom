@@ -252,7 +252,7 @@ fn scroll_metrics_preconditions<'a>(
     }
     if snapshot.unsupported_svg_source_geometry(id) {
         return Err(Err(
-            "native SVG descendant scroll geometry is unsupported".into(),
+            "native SVG descendant scroll geometry is unsupported".into()
         ));
     }
     let Some(first) = source
@@ -966,12 +966,7 @@ fn layout_unit(value: f64) -> f64 {
     (value * 64.0).round() / 64.0
 }
 
-fn select_behavior(
-    intersection: f64,
-    length: f64,
-    visible: f64,
-    behaviors: [Align; 3],
-) -> Align {
+fn select_behavior(intersection: f64, length: f64, visible: f64, behaviors: [Align; 3]) -> Align {
     if intersection == length || intersection == visible {
         behaviors[0]
     } else if intersection > 0.0 {

@@ -382,7 +382,13 @@ const MAX_LISTED_TILES: usize = 4096;
 /// that does not repeat). Tiles without a whole-pixel period (a `round` or `space` step
 /// off the pixel grid) are written one by one when there are at most
 /// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
-fn paint_listed_tiles(svg: &mut String, node_id: NodeId, pattern: &TilePattern, area: (f32, f32, f32, f32), images: &DecodedAssets) {
+fn paint_listed_tiles(
+    svg: &mut String,
+    node_id: NodeId,
+    pattern: &TilePattern,
+    area: (f32, f32, f32, f32),
+    images: &DecodedAssets,
+) {
     for (x, y, w, h) in pattern.tiles(area) {
         let tile = Fragment::new(node_id, x, y, w, h, (*pattern.tile).clone());
         paint_subtree(svg, &tile, images);
@@ -390,13 +396,20 @@ fn paint_listed_tiles(svg: &mut String, node_id: NodeId, pattern: &TilePattern, 
 }
 
 fn paint_pattern_tiles(
-    svg: &mut String, f: &Fragment, pattern: &TilePattern,
-    first: (f32, f32, f32, f32), images: &DecodedAssets,
+    svg: &mut String,
+    f: &Fragment,
+    pattern: &TilePattern,
+    first: (f32, f32, f32, f32),
+    images: &DecodedAssets,
 ) {
     let cell = TileCell::new(pattern, first);
     let ((x, y), (pw, ph)) = (cell.origin, cell.size);
     let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
-        if repeats { (from, len) } else { (at, size) }
+        if repeats {
+            (from, len)
+        } else {
+            (at, size)
+        }
     };
     let (fx, fw) = along(cell.repeats.0, (f.x, f.width), (first.0, first.2));
     let (fy, fh) = along(cell.repeats.1, (f.y, f.height), (first.1, first.3));

@@ -147,10 +147,7 @@ fn map_attr_positions(
             if let Some((weak, position)) =
                 attribute_positions.get(&(Rc::as_ptr(source) as usize, name.clone()))
             {
-                if weak
-                    .upgrade()
-                    .is_some_and(|node| Rc::ptr_eq(&node, source))
-                {
+                if weak.upgrade().is_some_and(|node| Rc::ptr_eq(&node, source)) {
                     tree.source_attribute_positions
                         .entry(target)
                         .or_default()

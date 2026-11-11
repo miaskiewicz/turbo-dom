@@ -247,11 +247,7 @@ fn is_closed_intervening_dialog(
         && !tree.has_attribute(element, "open")
 }
 
-fn is_closed_details_blocking(
-    tree: &Tree,
-    element: Handle,
-    child: Option<Handle>,
-) -> bool {
+fn is_closed_details_blocking(tree: &Tree, element: Handle, child: Option<Handle>) -> bool {
     if !html(tree, element, "details") || tree.has_attribute(element, "open") {
         return false;
     }
@@ -487,7 +483,9 @@ fn pseudo_ranges<'i, 't>(
                 colon = None;
                 double_colon = false;
             }
-            Token::Function(ref name) if handle_function_token(input, name, ranges, &mut colon)? => {
+            Token::Function(ref name)
+                if handle_function_token(input, name, ranges, &mut colon)? =>
+            {
                 double_colon = false;
             }
             Token::Function(_) | Token::ParenthesisBlock => {

@@ -662,11 +662,23 @@ fn insert_inputs_mode<'s>(
     }
     let owner = DOM_ID.with(|id| id.get());
     let prepared = prepare(scope, incoming).expect("wrapped incoming nodes");
-    let planned = plan_inputs(scope, owner, parent, &prepared, reference, remove, replace_all);
+    let planned = plan_inputs(
+        scope,
+        owner,
+        parent,
+        &prepared,
+        reference,
+        remove,
+        replace_all,
+    );
     let planned = match planned {
         Ok(nodes) => nodes,
         Err(name) => {
-            throw_dom_error(scope, name, "The requested mutation would create an invalid DOM tree");
+            throw_dom_error(
+                scope,
+                name,
+                "The requested mutation would create an invalid DOM tree",
+            );
             return false;
         }
     };
@@ -706,8 +718,18 @@ fn plan_inputs<'s>(
     remove: &[Handle],
     replace_all: bool,
 ) -> Result<Vec<Prepared<'s>>, &'static str> {
-    with_tree(|tree| incoming_plan(tree, owner, parent, prepared, reference, remove, replace_all))
-        .expect("installed document")
+    with_tree(|tree| {
+        incoming_plan(
+            tree,
+            owner,
+            parent,
+            prepared,
+            reference,
+            remove,
+            replace_all,
+        )
+    })
+    .expect("installed document")
 }
 fn drain_prepared_fragments(scope: &mut v8::PinScope, prepared: &[Prepared]) {
     for input in prepared {

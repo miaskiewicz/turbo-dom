@@ -505,7 +505,11 @@ fn layout_root_in(
     let relabel = Relabel::between(parent, mode);
     let root = prepare_root(lb, relabel, sized);
     let orthogonal = relabel.swap;
-    let available = if orthogonal { orthogonal_available(parent, ctx) } else { cb_width };
+    let available = if orthogonal {
+        orthogonal_available(parent, ctx)
+    } else {
+        cb_width
+    };
     let saved = Saved {
         writing: std::mem::replace(&mut ctx.writing, mode),
         floats: std::mem::take(&mut ctx.floats),

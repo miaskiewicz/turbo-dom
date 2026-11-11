@@ -44,7 +44,11 @@ fn compare_boxes(
             if !measure.contains(key) {
                 continue;
             }
-            let field = match key { "w" => "width", "h" => "height", k => k };
+            let field = match key {
+                "w" => "width",
+                "h" => "height",
+                k => k,
+            };
             let chrome = want[field].as_f64().unwrap() as f32;
             if (value - chrome).abs() > 0.01 {
                 failures.push(format!("{id}: {cid}.{field} = {value}, Chrome {chrome}"));
@@ -74,7 +78,10 @@ fn compare_cases(select: impl Fn(&str) -> bool) {
         let mut diags = Diagnostics::default();
         let galley = layout_html(html, "", 1280.0, &fonts, &mut diags).unwrap();
         let canvas = match &galley.content {
-            FragmentContent::Box { background: Some(c), .. } => hex(*c),
+            FragmentContent::Box {
+                background: Some(c),
+                ..
+            } => hex(*c),
             _ => "#ffffff".to_string(),
         };
         if canvas != case["canvas"].as_str().unwrap() {

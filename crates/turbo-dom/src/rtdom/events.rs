@@ -177,8 +177,7 @@ impl Dom {
             if let Some(list) = registry.get_mut(&node) {
                 self.invoke_listeners_on_node(list, phase, event);
             }
-            if event.propagation_stopped
-                && (phase == Phase::Bubbling || phase == Phase::Capturing)
+            if event.propagation_stopped && (phase == Phase::Bubbling || phase == Phase::Capturing)
             {
                 return true;
             }

@@ -64,7 +64,12 @@ fn compare_jxl(id: &str, case: &serde_json::Value, pm: &tiny_skia::Pixmap) -> Op
     (!near).then(|| format!("{id}: {got:?}, Chrome {want:?}"))
 }
 
-fn compare_class(id: &str, case: &serde_json::Value, pm: &tiny_skia::Pixmap, want: &str) -> Option<String> {
+fn compare_class(
+    id: &str,
+    case: &serde_json::Value,
+    pm: &tiny_skia::Pixmap,
+    want: &str,
+) -> Option<String> {
     let got: String = case["points"]
         .as_array()
         .unwrap()

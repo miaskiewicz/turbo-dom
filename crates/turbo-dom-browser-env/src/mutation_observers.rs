@@ -148,7 +148,10 @@ pub(super) fn child_list(
         .unwrap_or_default();
     shadow_slots::mutation(scope, &event);
     html_media::mutation(&event);
-    if !observers.is_empty() || custom_elements::reactions_active(scope) || consumer(scope).is_some() {
+    if !observers.is_empty()
+        || custom_elements::reactions_active(scope)
+        || consumer(scope).is_some()
+    {
         dispatch_child_list(scope, &event, &observers);
     }
     script_state::inactive_mutation(&event);

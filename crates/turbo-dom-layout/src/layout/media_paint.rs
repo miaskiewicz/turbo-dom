@@ -146,7 +146,11 @@ fn push_horizontal_controls(
     } else if pw >= SHOW_CURRENT_TIME {
         parts.extend(current_time(id, at(47.0, 32.0), fonts));
     }
-    let right_items_start = if pw >= SHOW_VOLUME { pw - 90.4 } else { pw - 32.0 };
+    let right_items_start = if pw >= SHOW_VOLUME {
+        pw - 90.4
+    } else {
+        pw - 32.0
+    };
     let timeline_start = timeline_start_x(pw);
     let timeline_end = right_items_start.max(timeline_start + 32.0);
     parts.push(rounded(

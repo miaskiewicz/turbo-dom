@@ -51,20 +51,12 @@ fn run_in_mode(
     serde_json::from_str(&value).unwrap()
 }
 
-fn install_test_helpers(
-    scope: &mut v8::PinScope,
-    global: v8::Local<v8::Object>,
-    code: &str,
-) {
+fn install_test_helpers(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, code: &str) {
     install_counter_helpers(scope, global, code);
     install_extra_helpers(scope, global, code);
 }
 
-fn install_counter_helpers(
-    scope: &mut v8::PinScope,
-    global: v8::Local<v8::Object>,
-    code: &str,
-) {
+fn install_counter_helpers(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, code: &str) {
     if code.contains("__cssTestNs") {
         let namespace = engine_namespace(scope).unwrap();
         let key = v8::String::new(scope, "__cssTestNs").unwrap();
@@ -124,11 +116,7 @@ fn install_counter_helpers(
     }
 }
 
-fn install_extra_helpers(
-    scope: &mut v8::PinScope,
-    global: v8::Local<v8::Object>,
-    code: &str,
-) {
+fn install_extra_helpers(scope: &mut v8::PinScope, global: v8::Local<v8::Object>, code: &str) {
     if code.contains("__cssTestEntryBuilds") {
         fn entry_builds(
             scope: &mut v8::PinScope,

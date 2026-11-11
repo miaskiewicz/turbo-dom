@@ -30,7 +30,15 @@ fn ctm_translate(m: &[f32; 6]) -> Option<(f32, f32)> {
     is_translate.then_some((m[4], m[5]))
 }
 
-fn draw_line(ctx: &mut CGContext, font: &CTFont, text: &str, color: Rgba, dx: f64, dy: f64, h: usize) {
+fn draw_line(
+    ctx: &mut CGContext,
+    font: &CTFont,
+    text: &str,
+    color: Rgba,
+    dx: f64,
+    dy: f64,
+    h: usize,
+) {
     let cfs = CFString::new(text);
     let mut att = CFMutableAttributedString::new();
     att.replace_str(&cfs, CFRange::init(0, 0));
@@ -88,7 +96,15 @@ pub(crate) fn render_text(
     let Some(font) = ct_font(st) else {
         return false;
     };
-    draw_line(&mut ctx, &font, text, color, f64::from(x + tx), f64::from(y + ty), h);
+    draw_line(
+        &mut ctx,
+        &font,
+        text,
+        color,
+        f64::from(x + tx),
+        f64::from(y + ty),
+        h,
+    );
     composite_over(ctx.data(), pm.data_mut())
 }
 
