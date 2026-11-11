@@ -120,6 +120,66 @@ fn engine_task_scope_binding(
     }
 }
 
+/// A host bridge may enter the binding through a retained controller callback,
+/// rather than dispatch_host_event. Official timeout algorithms use this shape.
+#[test]
+fn retained_abort_callback_requires_engine_task_scope_for_host_delivery() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    let global = context.global(scope);
+    bind_method(scope, global, "__engineScope", engine_task_scope_binding);
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+      const Original = AbortController;
+      const abort = Original.prototype.abort;
+      const signal = Object.getOwnPropertyDescriptor(Original.prototype, 'signal').get;
+      const apply = Reflect.apply;
+      const trace = [];
+      function bridge(label, host) {
+        const controller = new Original();
+        const front = apply(signal, controller, []);
+        // An embedder's official interface can retain the binding signal as its
+        // dispatch frontend while replacing the exposed interface prototype.
+        Object.setPrototypeOf(front, Object.create(Object.getPrototypeOf(front)));
+        const inner = new Original();
+        apply(signal, inner, []).addEventListener('abort', () => {
+          trace.push(label + ':inner');
+          Promise.resolve().then(() => trace.push(label + ':inner-microtask'));
+        });
+        front.addEventListener('abort', () => {
+          trace.push(label + ':first');
+          apply(abort, inner, []);
+          trace.push(label + ':after-inner');
+          Promise.resolve().then(() => trace.push(label + ':microtask'));
+        });
+        front.addEventListener('abort', () => trace.push(label + ':second'));
+        const callback = () => apply(abort, controller, ['timeout']);
+        if (host) __engineScope(callback); else callback();
+        trace.push(label + ':returned');
+      }
+      bridge('host', true);
+      bridge('page', false);
+      return JSON.stringify(trace);
+    })()"#,
+    )
+    .unwrap();
+    let actual = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        actual,
+        r#"["host:first","host:inner","host:after-inner","host:inner-microtask","host:microtask","host:second","host:returned","page:first","page:inner","page:after-inner","page:second","page:returned"]"#
+    );
+    reset();
+}
+
 /// turbo-dom#381: phase records across the parent chain match Chrome 156 IDB.
 #[test]
 fn non_node_event_target_phases_match_chrome156() {

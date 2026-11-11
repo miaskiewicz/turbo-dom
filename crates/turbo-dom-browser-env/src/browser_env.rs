@@ -5002,6 +5002,12 @@ pub fn dispatch_host_event_did_listeners_throw(
 /// `callback` receives no arguments; its return value is propagated. The JS
 /// hook wraps the call in try/finally so the counter is always restored (a
 /// throwing callback rethrows here).
+///
+/// Enter this scope at every native task-to-callback handoff, including timers
+/// owned by an embedding runtime rather than the page's `setTimeout` runner.
+/// A retained callback that invokes `AbortController.abort` needs the bracket
+/// during that invocation: checkpointing only after it returns cannot interleave
+/// its listeners. Page-originated aborts must remain outside the bracket.
 pub fn engine_task_scope<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     callback: v8::Local<v8::Function>,
