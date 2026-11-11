@@ -645,3 +645,12 @@ fn probe_activation_answers_from_the_gesture_flag() {
     assert_eq!(answers, [true, true, false, true, true, false, true]);
     reset();
 }
+
+#[test]
+fn hidden_controls_use_attribute_ua_display_without_overriding_authors() {
+    let value = run(
+        "<button id=own hidden>hidden</button><div hidden><button id=child>child</button></div><button id=override hidden style='display:block'>visible</button>",
+        "['own','child','override'].map(id => getComputedStyle(document.getElementById(id)).display)",
+    );
+    assert_eq!(value, serde_json::json!(["none", "inline-block", "block"]));
+}

@@ -389,6 +389,21 @@ mod tests {
         testing::id(tree, selector)
     }
     #[test]
+    fn hidden_controls_and_descendants_have_no_geometry_but_author_override_does() {
+        let (tree, snapshot) = capture("<html><body><button id=own hidden>hidden</button><div hidden><button id=child>child</button></div><button id=override hidden style='display:block;width:40px;height:20px'>visible</button></body></html>");
+        for selector in ["#own", "#child"] {
+            assert_eq!(
+                element_geometry(&snapshot, id(&tree, selector)).unwrap(),
+                empty_geometry(),
+                "{selector}"
+            );
+        }
+        let shown = element_geometry(&snapshot, id(&tree, "#override")).unwrap();
+        assert!(shown.bounds.width >= 40.0);
+        assert!(shown.bounds.height >= 20.0);
+    }
+
+    #[test]
     fn transformed_border_rect_and_untransformed_client_offset_metrics_are_distinct() {
         let (tree,snapshot)=capture("<html><body style='margin:0'><div id=x style='width:40px;height:20px;padding:5px;border:2px solid;transform:scale(2);transform-origin:0 0'></div></body></html>");
         let value = element_geometry(&snapshot, id(&tree, "#x")).unwrap();

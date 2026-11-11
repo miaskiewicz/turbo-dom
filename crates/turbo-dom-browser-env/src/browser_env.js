@@ -505,7 +505,7 @@
   var monospaceInputTypes = { __proto__: null, 'date': 1, 'time': 1, 'datetime-local': 1, 'month': 1, 'week': 1 };
   var buttonInputTypes = { __proto__: null, 'button': 1, 'submit': 1, 'reset': 1 };
   function formControlUserAgent(el, tag){
-    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline', 'background-color': 'rgb(239, 239, 239)' };
+    if (tag === 'BUTTON') return { 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline', 'background-color': 'rgb(239, 239, 239)' };
     if (tag === 'TEXTAREA') return { 'font': '13.3333px monospace' };
     if (tag === 'SELECT') return { 'font': '13.3333px Arial' };
     if (tag === 'OPTGROUP') return { 'font-weight': 'bolder' };

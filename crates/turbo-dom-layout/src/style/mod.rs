@@ -222,6 +222,7 @@ hr { display: block; height: 1px; background-color: #cccccc }
 input, textarea, select, button { display: inline-block; margin: 0; font-family: Arial; font-size: 13.333333px; font-weight: normal; font-style: normal; line-height: normal; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0; text-align: start; color: #000000 }
 input { -internal-ua-padding: 1px 2px; border: 2px inset #767676; background-color: #ffffff }
 input[type=hidden] { display: none }
+[hidden]:not([hidden=until-found i]):not(embed) { display: none }
 input[type=image] { padding: 0; border: 0; background-color: transparent }
 textarea { font-family: monospace; padding: 2px; border: 1px solid #767676; background-color: #ffffff; white-space: pre-wrap }
 select { border: 1px solid #767676; background-color: #ffffff; white-space: pre }
@@ -311,6 +312,22 @@ pub(crate) fn quirks_form_declarations() -> impl Iterator<Item = MatchedDeclarat
             specificity: (0, 0, 1),
             order: 0,
         })
+}
+
+/// HTML hidden presentation, beneath author declarations and above tag defaults.
+pub(crate) fn hidden_declaration() -> MatchedDeclaration {
+    MatchedDeclaration {
+        declaration: Declaration {
+            property: "display".into(),
+            value: "none".into(),
+            important: false,
+        },
+        origin: CascadeOrigin::UserAgent,
+        scope_depth: 0,
+        inline: false,
+        specificity: (0, 2, 1),
+        order: 0,
+    }
 }
 
 /// Placeholder `MathML` user-agent rules ([miaskiewicz/turbo-dom#376](https://github.com/miaskiewicz/turbo-dom/issues/376)):
