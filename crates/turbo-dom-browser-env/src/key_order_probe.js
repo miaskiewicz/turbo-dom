@@ -16,23 +16,16 @@
     if (fixed.length) entry.fixed = fixed;
     return entry;
   };
-  const hasValidPrototype = (value) => {
-    const prototype = value.prototype;
-    if (!prototype || (typeof prototype !== 'object' && typeof prototype !== 'function')) return false;
-    return Object.hasOwn(prototype, 'constructor') && prototype.constructor === value;
-  };
-  const webIdlConstructor = (name) => {
-    if (builtins.includes(name) || !/^[A-Z]/.test(name)) return null;
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
-    const value = descriptor && descriptor.value;
-    if (typeof value !== 'function') return null;
-    return hasValidPrototype(value) ? value : null;
-  };
   const result = {};
   for (const name of Object.getOwnPropertyNames(globalThis).sort()) {
-    const value = webIdlConstructor(name);
-    if (!value) continue;
-    result[name] = { interface: shape(value), prototype: shape(value.prototype) };
+    if (builtins.includes(name) || !/^[A-Z]/.test(name)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
+    const value = descriptor && descriptor.value;
+    if (typeof value !== 'function') continue;
+    const prototype = value.prototype;
+    if (!prototype || (typeof prototype !== 'object' && typeof prototype !== 'function')) continue;
+    if (!Object.hasOwn(prototype, 'constructor') || prototype.constructor !== value) continue;
+    result[name] = { interface: shape(value), prototype: shape(prototype) };
   }
   return JSON.stringify(result);
 })()

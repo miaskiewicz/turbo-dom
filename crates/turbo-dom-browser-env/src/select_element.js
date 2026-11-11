@@ -85,12 +85,6 @@
   }
   // Chrome stores selectedness eagerly: inserting options keeps the current selection unless an
   // inserted option is itself selected, which then takes over a single select.
-  function findClaimed(moved, bits, select) {
-    let claimed = null;
-    for (let index = 0; index < moved.length; index++)
-      if (bits[index] && ownerSelect(moved[index]) === select) claimed = moved[index];
-    return claimed;
-  }
   function insert(select, container, node, reference) {
     const before = selectionOf(select),
       moved = descendantOptions(node),
@@ -99,7 +93,9 @@
     apply(insertBefore, container, [node, reference]);
     ns.bumpStyleState();
     apply(setDelete, emptySelects, [select]);
-    const claimed = findClaimed(moved, bits, select);
+    let claimed = null;
+    for (let index = 0; index < moved.length; index++)
+      if (bits[index] && ownerSelect(moved[index]) === select) claimed = moved[index];
     if (claimed && single(select)) deselectOthers(select, claimed);
     if (claimed) state(claimed, true);
     else if (before.length && single(select) && ownerSelect(before[0]) === select) state(before[0], true);
@@ -117,17 +113,6 @@
   }
   // Batched form of insert/remove above: the list can grow to 100000 options, so the selection is
   // settled once instead of per option. Appended blanks are never selected themselves.
-  function padOptions(select, options, length) {
-    const owner = apply(documentOf, select, []);
-    for (let count = options.length; count < length; count++)
-      apply(insertBefore, select, [apply(createElement, owner, ["option"]), null]);
-  }
-  function trimOptions(options, length) {
-    for (let index = length; index < options.length; index++) {
-      const parent = apply(parentOf, options[index], []);
-      if (parent) apply(removeChild, parent, [options[index]]);
-    }
-  }
   function setLength(select, length) {
     const options = optionsOf(select);
     if (length > options.length && length > maxListItems) return;
@@ -135,8 +120,13 @@
       keep = single(select) && chosen;
     if (keep && apply(indexOf, options, [chosen]) >= length) deselectOthers(select, chosen);
     if (keep) state(chosen, true);
-    padOptions(select, options, length);
-    trimOptions(options, length);
+    const owner = apply(documentOf, select, []);
+    for (let count = options.length; count < length; count++)
+      apply(insertBefore, select, [apply(createElement, owner, ["option"]), null]);
+    for (let index = length; index < options.length; index++) {
+      const parent = apply(parentOf, options[index], []);
+      if (parent) apply(removeChild, parent, [options[index]]);
+    }
     ns.bumpStyleState();
     apply(setDelete, emptySelects, [select]);
   }
@@ -305,25 +295,18 @@
     if (typeof value === "symbol") throw factoryError("Cannot convert a Symbol value to a string");
     return StringValue(value);
   };
-  const applyNewTargetPrototype = (option) => {
-    const prototype = getPrototype(new.target, "prototype");
-    if (prototype !== OP && prototype !== null && (typeof prototype === "object" || typeof prototype === "function"))
-      setPrototypeOf(option, prototype);
-  };
-  const buildOption = (text, value, defaultSelected, selected) => {
-    const option = apply(createElement, realmDocument, ["option"]);
-    if (text !== "") apply(insertBefore, option, [apply(createTextNode, realmDocument, [text]), null]);
-    if (value !== undefined) apply(setAttribute, option, ["value", value]);
-    if (defaultSelected) apply(setAttribute, option, ["selected", ""]);
-    state(option, selected);
-    return option;
-  };
   const OptionFactory = make(
     class {
       constructor(text, value, defaultSelected, selected) {
         text = text === undefined ? "" : optionString(text);
         value = value === undefined ? undefined : optionString(value);
-        const option = buildOption(text, value, !!defaultSelected, !!selected);
+        defaultSelected = !!defaultSelected;
+        selected = !!selected;
+        const option = apply(createElement, realmDocument, ["option"]);
+        if (text !== "") apply(insertBefore, option, [apply(createTextNode, realmDocument, [text]), null]);
+        if (value !== undefined) apply(setAttribute, option, ["value", value]);
+        if (defaultSelected) apply(setAttribute, option, ["selected", ""]);
+        state(option, selected);
         const prototype = getPrototype(new.target, "prototype");
         if (prototype !== OP && prototype !== null && (typeof prototype === "object" || typeof prototype === "function"))
           setPrototypeOf(option, prototype);
@@ -492,7 +475,9 @@
   }
   // Indexed exotic behaviour on the select itself, dispatched by the native element interceptor
   // (select_element.rs). undefined means "not intercepted", so ordinary lookup continues.
-  function selectIndexedOp(operation, options, element, index, value) {
+  g.__captureSelectIndexed = function (operation, element, index, value) {
+    if (!branded(selectBrand, element)) return undefined;
+    const options = optionsOf(element);
     if (operation === "get") return index < options.length ? options[index] : undefined;
     if (operation === "descriptor")
       return index < options.length
@@ -502,9 +487,5 @@
     if (operation === "delete") return index < options.length ? false : undefined;
     if (operation === "set") return selectIndexedSet(element, index, value);
     return undefined;
-  }
-  g.__captureSelectIndexed = function (operation, element, index, value) {
-    if (!branded(selectBrand, element)) return undefined;
-    return selectIndexedOp(operation, optionsOf(element), element, index, value);
   };
 })();

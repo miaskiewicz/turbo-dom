@@ -14,19 +14,16 @@
   const outcome = (p) => { const r = { s: 'pending' }; p.then((v) => { r.s = 'ok:' + v; }, (e) => { r.s = 'err:' + e.name + ':' + e.message; }); return r; };
   const base = (u) => u.replace(/^.*\//, '');
 
-  const probeInterface = (name) => {
+  out.interfaces = {};
+  for (const name of ['MediaStream', 'MediaStreamTrack', 'TrackEvent']) {
     const C = globalThis[name];
-    return typeof C !== 'function' ? typeof C : {
+    out.interfaces[name] = typeof C !== 'function' ? typeof C : {
       proto: Object.fromEntries(Reflect.ownKeys(C.prototype).map((k) => [String(k), desc(C.prototype, k)])),
       ctor: Object.fromEntries(Reflect.ownKeys(C).map((k) => [String(k), desc(C, k)])),
       parent: Object.getPrototypeOf(C.prototype).constructor.name,
       call: run(() => C('x')),
       global: desc(globalThis, name),
     };
-  };
-  out.interfaces = {};
-  for (const name of ['MediaStream', 'MediaStreamTrack', 'TrackEvent']) {
-    out.interfaces[name] = probeInterface(name);
   }
   out.captureStreamMember = desc(HTMLMediaElement.prototype, 'captureStream');
 
@@ -260,7 +257,7 @@
   {
     const select = out.selection = {};
     const kinds = ['subtitles', 'captions', 'descriptions', 'chapters', 'metadata'];
-    const probeKind = async (kind) => {
+    for (const kind of kinds) {
       const v = document.createElement('video'), log = [];
       v.textTracks.onchange = () => log.push('change');
       v.textTracks.onaddtrack = () => log.push('add');
@@ -269,10 +266,7 @@
       for (const t of tracks) for (const type of ['load', 'error']) t.addEventListener(type, (e) => log.push(type + t.readyState + (e.isTrusted ? '' : '!') + (e.bubbles ? 'B' : '') + (e.cancelable ? 'C' : '')));
       const before = tracks.map((t) => t.track.mode + t.readyState).join();
       await settle();
-      return [before, tracks.map((t) => t.track.mode + t.readyState).join(), log.join()];
-    };
-    for (const kind of kinds) {
-      select[kind] = await probeKind(kind);
+      select[kind] = [before, tracks.map((t) => t.track.mode + t.readyState).join(), log.join()];
     }
     const modes = async (body) => { const v = document.createElement('video'); const tracks = await body(v); await settle(); return tracks.map((t) => (t.track || t).mode).join(); };
     const cases = {

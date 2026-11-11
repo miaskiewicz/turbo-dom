@@ -47,15 +47,11 @@
   // ---- WebIDL conversions --------------------------------------------------------------------
   const toStringValue = (value) => { if (typeof value === 'symbol') throw fail('Cannot convert a Symbol value to a string'); return '' + value; };
   const toDouble = (value) => { if (typeof value === 'bigint') throw fail('Cannot convert a BigInt value to a number'); if (typeof value === 'symbol') throw fail('Cannot convert a Symbol value to a number'); const number = +value; if (!isFiniteNumber(number)) throw fail('The provided double value is non-finite.'); return number; };
-  function validateSequenceSource(value) {
+  function toSequence(value, convert) {
     if (value === null || (typeof value !== 'object' && typeof value !== 'function')) throw fail('The provided value cannot be converted to a sequence.');
     const method = value[symbolIterator];
     if (method === undefined || method === null) throw fail('The provided value cannot be converted to a sequence.');
     if (typeof method !== 'function') throw fail('The provided value cannot be converted to a sequence.');
-    return method;
-  }
-  function toSequence(value, convert) {
-    const method = validateSequenceSource(value);
     const iterator = apply(method, value, []), next = iterator.next, result = list();
     for (;;) { const step = apply(next, iterator, []); if (step === null || typeof step !== 'object') throw new ErrorType('Iterator result ' + step + ' is not an object'); if (step.done) break; push(result, convert(step.value, result.length)); }
     return result;
@@ -201,24 +197,17 @@
   }
   const copyType = (type) => ({ __proto__: null, e: [type.e[0], type.e[1], type.e[2], type.e[3], type.e[4], type.e[5], type.e[6]], hint: type.hint });
   function applyHint(type, hint) { type.e[hint] += type.e[BASE.percent]; type.e[BASE.percent] = 0; type.hint = hint; }
-  function alignHints(a, b) {
-    if (a.hint >= 0 && b.hint >= 0 && a.hint !== b.hint) return false;
+  function addTypes(left, right) {
+    const a = copyType(left), b = copyType(right);
+    if (a.hint >= 0 && b.hint >= 0 && a.hint !== b.hint) return null;
     if (a.hint >= 0) applyHint(b, a.hint); else if (b.hint >= 0) applyHint(a, b.hint);
-    return true;
-  }
-  function reconcileExponents(a, b) {
     for (let index = 0; index < 7; index++) {
       if (a.e[index] !== b.e[index]) {
         if (index !== BASE.percent) { applyHint(a, index); applyHint(b, index); }
-        if (a.e[index] !== b.e[index]) return false;
+        if (a.e[index] !== b.e[index]) return null;
       }
     }
-    return true;
-  }
-  function addTypes(left, right) {
-    const a = copyType(left), b = copyType(right);
-    if (!alignHints(a, b)) return null;
-    return reconcileExponents(a, b) ? a : null;
+    return a;
   }
   function multiplyTypes(left, right) {
     const a = copyType(left), b = copyType(right);
@@ -370,11 +359,6 @@
     const single = termToUnit(sum[0]);
     return single ? convertUnit(single, target) : null;
   }
-  function equalsValueVariadic(left, right) {
-    if (left.values.length !== right.values.length) return false;
-    for (let index = 0; index < left.values.length; index++) if (!equalsValue(left.values[index], right.values[index])) return false;
-    return true;
-  }
   function equalsValue(a, b) {
     const left = numericRecord(a), right = numericRecord(b);
     if (left.kind !== right.kind) return false;
@@ -382,7 +366,11 @@
       case 'unit': return left.value === right.value && left.unit === right.unit;
       case 'negate': case 'invert': return equalsValue(left.value, right.value);
       case 'clamp': return equalsValue(left.lower, right.lower) && equalsValue(left.value, right.value) && equalsValue(left.upper, right.upper);
-      default: return equalsValueVariadic(left, right);
+      default: {
+        if (left.values.length !== right.values.length) return false;
+        for (let index = 0; index < left.values.length; index++) if (!equalsValue(left.values[index], right.values[index])) return false;
+        return true;
+      }
     }
   }
   // Typed OM's own serialization (CSSNumericValue::BuildCSSText).
@@ -469,16 +457,9 @@
     const validEscape = (a, b) => a === 92 && b !== 10;
     const startsIdent = (a, b, c) => a === 45 ? (isNameStart(b) || b === 45 || validEscape(b, c)) : isNameStart(a) ? true : validEscape(a, b);
     const startsNumber = (a, b, c) => (a === 43 || a === 45) ? (isDigit(b) || (b === 46 && isDigit(c))) : a === 46 ? isDigit(b) : isDigit(a);
-    function escapeHex(c) {
-      let hex = fromCode(c), count = 1;
-      while (count < 6 && isHex(code(0))) { hex += text[state.at]; state.at++; count++; }
-      if (isSpace(code(0))) state.at++;
-      const point = parseInt(hex, 16);
-      return point === 0 || (point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff ? '�' : fromCode(point);
-    }
     function escape() {
       let c = code(0); state.at++;
-      if (isHex(c)) return escapeHex(c);
+      if (isHex(c)) { let hex = fromCode(c), count = 1; while (count < 6 && isHex(code(0))) { hex += text[state.at]; state.at++; count++; } if (isSpace(code(0))) state.at++; const point = parseInt(hex, 16); return point === 0 || (point >= 0xd800 && point <= 0xdfff) || point > 0x10ffff ? '�' : fromCode(point); }
       if (c === -1) return '�';
       const char = fromCode(c); state.at += char.length - 1; return char;
     }
@@ -488,14 +469,12 @@
       if (e !== 69 && e !== 101) return false;
       return isDigit(code(1)) || ((code(1) === 43 || code(1) === 45) && isDigit(code(2)));
     }
-    function numberFraction() { state.at += 2; while (isDigit(code(0))) state.at++; }
-    function numberExponent() { state.at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) state.at++; }
     function number() {
       const start = state.at; let integer = true;
       if (code(0) === 43 || code(0) === 45) state.at++;
       while (isDigit(code(0))) state.at++;
-      if (code(0) === 46 && isDigit(code(1))) { integer = false; numberFraction(); }
-      if (numberStartsExponent()) { integer = false; numberExponent(); }
+      if (code(0) === 46 && isDigit(code(1))) { integer = false; state.at += 2; while (isDigit(code(0))) state.at++; }
+      if (numberStartsExponent()) { integer = false; state.at += isDigit(code(1)) ? 2 : 3; while (isDigit(code(0))) state.at++; }
       return { value: +sliceText(text, start, state.at), integer };
     }
     function consumeString(quote) {
@@ -515,16 +494,16 @@
       if (code(0) === 41 || code(0) === -1) { if (code(0) === 41) state.at++; return 'close'; }
       consumeBadUrl(); return 'bad';
     }
-    function consumeUrlStep(c, ref) {
-      if (c === -1 || c === 41) { if (c === 41) state.at++; return { type: 'url', value: ref.value }; }
-      if (isSpace(c)) return urlSpaceStep() === 'close' ? { type: 'url', value: ref.value } : { type: 'bad-url' };
-      if (isUrlBadCode(c)) { consumeBadUrl(); return { type: 'bad-url' }; }
-      if (c === 92) { if (validEscape(c, code(1))) { state.at++; ref.value += escape(); return null; } consumeBadUrl(); return { type: 'bad-url' }; }
-      ref.value += text[state.at]; state.at++; return null;
-    }
     function consumeUrl() {
-      const ref = { value: '' }; while (isSpace(code(0))) state.at++;
-      for (;;) { const result = consumeUrlStep(code(0), ref); if (result) return result; }
+      let value = ''; while (isSpace(code(0))) state.at++;
+      for (;;) {
+        const c = code(0);
+        if (c === -1 || c === 41) { if (c === 41) state.at++; return { type: 'url', value }; }
+        if (isSpace(c)) return urlSpaceStep() === 'close' ? { type: 'url', value } : { type: 'bad-url' };
+        if (isUrlBadCode(c)) { consumeBadUrl(); return { type: 'bad-url' }; }
+        if (c === 92) { if (validEscape(c, code(1))) { state.at++; value += escape(); continue; } consumeBadUrl(); return { type: 'bad-url' }; }
+        value += text[state.at]; state.at++;
+      }
     }
     function identLike() {
       const value = name();
@@ -666,14 +645,11 @@
     if (a.type === 'number' && bt === 'delim') { if (b.delim === '-') return false; if (b.delim === '%') return true; }
     return NEEDS_COMMENT_IDENT_RHS[bt] || (bt === 'delim' && b.delim === '-');
   }
-  function needsCommentDelim(a, b) {
-    if (a.delim === '@') return NEEDS_COMMENT_AT_RHS[b.type] || (b.type === 'delim' && b.delim === '-');
-    if (a.delim === '.' || a.delim === '+') return !!NEEDS_COMMENT_NUMERIC_RHS[b.type];
-    return a.delim === '/' && b.type === 'delim' && b.delim === '*';
-  }
   function needsComment(a, b) {
     if (isIdentLikeLhs(a)) return needsCommentIdentRhs(a, b);
-    return a.type === 'delim' && needsCommentDelim(a, b);
+    if (a.type === 'delim' && a.delim === '@') return NEEDS_COMMENT_AT_RHS[b.type] || (b.type === 'delim' && b.delim === '-');
+    if (a.type === 'delim' && (a.delim === '.' || a.delim === '+')) return !!NEEDS_COMMENT_NUMERIC_RHS[b.type];
+    return a.type === 'delim' && b.type === 'delim' && a.delim === '/' && b.delim === '*';
   }
 
   // ---- Calc expression trees (Blink CSSMathExpressionNode) -------------------------------------
@@ -686,25 +662,17 @@
   const nodeType = (node) => node.t === 'lit' ? makeType(node.unit) : node.type;
   // CalculationResultCategory from the node's numeric type.
   const CATEGORY_BASES = plain([plain([BASE.length, 'length']), plain([BASE.angle, 'angle']), plain([BASE.time, 'time']), plain([BASE.frequency, 'frequency']), plain([BASE.resolution, 'resolution'])]);
-  function categoryBaseHinted(base) {
-    if (base === BASE.length) return 'length-percent';
-    if (base === BASE.angle) return 'percent-angle';
-    return 'intermediate';
-  }
-  function categoryFromBases(type) {
-    for (let index = 0; index < CATEGORY_BASES.length; index++) {
-      const base = CATEGORY_BASES[index][0], name = CATEGORY_BASES[index][1];
-      if (onlyEntry(type, base, 1)) return type.hint >= 0 ? categoryBaseHinted(base) : name;
-    }
-    return 'intermediate';
-  }
   function category(node) {
     if (node.t === 'kw') return 'ident';
     const type = nodeType(node);
     if (!type) return 'other';
     if (matchesNumber(type)) return 'number';
     if (onlyEntry(type, BASE.percent, 1) && type.hint < 0) return 'percent';
-    return categoryFromBases(type);
+    for (let index = 0; index < CATEGORY_BASES.length; index++) {
+      const base = CATEGORY_BASES[index][0], name = CATEGORY_BASES[index][1];
+      if (onlyEntry(type, base, 1)) return type.hint >= 0 ? (base === BASE.length ? 'length-percent' : base === BASE.angle ? 'percent-angle' : 'intermediate') : name;
+    }
+    return 'intermediate';
   }
   const isAddOrSub = (node) => node.t === 'op' && (node.op === ADD || node.op === SUB);
   const isMulOrDiv = (node) => node.t === 'op' && (node.op === MUL || node.op === DIV);
@@ -725,17 +693,16 @@
     if (op === MUL) return multiplyTypes(leftType, rightType);
     return multiplyTypes(leftType, negateType(rightType));
   }
-  function createOperationDiv(left, right, type) {
-    const inverted = invertNode(right);
-    if (category(left) === 'number' && left.t === 'lit' && left.value === 1) return inverted;
-    return { __proto__: null, t: 'op', op: MUL, operands: [left, inverted], type, nested: false };
-  }
   function createOperation(left, right, op) {
     const leftType = nodeType(left), rightType = nodeType(right);
     if (!leftType || !rightType || left.t === 'kw' || right.t === 'kw') return null;
     const type = createOperationType(leftType, rightType, op);
     if (!type) return null;
-    if (op === DIV) return createOperationDiv(left, right, type);
+    if (op === DIV) {
+      const inverted = invertNode(right);
+      if (category(left) === 'number' && left.t === 'lit' && left.value === 1) return inverted;
+      op = MUL; right = inverted;
+    }
     return { __proto__: null, t: 'op', op, operands: [left, right], type, nested: false };
   }
   function invertNode(operand) {
@@ -764,15 +731,10 @@
     }
     return NaN;
   }
-  function simplifyArithmeticType(left, right, op) {
-    if (op === ADD || op === SUB) return addTypes(nodeType(left), nodeType(right));
-    if (op === MUL) return multiplyTypes(nodeType(left), nodeType(right));
-    return multiplyTypes(nodeType(left), negateType(nodeType(right)));
-  }
   function canSimplifyArithmetic(left, right, op) {
     if (left.t !== 'lit' || right.t !== 'lit') return false;
     if ((op === MUL || op === DIV) && category(left) !== 'number' && category(right) !== 'number') return false;
-    const type = simplifyArithmeticType(left, right, op);
+    const type = op === ADD || op === SUB ? addTypes(nodeType(left), nodeType(right)) : op === MUL ? multiplyTypes(nodeType(left), nodeType(right)) : multiplyTypes(nodeType(left), negateType(nodeType(right)));
     return !(type && category({ t: 'op', type }) === 'intermediate');
   }
   function distributeOver(outer, scalar, side, op) {
@@ -856,15 +818,14 @@
     });
     return { combined, children };
   }
-  function simplifySumOrProductApplyCombined(node, op, multiply, combined, factorRef) {
-    let value = combined[node.unit];
-    if (multiply) { value *= factorRef.factor; factorRef.factor = 1; } else { op = (value < 0 || (value === 0 && 1 / value < 0)) ? SUB : ADD; value = mathAbs(value); }
-    return { node: lit(value, node.unit), op };
-  }
   function simplifySumOrProductStep(item, multiply, combined, factorRef, used) {
     let { node, op } = item;
     if (multiply && node.t === 'lit' && node.unit === 'number') return { skip: true };
-    if (node.t === 'lit' && node.unit in combined) { const applied = simplifySumOrProductApplyCombined(node, op, multiply, combined, factorRef); node = applied.node; op = applied.op; }
+    if (node.t === 'lit' && node.unit in combined) {
+      let value = combined[node.unit];
+      if (multiply) { value *= factorRef.factor; factorRef.factor = 1; } else { op = (value < 0 || (value === 0 && 1 / value < 0)) ? SUB : ADD; value = mathAbs(value); }
+      node = lit(value, node.unit);
+    }
     if (node.t === 'lit') { if (used[node.unit]) return { skip: true }; used[node.unit] = true; }
     return { node, op };
   }
@@ -872,9 +833,6 @@
     if (!result) return lit(factorRef.factor, 'number');
     if (factorRef.factor !== 1) return simplified(result, lit(factorRef.factor, 'number'), MUL);
     return result;
-  }
-  function simplifySumOrProductFirstResult(step) {
-    return step.op === SUB && step.node.t === 'lit' ? lit(-step.node.value, step.node.unit) : unnest(step.node);
   }
   function simplifySumOrProduct(root) {
     const multiply = isMulOrDiv(root);
@@ -884,7 +842,7 @@
     for (let index = 0; index < children.length; index++) {
       const step = simplifySumOrProductStep(children[index], multiply, combined, factorRef, used);
       if (step.skip) continue;
-      if (!result) { result = simplifySumOrProductFirstResult(step); continue; }
+      if (!result) { result = step.op === SUB && step.node.t === 'lit' ? lit(-step.node.value, step.node.unit) : unnest(step.node); continue; }
       result = simplified(result, step.node, step.op);
       if (!result) return null;
     }
@@ -900,20 +858,13 @@
     if (high.t === 'kw') return createComparison([low, value], 'max');
     return undefined;
   }
-  function comparisonType(operands) {
-    let type = null;
-    for (let index = 0; index < operands.length; index++) { if (operands[index].t === 'kw') return null; type = index ? addTypes(type, nodeType(operands[index])) : nodeType(operands[index]); if (!type) return null; }
-    return type;
-  }
-  function allEagerlySimplifiable(operands) {
-    for (let index = 0; index < operands.length; index++) if (!canEagerlySimplify(operands[index])) return false;
-    return true;
-  }
   function createComparison(operands, op) {
     if (op === 'clamp') { const r = clampReduction(operands); if (r !== undefined) return r; }
-    const type = comparisonType(operands);
-    if (!type) return null;
-    if (allEagerlySimplifiable(operands)) {
+    let type = null;
+    for (let index = 0; index < operands.length; index++) { if (operands[index].t === 'kw') return null; type = index ? addTypes(type, nodeType(operands[index])) : nodeType(operands[index]); if (!type) return null; }
+    let eager = true;
+    for (let index = 0; index < operands.length; index++) if (!canEagerlySimplify(operands[index])) { eager = false; break; }
+    if (eager) {
       const values = list();
       for (let index = 0; index < operands.length; index++) push(values, canonicalValue(operands[index]));
       return lit(evaluate(values, op), canonicalUnit(operands[0].unit));
@@ -936,20 +887,14 @@
     for (let index = 0; index < operands.length; index++) if (category(operands[index]) !== 'number') return false;
     return true;
   }
-  function fnResultTypeAngle(name, types) {
-    return name === 'atan2' && !sameTypes(types) ? null : makeType('deg');
-  }
-  function fnResultTypeLookup(name, operands, types) {
-    if (FN_RESULT_NUMBER[name]) return makeType('number');
-    if (FN_RESULT_ANGLE[name]) return fnResultTypeAngle(name, types);
-    if (FN_SAME_TYPE[name]) return sameTypes(types);
-    if (name === 'abs') return copyType(types[0]);
-    return null;
-  }
   function fnResultType(name, operands, types) {
     if (name === 'sin' || name === 'cos' || name === 'tan') return fnResultTypeTrig(operands);
     if (FN_NUMBER_INPUTS[name] && !fnResultTypeNumberInputsOk(operands)) return null;
-    return fnResultTypeLookup(name, operands, types);
+    if (FN_RESULT_NUMBER[name]) return makeType('number');
+    if (FN_RESULT_ANGLE[name]) return name === 'atan2' && !sameTypes(types) ? null : makeType('deg');
+    if (FN_SAME_TYPE[name]) return sameTypes(types);
+    if (name === 'abs') return copyType(types[0]);
+    return null;
   }
   function sameTypes(types) { let type = types[0]; for (let index = 1; index < types.length; index++) { type = addTypes(type, types[index]); if (!type) return null; } return type; }
   const EAGER_FN_TRIG = { __proto__: null, sin: mathSin, cos: mathCos, tan: mathTan };
@@ -979,16 +924,14 @@
     }
     return eagerFnBinary(name, values, unitOf);
   }
-  function hasKeywordOperand(operands) {
-    for (let index = 0; index < operands.length; index++) if (operands[index].t === 'kw') return true;
-    return false;
-  }
   function createFunction(name, operands) {
-    if (hasKeywordOperand(operands)) return null;
+    for (let index = 0; index < operands.length; index++) if (operands[index].t === 'kw') return null;
     const types = list(); for (let index = 0; index < operands.length; index++) push(types, nodeType(operands[index]));
     const type = fnResultType(name, operands, types);
     if (!type) return null;
-    if (allEagerlySimplifiable(operands)) {
+    let eager = true;
+    for (let index = 0; index < operands.length; index++) if (!canEagerlySimplify(operands[index])) { eager = false; break; }
+    if (eager) {
       const values = list(); for (let index = 0; index < operands.length; index++) push(values, canonicalValue(operands[index]));
       const result = eagerFnValue(name, operands, values, canonicalUnit(operands[0].unit));
       if (result) return result;
@@ -997,21 +940,18 @@
   }
   // Rounding strategies parse as a leading keyword argument.
   const ROUNDING = { __proto__: null, nearest: 1, up: 1, down: 1, 'to-zero': 1 };
-  const ROUND_STRATEGY = { __proto__: null, up: (lower, upper) => upper, down: (lower, upper) => lower, 'to-zero': (lower, upper) => mathAbs(lower) < mathAbs(upper) ? lower : upper };
-  function roundValue(strategy, a, lower, upper) {
-    const pick = ROUND_STRATEGY[strategy];
-    return pick ? pick(lower, upper) : (mathAbs(a - lower) < mathAbs(upper - a) ? lower : upper);
-  }
-  function createRoundEager(strategy, operands) {
-    const a = canonicalValue(operands[0]), b = canonicalValue(operands[1]), unitOf = canonicalUnit(operands[0].unit);
-    if (b === 0) return lit(NaN, unitOf);
-    return lit(roundValue(strategy, a, mathFloor(a / b) * b, mathCeil(a / b) * b), unitOf);
-  }
   function createRound(strategy, operands) {
     if (operands.length === 1) { if (category(operands[0]) !== 'number') return null; operands = [operands[0], lit(1, 'number')]; }
     const type = addTypes(nodeType(operands[0]), nodeType(operands[1]));
     if (!type) return null;
-    if (canEagerlySimplify(operands[0]) && canEagerlySimplify(operands[1])) return createRoundEager(strategy, operands);
+    if (canEagerlySimplify(operands[0]) && canEagerlySimplify(operands[1])) {
+      const a = canonicalValue(operands[0]), b = canonicalValue(operands[1]), unitOf = canonicalUnit(operands[0].unit);
+      if (b === 0) return lit(NaN, unitOf);
+      const lower = mathFloor(a / b) * b, upper = mathCeil(a / b) * b;
+      let value;
+      switch (strategy) { case 'up': value = upper; break; case 'down': value = lower; break; case 'to-zero': value = mathAbs(lower) < mathAbs(upper) ? lower : upper; break; default: value = mathAbs(a - lower) < mathAbs(upper - a) ? lower : upper; }
+      return lit(value, unitOf);
+    }
     return { __proto__: null, t: 'op', op: 'fn', name: 'round', strategy, operands, type, nested: false };
   }
   const MATH_FUNCTIONS = { __proto__: null, calc: 1, '-webkit-calc': 1, min: 1, max: 1, clamp: 1, sin: 1, cos: 1, tan: 1, asin: 1, acos: 1, atan: 1, atan2: 1, pow: 1, sqrt: 1, hypot: 1, log: 1, exp: 1, round: 1, mod: 1, rem: 1, abs: 1, sign: 1 };
@@ -1036,35 +976,20 @@
     }
     return { strategy: null };
   }
-  function parseMathArgSeparator(items, stateRef) {
-    while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++;
-    if (stateRef.at >= items.length || items[stateRef.at].type !== 'comma') return false;
-    stateRef.at++;
-    return true;
-  }
-  function parseMathArgNode(items, stateRef, depth, allowNone) {
-    while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++;
-    const inner = { items, at: stateRef.at, depth: depth + 1, allowNone };
-    const node = parseSum(inner);
-    if (!node) return null;
-    stateRef.at = inner.at;
-    while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++;
-    return stateRef.at < items.length && items[stateRef.at].type !== 'comma' ? null : node;
-  }
-  function parseMathArgsCollect(items, stateRef, depth, allowNone, maximum) {
+  function parseMathArgs(items, stateRef, depth, allowNone, bounds) {
+    const skip = () => { while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++; };
     const nodes = list();
-    while (stateRef.at < items.length && nodes.length < maximum) {
-      if (nodes.length && !parseMathArgSeparator(items, stateRef)) return null;
-      const node = parseMathArgNode(items, stateRef, depth, allowNone);
+    while (stateRef.at < items.length && nodes.length < bounds.maximum) {
+      if (nodes.length) { skip(); if (stateRef.at >= items.length || items[stateRef.at].type !== 'comma') return null; stateRef.at++; }
+      skip();
+      const inner = { items, at: stateRef.at, depth: depth + 1, allowNone };
+      const node = parseSum(inner);
       if (!node) return null;
+      stateRef.at = inner.at; skip();
+      if (stateRef.at < items.length && items[stateRef.at].type !== 'comma') return null;
       push(nodes, node);
     }
-    return nodes;
-  }
-  function parseMathArgs(items, stateRef, depth, allowNone, bounds) {
-    const nodes = parseMathArgsCollect(items, stateRef, depth, allowNone, bounds.maximum);
-    if (!nodes) return null;
-    while (stateRef.at < items.length && items[stateRef.at].type === 'whitespace') stateRef.at++;
+    skip();
     if (stateRef.at < items.length || nodes.length < bounds.minimum) return null;
     return nodes;
   }
@@ -1097,10 +1022,6 @@
     state.at++;
     return nest(result);
   }
-  function parseTermTokenDimension(item) {
-    const key = lowerCase(item.unit);
-    return !UNITS[key] || key === 'number' || key === 'percent' || key === 'fr' ? null : lit(item.value, key);
-  }
   function parseTermToken(state, item) {
     state.at++;
     const id = ident(item);
@@ -1108,7 +1029,7 @@
     if (id === 'none' && state.allowNone) return { __proto__: null, t: 'kw', id: 'none', nested: false };
     if (item.type === 'number') return lit(item.value, 'number');
     if (item.type === 'percentage') return lit(item.value, 'percent');
-    if (item.type === 'dimension') return parseTermTokenDimension(item);
+    if (item.type === 'dimension') { const key = lowerCase(item.unit); if (!UNITS[key] || key === 'number' || key === 'percent' || key === 'fr') return null; return lit(item.value, key); }
     return null;
   }
   function parseTermItem(state, item) {
@@ -1157,16 +1078,14 @@
     if (!right) return null;
     return { right, op: item.delim === '+' ? ADD : SUB };
   }
-  function isSumDelim(item) {
-    return item && item.type === 'delim' && (item.delim === '+' || item.delim === '-');
-  }
   function parseSum(state) {
     const info = { space: false };
     let result = parseProduct(state, info);
     if (!result) return null;
     for (;;) {
-      if (!isSumDelim(state.items[state.at])) break;
-      const step = parseSumRight(state, info, state.items[state.at]);
+      const item = state.items[state.at];
+      if (!item || item.type !== 'delim' || (item.delim !== '+' && item.delim !== '-')) break;
+      const step = parseSumRight(state, info, item);
       if (!step) return null;
       result = simplified(result, step.right, step.op);
       if (!result) return null;
@@ -1200,17 +1119,11 @@
     for (let index = 0; index < complex.length; index++) push(result, complex[index]);
     return result;
   }
-  function nodeTextTermStepInvert(term) {
-    return term.t === 'op' && term.op === 'invert' ? ' / ' + nodeText(term.operands[0]) : null;
-  }
-  function nodeTextTermStepOp(op) {
-    return op === ADD ? '+' : op === SUB ? '-' : '*';
-  }
   function nodeTextTermStep(entry) {
     let { op, node: term } = entry;
-    if (op === MUL) { const inv = nodeTextTermStepInvert(term); if (inv) return inv; }
+    if (op === MUL && term.t === 'op' && term.op === 'invert') return ' / ' + nodeText(term.operands[0]);
     if (term.t === 'lit' && (op === ADD || op === SUB) && term.value < 0) { op = op === ADD ? SUB : ADD; term = lit(-term.value, term.unit); }
-    return ' ' + nodeTextTermStepOp(op) + ' ' + nodeText(term);
+    return ' ' + (op === ADD ? '+' : op === SUB ? '-' : '*') + ' ' + nodeText(term);
   }
   function nodeTextAddSubMul(node) {
     let terms = sortedTerms(node);
@@ -1220,17 +1133,10 @@
     for (let index = 1; index < terms.length; index++) text += nodeTextTermStep(terms[index]);
     return text + ')';
   }
-  function nodeTextFnRoundPrefix(node) {
-    return node.name === 'round' && node.strategy && node.strategy !== 'nearest' ? node.strategy + ', ' : '';
-  }
-  function nodeTextFnRoundOperands(node) {
-    if (node.name !== 'round') return node.operands;
-    const step = node.operands[1];
-    return step.t === 'lit' && step.value === 1 && step.unit === 'number' ? [node.operands[0]] : node.operands;
-  }
   function nodeTextFn(node) {
-    let text = node.name + '(' + nodeTextFnRoundPrefix(node);
-    const operands = nodeTextFnRoundOperands(node);
+    let text = node.name + '(';
+    if (node.name === 'round' && node.strategy && node.strategy !== 'nearest') text += node.strategy + ', ';
+    const operands = node.name === 'round' && node.operands[1].t === 'lit' && node.operands[1].value === 1 && node.operands[1].unit === 'number' ? [node.operands[0]] : node.operands;
     for (let index = 0; index < operands.length; index++) text += (index ? ', ' : '') + topLevelText(operands[index]);
     return text + ')';
   }
@@ -1300,17 +1206,13 @@
     return createComparison(operands, record.kind);
   }
   // CSSNumericValue::ToCalcExpressionNode.
-  function numericToNodeUnary(record) {
-    const inner = numericToNode(record.value);
-    if (!inner) return null;
-    return record.kind === 'negate' ? simplified(lit(-1, 'number'), inner, MUL) : createOperation(lit(1, 'number'), inner, DIV);
-  }
   function numericToNode(value) {
     const record = numericRecord(value);
     switch (record.kind) {
       case 'unit': return lit(record.value, record.unit);
       case 'sum': case 'product': return numericToNodeSumOrProduct(record);
-      case 'negate': case 'invert': return numericToNodeUnary(record);
+      case 'negate': { const inner = numericToNode(record.value); return inner ? simplified(lit(-1, 'number'), inner, MUL) : null; }
+      case 'invert': { const inner = numericToNode(record.value); return inner ? createOperation(lit(1, 'number'), inner, DIV) : null; }
       case 'min': case 'max': return numericToNodeMinMax(record);
       case 'clamp': return createComparison([numericToNode(record.lower), numericToNode(record.value), numericToNode(record.upper)], 'clamp');
     }
@@ -1443,21 +1345,15 @@
     return nodeToNumeric(node);
   }
   // CSSNumericValue::parse: one numeric token, or a calc()/-webkit-calc()/min()/max()/clamp().
-  function parseNumericDimension(item) {
-    const key = lowerCase(item.unit);
-    return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null;
-  }
-  function parseNumericItem(item) {
-    if (item.type === 'number') return unitValue(item.value, 'number');
-    if (item.type === 'percentage') return unitValue(item.value, 'percent');
-    if (item.type === 'dimension') return parseNumericDimension(item);
-    if (item.block && item.type === 'function') return parseNumericFunction(item);
-    return null;
-  }
   function parseNumeric(text) {
     const items = trimSpace(components(tokenize(text)));
     if (items.length !== 1) return null;
-    return parseNumericItem(items[0]);
+    const item = items[0];
+    if (item.type === 'number') return unitValue(item.value, 'number');
+    if (item.type === 'percentage') return unitValue(item.value, 'percent');
+    if (item.type === 'dimension') { const key = lowerCase(item.unit); return UNITS[key] && key !== 'number' && key !== 'percent' ? unitValue(item.value, key) : null; }
+    if (item.block && item.type === 'function') return parseNumericFunction(item);
+    return null;
   }
   attribute('CSSUnitValue', 'value', (self) => brand(self, brandSets.CSSUnitValue).value, (self, value) => { const record = brand(self, brandSets.CSSUnitValue); record.value = toDouble(value); });
   attribute('CSSUnitValue', 'unit', (self) => { const key = brand(self, brandSets.CSSUnitValue).unit; return key; });
@@ -1740,20 +1636,11 @@
     const ay = numericRecord(record.ay);
     return 'skew(' + numericCss(record.ax) + (ay.kind !== 'unit' || ay.value !== 0 ? ', ' + numericCss(record.ay) : '') + ')';
   }
-  function componentTextTranslate(record) {
-    return record.is2D ? 'translate(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'translate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
-  }
-  function componentTextRotate(record) {
-    return record.is2D ? 'rotate(' + numericCss(record.angle) + ')' : 'rotate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ', ' + numericCss(record.angle) + ')';
-  }
-  function componentTextScale(record) {
-    return record.is2D ? 'scale(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'scale3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
-  }
   function componentText(record) {
     switch (record.kind) {
-      case 'translate': return componentTextTranslate(record);
-      case 'rotate': return componentTextRotate(record);
-      case 'scale': return componentTextScale(record);
+      case 'translate': return record.is2D ? 'translate(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'translate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
+      case 'rotate': return record.is2D ? 'rotate(' + numericCss(record.angle) + ')' : 'rotate3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ', ' + numericCss(record.angle) + ')';
+      case 'scale': return record.is2D ? 'scale(' + numericCss(record.x) + ', ' + numericCss(record.y) + ')' : 'scale3d(' + numericCss(record.x) + ', ' + numericCss(record.y) + ', ' + numericCss(record.z) + ')';
       case 'skew': return componentTextSkew(record);
       case 'skewX': return 'skewX(' + numericCss(record.ax) + ')';
       case 'skewY': return 'skewY(' + numericCss(record.ay) + ')';
@@ -1920,17 +1807,15 @@
   // Unbalanced blocks, top-level `!`/`;`/`{}` and bad tokens are never a declaration value.
   const DECL_CLOSE_TOKENS = plainSet([')', ']', '}']);
   const declStepTopLevelBad = (token, depth) => depth === 0 && (token.type === 'semicolon' || (token.type === 'delim' && token.delim === '!'));
-  function declTokenStep(token, stateRef) {
-    if (token.type === 'bad-string' || token.type === 'bad-url') return false;
-    if (BLOCK_END[token.type]) { push(stateRef.stack, BLOCK_END[token.type]); stateRef.depth++; return true; }
-    if (DECL_CLOSE_TOKENS[token.type]) { if (!stateRef.stack.length || stateRef.stack[stateRef.stack.length - 1] !== token.type) return false; stateRef.stack.length--; stateRef.depth--; return true; }
-    return !declStepTopLevelBad(token, stateRef.depth);
-  }
   function declarationValueOk(tokens, allowEmpty) {
     const stateRef = { depth: 0, stack: list() }; let content = false;
     for (let index = 0; index < tokens.length; index++) {
-      if (!declTokenStep(tokens[index], stateRef)) return false;
-      if (tokens[index].type !== 'whitespace') content = true;
+      const token = tokens[index];
+      if (token.type === 'bad-string' || token.type === 'bad-url') return false;
+      if (token.type !== 'whitespace') content = true;
+      if (BLOCK_END[token.type]) { push(stateRef.stack, BLOCK_END[token.type]); stateRef.depth++; continue; }
+      if (DECL_CLOSE_TOKENS[token.type]) { if (!stateRef.stack.length || stateRef.stack[stateRef.stack.length - 1] !== token.type) return false; stateRef.stack.length--; stateRef.depth--; continue; }
+      if (declStepTopLevelBad(token, stateRef.depth)) return false;
     }
     return allowEmpty || content;
   }
@@ -1951,14 +1836,10 @@
     }
     return true;
   }
-  const SUBSTITUTION_NAMES = plainSet(['var', 'env', 'attr', 'if', 'inherit']);
-  function isSubstitutionFunction(item) {
-    return item.block && item.type === 'function' && !!SUBSTITUTION_NAMES[lowerCase(item.value)];
-  }
   function hasSubstitution(items) {
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
-      if (isSubstitutionFunction(item)) return true;
+      if (item.block && item.type === 'function') { const name = lowerCase(item.value); if (name === 'var' || name === 'env' || name === 'attr' || name === 'if' || name === 'inherit') return true; }
       if (item.block && hasSubstitution(item.children)) return true;
     }
     return false;
@@ -2022,18 +1903,15 @@
   }
   // Whether `text` is a valid value of a (non-custom) property: Lightning CSS's grammar when it
   // models the property, else the property's Blink keyword table for single identifiers.
-  function validValueEarlyReject(property, items) {
-    if (hasSubstitution(items)) return true;
-    if (property.descriptor) return true;
-    if (property.name === '-webkit-box-reflect' && isSingleIdent(items) && ident(items[0]) === 'none') return true;
-    return false;
-  }
   function validValue(property, text) {
     const tokens = tokenize(text);
     if (!declarationValueOk(tokens, false)) return false;
     const items = significant(components(tokens));
     if (isSingleIdent(items) && CSS_WIDE[lowerCase(items[0].value)]) return true;
-    if (validValueEarlyReject(property, items)) return false;
+    if (hasSubstitution(items)) return false;
+    if (property.descriptor) return false;
+    // -webkit-box-reflect serializes `none` but its grammar has no such keyword.
+    if (property.name === '-webkit-box-reflect' && isSingleIdent(items) && ident(items[0]) === 'none') return false;
     if (!rangeOk(property, items)) return false;
     return validValueAfterRange(property, text, items);
   }
@@ -2079,36 +1957,24 @@
   }
   const GENERIC_NUMERIC_ITEM = plainSet(['number', 'percentage', 'dimension']);
   // CreateStyleValue: identifiers, numerics, colors and images reify without a property.
-  function genericValueNumericItem(property, meta, item) {
-    if (item.type === 'number') return genericValueNumber(property, meta, item);
-    if (item.type === 'percentage') return ALPHA[property.name] ? unitValue(item.value / 100, 'number') : unitValue(item.value, 'percent');
-    if (item.type === 'dimension') return genericValueDimension(item);
-    return null;
-  }
   function genericValue(property, item, mode) {
     if (item.type === 'ident') return keywordValue(identifierKeyword(property, item));
     const meta = property.meta || { __proto__: null };
     if (GENERIC_NUMERIC_ITEM[item.type] && !metaHasNumericType(meta) && meta.types) return null;
-    if (GENERIC_NUMERIC_ITEM[item.type]) return genericValueNumericItem(property, meta, item);
+    if (item.type === 'number') return genericValueNumber(property, meta, item);
+    if (item.type === 'percentage') return ALPHA[property.name] ? unitValue(item.value / 100, 'number') : unitValue(item.value, 'percent');
+    if (item.type === 'dimension') return genericValueDimension(item);
     return genericValueOther(property, item, mode);
   }
   const colorText = (item, mode) => mode.normalize(plain([item]));
   // Position syntax (css-values-4 <position>) as a CSSValuePair of x and y offsets.
   const positionIsKeyword = (item, names) => item.type === 'ident' && indexOfText(names, ' ' + lowerCase(item.value) + ' ') >= 0;
-  function positionOffsetDimension(item) {
-    const key = lowerCase(item.unit);
-    return UNITS[key] && UNITS[key].base === BASE.length ? unitValue(item.value, key) : null;
-  }
-  function positionOffsetMath(item) {
-    if (!item.block || item.type !== 'function' || !MATH_FUNCTIONS[lowerCase(item.value)]) return null;
-    const node = parseMathComponent(item);
-    return node ? nodeToNumeric(node) : null;
-  }
   function positionOffset(item) {
     if (item.type === 'number' && item.value === 0) return unitValue(0, 'px');
     if (item.type === 'percentage') return unitValue(item.value, 'percent');
-    if (item.type === 'dimension') return positionOffsetDimension(item);
-    return positionOffsetMath(item);
+    if (item.type === 'dimension' && UNITS[lowerCase(item.unit)] && UNITS[lowerCase(item.unit)].base === BASE.length) return unitValue(item.value, lowerCase(item.unit));
+    if (item.block && item.type === 'function' && MATH_FUNCTIONS[lowerCase(item.value)]) { const node = parseMathComponent(item); return node ? nodeToNumeric(node) : null; }
+    return null;
   }
   const positionKeywordOffset = (name) => name === 'left' || name === 'top' ? unitValue(0, 'percent') : name === 'center' ? unitValue(50, 'percent') : unitValue(100, 'percent');
   const positionFromEdge = (name, value) => name === 'left' || name === 'top' ? value : createVariadic('sum', toArray([unitValue(100, 'percent'), negateValue(value)]));
@@ -2165,58 +2031,54 @@
     return positionValueThreeOrFour(parts);
   }
   // CSSTransformComponent::FromCSSValue over one transform function.
-  function transformComponentNumericPart(part) {
+  function transformComponentNumeric(group) {
+    const parts = significant(group); if (parts.length !== 1) return null;
+    const part = parts[0];
     if (part.type === 'number') return unitValue(part.value, 'number');
     if (part.type === 'percentage') return unitValue(part.value, 'percent');
     if (part.type === 'dimension') { const key = lowerCase(part.unit); return UNITS[key] ? unitValue(part.value, key) : null; }
-    return positionOffsetMath(part);
-  }
-  function transformComponentNumeric(group) {
-    const parts = significant(group); if (parts.length !== 1) return null;
-    return transformComponentNumericPart(parts[0]);
+    if (part.block && part.type === 'function' && MATH_FUNCTIONS[lowerCase(part.value)]) { const node = parseMathComponent(part); return node ? nodeToNumeric(node) : null; }
+    return null;
   }
   const transformZeroAs = (value, unitKey) => { const record = value && numericRecord(value); return record && record.kind === 'unit' && record.unit === 'number' && record.value === 0 ? unitValue(0, unitKey) : value; };
-  function translateRecord(x, y, z, is2D) {
-    return component('CSSTranslate', { kind: 'translate', x, y, z, is2D });
-  }
-  function translateSingle(name, zx) {
-    if (name === 'translatex') return translateRecord(zx, px(0), px(0), true);
-    if (name === 'translatey') return translateRecord(px(0), zx, px(0), true);
-    if (name === 'translatez') return translateRecord(px(0), px(0), zx, false);
-    return null;
-  }
   function transformComponentTranslate(name, values) {
-    const zx = transformZeroAs(values[0], 'px');
-    if (name !== 'translate' && name !== 'translate3d') return values.length === 1 ? translateSingle(name, zx) : null;
-    if (name === 'translate3d') return values.length === 3 ? translateRecord(zx, transformZeroAs(values[1], 'px'), transformZeroAs(values[2], 'px'), false) : null;
-    if (values.length === 1) return translateRecord(zx, px(0), px(0), true);
-    return values.length === 2 ? translateRecord(zx, transformZeroAs(values[1], 'px'), px(0), true) : null;
-  }
-  function rotateRecord(xv, yv, zv, angle, is2D) {
-    return component('CSSRotate', { kind: 'rotate', x: unitValue(xv, 'number'), y: unitValue(yv, 'number'), z: unitValue(zv, 'number'), angle, is2D });
-  }
-  const ROTATE_AXIS = { __proto__: null, rotate: [0, 0, 1], rotatez: [0, 0, 1], rotatex: [1, 0, 0], rotatey: [0, 1, 0] };
-  function transformComponentRotate(name, values) {
-    const axis = ROTATE_AXIS[name];
-    if (axis) return values.length === 1 ? rotateRecord(axis[0], axis[1], axis[2], transformZeroAs(values[0], 'deg'), name === 'rotate') : null;
-    if (name === 'rotate3d') return values.length === 4 ? component('CSSRotate', { kind: 'rotate', x: values[0], y: values[1], z: values[2], angle: transformZeroAs(values[3], 'deg'), is2D: false }) : null;
+    const zx = () => transformZeroAs(values[0], 'px');
+    switch (name) {
+      case 'translate': if (values.length === 1) return component('CSSTranslate', { kind: 'translate', x: zx(), y: px(0), z: px(0), is2D: true });
+        return values.length === 2 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: transformZeroAs(values[1], 'px'), z: px(0), is2D: true }) : null;
+      case 'translatex': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: px(0), z: px(0), is2D: true }) : null;
+      case 'translatey': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: zx(), z: px(0), is2D: true }) : null;
+      case 'translatez': return values.length === 1 ? component('CSSTranslate', { kind: 'translate', x: px(0), y: px(0), z: zx(), is2D: false }) : null;
+      case 'translate3d': return values.length === 3 ? component('CSSTranslate', { kind: 'translate', x: zx(), y: transformZeroAs(values[1], 'px'), z: transformZeroAs(values[2], 'px'), is2D: false }) : null;
+    }
     return null;
   }
-  function scaleRecord(x, y, z, is2D) {
-    return component('CSSScale', { kind: 'scale', x, y, z, is2D });
-  }
-  function scaleSingle(name, v, one) {
-    if (name === 'scalex') return scaleRecord(v, one, one, true);
-    if (name === 'scaley') return scaleRecord(one, v, one, true);
-    if (name === 'scalez') return scaleRecord(one, one, v, false);
+  function transformComponentRotate(name, values) {
+    const angleOf = () => transformZeroAs(values[0], 'deg');
+    const axes = (xKey, yKey, zKey) => ({ x: unitValue(xKey, 'number'), y: unitValue(yKey, 'number'), z: unitValue(zKey, 'number') });
+    switch (name) {
+      case 'rotate': case 'rotatez': {
+        if (values.length !== 1) return null;
+        const base = { kind: 'rotate', ...axes(0, 0, 1), angle: angleOf(), is2D: name === 'rotate' };
+        return component('CSSRotate', base);
+      }
+      case 'rotatex': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', ...axes(1, 0, 0), angle: angleOf(), is2D: false }) : null;
+      case 'rotatey': return values.length === 1 ? component('CSSRotate', { kind: 'rotate', ...axes(0, 1, 0), angle: angleOf(), is2D: false }) : null;
+      case 'rotate3d': return values.length === 4 ? component('CSSRotate', { kind: 'rotate', x: values[0], y: values[1], z: values[2], angle: transformZeroAs(values[3], 'deg'), is2D: false }) : null;
+    }
     return null;
   }
   function transformComponentScale(name, values) {
-    const one = unitValue(1, 'number');
-    if (name !== 'scale' && name !== 'scale3d') return values.length === 1 ? scaleSingle(name, values[0], one) : null;
-    if (name === 'scale3d') return values.length === 3 ? scaleRecord(values[0], values[1], values[2], false) : null;
-    if (values.length === 1) return scaleRecord(values[0], values[0], one, true);
-    return values.length === 2 ? scaleRecord(values[0], values[1], one, true) : null;
+    const one = () => unitValue(1, 'number');
+    switch (name) {
+      case 'scale': if (values.length === 1) return component('CSSScale', { kind: 'scale', x: values[0], y: values[0], z: one(), is2D: true });
+        return values.length === 2 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: one(), is2D: true }) : null;
+      case 'scalex': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: values[0], y: one(), z: one(), is2D: true }) : null;
+      case 'scaley': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: one(), y: values[0], z: one(), is2D: true }) : null;
+      case 'scalez': return values.length === 1 ? component('CSSScale', { kind: 'scale', x: one(), y: one(), z: values[0], is2D: false }) : null;
+      case 'scale3d': return values.length === 3 ? component('CSSScale', { kind: 'scale', x: values[0], y: values[1], z: values[2], is2D: false }) : null;
+    }
+    return null;
   }
   function transformComponentSkew(name, values) {
     switch (name) {
@@ -2309,18 +2171,16 @@
     return undefined;
   }
   function reifyPosition(items) { const pair = positionValueOf(items); return pair ? positionValue(pair[0], pair[1]) : null; }
-  function reifyNamedBranchSpecial(property, items, single, layer, mode) {
-    if (COLOR_KW_PROPS[property.name] || COLOR_KEYWORD_ONLY[property.name]) return reifyColorKeyword(property, layer, single, mode);
-    if (property.name === 'transform') return reifyTransform(property, items, single, mode);
-    if (OFFSET_ANCHOR_PROPS[property.name]) { const r = reifyOffsetAnchorIdent(property, single, mode); if (r !== undefined) return r; }
-    if (POSITION_LIKE_PROPS[property.name]) return reifyPosition(items);
-    if (property.name === 'transform-origin') return null;
-    return undefined;
-  }
   function reifyNamedBranch(property, items, single, layer, mode) {
-    if (RADIUS[property.name]) return reifyRadius(property, items, single, mode);
-    if (BG_SIZE_PROPS[property.name]) return reifyBackgroundSize(property, items, single, mode);
-    return reifyNamedBranchSpecial(property, items, single, layer, mode);
+    const name = property.name;
+    if (RADIUS[name]) return reifyRadius(property, items, single, mode);
+    if (BG_SIZE_PROPS[name]) return reifyBackgroundSize(property, items, single, mode);
+    if (COLOR_KW_PROPS[name] || COLOR_KEYWORD_ONLY[name]) return reifyColorKeyword(property, layer, single, mode);
+    if (name === 'transform') return reifyTransform(property, items, single, mode);
+    if (OFFSET_ANCHOR_PROPS[name]) { const r = reifyOffsetAnchorIdent(property, single, mode); if (r !== undefined) return r; }
+    if (POSITION_LIKE_PROPS[name]) return reifyPosition(items);
+    if (name === 'transform-origin') return null;
+    return undefined;
   }
   function reifyTrailingBranch(property, items, single, mode) {
     const name = property.name;
@@ -2341,17 +2201,16 @@
   // shorthands are handled by the caller).
   // Longhands Blink stores as quads or per-gap value lists, which Typed OM level 1 does not reify.
   const STRUCTURED = plainSet(['border-image-outset', 'border-image-repeat', 'border-image-slice', 'border-image-width', 'column-rule-style', 'column-rule-width', 'row-rule-style', 'row-rule-width', 'position-visibility']);
-  function reifyRepeated(property, items, mode) {
-    const layers = LAYERED_SPACE[property.name] ? (() => { const result = list(), parts = significant(items); for (let index = 0; index < parts.length; index++) push(result, plain([parts[index]])); return result; })() : splitComponents(items, 'comma');
-    const whole = layers.length === 1 ? reifyOne(property, items, mode) : null;
-    if (whole) return [whole];
-    const values = list();
-    for (let index = 0; index < layers.length; index++) { const value = reifyOne(property, layers[index], mode); if (!value) return [unsupported(mode.normalize(items), property.name)]; push(values, value); }
-    return toArray(values);
-  }
   function reifyValue(property, items, mode) {
     if (!property.meta.types || STRUCTURED[property.name]) return [unsupported(mode.normalize(items), property.name)];
-    if (isRepeated(property)) return reifyRepeated(property, items, mode);
+    if (isRepeated(property)) {
+      const layers = LAYERED_SPACE[property.name] ? (() => { const result = list(), parts = significant(items); for (let index = 0; index < parts.length; index++) push(result, plain([parts[index]])); return result; })() : splitComponents(items, 'comma');
+      const whole = layers.length === 1 ? reifyOne(property, items, mode) : null;
+      if (whole) return [whole];
+      const values = list();
+      for (let index = 0; index < layers.length; index++) { const value = reifyOne(property, layers[index], mode); if (!value) return [unsupported(mode.normalize(items), property.name)]; push(values, value); }
+      return toArray(values);
+    }
     const value = reifyOne(property, items, mode);
     return [value || unsupported(mode.normalize(items), property.name)];
   }
@@ -2375,46 +2234,35 @@
     const open = item.type === 'function' ? lowerCase(item.value) + '(' : item.type;
     return open + normalizedText(item.children) + BLOCK_END[item.type];
   }
-  function componentCssTextIdent(item) {
-    const lower = lowerCase(item.value);
-    return KEYWORD_IDS[lower] ? lower : serializeIdentifier(item.value);
-  }
-  function componentCssTextDimension(item) {
-    const key = lowerCase(item.unit);
-    return UNITS[key] ? formatNumber(item.value, key) : formatNumber(item.value, 'number') + serializeIdentifier(item.unit);
-  }
-  function componentCssTextToken(item) {
-    if (item.type === 'ident') return componentCssTextIdent(item);
-    if (item.type === 'number') return formatNumber(item.value, 'number');
-    if (item.type === 'percentage') return formatNumber(item.value, 'percent');
-    if (item.type === 'dimension') return componentCssTextDimension(item);
-    if (item.type === 'string') return serializeString(item.value);
-    if (item.type === 'url') return 'url(' + serializeString(item.value) + ')';
-    if (item.type === 'hash') return '#' + item.value;
-    return serializeToken(item);
-  }
   function componentCssText(item) {
-    return item.block ? componentCssTextBlock(item) : componentCssTextToken(item);
+    if (item.block) return componentCssTextBlock(item);
+    switch (item.type) {
+      case 'ident': { const lower = lowerCase(item.value); return KEYWORD_IDS[lower] ? lower : serializeIdentifier(item.value); }
+      case 'number': return formatNumber(item.value, 'number');
+      case 'percentage': return formatNumber(item.value, 'percent');
+      case 'dimension': { const key = lowerCase(item.unit); return UNITS[key] ? formatNumber(item.value, key) : formatNumber(item.value, 'number') + serializeIdentifier(item.unit); }
+      case 'string': return serializeString(item.value);
+      case 'url': return 'url(' + serializeString(item.value) + ')';
+      case 'hash': return '#' + item.value;
+      default: return serializeToken(item);
+    }
   }
   // Text modes: parse() keeps the author's text for a single unsupported result; stored and
   // computed values serialize their parsed form.
   const STORED = { normalize: (items) => normalizedText(items) };
   // StyleValueFactory::FromString.
-  function fromStringValid(property, text, meaningful, whole) {
-    if (meaningful.length === 1 && meaningful[0].type === 'ident' && CSS_WIDE[lowerCase(meaningful[0].value)]) return [keywordValue(lowerCase(meaningful[0].value))];
-    if (isShorthand(property)) return [unsupported(text, property.name)];
-    return reifyValue(property, whole, { normalize: (parts) => parts === whole ? text : normalizedText(parts) });
-  }
-  function fromStringFallback(property, tokens, items, text) {
+  function fromString(property, text) {
+    const tokens = tokenize(text), items = components(tokens), meaningful = significant(items), whole = trimSpace(items);
+    if (!property.custom && validValue(property, text)) {
+      if (meaningful.length === 1 && meaningful[0].type === 'ident' && CSS_WIDE[lowerCase(meaningful[0].value)]) return [keywordValue(lowerCase(meaningful[0].value))];
+      if (isShorthand(property)) return [unsupported(text, property.name)];
+      // A single unsupported result keeps the author's text (StyleValueFactory::FromString).
+      return reifyValue(property, whole, { normalize: (parts) => parts === whole ? text : normalizedText(parts) });
+    }
     if (!declarationValueOk(tokens, true) || !substitutionsOk(items)) return [];
     const original = trimText(text);
     if ((property.custom && original.length > 0) || hasSubstitution(items)) return [unparsedFromText(original)];
     return [];
-  }
-  function fromString(property, text) {
-    const tokens = tokenize(text), items = components(tokens), meaningful = significant(items), whole = trimSpace(items);
-    if (!property.custom && validValue(property, text)) return fromStringValid(property, text, meaningful, whole);
-    return fromStringFallback(property, tokens, items, text);
   }
   // Reify a declaration value read from a CSSStyleDeclaration (inline style or a style rule).
   function reifyStored(property, text) {
@@ -2458,16 +2306,11 @@
     return hasType(property.meta, 'Keyword') && hasKeyword(property.meta, id);
   }
   // CSSOMTypes::PropertyCanTake.
-  function propertyCanTakeByFamily(record) {
-    if (record.family === 'CSSStyleValue') return !!record.property ? record.property : false;
-    if (record.family === 'CSSUnparsedValue') return unparsedDeclarationOk(record) ? true : false;
-    return undefined;
-  }
   function propertyCanTake(property, value) {
     const record = recordOf(value);
     if (record.family === 'CSSKeywordValue') return propertyCanTakeKeyword(property, record);
-    const byFamily = propertyCanTakeByFamily(record);
-    if (byFamily !== undefined) return typeof byFamily === 'string' ? byFamily === property.name : byFamily;
+    if (record.family === 'CSSStyleValue') return !!record.property && record.property === property.name;
+    if (record.family === 'CSSUnparsedValue') return unparsedDeclarationOk(record);
     if (property.custom) return false;
     const types = property.meta.types;
     if (!types) return false;
@@ -2512,7 +2355,8 @@
     const values = fromString(property, value);
     return values.length === 1 ? valueDeclarationText(property, values[0]) : null;
   }
-  function coerceListCollect(property, values) {
+  function coerceList(property, values) {
+    if (!values.length) return null;
     const styleValues = list();
     for (let index = 0; index < values.length; index++) {
       const value = values[index];
@@ -2521,9 +2365,6 @@
       if (!parsed.length) return null;
       for (let at = 0; at < parsed.length; at++) push(styleValues, parsed[at]);
     }
-    return styleValues;
-  }
-  function coerceListTexts(property, styleValues) {
     const parts = list();
     for (let index = 0; index < styleValues.length; index++) {
       const text = valueDeclarationText(property, styleValues[index]);
@@ -2532,12 +2373,6 @@
       push(parts, text);
     }
     return { parts };
-  }
-  function coerceList(property, values) {
-    if (!values.length) return null;
-    const styleValues = coerceListCollect(property, values);
-    if (!styleValues) return null;
-    return coerceListTexts(property, styleValues);
   }
   const separatorOf = (property) => property.meta.separator === ',' ? ', ' : ' ';
   const joinList = (items, separator) => { let text = ''; for (let index = 0; index < items.length; index++) text += (index ? separator : '') + items[index]; return text; };
@@ -2568,20 +2403,18 @@
     for (let index = 0; index < longhands.length; index++) push(result, [longhands[index], value]);
     return result;
   }
-  function splitShorthandPair(longhands, parts) {
-    if (parts.length < 1 || parts.length > 2) return null;
-    const result = list();
-    push(result, [longhands[0], splitShorthandTextOfPart(parts[0])]);
-    push(result, [longhands[1], splitShorthandTextOfPart(parts[parts.length - 1])]);
-    return result;
-  }
   function splitShorthand(name, text) {
     const meta = PROPERTIES[name], items = components(tokenize(text));
     if (!meta || !meta.longhands || hasSubstitution(items)) return null;
     const parts = significant(items), longhands = meta.longhands;
     if (parts.length === 1 && parts[0].type === 'ident' && CSS_WIDE[lowerCase(parts[0].value)]) return splitShorthandCssWide(longhands, parts);
     if (longhands.length === 4) return splitShorthandBox(longhands, parts);
-    if (longhands.length === 2) return splitShorthandPair(longhands, parts);
+    if (longhands.length === 2 && parts.length >= 1 && parts.length <= 2) {
+      const result = list();
+      push(result, [longhands[0], splitShorthandTextOfPart(parts[0])]);
+      push(result, [longhands[1], splitShorthandTextOfPart(parts[parts.length - 1])]);
+      return result;
+    }
     return null;
   }
   function storedView(record) {
@@ -2611,22 +2444,21 @@
     if (entry && entry.text === text) { const value = nodeToNumeric(entry.node); if (value) return [value]; }
     return reifyStored(property, text);
   }
-  function pairsContainName(pairs, name) {
-    for (let at = 0; at < pairs.length; at++) if (pairs[at][0] === name) return true;
-    return false;
-  }
-  function removeFromShorthand(record, declaration, name) {
-    const names = declarationNames(record);
-    for (let index = 0; index < names.length; index++) {
-      const owner = names[index], pairs = SPLIT_SHORTHANDS[owner] ? splitShorthand(owner, declarationValue(record, owner)) : null;
-      if (!pairs || !pairsContainName(pairs, name)) continue;
-      apply(declarationRemove, declaration, [owner]);
-      for (let at = 0; at < pairs.length; at++) if (pairs[at][0] !== name && declarationValue(record, pairs[at][0]) === null) apply(declarationSet, declaration, [pairs[at][0], pairs[at][1]]);
-    }
-  }
   function removeDeclaration(record, name) {
     const declaration = declarationOf(record);
-    if (declarationValue(record, name) === null) { removeFromShorthand(record, declaration, name); return; }
+    if (declarationValue(record, name) === null) {
+      // The longhand lives inside a stored shorthand: re-store the shorthand's other longhands.
+      const names = declarationNames(record);
+      for (let index = 0; index < names.length; index++) {
+        const owner = names[index], pairs = SPLIT_SHORTHANDS[owner] ? splitShorthand(owner, declarationValue(record, owner)) : null;
+        if (!pairs) continue;
+        let found = false; for (let at = 0; at < pairs.length; at++) if (pairs[at][0] === name) found = true;
+        if (!found) continue;
+        apply(declarationRemove, declaration, [owner]);
+        for (let at = 0; at < pairs.length; at++) if (pairs[at][0] !== name && declarationValue(record, pairs[at][0]) === null) apply(declarationSet, declaration, [pairs[at][0], pairs[at][1]]);
+      }
+      return;
+    }
     apply(declarationRemove, declaration, [name]);
   }
   const MAP_READ = brandSets.StylePropertyMapReadOnly, MAP_WRITE = brandSets.StylePropertyMap;
@@ -2641,17 +2473,11 @@
     return text === null ? [] : storedValues(record, property, text);
   }
   // A shorthand reads as its serialization over the stored longhands (all equal, or 4-side boxes).
-  function shorthandBoxText(texts) {
-    const top = texts[0], right = texts[1], bottom = texts[2], left = texts[3];
-    if (left !== right) return top + ' ' + right + ' ' + bottom + ' ' + left;
-    if (bottom !== top) return top + ' ' + right + ' ' + bottom;
-    return right !== top ? top + ' ' + right : top;
-  }
   function shorthandFromLonghands(record, property) {
     const longhands = property.meta.longhands, texts = list();
     for (let index = 0; index < longhands.length; index++) { const text = storedText(record, longhands[index]); if (text === null) return []; push(texts, normalizedText(trimSpace(components(tokenize(text))))); }
     let text;
-    if (longhands.length === 4 && endsWithText(longhands[0], 'top')) text = shorthandBoxText(texts);
+    if (longhands.length === 4 && endsWithText(longhands[0], 'top')) { const top = texts[0], right = texts[1], bottom = texts[2], left = texts[3]; text = left !== right ? top + ' ' + right + ' ' + bottom + ' ' + left : bottom !== top ? top + ' ' + right + ' ' + bottom : right !== top ? top + ' ' + right : top; }
     else { let same = true; for (let index = 1; index < texts.length; index++) if (texts[index] !== texts[0]) same = false; if (!same) return []; text = texts[0]; }
     return [unsupported(text, property.name)];
   }
@@ -2697,13 +2523,6 @@
   }, 'next', 0), writable: true, enumerable: true, configurable: true });
   define(mapIteratorPrototype, symbolTag, { __proto__: null, value: 'StylePropertyMapReadOnly Iterator', writable: false, enumerable: false, configurable: true });
   function mapIterator(self, kind) { const record = mapRecord(self), iterator = create(mapIteratorPrototype); weakSet(iteratorStates, iterator, { entries: mapEntries(record), index: 0, kind }); return iterator; }
-  function mapForEachBody(self, callback, args) {
-    const record = mapRecord(self);
-    if (typeof callback !== 'function') throw fail('The callback provided as parameter 1 is not a function.');
-    const items = mapEntries(record);
-    const receiver = args[1] === undefined ? g : args[1];
-    for (let index = 0; index < items.length; index++) apply(callback, receiver, [items[index][1], items[index][0], self]);
-  }
   installMapIterable();
   function installMapIterable() {
     const proto = prototypes.StylePropertyMapReadOnly;
@@ -2711,7 +2530,13 @@
     define(proto, 'entries', { __proto__: null, value: entries, writable: true, enumerable: true, configurable: true });
     define(proto, 'forEach', { __proto__: null, value: make(function (callback) {
       const self = this, args = arguments;
-      return enter((message) => executeMessage('forEach', 'StylePropertyMapReadOnly', message), () => mapForEachBody(self, callback, args));
+      return enter((message) => executeMessage('forEach', 'StylePropertyMapReadOnly', message), () => {
+        const record = mapRecord(self);
+        if (typeof callback !== 'function') throw fail('The callback provided as parameter 1 is not a function.');
+        const items = mapEntries(record);
+        const receiver = args[1] === undefined ? g : args[1];
+        for (let index = 0; index < items.length; index++) apply(callback, receiver, [items[index][1], items[index][0], self]);
+      });
     }, 'forEach', 1), writable: true, enumerable: true, configurable: true });
     define(proto, 'keys', { __proto__: null, value: make(function () { return mapIterator(this, 'keys'); }, 'keys', 0), writable: true, enumerable: true, configurable: true });
     define(proto, 'values', { __proto__: null, value: make(function () { return mapIterator(this, 'values'); }, 'values', 0), writable: true, enumerable: true, configurable: true });
@@ -2741,24 +2566,18 @@
     writeDeclaration(record, property.custom ? text : property.name, declaration, !isRepeated(property) && !property.custom ? writtenNode : null);
     return undefined;
   }, 'StylePropertyMap');
-  function mapAppendValidate(text) {
+  method('StylePropertyMap', 'append', 1, function () {
+    const record = writableRecord(this), text = readName(arguments), values = styleValuesOrStrings(arguments, 1);
+    if (!values.length) return undefined;
     const property = propertyName(text);
     if (!property) throw fail('Invalid propertyName: ' + text);
     if (property.custom) throw fail('Appending to custom properties is not supported');
     if (!isRepeated(property)) throw fail('Property does not support multiple values');
-    return property;
-  }
-  function mapAppendCurrentOk(current) {
-    if (current === null) return;
-    if (hasSubstitution(components(tokenize(current)))) throw fail('Cannot append to a list containing a variable reference');
-    if (isCssWideText(current)) throw fail('Cannot append to something that is not a list');
-  }
-  method('StylePropertyMap', 'append', 1, function () {
-    const record = writableRecord(this), text = readName(arguments), values = styleValuesOrStrings(arguments, 1);
-    if (!values.length) return undefined;
-    const property = mapAppendValidate(text);
     const current = storedText(record, property.name);
-    mapAppendCurrentOk(current);
+    if (current !== null) {
+      if (hasSubstitution(components(tokenize(current)))) throw fail('Cannot append to a list containing a variable reference');
+      if (isCssWideText(current)) throw fail('Cannot append to something that is not a list');
+    }
     const result = coerceList(property, values);
     if (!result || result.single !== undefined) throw fail('Invalid type for property');
     const joined = joinList(result.parts, separatorOf(property));
@@ -2794,19 +2613,12 @@
   function installGroups() { const names = ownKeys(PROPERTIES); for (let index = 0; index < names.length; index++) { const meta = PROPERTIES[names[index]]; if (!meta.group || meta.alias) continue; const [group, resolver] = meta.group; if (!GROUPS[group]) GROUPS[group] = create(null); GROUPS[group][resolver] = names[index]; } }
   const LOGICAL_RESOLVERS = plainSet(['inline', 'block', 'inline-start', 'inline-end', 'block-start', 'block-end', 'start-start', 'start-end', 'end-start', 'end-end']);
   const VERTICAL_MODES = plainSet(['vertical-rl', 'vertical-lr', 'sideways-rl', 'sideways-lr']);
-  function inlineEdges(vertical, rtl) {
-    if (vertical) return rtl ? ['bottom', 'top'] : ['top', 'bottom'];
-    return rtl ? ['right', 'left'] : ['left', 'right'];
-  }
-  function blockEdges(vertical, mode) {
-    if (!vertical) return ['top', 'bottom'];
-    const start = mode === 'vertical-rl' || mode === 'sideways-rl' ? 'right' : 'left';
-    return [start, start === 'right' ? 'left' : 'right'];
-  }
   function physicalResolverSides(mode, rtl) {
     const vertical = !!VERTICAL_MODES[mode];
-    const [inlineStart, inlineEnd] = inlineEdges(vertical, rtl);
-    const [blockStart, blockEnd] = blockEdges(vertical, mode);
+    const inlineStart = vertical ? (rtl ? 'bottom' : 'top') : (rtl ? 'right' : 'left');
+    const inlineEnd = vertical ? (rtl ? 'top' : 'bottom') : (rtl ? 'left' : 'right');
+    const blockStart = vertical ? (mode === 'vertical-rl' || mode === 'sideways-rl' ? 'right' : 'left') : 'top';
+    const blockEnd = vertical ? (blockStart === 'right' ? 'left' : 'right') : 'bottom';
     return { vertical, inlineStart, inlineEnd, blockStart, blockEnd };
   }
   function physicalResolverCorner(block, inline) {
@@ -2933,22 +2745,14 @@
     }
   }
   // The physical property's cascaded value, or a later-declared logical counterpart's.
-  function specifiedTextInitial(cascaded, order, name) {
-    return {
+  function specifiedText(context, name) {
+    const cascaded = context.cascaded, order = context.order;
+    const textRankRef = {
       text: name in cascaded ? cascaded[name] : undefined,
       rank: name in cascaded ? order[name] || 0 : -1,
     };
-  }
-  function specifiedTextSurrogate(cascaded, order, textRankRef, name) {
     const surrogate = SURROGATE_OF[name];
-    if (surrogate && surrogate in cascaded && (order[surrogate] || 0) > textRankRef.rank) {
-      textRankRef.text = mapKeyword(SURROGATES[surrogate][1], lowerCase(trimText(cascaded[surrogate])));
-      textRankRef.rank = order[surrogate] || 0;
-    }
-  }
-  function specifiedText(context, name) {
-    const textRankRef = specifiedTextInitial(context.cascaded, context.order, name);
-    specifiedTextSurrogate(context.cascaded, context.order, textRankRef, name);
+    if (surrogate && surrogate in cascaded && (order[surrogate] || 0) > textRankRef.rank) { textRankRef.text = mapKeyword(SURROGATES[surrogate][1], lowerCase(trimText(cascaded[surrogate]))); textRankRef.rank = order[surrogate] || 0; }
     const meta = PROPERTIES[name];
     if (meta.group && !LOGICAL_RESOLVERS[meta.group[1]]) specifiedTextFromLogical(context, meta, textRankRef);
     return textRankRef.text;
@@ -2961,19 +2765,16 @@
   function installSurrogateOf() { const names = ownKeys(SURROGATES); for (let index = 0; index < names.length; index++) SURROGATE_OF[SURROGATES[names[index]][0]] = names[index]; }
   const mapKeyword = (map, text) => map && text in map ? map[text] : text;
   // The computed value text of a longhand.
-  function computeTextLogical(context, name, meta) {
-    const physical = GROUPS[meta.group[0]][physicalResolver(meta.group[1], computeText(context, 'writing-mode'), computeText(context, 'direction') === 'rtl')];
-    return physical ? computeText(context, physical) : initialText(name);
-  }
-  function isLogicalProperty(name, meta) {
-    return meta.group && LOGICAL_RESOLVERS[meta.group[1]] && name !== 'writing-mode' && name !== 'direction';
-  }
   function computeText(context, name) {
     if (name in context.cache) return context.cache[name];
     if (SURROGATES[name]) { const target = SURROGATES[name][0], map = SURROGATES[name][1]; const value = mapKeyword(map, computeText(context, target)); context.cache[name] = value; return value; }
     context.cache[name] = initialText(name);
     const meta = PROPERTIES[name];
-    let result = isLogicalProperty(name, meta) ? computeTextLogical(context, name, meta) : computeFresh(context, name, meta);
+    let result;
+    if (meta.group && LOGICAL_RESOLVERS[meta.group[1]] && name !== 'writing-mode' && name !== 'direction') {
+      const physical = GROUPS[meta.group[0]][physicalResolver(meta.group[1], computeText(context, 'writing-mode'), computeText(context, 'direction') === 'rtl')];
+      result = physical ? computeText(context, physical) : initialText(name);
+    } else result = computeFresh(context, name, meta);
     if (BACKGROUND_LAYERS[name]) result = repeatLayers(context, name, result);
     if (name === 'display') result = blockified(context, result);
     context.cache[name] = result;
@@ -2983,17 +2784,12 @@
   const rootText = (context, name) => absolutize(context, name, uaText(context, name) || initialText(name));
   const RAW_INHERITED_PARENT_KWS = { __proto__: null, inherit: 1, unset: 1, revert: 1, 'revert-layer': 1 };
   // currentcolor computes to itself and inherits as a keyword; it resolves per element.
-  function rawInheritedKeyword(context, name, keyword) {
-    if (keyword === 'initial') return 'currentcolor';
-    if (RAW_INHERITED_PARENT_KWS[keyword]) { const parent = parentContext(context, context.contexts); return parent ? rawInherited(parent, name) : 'currentcolor'; }
-    return undefined;
-  }
   function rawInherited(context, name) {
     let text = specifiedText(context, name);
     if (text !== undefined) text = substitute(context, trimText(text));
     const keyword = text === undefined || text === null ? 'inherit' : lowerCase(trimText(text));
-    const byKw = rawInheritedKeyword(context, name, keyword);
-    if (byKw !== undefined) return byKw;
+    if (keyword === 'initial') return 'currentcolor';
+    if (RAW_INHERITED_PARENT_KWS[keyword]) { const parent = parentContext(context, context.contexts); return parent ? rawInherited(parent, name) : 'currentcolor'; }
     const items = significant(components(tokenize(text)));
     if (items.length === 1 && (ident(items[0]) === 'currentcolor' || (name === 'caret-color' && ident(items[0]) === 'auto'))) return 'currentcolor';
     return absolutize(context, name, text);
@@ -3004,17 +2800,15 @@
     const ua = keyword === 'unset' ? null : uaText(context, name);
     return absolutize(context, name, ua || initialText(name));
   }
-  function computeFreshSpecified(context, name, meta, text, keyword) {
-    if (text === undefined || text === null || COMPUTE_FRESH_RESET_KWS[keyword]) return computeFreshFromUnspecified(context, name, meta, keyword);
-    if (keyword === 'inherit') return inheritedText(context, name);
-    if (keyword === 'initial') return absolutize(context, name, initialText(name));
-    return absolutize(context, name, text);
-  }
   function computeFresh(context, name, meta) {
     if (CURRENTCOLOR_INITIAL[name] && meta.inherited) { const raw = rawInherited(context, name); return raw === 'currentcolor' ? computeText(context, 'color') : raw; }
     let text = specifiedText(context, name);
     if (text !== undefined) text = substitute(context, trimText(text));
-    return computeFreshSpecified(context, name, meta, text, text === undefined ? null : lowerCase(trimText(text)));
+    const keyword = text === undefined ? null : lowerCase(trimText(text));
+    if (text === undefined || text === null || COMPUTE_FRESH_RESET_KWS[keyword]) return computeFreshFromUnspecified(context, name, meta, keyword);
+    if (keyword === 'inherit') return inheritedText(context, name);
+    if (keyword === 'initial') return absolutize(context, name, initialText(name));
+    return absolutize(context, name, text);
   }
   // var() substitution over the element's computed custom properties.
   function customText(context, name) {
@@ -3027,30 +2821,26 @@
     context.cache[key] = value;
     return value;
   }
-  function expandBlockItem(item, expand) {
-    return item.open.raw + expand(item.children) + (item.closed ? BLOCK_END[item.type] : '');
-  }
-  function expandVarItem(item, context, expand, stateRef) {
-    const parts = splitArguments(item.children), name = trimText(textOf(parts[0]));
-    let value = startsWith(name, '--') ? customText(context, name) : null;
-    if (value === null || value === undefined) { if (parts.length > 1) value = expand(parts[1]); else { stateRef.failed = true; return ''; } }
-    return value;
-  }
   function substitute(context, text) {
     if (indexOfText(lowerCase(text), 'var(') < 0) return text;
     const items = components(tokenize(text));
-    const stateRef = { failed: false };
+    let failed = false;
     function expand(items) {
       let out = '';
       for (let index = 0; index < items.length; index++) {
         const item = items[index];
-        if (item.block && item.type === 'function' && lowerCase(item.value) === 'var') { out += expandVarItem(item, context, expand, stateRef); continue; }
-        out += item.block ? expandBlockItem(item, expand) : item.raw;
+        if (item.block && item.type === 'function' && lowerCase(item.value) === 'var') {
+          const parts = splitArguments(item.children), name = trimText(textOf(parts[0]));
+          let value = startsWith(name, '--') ? customText(context, name) : null;
+          if (value === null || value === undefined) { if (parts.length > 1) value = expand(parts[1]); else { failed = true; return ''; } }
+          out += value; continue;
+        }
+        out += item.block ? (item.type === 'function' ? item.open.raw : item.open.raw) + expand(item.children) + (item.closed ? BLOCK_END[item.type] : '') : item.raw;
       }
       return out;
     }
     const result = expand(items);
-    return stateRef.failed ? null : result;
+    return failed ? null : result;
   }
   function splitArguments(children) { const first = list(), rest = list(); let seen = false; for (let index = 0; index < children.length; index++) { const item = children[index]; if (!seen && item.type === 'comma') { seen = true; continue; } push(seen ? rest : first, item); } return seen ? [first, rest] : [first]; }
   const pxNumber = (text) => { const match = execRegExp(/^(-?[\d.]+(?:e[+-]?\d+)?)px$/i, text); return match ? +match[1] : null; };
@@ -3076,21 +2866,17 @@
     if (VIEWPORT_MAX_UNITS[unitKey]) return lit(node.value * mathMax(viewportWidth, viewportHeight) / 100, 'px');
     return null;
   }
-  function computedLiteralEm(context, name, node) {
-    const base = name === 'font-size' ? (parentContext(context, context.contexts) ? fontSizePx(parentContext(context, context.contexts)) : 16) : fontSizePx(context);
-    return lit(node.value * base, 'px');
-  }
-  function computedLiteralRem(context, name, node) {
-    const root = rootContext(context);
-    return lit(node.value * (root === context && name === 'font-size' ? 16 : fontSizePx(root)), 'px');
-  }
   function computedLiteral(context, name, node) {
     const unitKey = node.unit, info = UNITS[unitKey];
     if (!info || info.base !== BASE.length) return computedLiteralNonLength(info, node);
     if (info.category === 'length') return lit(node.value * info.factor, 'px');
-    if (unitKey === 'em') return computedLiteralEm(context, name, node);
-    if (unitKey === 'rem') return computedLiteralRem(context, name, node);
-    return computedLiteralViewport(unitKey, node) || node;
+    if (unitKey === 'em') {
+      const base = name === 'font-size' ? (parentContext(context, context.contexts) ? fontSizePx(parentContext(context, context.contexts)) : 16) : fontSizePx(context);
+      return lit(node.value * base, 'px');
+    }
+    if (unitKey === 'rem') { const root = rootContext(context); return lit(node.value * (root === context && name === 'font-size' ? 16 : fontSizePx(root)), 'px'); }
+    const viewport = computedLiteralViewport(unitKey, node);
+    return viewport || node;
   }
   const COMPUTED_NODE_ARITHMETIC = { __proto__: null, [ADD]: 1, [SUB]: 1, [MUL]: 1 };
   const COMPUTED_NODE_COMPARISON = { __proto__: null, min: 1, max: 1, clamp: 1 };
@@ -3203,18 +2989,13 @@
   }
   // CSS Display: blockification under flex/grid containers and for floats/out-of-flow boxes.
   const BLOCKIFY = { __proto__: null, inline: 'block', 'inline-block': 'block', 'inline-flex': 'flex', 'inline-grid': 'grid', 'inline-table': 'table', 'inline-list-item': 'list-item', 'table-row-group': 'block', 'table-column': 'block', 'table-column-group': 'block', 'table-header-group': 'block', 'table-footer-group': 'block', 'table-row': 'block', 'table-cell': 'block', 'table-caption': 'block', ruby: 'block', 'ruby-text': 'block' };
-  const FLEX_GRID_DISPLAYS = plainSet(['flex', 'inline-flex', 'grid', 'inline-grid']);
-  function shouldBlockify(context) {
-    const parent = parentContext(context, context.contexts);
-    if (!parent) return true;
-    const parentDisplay = computeText(parent, 'display');
-    if (FLEX_GRID_DISPLAYS[parentDisplay]) return true;
-    const position = computeText(context, 'position'), float = computeText(context, 'float');
-    return position === 'absolute' || position === 'fixed' || (float !== 'none' && float !== '');
-  }
   function blockified(context, display) {
     if (!(display in BLOCKIFY)) return display;
-    return shouldBlockify(context) ? BLOCKIFY[display] : display;
+    const parent = parentContext(context, context.contexts);
+    const parentDisplay = parent ? computeText(parent, 'display') : null;
+    const container = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+    const position = computeText(context, 'position'), float = computeText(context, 'float');
+    return container || !parent || position === 'absolute' || position === 'fixed' || (float !== 'none' && float !== '') ? BLOCKIFY[display] : display;
   }
   const COLOR_PROPERTY = (name) => endsWithText(name, '-color') || name === 'color' || name === 'fill' || name === 'stroke';
   const absolutizeIsColorContext = (name, items) => name === 'color' || (COLOR_PROPERTY(name) && items.length === 1 && (isColor(items[0]) || (items[0].type === 'ident' && !KEYWORD_ONLY_COLOR(name, items[0]))));
@@ -3239,16 +3020,11 @@
     if (name === 'line-height' && absolutizeIsSinglePercentage(items)) return formatNumber(items[0].value / 100 * fontSizePx(context), 'px');
     return undefined;
   }
-  function absolutizeBorderWidth(name, items) {
-    if (BORDER_WIDTH[name] && absolutizeIsSingleIdent(items) && lowerCase(items[0].value) in WIDTH_KEYWORDS) return WIDTH_KEYWORDS[lowerCase(items[0].value)] + 'px';
-    return undefined;
-  }
   function absolutize(context, name, text) {
     if (FONT_FROM_BINDING[name]) { const value = computedGet(bindingStyle(context), name); if (value) return value; }
     const all = trimSpace(components(tokenize(text))), items = significant(all);
     if (absolutizeIsColorContext(name, items)) { const color = absolutizeColor(context, name, items); if (color) return color; }
-    const bw = absolutizeBorderWidth(name, items);
-    if (bw !== undefined) return bw;
+    if (BORDER_WIDTH[name] && absolutizeIsSingleIdent(items) && lowerCase(items[0].value) in WIDTH_KEYWORDS) return WIDTH_KEYWORDS[lowerCase(items[0].value)] + 'px';
     const font = absolutizeFontSizeOrLineHeight(context, name, items);
     if (font !== undefined) return font;
     if (IMAGE_LAYERS[name]) return computedImages(context, name, all);
@@ -3274,15 +3050,10 @@
     if (property.name === 'transition-property') { const layers = splitComponents(items, 'comma'), values = list(); for (let index = 0; index < layers.length; index++) { const layer = significant(layers[index]); if (layer.length !== 1 || layer[0].type !== 'ident') return [unsupported(normalizedText(items), property.name)]; push(values, keywordValue(identifierKeyword(property, layer[0]))); } return toArray(values); }
     return reifyValue(property, items, COMPUTED);
   }
-  function serializeBoxShorthand(texts) {
-    const top = texts[0], right = texts[1], bottom = texts[2], left = texts[3];
-    if (left !== right) return top + ' ' + right + ' ' + bottom + ' ' + left;
-    return bottom !== top ? top + ' ' + right + ' ' + bottom : right !== top ? top + ' ' + right : top;
-  }
   function computedShorthand(context, property) {
     const longhands = property.meta.longhands, texts = list();
     for (let index = 0; index < longhands.length; index++) { if (!PROPERTIES[longhands[index]] || !PROPERTIES[longhands[index]].initial) return null; push(texts, computeText(context, longhands[index])); }
-    if (longhands.length === 4 && endsWithText(longhands[0], 'top')) return serializeBoxShorthand(texts);
+    if (longhands.length === 4 && endsWithText(longhands[0], 'top')) { const top = texts[0], right = texts[1], bottom = texts[2], left = texts[3]; return left !== right ? top + ' ' + right + ' ' + bottom + ' ' + left : bottom !== top ? top + ' ' + right + ' ' + bottom : right !== top ? top + ' ' + right : top; }
     let same = true; for (let index = 1; index < texts.length; index++) if (texts[index] !== texts[0]) same = false;
     return same ? texts[0] : joinList(texts, ' ');
   }
@@ -3352,16 +3123,6 @@
     if (ITERABLE[key] && typeof descriptor.value === 'function') return pair ? 2 : 0;
     return descriptor.get ? 1 : 2;
   }
-  function sortOperations(operations, pair, ITERABLE) {
-    const sorted = list(), trailing = list();
-    for (let at = 0; at < operations.length; at++) push(pair && ITERABLE[operations[at][0]] ? trailing : sorted, operations[at]);
-    for (let at = 1; at < sorted.length; at++) { const entry = sorted[at]; let back = at - 1; while (back >= 0 && sorted[back][0] > entry[0]) { sorted[back + 1] = sorted[back]; back--; } sorted[back + 1] = entry; }
-    for (let at = 0; at < trailing.length; at++) push(sorted, trailing[at]);
-    return sorted;
-  }
-  function reorderProto(proto, groups) {
-    for (let group = 0; group < 5; group++) for (let at = 0; at < groups[group].length; at++) { delete proto[groups[group][at][0]]; define(proto, groups[group][at][0], groups[group][at][1]); }
-  }
   function installMemberOrderFor(proto, pair, ITERABLE) {
     const keys = ownKeys(proto);
     const groups = [list(), list(), list(), list(), list()];
@@ -3369,8 +3130,12 @@
       const key = keys[at], descriptor = Object.getOwnPropertyDescriptor(proto, key);
       push(groups[memberOrderSlot(key, descriptor, pair, ITERABLE)], [key, descriptor]);
     }
-    groups[2] = sortOperations(groups[2], pair, ITERABLE);
-    reorderProto(proto, groups);
+    const operations = groups[2], sorted = list(), trailing = list();
+    for (let at = 0; at < operations.length; at++) push(pair && ITERABLE[operations[at][0]] ? trailing : sorted, operations[at]);
+    for (let at = 1; at < sorted.length; at++) { const entry = sorted[at]; let back = at - 1; while (back >= 0 && sorted[back][0] > entry[0]) { sorted[back + 1] = sorted[back]; back--; } sorted[back + 1] = entry; }
+    for (let at = 0; at < trailing.length; at++) push(sorted, trailing[at]);
+    groups[2] = sorted;
+    for (let group = 0; group < 5; group++) for (let at = 0; at < groups[group].length; at++) { delete proto[groups[group][at][0]]; define(proto, groups[group][at][0], groups[group][at][1]); }
   }
   // CSSStyleDeclaration admits the Chrome-enabled properties Lightning CSS does not model,
   // validated by the same grammar as Typed OM.
@@ -3386,18 +3151,16 @@
   // CSSUnitValue, and what a value is as one: [unit, value] for a px / percent CSSUnitValue,
   // ['length'] for another length or percentage (Blink keeps 0px), null for a CSSNumericValue
   // of another type, undefined for anything that is not a CSSNumericValue.
-  function rangeKindFromExponents(e) {
-    let length = 0;
-    for (let index = 0; index < 7; index++) if (index === BASE.length || index === BASE.percent) length += e[index]; else if (e[index] !== 0) return null;
-    return length === 1 ? ['length'] : null;
-  }
   ns.typedOmRange = {
     unit: (value, unitKey) => unitValue(value, unitKey),
     kind(value) {
       const record = recordOf(value);
       if (!record || !brandSets.CSSNumericValue[record.family]) return undefined;
       if (record.kind === 'unit' && (record.unit === 'px' || record.unit === 'percent')) return [record.unit, record.value];
-      return rangeKindFromExponents(record.type.e);
+      const e = record.type.e;
+      let length = 0;
+      for (let index = 0; index < 7; index++) if (index === BASE.length || index === BASE.percent) length += e[index]; else if (e[index] !== 0) return null;
+      return length === 1 ? ['length'] : null;
     },
   };
   // CSS.number()/CSS.px()/…: the embedding's CSS namespace installs these factories.

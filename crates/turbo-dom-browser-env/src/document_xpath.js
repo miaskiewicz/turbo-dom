@@ -89,20 +89,18 @@
     for(let current=anchor.parentNode;current;current=current.parentNode)ancestors.add(current);
     return {root,ancestors};
   }
-  function walkAxisStep(step,context,anchor,attribute,stack,after,ancestors,nodes){
-    const current=stack.pop();
-    if(current===anchor){after[0]=true;if(!attribute&&step.axis===provider.Step.FOLLOWING)return false;}
-    else if(includesInAxis(step,after[0],ancestors,current)&&step.nodeTest.matches(current,context))nodes.push(current);
-    if(step.axis===provider.Step.PRECEDING&&after[0])return true;
-    for(let child=current.lastChild;child;child=child.previousSibling)stack.push(child);
-    return false;
-  }
   function documentOrderAxis(step,context,node){
     context.contextNode=node;
     const attribute=node.nodeType===2,anchor=attribute?node.ownerElement:node;
     const {root,ancestors}=ancestorsAndRoot(anchor);
-    const nodes=[],stack=[root],after=[false];
-    while(stack.length){if(walkAxisStep(step,context,anchor,attribute,stack,after,ancestors,nodes))break;}
+    const nodes=[],stack=[root];let after=false;
+    while(stack.length){
+      const current=stack.pop();
+      if(current===anchor){after=true;if(!attribute&&step.axis===provider.Step.FOLLOWING)continue;}
+      else if(includesInAxis(step,after,ancestors,current)&&step.nodeTest.matches(current,context))nodes.push(current);
+      if(step.axis===provider.Step.PRECEDING&&after)break;
+      for(let child=current.lastChild;child;child=child.previousSibling)stack.push(child);
+    }
     return nodes;
   }
   function adapter(data){
@@ -120,8 +118,9 @@
     const descendants=index=>{const values=[],stack=children[index].slice().reverse();while(stack.length){spend();const current=stack.pop();values.push(current);for(let i=children[current].length-1;i>=0;i--)stack.push(children[current][i]);}return values;};
     const list=indices=>new ProxyValue(indices.map(index=>proxies[index]),{get(target,key){spend();return key==='item'?index=>{spend();return target[index]||null;}:Reflect.get(target,key);}});
     const attribute=(index,namespace,name)=>{spend();return rows[index][7].find(id=>{spend();return (namespace===undefined?rows[id][1]===name:(rows[id][3]||null)===(namespace||null)&&rows[id][2]===name);});};
-    function methodMemberOf(rows,index,attribute,descendants,ancestor,proxies,spend){
-      return key=>{
+    rows.forEach((row,index)=>{
+      // The proxy's members, split by kind: node fields, tree links, siblings, then methods.
+      const methodMember=key=>{
         switch(key){
           case 'getAttribute':return name=>{const id=attribute(index,undefined,name);return id==null?null:rows[id][5];};
           case 'getAttributeNS':return (namespace,name)=>{const id=attribute(index,namespace,name);return id==null?null:rows[id][5];};
@@ -133,37 +132,29 @@
           default:return undefined;
         }
       };
-    }
-    function siblingMemberOf(children,index,rows,proxies,methodMember){
-      const resolvers={__proto__:null,
-        firstChild:(siblings,position)=>proxies[children[index][0]]||null,
-        lastChild:(siblings,position)=>proxies[children[index].at(-1)]||null,
-        previousSibling:(siblings,position)=>position>0?proxies[siblings[position-1]]:null,
-        nextSibling:(siblings,position)=>position>=0?proxies[siblings[position+1]]||null:null,
-        documentElement:(siblings,position)=>proxies[children[index].find(id=>rows[id][0]===1)]||null,
+      const siblingMember=(key,siblings,position)=>{
+        switch(key){
+          case 'firstChild':return proxies[children[index][0]]||null;case 'lastChild':return proxies[children[index].at(-1)]||null;
+          case 'previousSibling':return position>0?proxies[siblings[position-1]]:null;case 'nextSibling':return position>=0?proxies[siblings[position+1]]||null:null;
+          case 'documentElement':return proxies[children[index].find(id=>rows[id][0]===1)]||null;
+          default:return methodMember(key);
+        }
       };
-      return (key,siblings,position)=>{const resolver=resolvers[key];return resolver?resolver(siblings,position):methodMember(key);};
-    }
-    function treeMemberOf(row,index,scope,children,list,proxies,siblingMember){
-      const resolvers={__proto__:null,
-        parentNode:()=>row[6]==null?null:proxies[row[6]],
-        ownerElement:()=>row[8]==null?null:proxies[row[8]],
-        ownerDocument:()=>row[0]===9?null:proxies[scope(index)],
-        childNodes:()=>list(children[index]),
-        attributes:()=>row[0]===1?list(row[7]):null,
+      const treeMember=(key,siblings,position)=>{
+        switch(key){
+          case 'parentNode':return row[6]==null?null:proxies[row[6]];case 'ownerElement':return row[8]==null?null:proxies[row[8]];
+          case 'ownerDocument':return row[0]===9?null:proxies[scope(index)];case 'childNodes':return list(children[index]);case 'attributes':return row[0]===1?list(row[7]):null;
+          default:return siblingMember(key,siblings,position);
+        }
       };
-      return (key,siblings,position)=>{const resolver=resolvers[key];return resolver?resolver():siblingMember(key,siblings,position);};
-    }
-    function fieldMemberOf(row){
       const nodeNameOf=()=>row[0]===1&&row[3]===html?row[1].toUpperCase():row[1];
-      const resolvers={__proto__:null,nodeType:()=>row[0],nodeName:nodeNameOf,tagName:()=>row[1],localName:()=>row[2],namespaceURI:()=>row[3],prefix:()=>row[4],nodeValue:()=>row[5],value:()=>row[5],data:()=>row[5]};
-      return key=>{const resolver=resolvers[key];return resolver?resolver():undefined;};
-    }
-    rows.forEach((row,index)=>{
-      const methodMember=methodMemberOf(rows,index,attribute,descendants,ancestor,proxies,spend);
-      const siblingMember=siblingMemberOf(children,index,rows,proxies,methodMember);
-      const treeMember=treeMemberOf(row,index,scope,children,list,proxies,siblingMember);
-      const fieldMember=fieldMemberOf(row);
+      const fieldMember=key=>{
+        switch(key){
+          case 'nodeType':return row[0];case 'nodeName':return nodeNameOf();
+          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
+          default:return undefined;
+        }
+      };
       const target={};proxies.push(new ProxyValue(target,{get(_target,key){
         spend();
         const siblings=row[6]==null?[]:children[row[6]],position=siblings.indexOf(index);

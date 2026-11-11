@@ -417,7 +417,18 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
     let function = dom_ownership::local(scope, &updater.0);
     let global = context.global(scope);
     let values = v8::Object::new(scope);
-    capture_dom_exception(scope, global, values);
+    let key = v8::String::new(scope, "DOMException").unwrap();
+    if let Some(exception) = global
+        .get(scope, key.into())
+        .filter(|value| value.is_function())
+    {
+        // The host's installed DOMException becomes the realm's interface: every binding
+        // module resolves its exceptions through the registration (turbo-surf#42).
+        if let Ok(constructor) = v8::Local::<v8::Function>::try_from(exception) {
+            register_dom_exception(scope, constructor);
+        }
+        set_prop(scope, values, "DOMException", exception);
+    }
     for (interface, names) in [
         (
             "AbortSignal",
@@ -489,23 +500,6 @@ pub fn capture_window_event_interfaces(scope: &mut v8::PinScope) {
     }
     let receiver = v8::undefined(scope).into();
     function.call(scope, receiver, &[values.into()]);
-}
-
-fn capture_dom_exception(
-    scope: &mut v8::PinScope,
-    global: v8::Local<v8::Object>,
-    values: v8::Local<v8::Object>,
-) {
-    let key = v8::String::new(scope, "DOMException").unwrap();
-    if let Some(exception) = global
-        .get(scope, key.into())
-        .filter(|value| value.is_function())
-    {
-        if let Ok(constructor) = v8::Local::<v8::Function>::try_from(exception) {
-            register_dom_exception(scope, constructor);
-        }
-        set_prop(scope, values, "DOMException", exception);
-    }
 }
 
 #[derive(Clone)]

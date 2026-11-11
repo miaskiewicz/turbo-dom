@@ -249,8 +249,8 @@
   // CharacterData: NonDocumentTypeChildNode.
   const previousSibling = describe(N, 'previousSibling').get, nextSibling = describe(N, 'nextSibling').get, nodeType = describe(N, 'nodeType').get;
   const characterData = accessorOf('nodeType', false, 'CharacterData');
-  function installElementSibling(name, step) {
-    if (hasOwn(g.CharacterData.prototype, name)) return;
+  for (const [name, step] of [['previousElementSibling', previousSibling], ['nextElementSibling', nextSibling]]) {
+    if (hasOwn(g.CharacterData.prototype, name)) continue;
     define(g.CharacterData.prototype, name, { enumerable: true, configurable: true, get: make(function () {
       apply(characterData, this, []);
       let node = apply(step, this, []);
@@ -258,8 +258,6 @@
       return node;
     }, 'get ' + name, 0) });
   }
-  installElementSibling('previousElementSibling', previousSibling);
-  installElementSibling('nextElementSibling', nextSibling);
   // Document.prototype.createEvent (turbo-dom#341): the DOM createEvent table plus the legacy
   // names Chrome 156 keeps, ASCII case-insensitive, returning an uninitialized event of that
   // interface; NotSupportedError for every other name. An interface the realm does not define
@@ -294,7 +292,7 @@
     member('HTMLBodyElement', name, 'body', (element) => { const window = view(element); if (!window) return null; const value = get(window, name); return value === undefined ? null : value; },
       (element, value) => { const window = view(element); if (window) put(window, name, value); });
   }
-  function installGamepadHandler(type) {
+  for (const type of ['gamepadconnected', 'gamepaddisconnected']) {
     const name = 'on' + type, handlers = new WeakMap(), mapGet = WeakMap.prototype.get, mapSet = WeakMap.prototype.set;
     const callback = make(function (event) { const handler = apply(mapGet, handlers, [this]); if (handler && apply(handler, this, [event]) === false) event.preventDefault(); }, name, 1);
     const add = g.EventTarget.prototype.addEventListener, drop = g.EventTarget.prototype.removeEventListener;
@@ -305,5 +303,4 @@
       apply(mapSet, handlers, [element, handler]);
     });
   }
-  for (const type of ['gamepadconnected', 'gamepaddisconnected']) installGamepadHandler(type);
 })();

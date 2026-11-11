@@ -43,32 +43,6 @@ const NOT_ANIMATABLE: &[&str] = &[
 
 /// Keyframe member name (the CSS property to IDL attribute mapping) to its CSS property.
 /// Prefixed IDL names, dashed names and non-animatable properties are not keyframe members.
-fn idl_to_css(name: &str) -> Option<String> {
-    if name.starts_with("webkit")
-        || !name.starts_with(|c: char| c.is_ascii_lowercase())
-        || !name.chars().all(|c| c.is_ascii_alphanumeric())
-    {
-        return None;
-    }
-    let mut css = String::with_capacity(name.len() + 4);
-    for c in name.chars() {
-        if c.is_ascii_uppercase() {
-            css.push('-');
-            css.push(c.to_ascii_lowercase());
-        } else {
-            css.push(c);
-        }
-    }
-    Some(css)
-}
-
-fn is_animatable_css(css: &str) -> bool {
-    (super::cssom_parser::is_supported_property(css)
-        || css == "offset"
-        || LENGTH_ONLY.iter().any(|row| row.0 == css))
-        && !NOT_ANIMATABLE.contains(&css)
-}
-
 fn keyframe_property(name: &str) -> Option<String> {
     if let Some(rest) = name.strip_prefix("--") {
         return (!rest.is_empty()).then(|| name.to_owned());
@@ -77,9 +51,32 @@ fn keyframe_property(name: &str) -> Option<String> {
         "cssFloat" => "float".to_owned(),
         "cssOffset" => "offset".to_owned(),
         "float" | "offset" => return None,
-        _ => idl_to_css(name)?,
+        _ => {
+            if name.starts_with("webkit")
+                || !name.starts_with(|c: char| c.is_ascii_lowercase())
+                || !name.chars().all(|c| c.is_ascii_alphanumeric())
+            {
+                return None;
+            }
+            let mut css = String::with_capacity(name.len() + 4);
+            for c in name.chars() {
+                if c.is_ascii_uppercase() {
+                    css.push('-');
+                    css.push(c.to_ascii_lowercase());
+                } else {
+                    css.push(c);
+                }
+            }
+            css
+        }
     };
-    is_animatable_css(&css).then_some(css)
+    // Lightning CSS does not model the motion-path `offset` shorthand Chrome animates, nor
+    // the LENGTH_ONLY properties.
+    ((super::cssom_parser::is_supported_property(&css)
+        || css == "offset"
+        || LENGTH_ONLY.iter().any(|row| row.0 == css))
+        && !NOT_ANIMATABLE.contains(&css.as_str()))
+    .then_some(css)
 }
 
 /// Chrome's specified-value number text: printf `%.6g` (six significant digits, exponent
@@ -309,46 +306,32 @@ fn specified_text(value: &str) -> Option<String> {
 
 /// The value Chrome keeps for a keyframe property, or None when the declaration is invalid
 /// (Chrome drops invalid members from getKeyframes()).
-fn keyframe_value_early(value: &str) -> Option<Option<String>> {
+fn keyframe_value(property: &str, value: &str) -> Option<String> {
+    if property.starts_with("--") {
+        return Some(specified_text(value).unwrap_or_else(|| value.trim().to_owned()));
+    }
     let value = value.trim();
     if value.is_empty() {
-        return Some(None);
+        return None;
     }
     let lower = value.to_ascii_lowercase();
     if matches!(
         lower.as_str(),
         "inherit" | "initial" | "unset" | "revert" | "revert-layer"
     ) {
-        return Some(Some(lower));
+        return Some(lower);
     }
-    None
-}
-
-fn keyframe_value_validate(property: &str, value: &str) -> bool {
-    if let Some(&row) = LENGTH_ONLY.iter().find(|row| row.0 == property) {
-        if !length_only(value, row) {
-            return false;
-        }
-    }
-    if property == "line-height" && negative(value) {
-        return false;
-    }
-    true
-}
-
-fn keyframe_value(property: &str, value: &str) -> Option<String> {
-    if property.starts_with("--") {
-        return Some(specified_text(value).unwrap_or_else(|| value.trim().to_owned()));
-    }
-    if let Some(result) = keyframe_value_early(value) {
-        return result;
-    }
-    let value = value.trim();
+    // A var() / env() reference keeps the specified text (Chrome 156).
     let mut input = ParserInput::new(value);
     if deferred(&mut Parser::new(&mut input))? {
         return specified_text(value);
     }
-    if !keyframe_value_validate(property, value) {
+    if let Some(&row) = LENGTH_ONLY.iter().find(|row| row.0 == property) {
+        if !length_only(value, row) {
+            return None;
+        }
+    }
+    if property == "line-height" && negative(value) {
         return None;
     }
     match native_keyframe_value(property, value)? {

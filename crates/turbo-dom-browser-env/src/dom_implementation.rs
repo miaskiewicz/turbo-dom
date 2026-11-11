@@ -169,21 +169,6 @@ fn invoke_implementation<'s>(
 
 /// Build the DOMImplementation wrapper for `receiver`, attach its native record to it and
 /// cache it on the document's state.
-fn attach_implementation_record<'s>(
-    scope: &mut v8::PinScope<'s, '_>,
-    object: v8::Local<'s, v8::Object>,
-    receiver: v8::Local<'s, v8::Object>,
-) -> Option<()> {
-    let implementation_record = null_record(scope)?;
-    let kind = key(scope, "DOMImplementation")?;
-    put(scope, implementation_record, "kind", kind.into())?;
-    put(scope, implementation_record, "document", receiver.into())?;
-    if !collection_records::set(scope, object, implementation_record.into()) {
-        return None;
-    }
-    Some(())
-}
-
 fn build_implementation_object<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
@@ -196,7 +181,13 @@ fn build_implementation_object<'s>(
     if object.set_prototype(scope, prototype.into()) != Some(true) {
         return None;
     }
-    attach_implementation_record(scope, object, receiver)?;
+    let implementation_record = null_record(scope)?;
+    let kind = key(scope, "DOMImplementation")?;
+    put(scope, implementation_record, "kind", kind.into())?;
+    put(scope, implementation_record, "document", receiver.into())?;
+    if !collection_records::set(scope, object, implementation_record.into()) {
+        return None;
+    }
     put(scope, state, "nativeImplementation", object.into())?;
     if !collection_records::set(scope, receiver, state.into()) {
         return None;
@@ -314,31 +305,16 @@ fn attach_xml_doctype<'s>(
     with_tree_mut(|tree| tree.append_child(tree.root(), handle))
 }
 
-fn nullable_units<'s>(
-    scope: &mut v8::PinScope<'s, '_>,
-    value: v8::Local<'s, v8::Value>,
-) -> Option<Option<Vec<u16>>> {
-    if value.is_null() {
-        Some(None)
-    } else {
-        Some(Some(dom_units(scope, value)?))
-    }
-}
-
-fn xml_content_type(namespace: Option<&[u16]>) -> &'static str {
-    match namespace.map(String::from_utf16_lossy).as_deref() {
-        Some("http://www.w3.org/1999/xhtml") => "application/xhtml+xml",
-        Some("http://www.w3.org/2000/svg") => "image/svg+xml",
-        _ => "application/xml",
-    }
-}
-
 fn invoke_xml<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: &v8::FunctionCallbackArguments<'s>,
     doc: v8::Local<'s, v8::Object>,
 ) -> Option<v8::Local<'s, v8::Value>> {
-    let namespace = nullable_units(scope, args.get(2))?;
+    let namespace = if args.get(2).is_null() {
+        None
+    } else {
+        Some(dom_units(scope, args.get(2))?)
+    };
     let qualified = dom_units(scope, args.get(3))?;
     {
         let _dom = DomScope::for_object(scope, doc);
@@ -360,7 +336,16 @@ fn invoke_xml<'s>(
             tree.append_child(root, node);
         })?;
     }
-    initialize(scope, doc, xml_content_type(namespace.as_deref()))?;
+    let content = match namespace
+        .as_deref()
+        .map(String::from_utf16_lossy)
+        .as_deref()
+    {
+        Some("http://www.w3.org/1999/xhtml") => "application/xhtml+xml",
+        Some("http://www.w3.org/2000/svg") => "image/svg+xml",
+        _ => "application/xml",
+    };
+    initialize(scope, doc, content)?;
     Some(doc.into())
 }
 fn dispatch<'s>(

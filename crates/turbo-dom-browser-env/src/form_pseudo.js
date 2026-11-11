@@ -45,31 +45,27 @@
     return false;
   };
 
-  function buildRecord(element) {
-    const html = apply(namespaceGetter, element, []) === HTML;
-    const kind = html ? apply(localNameGetter, element, []) : null;
-    return { __proto__: null, element, kind, html, custom: html && !!associatedGet(element), type: null, candidate: null, valid: null };
-  }
-  function registerRadioGroup(groups, element, type) {
-    if (type !== 'radio') return;
-    const name = attr(element, 'name');
-    if (!name) return;
-    const form = owner(element);
-    let byName = apply(mapGet, groups, [form]);
-    if (!byName) apply(mapSet, groups, [form, byName = new MapClass()]);
-    apply(mapSet, byName, [name, apply(mapGet, byName, [name]) || checkedValue(element)]);
-  }
   function classify(elements, names) {
     const records = [];
+    // Radio groups: owner form and non-empty name; an unnamed radio is its own group.
     const groups = new MapClass();
     const defaults = new MapClass();
     for (let index = 0; index < elements.length; index++) {
-      const element = elements[index];
-      const record = buildRecord(element);
+      const element = elements[index], html = apply(namespaceGetter, element, []) === HTML;
+      const kind = html ? apply(localNameGetter, element, []) : null;
+      const record = { __proto__: null, element, kind, html, custom: html && !!associatedGet(element), type: null, candidate: null, valid: null };
       push(records, record);
-      if (record.kind === 'input') {
+      if (kind === 'input') {
         record.type = inputType(element);
-        registerRadioGroup(groups, element, record.type);
+        if (record.type === 'radio') {
+          const name = attr(element, 'name');
+          if (name) {
+            const form = owner(element);
+            let byName = apply(mapGet, groups, [form]);
+            if (!byName) apply(mapSet, groups, [form, byName = new MapClass()]);
+            apply(mapSet, byName, [name, apply(mapGet, byName, [name]) || checkedValue(element)]);
+          }
+        }
       }
     }
     // Constraint validation is computed only for the pseudo-classes that read it.

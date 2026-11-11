@@ -47,18 +47,13 @@
   Object.defineProperty(proto,Symbol.iterator,{value:proto.values,writable:true,configurable:true});
   Object.defineProperty(proto,'length',{get:make(function(){return tokens(this).length;},'get length',0),enumerable:true,configurable:true});
   Object.defineProperty(proto,'value',{get:make(function(){return raw(this);},'get value',0),set:make(function(value){const state=record(this);apply(setAttribute,state.owner,[state.attribute,string(value)]);},'set value',1),enumerable:true,configurable:true});
-  const tokenListOps = {
-    __proto__: null,
-    get: (values, index, exists) => exists ? values[index] : undefined,
-    has: (values, index, exists) => exists,
-    descriptor: (values, index, exists) => exists ? { value: values[index], writable: false, enumerable: true, configurable: true } : undefined,
-    set: (values, index, exists) => exists ? true : undefined,
-    define: (values, index, exists) => exists ? true : undefined,
-    delete: (values, index, exists) => exists ? false : undefined,
-  };
   function tokenListAnswer(operation,values,index,exists){
-    const handler = tokenListOps[operation];
-    return handler ? handler(values, index, exists) : undefined;
+    if(operation==='get')return exists?values[index]:undefined;
+    if(operation==='has')return exists;
+    if(operation==='descriptor')return exists?{value:values[index],writable:false,enumerable:true,configurable:true}:undefined;
+    if(operation==='set'||operation==='define')return exists?true:undefined;
+    if(operation==='delete')return exists?false:undefined;
+    return undefined;
   }
   // [owner, IDL name, content attribute, receiver check, supported tokens]: an array of the
   // lowercase supported tokens, null for a list without any (supports() throws), undefined for

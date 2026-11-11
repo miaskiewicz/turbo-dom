@@ -234,30 +234,6 @@ fn materialize(
 
 const SHADOW_ROOT_ADOPTED: &str = "A shadow root cannot be adopted";
 
-fn validate_adopt_target(
-    scope: &mut v8::PinScope,
-    document: v8::Local<v8::Object>,
-) -> Result<(), &'static str> {
-    let _target = DomScope::for_object(scope, document);
-    let root = handle_of(scope, document).ok_or("Illegal invocation")?;
-    if !matches!(with_tree(|tree| tree.node_type_id(root)), Some(1 | 9)) {
-        return Err("Illegal invocation");
-    }
-    Ok(())
-}
-fn capture_adopt_source(
-    scope: &mut v8::PinScope,
-    node: v8::Local<v8::Object>,
-    source_handle: Handle,
-) -> Result<Vec<Snapshot>, &'static str> {
-    let _source = DomScope::for_object(scope, node);
-    if with_tree(|tree| tree.is_shadow_root(source_handle)).unwrap_or(false) {
-        return Err(SHADOW_ROOT_ADOPTED);
-    }
-    html_popover::attribute_node_change(scope, source_handle, None);
-    with_tree_mut(|tree| capture(tree, source_handle)).ok_or("Node tree unavailable")?
-}
-
 // Every already-visible node remains the SAME V8 object. Uncached handles are
 // reconstructed in the destination tree; source cache entries cannot alias them.
 pub fn adopt<'s>(
@@ -268,8 +244,21 @@ pub fn adopt<'s>(
     let target_id = dom_id_of(scope, document);
     let source_id = dom_id_of(scope, node);
     let source_handle = handle_of(scope, node).ok_or("Illegal invocation")?;
-    validate_adopt_target(scope, document)?;
-    let source = capture_adopt_source(scope, node, source_handle)?;
+    {
+        let _target = DomScope::for_object(scope, document);
+        let root = handle_of(scope, document).ok_or("Illegal invocation")?;
+        if !matches!(with_tree(|tree| tree.node_type_id(root)), Some(1 | 9)) {
+            return Err("Illegal invocation");
+        }
+    }
+    let source = {
+        let _source = DomScope::for_object(scope, node);
+        if with_tree(|tree| tree.is_shadow_root(source_handle)).unwrap_or(false) {
+            return Err(SHADOW_ROOT_ADOPTED);
+        }
+        html_popover::attribute_node_change(scope, source_handle, None);
+        with_tree_mut(|tree| capture(tree, source_handle)).ok_or("Node tree unavailable")??
+    };
     if source_id == target_id {
         let _source = DomScope::for_object(scope, node);
         detach_adopted_source(scope, source_handle);
@@ -475,14 +464,21 @@ fn detach_adopted_source(scope: &mut v8::PinScope, source_handle: Handle) {
 
 // Preserve native node identity and embedder state: no JS remove/insert hooks run.
 // Range adjustment follows pre-remove semantics without running JS node hooks.
-fn move_node_root(tree: &Tree, mut node: Handle) -> Handle {
-    while let Some(parent) = tree.parent(node).or_else(|| tree.shadow_host(node)) {
-        node = parent;
+fn move_node(
+    tree: &Tree,
+    parent: Handle,
+    node: Handle,
+    child: Option<Handle>,
+) -> Result<Option<Handle>, &'static str> {
+    fn root(tree: &Tree, mut node: Handle) -> Handle {
+        while let Some(parent) = tree.parent(node).or_else(|| tree.shadow_host(node)) {
+            node = parent;
+        }
+        node
     }
-    node
-}
-
-fn check_ancestor_cycle(tree: &Tree, parent: Handle, node: Handle) -> Result<(), &'static str> {
+    if root(tree, parent) != root(tree, node) {
+        return Err("HierarchyRequestError");
+    }
     let mut ancestor = Some(parent);
     while let Some(current) = ancestor {
         if current == node {
@@ -490,19 +486,6 @@ fn check_ancestor_cycle(tree: &Tree, parent: Handle, node: Handle) -> Result<(),
         }
         ancestor = tree.parent(current).or_else(|| tree.shadow_host(current));
     }
-    Ok(())
-}
-
-fn move_node(
-    tree: &Tree,
-    parent: Handle,
-    node: Handle,
-    child: Option<Handle>,
-) -> Result<Option<Handle>, &'static str> {
-    if move_node_root(tree, parent) != move_node_root(tree, node) {
-        return Err("HierarchyRequestError");
-    }
-    check_ancestor_cycle(tree, parent, node)?;
     let child = if child == Some(node) {
         tree.next_sibling(node)
     } else {
@@ -650,7 +633,10 @@ pub fn dispatch<'s>(
     count_crossing();
     let operation = args.get(0).to_rust_string_lossy(scope);
     if operation == "epoch" {
-        return dispatch_epoch(scope, &mut rv);
+        if let Some(view) = mutation_epoch_view(scope) {
+            rv.set(view.into());
+        }
+        return;
     }
     let Ok(node) = v8::Local::<v8::Object>::try_from(args.get(1)) else {
         return type_error(scope);
@@ -840,13 +826,6 @@ pub fn dispatch<'s>(
         _ => type_error(scope),
     }
 }
-
-fn dispatch_epoch(scope: &mut v8::PinScope, rv: &mut v8::ReturnValue) {
-    if let Some(view) = mutation_epoch_view(scope) {
-        rv.set(view.into());
-    }
-}
-
 fn type_error(scope: &mut v8::PinScope) {
     let message = v8::String::new(scope, "Illegal invocation").unwrap();
     let error = v8::Exception::type_error(scope, message);

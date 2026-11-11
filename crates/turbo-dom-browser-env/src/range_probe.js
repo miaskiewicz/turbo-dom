@@ -59,16 +59,6 @@
       },
     },
   };
-  const runOperation = (range, operation) => {
-    if (operation === "surroundContents") {
-      const wrapper = document.createElement("mark");
-      wrapper.textContent = "discard";
-      range.surroundContents(wrapper);
-      return { output: wrapper.innerHTML, fragment: null };
-    }
-    const fragment = range[operation]();
-    return { output: fragment ? markup(fragment) : null, fragment };
-  };
   for (const [name, description] of Object.entries(scenarios)) {
     result.contents[name] = {};
     for (const operation of [
@@ -84,9 +74,15 @@
       const selected = String(range);
       let output, fragment, thrown;
       try {
-        const r = runOperation(range, operation);
-        output = r.output;
-        fragment = r.fragment;
+        if (operation === "surroundContents") {
+          const wrapper = document.createElement("mark");
+          wrapper.textContent = "discard";
+          range.surroundContents(wrapper);
+          output = wrapper.innerHTML;
+        } else {
+          fragment = range[operation]();
+          output = fragment ? markup(fragment) : null;
+        }
       } catch (e) {
         thrown = e.name;
       }

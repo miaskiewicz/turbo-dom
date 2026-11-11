@@ -128,9 +128,12 @@
     return policy;
   }, 1);
   function namespace(value, method) { return value == null || value === '' ? HTML : string(value, method, 'TrustedTypePolicyFactory'); }
-  const HTML_ATTR_TYPES = { __proto__: null, 'script:src': 'TrustedScriptURL', 'embed:src': 'TrustedScriptURL', 'object:data': 'TrustedScriptURL', 'object:codebase': 'TrustedScriptURL', 'iframe:srcdoc': 'TrustedHTML' };
   function htmlAttributeType(tag, attribute) {
-    return HTML_ATTR_TYPES[tag + ':' + attribute] || null;
+    if (tag === 'script' && attribute === 'src') return 'TrustedScriptURL';
+    if (tag === 'embed' && attribute === 'src') return 'TrustedScriptURL';
+    if (tag === 'object' && (attribute === 'data' || attribute === 'codebase')) return 'TrustedScriptURL';
+    if (tag === 'iframe' && attribute === 'srcdoc') return 'TrustedHTML';
+    return null;
   }
   // Null-prototype tables: 'constructor' / '__proto__' are unknown names, not inherited hits.
   const KNOWN_NS = { __proto__: null, [HTML]: 1, [SVG]: 1, 'http://www.w3.org/1998/Math/MathML': 1 };
@@ -138,13 +141,13 @@
     if (attributeNS == null || attributeNS === '') return true;
     return ns === SVG && attributeNS === XLINK;
   }
-  function attrNSEmpty(attributeNS) { return attributeNS == null || attributeNS === ''; }
-  function svgScriptHref(ns, tag, attribute) { return ns === SVG && tag === 'script' && attribute === 'href'; }
   function attributeType(tag, attribute, ns, attributeNS) {
-    if (!attributeNSAllowed(ns, attributeNS) || !KNOWN_NS[ns]) return null;
-    if (attrNSEmpty(attributeNS) && own(mapping['*'].attributes, attribute)) return 'TrustedScript';
-    if (ns === HTML && attrNSEmpty(attributeNS)) return htmlAttributeType(tag, attribute);
-    if (svgScriptHref(ns, tag, attribute)) return 'TrustedScriptURL';
+    if (!attributeNSAllowed(ns, attributeNS)) return null;
+    if (!KNOWN_NS[ns]) return null;
+    const nsAttrEmpty = attributeNS == null || attributeNS === '';
+    if (nsAttrEmpty && own(mapping['*'].attributes, attribute)) return 'TrustedScript';
+    if (ns === HTML && nsAttrEmpty) return htmlAttributeType(tag, attribute);
+    if (ns === SVG && tag === 'script' && attribute === 'href') return 'TrustedScriptURL';
     return null;
   }
   member(factoryPrototype, 'getAttributeType', function (tag, attribute, ns, attributeNS) {
@@ -218,21 +221,18 @@
     if (type === 'TrustedScriptURL') value = wellFormed(value);
     return make(type, { value });
   }
-  function convertViaPolicy(state, type, text, sink, prefix) {
-    if (state.defaultPolicy) {
-      const output = runDefaultPolicy(state, type, text, sink);
-      if (output !== null) return output;
-    }
-    if (!state.authorize('sink', type, sink, text)) throw new TypeErrorClass(prefix + "This document requires '" + type + "' assignment" + (state.defaultPolicy ? " and the 'default' policy failed to execute" : '') + '.');
-    return make(type, { value: text });
-  }
   function convert(input, type, sink, prefix, nullToEmpty) {
     const record = nativeRecord(true, input);
     if (record && record.kind === type) return input;
     const text = nullToEmpty && input === null ? '' : string(input, sink, type);
     const state = read(factory, 'TrustedTypePolicyFactory');
     if (!state.authorize || !state.authorize('required')) return text;
-    return convertViaPolicy(state, type, text, sink, prefix);
+    if (state.defaultPolicy) {
+      const output = runDefaultPolicy(state, type, text, sink);
+      if (output !== null) return output;
+    }
+    if (!state.authorize('sink', type, sink, text)) throw new TypeErrorClass(prefix + "This document requires '" + type + "' assignment" + (state.defaultPolicy ? " and the 'default' policy failed to execute" : '') + '.');
+    return make(type, { value: text });
   }
   const setAttribute = Element.prototype.setAttribute;
   const getAttribute = Element.prototype.getAttribute;

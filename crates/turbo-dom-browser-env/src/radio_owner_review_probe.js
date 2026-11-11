@@ -1,9 +1,8 @@
 (() => {
  const out={};const flags=nodes=>nodes.map(node=>node.checked);
- const makeBlocker=kind=>kind==='svg-first'?document.createElementNS('http://www.w3.org/2000/svg','form'):kind==='html-case-first'?document.createElementNS('http://www.w3.org/1999/xhtml','FORM'):document.createElement('div');
  for(const kind of ['nonform-first','svg-first','html-case-first','form-first']){
   const root=document.createElement('div'),form=document.createElement('form'),input=document.createElement('input');form.id='duplicate-owner';input.setAttribute('form','duplicate-owner');input.type='radio';input.name='g';
-  const blocker=makeBlocker(kind);blocker.id='duplicate-owner';
+  const blocker=kind==='svg-first'?document.createElementNS('http://www.w3.org/2000/svg','form'):kind==='html-case-first'?document.createElementNS('http://www.w3.org/1999/xhtml','FORM'):document.createElement('div');blocker.id='duplicate-owner';
   root.append(...(kind==='form-first'?[form,blocker,input]:[blocker,form,input]));document.body.append(root);
   out[kind]=[input.form===form,input.form===null];blocker.remove();out[kind].push(input.form===form);root.remove();
  }

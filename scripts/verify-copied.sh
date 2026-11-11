@@ -408,6 +408,8 @@ editing.js: 0.8.0 turbo-dom#389 review 2: skipZwjSequencesBackward takes a skin-
 editing_input_steps.json: 0.8.0 turbo-dom#389 review 2: Backspace / execCommand('delete') after x + 👨🏽‍💻 and Backspace after x + ❤️‍🔥 steps
 editing_input_chrome156.json: 0.8.0 turbo-dom#389 review 2: recaptured with the frozen headless shell over the extended steps; the 38 existing rows and collectorSha256 are unchanged
 event_listeners.rs: 0.8.1 turbo-dom#398 PR-C1 workspace cc <= 15 gate: aborted / error branches of the records native lifted into helpers (behaviour-preserving)
+event_listeners.js: 0.8.3 turbo-dom#488 the AbortSignal.timeout/.any polyfill is moved out to its own abort_signal_polyfill.js run_js call (crate-owned, OWNED below); this file no longer installs it
+event_listeners.rs: 0.8.3 turbo-dom#488 registers abort_signal_polyfill.js as a separate init script run
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -464,6 +466,8 @@ OWNED="$OWNED event_target_dispatch_chrome156.json event_target_dispatch_tests.r
 OWNED="$OWNED worker_scope.rs worker_scope.js dedicated_worker_global_scope_probe.js dedicated_worker_global_scope_chrome156.json"
 # turbo-dom#394 embedder init scripts run before parser inline <script>.
 OWNED="$OWNED init_script_tests.rs"
+# turbo-dom#488 AbortSignal.timeout/.any polyfill split into its own crate-owned run_js call.
+OWNED="$OWNED abort_signal_polyfill.js"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

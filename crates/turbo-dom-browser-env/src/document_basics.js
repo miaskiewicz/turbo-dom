@@ -37,20 +37,18 @@
   const localNameOf = Object.getOwnPropertyDescriptor(g.Element.prototype, 'localName').get;
   const local = node => apply(localNameOf, node, []);
   // The ASCII-whitespace-separated tokens of a string (HTML's split on ASCII whitespace).
-  function isAsciiWhitespace(c){return c===32||c===9||c===10||c===12||c===13;}
-  const asciiTokens = text => { const out = []; let token = ''; for (let i = 0; i <= text.length; i++) { const c = i < text.length ? apply(charCodeAt, text, [i]) : 32; if (isAsciiWhitespace(c)) { if (token) out[out.length] = token; token = ''; } else token += text[i]; } return out; };
+  const asciiTokens = text => { const out = []; let token = ''; for (let i = 0; i <= text.length; i++) { const c = i < text.length ? apply(charCodeAt, text, [i]) : 32; if (c === 32 || c === 9 || c === 10 || c === 12 || c === 13) { if (token) out[out.length] = token; token = ''; } else token += text[i]; } return out; };
   const focusableTags = { __proto__: null, A: 1, INPUT: 1, BUTTON: 1, SELECT: 1, TEXTAREA: 1, IFRAME: 1, OBJECT: 1, AUDIO: 1, VIDEO: 1 };
   const test = (pattern, text) => { pattern.lastIndex = 0; return apply(regExec, pattern, [text]) !== null; };
   const asciiUpper = text => { let out = ''; for (let i = 0; i < text.length; i++) { const c = apply(charCodeAt, text, [i]); out += c >= 97 && c <= 122 ? fromCharCode(c - 32) : text[i]; } return out; };
   const firstChild = (node, match) => { const children = call(rawChildren, node); for (let i = 0; i < children.length; i++) { const child = children[i]; if (match(child)) return child; } return null; };
   const documentElementOf = document => firstChild(document, node => call(type, node) === 1);
   // HTML's obsolete Document methods explicitly preserve the document and ignore arguments.
-  function installObsoleteMethods(){for (const name of ['clear', 'captureEvents', 'releaseEvents']) {
+  for (const name of ['clear', 'captureEvents', 'releaseEvents']) {
     method(g.Document.prototype, name, function () {
       if (apply(type, this, []) !== 9) throw new ErrorType('Illegal invocation');
     }, 0);
-  }}
-  installObsoleteMethods();
+  }
   // XML Name uses code-point ranges, rather than HTML's permissive attribute names.
   const xmlName = /^[:A-Z_a-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c-\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd\u{10000}-\u{effff}][:A-Z_a-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c-\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd\u{10000}-\u{effff}\-\.0-9\u00b7\u0300-\u036f\u203f-\u2040]*$/u;
   method(g.Document.prototype, 'createProcessingInstruction', function (target, data) {
@@ -94,18 +92,15 @@
   };
   const dataset=function(){
     check(this,[1]);let value=apply(datasetGet,datasetValues,[this]);if(value)return value;const owner=this;
-    function datasetPropertyOp(owner,operation,key,attribute,current,value){
+    value=datasetFactory(g.DOMStringMap.prototype,function(operation,key,value){
+      if(operation==='keys'||operation==='indices')return datasetKeys(owner,operation);
+      const attribute=propertyToAttribute(key),current=apply(getAttribute,owner,[attribute]);
       if(operation==='get')return current===null?undefined:current;
       if(operation==='has')return current!==null;
       if(operation==='descriptor')return current===null?undefined:{value:current,writable:true,enumerable:true,configurable:true};
       if(operation==='delete'){apply(nativeRemoveAttribute,owner,[attribute]);return true;}
       if(operation==='set'||operation==='define')return datasetWrite(owner,operation,key,attribute,value);
       return undefined;
-    }
-    value=datasetFactory(g.DOMStringMap.prototype,function(operation,key,value){
-      if(operation==='keys'||operation==='indices')return datasetKeys(owner,operation);
-      const attribute=propertyToAttribute(key),current=apply(getAttribute,owner,[attribute]);
-      return datasetPropertyOp(owner,operation,key,attribute,current,value);
     },true,true);
     apply(datasetSet,datasetValues,[owner,value]);return value;
   };
@@ -132,16 +127,12 @@
   const character = receiver => { check(receiver, [3, 4, 7, 8]); return apply(data.get, receiver, []); };
   const range = (value, offset) => { if (offset > value.length) throw new ns.DOMException('Character-data offset is out of range', 'IndexSizeError'); };
   // Character-data offsets and native payloads both retain original UTF-16 units.
-  function installCharacterDataMethods(){
-    method(g.CharacterData.prototype, 'substringData', function (offset, count) { const value = character(this); if (arguments.length < 2) throw new TypeError('substringData requires 2 arguments'); offset = uint(offset); count = uint(count); range(value, offset); return apply(sliceText, value, [offset, offset + count]); }, 2);
-    method(g.CharacterData.prototype, 'replaceData', function (offset, count, value) { const current = character(this); if (arguments.length < 3) throw new TypeError('replaceData requires 3 arguments'); offset = uint(offset); count = uint(count); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, count, value); }, 3);
-    method(g.CharacterData.prototype, 'insertData', function (offset, value) { const current = character(this); if (arguments.length < 2) throw new TypeError('insertData requires 2 arguments'); offset = uint(offset); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, 0, value); }, 2);
-    method(g.CharacterData.prototype, 'deleteData', function (offset, count) { const current = character(this); if (arguments.length < 2) throw new TypeError('deleteData requires 2 arguments'); offset = uint(offset); count = uint(count); range(current, offset); native('replaceCharacterData', this, offset, count, ''); }, 2);
-    method(g.CharacterData.prototype, 'appendData', function (value) { const current = character(this); if (!arguments.length) throw new TypeError('appendData requires 1 argument'); native('replaceCharacterData', this, current.length, 0, string(value)); }, 1);
-  }
-  installCharacterDataMethods();
-  function installNullProperties(){for (const name of ['xmlEncoding', 'rootElement']) property(g.Document.prototype, name, function () { check(this, [9]); return null; });}
-  installNullProperties();
+  method(g.CharacterData.prototype, 'substringData', function (offset, count) { const value = character(this); if (arguments.length < 2) throw new TypeError('substringData requires 2 arguments'); offset = uint(offset); count = uint(count); range(value, offset); return apply(sliceText, value, [offset, offset + count]); }, 2);
+  method(g.CharacterData.prototype, 'replaceData', function (offset, count, value) { const current = character(this); if (arguments.length < 3) throw new TypeError('replaceData requires 3 arguments'); offset = uint(offset); count = uint(count); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, count, value); }, 3);
+  method(g.CharacterData.prototype, 'insertData', function (offset, value) { const current = character(this); if (arguments.length < 2) throw new TypeError('insertData requires 2 arguments'); offset = uint(offset); value = string(value); range(current, offset); native('replaceCharacterData', this, offset, 0, value); }, 2);
+  method(g.CharacterData.prototype, 'deleteData', function (offset, count) { const current = character(this); if (arguments.length < 2) throw new TypeError('deleteData requires 2 arguments'); offset = uint(offset); count = uint(count); range(current, offset); native('replaceCharacterData', this, offset, count, ''); }, 2);
+  method(g.CharacterData.prototype, 'appendData', function (value) { const current = character(this); if (!arguments.length) throw new TypeError('appendData requires 1 argument'); native('replaceCharacterData', this, current.length, 0, string(value)); }, 1);
+  for (const name of ['xmlEncoding', 'rootElement']) property(g.Document.prototype, name, function () { check(this, [9]); return null; });
   property(g.Document.prototype, 'xmlStandalone', function () { check(this, [9]); return !!state(this).xmlStandalone; }, function (value) { check(this, [9]); state(this).xmlStandalone = !!value; });
   property(g.Document.prototype, 'xmlVersion', function () { check(this, [9]); return state(this).xmlVersion || null; }, function (value) { check(this, [9]); value = string(value); if (value !== '1.0') throw new ns.DOMException('Only XML version 1.0 is supported', 'NotSupportedError'); state(this).xmlVersion = value; });
   const collectionDefine=Object.defineProperty, collectionApply=Reflect.apply;
@@ -183,12 +174,9 @@
   // An id match anywhere in the collection wins over an earlier name match.
   const named = (list,name)=>{if(name==='')return null;for(let index=0;index<list.length;index++){const node=list[index];if(call(getAttribute, node,'id')===name)return node;}for(let index=0;index<list.length;index++){const node=list[index];if(call(namespace, node)===html&&call(getAttribute, node,'name')===name)return node;}return null;};
   method(collection.proto, 'namedItem', function (name) { if (!arguments.length) throw new TypeError('namedItem requires 1 argument'); return named(collection.record(this)(), string(name)); }, 1);
-  function installNodeListIterators(){
-    for (const [name,implementation] of [['entries',collectionEntries],['keys',collectionKeys],['values',collectionValues]]) method(nodeList.proto,name,function(){nodeList.record(this);return collectionApply(implementation,this,[]);},0);
-    Object.defineProperty(nodeList.proto, Symbol.iterator, {value: nodeList.proto.values, writable: true, configurable: true});
-    method(nodeList.proto, 'forEach', function (callback, thisArg) { nodeList.record(this); if (typeof callback !== 'function') throw new TypeError('callback must be a function'); collectionApply(collectionForEach,this,[callback,thisArg]); }, 1);
-  }
-  installNodeListIterators();
+  for (const [name,implementation] of [['entries',collectionEntries],['keys',collectionKeys],['values',collectionValues]]) method(nodeList.proto,name,function(){nodeList.record(this);return collectionApply(implementation,this,[]);},0);
+  Object.defineProperty(nodeList.proto, Symbol.iterator, {value: nodeList.proto.values, writable: true, configurable: true});
+  method(nodeList.proto, 'forEach', function (callback, thisArg) { nodeList.record(this); if (typeof callback !== 'function') throw new TypeError('callback must be a function'); collectionApply(collectionForEach,this,[callback,thisArg]); }, 1);
   function live(list, namedProperties, options) {
     const proto = options ? options.prototype : namedProperties ? collection.proto : nodeList.proto;
     const namedLookup = options && options.named || named;
@@ -196,29 +184,27 @@
     const supportedKey = (indexed,key,rows,operation,hiddenNames) => indexed ? Number(key) < rows.length || hiddenNames&&operation==='descriptor'&&namedLookup(rows,key)!==null : namedProperties && (hiddenNames||!(key in proto)) && namedLookup(rows, key) !== null;
     const indicesOf = rows => {const indices=[];for(let index=0;index<rows.length;index++)collectionOwn(indices,index,index);return indices;};
     // The supported property names: each row's id, then its HTML name, first occurrence only.
-    function isDuplicate(names,value){for(let existing=0;existing<names.length;existing++)if(names[existing]===value)return true;return false;}
-    function isValidName(value,hiddenNames){return value&&(hiddenNames||!test(/^(0|[1-9][0-9]*)$/, value)&&!(value in proto));}
-    function addNodeNames(node,names,hiddenNames){
-      const values=[call(getAttribute, node,'id'),call(namespace, node)===html?call(getAttribute, node,'name'):null];
-      for(let at=0;at<values.length;at++){
-        const value=values[at];
-        if(isValidName(value,hiddenNames)&&!isDuplicate(names,value))collectionOwn(names,names.length,value);
-      }
-    }
     const namesOf = (rows,hiddenNames) => {
       const names = [];
-      if (namedProperties) for (let index=0;index<rows.length;index++) addNodeNames(rows[index],names,hiddenNames);
+      if (namedProperties) for (let index=0;index<rows.length;index++) {
+        const node=rows[index],values=[call(getAttribute, node,'id'),call(namespace, node)===html?call(getAttribute, node,'name'):null];
+        for(let at=0;at<values.length;at++){
+          const value=values[at];let duplicate=false;
+          for(let existing=0;existing<names.length;existing++)if(names[existing]===value){duplicate=true;break;}
+          if(value&&(hiddenNames||!test(/^(0|[1-9][0-9]*)$/, value)&&!(value in proto))&&!duplicate)collectionOwn(names,names.length,value);
+        }
+      }
       return names;
     };
     // A supported index or name: the operation's answer.
-    function descriptorOf(found,indexed){return { value: found, writable: indexed && !!(options&&options.setIndex), enumerable: indexed || !!(options&&options.namedEnumerable), configurable: true };}
     const supportedAnswer = (operation,indexed,key,rows) => {
       const found = indexed && Number(key)<rows.length ? rows[Number(key)] : namedLookup(rows, key);
       if (operation === 'get') return found;
       if (operation === 'has') return true;
-      if (operation === 'descriptor') return descriptorOf(found,indexed);
+      if (operation === 'descriptor') return { value: found, writable: indexed && !!(options&&options.setIndex), enumerable: indexed || !!(options&&options.namedEnumerable), configurable: true };
       if (operation === 'delete') return false;
-      return writes(operation) ? true : undefined;
+      if (writes(operation)) return true;
+      return undefined;
     };
     // Collection-wide lookups (indices, keys) short-circuit the supported-key test.
     const wholeCollectionAnswer = (operation, rows, hiddenNames) => {
@@ -272,24 +258,21 @@
     const receiver = this;
     return cached(receiver, 'childNodes', () => copyRows(call(rawChildren, receiver)), false);
   });
-  function installChildrenAndQueryAll() {
-    for (const owner of ['Element', 'Document', 'DocumentFragment']) property(g[owner].prototype, 'children', function () {
-      check(this, owner === 'Element' ? [1] : owner === 'Document' ? [9] : [11]);
-      const receiver = this;
-      return cached(receiver, 'children', () => native('elementChildren', receiver));
-    });
-    for (const owner of ['Document', 'Element', 'DocumentFragment']) {
-      const proto = g[owner].prototype;
-      const query = proto.querySelectorAll;
-      method(proto, 'querySelectorAll', function (selector) {
-        check(this, owner === 'Document' ? [9] : owner === 'Element' ? [1] : [11]);
-        if (!arguments.length) throw new TypeError('querySelectorAll requires 1 argument');
-        const rows = copyRows(call(query, this,string(selector)));
-        return live(() => rows, false);
-      }, 1);
-    }
+  for (const owner of ['Element', 'Document', 'DocumentFragment']) property(g[owner].prototype, 'children', function () {
+    check(this, owner === 'Element' ? [1] : owner === 'Document' ? [9] : [11]);
+    const receiver = this;
+    return cached(receiver, 'children', () => native('elementChildren', receiver));
+  });
+  for (const owner of ['Document', 'Element', 'DocumentFragment']) {
+    const proto = g[owner].prototype;
+    const query = proto.querySelectorAll;
+    method(proto, 'querySelectorAll', function (selector) {
+      check(this, owner === 'Document' ? [9] : owner === 'Element' ? [1] : [11]);
+      if (!arguments.length) throw new TypeError('querySelectorAll requires 1 argument');
+      const rows = copyRows(call(query, this,string(selector)));
+      return live(() => rows, false);
+    }, 1);
   }
-  installChildrenAndQueryAll();
   const fragmentIdError = TypeError;
   method(g.DocumentFragment.prototype, 'getElementById', function (elementId) {
     if (!arguments.length) throw new fragmentIdError('getElementById requires 1 argument');
@@ -305,17 +288,15 @@
     // Applet support was removed from HTML; Chrome's legacy collection stays empty.
     applets: () => false,
   };
-  function installDocumentCollections(){
-    for (const [name, match] of Object.entries(selectors)) property(g.Document.prototype, name, function () {
-      check(this, [9]); const receiver = this;
-      return cached(receiver, name, () => descendants(receiver, match));
-    });
-    property(g.Document.prototype, 'plugins', function () {
-      check(this, [9]); const receiver = this;
-      return cached(receiver, 'embeds', () => descendants(receiver, selectors.embeds));
-    });
-  }
-  installDocumentCollections();
+  for (const [name, match] of Object.entries(selectors)) property(g.Document.prototype, name, function () {
+    check(this, [9]); const receiver = this;
+    return cached(receiver, name, () => descendants(receiver, match));
+  });
+  // plugins is its own accessor returning the very collection embeds returns, as in Chrome.
+  property(g.Document.prototype, 'plugins', function () {
+    check(this, [9]); const receiver = this;
+    return cached(receiver, 'embeds', () => descendants(receiver, selectors.embeds));
+  });
   // getElementsByTagName / -NS / -ClassName / -Name, and the document-instance factories moved to Document.prototype.
   function installElementQueries() {
   for (const owner of ['Document', 'Element']) {
@@ -363,20 +344,17 @@
     check(this,[9]);if(!arguments.length)throw new TypeError('createNSResolver requires 1 argument');
     call(type, node);return node;
   },1);
-  function installIntegrityAndDocumentProperties() {
-    for (const [owner, localName] of [['HTMLScriptElement','script'],['HTMLLinkElement','link']]) {
-      const branded = receiver => { check(receiver,[1]); if(call(namespace, receiver)!==html||local(receiver)!==localName)throw new TypeError('Illegal invocation'); };
-      property(g[owner].prototype,'integrity',function(){branded(this);return call(getAttribute, this,'integrity')||'';},function(value){branded(this);call(setAttribute, this,'integrity',string(value));});
-    }
-    property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });
-    property(g.Document.prototype, 'head', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => call(type, node) === 1 && local(node) === 'head' && call(namespace, node) === html) : null; });
-    property(g.Document.prototype, 'body', function () { return native('body', this); }, function (value) {
-      check(this,[9]); if (!value || call(type, value)!==1 || !['body','frameset'].includes(value.localName) || call(namespace, value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
-      const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
-    });
-    for (const name of ['documentElement','head','body']) if(Object.hasOwn(g.document,name))delete g.document[name];
+  for (const [owner, localName] of [['HTMLScriptElement','script'],['HTMLLinkElement','link']]) {
+    const branded = receiver => { check(receiver,[1]); if(call(namespace, receiver)!==html||local(receiver)!==localName)throw new TypeError('Illegal invocation'); };
+    property(g[owner].prototype,'integrity',function(){branded(this);return call(getAttribute, this,'integrity')||'';},function(value){branded(this);call(setAttribute, this,'integrity',string(value));});
   }
-  installIntegrityAndDocumentProperties();
+  property(g.Document.prototype, 'documentElement', function () { check(this, [9]); return documentElementOf(this); });
+  property(g.Document.prototype, 'head', function () { check(this, [9]); const root=documentElementOf(this); return root ? firstChild(root, node => call(type, node) === 1 && local(node) === 'head' && call(namespace, node) === html) : null; });
+  property(g.Document.prototype, 'body', function () { return native('body', this); }, function (value) {
+    check(this,[9]); if (!value || call(type, value)!==1 || !['body','frameset'].includes(value.localName) || call(namespace, value)!==html) throw new ns.DOMException('The new body is not a body or frameset element','HierarchyRequestError');
+    const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
+  });
+  for (const name of ['documentElement','head','body']) if(Object.hasOwn(g.document,name))delete g.document[name];
   property(g.Document.prototype, 'title', function () { check(this,[9]); const title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
   property(g.Document.prototype, 'compatMode', function () { return native('compatMode', this); });
   property(g.Document.prototype, 'doctype', function () {
@@ -391,8 +369,7 @@
   Object.defineProperty(documentTypeProto, Symbol.toStringTag, { value: 'DocumentType', configurable: true });
   Object.defineProperty(documentType, 'prototype', { writable: false });
   Object.defineProperty(g, 'DocumentType', { value: documentType, writable: true, configurable: true });
-  function installDoctypeFields(){for (const [index, name] of ['name', 'publicId', 'systemId'].entries()) property(documentTypeProto, name, function () { return native('doctypeFields', this)[index]; });}
-  installDoctypeFields();
+  for (const [index, name] of ['name', 'publicId', 'systemId'].entries()) property(documentTypeProto, name, function () { return native('doctypeFields', this)[index]; });
   function installDoctypeChildNode() {
   // ChildNode: DocumentType's own copies brand-check a doctype receiver (turbo-dom#114).
   for (const name of ['before', 'after', 'remove', 'replaceWith']) {
@@ -406,12 +383,9 @@
     const record = state(this); value = string(value).toLowerCase(); if (value === 'on' || value === 'off') record.designMode = value;
   });
   property(g.Document.prototype, 'dir', function () { check(this, [9]); return this.documentElement ? this.documentElement.dir : ''; }, function (value) { check(this, [9]); if (this.documentElement) this.documentElement.dir = string(value); });
-  function installColorAttributes(){
-    for (const [name, attribute] of Object.entries({ bgColor: 'bgcolor', fgColor: 'text', linkColor: 'link', vlinkColor: 'vlink', alinkColor: 'alink' })) property(g.Document.prototype, name, function () {
-      check(this, [9]); return this.body ? call(getAttribute, this.body, attribute) || '' : '';
-    }, function (value) { check(this, [9]); if (this.body) call(setAttribute, this.body, attribute, string(value)); });
-  }
-  installColorAttributes();
+  for (const [name, attribute] of Object.entries({ bgColor: 'bgcolor', fgColor: 'text', linkColor: 'link', vlinkColor: 'vlink', alinkColor: 'alink' })) property(g.Document.prototype, name, function () {
+    check(this, [9]); return this.body ? call(getAttribute, this.body, attribute) || '' : '';
+  }, function (value) { check(this, [9]); if (this.body) call(setAttribute, this.body, attribute, string(value)); });
   method(g.Document.prototype, 'importNode', function(node, deep=false) {
     check(this,[9]); if(!arguments.length) throw new TypeError('importNode requires 1 argument');
     apply(type,node,[]); const result=native('import',this,node,!!deep);

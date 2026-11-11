@@ -45,8 +45,8 @@
   const rangeDelete = method(RangeClass.prototype, 'deleteContents');
   const HTML = 'http://www.w3.org/1999/xhtml';
   const isCharacter = kind => kind === 3 || kind === 4 || kind === 7 || kind === 8;
-  function isNode(value) { if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false; try { nodeType(value); return true; } catch (_) { return false; } }
-  function isShadowRoot(value) { if (!isNode(value) || nodeType(value) !== 11) return false; try { hostOfRoot(value); return true; } catch (_) { return false; } }
+  const isNode = value => { if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false; try { nodeType(value); return true; } catch (_) { return false; } };
+  const isShadowRoot = value => { if (!isNode(value) || nodeType(value) !== 11) return false; try { hostOfRoot(value); return true; } catch (_) { return false; } };
   const childCount = node => { let count = 0; for (let child = firstChild(node); child; child = nextSibling(child)) count++; return count; };
   const nodeLength = node => { const kind = nodeType(node); return isCharacter(kind) ? characterData(node).length : kind === 10 ? 0 : childCount(node); };
   const indexOf = node => { const container = parent(node); let at = 0; for (let child = firstChild(container); child && child !== node; child = nextSibling(child)) at++; return at; };
@@ -91,16 +91,14 @@
   }
   function ancestor(node, descendant) { while (descendant) { if (node === descendant) return true; descendant = parent(descendant); } return false; }
   function childOfShared(node, shared) { while (parent(node) !== shared) node = parent(node); return node; }
-  function treeCompareShared(a, aOffset, b, bOffset, shared) {
-    if (shared === a) { const child = childOfShared(b, shared); return aOffset <= indexOf(child) ? -1 : 1; }
-    if (shared === b) return -treeCompare(b, bOffset, a, aOffset);
-    return indexOf(childOfShared(a, shared)) < indexOf(childOfShared(b, shared)) ? -1 : 1;
-  }
   function treeCompare(a, aOffset, b, bOffset) {
     if (a === b) return aOffset < bOffset ? -1 : aOffset > bOffset ? 1 : 0;
     let shared = a; while (shared && !ancestor(shared, b)) shared = parent(shared);
     if (!shared) return 0;
-    return treeCompareShared(a, aOffset, b, bOffset, shared);
+    if (shared === a) { const child = childOfShared(b, shared); return aOffset <= indexOf(child) ? -1 : 1; }
+    if (shared === b) return -treeCompare(b, bOffset, a, aOffset);
+    const left = childOfShared(a, shared), right = childOfShared(b, shared);
+    return indexOf(left) < indexOf(right) ? -1 : 1;
   }
   function compareInScope(left, i, a, right, j, b) {
     const deepA = i > 0, deepB = j > 0;
@@ -249,7 +247,10 @@
     if (before === null) return anchor !== null;
     return anchor === null || !samePoint(before[0], anchor) || !samePoint(before[1], focus) || state.directional !== directional;
   }
-  function applySelectionChange(state, anchor, focus, directional, cached, viewRoot, options, control) {
+  function setSelection(state, anchor, focus, directional, cached, viewRoot, options) {
+    const before = none(state) ? null : [anchorPoint(state), focusPoint(state)];
+    const control = anchor && anchor.inner ? anchor.node : null;
+    if (!selectionChanged(before, anchor, focus, state, directional)) { if (viewRoot === null && cached !== undefined) state.cache = cached; return false; }
     state.cache = null; state.xpos = null;
     state.edgeAnchor = !!(options && options.edgeAnchor); state.edgeFocus = !!(options && options.edgeFocus);
     state.control = control;
@@ -258,12 +259,6 @@
     if (control) controlSelectionChanged(control, state);
     scheduleChange(state);
     maybeFocusHost(state, anchor, control, options);
-  }
-  function setSelection(state, anchor, focus, directional, cached, viewRoot, options) {
-    const before = none(state) ? null : [anchorPoint(state), focusPoint(state)];
-    const control = anchor && anchor.inner ? anchor.node : null;
-    if (!selectionChanged(before, anchor, focus, state, directional)) { if (viewRoot === null && cached !== undefined) state.cache = cached; return false; }
-    applySelectionChange(state, anchor, focus, directional, cached, viewRoot, options, control);
     return true;
   }
   const clear = (state, root) => setSelection(state, null, null, false, null, root, null);
@@ -323,39 +318,37 @@
   }
   // VisibleSelection: canonical endpoints, then the focus kept in the anchor's tree scope.
   // Null when either endpoint has no visible position (VisibleSelection::IsNone).
-  function resolveEdgeFocus(focus) {
-    if (!focus.edge) return focus;
-    const layout = model(rootNode(focus.node), [focus]), query = layout.queries[0];
-    return query[0] >= 0 ? slotPoint(layout, query[0], query[1]) : focus;
-  }
   function visible(state) {
     const anchor = canonical(anchorPoint(state), state.edgeAnchor);
     const canonicalFocus = canonical(focusPoint(state), state.edgeFocus);
     if (!anchor || !canonicalFocus) return null;
-    const focus = resolveEdgeFocus(avoidCrossing(anchor, canonicalFocus));
+    let focus = avoidCrossing(anchor, canonicalFocus);
+    // A scope-edge focus only moves to an equivalent caret inside its own block.
+    if (focus.edge) {
+      const layout = model(rootNode(focus.node), [focus]), query = layout.queries[0];
+      if (query[0] >= 0) focus = slotPoint(layout, query[0], query[1]);
+    }
     const result = create(null); result.anchor = anchor; result.focus = focus;
     const forward = compare(anchor, focus) <= 0;
     result.start = forward ? anchor : focus; result.end = forward ? focus : anchor;
+    // A range's normalized start is its most-forward equivalent (no leading collapsed space).
     if (!samePoint(anchor, focus) && result.start.forward && compare(result.start.forward, result.end) <= 0) result.start = result.start.forward;
     return result;
   }
   // DOMSelection::CreateRangeFromSelectionEditor for the document (root null) or a ShadowRoot.
-  function fallbackVis(state) {
-    const vis = create(null); vis.anchor = anchorPoint(state); vis.focus = avoidCrossing(vis.anchor, focusPoint(state));
-    const forward = compare(vis.anchor, vis.focus) <= 0;
-    vis.start = forward ? vis.anchor : vis.focus; vis.end = forward ? vis.focus : vis.anchor;
-    return vis;
-  }
-  function editorRangeForScope(state, vis, scope) {
+  function editorRange(state, root) {
+    let vis = visible(state);
+    if (!vis) {
+      vis = create(null); vis.anchor = anchorPoint(state); vis.focus = avoidCrossing(vis.anchor, focusPoint(state));
+      const forward = compare(vis.anchor, vis.focus) <= 0;
+      vis.start = forward ? vis.anchor : vis.focus; vis.end = forward ? vis.focus : vis.anchor;
+    }
+    if (root === null && !vis.anchor.inner && rootNode(vis.anchor.node) === state.document) return newRange(state.document, vis.start, vis.end);
+    const scope = root === null ? state.document : root;
     const anchor = adjust(vis.anchor, scope);
     if (!anchor) return null;
     const focus = adjust(vis.focus, scope) || anchor;
     return compare(anchor, focus) <= 0 ? newRange(state.document, anchor, focus) : newRange(state.document, focus, anchor);
-  }
-  function editorRange(state, root) {
-    const vis = visible(state) || fallbackVis(state);
-    if (root === null && !vis.anchor.inner && rootNode(vis.anchor.node) === state.document) return newRange(state.document, vis.start, vis.end);
-    return editorRangeForScope(state, vis, root === null ? state.document : root);
   }
   function rangeCount(entry) {
     const state = entry.state;
@@ -489,18 +482,16 @@
     const data = rangeState(range), collapsed = data.startContainer === data.endContainer && data.startOffset === data.endOffset;
     setSelection(state, collapsed ? focus : anchor, focus, true, cacheRange(state, range), entry.root, null);
   });
-  function validateShadowRootsList(list) {
-    const prefix = "Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': ";
-    if (list === null || (typeof list !== 'object' && typeof list !== 'function') || typeof list[Symbol.iterator] !== 'function') throw typeFail('getComposedRanges', prefix + 'The provided value cannot be converted to a sequence.');
-    const roots = [];
-    for (const root of list) { if (!isShadowRoot(root)) throw typeFail('getComposedRanges', prefix + "Failed to convert value to 'ShadowRoot'."); push(roots, root); }
-    return roots;
-  }
   function readComposedRangeRoots(options) {
-    if (options === undefined || options === null) return [];
+    const roots = [];
+    if (options === undefined || options === null) return roots;
     if (typeof options !== 'object' && typeof options !== 'function') throw typeFail('getComposedRanges', "The provided value is not of type 'GetComposedRangesOptions'.");
     const list = options.shadowRoots;
-    return list === undefined ? [] : validateShadowRootsList(list);
+    if (list === undefined) return roots;
+    const prefix = "Failed to read the 'shadowRoots' property from 'GetComposedRangesOptions': ";
+    if (list === null || (typeof list !== 'object' && typeof list !== 'function') || typeof list[Symbol.iterator] !== 'function') throw typeFail('getComposedRanges', prefix + 'The provided value cannot be converted to a sequence.');
+    for (const root of list) { if (!isShadowRoot(root)) throw typeFail('getComposedRanges', prefix + "Failed to convert value to 'ShadowRoot'."); push(roots, root); }
+    return roots;
   }
   operation('getComposedRanges', 0, function (options) {
     const entry = entryOf(this), roots = readComposedRangeRoots(options);
@@ -747,20 +738,22 @@
     return segment > 0 ? [segment - 1, paragraphStart(texts[segment - 1], texts[segment - 1].length)] : [segment, 0];
   }
   // Per granularity: next/previous caret position from [segment, slot], or null.
-  const STEP_DISPATCH = {
-    'character': (texts, segment, slot, text, forward) => stepCharacter(texts, segment, slot, text, forward),
-    'word': (texts, segment, slot, text, forward) => stepWord(texts, segment, slot, forward),
-    'sentence': (texts, segment, slot, text, forward) => stepSentence(texts, segment, slot, text, forward),
-    'sentenceboundary': (texts, segment, slot, text, forward) => stepSentenceBoundary(segment, slot, text, forward),
-    'paragraphboundary': (texts, segment, slot, text, forward) => [segment, forward ? paragraphEnd(text, slot) : paragraphStart(text, slot)],
-    'lineboundary': (texts, segment, slot, text, forward) => [segment, forward ? paragraphEnd(text, slot) : paragraphStart(text, slot)],
-    'documentboundary': (texts, segment, slot, text, forward) => forward ? [texts.length - 1, texts[texts.length - 1].length] : [0, 0],
-    'line': (texts, segment, slot, text, forward) => stepLineOrParagraph(texts, segment, slot, text, forward),
-    'paragraph': (texts, segment, slot, text, forward) => stepLineOrParagraph(texts, segment, slot, text, forward),
-  };
-  function step(layout, from, forward, granularity) {
-    const handler = STEP_DISPATCH[granularity];
-    return handler ? handler(layout.texts, from[0], from[1], layout.texts[from[0]], forward) : null;
+  function step(layout, from, forward, granularity, startEdge) {
+    const texts = layout.texts;
+    const segment = from[0], slot = from[1];
+    const text = texts[segment];
+    switch (granularity) {
+      case 'character': return stepCharacter(texts, segment, slot, text, forward);
+      case 'word': return stepWord(texts, segment, slot, forward);
+      case 'sentence': return stepSentence(texts, segment, slot, text, forward);
+      case 'sentenceboundary': return stepSentenceBoundary(segment, slot, text, forward);
+      case 'paragraphboundary': case 'lineboundary':
+        return [segment, forward ? paragraphEnd(text, slot) : paragraphStart(text, slot)];
+      case 'documentboundary':
+        return forward ? [texts.length - 1, texts[texts.length - 1].length] : [0, 0];
+      case 'line': case 'paragraph': return stepLineOrParagraph(texts, segment, slot, text, forward);
+    }
+    return null;
   }
   // An embedder with layout registers caret geometry once: {caret(node, offset) ->
   // {x, top, bottom} | null, at(document, x, y) -> {node, offset} | null}. Line moves then
@@ -777,46 +770,41 @@
     }
     return edge;
   }
-  function geometricNext(texts, position, forward) {
-    const segment = position[0], slot = position[1];
-    if (forward) return slot < texts[segment].length ? [segment, slot + 1] : segment + 1 < texts.length ? [segment + 1, 0] : null;
-    return slot > 0 ? [segment, slot - 1] : segment > 0 ? [segment - 1, texts[segment - 1].length] : null;
-  }
-  function geometricResolveHit(root, texts, hit, box, current, forward) {
-    const hitLayout = model(root, [point(hit.node, hit.offset)]);
-    const loc = locate(hitLayout, 0, point(hit.node, hit.offset), false);
-    const hitBox = loc && hitLayout.texts.length === texts.length ? box(loc[0], loc[1]) : null;
-    if (hitBox && (forward ? hitBox.top >= current.bottom - 0.5 : hitBox.bottom <= current.top + 0.5)) return [loc, hitBox];
-    return null;
-  }
-  function geometricFallbackPosition(texts, position, from, forward) {
-    if (position === from) return forward ? [texts.length - 1, texts[texts.length - 1].length] : [0, 0];
-    return position;
-  }
-  function geometricAdjacent(texts, box, next, start, current, forward, state, x, root) {
-    for (let position = next(start); position; position = next(position)) {
-      const candidate = box(position[0], position[1]);
-      if (!candidate) continue;
-      if (forward ? candidate.top < current.bottom - 0.5 : candidate.bottom > current.top + 0.5) continue;
-      const hit = caretLayout.at(state.document, x, (candidate.top + candidate.bottom) / 2);
-      if (hit) { const resolved = geometricResolveHit(root, texts, hit, box, current, forward); if (resolved) return resolved; }
-      return [position, candidate];
-    }
-    return null;
-  }
   function geometric(layout, root, from, forward, granularity, state) {
     const texts = layout.texts;
     const box = (segment, slot) => { const position = slotPoint(layout, segment, slot); return caretLayout.caret(position.node, position.offset); };
     const here = box(from[0], from[1]);
     if (!here) return undefined;
-    const next = position => geometricNext(texts, position, forward);
+    const next = position => {
+      const segment = position[0], slot = position[1];
+      if (forward) return slot < texts[segment].length ? [segment, slot + 1] : segment + 1 < texts.length ? [segment + 1, 0] : null;
+      return slot > 0 ? [segment, slot - 1] : segment > 0 ? [segment - 1, texts[segment - 1].length] : null;
+    };
     if (granularity === 'lineboundary') return geometricLineBoundary(from, here, next, box);
     const x = state.xpos !== null ? state.xpos : here.x;
-    const paragraph = position => position[0] * 65536 + paragraphStart(texts[position[0]], position[1]);
+    const adjacent = (start, current) => {
+      for (let position = next(start); position; position = next(position)) {
+        const candidate = box(position[0], position[1]);
+        if (!candidate) continue;
+        if (forward ? candidate.top < current.bottom - 0.5 : candidate.bottom > current.top + 0.5) continue;
+        const hit = caretLayout.at(state.document, x, (candidate.top + candidate.bottom) / 2);
+        if (hit) {
+          const hitLayout = model(root, [point(hit.node, hit.offset)]);
+          const located = locate(hitLayout, 0, point(hit.node, hit.offset), false);
+          const hitBox = located && hitLayout.texts.length === texts.length ? box(located[0], located[1]) : null;
+          // Only a hit beyond the current line counts (lines then strictly advance, so the
+          // paragraph walk terminates); anything else falls back to the line's first caret.
+          if (hitBox && (forward ? hitBox.top >= current.bottom - 0.5 : hitBox.bottom <= current.top + 0.5)) return [located, hitBox];
+        }
+        return [position, candidate];
+      }
+      return null;
+    };
+    const paragraph = position => { const text = texts[position[0]]; return position[0] * 65536 + paragraphStart(text, position[1]); };
     let position = from, current = here;
     for (let guard = 0; guard < 100000; guard++) {
-      const found = geometricAdjacent(texts, box, next, position, current, forward, state, x, root);
-      if (!found) return [geometricFallbackPosition(texts, position, from, forward), x];
+      const found = adjacent(position, current);
+      if (!found) return [position === from ? (forward ? [texts.length - 1, texts[texts.length - 1].length] : [0, 0]) : position, x];
       position = found[0]; current = found[1];
       if (granularity === 'line' || paragraph(position) !== paragraph(from)) return [position, x];
     }
@@ -843,23 +831,19 @@
     }
     return { base, extent };
   }
-  function modifyTargetGeometric(prep, state, forward, granularity, origin) {
-    const vertical = granularity === 'line' || granularity === 'paragraph';
-    const result = geometric(prep.layout, scopeOf(prep.anchor), origin, forward, granularity, state);
-    if (result === undefined) return { target: step(prep.layout, origin, forward, granularity), xpos: null };
-    return vertical ? { target: result[0], xpos: result[1] } : { target: result, xpos: null };
-  }
-  function modifyCharacterTarget(forward, start, end) { return { target: forward ? end : start, xpos: null }; }
   function modifyTarget(prep, state, extend, forward, granularity, isCaret, start, end, origin) {
-    if (!extend && granularity === 'character' && !isCaret) return modifyCharacterTarget(forward, start, end);
     const vertical = granularity === 'line' || granularity === 'paragraph';
-    if (caretLayout !== null && !prep.control && (vertical || granularity === 'lineboundary'))
-      return modifyTargetGeometric(prep, state, forward, granularity, origin);
+    if (!extend && granularity === 'character' && !isCaret) return { target: forward ? end : start, xpos: null };
+    if (caretLayout !== null && !prep.control && (vertical || granularity === 'lineboundary')) {
+      const result = geometric(prep.layout, scopeOf(prep.anchor), origin, forward, granularity, state);
+      if (result === undefined) return { target: step(prep.layout, origin, forward, granularity), xpos: null };
+      if (vertical) return { target: result[0], xpos: result[1] };
+      return { target: result, xpos: null };
+    }
     return { target: step(prep.layout, origin, forward, granularity), xpos: null };
   }
-  const CLAMP_GRANULARITIES = { 'word': true, 'paragraph': true, 'line': true };
   function modifyClampTarget(target, base, baseFirst, extend, isCaret, granularity) {
-    if (!(extend && !isCaret && CLAMP_GRANULARITIES[granularity])) return target;
+    if (!(extend && !isCaret && (granularity === 'word' || granularity === 'paragraph' || granularity === 'line'))) return target;
     if (baseFirst && positionOrder(target, base) < 0) return base;
     if (!baseFirst && positionOrder(target, base) > 0) return base;
     return target;
@@ -868,10 +852,9 @@
     const boundaryGranularity = granularity === 'sentenceboundary' || granularity === 'lineboundary' || granularity === 'paragraphboundary' || granularity === 'documentboundary';
     return boundaryGranularity || (granularity === 'paragraph' && !extend) ? (forward ? end : start) : extent;
   }
-  const BOUNDARY_GRANULARITIES = { 'lineboundary': true, 'paragraphboundary': true, 'documentboundary': true };
   function modifyChooseEndpoints(target, base, extent, baseFirst, extend, isCaret, granularity, forward) {
     if (!extend) return { newAnchor: target, newFocus: target };
-    if (isCaret || !BOUNDARY_GRANULARITIES[granularity]) return { newAnchor: base, newFocus: target };
+    if (isCaret || !(granularity === 'lineboundary' || granularity === 'paragraphboundary' || granularity === 'documentboundary')) return { newAnchor: base, newFocus: target };
     if (forward) return { newAnchor: baseFirst ? base : target, newFocus: baseFirst ? target : extent };
     return { newAnchor: baseFirst ? target : base, newFocus: baseFirst ? extent : target };
   }
@@ -916,8 +899,11 @@
     if (unit === 'block') return [[start[0], paragraphStart(texts[start[0]], start[1])], [end[0], paragraphEnd(texts[end[0]], end[1])]];
     return [[0, 0], [texts.length - 1, texts[texts.length - 1].length]];
   }
-  const EXPAND_UNITS = { 'word': true, 'sentence': true, 'block': true, 'document': true };
-  function expandRange(range, data, unit) {
+  define(RangeClass.prototype, 'expand', {__proto__: null, value: make(function (unit) {
+    const data = rangeArgument(this);
+    if (!data) throw new TypeErrorClass('Illegal invocation');
+    unit = unit === undefined ? '' : string(unit, "Failed to execute 'expand' on 'Range': ");
+    if (unit !== 'word' && unit !== 'sentence' && unit !== 'block' && unit !== 'document') return;
     if (!connected(data.startContainer) || !connected(data.endContainer)) return;
     const layout = model(rootNode(data.startContainer), [point(data.startContainer, data.startOffset), point(data.endContainer, data.endOffset)]);
     if (!layout.texts.length) return;
@@ -925,21 +911,14 @@
     if (!rawStart || !rawEnd) return;
     const [start, end] = expandUnit(layout.texts, unit, rawStart, rawEnd);
     const from = slotPoint(layout, start[0], start[1]), to = slotPoint(layout, end[0], end[1]);
-    rangeStart(range, from.node, from.offset);
-    rangeEnd(range, to.node, to.offset);
-  }
-  define(RangeClass.prototype, 'expand', {__proto__: null, value: make(function (unit) {
-    const data = rangeArgument(this);
-    if (!data) throw new TypeErrorClass('Illegal invocation');
-    unit = unit === undefined ? '' : string(unit, "Failed to execute 'expand' on 'Range': ");
-    if (EXPAND_UNITS[unit]) expandRange(this, data, unit);
+    rangeStart(this, from.node, from.offset);
+    rangeEnd(this, to.node, to.offset);
   }, 'expand', 0), writable: true, enumerable: true, configurable: true});
 
   // ---- Text controls -----------------------------------------------------------------------
   const inputPrototype = g.HTMLInputElement.prototype, textareaPrototype = g.HTMLTextAreaElement.prototype;
-  function describeOrDescriptor(proto, name) { return describe(proto, name) || descriptor(proto, name); }
-  const inputValue = describeOrDescriptor(inputPrototype, 'value');
-  const textareaValue = describeOrDescriptor(textareaPrototype, 'value');
+  const inputValue = describe(inputPrototype, 'value') || descriptor(inputPrototype, 'value');
+  const textareaValue = describe(textareaPrototype, 'value') || descriptor(textareaPrototype, 'value');
   const isInput = node => html(node, 'input'), isTextarea = node => html(node, 'textarea');
   const inputType = node => { const type = getAttribute(node, 'type'); if (type === null) return 'text'; const lowered = ascii(type); return KNOWN_TYPES[lowered] ? lowered : 'text'; };
   const KNOWN_TYPES = create(null);
@@ -1210,34 +1189,29 @@
     const empty = new RangeClass();
     return list ? emptyRects(empty) : emptyBounds(empty);
   }
-  function validateCreateValueRange(element, owner, check, argCount, start, end) {
-    if (!isNode(element) || !check(element)) throw new TypeErrorClass('Illegal invocation');
-    const prefix = "Failed to execute 'createValueRange' on '" + owner + "': ";
-    if (argCount < 2) throw new TypeErrorClass(prefix + '2 arguments required, but only ' + argCount + ' present.');
-    start = unsigned(start, prefix); end = unsigned(end, prefix);
-    if (owner === 'HTMLInputElement' && !SELECTION_TYPES[inputType(element)]) throw new Exception(prefix + '<input> element must be of a text field type: text, search, url, tel, or password.', 'NotSupportedError');
-    const value = controlValue(element);
-    if (start > value.length || end > value.length) throw new Exception(prefix + 'Start or end offset exceeds value length.', 'IndexSizeError');
-    return { start, end: start > end ? start : end, value, prefix };
-  }
-  function buildOpaqueRange(element, start, end, value) {
-    const state = create(null);
-    state.opaque = true; state.startContainer = null; state.endContainer = null;
-    state.start = start; state.end = end; state.control = element; state.value = value;
-    state.wasConnected = connected(element);
-    define(state, 'startOffset', {__proto__: null, get: () => opaqueRefresh(state).start});
-    define(state, 'endOffset', {__proto__: null, get: () => opaqueRefresh(state).end});
-    const range = staticRecord(undefined, state, OpaquePrototype);
-    let list = mapGet(opaqueRanges, element);
-    if (!list) { list = []; mapSet(opaqueRanges, element, list); }
-    push(list, new WeakRefClass(range));
-    if (state.wasConnected) Native('watch', element);
-    return range;
-  }
   for (const [prototype, owner, check] of [[inputPrototype, 'HTMLInputElement', isInput], [textareaPrototype, 'HTMLTextAreaElement', isTextarea]]) {
     define(prototype, 'createValueRange', {__proto__: null, value: make(function (start, end) {
-      const validated = validateCreateValueRange(this, owner, check, arguments.length, start, end);
-      return buildOpaqueRange(this, validated.start, validated.end, validated.value);
+      if (!isNode(this) || !check(this)) throw new TypeErrorClass('Illegal invocation');
+      const prefix = "Failed to execute 'createValueRange' on '" + owner + "': ";
+      if (arguments.length < 2) throw new TypeErrorClass(prefix + '2 arguments required, but only ' + arguments.length + ' present.');
+      start = unsigned(start, prefix); end = unsigned(end, prefix);
+      if (owner === 'HTMLInputElement' && !SELECTION_TYPES[inputType(this)]) throw new Exception(prefix + '<input> element must be of a text field type: text, search, url, tel, or password.', 'NotSupportedError');
+      const value = controlValue(this);
+      if (start > value.length || end > value.length) throw new Exception(prefix + 'Start or end offset exceeds value length.', 'IndexSizeError');
+      if (start > end) end = start;
+      const state = create(null);
+      state.opaque = true; state.startContainer = null; state.endContainer = null;
+      state.start = start; state.end = end; state.control = this; state.value = value;
+      state.wasConnected = connected(this);
+      // AbstractRange's accessors read these through the private record.
+      define(state, 'startOffset', {__proto__: null, get: () => opaqueRefresh(state).start});
+      define(state, 'endOffset', {__proto__: null, get: () => opaqueRefresh(state).end});
+      const range = staticRecord(undefined, state, OpaquePrototype);
+      let list = mapGet(opaqueRanges, this);
+      if (!list) { list = []; mapSet(opaqueRanges, this, list); }
+      push(list, new WeakRefClass(range));
+      if (state.wasConnected) Native('watch', this);
+      return range;
     }, 'createValueRange', 2), writable: true, enumerable: true, configurable: true});
   }
   // Trusted typing (an embedder's input driver): replace the control's selection with

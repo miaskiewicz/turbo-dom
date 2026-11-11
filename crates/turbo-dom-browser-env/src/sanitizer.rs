@@ -132,7 +132,21 @@ impl Config {
         scope: &mut v8::PinScope<'s, '_>,
         record: v8::Local<'s, v8::Object>,
     ) -> Option<Self> {
-        let elements = Self::read_elements(scope, record)?;
+        let elements = match list(scope, record, "elements") {
+            None => None,
+            Some(items) => {
+                let mut map = HashMap::with_capacity(items.len());
+                for item in items {
+                    let name = name_of(scope, item)?;
+                    let rules = ElementRules {
+                        attributes: names(scope, item, "attributes")?,
+                        remove_attributes: names(scope, item, "removeAttributes")?,
+                    };
+                    map.insert(name, rules);
+                }
+                Some(map)
+            }
+        };
         Some(Self {
             elements,
             remove_elements: names(scope, record, "removeElements")?,
@@ -144,25 +158,6 @@ impl Config {
             comments: flag(scope, record, "comments"),
             data_attributes: flag(scope, record, "dataAttributes"),
         })
-    }
-    fn read_elements<'s>(
-        scope: &mut v8::PinScope<'s, '_>,
-        record: v8::Local<'s, v8::Object>,
-    ) -> Option<Option<HashMap<Name, ElementRules>>> {
-        let items = match list(scope, record, "elements") {
-            None => return Some(None),
-            Some(items) => items,
-        };
-        let mut map = HashMap::with_capacity(items.len());
-        for item in items {
-            let name = name_of(scope, item)?;
-            let rules = ElementRules {
-                attributes: names(scope, item, "attributes")?,
-                remove_attributes: names(scope, item, "removeAttributes")?,
-            };
-            map.insert(name, rules);
-        }
-        Some(Some(map))
     }
     /// The built-in safe default configuration (Chrome's `new Sanitizer().get()`).
     pub(super) fn builtin_default() -> &'static Self {
@@ -219,16 +214,17 @@ const BASELINE_JSON: &str = include_str!("sanitizer_safe_baseline.json");
 /// control-or-space is stripped, ASCII tab/newline removed, and a scheme is an
 /// ASCII alpha followed by alphanumerics, "+", "-" or "." up to ":".
 fn javascript_url(value: &[u16]) -> bool {
-    let stripped = value
-        .iter()
-        .copied()
-        .filter(|&u| !matches!(u, 0x09 | 0x0a | 0x0d));
     let mut scheme = Vec::new();
-    for unit in stripped {
-        if scheme.is_empty() {
+    let mut started = false;
+    for &unit in value {
+        if matches!(unit, 0x09 | 0x0a | 0x0d) {
+            continue;
+        }
+        if !started {
             if unit <= 0x20 {
                 continue;
             }
+            started = true;
             if !(unit as u8).is_ascii_alphabetic() || unit > 0x7f {
                 return false;
             }
@@ -236,37 +232,24 @@ fn javascript_url(value: &[u16]) -> bool {
         if unit == u16::from(b':') {
             return scheme.eq_ignore_ascii_case(b"javascript");
         }
-        if !is_scheme_char(unit) {
+        if unit > 0x7f || !((unit as u8).is_ascii_alphanumeric() || b"+-.".contains(&(unit as u8)))
+        {
             return false;
         }
         scheme.push(unit as u8);
     }
     false
 }
-fn is_scheme_char(unit: u16) -> bool {
-    unit <= 0x7f && ((unit as u8).is_ascii_alphanumeric() || b"+-.".contains(&(unit as u8)))
-}
 fn navigating(element: &Name, attribute: &Name) -> bool {
-    navigating_href(element, attribute)
-        || navigating_formaction(element, attribute)
-        || navigating_action(element, attribute)
-        || navigating_svg(element, attribute)
-}
-fn navigating_href(element: &Name, attribute: &Name) -> bool {
     (element.is("a", Some(HTML))
         || element.is("area", Some(HTML))
         || element.is("base", Some(HTML)))
         && attribute.is("href", None)
-}
-fn navigating_formaction(element: &Name, attribute: &Name) -> bool {
-    (element.is("button", Some(HTML)) || element.is("input", Some(HTML)))
-        && attribute.is("formaction", None)
-}
-fn navigating_action(element: &Name, attribute: &Name) -> bool {
-    element.is("form", Some(HTML)) && attribute.is("action", None)
-}
-fn navigating_svg(element: &Name, attribute: &Name) -> bool {
-    element.is("a", Some(SVG)) && (attribute.is("href", None) || attribute.is("href", Some(XLINK)))
+        || (element.is("button", Some(HTML)) || element.is("input", Some(HTML)))
+            && attribute.is("formaction", None)
+        || element.is("form", Some(HTML)) && attribute.is("action", None)
+        || element.is("a", Some(SVG))
+            && (attribute.is("href", None) || attribute.is("href", Some(XLINK)))
 }
 fn animating(element: &Name, attribute: &Name) -> bool {
     (element.is("animate", Some(SVG))
@@ -421,34 +404,25 @@ fn sanitize_element(
         return;
     };
     filter_attributes(tree, node, &element, rules, config, safe);
-    if is_shadow_template(tree, node, &element, template, parser_parent) {
-        if parent_replaced && discarded_hosts.insert(parser_parent) {
-            tree.remove_child(parent, node);
-            return;
-        }
-        if !parent_replaced {
-            declarative.insert(node);
-        }
-    }
-    pending.extend(children_of(tree, node, node, false));
-    if let Some(shadow) = tree.shadow_root(node) {
-        pending.extend(children_of(tree, shadow, shadow, false));
-    }
-}
-fn is_shadow_template(
-    tree: &Tree,
-    node: Handle,
-    element: &Name,
-    template: &Name,
-    parser_parent: Handle,
-) -> bool {
-    element == template
+    let shadow_template = &element == template
         && tree
             .get_attribute(node, "shadowrootmode")
             .is_some_and(|mode| {
                 mode.eq_ignore_ascii_case("open") || mode.eq_ignore_ascii_case("closed")
             })
-        && shadow_html::valid_host(tree, parser_parent)
+        && shadow_html::valid_host(tree, parser_parent);
+    if shadow_template && parent_replaced {
+        if discarded_hosts.insert(parser_parent) {
+            tree.remove_child(parent, node);
+            return;
+        }
+    } else if shadow_template {
+        declarative.insert(node);
+    }
+    pending.extend(children_of(tree, node, node, false));
+    if let Some(shadow) = tree.shadow_root(node) {
+        pending.extend(children_of(tree, shadow, shadow, false));
+    }
 }
 
 /// Hoist each child of `node` in front of it, queue them for a re-run, then remove `node`.

@@ -253,16 +253,14 @@
   delete TextFormatDelegate.prototype.constructor;
   for (const name of ['rangeStart', 'rangeEnd', 'underlineStyle', 'underlineThickness']) getter(TextFormatDelegate.prototype, name, function () { const r = this !== null && typeof this === 'object' ? wget(formats, this) : undefined; if (!r) throw new ErrorType('Illegal invocation'); return r[name]; });
   finishInterface(TextFormatDelegate, 'TextFormat', 0, null, null);
-  function isIterable(value) { return value !== null && (typeof value === 'object' || typeof value === 'function') && typeof value[iteratorSymbol] === 'function'; }
-  function readTextFormats(list, p) {
-    if (!isIterable(list)) throw new ErrorType(p + 'The provided value cannot be converted to a sequence.');
-    const result = [];
-    for (const value of list) { if (value === null || typeof value !== 'object' || wget(formats, value) === undefined) throw new ErrorType(p + "Failed to convert value to 'TextFormat'."); push(result, value); }
-    return result;
-  }
   eventInterface('TextFormatUpdateEvent', [['getTextFormats', 'method', function () { const r = recordOf(this, 'TextFormatUpdateEvent'), out = []; for (let i = 0; i < r.formats.length; i++) push(out, r.formats[i]); return out; }]], init => {
     const r = create(null), list = init.textFormats;
-    r.formats = list === undefined ? [] : readTextFormats(list, prefix('TextFormatUpdateEvent', 'TextFormatUpdateEventInit', 'textFormats'));
+    r.formats = [];
+    if (list !== undefined) {
+      const p = prefix('TextFormatUpdateEvent', 'TextFormatUpdateEventInit', 'textFormats');
+      if (list === null || (typeof list !== 'object' && typeof list !== 'function') || typeof list[iteratorSymbol] !== 'function') throw new ErrorType(p + 'The provided value cannot be converted to a sequence.');
+      for (const value of list) { if (value === null || typeof value !== 'object' || wget(formats, value) === undefined) throw new ErrorType(p + "Failed to convert value to 'TextFormat'."); push(r.formats, value); }
+    }
     return r;
   });
   eventInterface('CharacterBoundsUpdateEvent', [['rangeStart'], ['rangeEnd']], init => {
@@ -275,11 +273,6 @@
   // Trusted text input into an element's EditContext (Chrome's EditContext::InsertText and its
   // deletion handlers): updates the context's text and selection and fires textupdate. Only the
   // embedder's input driver can reach this, through the private handoff to editing.js.
-  function deleteRange(inputType, a, b, textLength) {
-    if (a !== b) return [a, b];
-    if (inputType === 'deleteContentBackward') return a === 0 ? null : [a - 1, b];
-    return b >= textLength ? null : [a, b + 1];
-  }
   function input(element, inputType, data, beforeInput) {
     const context = contextOf(element);
     if (context === null) return false;
@@ -288,9 +281,7 @@
     if (inputType === 'insertText') text = data;
     else if (inputType === 'deleteContentBackward' || inputType === 'deleteContentForward') {
       if (!beforeInput(element, inputType, null)) return true;
-      const range = deleteRange(inputType, a, b, s.text.length);
-      if (range === null) return true;
-      a = range[0]; b = range[1];
+      if (a === b) { if (inputType === 'deleteContentBackward') { if (a === 0) return true; a--; } else { if (b >= s.text.length) return true; b++; } }
     } else { beforeInput(element, inputType, null); return true; }
     s.text = sub(s.text, 0, a) + text + sub(s.text, b);
     s.start = s.end = a + text.length;

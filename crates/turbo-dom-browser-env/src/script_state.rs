@@ -262,26 +262,6 @@ fn script_tree_gate(tree: &Tree, handle: Handle) -> Option<bool> {
     Some(in_shadow_tree)
 }
 
-fn apply_parser_state(
-    state: &mut ScriptState,
-    tree: &Tree,
-    handle: Handle,
-    parser_document: Option<u64>,
-) {
-    state.parser_inserted = false;
-    if parser_document.is_some() && !tree.has_attribute(handle, "async") {
-        state.force_async = true;
-    }
-}
-
-fn restore_parser_state(state: &mut ScriptState, parser_document: Option<u64>) {
-    if let Some(document) = parser_document {
-        state.parser_document = Some(document);
-        state.parser_inserted = true;
-        state.force_async = false;
-    }
-}
-
 fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
     DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
@@ -297,9 +277,16 @@ fn prepared(handle: Handle, claim_active: bool) -> Option<PreparedScript> {
             return None;
         }
         let parser_document = state.parser_document.take();
-        apply_parser_state(state, tree, handle, parser_document);
+        state.parser_inserted = false;
+        if parser_document.is_some() && !tree.has_attribute(handle, "async") {
+            state.force_async = true;
+        }
         let (src, source, source_units, kind) = script_classification(tree, handle)?;
-        restore_parser_state(state, parser_document);
+        if let Some(document) = parser_document {
+            state.parser_document = Some(document);
+            state.parser_inserted = true;
+            state.force_async = false;
+        }
         state.already_started = true;
         if !active
             || parser_document.is_some_and(|document| document != DOM_ID.with(std::cell::Cell::get))

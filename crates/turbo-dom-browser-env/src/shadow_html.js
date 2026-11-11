@@ -43,8 +43,15 @@
   const object = (value) => (typeof value === "object" && value !== null) || typeof value === "function";
   // GetHTMLOptions: members are read in IDL dictionary order, then the
   // ShadowRoot sequence is iterated through the value's own iterator method.
-  function iterateShadowRoots(list, member) {
-    const roots = [];
+  function options(raw, owner) {
+    const prefix = `Failed to execute 'getHTML' on '${owner}': `;
+    if (raw === undefined || raw === null) return [false, []];
+    if (!object(raw)) throw new TypeErrorValue(prefix + "The provided value is not of type 'GetHTMLOptions'.");
+    const serializable = !!raw.serializableShadowRoots;
+    const list = raw.shadowRoots,
+      roots = [];
+    if (list === undefined) return [serializable, roots];
+    const member = prefix + "Failed to read the 'shadowRoots' property from 'GetHTMLOptions': ";
     const method = object(list) ? list[iteratorKey] : undefined;
     if (typeof method !== "function") throw new TypeErrorValue(member + "The provided value cannot be converted to a sequence.");
     const iterator = apply(method, list, []);
@@ -58,17 +65,7 @@
       if (!isShadow(root)) throw new TypeErrorValue(member + "Failed to convert value to 'ShadowRoot'.");
       roots[roots.length] = root;
     }
-    return roots;
-  }
-  function options(raw, owner) {
-    const prefix = `Failed to execute 'getHTML' on '${owner}': `;
-    if (raw === undefined || raw === null) return [false, []];
-    if (!object(raw)) throw new TypeErrorValue(prefix + "The provided value is not of type 'GetHTMLOptions'.");
-    const serializable = !!raw.serializableShadowRoots;
-    const list = raw.shadowRoots;
-    if (list === undefined) return [serializable, []];
-    const member = prefix + "Failed to read the 'shadowRoots' property from 'GetHTMLOptions': ";
-    return [serializable, iterateShadowRoots(list, member)];
+    return [serializable, roots];
   }
   const method = (proto, name, length, body) =>
     define(proto, name, { value: make(body, name, length), writable: true, enumerable: true, configurable: true });

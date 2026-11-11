@@ -40,20 +40,16 @@
   out.members = {};
   for (const [name, list] of Object.entries(members)) for (const k of list.split(' ')) out.members[name + '.' + k] = desc(globalThis[name].prototype, k);
   // The interfaces behind the media members.
-  const probeInterface = (name) => {
+  out.interfaces = {};
+  for (const name of ['TimeRanges', 'MediaError', 'TextTrackList', 'VideoPlaybackQuality', 'RemotePlayback']) {
     const C = globalThis[name];
-    if (typeof C !== 'function') return typeof C;
-    return {
+    out.interfaces[name] = typeof C !== 'function' ? typeof C : {
       proto: Object.fromEntries(Reflect.ownKeys(C.prototype).map((k) => [String(k), desc(C.prototype, k)])),
       ctor: Object.fromEntries(Reflect.ownKeys(C).map((k) => [String(k), desc(C, k)])),
       parent: Object.getPrototypeOf(C.prototype) === Object.prototype ? 'Object' : Object.getPrototypeOf(C.prototype).constructor.name,
       construct: run(() => new C()),
       global: desc(globalThis, name),
     };
-  };
-  out.interfaces = {};
-  for (const name of ['TimeRanges', 'MediaError', 'TextTrackList', 'VideoPlaybackQuality', 'RemotePlayback']) {
-    out.interfaces[name] = probeInterface(name);
   }
 
   // Content attribute reflections: the default, the IDL value per attribute value, the IDL value
@@ -81,22 +77,18 @@
   const read = (el, k) => { const v = el[k]; return v !== null && typeof v === 'object' ? (v instanceof DOMTokenList ? 'T:' + v.value : tag(v)) : show(v); };
   const attrValues = ['', 'x', 'LAZY', 'lazy', 'eager', 'auto', ' 12 ', '+3', '-5', '0', '4294967296', 'use-credentials', 'Anonymous', 'No-Referrer', 'unsafe-url', 'never', 'HIGH', 'low', 'Open', 'closed', 'manual', 'sync', 'ASYNC', 'none', 'metadata', 'a/b c'];
   const idlValues = ['abc', 7, -1, 0, null, undefined, true, false, 'Use-Credentials', '', 'rel/p', 'closed', 'LOW', 2147483648, 1.9];
-  const attrForProp = (k) => k === 'htmlFor' ? 'for' : k === 'relList' ? 'rel' : k.toLowerCase();
-  const probeReflected = (iface, name, k) => {
-    const attr = attrForProp(k);
-    const fresh = () => document.createElement(name);
-    return {
-      def: run(() => read(fresh(), k)),
-      attr: attrValues.map((v) => run(() => { const el = fresh(); el.setAttribute(attr, v); return read(el, k); })),
-      idl: idlValues.map((v) => run(() => { const el = fresh(); el[k] = v; return [read(el, k), el.getAttribute(attr)]; })),
-      brand: run(() => Object.getOwnPropertyDescriptor(globalThis[iface].prototype, k).get.call(document.createElement('span'))),
-      missing: run(() => Object.getOwnPropertyDescriptor(globalThis[iface].prototype, k).set.call(fresh())),
-    };
-  };
   out.reflected = {};
   for (const [iface, [name, list]] of Object.entries(reflected)) {
     for (const k of list.split(' ')) {
-      out.reflected[iface + '.' + k] = probeReflected(iface, name, k);
+      const attr = k === 'htmlFor' ? 'for' : k === 'relList' ? 'rel' : k.toLowerCase();
+      const fresh = () => document.createElement(name);
+      out.reflected[iface + '.' + k] = {
+        def: run(() => read(fresh(), k)),
+        attr: attrValues.map((v) => run(() => { const el = fresh(); el.setAttribute(attr, v); return read(el, k); })),
+        idl: idlValues.map((v) => run(() => { const el = fresh(); el[k] = v; return [read(el, k), el.getAttribute(attr)]; })),
+        brand: run(() => Object.getOwnPropertyDescriptor(globalThis[iface].prototype, k).get.call(document.createElement('span'))),
+        missing: run(() => Object.getOwnPropertyDescriptor(globalThis[iface].prototype, k).set.call(fresh())),
+      };
     }
   }
   // DOMTokenList supported tokens.

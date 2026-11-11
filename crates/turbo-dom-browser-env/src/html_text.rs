@@ -202,7 +202,12 @@ fn collect_element_children(
         collect(tree, child, policy, out);
     }
     if display == "table-cell" {
-        emit_cell_tab(tree, node, policy, out);
+        if let Some(next) = tree.next_sibling(node) {
+            let next_style = computed_style_with_policy(tree, next, policy);
+            if display_for_cell(tree, next, &next_style) {
+                out.forced('\t');
+            }
+        }
     }
     if block {
         out.separate(count);
@@ -241,14 +246,6 @@ fn collect(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput
         return;
     }
     collect_element_children(tree, node, policy, &display, name, out);
-}
-fn emit_cell_tab(tree: &Tree, node: Handle, policy: &StylePolicy, out: &mut TextOutput) {
-    if let Some(next) = tree.next_sibling(node) {
-        let next_style = computed_style_with_policy(tree, next, policy);
-        if display_for_cell(tree, next, &next_style) {
-            out.forced('\t');
-        }
-    }
 }
 fn display_for_cell(tree: &Tree, node: Handle, style: &HashMap<String, String>) -> bool {
     display(tree, node, style) == "table-cell"
@@ -314,24 +311,6 @@ fn merge_text(scope: &mut v8::PinScope, first: Handle, second: Handle) {
         tree.remove_child(parent, second);
     });
 }
-fn merge_trailing_text(
-    scope: &mut v8::PinScope,
-    nodes: &[Handle],
-    next: Option<Handle>,
-    parent: Handle,
-) {
-    let is_text = |node| with_tree(|tree| tree.node_type_id(node) == 3).unwrap_or(false);
-    if let (Some(last), Some(next)) = (nodes.last().copied(), next) {
-        if last != next
-            && with_tree(|tree| tree.parent(next) == Some(parent)).unwrap_or(false)
-            && is_text(last)
-            && is_text(next)
-        {
-            merge_text(scope, last, next);
-        }
-    }
-}
-
 fn set_outer(scope: &mut v8::PinScope, node: Handle, text: &[u16]) -> Result<(), &'static str> {
     let Some((parent, previous, next)) = with_tree(|tree| {
         Some((
@@ -363,7 +342,15 @@ fn set_outer(scope: &mut v8::PinScope, node: Handle, text: &[u16]) -> Result<(),
             }
         }
     }
-    merge_trailing_text(scope, &nodes, next, parent);
+    if let (Some(last), Some(next)) = (nodes.last().copied(), next) {
+        if last != next
+            && with_tree(|tree| tree.parent(next) == Some(parent)).unwrap_or(false)
+            && is_text(last)
+            && is_text(next)
+        {
+            merge_text(scope, last, next);
+        }
+    }
     Ok(())
 }
 pub fn dispatch<'s>(

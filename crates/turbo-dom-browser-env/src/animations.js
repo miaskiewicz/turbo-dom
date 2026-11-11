@@ -85,38 +85,21 @@
   const PRESETS = { __proto__: null, ease: [0.25, 0.1, 0.25, 1], 'ease-in': [0.42, 0, 1, 1], 'ease-out': [0, 0, 0.58, 1], 'ease-in-out': [0.42, 0, 0.58, 1] };
   const linearEasing = { text: 'linear', evaluate: x => x };
   // gfx::CubicBezier, reproduced step for step so solved progress matches Chrome's values.
-  function bezierStartSlope(x1, y1, x2, y2) {
-    if (x1 > 0) return y1 / x1;
-    if (!y1 && x2 > 0) return y2 / x2;
-    return !y1 && !y2 ? 1 : 0;
-  }
-  function bezierEndSlope(x1, y1, x2, y2) {
-    if (x2 < 1) return (y2 - 1) / (x2 - 1);
-    if (y2 === 1 && x1 < 1) return (y1 - 1) / (x1 - 1);
-    return y2 === 1 && y1 === 1 ? 1 : 0;
-  }
-  function bezierSampleLookup(x, samples) {
-    for (let i = 1; i < 11; i++) if (x <= samples[i]) return { t0: 0.1 * i - 0.1, t1: 0.1 * i, t2: 0.1 * i - 0.1 + 0.1 * (x - samples[i - 1]) / (samples[i] - samples[i - 1]) };
-    return null;
-  }
-  function bezierBisect(sampleX, t0In, t1In, t2In, x, epsilon) {
-    let t0 = t0In, t1 = t1In, t2 = t2In;
-    while (t0 < t1) { const xv = sampleX(t2); if (abs(xv - x) < epsilon) return t2; if (x > xv) t0 = t2; else t1 = t2; t2 = (t1 + t0) * 0.5; }
-    return t2;
-  }
   function bezier(x1, y1, x2, y2) {
     const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
     const sampleX = t => ((ax * t + bx) * t + cx) * t, sampleY = t => ((ay * t + by) * t + cy) * t, slope = t => (3 * ax * t + 2 * bx) * t + cx;
     const samples = []; for (let i = 0; i < 11; i++) samples[i] = sampleX(i * 0.1);
-    const start = bezierStartSlope(x1, y1, x2, y2), end = bezierEndSlope(x1, y1, x2, y2);
+    let start, end;
+    if (x1 > 0) start = y1 / x1; else if (!y1 && x2 > 0) start = y2 / x2; else if (!y1 && !y2) start = 1; else start = 0;
+    if (x2 < 1) end = (y2 - 1) / (x2 - 1); else if (y2 === 1 && x1 < 1) end = (y1 - 1) / (x1 - 1); else if (y2 === 1 && y1 === 1) end = 1; else end = 0;
     const epsilon = 1e-7;
     const solve = x => {
-      const lookup = bezierSampleLookup(x, samples);
-      let t0 = 0, t1 = 0, t2 = x, x2v = 0, d2;
-      if (lookup) { t0 = lookup.t0; t1 = lookup.t1; t2 = lookup.t2; }
-      for (let i = 0; i < 4; i++) { x2v = sampleX(t2) - x; if (abs(x2v) < epsilon) return t2; d2 = slope(t2); if (abs(d2) < epsilon) break; t2 -= x2v / d2; }
+      let t0 = 0, t1 = 0, t2 = x, x2v = 0, d2, i;
+      for (i = 1; i < 11; i++) if (x <= samples[i]) { t1 = 0.1 * i; t0 = t1 - 0.1; t2 = t0 + (t1 - t0) * (x - samples[i - 1]) / (samples[i] - samples[i - 1]); break; }
+      for (i = 0; i < 4; i++) { x2v = sampleX(t2) - x; if (abs(x2v) < epsilon) return t2; d2 = slope(t2); if (abs(d2) < epsilon) break; t2 -= x2v / d2; }
       if (abs(x2v) < epsilon) return t2;
-      return bezierBisect(sampleX, t0, t1, t2, x, epsilon);
+      while (t0 < t1) { x2v = sampleX(t2); if (abs(x2v - x) < epsilon) return t2; if (x > x2v) t0 = t2; else t1 = t2; t2 = (t1 + t0) * 0.5; }
+      return t2;
     };
     return x => x < 0 ? start * x : x > 1 ? 1 + end * (x - 1) : sampleY(solve(x));
   }
@@ -147,23 +130,17 @@
   }
   // The first and last inputs default to 0 and the largest input (at least 1), inputs never
   // decrease, and runs of missing inputs spread evenly between their neighbours.
-  function linearInputMonotone(points) {
+  function fillLinearInputs(points) {
+    if (points[0].input === null) points[0].input = 0;
+    if (points[points.length - 1].input === null) points[points.length - 1].input = max(1, ...points.map(point => point.input === null ? -Infinity : point.input));
     let largest = -Infinity;
     for (let i = 0; i < points.length; i++) if (points[i].input !== null) { if (points[i].input < largest) points[i].input = largest; largest = points[i].input; }
-  }
-  function linearInputSpread(points) {
     for (let i = 1; i < points.length; i++) if (points[i].input === null) {
       let j = i; while (points[j].input === null) j++;
       const from = points[i - 1].input, to = points[j].input, span = j - i + 1;
       for (let k = i; k < j; k++) points[k].input = from + (to - from) * (k - i + 1) / span;
       i = j;
     }
-  }
-  function fillLinearInputs(points) {
-    if (points[0].input === null) points[0].input = 0;
-    if (points[points.length - 1].input === null) points[points.length - 1].input = max(1, ...points.map(point => point.input === null ? -Infinity : point.input));
-    linearInputMonotone(points);
-    linearInputSpread(points);
   }
   function linearPoints(body) {
     const parts = intrinsic.split(body, ','), points = [];
@@ -185,16 +162,11 @@
     if (x1 < 0 || x1 > 1 || x2 < 0 || x2 > 1) return null;
     return { text: `cubic-bezier(${format(x1)}, ${format(y1)}, ${format(x2)}, ${format(y2)})`, evaluate: bezier(x1, y1, x2, y2) };
   }
-  function stepsPosition(values) {
-    const position = values.length === 2 ? intrinsic.toLowerCase(values[1]) : 'end';
-    if (!intrinsic.test(/^(start|end|jump-start|jump-end|jump-none|jump-both)$/, position)) return null;
-    return position;
-  }
   function stepsEasing(body) {
     const values = intrinsic.map(intrinsic.split(body, ','), part => intrinsic.trim(part));
     if (values.length > 2 || !intrinsic.test(/^\+?\d+$/, values[0])) return null;
-    const count = +values[0], position = stepsPosition(values);
-    if (!position) return null;
+    const count = +values[0], position = values.length === 2 ? intrinsic.toLowerCase(values[1]) : 'end';
+    if (!intrinsic.test(/^(start|end|jump-start|jump-end|jump-none|jump-both)$/, position)) return null;
     if (count < 1 || (position === 'jump-none' && count < 2)) return null;
     const shown = position === 'end' || position === 'jump-end' ? `steps(${count})` : `steps(${count}, ${position})`;
     return { text: shown, evaluate: steps(count, position) };
@@ -425,9 +397,7 @@
     return m;
   }
   const listMatrix = list => { let m = identity(); for (let i = 0; i < list.length; i++) m = multiply(m, functionMatrix(list[i])); return m; };
-  const flatProjection = m => m[2] === 0 && m[3] === 0 && m[6] === 0 && m[7] === 0 && m[8] === 0;
-  const flatPerspective = m => m[9] === 0 && m[10] === 1 && m[11] === 0 && m[14] === 0 && m[15] === 1;
-  const flat = m => flatProjection(m) && flatPerspective(m);
+  const flat = m => m[2] === 0 && m[3] === 0 && m[6] === 0 && m[7] === 0 && m[8] === 0 && m[9] === 0 && m[10] === 1 && m[11] === 0 && m[14] === 0 && m[15] === 1;
   function serializeTransform(value) {
     if (!value.list.length) return 'none';
     const m = listMatrix(value.list);
@@ -573,29 +543,25 @@
     return { kind: 'discrete', text };
   }
   // Typed value for a property's text; anything else animates discretely.
-  function parseValueTyped(property, text, context) {
-    if (property === 'transform') return parseTransform(text);
-    if (COLORS[property]) return parseColor(text, context);
-    if (UNIT_NUMBERS[property] || INTEGERS[property] || NUMBERS[property]) return numericValue(property, text, context);
-    if (lengthProperty(property)) return parseLength(text, context);
-    return null;
-  }
   function parseValue(property, text, context) {
     if (text === null || text === undefined) return null;
     text = intrinsic.trim(string(text));
-    return parseValueTyped(property, text, context) || { kind: 'discrete', text };
-  }
-  function serializeNumber(property, value) {
-    let number = value;
-    if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
-    if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
-    if (property === 'font-weight') number = min(max(number, 1), 1000);
-    if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
-    return format(number);
+    if (property === 'transform') return parseTransform(text) || { kind: 'discrete', text };
+    if (COLORS[property]) return parseColor(text, context) || { kind: 'discrete', text };
+    if (UNIT_NUMBERS[property] || INTEGERS[property] || NUMBERS[property]) return numericValue(property, text, context);
+    if (lengthProperty(property)) return parseLength(text, context) || { kind: 'discrete', text };
+    return { kind: 'discrete', text };
   }
   function serializeValue(property, value) {
     switch (value.kind) {
-      case 'number': return serializeNumber(property, value.value);
+      case 'number': {
+        let number = value.value;
+        if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
+        if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
+        if (property === 'font-weight') number = min(max(number, 1), 1000);
+        if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
+        return format(number);
+      }
       case 'length': return format(value.value) + value.unit;
       case 'color': return serializeColor(value);
       case 'transform': return serializeTransform(value);
@@ -633,16 +599,13 @@
     }
     return p < 0.5 ? from : to;
   }
-  function composeAdditive(underlying, value, operation) {
+  function compose(property, underlying, value, operation) {
+    if (operation === 'replace' || !underlying || underlying.kind !== value.kind || value.kind === 'discrete') return value;
     if (value.kind === 'number') return { kind: 'number', value: underlying.value + value.value };
     if (value.kind === 'length') return underlying.unit === value.unit ? { kind: 'length', value: underlying.value + value.value, unit: value.unit } : value;
     if (value.kind === 'color') return { kind: 'color', r: min(underlying.r + value.r, 255), g: min(underlying.g + value.g, 255), b: min(underlying.b + value.b, 255), a: min(underlying.a + value.a, 1) };
     if (value.kind === 'transform') return composeTransform(underlying, value, operation);
     return value;
-  }
-  function compose(property, underlying, value, operation) {
-    if (operation === 'replace' || !underlying || underlying.kind !== value.kind || value.kind === 'discrete') return value;
-    return composeAdditive(underlying, value, operation);
   }
   // accumulate pairs matching functions; add (or a mismatched accumulate) appends the lists.
   function composeTransform(underlying, value, operation) {
@@ -747,11 +710,6 @@
     for (let i = 0; i < frames.length; i++) if (frames[i].offset !== null) { if (frames[i].offset < previous) throw new ErrorType(`${prefix}Offsets must be monotonically non-decreasing.`); previous = frames[i].offset; }
   }
   // Values Chrome cannot parse for the property are dropped; the rest keep their specified form.
-  function keptKeyframeText(css, text) {
-    if (COLORS[css]) return specifiedColor(text);
-    if (UNIT_NUMBERS[css] && intrinsic.test(/%$/, text) && intrinsic.test(NUMBER, intrinsic.slice(text, 0, -1))) return format(+intrinsic.slice(text, 0, -1) / 100);
-    return text;
-  }
   function keptKeyframeValues(values) {
     const kept = [];
     for (let j = 0; j < values.length; j++) {
@@ -759,7 +717,9 @@
       let text = Native('value', entry.css, entry.text);
       if (text === null) continue;
       if (INTEGERS[entry.css] && !intrinsic.test(/^([+-]?\d+|auto|inherit|initial|unset|revert|revert-layer)$/, text) && !intrinsic.test(/^var\(/, text)) continue;
-      push(kept, { idl: entry.idl, css: entry.css, text: keptKeyframeText(entry.css, text) });
+      if (COLORS[entry.css]) text = specifiedColor(text);
+      else if (UNIT_NUMBERS[entry.css] && intrinsic.test(/%$/, text) && intrinsic.test(NUMBER, intrinsic.slice(text, 0, -1))) text = format(+intrinsic.slice(text, 0, -1) / 100);
+      push(kept, { idl: entry.idl, css: entry.css, text });
     }
     return kept;
   }
@@ -774,20 +734,17 @@
     computeOffsets(frames);
     return frames;
   }
-  function spreadNullOffsets(frames) {
+  function computeOffsets(frames) {
+    for (let i = 0; i < frames.length; i++) frames[i].computed = frames[i].offset;
+    if (!frames.length) return;
+    if (frames.length > 1 && frames[0].computed === null) frames[0].computed = 0;
+    if (frames[frames.length - 1].computed === null) frames[frames.length - 1].computed = 1;
     for (let i = 1; i < frames.length; i++) if (frames[i].computed === null) {
       let j = i; while (frames[j].computed === null) j++;
       const from = frames[i - 1].computed, to = frames[j].computed, span = j - i + 1;
       for (let k = i; k < j; k++) frames[k].computed = from + (to - from) * (k - i + 1) / span;
       i = j;
     }
-  }
-  function computeOffsets(frames) {
-    for (let i = 0; i < frames.length; i++) frames[i].computed = frames[i].offset;
-    if (!frames.length) return;
-    if (frames.length > 1 && frames[0].computed === null) frames[0].computed = 0;
-    if (frames[frames.length - 1].computed === null) frames[frames.length - 1].computed = 1;
-    spreadNullOffsets(frames);
   }
   // Property-specific keyframes per animated longhand; longhands beat shorthands in a frame.
   function propertyFrames(frames) {
@@ -845,19 +802,12 @@
     return fill === 'forwards' || fill === 'both' ? max(min(local - timing.delay, active), 0) : null;
   }
   // The current iteration and the simple iteration progress for a resolved active time.
-  function overallProgress(timing, phase, activeTime, duration) {
-    if (duration === 0) return phase === 'before' ? timing.iterationStart : timing.iterationStart + timing.iterations;
-    return activeTime / duration + timing.iterationStart;
-  }
-  function currentIteration(phase, timing, simple, overall) {
-    if (phase === 'after' && timing.iterations === Infinity) return Infinity;
-    return simple === 1 ? floor(overall) - 1 : floor(overall);
-  }
   function iterationAt(timing, phase, activeTime, active, duration) {
-    const overall = overallProgress(timing, phase, activeTime, duration);
+    const overall = duration === 0 ? (phase === 'before' ? timing.iterationStart : timing.iterationStart + timing.iterations) : activeTime / duration + timing.iterationStart;
     let simple = overall === Infinity ? timing.iterationStart % 1 : overall % 1;
     if (simple === 0 && (phase === 'active' || phase === 'after') && activeTime === active && timing.iterations !== 0) simple = 1;
-    return { simple, iteration: currentIteration(phase, timing, simple, overall) };
+    const iteration = phase === 'after' && timing.iterations === Infinity ? Infinity : simple === 1 ? floor(overall) - 1 : floor(overall);
+    return { simple, iteration };
   }
   // The eased progress of the iteration in the playback direction.
   function directedProgress(timing, phase, iteration, simple) {
@@ -940,14 +890,13 @@
     const time = timelineTime(record.timeline);
     return time === null ? null : (time - record.start) * record.rate;
   }
-  function isFinishedTime(time, rate, record) {
-    return time !== null && ((rate > 0 && time >= effectEnd(record)) || (rate < 0 && time <= 0));
-  }
   function playState(record) {
     const time = currentTime(record);
     if (time === null && record.start === null && record.task === null) return 'idle';
     if (record.task === 'pause' || (record.start === null && record.task !== 'play')) return 'paused';
-    return isFinishedTime(time, effectiveRate(record), record) ? 'finished' : 'running';
+    const rate = effectiveRate(record);
+    if (time !== null && ((rate > 0 && time >= effectEnd(record)) || (rate < 0 && time <= 0))) return 'finished';
+    return 'running';
   }
   const effectState = record => record.effect ? timingAt(effects.get(record.effect).timing, currentTime(record), record.rate < 0) : null;
   function relevant(record) {
@@ -975,15 +924,11 @@
     if (queue.length) return requestFrame();
     for (let at = 0, all = list(); at < all.length; at++) if (wantsFrame(animations.get(all[at]))) return requestFrame();
   }
-  function pruneKeep(record) {
-    if (record.task !== null || record.finishTask) return true;
-    if (playState(record) === 'running' || relevant(record)) return true;
-    return !!(record.css && cssEventDue(record));
-  }
   function prune() {
     for (let at = 0, all = list(); at < all.length; at++) { const animation = all[at];
       const record = animations.get(animation);
-      if (pruneKeep(record)) continue;
+      // A CSS animation stays until its next frame samples its last phase change.
+      if (record.task !== null || record.finishTask || playState(record) === 'running' || relevant(record) || (record.css && cssEventDue(record))) continue;
       apply(setDelete, live, [animation]);
       const effect = record.effect ? effects.get(record.effect) : null;
       if (effect && effect.target) index(animation, effect.target, null);
@@ -1058,15 +1003,9 @@
     updateFinished(animation, record, true, false);
   }
   // Auto-rewind: the start (or the end, reversed) when the current time is outside the effect.
-  function rewindForward(time, end) {
-    return time === null || time < 0 || time >= end;
-  }
-  function rewindReverse(time, end) {
-    return time === null || time <= 0 || time > end;
-  }
   function rewindSeek(rate, time, end, prefix) {
-    if (rate >= 0 && rewindForward(time, end)) return 0;
-    if (rate < 0 && rewindReverse(time, end)) {
+    if (rate >= 0 && (time === null || time < 0 || time >= end)) return 0;
+    if (rate < 0 && (time === null || time <= 0 || time > end)) {
       if (end === Infinity) throw invalidState(prefix, 'Cannot play reversed Animation with infinite target effect end.');
       return end;
     }
@@ -1104,23 +1043,21 @@
     record.task = 'pause';
     updateFinished(animation, record, false, false);
   }
-  function commitPlay(record, ready) {
-    if (record.hold !== null) {
-      applyPendingRate(record);
-      record.start = record.rate === 0 ? ready : ready - record.hold / record.rate;
-      if (record.rate !== 0) record.hold = null;
-    } else if (record.start !== null && record.pendingRate !== null) {
-      const match = (ready - record.start) * record.rate;
-      applyPendingRate(record);
-      if (record.rate === 0) record.hold = match;
-      record.start = record.rate === 0 ? ready : ready - match / record.rate;
-    }
-  }
   function commitPending(animation, record, ready) {
     const task = record.task;
     record.task = null;
-    if (task === 'play') commitPlay(record, ready);
-    else {
+    if (task === 'play') {
+      if (record.hold !== null) {
+        applyPendingRate(record);
+        record.start = record.rate === 0 ? ready : ready - record.hold / record.rate;
+        if (record.rate !== 0) record.hold = null;
+      } else if (record.start !== null && record.pendingRate !== null) {
+        const match = (ready - record.start) * record.rate;
+        applyPendingRate(record);
+        if (record.rate === 0) record.hold = match;
+        record.start = record.rate === 0 ? ready : ready - match / record.rate;
+      }
+    } else {
       if (record.start !== null && record.hold === null) record.hold = (ready - record.start) * record.rate;
       applyPendingRate(record);
       record.start = null;
@@ -1161,23 +1098,23 @@
   function replaceable(record) {
     return record.replace === 'active' && record.effect && timelines.get(record.timeline || {}) && playState(record) === 'finished' && effects.get(record.effect).target && effectState(record).activeTime !== null;
   }
-  function allPropertiesCovered(effect, properties, candidates, startIndex) {
-    for (let p = 0; p < properties.length; p++) {
-      let replaced = false;
-      for (let j = startIndex; j < candidates.length && !replaced; j++) {
-        const later = effects.get(animations.get(candidates[j]).effect);
-        if (later.target === effect.target && later.pseudo === effect.pseudo && later.frames.byProperty[properties[p]]) replaced = true;
-      }
-      if (!replaced) return false;
-    }
-    return true;
-  }
   function removeReplaced() {
     const candidates = sortBy(intrinsic.filter(list(), animation => { const record = animations.get(animation); return record.timeline && replaceable(record); }), animation => animations.get(animation).seq);
     for (let i = 0; i < candidates.length; i++) {
       const record = animations.get(candidates[i]), effect = effects.get(record.effect);
       const properties = effect.frames.order;
-      if (!properties.length || !allPropertiesCovered(effect, properties, candidates, i + 1)) continue;
+      if (!properties.length) continue;
+      let covered = true;
+      for (let p = 0; p < properties.length && covered; p++) {
+        let replaced = false;
+        for (let j = i + 1; j < candidates.length && !replaced; j++) {
+          const later = effects.get(animations.get(candidates[j]).effect);
+          if (later.target !== effect.target || later.pseudo !== effect.pseudo || !later.frames.byProperty[properties[p]]) continue;
+          replaced = true;
+        }
+        covered = replaced;
+      }
+      if (!covered) continue;
       record.replace = 'removed';
       queueEvent(candidates[i], record, playbackEvent('remove', currentTime(record), timelineTime(record.timeline)), timelineTime(record.timeline));
     }
@@ -1229,25 +1166,22 @@
     if (resolved[resolved.length - 1].offset !== 1) push(resolved, { offset: 1, easing: x => x, value: underlying });
     return resolved;
   }
-  function effectValueBoundary(resolved, progress, keyframe) {
-    if (progress < 0) { const zeros = intrinsic.filter(resolved, frame => frame.offset === 0); if (zeros.length > 1) return keyframe(zeros[0]); }
-    if (progress >= 1) { const ones = intrinsic.filter(resolved, frame => frame.offset === 1); if (ones.length > 1) return keyframe(ones[ones.length - 1]); }
-    return null;
-  }
   function effectValue(entry, frames, property, underlying, context) {
     const progress = entry.progress;
     if (progress === null) return underlying;
     const effectComposite = entry.effect.composite;
     const keyframe = frame => frame.value || (frame.value = compose(property, underlying, parseValue(property, frame.text, context), frame.composite === 'auto' ? effectComposite : frame.composite));
     const resolved = effectValueResolved(frames, underlying);
-    const boundary = effectValueBoundary(resolved, progress, keyframe);
-    if (boundary) return boundary;
+    const zeros = intrinsic.filter(resolved, frame => frame.offset === 0), ones = intrinsic.filter(resolved, frame => frame.offset === 1);
+    if (progress < 0 && zeros.length > 1) return keyframe(zeros[0]);
+    if (progress >= 1 && ones.length > 1) return keyframe(ones[ones.length - 1]);
     let start = 0;
     if (progress >= 0) for (let i = 0; i < resolved.length; i++) if (resolved[i].offset <= progress && resolved[i].offset < 1) start = i;
     const end = min(start + 1, resolved.length - 1);
     const from = resolved[start], to = resolved[end];
     const distance = to.offset === from.offset ? 0 : (progress - from.offset) / (to.offset - from.offset);
-    return interpolate(property, keyframe(from), keyframe(to), from.easing(distance, false));
+    const eased = from.easing(distance, false);
+    return interpolate(property, keyframe(from), keyframe(to), eased);
   }
   function effectStackEntry(animation, element, limit) {
     const record = animations.get(animation);
@@ -1309,17 +1243,18 @@
   }
   // One finite entry of the layout's used-size report, else null.
   const boxMetric = (box, index) => box && isFinite(+box[index]) ? +box[index] : null;
-  function resolvedEm(box, fontSizePx) {
-    const layoutEm = boxMetric(box, 4);
-    if (layoutEm !== null) return layoutEm;
-    return isFinite(+fontSizePx) ? +fontSizePx : 16;
-  }
   ns.resolveTransform = function (text, element, fontSizePx) {
     if (typeof text !== 'string') return null;
     if (intrinsic.test(/^\s*$/, text)) return text;
     if (intrinsic.test(/^\s*none\s*$/i, text)) return 'none';
     const box = layoutBox(element);
-    const em = resolvedEm(box, fontSizePx);
+    // turbo-dom#373: the layout reports the used font size as `box[4]` (the fifth entry,
+    // added for em resolution in #353); prefer it, so an element with an inherited
+    // font-size resolves `em` against the inherited value — not the declared one, which
+    // may not be set yet on this element's `decl['font-size']`. Fall back to the caller's
+    // `fontSizePx` (the element's declared font-size, if any), else Chrome's initial 16.
+    const layoutEm = boxMetric(box, 4);
+    const em = layoutEm !== null ? layoutEm : isFinite(+fontSizePx) ? +fontSizePx : 16;
     const borderW = boxMetric(box, 0);
     const borderH = boxMetric(box, 1);
     const list = parseResolvedTransform(text, em, borderW, borderH);
@@ -1465,20 +1400,19 @@
     for (const key in update) { effect.timing[key] = update[key]; if (effect.css) effect.css.timing[key] = true; }
     ownerTouched(effect);
   }, 0);
-  function readEffectDict(input, prefix) {
-    const timing = readTiming(input, prefix, 'EffectTiming', false);
-    let composite = 'replace', pseudo = null, value;
-    if (input !== null && (value = input.composite) !== undefined) composite = enumeration(value, COMPOSITE, prefix, 'composite', 'KeyframeEffectOptions', 'CompositeOperation');
-    if (input !== null && (value = input.pseudoElement) !== undefined && value !== null) pseudo = string(value);
-    return { timing, composite, pseudo, input };
-  }
   function readEffectOptions(options, prefix) {
+    // (unrestricted double or KeyframeEffectOptions): dictionaries for objects and nullish.
     if (options !== undefined && options !== null && !objectLike(options)) {
       const timing = readTiming(null, prefix, 'EffectTiming', false);
       timing.duration = +options;
       return { timing, composite: 'replace', pseudo: null, input: null };
     }
-    return readEffectDict(options === undefined || options === null ? null : options, prefix);
+    const input = options === undefined || options === null ? null : options;
+    const timing = readTiming(input, prefix, 'EffectTiming', false);
+    let composite = 'replace', pseudo = null, value;
+    if (input !== null && (value = input.composite) !== undefined) composite = enumeration(value, COMPOSITE, prefix, 'composite', 'KeyframeEffectOptions', 'CompositeOperation');
+    if (input !== null && (value = input.pseudoElement) !== undefined && value !== null) pseudo = string(value);
+    return { timing, composite, pseudo, input };
   }
   function pseudoElement(value, prefix) {
     if (value === null) return null;
@@ -1501,16 +1435,13 @@
     const timing = create(null); for (const key in source.timing) timing[key] = source.timing[key];
     effects.set(dest, { target: source.target, pseudo: source.pseudo, composite: source.composite, timing, keyframes: source.keyframes, frames: source.frames, animation: null });
   }
-  function validateKeyframeArgs(target, keyframes, prefix) {
-    if (target !== null && target !== undefined && !isElement(target)) throw new ErrorType(`${prefix}parameter 1 is not of type 'Element'.`);
-    if (keyframes !== null && keyframes !== undefined && !objectLike(keyframes)) throw new ErrorType(`${prefix}parameter 2 is not of type 'object'.`);
-  }
   const KeyframeEffectDelegate = function KeyframeEffect(target, keyframes, options) {
     requireNew(new.target, 'KeyframeEffect');
     const prefix = constructing('KeyframeEffect');
     if (!arguments.length) throw new ErrorType(`${prefix}1 argument required, but only 0 present.`);
     if (arguments.length === 1) { keyframeEffectClone(this, objectLike(target) ? effects.get(target) : undefined, prefix); return; }
-    validateKeyframeArgs(target, keyframes, prefix);
+    if (target !== null && target !== undefined && !isElement(target)) throw new ErrorType(`${prefix}parameter 1 is not of type 'Element'.`);
+    if (keyframes !== null && keyframes !== undefined && !objectLike(keyframes)) throw new ErrorType(`${prefix}parameter 2 is not of type 'object'.`);
     createEffect(this, target === undefined ? null : target, keyframes, options, prefix);
   };
   const KeyframeEffect = make(KeyframeEffectDelegate, 'KeyframeEffect', 1, true, true, false);
@@ -1644,17 +1575,11 @@
     if (effect) setEffect(object, record, effect);
     return record;
   }
-  function validateAnimationEffect(value, prefix) {
-    if (value !== undefined && value !== null && !(objectLike(value) && effects.has(value))) throw new ErrorType(`${prefix}parameter 1 is not of type 'AnimationEffect'.`);
-  }
-  function validateAnimationTimeline(value, prefix) {
-    if (value !== undefined && value !== null && !(objectLike(value) && timelines.has(value))) throw new ErrorType(`${prefix}parameter 2 is not of type 'AnimationTimeline'.`);
-  }
   const AnimationDelegate = function Animation(effect, timeline) {
     requireNew(new.target, 'Animation');
     const prefix = constructing('Animation');
-    validateAnimationEffect(effect, prefix);
-    validateAnimationTimeline(timeline, prefix);
+    if (effect !== undefined && effect !== null && !(objectLike(effect) && effects.has(effect))) throw new ErrorType(`${prefix}parameter 1 is not of type 'AnimationEffect'.`);
+    if (timeline !== undefined && timeline !== null && !(objectLike(timeline) && timelines.has(timeline))) throw new ErrorType(`${prefix}parameter 2 is not of type 'AnimationTimeline'.`);
     const object = construct(TargetType, [], new.target);
     newAnimation(object, effect === undefined ? null : effect, timeline === undefined ? defaultTimeline() : timeline);
     return object;
@@ -1880,17 +1805,6 @@
     table[i] = name;
   }
   // Property names (CSS) in Blink's bucket order for the given insertion order.
-  function blinkRehash(table) {
-    const next = buckets(table.length * 2);
-    for (let i = 0; i < table.length; i++) if (table[i] !== undefined) bucketInsert(next, table[i]);
-    return next;
-  }
-  function blinkCollect(table, custom) {
-    const out = [];
-    for (let i = 0; i < table.length; i++) if (table[i] !== undefined) push(out, table[i]);
-    for (let i = 0; i < custom.length; i++) push(out, custom[i]);
-    return out;
-  }
   function blinkOrder(names) {
     let table = buckets(8), count = 0;
     const custom = [];
@@ -1899,9 +1813,16 @@
       if (propertyIds[name] === undefined) { if (!contains(custom, name)) push(custom, name); continue; }
       if (contains(table, name)) continue;
       bucketInsert(table, name);
-      if (++count * 2 >= table.length) table = blinkRehash(table);
+      if (++count * 2 >= table.length) {
+        const old = table;
+        table = buckets(old.length * 2);
+        for (let i = 0; i < old.length; i++) if (old[i] !== undefined) bucketInsert(table, old[i]);
+      }
     }
-    return blinkCollect(table, custom);
+    const out = [];
+    for (let i = 0; i < table.length; i++) if (table[i] !== undefined) push(out, table[i]);
+    for (let i = 0; i < custom.length; i++) push(out, custom[i]);
+    return out;
   }
   // A keyframe's values in getKeyframes() order.
   function keyframeOrder(frame) {
@@ -2014,12 +1935,6 @@
   // start delay's skipped part) or leaving after backwards (at the duration); transitionend
   // entering after, or before backwards; transitioncancel entering idle from anything but
   // after, at the active time it was cancelled at.
-  function transitionStartEnd(was, phase, startAt, duration, out) {
-    if (earlyPhase(was) && phase !== 'before') push(out, ['transitionstart', startAt]);
-    else if (was === 'after') push(out, ['transitionstart', duration]);
-    if (phase === 'after') push(out, ['transitionend', duration]);
-    else if (phase === 'before' && !earlyPhase(was)) push(out, ['transitionend', startAt]);
-  }
   function transitionEvents(timing, css, now, out) {
     const was = css.phase, phase = now.phase;
     if (was === phase) return;
@@ -2029,7 +1944,10 @@
       if (was !== 'after') push(out, ['transitioncancel', min(max(css.cancelTime - timing.delay, 0), duration)]);
       return;
     }
-    transitionStartEnd(was, phase, startAt, duration, out);
+    if (earlyPhase(was) && phase !== 'before') push(out, ['transitionstart', startAt]);
+    else if (was === 'after') push(out, ['transitionstart', duration]);
+    if (phase === 'after') push(out, ['transitionend', duration]);
+    else if (phase === 'before' && !earlyPhase(was)) push(out, ['transitionend', startAt]);
   }
   // animationstart entering active / after (or leaving after backwards), animationiteration on
   // an iteration change inside active (one event, at the boundary crossed first),
@@ -2038,17 +1956,14 @@
   function animationEventsSamePhase(timing, css, now, out) {
     if (now.phase === 'active' && css.iteration !== now.iteration) push(out, ['animationiteration', timing.duration * ((css.iteration > now.iteration ? now.iteration + 1 : now.iteration) - timing.iterationStart)]);
   }
-  function animationStartEnd(was, phase, timing, span, out) {
-    const intervalStart = max(min(-timing.delay, span), 0), intervalEnd = max(min(span + timing.endDelay, span), 0);
-    if (was !== 'active' && !(was === 'idle' && phase === 'before')) push(out, ['animationstart', was === 'after' ? intervalEnd : intervalStart]);
-    if (phase === 'after') push(out, ['animationend', intervalEnd]);
-    else if (!earlyPhase(was)) push(out, ['animationend', intervalStart]);
-  }
   function animationEvents(timing, css, now, out) {
     const was = css.phase, phase = now.phase, span = timingAt(timing, null, false).active;
     if (was === phase) { animationEventsSamePhase(timing, css, now, out); return; }
     if (phase === 'idle') { if (was !== 'after') push(out, ['animationcancel', css.cancelTime || 0]); return; }
-    animationStartEnd(was, phase, timing, span, out);
+    const intervalStart = max(min(-timing.delay, span), 0), intervalEnd = max(min(span + timing.endDelay, span), 0);
+    if (was !== 'active' && !(was === 'idle' && phase === 'before')) push(out, ['animationstart', was === 'after' ? intervalEnd : intervalStart]);
+    if (phase === 'after') push(out, ['animationend', intervalEnd]);
+    else if (!earlyPhase(was)) push(out, ['animationend', intervalStart]);
   }
   // Keyframe offsets of a keyframe selector list (from / to / percentages).
   function keyframeOffsets(selector) {
@@ -2121,15 +2036,6 @@
     }
     return missing;
   }
-  function cssInsertTarget(frames, offset, easingText, at) {
-    const target = { offset, easing: easingText, composite: 'replace', values: create(null) };
-    for (let j = frames.length; j > at; j--) frames[j] = frames[j - 1];
-    frames[at] = target;
-    return target;
-  }
-  function cssFillMissing(target, missing, underlying) {
-    for (let i = 0; i < missing.length; i++) target.values[missing[i]] = COLORS[missing[i]] ? cssColor(underlying(missing[i]), underlying) : underlying(missing[i]);
-  }
   function cssBoundary(frames, offset, all, easingText, underlying) {
     const missing = missingAt(frames, offset, all);
     if (!missing.length) return;
@@ -2138,8 +2044,12 @@
       if (frames[j].offset === offset && frames[j].easing === easingText) target = frames[j];
       else if (frames[j].offset > offset && at === frames.length) at = j;
     }
-    if (!target) target = cssInsertTarget(frames, offset, easingText, at);
-    cssFillMissing(target, missing, underlying);
+    if (!target) {
+      target = { offset, easing: easingText, composite: 'replace', values: create(null) };
+      for (let j = frames.length; j > at; j--) frames[j] = frames[j - 1];
+      frames[at] = target;
+    }
+    for (let i = 0; i < missing.length; i++) target.values[missing[i]] = COLORS[missing[i]] ? cssColor(underlying(missing[i]), underlying) : underlying(missing[i]);
   }
   function cssColor(text, underlying) {
     const color = parseColor(text, { currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) });
@@ -2269,18 +2179,6 @@
     const value = parseValue(property, text, context);
     return value && value.kind !== 'discrete' ? serializeValue(property, value) : text;
   }
-  function cssStartTransition(element, state, property, i, durations, delays, easings, context, underlying, generation) {
-    const value = cssComputed(property, underlying(property), context), before = state.values[property];
-    state.values[property] = value;
-    const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
-    if (before === undefined || before === value || max(duration, 0) + delay <= 0) return;
-    if (state.transitions[property]) cssCancel(state.transitions[property]);
-    const idl = idlName(property), from = { offset: 0, easing: 'linear', composite: 'auto' }, to = { offset: 1, easing: 'linear', composite: 'auto' };
-    from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
-    to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
-    const timing = { duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
-    state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
-  }
   function cssTransitions(element, read, underlying, hidden) {
     const state = cssState(element);
     // An element that is not rendered (itself or an ancestor display:none) runs no transitions
@@ -2296,8 +2194,18 @@
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
     for (const property in properties) {
+      const i = properties[property];
       seen[property] = true;
-      cssStartTransition(element, state, property, properties[property], durations, delays, easings, context, underlying, generation);
+      const value = cssComputed(property, underlying(property), context), before = state.values[property];
+      state.values[property] = value;
+      const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
+      if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
+      if (state.transitions[property]) cssCancel(state.transitions[property]);
+      const idl = idlName(property), from = { offset: 0, easing: 'linear', composite: 'auto' }, to = { offset: 1, easing: 'linear', composite: 'auto' };
+      from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
+      to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
+      const timing = { duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
+      state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
     cssDropTransitions(state, seen);
@@ -2338,13 +2246,10 @@
   function cssUpdateUnderlying(read, inherited) {
     return property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
   }
-  function cssStampMatch(stamp, last, inputs) {
-    return stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs);
-  }
   function cssUpdateBody(element, read, inherited, snapshots, ownDisplay) {
     const underlying = cssUpdateUnderlying(read, inherited);
     const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
-    if (cssStampMatch(stamp, last, inputs)) return;
+    if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
     if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
     cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
     // Stamped after the update: the invalidation its own animations cause is not a new input.
@@ -2444,37 +2349,26 @@
   const RANGE_LENGTH = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(px|%|[a-z]+)?$/i;
   const rangeInvalid = prefix => new ErrorType(`${prefix}Animation range must be a name <length-percent> pair`);
   // A string input: 'normal', or a range name and / or a length-percentage offset.
-  function rangeRest(named, space, text) {
-    if (!named) return text;
-    return space < 0 ? '' : intrinsic.trim(intrinsic.slice(text, space));
-  }
   function rangeText(value, prefix) {
     if (typeof value === 'symbol') throw new ErrorType(`${prefix}Cannot convert a Symbol value to a string`);
     const text = intrinsic.trim(string(value)), lower = intrinsic.toLowerCase(text);
     if (lower === 'normal') return null;
     const space = intrinsic.indexOf(text, ' '), head = intrinsic.toLowerCase(space < 0 ? text : intrinsic.slice(text, 0, space));
     const named = contains(RANGE_NAMES, head);
-    const rest = rangeRest(named, space, text);
+    const rest = named ? (space < 0 ? '' : intrinsic.trim(intrinsic.slice(text, space))) : text;
     const offset = rest === '' ? undefined : rangeLength(rest);
     if (offset === null || (!named && offset === undefined)) throw rangeInvalid(prefix);
     return { name: named ? head : 'none', offset };
   }
   // A string offset: [unit, value], ['length'] for one kept as 0px, null when it is none.
-  function rangeLengthUnit(match) {
-    return match[1] ? intrinsic.toLowerCase(match[1]) : '';
-  }
-  function rangeLengthResult(unit, number) {
-    if (unit === '%') return ['percent', number];
-    if (unit === 'px' || (unit === '' && number === 0)) return ['px', number];
-    return contains(RANGE_UNITS, unit) ? ['length'] : null;
-  }
   function rangeLength(text) {
     if (intrinsic.test(/^(?:calc|min|max|clamp)\(.*\)$/i, text)) return ['length'];
     const match = intrinsic.exec(RANGE_LENGTH, text);
     if (!match) return null;
-    const unit = rangeLengthUnit(match);
-    const number = +intrinsic.slice(text, 0, text.length - (match[1] ? match[1].length : 0));
-    return rangeLengthResult(unit, number);
+    const number = +intrinsic.slice(text, 0, text.length - (match[1] ? match[1].length : 0)), unit = match[1] ? intrinsic.toLowerCase(match[1]) : '';
+    if (unit === '%') return ['percent', number];
+    if (unit === 'px' || (unit === '' && number === 0)) return ['px', number];
+    return contains(RANGE_UNITS, unit) ? ['length'] : null;
   }
   // Any object (null included) is a TimelineRangeOffset dictionary: offset, then rangeName.
   function rangeInput(value, prefix, memberPrefix) {
@@ -2557,23 +2451,20 @@
   // once; otherwise a timer-driven default keeps document timelines advancing.
   const installHost = value => { host = value; lastClock = -Infinity; schedule(); };
   ns.installAnimationHost = value => { delete ns.installAnimationHost; installHost(value); };
-  function setupTimerHost() {
-    const timer = typeof g.setTimeout === 'function' ? g.setTimeout : null;
-    const performance = g.performance, perfNow = performance && typeof performance.now === 'function' ? performance.now : null;
-    if (timer && perfNow) {
-      let frameTime = null;
-      const now = () => apply(perfNow, performance, []);
-      host = {
-        now: () => frameTime !== null ? frameTime : now(),
-        frame(handler) {
-          apply(timer, g, [() => {
-            frameTime = now(); handler.update();
-            apply(timer, g, [() => { handler.dispatch(); handler.commit(); frameTime = null; }, 0]);
-          }, 16]);
-        },
-        task(callback) { apply(timer, g, [callback, 0]); },
-      };
-    }
+  const timer = typeof g.setTimeout === 'function' ? g.setTimeout : null;
+  const performance = g.performance, perfNow = performance && typeof performance.now === 'function' ? performance.now : null;
+  if (timer && perfNow) {
+    let frameTime = null;
+    const now = () => apply(perfNow, performance, []);
+    host = {
+      now: () => frameTime !== null ? frameTime : now(),
+      frame(handler) {
+        apply(timer, g, [() => {
+          frameTime = now(); handler.update();
+          apply(timer, g, [() => { handler.dispatch(); handler.commit(); frameTime = null; }, 0]);
+        }, 16]);
+      },
+      task(callback) { apply(timer, g, [callback, 0]); },
+    };
   }
-  setupTimerHost();
 })();

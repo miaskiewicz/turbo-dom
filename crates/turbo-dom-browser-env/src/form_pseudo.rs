@@ -130,16 +130,6 @@ const VALIDITY: [&str; 4] = ["valid", "invalid", "user-valid", "user-invalid"];
 /// or one of their preceding siblings, the latter only through `+`/`~`) and, for the validity
 /// classes, the controls that make one of them a valid or invalid form or fieldset. `None` when
 /// the selector or a class needs the whole tree.
-fn collect_preceding_siblings(tree: &Tree, current: Handle, elements: &mut Vec<Handle>) {
-    let mut sibling = tree.previous_sibling(current);
-    while let Some(previous) = sibling {
-        if tree.node_type_id(previous) == 1 {
-            elements.push(previous);
-        }
-        sibling = tree.previous_sibling(previous);
-    }
-}
-
 fn subject_elements(
     tree: &Tree,
     anchor: Handle,
@@ -161,7 +151,13 @@ fn subject_elements(
             elements.push(current);
         }
         if siblings {
-            collect_preceding_siblings(tree, current, &mut elements);
+            let mut sibling = tree.previous_sibling(current);
+            while let Some(previous) = sibling {
+                if tree.node_type_id(previous) == 1 {
+                    elements.push(previous);
+                }
+                sibling = tree.previous_sibling(previous);
+            }
         }
         node = tree.parent(current);
     }
@@ -224,24 +220,6 @@ thread_local! {
 /// The matching elements of `root` (of `candidates` when given) for each requested
 /// pseudo-class, or `None` when this realm has no classifier (the selector then keeps rtdom's
 /// own matching).
-fn extract_handle_set(
-    scope: &mut v8::PinScope,
-    result: v8::Local<v8::Array>,
-    index: u32,
-) -> Option<Vec<Handle>> {
-    let matched = result
-        .get_index(scope, index)
-        .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())?;
-    let mut set = Vec::with_capacity(matched.length() as usize);
-    for at in 0..matched.length() {
-        let element = matched
-            .get_index(scope, at)
-            .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())?;
-        set.push(handle_of(scope, element)?);
-    }
-    Some(set)
-}
-
 fn classify(
     scope: &mut v8::PinScope,
     root: Handle,
@@ -274,24 +252,19 @@ fn classify(
     let result = v8::Local::<v8::Array>::try_from(result).ok()?;
     let mut sets = Vec::with_capacity(names.len());
     for index in 0..names.len() as u32 {
-        sets.push(extract_handle_set(scope, result, index)?);
+        let matched = result
+            .get_index(scope, index)
+            .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())?;
+        let mut set = Vec::with_capacity(matched.length() as usize);
+        for at in 0..matched.length() {
+            let element = matched
+                .get_index(scope, at)
+                .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())?;
+            set.push(handle_of(scope, element)?);
+        }
+        sets.push(set);
     }
     Some(sets)
-}
-
-fn collect_pseudo_names(ranges: &[(usize, usize, &'static str)]) -> Vec<&'static str> {
-    let mut names: Vec<&'static str> = Vec::new();
-    for &(_, _, name) in ranges.iter().filter(|range| range.2 != "scope") {
-        let name = if name == "read-only" {
-            "read-write"
-        } else {
-            name
-        };
-        if !names.contains(&name) {
-            names.push(name);
-        }
-    }
-    names
 }
 
 /// Whether [`selector`] can change `source`: a form-state pseudo-class range (a property of
@@ -318,7 +291,18 @@ pub(super) fn selector(
     if pseudo_ranges(&mut parser, &mut ranges).is_err() || ranges.is_empty() {
         return Some(source.to_owned());
     }
-    let names = collect_pseudo_names(&ranges);
+    let mut names: Vec<&'static str> = Vec::new();
+    for &(_, _, name) in ranges.iter().filter(|range| range.2 != "scope") {
+        // `:read-only` is answered by its complement.
+        let name = if name == "read-only" {
+            "read-write"
+        } else {
+            name
+        };
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
     let (root, scoped) = with_tree(|tree| {
         (
             html_popover::selector_root(tree, anchor),

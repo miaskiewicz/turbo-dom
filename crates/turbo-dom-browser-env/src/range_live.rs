@@ -119,66 +119,6 @@ pub(super) fn clear(isolate: &mut v8::Isolate) {
     selection::clear();
 }
 
-fn apply_endpoint(
-    scope: &mut v8::PinScope,
-    record: v8::Local<v8::Object>,
-    container: &str,
-    offset: &str,
-    editor: bool,
-    change: &impl Fn(Handle, usize, bool) -> Option<(Handle, usize)>,
-) -> bool {
-    let Some(node) = get_prop(scope, record, container)
-        .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
-    else {
-        return false;
-    };
-    if dom_id_of(scope, node) != DOM_ID.with(|id| id.get()) {
-        return false;
-    }
-    let Some(handle) = handle_of(scope, node) else {
-        return false;
-    };
-    let position = get_prop(scope, record, offset)
-        .and_then(|value| value.uint32_value(scope))
-        .unwrap_or(0) as usize;
-    if let Some((node, position)) = change(handle, position, editor) {
-        let node = wrap(scope, node);
-        let position = v8::Number::new(scope, position as f64);
-        set_prop(scope, record, container, node.into());
-        set_prop(scope, record, offset, position.into());
-        return true;
-    }
-    false
-}
-
-fn update_entry(
-    scope: &mut v8::PinScope,
-    entry: &Entry,
-    kind: Change,
-    change: &impl Fn(Handle, usize, bool) -> Option<(Handle, usize)>,
-) -> Option<v8::Global<v8::Function>> {
-    let editor = entry.editor.is_some();
-    if editor && kind == Change::Insert {
-        return None;
-    }
-    let record = entry.record.to_local(scope)?;
-    let start = apply_endpoint(
-        scope,
-        record,
-        "startContainer",
-        "startOffset",
-        editor,
-        change,
-    );
-    let end = apply_endpoint(scope, record, "endContainer", "endOffset", editor, change);
-    if (start || end) && kind != Change::Remove {
-        if let Some(callback) = entry.editor.as_ref().and_then(|weak| weak.to_local(scope)) {
-            return Some(v8::Global::new(scope, callback));
-        }
-    }
-    None
-}
-
 fn update(
     scope: &mut v8::PinScope,
     kind: Change,
@@ -192,8 +132,45 @@ fn update(
         let mut entries = records.0.borrow_mut();
         entries.retain(|entry| !entry.record.is_empty());
         for entry in entries.iter() {
-            if let Some(callback) = update_entry(scope, entry, kind, &change) {
-                notify.push(callback);
+            let editor = entry.editor.is_some();
+            if editor && kind == Change::Insert {
+                continue;
+            }
+            let Some(record) = entry.record.to_local(scope) else {
+                continue;
+            };
+            let mut moved = false;
+            for (container, offset) in [
+                ("startContainer", "startOffset"),
+                ("endContainer", "endOffset"),
+            ] {
+                let Some(node) = get_prop(scope, record, container)
+                    .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
+                else {
+                    continue;
+                };
+                if dom_id_of(scope, node) != DOM_ID.with(|id| id.get()) {
+                    continue;
+                }
+                let Some(handle) = handle_of(scope, node) else {
+                    continue;
+                };
+                let position = get_prop(scope, record, offset)
+                    .and_then(|value| value.uint32_value(scope))
+                    .unwrap_or(0) as usize;
+                if let Some((node, position)) = change(handle, position, editor) {
+                    let node = wrap(scope, node);
+                    let position = v8::Number::new(scope, position as f64);
+                    set_prop(scope, record, container, node.into());
+                    set_prop(scope, record, offset, position.into());
+                    moved = true;
+                }
+            }
+            if moved && kind != Change::Remove {
+                if let Some(callback) = entry.editor.as_ref().and_then(|weak| weak.to_local(scope))
+                {
+                    notify.push(v8::Global::new(scope, callback));
+                }
             }
         }
     }

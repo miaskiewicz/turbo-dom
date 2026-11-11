@@ -30,9 +30,8 @@
   out.mouse = [m.type, m.detail, m.screenX, m.clientY, m.ctrlKey, m.view === window];
   const desc = Object.getOwnPropertyDescriptor(Document.prototype, 'createEvent');
   out.shape = [typeof desc.value, desc.value.name, desc.value.length, desc.writable, desc.enumerable, desc.configurable, Object.hasOwn(document, 'createEvent')];
-  const tryCall = (f) => { try { return ['ok', f()]; } catch (error) { return ['throw', error.name, error.message]; } };
   for (const [label, f] of [['noArgs', () => document.createEvent()], ['symbol', () => document.createEvent(Symbol())], ['receiver', () => Document.prototype.createEvent.call(document.body, 'Event')], ['xml', () => document.implementation.createDocument(null, null).createEvent('Event').constructor.name]]) {
-    out[label] = tryCall(f);
+    try { out[label] = ['ok', f()]; } catch (error) { out[label] = ['throw', error.name, error.message]; }
   }
   return out;
 })()

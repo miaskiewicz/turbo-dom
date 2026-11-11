@@ -18,16 +18,11 @@
   // The explicit references still in scope, else the elements the attribute's IDs name
   // (null when the attribute is absent).
   function targets(owner,entry,value,many){const found=[];if(entry.references){const references=entry.references;for(let index=0;index<references.length;index++)if(inScope(owner,references[index]))add(found,references[index]);}else{if(value===null)return null;const root=apply(rootOf,owner,[]),list=many?words(value):[value];for(let index=0;index<list.length;index++){const target=findId(root,list[index]);if(target)add(found,target);}}return found;}
-  function cacheEqual(cache, found) {
-    if (!cache || cache.length !== found.length) return false;
-    for (let index = 0; index < found.length; index++) if (cache[index] !== found[index]) return false;
-    return true;
-  }
   function read(owner,attribute,many){const records=state(owner);let entry=records[attribute];const value=apply(getAttribute,owner,[attribute]);
     if(!entry)entry=records[attribute]=create(null);
     const found=targets(owner,entry,value,many);if(found===null)return null;
     if(!many)return found[0]||null;
-    if(!cacheEqual(entry.cache, found))entry.cache=freeze(found);
+    let same=!!entry.cache&&entry.cache.length===found.length;for(let index=0;same&&index<found.length;index++)if(entry.cache[index]!==found[index])same=false;if(!same)entry.cache=freeze(found);
     return entry.cache;
   }
   const properties={ariaActionsElements:'aria-actions',ariaActiveDescendantElement:'aria-activedescendant',ariaControlsElements:'aria-controls',ariaDescribedByElements:'aria-describedby',ariaDetailsElements:'aria-details',ariaErrorMessageElements:'aria-errormessage',ariaFlowToElements:'aria-flowto',ariaLabelledByElements:'aria-labelledby'};

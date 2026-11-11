@@ -216,10 +216,10 @@
   ce.created((host, definition) => {
     if (definition.formAssociated) recordFor(host, definition);
   });
-  const FORM_ATTRS = { __proto__: null, disabled: 1, form: 1, id: 1 };
+  // Whether an attribute mutation can change the host's form owner or disabled state.
   const attributeRelevant = (event, host) => {
     const name = event.attributeName;
-    if (!FORM_ATTRS[name]) return false;
+    if (name !== "disabled" && name !== "form" && name !== "id") return false;
     if (name === "form" && event.target !== host) return false;
     if (name === "disabled" && event.target !== host && !apply(contains, event.target, [host]))
       return false;
@@ -268,20 +268,17 @@
       ce.callback(host, "formDisabledCallback", [disabled]);
     }
   };
-  function processTrackedHost(event, host) {
-    const record = read(records, host);
-    if (!record?.associated || ce.record(host)?.status !== "custom") return;
-    if (!mutationRelevant(event, host, record)) return;
-    if (event?.type === "childList" && record.owner) ownerRemoved(event, host, record);
-    syncFormState(host, record);
-  }
   ce.updates((event) => {
     let count = 0;
     for (let i = 0; i < tracked.length; i++) {
       const host = apply(deref, tracked[i], []);
       if (!host) continue;
       tracked[count++] = tracked[i];
-      processTrackedHost(event, host);
+      const record = read(records, host);
+      if (!record?.associated || ce.record(host)?.status !== "custom") continue;
+      if (!mutationRelevant(event, host, record)) continue;
+      if (event?.type === "childList" && record.owner) ownerRemoved(event, host, record);
+      syncFormState(host, record);
     }
     tracked.length = count;
   });

@@ -260,3 +260,18 @@ pub(super) fn shape_with_box(comps: &[Comp], boxes: &[&str], default: &str) -> O
         Some(Some(name)) => Some(format!("{text} {name}")),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::rtdom::css_shorthand::{longhand_value, Spelled};
+
+    /// `shape_head` rejects a head whose first token after an explicit fill-rule is not
+    /// `from` (Chrome requires the `from <position>` anchor); the whole `shape()` is invalid.
+    #[test]
+    fn shape_head_without_from_after_fill_rule_is_invalid() {
+        assert!(matches!(
+            longhand_value("clip-path", "shape(nonzero foo, line to 0px 0px)"),
+            Spelled::Invalid
+        ));
+    }
+}

@@ -61,28 +61,20 @@
     return [exponent, a, b];
   };
   const special = (left, right) => left.kind === NOT_A_NUMBER || right.kind === NOT_A_NUMBER ? NAN : null;
-  function addInfinite(left, right) {
+  const add = (left, right) => {
+    const nan = special(left, right); if (nan) return nan;
     if (left.kind === INFINITE && right.kind === INFINITE) return left.negative === right.negative ? left : NAN;
     if (left.kind === INFINITE) return left;
     if (right.kind === INFINITE) return right;
-    return null;
-  }
-  function subtractInfinite(left, right) {
-    if (left.kind === INFINITE && right.kind === INFINITE) return left.negative === right.negative ? NAN : left;
-    if (left.kind === INFINITE) return left;
-    if (right.kind === INFINITE) return infinity(!right.negative);
-    return null;
-  }
-  const add = (left, right) => {
-    const nan = special(left, right); if (nan) return nan;
-    const inf = addInfinite(left, right); if (inf) return inf;
     const [exponent, a, b] = align(left, right), result = left.negative === right.negative ? a + b : a - b;
     if (left.negative && !right.negative && result === 0n) return make(false, exponent, 0n);
     return result >= 0n ? make(left.negative, exponent, result) : make(!left.negative, exponent, -result);
   };
   const subtract = (left, right) => {
     const nan = special(left, right); if (nan) return nan;
-    const inf = subtractInfinite(left, right); if (inf) return inf;
+    if (left.kind === INFINITE && right.kind === INFINITE) return left.negative === right.negative ? NAN : left;
+    if (left.kind === INFINITE) return left;
+    if (right.kind === INFINITE) return infinity(!right.negative);
     const [exponent, a, b] = align(left, right), result = left.negative === right.negative ? a - b : a + b;
     if (left.negative && right.negative && result === 0n) return make(false, exponent, 0n);
     return result >= 0n ? make(left.negative, exponent, result) : make(!left.negative, exponent, -result);
@@ -101,7 +93,14 @@
     if (right.coefficient === 0n) return left.coefficient === 0n ? NAN : infinity(negative);
     return null;
   };
-  function divideLoop(remainder, result, exponent, divisor) {
+  const divide = (left, right) => {
+    const nan = special(left, right); if (nan) return nan;
+    const negative = left.negative !== right.negative;
+    const early = divideSpecial(left, right, negative); if (early) return early;
+    let exponent = left.exponent - right.exponent;
+    if (left.coefficient === 0n) return make(negative, exponent, 0n);
+    let remainder = left.coefficient, result = 0n;
+    const divisor = right.coefficient;
     for (;;) {
       while (remainder < divisor && result < MAX_COEFFICIENT / 10n) { remainder *= 10n; result *= 10n; exponent--; }
       if (remainder < divisor) break;
@@ -110,16 +109,8 @@
       result += quotient; remainder %= divisor;
       if (!remainder) break;
     }
-    return [remainder, result, exponent];
-  }
-  const divide = (left, right) => {
-    const nan = special(left, right); if (nan) return nan;
-    const negative = left.negative !== right.negative;
-    const early = divideSpecial(left, right, negative); if (early) return early;
-    let exponent = left.exponent - right.exponent;
-    if (left.coefficient === 0n) return make(negative, exponent, 0n);
-    const [remainder, result, exp] = divideLoop(left.coefficient, 0n, exponent, right.coefficient);
-    return make(negative, exp, remainder > right.coefficient / 2n ? result + 1n : result);
+    if (remainder > divisor / 2n) result++;
+    return make(negative, exponent, result);
   };
   // Blink compares through subtraction, so precision loss is shared with Chrome.
   const compare = (left, right) => {
@@ -241,18 +232,17 @@
     if (adjusted) result += (adjusted < 0 ? 'e' : 'e+') + adjusted;
     return result;
   };
-  function formatFractional(sign, text, exponent, adjusted) {
-    if (!exponent) return sign + text;
-    if (adjusted >= 0) return sign + apply(sliceText, text, [0, adjusted + 1]) + '.' + apply(sliceText, text, [adjusted + 1]);
-    return sign + '0.' + apply(padText, '', [-adjusted - 1, '0']) + text;
-  }
   const decimalText = (value) => {
     if (value.kind === INFINITE) return value.negative ? '-Infinity' : 'Infinity';
     if (value.kind === NOT_A_NUMBER) return 'NaN';
     const [exponent, coefficient] = value.exponent < 0 ? fractionDigits(value.exponent, value.coefficient) : [value.exponent, value.coefficient];
     const text = StringValue(coefficient), sign = value.negative ? '-' : '';
     const adjusted = exponent + text.length - 1;
-    if (exponent <= 0 && adjusted >= -6) return formatFractional(sign, text, exponent, adjusted);
+    if (exponent <= 0 && adjusted >= -6) {
+      if (!exponent) return sign + text;
+      if (adjusted >= 0) return sign + apply(sliceText, text, [0, adjusted + 1]) + '.' + apply(sliceText, text, [adjusted + 1]);
+      return sign + '0.' + apply(padText, '', [-adjusted - 1, '0']) + text;
+    }
     return scientificText(sign, text, adjusted);
   };
   const fromDouble = (value) => isFiniteNumber(value) ? parseDecimal(StringValue(value)) : isNaNValue(value) ? NAN : infinity(value < 0);
@@ -420,10 +410,7 @@
       text: (value, format) => dateText(value.date) + 'T' + timeText(value.time, format), date: false, step: [60, 1000, 'scaled'], base: 0, limits: [-62135596800000, MAX_MS],
     },
   };
-  function fillTemporalDefaults() {
-    for (const name in TEMPORAL) { const spec = TEMPORAL[name]; if (!spec.fromNumber) spec.fromNumber = spec.fromMs; if (!spec.toMs) spec.toMs = (ms) => ms; }
-  }
-  fillTemporalDefaults();
+  for (const name in TEMPORAL) { const spec = TEMPORAL[name]; if (!spec.fromNumber) spec.fromNumber = spec.fromMs; if (!spec.toMs) spec.toMs = (ms) => ms; }
   const NUMERIC = {step: [1, 1, 'real'], base: 0};
 
   const knownTypes = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
@@ -571,16 +558,13 @@
     const fallback = add(range.minimum, divide(subtract(range.maximum, range.minimum), integer(2)));
     return numberText(clampValue(range, parseNumber(value, fallback)));
   };
-  const SANITIZE_INPUT = create(null);
-  const sanitizeStripLines = (el, t, v) => regexpReplace(v, /[\r\n]/g, '');
-  SANITIZE_INPUT.text = SANITIZE_INPUT.search = SANITIZE_INPUT.tel = SANITIZE_INPUT.password = sanitizeStripLines;
-  SANITIZE_INPUT.url = SANITIZE_INPUT.email = (el, t, v) => sanitizeAddress(el, t, v);
-  SANITIZE_INPUT.number = (el, t, v) => isNaNValue(parseDouble(v)) ? '' : v;
-  SANITIZE_INPUT.color = (el, t, v) => test(/^#[0-9a-fA-F]{6}$/, v) ? lowerAscii(v) : '#000000';
-  SANITIZE_INPUT.range = (el, t, v) => sanitizeRange(el, v);
   const sanitizeInput = (element, type, value) => {
-    const fn = SANITIZE_INPUT[type];
-    return fn ? fn(element, type, value) : sanitizeTemporal(type, value);
+    if (type === 'text' || type === 'search' || type === 'tel' || type === 'password') return regexpReplace(value, /[\r\n]/g, '');
+    if (type === 'url' || type === 'email') return sanitizeAddress(element, type, value);
+    if (type === 'number') return isNaNValue(parseDouble(value)) ? '' : value;
+    if (type === 'color') return test(/^#[0-9a-fA-F]{6}$/, value) ? lowerAscii(value) : '#000000';
+    if (type === 'range') return sanitizeRange(element, value);
+    return sanitizeTemporal(type, value);
   };
   ns.sanitizeControlValue = (element, type, value) => {
     const name = apply(localName, element, []);
@@ -627,31 +611,21 @@
   const reflectString = (prototype, check, owner, name, attribute) => accessor(prototype, check, name,
     function () { return attr(this, attribute) ?? ''; },
     function (value) { apply(setAttribute, this, [attribute, toText(value, (message) => assign(owner, name, message))]); });
-  function registerStringReflections(prototype, check, owner, pairs) {
-    for (const [name, attribute] of pairs) reflectString(prototype, check, owner, name, attribute);
-  }
-  registerStringReflections(inputPrototype, checkInput, 'HTMLInputElement', [['align', 'align'], ['alt', 'alt'], ['dirName', 'dirname'], ['useMap', 'usemap']]);
-  registerStringReflections(textareaPrototype, checkTextarea, 'HTMLTextAreaElement', [['wrap', 'wrap'], ['dirName', 'dirname']]);
+  for (const [name, attribute] of [['align', 'align'], ['alt', 'alt'], ['dirName', 'dirname'], ['useMap', 'usemap']]) reflectString(inputPrototype, checkInput, 'HTMLInputElement', name, attribute);
+  for (const [name, attribute] of [['wrap', 'wrap'], ['dirName', 'dirname']]) reflectString(textareaPrototype, checkTextarea, 'HTMLTextAreaElement', name, attribute);
   for (const name of ['incremental', 'webkitdirectory']) accessor(inputPrototype, checkInput, name,
     function () { return attr(this, name) !== null; },
     function (value) { if (value) apply(setAttribute, this, [name, '']); else apply(removeAttribute, this, [name]); });
 
   // Rules for parsing non-negative integers; null on failure.
-  function skipAsciiWhitespace(text, index) {
-    while (index < text.length && test(/[\t\n\f\r ]/, text[index])) index++;
-    return index;
-  }
-  function scanAsciiDigits(text, index) {
-    while (index < text.length && text[index] >= '0' && text[index] <= '9') index++;
-    return index;
-  }
   const nonNegative = (text) => {
     if (text === null) return null;
-    let index = skipAsciiWhitespace(text, 0);
+    let index = 0;
+    while (index < text.length && test(/[\t\n\f\r ]/, text[index])) index++;
     const negative = text[index] === '-';
     if (negative || text[index] === '+') index++;
     const start = index;
-    index = scanAsciiDigits(text, index);
+    while (index < text.length && text[index] >= '0' && text[index] <= '9') index++;
     if (index === start) return null;
     const value = NumberValue(apply(sliceText, text, [start, index]));
     return negative && value !== 0 ? null : value;
@@ -708,14 +682,6 @@
     else if (TEMPORAL[type]) assignValue(this, isNaNValue(value) ? '' : serializeComponents(this, type, TEMPORAL[type].fromNumber(value)));
     else throw new Exception(describeFailure('This input element does not support Number values.'), 'InvalidStateError');
   });
-  function extractDateValue(value, describeFailure) {
-    if (value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'function')
-      throw new TypeErrorValue(describeFailure("Failed to convert value to 'object'."));
-    if (value !== null && value !== undefined) {
-      try { return apply(dateTime, value, []); } catch (_) { throw new TypeErrorValue(describeFailure('The provided value is not a Date.')); }
-    }
-    return null;
-  }
   accessor(inputPrototype, checkInput, 'valueAsDate', function () {
     const spec = TEMPORAL[typeOf(this)];
     if (!spec || !spec.date) return null;
@@ -723,7 +689,11 @@
     return parsed === null ? null : new DateValue(spec.toMs(parsed));
   }, function (value) {
     const describeFailure = (message) => assign('HTMLInputElement', 'valueAsDate', message);
-    const time = extractDateValue(value, describeFailure);
+    if (value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'function') throw new TypeErrorValue(describeFailure("Failed to convert value to 'object'."));
+    let time = null;
+    if (value !== null && value !== undefined) {
+      try { time = apply(dateTime, value, []); } catch (_) { throw new TypeErrorValue(describeFailure('The provided value is not a Date.')); }
+    }
     const type = typeOf(this), spec = TEMPORAL[type];
     if (!spec || !spec.date) throw new Exception(describeFailure('This input element does not support Date values.'), 'InvalidStateError');
     assignValue(this, time === null || isNaNValue(time) ? '' : serializeComponents(this, type, spec.fromMs(time)));
@@ -741,19 +711,16 @@
       const below = finite(value) && less(value, range.minimum), above = finite(value) && greater(value, range.maximum);
       return {hasMinimum, hasMaximum, reversed, below, above};
     };
-    function buildRangeStateResult(element, type, range, value, bounds) {
-      return {
-        empty: valueOf(element) === '', finite: finite(value), limited: type === 'range' || bounds.hasMinimum || bounds.hasMaximum,
-        underflow: bounds.reversed ? bounds.below && bounds.above : bounds.below,
-        overflow: bounds.reversed ? bounds.below && bounds.above : bounds.above,
-        mismatch: mismatch(range, value),
-      };
-    }
     internals.rangeState = (element) => {
       const type = typeOf(element);
       if (type !== 'number' && type !== 'range' && !TEMPORAL[type]) return null;
       const range = stepRange(element, type), value = parseFor(type, valueOf(element));
-      return buildRangeStateResult(element, type, range, value, computeRangeBounds(element, type, range, value));
+      const {hasMinimum, hasMaximum, reversed, below, above} = computeRangeBounds(element, type, range, value);
+      return {
+        empty: valueOf(element) === '', finite: finite(value), limited: type === 'range' || hasMinimum || hasMaximum,
+        underflow: reversed ? below && above : below, overflow: reversed ? below && above : above,
+        mismatch: mismatch(range, value),
+      };
     };
   }
 })();

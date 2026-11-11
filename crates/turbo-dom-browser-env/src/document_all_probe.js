@@ -43,16 +43,14 @@
   };
   out.initial = { length: all.length, keys: Reflect.ownKeys(all).map(String), tags: Array.from(all, node => node.localName) };
   document.body.innerHTML = '<div id="first"></div><span name="ignored"></span><span name="ignored" id="spanned"></span><a name="anchor"></a><form name="form"></form><img name="image"><input name="field"><p id="7"></p><a name="dup"></a><img name="dup" id="dup-image"><div id="dup"></div><meta name="meta"><b id="item"></b><i id="length"></i><object name="object"></object><select name="select"></select><textarea name="textarea"></textarea><button name="button"></button><map name="map"></map><embed name="embed"><iframe name="frame"></iframe>';
-  const idOf = v => v && v.id;
-  const nameOf = v => v && v.localName;
   out.live = {
     length: all.length, ownKeys: Reflect.ownKeys(all).map(String), keys: Object.keys(all), forIn: (() => { const keys = []; for (const key in all) keys.push(key); return keys; })(),
-    first: idOf(all.first), spanned: idOf(all.spanned), ignored: shape(all.ignored),
+    first: all.first && all.first.id, spanned: all.spanned && all.spanned.id, ignored: shape(all.ignored),
     anchor: shape(all.anchor), form: shape(all.form), image: shape(all.image), field: shape(all.field), meta: shape(all.meta), object: shape(all.object), select: shape(all.select), textarea: shape(all.textarea), button: shape(all.button), map: shape(all.map), embed: shape(all.embed), frame: shape(all.frame),
-    seven: nameOf(all[7]), sevenString: nameOf(all['7']),
+    seven: all[7] && all[7].localName, sevenString: all['7'] && all['7'].localName,
     namedSeven: run(() => all.namedItem('7').localName), itemSeven: run(() => all.item('7').localName), callSeven: run(() => all('7').localName),
     item: typeof all.item, itemId: run(() => all.namedItem('item').localName), lengthId: run(() => all.namedItem('length').localName), lengthValue: typeof all.length,
-    zero: nameOf(all[0]), out: shape(all[9999]), negative: shape(all[-1]),
+    zero: all[0] && all[0].localName, out: shape(all[9999]), negative: shape(all[-1]),
     descriptorIndex: describe(all, 0), descriptorNamed: describe(all, 'first'), descriptorMissing: describe(all, 'missing'), descriptorItem: describe(all, 'item'),
     hasNamed: 'first' in all, hasIndex: 0 in all, hasOut: 9999 in all, hasOwnLength: Object.prototype.hasOwnProperty.call(all, 'length'), hasOwnNamed: Object.prototype.hasOwnProperty.call(all, 'first'),
   };

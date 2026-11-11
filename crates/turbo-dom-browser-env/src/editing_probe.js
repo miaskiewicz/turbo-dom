@@ -9,38 +9,22 @@
   const run = f => { try { const v = f(); return v === undefined ? 'ok' : ['ok', v]; } catch (e) { return e.name + ': ' + e.message; } };
   const describe = (o, k) => { const x = Object.getOwnPropertyDescriptor(o, k); if (!x) return null; const r = {}; for (const f in x) r[f] = typeof x[f] === 'function' ? [x[f].name, x[f].length] : x[f]; return r; };
   const esc = s => s.replace(/&/g, '&amp;').replace(/ /g, '&nbsp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const assignMarker = (ch, p, state) => { if (ch === '{' || ch === '[') state.start = p; else if (ch === '}' || ch === ']') state.end = p; else { state.start = p; state.end = p; } };
-  const scanTextMarkers = (c, state) => { let t = c.data, i; while ((i = t.search(/[[\]|]/)) >= 0) { const ch = t[i]; t = t.slice(0, i) + t.slice(i + 1); c.data = t; assignMarker(ch, [c, i], state); } };
   function place(root, html) {
     root.innerHTML = html.replace(/[{}^]/g, m => '<!--' + m + '-->');
-    const state = { start: null, end: null };
+    let start = null, end = null;
     const walk = node => {
       for (let c = node.firstChild; c;) {
         const next = c.nextSibling;
-        if (c.nodeType === 8 && /^[{}^]$/.test(c.data)) { assignMarker(c.data, [node, Array.prototype.indexOf.call(node.childNodes, c)], state); c.remove(); }
-        else if (c.nodeType === 3) scanTextMarkers(c, state);
+        if (c.nodeType === 8 && /^[{}^]$/.test(c.data)) { const p = [node, Array.prototype.indexOf.call(node.childNodes, c)]; if (c.data === '{') start = p; else if (c.data === '}') end = p; else start = end = p; c.remove(); }
+        else if (c.nodeType === 3) { let t = c.data, i; while ((i = t.search(/[[\]|]/)) >= 0) { const ch = t[i]; t = t.slice(0, i) + t.slice(i + 1); c.data = t; const p = [c, i]; if (ch === '[') start = p; else if (ch === ']') end = p; else start = end = p; } }
         else walk(c);
         c = next;
       }
     };
     walk(root);
     const s = getSelection();
-    if (state.start) s.setBaseAndExtent(state.start[0], state.start[1], (state.end || state.start)[0], (state.end || state.start)[1]); else s.removeAllRanges();
+    if (start) s.setBaseAndExtent(start[0], start[1], (end || start)[0], (end || start)[1]); else s.removeAllRanges();
   }
-  const serText = (node, at) => { let r = ''; const d = node.data; if (!d.length) r = '∅'; for (let i = 0; i <= d.length; i++) { r += at(node, i); if (i < d.length) r += esc(d[i]); } return r; };
-  const serOpenTag = (k) => { const tag = k.localName; return '<' + tag + Array.from(k.attributes).map(a => ' ' + a.name + '="' + a.value.replace(/"/g, '&quot;') + '"').join('') + '>'; };
-  const serElement = (node, at, ser) => {
-    let r = ''; const kids = Array.from(node.childNodes);
-    for (let i = 0; i <= kids.length; i++) {
-      r += at(node, i);
-      if (i < kids.length) {
-        const k = kids[i];
-        if (i && k.nodeType === 3 && kids[i - 1].nodeType === 3) r += '‖';
-        if (k.nodeType === 1) { r += serOpenTag(k); if (!/^(br|img|hr|input|wbr)$/.test(k.localName)) r += ser(k) + '</' + k.localName + '>'; } else r += ser(k);
-      }
-    }
-    return r;
-  };
   function mark(root) {
     const s = getSelection(), pts = [];
     if (s.rangeCount) {
@@ -50,10 +34,19 @@
     }
     const at = (n, o) => pts.filter(p => p[0] === n && p[1] === o).map(p => p[2]).join('');
     const ser = node => {
-      if (node.nodeType === 3) return serText(node, at);
+      if (node.nodeType === 3) { let r = ''; const d = node.data; if (!d.length) r = '∅'; for (let i = 0; i <= d.length; i++) { r += at(node, i); if (i < d.length) r += esc(d[i]); } return r; }
       if (node.nodeType === 8) return '<!--' + node.data + '-->';
       if (node.nodeType !== 1) return '';
-      return serElement(node, at, ser);
+      let r = ''; const kids = Array.from(node.childNodes);
+      for (let i = 0; i <= kids.length; i++) {
+        r += at(node, i);
+        if (i < kids.length) {
+          const k = kids[i];
+          if (i && k.nodeType === 3 && kids[i - 1].nodeType === 3) r += '‖';
+          if (k.nodeType === 1) { const tag = k.localName; r += '<' + tag + Array.from(k.attributes).map(a => ' ' + a.name + '="' + a.value.replace(/"/g, '&quot;') + '"').join('') + '>'; if (!/^(br|img|hr|input|wbr)$/.test(tag)) r += ser(k) + '</' + tag + '>'; } else r += ser(k);
+        }
+      }
+      return r;
     };
     const outside = pts.filter(p => !root.contains(p[0])).map(p => p[2] + (p[0] && (p[0].id || p[0].nodeName)) + ':' + p[1]);
     return ser(root) + (outside.length ? ' @' + outside.join(',') : '');

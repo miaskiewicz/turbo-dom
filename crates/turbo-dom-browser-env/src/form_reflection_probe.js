@@ -7,22 +7,18 @@
     const path = value.replace(/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?/, "");
     return path === "/" || path === "/?case=0" ? "<document>" : "<origin>"+path;
   };
-  const attrName = (name) => name === "encoding" ? "enctype" : name === "acceptCharset" ? "accept-charset" : name;
-  const probeField = (form, name) => {
+  for (const name of fields) {
     const d = Object.getOwnPropertyDescriptor(HTMLFormElement.prototype,name);
     result.descriptors[name] = [d.enumerable,d.configurable,d.get.name,d.get.length,d.set.name,d.set.length];
     result.defaults[name] = normalize(form[name]);
     result.values[name] = [];
     for (const value of ["", "MiXeD", "POST", "dialog", "multipart/form-data", "text/plain", "off", null, "a\ud800b"]) {
       form[name] = value;
-      result.values[name].push([normalize(form[name]),form.getAttribute(attrName(name))]);
+      result.values[name].push([normalize(form[name]),form.getAttribute(name === "encoding" ? "enctype" : name === "acceptCharset" ? "accept-charset" : name)]);
     }
     try { d.get.call({}); } catch(e) { result.errors[name] = e.name; }
     try { form[name] = Symbol(); } catch(e) { result.errors[name+"Symbol"] = e.name; }
-    form.removeAttribute(attrName(name));
-  };
-  for (const name of fields) {
-    probeField(form, name);
+    form.removeAttribute(name === "encoding" ? "enctype" : name === "acceptCharset" ? "accept-charset" : name);
   }
   const base=document.createElement("base");base.href="https://base.example/dir/";document.head.append(base);
   result.actions=[];

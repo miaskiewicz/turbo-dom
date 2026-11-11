@@ -71,16 +71,12 @@ impl Data {
         MISSING.with(|rows| *rows.borrow_mut() = self.missing);
     }
 }
-fn core_tls_available() -> bool {
+fn thread_available() -> bool {
     CURRENT.try_with(|_| ()).is_ok()
         && DOM.try_with(|_| ()).is_ok()
         && OTHER_DOMS.try_with(|_| ()).is_ok()
         && DOM_CONTEXTS.try_with(|_| ()).is_ok()
         && STYLE.try_with(|_| ()).is_ok()
-}
-
-fn thread_available() -> bool {
-    core_tls_available()
         && LISTENERS.try_with(|_| ()).is_ok()
         && ACTIVE.try_with(|_| ()).is_ok()
         && MISSING.try_with(|_| ()).is_ok()
