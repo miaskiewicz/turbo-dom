@@ -1874,3 +1874,44 @@ fn abort_signal_timeout_polyfill_installs_through_install_with_html() {
     );
     reset();
 }
+
+/// turbo-dom#488: the polyfill uses `globalThis.setTimeout` at call time, so
+/// the behavioural install probe (install a FIFO setTimeout, call
+/// `AbortSignal.timeout`, check for the captured call) detects whether the
+/// polyfill — not V8's native internal timer — is driving the abort. The
+/// probe matches the one in the issue.
+#[test]
+fn abort_signal_timeout_polyfill_routes_through_global_set_timeout() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+          const calls = [];
+          const noop = () => 0;
+          globalThis.setTimeout = (fn, ms) => {
+            calls.push(['ts', ms]);
+            return noop;
+          };
+          const sig = AbortSignal.timeout(50);
+          return JSON.stringify({calls});
+        })()"#,
+    )
+    .unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"calls":[["ts",50]]}"#,
+        "AbortSignal.timeout MUST route through globalThis.setTimeout (the \
+         polyfill path) — not V8's internal timer. Empty calls means the \
+         polyfill did not install. Observed: {result}",
+    );
+    reset();
+}
