@@ -2426,13 +2426,54 @@
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,closeStates,this,{wasClean:!!init.wasClean,code:intValue(init.code)&65535,reason:stringValue(init.reason)});}
     }
     readonly(CloseEvent.prototype,closeStates,['wasClean','code','reason']);tagEvent(CloseEvent,'CloseEvent');
+    // Native ephemeron records keep Touch brands valid across same-isolate realms.
+    var TouchError=TypeError,touchNumber=Number,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,TouchProxy=Proxy;
+    function touchNumberValue(value){if(value===undefined)return 0;if(typeof value==='bigint')throw new TouchError('Cannot convert a BigInt to a number');return touchNumber(value);}
+    function touchRecord(value,kind){var record=collectionGet(value);if(!record||record.kind!==kind)throw new TouchError('Illegal invocation');return record;}
+    var touchFields=['screenX','screenY','clientX','clientY','pageX','pageY','radiusX','radiusY','rotationAngle','force'];
+    class Touch {
+      constructor(init){
+        if(!init||init.identifier===undefined||init.target===undefined)throw new TouchError('identifier and target are required');
+        // The native EventTarget getter brands foreign-realm targets too.
+        var target=init.target;
+        if(!target||!((__ns.eventTargetNativeBrand&&__ns.eventTargetNativeBrand(target))||target===g||$call($N.nodeType,target)))throw new TouchError('target must be an EventTarget');
+        var record={kind:'Touch',identifier:touchNumberValue(init.identifier)>>0,target:target};
+        for(var i=0;i<touchFields.length;i++){var name=touchFields[i],value=touchNumberValue(init[name]);if(!touchFinite(value))throw new TouchError('Touch coordinates must be finite');record[name]=i<6?value:touchFloat(value);if(!touchFinite(record[name]))throw new TouchError('Touch coordinates must be finite');}
+        collectionSet(this,record);
+      }
+    }
+    function touchGetter(name){member(Touch.prototype,name,{get:function(){return touchRecord(this,'Touch')[name];}});}
+    touchGetter('identifier');touchGetter('target');
+    for(var touchField=0;touchField<touchFields.length;touchField++)touchGetter(touchFields[touchField]);
+    tagEvent(Touch,'Touch');
+    class TouchList {constructor(){throw new TouchError('Illegal constructor');}}
+    member(TouchList.prototype,'length',{get:function(){return touchRecord(this,'TouchList').items.length;}});
+    member(TouchList.prototype,'item',{value:function item(index){if(!arguments.length)throw new TouchError('An index is required');return touchRecord(this,'TouchList').items[touchNumberValue(index)>>>0]||null;}});
+    var touchValues=function values(){var items=touchRecord(this,'TouchList').items,index=0;return {next:function(){return index<items.length?{value:items[index++],done:false}:{value:undefined,done:true};},[touchIterator]:function(){return this;}};};
+    $def(TouchList.prototype,touchIterator,{value:__ns.makeNativeFunction(touchValues,'values',0),writable:true,configurable:true});tagEvent(TouchList,'TouchList');
+    function touchIndex(key){return typeof key==='string'&&key!==''&&''+(key>>>0)===key;}
+    var touchListIndexHandlers={set:function(object,key,value,receiver){return !touchIndex(key)&&$R.set(object,key,value,receiver);},defineProperty:function(object,key,descriptor){return !touchIndex(key)&&$R.defineProperty(object,key,descriptor);},deleteProperty:function(object,key){return !touchIndex(key)&&$R.deleteProperty(object,key);}};
+    function touchList(sequence){
+      var list=$create(TouchList.prototype),items=[];
+      if(sequence!==undefined)for(var touch of sequence){touchRecord(touch,'Touch');$c.push(items,touch);}
+      for(var i=0;i<items.length;i++)$def(list,i,{value:items[i],enumerable:true,configurable:true});
+      // Web-IDL indexed getters reject writes/deletion even though their descriptors are configurable.
+      list=new TouchProxy(list,touchListIndexHandlers);
+      collectionSet(list,{kind:'TouchList',items:items});
+      return list;
+    }
+    var touchEventStates=new WeakMap();
+    class TouchEvent extends UIEvent {
+      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.touches=touchList(init.touches);state.targetTouches=touchList(init.targetTouches);state.changedTouches=touchList(init.changedTouches);$call($wmSet,touchEventStates,this,state);}
+    }
+    readonly(TouchEvent.prototype,touchEventStates,['touches','targetTouches','changedTouches','altKey','metaKey','ctrlKey','shiftKey']);tagEvent(TouchEvent,'TouchEvent');
     // Use the native class bridge for actual implementations, preserving private
     // records and subclass new.target rather than replacing Function.toString.
-    [UIEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent,PointerEvent,WheelEvent,CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){var name=implementation.name,constructor=__ns.makeNativeFunction?__ns.makeNativeFunction(implementation,name,1,true,true):implementation;constructor.prototype=implementation.prototype;Object.defineProperty(constructor.prototype,'constructor',{value:constructor,writable:true,configurable:true});Object.defineProperty(constructor,'prototype',{writable:false});Object.keys(implementation).forEach(function(key){Object.defineProperty(constructor,key,Object.getOwnPropertyDescriptor(implementation,key));});Object.defineProperty(g,name,{value:constructor,writable:true,configurable:true,enumerable:false});});
-    [MouseEvent,KeyboardEvent,InputEvent,FocusEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.UIEvent);});
+    [Touch,TouchList,TouchEvent,UIEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent,PointerEvent,WheelEvent,CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){var name=implementation.name,constructor=__ns.makeNativeFunction?__ns.makeNativeFunction(implementation,name,name==='TouchList'?0:1,true,true):implementation;constructor.prototype=implementation.prototype;Object.defineProperty(constructor.prototype,'constructor',{value:constructor,writable:true,configurable:true});Object.defineProperty(constructor,'prototype',{writable:false});Object.keys(implementation).forEach(function(key){Object.defineProperty(constructor,key,Object.getOwnPropertyDescriptor(implementation,key));});Object.defineProperty(g,name,{value:constructor,writable:true,configurable:true,enumerable:false});});
+    [TouchEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.UIEvent);});
     [CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],Event);});
     [PointerEvent,WheelEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.MouseEvent);});
-    sub('CompositionEvent'); sub('DragEvent'); sub('TouchEvent'); sub('ClipboardEvent');
+    sub('CompositionEvent'); sub('DragEvent'); sub('ClipboardEvent');
     // document.createEvent: html_reflections.js (turbo-dom#341).
     // The installer captures and deletes this function before guest execution.
     g.__captureEventRecord=function(event){return getEventRecord(event);};
