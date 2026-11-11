@@ -133,62 +133,6 @@ impl DocumentGraph {
         }
         Some(())
     }
-    fn get_or_create_component<'s>(
-        &mut self,
-        scope: &mut v8::PinScope<'s, '_>,
-        root: u32,
-    ) -> Option<v8::Local<'s, v8::Object>> {
-        if let Some(component) = self
-            .components
-            .get(&root)
-            .and_then(|component| component.to_local(scope))
-        {
-            return Some(component);
-        }
-        let component = v8::Object::new(scope);
-        let null = v8::null(scope);
-        component.set_prototype(scope, null.into())?;
-        self.components
-            .insert(root, v8::Weak::new(scope, component));
-        Some(component)
-    }
-
-    fn get_or_create_refs<'s>(
-        scope: &mut v8::PinScope<'s, '_>,
-        component: v8::Local<'s, v8::Object>,
-        refs_key: v8::Local<'s, v8::Private>,
-    ) -> Option<v8::Local<'s, v8::Map>> {
-        if let Some(refs) = component
-            .get_private(scope, refs_key)
-            .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
-        {
-            return Some(refs);
-        }
-        let refs = v8::Map::new(scope);
-        component.set_private(scope, refs_key, refs.into())?;
-        Some(refs)
-    }
-
-    fn place_in_component<'s>(
-        &mut self,
-        scope: &mut v8::ContextScope<'s, v8::PinScope<'s, '_>>,
-        id: u32,
-        wrapper: v8::Local<'s, v8::Object>,
-        root: u32,
-    ) -> Option<()> {
-        let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
-        let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
-        let component = self.get_or_create_component(scope, root)?;
-        let refs = Self::get_or_create_refs(scope, component, refs_key)?;
-        if let Some(old) = self.placed.insert(id, root).filter(|old| *old != root) {
-            self.leave(scope, old, id)?;
-        }
-        self.fresh.remove(&id);
-        let id = v8::Integer::new_from_unsigned(scope, id);
-        refs.set(scope, id.into(), wrapper.into())?;
-        (wrapper.set_private(scope, owner_key, component.into()) == Some(true)).then_some(())
-    }
-
     pub fn observe_component<'s>(
         &mut self,
         scope: &mut v8::PinScope<'s, '_>,
@@ -200,7 +144,39 @@ impl DocumentGraph {
         self.observe(scope, id, wrapper, connected)?;
         let owner = self.context.to_local(scope)?;
         let scope = &mut v8::ContextScope::new(scope, owner);
-        self.place_in_component(scope, id, wrapper, root)
+        let owner_key = key(scope, "turbo-dom.ownership.component-owner")?;
+        let refs_key = key(scope, "turbo-dom.ownership.component-nodes")?;
+        let component = if let Some(component) = self
+            .components
+            .get(&root)
+            .and_then(|component| component.to_local(scope))
+        {
+            component
+        } else {
+            let component = v8::Object::new(scope);
+            let null = v8::null(scope);
+            component.set_prototype(scope, null.into())?;
+            self.components
+                .insert(root, v8::Weak::new(scope, component));
+            component
+        };
+        let refs = if let Some(refs) = component
+            .get_private(scope, refs_key)
+            .and_then(|value| v8::Local::<v8::Map>::try_from(value).ok())
+        {
+            refs
+        } else {
+            let refs = v8::Map::new(scope);
+            component.set_private(scope, refs_key, refs.into())?;
+            refs
+        };
+        if let Some(old) = self.placed.insert(id, root).filter(|old| *old != root) {
+            self.leave(scope, old, id)?;
+        }
+        self.fresh.remove(&id);
+        let id = v8::Integer::new_from_unsigned(scope, id);
+        refs.set(scope, id.into(), wrapper.into())?;
+        (wrapper.set_private(scope, owner_key, component.into()) == Some(true)).then_some(())
     }
     /// Drop `id` from the member map of component `root` (when that component is alive), so
     /// a wrapper that moved on is not kept alive by its old component.

@@ -187,39 +187,6 @@ fn install_slot<'s>(
         }
     }
 }
-fn form_ancestor(node: Handle) -> Option<Handle> {
-    with_tree(|tree| {
-        let mut parent = tree.parent(node);
-        while let Some(current) = parent {
-            if tree.local_name(current) == Some("form")
-                && tree.namespace_uri(current) == Some("http://www.w3.org/1999/xhtml")
-            {
-                return Some(current);
-            }
-            parent = tree.parent(current);
-        }
-        None
-    })
-    .flatten()
-}
-
-fn record_compile_error(scope: &mut v8::PinScope, node: Handle, name: &str, failed: bool) {
-    if !failed || scope.has_terminated() {
-        return;
-    }
-    if let Some(error) = scope.exception() {
-        let error = v8::Global::new(scope, error);
-        DOM.with(|dom| {
-            if let Some(dom) = dom.borrow_mut().as_mut() {
-                dom.event_handlers
-                    .errors
-                    .insert((node, name.to_owned()), error);
-            }
-        });
-    }
-    scope.reset();
-}
-
 pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
     if with_tree(|tree| tree.node_type_id(node)) != Some(1)
         || !element_members::compiles_content_attribute(node, name)
@@ -354,7 +321,20 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
         // invariant: engine-built name, far below V8's string length limit
         let event = v8::String::new(scope, element_members::handler_parameter(node)).unwrap();
         let mut extensions = vec![document];
-        if let Some(form) = form_ancestor(node) {
+        let form = with_tree(|tree| {
+            let mut parent = tree.parent(node);
+            while let Some(current) = parent {
+                if tree.local_name(current) == Some("form")
+                    && tree.namespace_uri(current) == Some("http://www.w3.org/1999/xhtml")
+                {
+                    return Some(current);
+                }
+                parent = tree.parent(current);
+            }
+            None
+        })
+        .flatten();
+        if let Some(form) = form {
             extensions.push(wrap(scope, form));
         }
         extensions.push(element);
@@ -368,7 +348,19 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             v8::script_compiler::CompileOptions::NoCompileOptions,
             v8::script_compiler::NoCacheReason::NoReason,
         );
-        record_compile_error(scope, node, name, function.is_none());
+        if function.is_none() && !scope.has_terminated() {
+            if let Some(error) = scope.exception() {
+                let error = v8::Global::new(scope, error);
+                DOM.with(|dom| {
+                    if let Some(dom) = dom.borrow_mut().as_mut() {
+                        dom.event_handlers
+                            .errors
+                            .insert((node, name.to_owned()), error);
+                    }
+                });
+            }
+            scope.reset();
+        }
         if let Some(function) = function {
             function.set_name(key);
         }

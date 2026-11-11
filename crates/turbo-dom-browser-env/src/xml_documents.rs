@@ -378,24 +378,21 @@ impl<'a> StartTags<'a> {
                 self.skip(">");
                 return;
             }
-            self.internal_subset_item(markup);
-        }
-    }
-    fn internal_subset_item(&mut self, markup: &'a str) {
-        if markup.starts_with("<!--") {
-            self.skip("-->");
-        } else if markup.starts_with("<?") {
-            self.skip("?>");
-        } else if let Some(declaration) = markup.strip_prefix("<!ENTITY") {
-            self.rest = declaration;
-            self.entity();
-        } else if let Some(declaration) = markup.strip_prefix("<!ATTLIST") {
-            self.rest = declaration;
-            self.attlist();
-        } else if markup.starts_with('%') {
-            self.skip(";");
-        } else {
-            self.skip_quoted(&['>']);
+            if markup.starts_with("<!--") {
+                self.skip("-->");
+            } else if markup.starts_with("<?") {
+                self.skip("?>");
+            } else if let Some(declaration) = markup.strip_prefix("<!ENTITY") {
+                self.rest = declaration;
+                self.entity();
+            } else if let Some(declaration) = markup.strip_prefix("<!ATTLIST") {
+                self.rest = declaration;
+                self.attlist();
+            } else if markup.starts_with('%') {
+                self.skip(";");
+            } else {
+                self.skip_quoted(&['>']);
+            }
         }
     }
     /// After `<!ENTITY`: record a general entity's literal replacement text (the first
@@ -1176,8 +1173,15 @@ impl Serializer<'_> {
         }
         format!("{prefix}:{local}")
     }
-    fn collect_xmlns_declarations(attributes: &[turbo_dom_parser::rtdom::AttributeUnits], scope: &mut Scope) {
-        for attribute in attributes {
+    fn element(&mut self, node: Handle, mut scope: Scope) {
+        let tree = self.tree;
+        let namespace = tree.namespace_uri(node).unwrap_or_default();
+        let prefix = tree.prefix(node).unwrap_or_default();
+        // invariant: every element has a qualified name
+        let name = tree.qualified_name(node).unwrap().to_owned();
+        let attributes = tree.attributes_units(node);
+        // The element's own declarations are in scope for its name and attributes.
+        for attribute in &attributes {
             if attribute.namespace.as_deref() == Some(units(XMLNS_NAMESPACE).as_slice()) {
                 let declared = if attribute.prefix.is_some() {
                     String::from_utf16_lossy(&attribute.local_name)
@@ -1187,14 +1191,6 @@ impl Serializer<'_> {
                 scope.bind(&declared, &String::from_utf16_lossy(&attribute.value));
             }
         }
-    }
-    fn element(&mut self, node: Handle, mut scope: Scope) {
-        let tree = self.tree;
-        let namespace = tree.namespace_uri(node).unwrap_or_default();
-        let prefix = tree.prefix(node).unwrap_or_default();
-        let name = tree.qualified_name(node).unwrap().to_owned();
-        let attributes = tree.attributes_units(node);
-        Self::collect_xmlns_declarations(&attributes, &mut scope);
         self.out.push('<');
         self.out.push_str(&name);
         if scope.lookup(prefix) != Some(namespace) {

@@ -58,25 +58,6 @@ pub(super) fn recording() -> bool {
     ACTIVE.with(Cell::get)
 }
 
-fn collect_source_children(
-    tree: &Tree,
-    node: Handle,
-    step: &mut impl FnMut(&str, Handle, Handle),
-) {
-    let mut pending = vec![node];
-    while let Some(current) = pending.pop() {
-        if html(tree, current, &["source"]) {
-            if let Some(parent) = tree
-                .parent(current)
-                .filter(|parent| html(tree, *parent, MEDIA))
-            {
-                step("source", parent, current);
-            }
-        }
-        pending.extend(tree.children(current).into_iter().rev());
-    }
-}
-
 /// The insertion / removal steps one childList record calls for: a removed track child, an
 /// added track child, then each source child of a media element in an added subtree (Blink's
 /// HTMLSourceElement::InsertedInto runs for every inserted source, its parent a media element;
@@ -114,7 +95,18 @@ pub(super) fn mutation(event: &MutationEvent) {
             if media && html(tree, node, &["track"]) {
                 step("addtrack", *target, node);
             }
-            collect_source_children(tree, node, &mut step);
+            let mut pending = vec![node];
+            while let Some(current) = pending.pop() {
+                if html(tree, current, &["source"]) {
+                    if let Some(parent) = tree
+                        .parent(current)
+                        .filter(|parent| html(tree, *parent, MEDIA))
+                    {
+                        step("source", parent, current);
+                    }
+                }
+                pending.extend(tree.children(current).into_iter().rev());
+            }
         }
         steps
     })

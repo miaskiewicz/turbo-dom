@@ -1427,46 +1427,6 @@ fn termination_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
 #[inline(always)]
 fn termination_checkpoint(_scope: &mut v8::PinScope, _name: &'static str) {}
 
-fn tag_interface_name(handle: Handle) -> Option<&'static str> {
-    let tag = with_tree(|t| t.tag_name(handle))
-        .flatten()
-        .unwrap_or_default();
-    match tag.to_ascii_lowercase().as_str() {
-        "input" => Some("HTMLInputElement"),
-        "textarea" => Some("HTMLTextAreaElement"),
-        "select" => Some("HTMLSelectElement"),
-        "option" => Some("HTMLOptionElement"),
-        "button" => Some("HTMLButtonElement"),
-        "label" => Some("HTMLLabelElement"),
-        "canvas" => Some("HTMLCanvasElement"),
-        "a" => Some("HTMLAnchorElement"),
-        _ => None,
-    }
-}
-
-fn apply_parser_interface_prototype(
-    scope: &mut v8::PinScope,
-    handle: Handle,
-    obj: v8::Local<v8::Object>,
-) {
-    let Some(interface) = tag_interface_name(handle) else {
-        return;
-    };
-    let global = scope.get_current_context().global(scope);
-    let key = v8::String::new(scope, interface).unwrap();
-    if let Some(ctor) = global
-        .get(scope, key.into())
-        .and_then(|v| v.to_object(scope))
-    {
-        let key = v8::String::new(scope, "prototype").unwrap();
-        if let Some(proto) = ctor.get(scope, key.into()) {
-            if proto.is_object() {
-                obj.set_prototype(scope, proto);
-            }
-        }
-    }
-}
-
 fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local<'s, v8::Object> {
     script_state::observe(handle);
     html_media::observe(handle);
@@ -1505,8 +1465,41 @@ fn wrap_inner<'s>(scope: &mut v8::PinScope<'s, '_>, handle: Handle) -> v8::Local
     let owner = owner_tag(scope, DOM_ID.with(|id| id.get()));
     obj.set_internal_field(1, owner.into());
     let projector = current_node_projector(scope);
+    // Raw bootstrap probes run before projection has been installed. Once it
+    // exists, the captured projector supplies every interface without guest reads.
     if projector.is_none() {
-        apply_parser_interface_prototype(scope, handle, obj);
+        // Parser-created controls bypass createElement's JS wrapper. Select their live
+        // interface prototype here too, so IDL getters work for query/innerHTML results.
+        let tag = with_tree(|t| t.tag_name(handle))
+            .flatten()
+            .unwrap_or_default();
+        let interface = match tag.to_ascii_lowercase().as_str() {
+            "input" => Some("HTMLInputElement"),
+            "textarea" => Some("HTMLTextAreaElement"),
+            "select" => Some("HTMLSelectElement"),
+            "option" => Some("HTMLOptionElement"),
+            "button" => Some("HTMLButtonElement"),
+            "label" => Some("HTMLLabelElement"),
+            "canvas" => Some("HTMLCanvasElement"),
+            "a" => Some("HTMLAnchorElement"),
+            _ => None,
+        };
+        if let Some(interface) = interface {
+            let global = scope.get_current_context().global(scope);
+            // invariant: engine-built name, far below V8's string length limit
+            let key = v8::String::new(scope, interface).unwrap();
+            if let Some(ctor) = global
+                .get(scope, key.into())
+                .and_then(|v| v.to_object(scope))
+            {
+                let key = v8::String::new(scope, "prototype").unwrap();
+                if let Some(proto) = ctor.get(scope, key.into()) {
+                    if proto.is_object() {
+                        obj.set_prototype(scope, proto);
+                    }
+                }
+            }
+        }
     }
     termination_checkpoint(scope, "wrap:cache");
     if scope.is_execution_terminating() {
@@ -2602,21 +2595,6 @@ fn el_insert_adjacent_html<'s>(
     }
     custom_elements::parser_inserted(scope, args.this(), &parsed, mark);
 }
-fn toggle_force_argument(
-    scope: &mut v8::PinScope,
-    args: &v8::FunctionCallbackArguments,
-) -> Option<bool> {
-    if args.length() > 1 && !args.get(1).is_undefined() {
-        Some(args.get(1).boolean_value(scope))
-    } else {
-        None
-    }
-}
-
-fn toggle_popover_removal(name: &str, previous: bool, force: Option<bool>) -> bool {
-    name == "popover" && previous && force != Some(true)
-}
-
 fn el_toggle_attribute<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -2639,9 +2617,13 @@ fn el_toggle_attribute<'s>(
         lower_ascii_units(&mut units);
     }
     let name = String::from_utf16_lossy(&units);
-    let force = toggle_force_argument(scope, &args);
+    let force = if args.length() > 1 && !args.get(1).is_undefined() {
+        Some(args.get(1).boolean_value(scope))
+    } else {
+        None
+    };
     let previous = with_tree(|t| t.get_attribute_units(h, &units).is_some()).unwrap_or(false);
-    if toggle_popover_removal(&name, previous, force) {
+    if name == "popover" && previous && force != Some(true) {
         html_popover::attribute_change(scope, h, None);
     }
     let present = with_tree_mut(|t| {
@@ -2735,42 +2717,28 @@ fn validate_namespace_name(
     Ok(effective)
 }
 
-fn name_parts_invalid(
-    prefix: Option<&str>,
-    local: &str,
-    attribute: bool,
-    forbidden: &impl Fn(&str, bool) -> bool,
-) -> bool {
-    prefix.is_some_and(|prefix| prefix.is_empty() || forbidden(prefix, false))
-        || local.is_empty()
-        || forbidden(local, attribute)
-}
-
-fn is_valid_name_start(first: char) -> bool {
-    first.is_ascii_alphabetic() || first == '_' || first == ':' || !first.is_ascii()
-}
-
-fn has_invalid_name_continuation(local: &str) -> bool {
-    local.chars().skip(1).any(|c| {
-        c.is_ascii()
-            && !c.is_ascii_alphanumeric()
-            && !matches!(c, '-' | '.' | ':' | '_')
-    })
-}
-
 fn validate_name_characters(
     prefix: Option<&str>,
     local: &str,
     attribute: bool,
     forbidden: impl Fn(&str, bool) -> bool,
 ) -> Result<(), &'static str> {
-    if name_parts_invalid(prefix, local, attribute, &forbidden) {
+    if prefix.is_some_and(|prefix| prefix.is_empty() || forbidden(prefix, false))
+        || local.is_empty()
+        || forbidden(local, attribute)
+    {
         return Err("InvalidCharacterError");
     }
     if !attribute {
+        // invariant: value produced by engine code, never page input
         let first = local.chars().next().unwrap();
         if !first.is_ascii_alphabetic()
-            && (!is_valid_name_start(first) || has_invalid_name_continuation(local))
+            && (!(first == '_' || first == ':' || !first.is_ascii())
+                || local.chars().skip(1).any(|c| {
+                    c.is_ascii()
+                        && !c.is_ascii_alphanumeric()
+                        && !matches!(c, '-' | '.' | ':' | '_')
+                }))
         {
             return Err("InvalidCharacterError");
         }
@@ -2778,30 +2746,19 @@ fn validate_name_characters(
     Ok(())
 }
 
-fn namespace_binding_invalid(
-    namespace: Option<&str>,
-    qualified: &str,
-    prefix: Option<&str>,
-) -> bool {
-    if prefix.is_some() && namespace.is_none() {
-        return true;
-    }
-    if prefix == Some("xml") && namespace != Some("http://www.w3.org/XML/1998/namespace") {
-        return true;
-    }
-    let is_xmlns = qualified == "xmlns" || prefix == Some("xmlns");
-    if is_xmlns && namespace != Some("http://www.w3.org/2000/xmlns/") {
-        return true;
-    }
-    namespace == Some("http://www.w3.org/2000/xmlns/") && !is_xmlns
-}
-
 fn validate_namespace_binding(
     namespace: Option<&str>,
     qualified: &str,
     prefix: Option<&str>,
 ) -> Result<(), &'static str> {
-    if namespace_binding_invalid(namespace, qualified, prefix) {
+    if prefix.is_some() && namespace.is_none()
+        || prefix == Some("xml") && namespace != Some("http://www.w3.org/XML/1998/namespace")
+        || (qualified == "xmlns" || prefix == Some("xmlns"))
+            && namespace != Some("http://www.w3.org/2000/xmlns/")
+        || namespace == Some("http://www.w3.org/2000/xmlns/")
+            && qualified != "xmlns"
+            && prefix != Some("xmlns")
+    {
         return Err("NamespaceError");
     }
     Ok(())
@@ -2910,28 +2867,17 @@ fn el_set_attribute_ns<'s, 'i>(
         tree.set_attribute_ns_units(node, namespace.as_deref(), &qualified, &units)
     });
     let qualified = String::from_utf16_lossy(&qualified);
-    set_attribute_ns_side_effects(scope, args.this(), node, namespace.is_none(), &qualified, &units);
-}
-fn set_attribute_ns_side_effects(
-    scope: &mut v8::PinScope,
-    this: v8::Local<v8::Object>,
-    node: Handle,
-    no_namespace: bool,
-    qualified: &str,
-    units: &[u16],
-) {
-    if no_namespace {
-        event_handlers::changed(scope, node, qualified);
-        element_relations::attribute_changed(scope, this, qualified);
+    if namespace.is_none() {
+        event_handlers::changed(scope, node, &qualified);
+        element_relations::attribute_changed(scope, args.this(), &qualified);
     }
-    if no_namespace && qualified == "style" {
+    if namespace.is_none() && qualified == "style" {
         css_policy::attribute_changed(scope, node);
     }
-    if no_namespace && qualified == "nonce" {
-        update_node_nonce_units(scope, this, units);
+    if namespace.is_none() && qualified == "nonce" {
+        update_node_nonce_units(scope, args.this(), &units);
     }
 }
-
 fn el_remove_attribute_ns<'s, 'i>(
     scope: &mut v8::PinScope<'s, 'i>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -3678,22 +3624,6 @@ fn throw_invalid_selector(scope: &mut v8::PinScope, node: Handle, operation: &st
     );
 }
 
-fn apply_pseudo_rewrite<'s>(
-    scope: &mut v8::PinScope<'s, '_>,
-    node: Handle,
-    transformed: &str,
-    subject_local: bool,
-    bit: u8,
-) -> Option<String> {
-    match bit {
-        0 => html_popover::selector(scope, node, transformed),
-        1 => html_dialog::selector(scope, node, transformed),
-        2 => interest_invokers::selector(scope, node, transformed),
-        3 => form_pseudo::selector(scope, node, transformed, subject_local),
-        _ => view_transitions::selector(scope, node, transformed),
-    }
-}
-
 /// Apply the five pseudo rewrites in sequence, each transforming the running scalar form.
 fn rewrite_pseudo_selector<'s>(
     scope: &mut v8::PinScope<'s, '_>,
@@ -3708,7 +3638,13 @@ fn rewrite_pseudo_selector<'s>(
         if !rewritten && mask & (1 << bit) == 0 {
             continue;
         }
-        let next = apply_pseudo_rewrite(scope, node, &transformed, subject_local, bit)?;
+        let next = match bit {
+            0 => html_popover::selector(scope, node, &transformed)?,
+            1 => html_dialog::selector(scope, node, &transformed)?,
+            2 => interest_invokers::selector(scope, node, &transformed)?,
+            3 => form_pseudo::selector(scope, node, &transformed, subject_local)?,
+            _ => view_transitions::selector(scope, node, &transformed)?,
+        };
         if next != transformed {
             rewritten = true;
             transformed = next;
@@ -5437,54 +5373,6 @@ fn finish_click_activation(
     }
 }
 
-fn dispatch_phase(at_target: bool, want_capture: bool) -> i32 {
-    if at_target {
-        2
-    } else if want_capture {
-        1
-    } else {
-        3
-    }
-}
-
-fn should_skip_listener(
-    scope: &mut v8::PinScope,
-    record: v8::Local<v8::Object>,
-    listener: &event_listeners::Listener,
-    want_capture: bool,
-) -> bool {
-    if listener.capture != want_capture || listener.removed.get() {
-        return true;
-    }
-    if get_bool_prop(scope, record, "stopImmediate") {
-        return true;
-    }
-    if listener
-        .signal
-        .as_ref()
-        .is_some_and(|signal| event_listeners::aborted(scope, signal))
-    {
-        listener.removed.set(true);
-        return true;
-    }
-    false
-}
-
-fn remove_once_listener(
-    scope: &mut v8::PinScope,
-    node_h: Handle,
-    ty: &str,
-    listener: &event_listeners::Listener,
-) {
-    listener.removed.set(true);
-    LISTENERS.with(|listeners| {
-        if let Some(list) = listeners.borrow_mut().get_mut(&(node_h, ty.to_owned())) {
-            list.retain(|entry| !std::rc::Rc::ptr_eq(&entry.removed, &listener.removed));
-        }
-    });
-    event_listeners::detach(scope, listener);
-}
-
 fn el_dispatch_event<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     args: v8::FunctionCallbackArguments<'s>,
@@ -5600,21 +5488,51 @@ fn el_dispatch_event<'s>(
             });
             let cur_node = wrap(scope, node_h);
             set_prop(scope, record, "currentTarget", cur_node.into());
-            let phase = dispatch_phase(at_target, want_capture);
-            let phase = v8::Integer::new(scope, phase);
+            let phase = v8::Integer::new(
+                scope,
+                if at_target {
+                    2
+                } else if want_capture {
+                    1
+                } else {
+                    3
+                },
+            );
             set_prop(scope, record, "eventPhase", phase.into());
             for listener in listeners {
-                if should_skip_listener(scope, record, &listener, want_capture) {
+                // at the target, both capture and bubble listeners fire; elsewhere only the phase's.
+                if listener.capture != want_capture || listener.removed.get() {
+                    continue;
+                }
+                if get_bool_prop(scope, record, "stopImmediate") {
+                    break;
+                }
+                if listener
+                    .signal
+                    .as_ref()
+                    .is_some_and(|signal| event_listeners::aborted(scope, signal))
+                {
+                    listener.removed.set(true);
                     continue;
                 }
                 let Some(callback) = listener.callback.to_local(scope) else {
                     continue;
                 };
                 if listener.once {
-                    remove_once_listener(scope, node_h, &ty, &listener);
+                    listener.removed.set(true);
+                    LISTENERS.with(|listeners| {
+                        if let Some(list) = listeners.borrow_mut().get_mut(&(node_h, ty.clone())) {
+                            list.retain(|entry| {
+                                !std::rc::Rc::ptr_eq(&entry.removed, &listener.removed)
+                            });
+                        }
+                    });
+                    event_listeners::detach(scope, &listener);
                 }
                 let passive = v8::Boolean::new(scope, listener.passive);
                 set_prop(scope, record, "passive", passive.into());
+                // A listener's exception is reported and the dispatch goes on (turbo-dom#301);
+                // a terminated one ends the dispatch (no further listener runs).
                 let called = event_listeners::call_listener(
                     scope,
                     event_obj,
@@ -6138,21 +6056,11 @@ fn form_controls_native(
         form_controls_private(scope, node, &args, &mut rv);
         return;
     }
-    form_controls_dispatch(scope, node, &operation, &args, &mut rv);
-}
-
-fn form_controls_dispatch(
-    scope: &mut v8::PinScope,
-    node: v8::Local<v8::Object>,
-    operation: &str,
-    args: &v8::FunctionCallbackArguments,
-    rv: &mut v8::ReturnValue,
-) {
     let _dom = DomScope::for_object(scope, node);
     let Some(handle) = handle_of(scope, node) else {
         return;
     };
-    match operation {
+    match operation.as_str() {
         "labels-rows" => {
             let rows = control_labels::labels(scope, handle);
             let array = v8::Array::new(scope, rows.len() as i32);
@@ -6181,7 +6089,7 @@ fn form_controls_dispatch(
         }
         "labels" => {
             let tag = args.get(2).to_rust_string_lossy(scope);
-            labels_getter(scope, node, handle, &tag, rv);
+            labels_getter(scope, node, handle, &tag, &mut rv);
         }
         "html-element" => {
             rv.set(
@@ -6228,7 +6136,7 @@ fn form_controls_dispatch(
             }
         }
         "active" | "submit" => {
-            form_submission_active_or_submit(scope, operation, node, args, rv)
+            form_submission_active_or_submit(scope, &operation, node, &args, &mut rv)
         }
         "action-url" | "submitter-action-url" => {
             let document_url = event_handlers::document_url();
@@ -6283,40 +6191,34 @@ fn form_controls_dispatch(
     }
 }
 
-fn is_html_form(t: &Tree, handle: Handle) -> bool {
-    t.namespace_id(handle) == 0 && t.local_name(handle) == Some("form")
-}
-
-fn form_by_id_attribute(t: &Tree, h: Handle, id: &[u16]) -> Option<Handle> {
-    if !is_connected(t, h) || id.is_empty() {
-        return None;
-    }
-    let mut root = h;
-    while let Some(parent) = t.parent(root) {
-        root = parent;
-    }
-    let rows = if root == t.root() {
-        t.query_selector_all("[id]")
-    } else {
-        t.query_selector_all_from_units(root, &[91, 105, 100, 93])
-    };
-    for &candidate in rows.iter() {
-        if t.get_attribute_utf16(candidate, "id").as_deref() == Some(id) {
-            return is_html_form(t, candidate).then_some(candidate);
-        }
-    }
-    None
-}
-
 /// nearest ancestor `<form>` (incl. self).
 fn closest_form(h: Handle) -> Option<Handle> {
     with_tree(|t| {
         if let Some(id) = t.get_attribute_utf16(h, "form") {
-            return form_by_id_attribute(t, h, &id);
+            if !is_connected(t, h) || id.is_empty() {
+                return None;
+            }
+            let mut root = h;
+            while let Some(parent) = t.parent(root) {
+                root = parent;
+            }
+            let rows = if root == t.root() {
+                t.query_selector_all("[id]")
+            } else {
+                t.query_selector_all_from_units(root, &[91, 105, 100, 93])
+            };
+            for &candidate in rows.iter() {
+                if t.get_attribute_utf16(candidate, "id").as_deref() == Some(id.as_slice()) {
+                    return (t.namespace_id(candidate) == 0
+                        && t.local_name(candidate) == Some("form"))
+                    .then_some(candidate);
+                }
+            }
+            return None;
         }
         let mut cur = Some(h);
         while let Some(c) = cur {
-            if is_html_form(t, c) {
+            if t.namespace_id(c) == 0 && t.local_name(c) == Some("form") {
                 return Some(c);
             }
             cur = NodeRef::new(t, c).parent().map(|p| p.handle());
@@ -6813,6 +6715,8 @@ fn ownership_callback<'s, 'i, F>(
 {
     let caught = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut caught.init();
+    // Source documents can lose their last node edge during adoption. Keep
+    // their actual wrappers/realms alive through private record projection.
     let owners = dom_ownership::pin_callback_owners(
         scope,
         args.this(),
@@ -6850,15 +6754,13 @@ fn ownership_callback<'s, 'i, F>(
     }
     dom_ownership::reconcile_after_call(scope, &owners);
     termination_checkpoint(scope, "method:reconciled");
-    match (scope.has_terminated(), exception) {
-        (true, _) => {
-            scope.rethrow();
-        }
-        (false, Some(exception)) => {
-            scope.throw_exception(exception);
-            scope.rethrow();
-        }
-        _ => {}
+    if scope.has_terminated() {
+        scope.rethrow();
+        return;
+    }
+    if let Some(exception) = exception {
+        scope.throw_exception(exception);
+        scope.rethrow();
     }
 }
 fn method_template<'s, F>(
@@ -6959,6 +6861,8 @@ fn ownership_setter<'s, 'i, S>(
     if scope.is_execution_terminating() {
         return;
     }
+    // Setters are [CEReactions] too (innerHTML, outerHTML, reflected attributes): their
+    // custom element reactions run when the setter returns, element by element (turbo-dom#43).
     let reactions = custom_elements::reactions(scope);
     S::get()(scope, name, value, args, rv);
     termination_checkpoint(scope, "setter:called");
@@ -6983,15 +6887,13 @@ fn ownership_setter<'s, 'i, S>(
     }
     dom_ownership::reconcile_after_call(scope, &owners);
     termination_checkpoint(scope, "setter:reconciled");
-    match (scope.has_terminated(), exception) {
-        (true, _) => {
-            scope.rethrow();
-        }
-        (false, Some(exception)) => {
-            scope.throw_exception(exception);
-            scope.rethrow();
-        }
-        _ => {}
+    if scope.has_terminated() {
+        scope.rethrow();
+        return;
+    }
+    if let Some(exception) = exception {
+        scope.throw_exception(exception);
+        scope.rethrow();
     }
 }
 fn tmpl_accessor<S>(
@@ -7455,38 +7357,6 @@ fn native_dom_function_dispatch(
     }
 }
 
-fn range_record_set_or_get(
-    scope: &mut v8::PinScope,
-    args: &v8::FunctionCallbackArguments,
-    receiver: v8::Local<v8::Object>,
-    key: v8::Local<v8::Private>,
-    rv: &mut v8::ReturnValue,
-) -> bool {
-    if args.length() > 1 && args.get(1).is_object() {
-        let record = args.get(1);
-        receiver.set_private(scope, key, record);
-        if args.get(0).is_undefined() {
-            if let Ok(record) = v8::Local::<v8::Object>::try_from(record) {
-                range_live::register(scope, record);
-            }
-        }
-        rv.set(if args.get(0).is_undefined() {
-            receiver.into()
-        } else {
-            record
-        });
-        return true;
-    }
-    if let Some(record) = receiver
-        .get_private(scope, key)
-        .filter(|value| value.is_object())
-    {
-        rv.set(record);
-        return true;
-    }
-    false
-}
-
 fn native_range_record(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
@@ -7507,7 +7377,26 @@ fn native_range_record(
         v8::Local::<v8::Object>::try_from(args.get(0)).ok()
     };
     if let Some(receiver) = receiver {
-        if range_record_set_or_get(scope, &args, receiver, key, &mut rv) {
+        if args.length() > 1 && args.get(1).is_object() {
+            let record = args.get(1);
+            receiver.set_private(scope, key, record);
+            if args.get(0).is_undefined() {
+                if let Ok(record) = v8::Local::<v8::Object>::try_from(record) {
+                    range_live::register(scope, record);
+                }
+            }
+            rv.set(if args.get(0).is_undefined() {
+                receiver.into()
+            } else {
+                record
+            });
+            return;
+        }
+        if let Some(record) = receiver
+            .get_private(scope, key)
+            .filter(|value| value.is_object())
+        {
+            rv.set(record);
             return;
         }
     }
