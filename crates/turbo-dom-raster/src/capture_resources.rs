@@ -38,6 +38,8 @@ pub fn capture_resources(
     let galley =
         options.with_fonts(|fonts| crate::lay_out(&tree, css, viewport, &decoded, fonts, options));
     let height = crate::paint_height(&galley, viewport, options.full_page);
+    let (capture_width, capture_height) =
+        capture_size(viewport.width, height, options.device_scale);
     let all = crate::image_urls(html)
         .into_iter()
         .chain(crate::image_urls_in_css(css))
@@ -52,8 +54,8 @@ pub fn capture_resources(
         html.to_ascii_lowercase().contains("filter") || css.to_ascii_lowercase().contains("filter");
     collect(
         &galley,
-        viewport.width as f32,
-        height as f32,
+        capture_width,
+        capture_height,
         conservative,
         &mut selected,
         &mut examined,
@@ -61,6 +63,28 @@ pub fn capture_resources(
     CaptureResources {
         pixel_urls: selected.intersection(&all).cloned().collect(),
         fragments_examined: examined,
+    }
+}
+
+fn capture_size(width: u32, height: u32, scale: f64) -> (f32, f32) {
+    let css = (width as f32, height as f32);
+    let Ok((w, h)) = crate::screenshot_pixel_size(width, height, scale) else {
+        return css;
+    };
+    // PNG transforms use f32; SVG retains f64. Cover either painter's rounded
+    // pixel canvas, including missing-body placeholders at the fractional edge.
+    let scale = scale.min(f64::from(scale as f32));
+    (capture_axis(css.0, w, scale), capture_axis(css.1, h, scale))
+}
+
+fn capture_axis(css: f32, pixels: u32, scale: f64) -> f32 {
+    let extent = f64::from(pixels) / scale;
+    if extent <= f64::from(css) {
+        css
+    } else {
+        // Selection may overestimate, but casting must never round a contributing
+        // edge inward. Preserve exact CSS bounds when no expansion is needed.
+        (extent as f32).next_up()
     }
 }
 
