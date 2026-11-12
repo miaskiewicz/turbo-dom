@@ -2427,18 +2427,36 @@
     }
     readonly(CloseEvent.prototype,closeStates,['wasClean','code','reason']);tagEvent(CloseEvent,'CloseEvent');
     // Native ephemeron records keep Touch brands valid across same-isolate realms.
-    var TouchError=TypeError,touchNumber=Number,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,TouchProxy=Proxy;
-    function touchNumberValue(value){if(value===undefined)return 0;if(typeof value==='bigint')throw new TouchError('Cannot convert a BigInt to a number');return touchNumber(value);}
+    var TouchError=TypeError,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,TouchProxy=Proxy;
+    function touchNumberValue(value){return value===undefined?0:+value;}
     function touchRecord(value,kind){var record=collectionGet(value);if(!record||record.kind!==kind)throw new TouchError('Illegal invocation');return record;}
     var touchFields=['screenX','screenY','clientX','clientY','pageX','pageY','radiusX','radiusY','rotationAngle','force'];
+    var touchInitFields=['clientX','clientY','force','identifier','pageX','pageY','radiusX','radiusY','rotationAngle','screenX','screenY','target'];
+    var touchFloatFields={__proto__:null,force:true,radiusX:true,radiusY:true,rotationAngle:true};
+    function touchTarget(value){
+      if(value===undefined)throw new TouchError('target is required');
+      // The native EventTarget getter brands foreign-realm targets too.
+      if(!value||!((__ns.eventTargetNativeBrand&&__ns.eventTargetNativeBrand(value))||value===g||$call($N.nodeType,value)))throw new TouchError('target must be an EventTarget');
+      return value;
+    }
+    function touchInitValue(name,value){
+      if(name==='target')return touchTarget(value);
+      if(name==='identifier'){
+        if(value===undefined)throw new TouchError('identifier is required');
+        return touchNumberValue(value)>>0;
+      }
+      var number=touchNumberValue(value);
+      if(!touchFinite(number))throw new TouchError('Touch coordinates must be finite');
+      if(touchFloatFields[name])number=touchFloat(number);
+      if(!touchFinite(number))throw new TouchError('Touch coordinates must be finite');
+      return number;
+    }
     class Touch {
       constructor(init){
-        if(!init||init.identifier===undefined||init.target===undefined)throw new TouchError('identifier and target are required');
-        // The native EventTarget getter brands foreign-realm targets too.
-        var target=init.target;
-        if(!target||!((__ns.eventTargetNativeBrand&&__ns.eventTargetNativeBrand(target))||target===g||$call($N.nodeType,target)))throw new TouchError('target must be an EventTarget');
-        var record={kind:'Touch',identifier:touchNumberValue(init.identifier)>>0,target:target};
-        for(var i=0;i<touchFields.length;i++){var name=touchFields[i],value=touchNumberValue(init[name]);if(!touchFinite(value))throw new TouchError('Touch coordinates must be finite');record[name]=i<6?value:touchFloat(value);if(!touchFinite(record[name]))throw new TouchError('Touch coordinates must be finite');}
+        if(!init||(typeof init!=='object'&&typeof init!=='function'))throw new TouchError('TouchInit must be a dictionary');
+        // Web IDL converts dictionary members once, in lexicographic order, before construction.
+        var record={__proto__:null,kind:'Touch'};
+        for(var i=0;i<touchInitFields.length;i++){var name=touchInitFields[i];record[name]=touchInitValue(name,init[name]);}
         collectionSet(this,record);
       }
     }
