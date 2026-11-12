@@ -39,6 +39,13 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   dispatch ordering. Embedders must enter `engine_task_scope` for runtime-owned host timer
   callbacks; producer tests alone do not certify surf's official Deno integration.
 
+- **Adversarial review, round one (#489)**: image metadata no longer suppresses
+  embedded data-image decoding; document replacement preserves dynamically admitted
+  custom-element scripts; Touch dictionaries read members once in Web IDL order and
+  reject boxed BigInts. Collapsed trailing spaces preserve bidi state, and npm runtime
+  dispatch tables reject inherited object keys. Full-page capture retains scroll extents
+  of CSS-clipped boxes while keeping their pixels clipped.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
