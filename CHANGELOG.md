@@ -5,21 +5,42 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.3] — 2026-11-11
+## [0.8.3] — 2026-11-12
 
-Complexity ceiling drop: every function in the repo is now cc <= 9 (was cc <= 15).
+Native browser binding fixes and additive screenshot APIs for turbo-surf integration.
 
-- **Complexity refactor (#379, #462, #463, #464)**: cyclomatic-complexity ceiling dropped from
-  cc <= 15 to cc <= 9 repo-wide. All 354 JS violations (browser-env: 339, src/runtime: 15) and
-  all Rust violations across turbo-dom, turbo-dom-layout, turbo-dom-raster and
-  turbo-dom-browser-env refactored to cc <= 9. CI config (`.oxlintrc.complexity.json`,
-  `package.json`, `ci.yml`) updated; both `complexity / rust` and `complexity / js` jobs now
-  gate at cc <= 9.
-- **browser-env (correctness)**: `AbortSignal.timeout`/`.any` polyfill moved to its own
-  `run_js` call so a missing `AbortSignal` no longer silently kills the entire init script
-  (#488).
-- **browser-env (test)**: `drainMicrotasksAcrossDispatch` now covers the `record.target` restore
-  path (#487).
+- **Complexity (#379, #462–#464)**: the blocking ceiling is now cc <= 9 for the Rust
+  parser/DOM/layout/raster and npm runtime. The browser-env binding remains excluded from
+  both complexity scans; its attempted extractions were reverted after build regressions
+  (#490). No coverage floor was lowered.
+- **Browser binding (#499, #502, #503)**: constructible, branded `Touch` and genuine
+  `TouchEvent`/`TouchList` payloads; captured base `Event` identity survives embedder
+  constructor replacement; HTML hidden controls and suppressed descendants have correct
+  UA display and zero geometry while author display overrides remain effective.
+- **Document replacement (#500)**: additive `replace_document_content` preserves the
+  existing Window/document and detached nodes, returning parser-ordered scripts for the
+  host's policy/loader/completion pipeline. Custom elements construct after attachment.
+  Ordinary guest `document.open/write/close` streaming remains unsupported.
+- **Title performance (#492)**: reads and writes stop at the first HTML title in document
+  order, preserving mutation and malformed-document semantics. An offline scalable harness
+  asserts bounded native work independently of diagnostic timings.
+- **Screenshot APIs (#491, #493–#497)**: immutable owned `PreparedScreenshot` scenes reuse
+  layout and decoded resources; conservative `capture_resources` planning accepts intrinsic
+  `ImageMetadata` independently of pixel bodies. Options add transparent initial canvas,
+  device scale independent of CSS viewport, and colored masking rectangles with exact
+  serialized-snapshot element geometry mapping. Full-page bounds include positioned overflow
+  and retain the viewport minimum and safety cap. Geometry for rotated/rounded clips and
+  rasterized SVG descendants is conservatively bounded. Reusable offline harnesses assert
+  pixel/byte equality and deterministic layout work.
+- **AbortSignal contract (#487, #488, #498)**: the standalone timeout/any polyfill has its
+  own installation call; tests cover retained host callback task scopes and nested/page
+  dispatch ordering. Embedders must enter `engine_task_scope` for runtime-owned host timer
+  callbacks; producer tests alone do not certify surf's official Deno integration.
+
+Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
+inputs change and resolve masks against the same serialized document snapshot. Native
+per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
+are deferred to v0.8.4. No process-global timezone workaround or partial popup API is added.
 
 ## [0.8.2] — 2026-11-09
 
