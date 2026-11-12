@@ -234,6 +234,8 @@ fn prepared_scene_retains_scale_transparency_and_metadata_after_inputs_drop() {
     let pixels = tiny_skia::Pixmap::decode_png(&png).unwrap();
     assert_eq!((pixels.width(), pixels.height()), (60, 60));
     assert_eq!(pixels.pixel(50, 50).unwrap().alpha(), 0);
+    assert_eq!(pixels.pixel(5, 5).unwrap().red(), 220);
+    assert_eq!(pixels.pixel(5, 5).unwrap().green(), 220);
     assert_eq!(pixels.pixel(5, 32).unwrap().red(), 255);
     assert!(scene.svg().unwrap().contains("width=\"60\" height=\"60\""));
     assert_eq!(scene.png().unwrap(), png);

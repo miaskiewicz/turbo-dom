@@ -119,11 +119,12 @@ pub(crate) fn add_metadata(
         decoded
             .entry(key.clone())
             .or_insert_with(|| image_paint::DecodedImage {
-                width: intrinsic.width,
-                height: intrinsic.height,
+                // Intrinsic dimensions describe layout, not an available pixel buffer.
+                width: 0,
+                height: 0,
                 rgba: Vec::new(),
                 intrinsic: *intrinsic,
-                placeholder: false,
+                placeholder: true,
             });
     }
 }

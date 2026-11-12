@@ -198,3 +198,44 @@ fn internally_generated_svg_images_are_not_fetch_requests() {
         Vec::<String>::new()
     );
 }
+
+#[test]
+fn visible_metadata_without_a_pixel_body_uses_missing_image_placeholder() {
+    let metadata = [("missing".into(), Intrinsic::new(10, 20, false))]
+        .into_iter()
+        .collect();
+    let mut options = ScreenshotOptions::default();
+    options.image_metadata = Some(&metadata);
+    let html = "<body style='margin:0'><img src=missing style='display:block'><div style='width:10px;height:5px;background:red'></div>";
+    let viewport = Viewport {
+        width: 40,
+        height: 40,
+    };
+    let png =
+        screenshot_png_with_options(html, "", viewport, &ImageAssets::new(), &options).unwrap();
+    let pixels = tiny_skia::Pixmap::decode_png(&png).unwrap();
+    assert_eq!(pixels.pixel(5, 5).unwrap().red(), 220);
+    assert_eq!(pixels.pixel(5, 5).unwrap().green(), 220);
+    assert_eq!(pixels.pixel(5, 22).unwrap().red(), 255);
+    assert_eq!(pixels.pixel(5, 22).unwrap().green(), 0);
+    let svg = turbo_dom_raster::screenshot_svg_with_options(
+        html,
+        "",
+        viewport,
+        &ImageAssets::new(),
+        &options,
+    )
+    .unwrap();
+    assert!(svg.contains("#dcdcdc"));
+    let mut body = tiny_skia::Pixmap::new(10, 20).unwrap();
+    body.fill(tiny_skia::Color::from_rgba8(0, 255, 0, 255));
+    let assets = [("missing".into(), body.encode_png().unwrap())]
+        .into_iter()
+        .collect();
+    let pixels = tiny_skia::Pixmap::decode_png(
+        &screenshot_png_with_options(html, "", viewport, &assets, &options).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(pixels.pixel(5, 5).unwrap().green(), 255);
+    assert_eq!(pixels.pixel(5, 5).unwrap().red(), 0);
+}
