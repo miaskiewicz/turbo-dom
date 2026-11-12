@@ -54,6 +54,15 @@ impl PreparedScreenshot {
 
     /// Paint the retained layout to PNG without re-reading any preparation input.
     pub fn png(&self) -> Result<Vec<u8>, String> {
+        if self.scale == 1.0 {
+            return paint_png::paint(
+                &self.galley,
+                self.width,
+                self.height,
+                self.background,
+                &self.decoded,
+            );
+        }
         paint_png::paint_scaled(
             &self.galley,
             self.width,
@@ -67,6 +76,15 @@ impl PreparedScreenshot {
     /// Paint the same retained layout to a standalone SVG.
     pub fn svg(&self) -> Result<String, String> {
         let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
+        if self.scale == 1.0 {
+            return Ok(paint_svg::paint(
+                &self.galley,
+                self.width,
+                self.height,
+                self.background,
+                &self.decoded,
+            ));
+        }
         Ok(paint_svg::paint_at_size(
             &self.galley,
             (self.width, self.height),

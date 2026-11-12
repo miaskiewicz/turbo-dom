@@ -215,3 +215,26 @@ fn intrinsic_image_changes_are_isolated_from_existing_snapshot() {
     assert_eq!(pixels.pixel(10, 10).unwrap().red(), 255);
     assert_eq!(pixels.pixel(10, 10).unwrap().green(), 0);
 }
+
+#[test]
+fn prepared_scene_retains_scale_transparency_and_metadata_after_inputs_drop() {
+    let scene = {
+        let mut metadata = turbo_dom_raster::ImageMetadata::new();
+        metadata.insert(
+            "missing".into(),
+            turbo_dom_layout::image::Intrinsic::new(10, 20, false),
+        );
+        let mut options = ScreenshotOptions::default();
+        options.image_metadata = Some(&metadata);
+        options.device_scale = 1.5;
+        options.omit_background = true;
+        PreparedScreenshot::new("<body style='margin:0'><img src=missing style='display:block'><div style='width:10px;height:5px;background:red'></div>", "", Viewport { width:40, height:40 }, &ImageAssets::new(), &options)
+    };
+    let png = scene.png().unwrap();
+    let pixels = tiny_skia::Pixmap::decode_png(&png).unwrap();
+    assert_eq!((pixels.width(), pixels.height()), (60, 60));
+    assert_eq!(pixels.pixel(50, 50).unwrap().alpha(), 0);
+    assert_eq!(pixels.pixel(5, 32).unwrap().red(), 255);
+    assert!(scene.svg().unwrap().contains("width=\"60\" height=\"60\""));
+    assert_eq!(scene.png().unwrap(), png);
+}
