@@ -19,7 +19,7 @@ import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 import { blockText, canonical, declarations, expand, longhandAlias, longhands, longhandValue, shorthandValue } from './css-shorthand.mjs';
 import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
 
-const EVENT_CTORS = { CustomEvent, MouseEvent, MouseEvents: MouseEvent, KeyboardEvent, KeyEvents: KeyboardEvent, UIEvent, UIEvents: UIEvent, FocusEvent };
+const EVENT_CTORS = { __proto__: null, CustomEvent, MouseEvent, MouseEvents: MouseEvent, KeyboardEvent, KeyEvents: KeyboardEvent, UIEvent, UIEvents: UIEvent, FocusEvent };
 
 // Per-node query-result cache keyed by (selector, document version). querySelectorAll
 // returns a STATIC list per spec, so caching is safe until the next mutation bumps
@@ -2113,10 +2113,9 @@ function makeStyle(el) {
     write();
     return removed.value;
   };
-  const methods = { getPropertyValue: value, getPropertyPriority: priority, setProperty, removeProperty };
   return new Proxy({}, {
     get(_t, key) {
-      const m = methods[key];
+      const m = selectStyleMethod(key, value, priority, setProperty, removeProperty);
       if (m) return m;
       if (key === 'item') return (i) => parse()[i]?.name ?? '';
       if (key === 'length') return parse().length;
@@ -2133,6 +2132,13 @@ function makeStyle(el) {
     },
     has(_t, key) { return typeof key === 'string'; },
   });
+}
+function selectStyleMethod(key, value, priority, setProperty, removeProperty) {
+  if (key === 'getPropertyValue') return value;
+  if (key === 'getPropertyPriority') return priority;
+  if (key === 'setProperty') return setProperty;
+  if (key === 'removeProperty') return removeProperty;
+  return undefined;
 }
 function applyEntries(all, set, important) {
   for (const entry of set) {
