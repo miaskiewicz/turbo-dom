@@ -228,6 +228,23 @@ fn prepared_scene_retains_scale_transparency_and_metadata_after_inputs_drop() {
         options.image_metadata = Some(&metadata);
         options.device_scale = 1.5;
         options.omit_background = true;
+        let markup = "<body style='margin:0'><img src=missing style='display:block'><div style='width:10px;height:5px;background:red'></div>";
+        let rect = turbo_dom_raster::screenshot_element_rects(
+            markup,
+            "",
+            Viewport {
+                width: 40,
+                height: 40,
+            },
+            &ImageAssets::new(),
+            &options,
+            &[4],
+        )
+        .unwrap()[0]
+            .unwrap();
+        assert_eq!(rect.y, 20.0);
+        let masks = [turbo_dom_raster::ScreenshotMask::new(rect)];
+        options.masks = &masks;
         PreparedScreenshot::new("<body style='margin:0'><img src=missing style='display:block'><div style='width:10px;height:5px;background:red'></div>", "", Viewport { width:40, height:40 }, &ImageAssets::new(), &options)
     };
     let png = scene.png().unwrap();
@@ -237,6 +254,7 @@ fn prepared_scene_retains_scale_transparency_and_metadata_after_inputs_drop() {
     assert_eq!(pixels.pixel(5, 5).unwrap().red(), 220);
     assert_eq!(pixels.pixel(5, 5).unwrap().green(), 220);
     assert_eq!(pixels.pixel(5, 32).unwrap().red(), 255);
+    assert_eq!(pixels.pixel(5, 32).unwrap().blue(), 255);
     assert!(scene.svg().unwrap().contains("width=\"60\" height=\"60\""));
     assert_eq!(scene.png().unwrap(), png);
 }

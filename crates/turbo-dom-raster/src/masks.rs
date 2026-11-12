@@ -51,6 +51,7 @@ pub fn screenshot_element_rects(
     element_indices: &[usize],
 ) -> Result<Vec<Option<ScreenshotRect>>, String> {
     let mut decoded = crate::image_paint::decode_all(images);
+    crate::capture_resources::add_metadata(&mut decoded, options.image_metadata);
     crate::image_paint::add_data_uri_images(&mut decoded, external_css, html);
     let tree = turbo_dom_layout::parse_html_tree(html);
     let mut elements = tree.query_selector_all("*").to_vec();
