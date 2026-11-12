@@ -59,6 +59,12 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   retains image bodies at rounded fractional-DPR capture edges, preserving pixel equality
   between full and selected resource sets.
 
+- **Replacement resource handoff (#506)**: adoption keeps internal target construction
+  private until wrapper identity transfers. Reentrant resource consumers first observe
+  canonical nodes with parser flags established, preserving single image admission and
+  parser ordering. Distinct same-URL elements, authored `src` reloads, and synchronous
+  custom-element resource callbacks retain their normal behavior.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
