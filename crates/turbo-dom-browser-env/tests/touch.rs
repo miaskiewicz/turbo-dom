@@ -18,7 +18,7 @@ fn touch_constructor_and_event_lists() {
         const ok = touch.identifier === 7 && touch.target === target && touch.clientX === 12 && touch.pageY === 15 && touch.screenX === 0 && touch.force === 0.5 && touch.radiusX === Math.fround(0.1) &&
           touch instanceof Touch && event instanceof UIEvent && event.touches instanceof TouchList && event.touches.length === 1 && event.touches[0] === touch && event.touches.item(0) === touch && event.touches.item(9) === null && [...event.touches][0] === touch && event.changedTouches[0] === touch && event.targetTouches[0] === touch && event.ctrlKey;
         if (!ok) return 'incorrect fields or lists';
-        if (Reflect.deleteProperty(event.touches,'0') || Reflect.set(event.touches,'9',touch)) return 'mutable list indices';
+        if (Reflect.deleteProperty(event.touches,'0') || !Reflect.set(event.touches,'9',touch) || event.touches[9] !== undefined) return 'mutable list indices';
         for (const init of [{}, {identifier:1,target:{}}, {identifier:1,target:Object.create(EventTarget.prototype)}, {identifier:1,target,clientX:Infinity}]) { try { new Touch(init); return 'accepted invalid touch'; } catch (e) { if (!(e instanceof TypeError)) return String(e); } }
         try { new TouchEvent('x',{touches:null}); return 'accepted null list'; } catch (e) { if (!(e instanceof TypeError)) return String(e); }
         try { new TouchEvent('x',{touches:[{}]}); return 'accepted invalid list'; } catch (e) { if (!(e instanceof TypeError)) return String(e); }

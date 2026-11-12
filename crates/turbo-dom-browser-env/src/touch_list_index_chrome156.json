@@ -1,0 +1,146 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "02a3721e919499464e2092c70cfd8279df4ddb9344ff0009e9e20e26201b8a8d",
+  "result": {
+    "keys": [
+      [
+        "0",
+        true,
+        true,
+        false,
+        true,
+        true,
+        false,
+        {
+          "configurable": true,
+          "writable": false,
+          "enumerable": true
+        }
+      ],
+      [
+        "1",
+        true,
+        false,
+        true,
+        true,
+        false,
+        false,
+        null
+      ],
+      [
+        "4294967294",
+        true,
+        false,
+        true,
+        true,
+        false,
+        false,
+        null
+      ],
+      [
+        "4294967295",
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        {
+          "configurable": true,
+          "writable": false,
+          "enumerable": false
+        }
+      ],
+      [
+        "4294967296",
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        {
+          "configurable": true,
+          "writable": false,
+          "enumerable": false
+        }
+      ],
+      [
+        "-1",
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        {
+          "configurable": true,
+          "writable": false,
+          "enumerable": false
+        }
+      ],
+      [
+        "01",
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        {
+          "configurable": true,
+          "writable": false,
+          "enumerable": false
+        }
+      ]
+    ],
+    "descriptors": [
+      [
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        false,
+        true,
+        true
+      ]
+    ],
+    "enumeration": [
+      [
+        "0"
+      ],
+      [
+        "0"
+      ],
+      true,
+      false
+    ]
+  }
+}

@@ -2427,7 +2427,7 @@
     }
     readonly(CloseEvent.prototype,closeStates,['wasClean','code','reason']);tagEvent(CloseEvent,'CloseEvent');
     // Native ephemeron records keep Touch brands valid across same-isolate realms.
-    var TouchError=TypeError,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,TouchProxy=Proxy;
+    var TouchError=TypeError,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,touchListFactory=__ns.makeNamedObject;
     function touchNumberValue(value){return value===undefined?0:+value;}
     function touchRecord(value,kind){var record=collectionGet(value);if(!record||record.kind!==kind)throw new TouchError('Illegal invocation');return record;}
     var touchFields=['screenX','screenY','clientX','clientY','pageX','pageY','radiusX','radiusY','rotationAngle','force'];
@@ -2469,14 +2469,27 @@
     member(TouchList.prototype,'item',{value:function item(index){if(!arguments.length)throw new TouchError('An index is required');return touchRecord(this,'TouchList').items[touchNumberValue(index)>>>0]||null;}});
     var touchValues=function values(){var items=touchRecord(this,'TouchList').items,index=0;return {next:function(){return index<items.length?{value:items[index++],done:false}:{value:undefined,done:true};},[touchIterator]:function(){return this;}};};
     $def(TouchList.prototype,touchIterator,{value:__ns.makeNativeFunction(touchValues,'values',0),writable:true,configurable:true});tagEvent(TouchList,'TouchList');
-    function touchIndex(key){return typeof key==='string'&&key!==''&&''+(key>>>0)===key;}
-    var touchListIndexHandlers={set:function(object,key,value,receiver){return !touchIndex(key)&&$R.set(object,key,value,receiver);},defineProperty:function(object,key,descriptor){return !touchIndex(key)&&$R.defineProperty(object,key,descriptor);},deleteProperty:function(object,key){return !touchIndex(key)&&$R.deleteProperty(object,key);}};
+    function touchIndex(key){return typeof key==='string'&&key!==''&&key!=='4294967295'&&''+(key>>>0)===key;}
+    function touchListOperation(items,operation,key){
+      if(operation==='indices'){var keys=[];for(var i=0;i<items.length;i++)$c.push(keys,i);return keys;}
+      if(operation==='keys')return [];
+      if(!touchIndex(key))return undefined;
+      return touchListIndexOperation(items,operation,key>>>0);
+    }
+    function touchListIndexOperation(items,operation,index){
+      var supported=index<items.length;
+      if(operation==='set'||operation==='define')return true;
+      if(operation==='delete')return !supported;
+      if(operation==='has')return supported;
+      if(operation==='descriptor')return supported?{__proto__:null,value:items[index],writable:false,enumerable:true,configurable:true}:undefined;
+      return supported?items[index]:undefined;
+    }
     function touchList(sequence){
-      var list=$create(TouchList.prototype),items=[];
+      var items=[];
       if(sequence!==undefined)for(var touch of sequence){touchRecord(touch,'Touch');$c.push(items,touch);}
-      for(var i=0;i<items.length;i++)$def(list,i,{value:items[i],enumerable:true,configurable:true});
-      // Web-IDL indexed getters reject writes/deletion even though their descriptors are configurable.
-      list=new TouchProxy(list,touchListIndexHandlers);
+      // Blink acknowledges indexed writes/definitions without changing readonly
+      // entries, even for non-configurable descriptors: a Proxy cannot model this.
+      var list=touchListFactory(TouchList.prototype,function(operation,key){return touchListOperation(items,operation,key);},true);
       collectionSet(list,{kind:'TouchList',items:items});
       return list;
     }
