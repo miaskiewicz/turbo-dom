@@ -1180,6 +1180,7 @@ function matchNthOfType(el, p) {
   return nthMatch(p.parsed.a, p.parsed.b, p.name === 'nth-last-of-type' ? n - i + 1 : i);
 }
 const PSEUDO_TREE = {
+  __proto__: null,
   'first-child': (el) => previousElement(el) === null,
   'last-child': (el) => nextElement(el) === null,
   'only-child': (el) => previousElement(el) === null && nextElement(el) === null,
@@ -1224,6 +1225,7 @@ function matchLogicalPseudo(el, p) {
 }
 // element state; form state reads the live PROPERTY first (what React sets), then the attribute
 const STATE_PSEUDO = {
+  __proto__: null,
   'empty': (el) => isEmpty(el),
   'root': (el) => isRootElement(el),
   'checked': (el) => isChecked(el),
