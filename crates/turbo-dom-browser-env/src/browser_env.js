@@ -3181,7 +3181,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     commitDeclaration(record);
   }
   function setDeclarationLegacyParse(record,name,value,priority){
-    var parsed={names:[],values:new Map(),fontFace:record.fontFace};
+    var parsed={__proto__:null,names:[],values:new Map(),fontFace:record.fontFace};
     parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');
     var accepted=$c.get(parsed.values,name);
     if(!accepted&&record.fontFace&&knownProperty(name)){
