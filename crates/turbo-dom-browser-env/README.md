@@ -85,6 +85,12 @@ Chrome's behaviour. Embedders select jsdom compatibility explicitly for their te
 | `set_css_transitions(scope, enabled)` | `true`: a transitioned property's change creates a `CSSTransition` that animates it and fires `transitionrun` / `transitionstart` / `transitionend` / `transitioncancel` like Chrome 156 | `false` (jsdom 27): no transition runs, the end value applies at once, no transition event fires |
 | `set_css_animations(scope, enabled)` | `true`: an `animation-name` naming a `@keyframes` rule creates a `CSSAnimation` that animates the element and fires `animationstart` / `animationiteration` / `animationend` / `animationcancel` like Chrome 156 | `false` (jsdom 27): no `@keyframes` animation runs, no animation event fires; `Element.animate` is unaffected |
 | `set_touch_event_mode(scope, TouchEventMode)` | `TouchEventMode::Chrome`: TouchEvent init lists require branded `Touch` entries | `TouchEventMode::Jsdom`: retain entries unchanged in `touches`, `targetTouches`, and `changedTouches`, including touch-like plain objects |
+| `set_computed_style_mode(scope, ComputedStyleMode)` | `ComputedStyleMode::Chrome`: Chrome computed-value serialization | `ComputedStyleMode::Jsdom`: preserve the winning declared `text-decoration` shorthand without synthesized computed color; other properties retain Chrome semantics |
+
+The computed-style mode is independent of media, CSS motion and touch-event mode. It
+currently scopes compatibility to the declared `text-decoration` shorthand: explicit color
+and style tokens remain intact, while separately declared longhands do not synthesize a
+shorthand. Mode changes invalidate computed snapshots, including retained live views.
 
 The touch-event switch is independent of media and CSS motion. It affects future event
 construction in the current realm; existing lists and other realms are unchanged. jsdom

@@ -2138,6 +2138,27 @@ pub fn set_touch_event_mode(scope: &mut v8::PinScope, mode: TouchEventMode) {
     );
 }
 
+/// Serialization compatibility for computed text-decoration (other properties retain Chrome semantics).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ComputedStyleMode {
+    /// Chrome computed-value serialization (the default).
+    #[default]
+    Chrome,
+    /// Preserve the declared text-decoration shorthand, as jsdom does.
+    Jsdom,
+}
+
+/// Set the current realm's computed-style serialization mode, independently of CSS/media switches.
+pub fn set_computed_style_mode(scope: &mut v8::PinScope, mode: ComputedStyleMode) {
+    run_js(
+        scope,
+        match mode {
+            ComputedStyleMode::Chrome => "__tsNs.setComputedStyleMode('chrome')",
+            ComputedStyleMode::Jsdom => "__tsNs.setComputedStyleMode('jsdom')",
+        },
+    );
+}
+
 /// Whether the current window runs CSS transitions (turbo-dom#313). **On by default**: every
 /// install starts with it on, as Chrome, so an embedder that never calls this keeps Chrome's
 /// behaviour. On, a transitioned property's computed-value change creates a `CSSTransition`

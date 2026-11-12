@@ -71,6 +71,13 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   independent of media and CSS-motion settings; lists retain index, iteration and `item()`
   access without copying entry objects. An exact jsdom 27 control covers the regression.
 
+- **jsdom computed text-decoration**: additive per-realm `ComputedStyleMode` /
+  `set_computed_style_mode` keeps the winning declared shorthand in `Jsdom` mode instead
+  of appending a synthesized computed color. Explicit authored colors remain intact;
+  longhand-only declarations do not synthesize a shorthand. Chrome remains the default,
+  and the mode is independent of CSS/media and touch settings. A jsdom-27 control covers
+  inline/rule declarations, updates/removal and explicit values.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
