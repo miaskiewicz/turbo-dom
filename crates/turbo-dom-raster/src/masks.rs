@@ -196,3 +196,117 @@ pub(crate) fn paint_svg(svg: &mut String, masks: &[ScreenshotMask]) {
             rect.x(),rect.y(),rect.width(),rect.height(),f32::from(a)/255.);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use turbo_dom_layout::layout::value::BorderEdges;
+    use turbo_dom_layout::{BorderRadii, ClipRect, FragmentContent, NodeId, OverflowClip};
+
+    fn fragment(id: u32, height: f32) -> Fragment {
+        Fragment::new(
+            NodeId(id),
+            0.0,
+            0.0,
+            20.0,
+            height,
+            FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: BorderRadii::ZERO,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn sources() -> (NodeSources, Handle, Handle) {
+        let tree = turbo_dom_layout::parse_html_tree("<div><span></span></div>");
+        let parent = tree.query_selector_all("div")[0];
+        let child = tree.query_selector_all("span")[0];
+        (
+            NodeSources {
+                elements: [(NodeId(0), parent), (NodeId(1), child)]
+                    .into_iter()
+                    .collect(),
+                ..NodeSources::default()
+            },
+            parent,
+            child,
+        )
+    }
+
+    fn bounds(root: &Fragment, sources: &NodeSources) -> HashMap<Handle, ScreenshotRect> {
+        let mut output = HashMap::new();
+        collect(
+            root,
+            sources,
+            Transform::identity(),
+            Rect::from_xywh(0.0, 0.0, 20.0, 20.0),
+            &mut output,
+        );
+        output
+    }
+
+    #[test]
+    fn disjoint_element_clip_removes_own_geometry_and_descendants() {
+        let (sources, parent, child) = sources();
+        let mut root = fragment(0, 100.0);
+        root.children.push(fragment(1, 10.0));
+        let visible = bounds(&root, &sources);
+        assert_eq!(
+            visible[&parent],
+            ScreenshotRect {
+                x: 0.0,
+                y: 0.0,
+                width: 20.0,
+                height: 20.0
+            }
+        );
+        assert_eq!(
+            visible[&child],
+            ScreenshotRect {
+                x: 0.0,
+                y: 0.0,
+                width: 20.0,
+                height: 10.0
+            }
+        );
+        root.clip = Some(ClipRect {
+            x: 0.0,
+            y: 40.0,
+            width: 20.0,
+            height: 10.0,
+            radii: BorderRadii::ZERO,
+        });
+        assert!(bounds(&root, &sources).is_empty());
+    }
+
+    #[test]
+    fn disjoint_overflow_clip_retains_own_geometry_but_removes_descendants() {
+        let (sources, parent, child) = sources();
+        let mut root = fragment(0, 100.0);
+        root.children.push(fragment(1, 10.0));
+        assert!(bounds(&root, &sources).contains_key(&child));
+        root.overflow_clip = Some(OverflowClip {
+            x: 0.0,
+            y: 40.0,
+            width: 20.0,
+            height: 10.0,
+            radii: BorderRadii::ZERO,
+        });
+        let clipped = bounds(&root, &sources);
+        assert_eq!(clipped.len(), 1);
+        assert_eq!(
+            clipped[&parent],
+            ScreenshotRect {
+                x: 0.0,
+                y: 0.0,
+                width: 20.0,
+                height: 20.0
+            }
+        );
+        assert!(!clipped.contains_key(&child));
+    }
+}
