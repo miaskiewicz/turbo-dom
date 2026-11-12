@@ -2117,6 +2117,27 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
     );
 }
 
+/// Validation of entries in TouchEvent init lists, independently of CSS/media settings.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TouchEventMode {
+    /// Require branded Touch objects, as Chrome does (the default).
+    #[default]
+    Chrome,
+    /// Retain arbitrary list entries unchanged, for jsdom test environments.
+    Jsdom,
+}
+
+/// Set the current realm's TouchEvent list validation mode. Existing lists are unchanged.
+pub fn set_touch_event_mode(scope: &mut v8::PinScope, mode: TouchEventMode) {
+    run_js(
+        scope,
+        match mode {
+            TouchEventMode::Chrome => "__tsNs.setTouchEventMode('chrome')",
+            TouchEventMode::Jsdom => "__tsNs.setTouchEventMode('jsdom')",
+        },
+    );
+}
+
 /// Whether the current window runs CSS transitions (turbo-dom#313). **On by default**: every
 /// install starts with it on, as Chrome, so an embedder that never calls this keeps Chrome's
 /// behaviour. On, a transitioned property's computed-value change creates a `CSSTransition`

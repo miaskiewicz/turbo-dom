@@ -77,13 +77,20 @@ return.
 | embedding hooks (turbo-surf) | the other `pub fn`s: document response facts (`set_document_last_modified`, `set_document_domain_sandboxed`, `set_document_origin_keyed`; `share_document_domain(scope, document, origin)` joins a document to another's origin — initial `about:blank` / `about:srcdoc` children of one agent cluster — so `document.domain` reads and relaxes one effective domain across them like Chrome 156, turbo-dom#284; without it every document keeps its own), form submission, CSS policy, Trusted Types, inline handlers, trusted events (`mark_event_trusted`, `dispatch_host_event`; `dispatch_host_event_did_listeners_throw(scope, event, target) -> bool` dispatches and also returns the DOM's legacy-output-did-listeners-throw flag — whether a listener of that dispatch threw (nested dispatches don't count) — which IndexedDB aborts a transaction on, turbo-surf#148; every listener exception is reported at the listener's window like Chrome 156, turbo-dom#301), user activation (`ActivationHost` answering `ActivationQuery`: new `ActivationQuery::Sticky` variant — the window has ever been activated — gates media `play()`'s autoplay policy, turbo-dom#323; without a host `Sticky` reports false), document parsing / import (`parse_xml_document_units` parses `DOMParser`'s XML types into an `XMLDocument`, `<parsererror>` documents included, and returns it as `ParsedXmlDocument { document, well_formed }` so an embedder can tell a malformed source without inspecting the tree), node nonces |
 
 **Runtime switches.** Set per window after install; an embedder that never calls them gets
-Chrome's behaviour. turbo-test turns all three to jsdom's for vitest parity.
+Chrome's behaviour. Embedders select jsdom compatibility explicitly for their test environments.
 
 | switch | default | off / other value |
 |---|---|---|
 | `set_media_mode(scope, MediaMode)` | `MediaMode::Chrome`: live `matchMedia` / `MediaQueryList`, `@media` / `@import` media lists evaluated against the viewport | `MediaMode::Jsdom` (jsdom 27): no `matchMedia`, a media list applies only with an exact `screen` item |
 | `set_css_transitions(scope, enabled)` | `true`: a transitioned property's change creates a `CSSTransition` that animates it and fires `transitionrun` / `transitionstart` / `transitionend` / `transitioncancel` like Chrome 156 | `false` (jsdom 27): no transition runs, the end value applies at once, no transition event fires |
 | `set_css_animations(scope, enabled)` | `true`: an `animation-name` naming a `@keyframes` rule creates a `CSSAnimation` that animates the element and fires `animationstart` / `animationiteration` / `animationend` / `animationcancel` like Chrome 156 | `false` (jsdom 27): no `@keyframes` animation runs, no animation event fires; `Element.animate` is unaffected |
+| `set_touch_event_mode(scope, TouchEventMode)` | `TouchEventMode::Chrome`: TouchEvent init lists require branded `Touch` entries | `TouchEventMode::Jsdom`: retain entries unchanged in `touches`, `targetTouches`, and `changedTouches`, including touch-like plain objects |
+
+The touch-event switch is independent of media and CSS motion. It affects future event
+construction in the current realm; existing lists and other realms are unchanged. jsdom
+mode preserves entry identity through list indexing, iteration and `item()` (the latter is
+an additional TouchList convenience; jsdom 27 itself exposes arrays). A test runner should
+select this mode from its effective environment, independently of a Chrome-media opt-in.
 
 The two CSS switches are independent of each other and of the media mode. With both off,
 the Web Animations surface jsdom lacks (`Element.prototype.animate` / `getAnimations`,

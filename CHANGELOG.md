@@ -65,6 +65,12 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   parser ordering. Distinct same-URL elements, authored `src` reloads, and synchronous
   custom-element resource callbacks retain their normal behavior.
 
+- **jsdom TouchEvent compatibility**: additive per-realm `set_touch_event_mode` /
+  `TouchEventMode` accepts plain-object touch entries unchanged when explicitly set to
+  `Jsdom`. Chrome-strict branded `Touch` validation remains the default. This switch is
+  independent of media and CSS-motion settings; lists retain index, iteration and `item()`
+  access without copying entry objects. An exact jsdom 27 control covers the regression.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)

@@ -2464,9 +2464,11 @@
     touchGetter('identifier');touchGetter('target');
     for(var touchField=0;touchField<touchFields.length;touchField++)touchGetter(touchFields[touchField]);
     tagEvent(Touch,'Touch');
+    var touchEventJsdom=false;
+    __ns.setTouchEventMode=function(mode){touchEventJsdom=mode==='jsdom';};
     class TouchList {constructor(){throw new TouchError('Illegal constructor');}}
     member(TouchList.prototype,'length',{get:function(){return touchRecord(this,'TouchList').items.length;}});
-    member(TouchList.prototype,'item',{value:function item(index){if(!arguments.length)throw new TouchError('An index is required');return touchRecord(this,'TouchList').items[touchNumberValue(index)>>>0]||null;}});
+    member(TouchList.prototype,'item',{value:function item(index){if(!arguments.length)throw new TouchError('An index is required');var items=touchRecord(this,'TouchList').items,at=touchNumberValue(index)>>>0;return at<items.length?items[at]:null;}});
     var touchValues=function values(){var items=touchRecord(this,'TouchList').items,index=0;return {next:function(){return index<items.length?{value:items[index++],done:false}:{value:undefined,done:true};},[touchIterator]:function(){return this;}};};
     $def(TouchList.prototype,touchIterator,{value:__ns.makeNativeFunction(touchValues,'values',0),writable:true,configurable:true});tagEvent(TouchList,'TouchList');
     function touchIndex(key){return typeof key==='string'&&key!==''&&key!=='4294967295'&&''+(key>>>0)===key;}
@@ -2486,7 +2488,7 @@
     }
     function touchList(sequence){
       var items=[];
-      if(sequence!==undefined)for(var touch of sequence){touchRecord(touch,'Touch');$c.push(items,touch);}
+      if(sequence!==undefined)for(var touch of sequence){if(!touchEventJsdom)touchRecord(touch,'Touch');$c.push(items,touch);}
       // Blink acknowledges indexed writes/definitions without changing readonly
       // entries, even for non-configurable descriptors: a Proxy cannot model this.
       var list=touchListFactory(TouchList.prototype,function(operation,key){return touchListOperation(items,operation,key);},true);

@@ -416,6 +416,8 @@ browser_env.js: 0.8.3 PR#489 review three: TouchEvent sequences convert in dicti
 script_state.rs: 0.8.3 PR#489 review: initialize parser scripts from imported roots before custom-element reactions
 browser_env.rs: 0.8.3 PR#489 review two: replacement parser preserves original script order before canonical declarative-shadow attachment
 document_basics.rs: 0.8.3 turbo-dom#506 internal target adoption construction is quiet until canonical wrapper cache transfer
+browser_env.js: 0.8.3 explicit per-realm jsdom TouchEvent list compatibility switch, independent of CSS/media; strict Chrome remains default
+browser_env.rs: 0.8.3 public TouchEventMode and set_touch_event_mode configure the private per-realm list policy
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -437,6 +439,7 @@ OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
 OWNED="$OWNED touch_conversion_chrome156.json touch_list_index_chrome156.json document_replacement_shadow.html document_replacement_shadow_chrome156.json document_replacement_realm_chrome156.json"
 OWNED="$OWNED touch_event_realm_chrome156.json touch_event_sequence_chrome156.json touch_event_intrinsics_chrome156.json"
+OWNED="$OWNED touch_jsdom_jsdom27.json"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"

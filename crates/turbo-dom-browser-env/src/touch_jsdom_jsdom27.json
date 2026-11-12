@@ -1,0 +1,27 @@
+{
+  "jsdom": "27.0.1",
+  "probeSha256": "91376489ac439b98e65f84cbf6413af431ca957156afa3088871e0ad0b30d1bf",
+  "result": [
+    {
+      "name": "touches",
+      "length": 1,
+      "same": true,
+      "clientX": 10,
+      "clientY": 10
+    },
+    {
+      "name": "targetTouches",
+      "length": 1,
+      "same": true,
+      "clientX": 10,
+      "clientY": 10
+    },
+    {
+      "name": "changedTouches",
+      "length": 1,
+      "same": true,
+      "clientX": 10,
+      "clientY": 10
+    }
+  ]
+}
