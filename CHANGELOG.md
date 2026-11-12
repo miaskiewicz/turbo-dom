@@ -52,6 +52,13 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   attaches declarative shadow roots, preserving parser-script order and non-clonable roots
   while keeping ordinary templates inert and custom-element reactions on the live document.
 
+- **Adversarial review, round three (#489)**: TouchEvent sequence conversion order
+  matches Chrome, borrowed getters accept valid foreign-realm events, and private records
+  resist guest prototype setters. Document replacement creates nodes in the target realm.
+  Selector dispatch ignores inherited prototype keys. Resource planning conservatively
+  retains image bodies at rounded fractional-DPR capture edges, preserving pixel equality
+  between full and selected resource sets.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)

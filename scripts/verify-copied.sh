@@ -412,6 +412,7 @@ event_listeners.js: 0.8.3 turbo-dom#488 the AbortSignal.timeout/.any polyfill is
 event_listeners.rs: 0.8.3 turbo-dom#488 registers abort_signal_polyfill.js as a separate init script run
 browser_env.js: 0.8.3 PR#489 review: Touch dictionary members convert once in lexical order using Web IDL ToNumber
 browser_env.js: 0.8.3 PR#489 review two: TouchList uses canonical native indexed-object hooks for readonly operations and ordinary 2^32-1 property
+browser_env.js: 0.8.3 PR#489 review three: TouchEvent sequences convert in dictionary order and native ephemeron records brand foreign-realm getters
 script_state.rs: 0.8.3 PR#489 review: initialize parser scripts from imported roots before custom-element reactions
 browser_env.rs: 0.8.3 PR#489 review two: replacement parser preserves original script order before canonical declarative-shadow attachment
 "
@@ -434,6 +435,7 @@ OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.js
 OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
 OWNED="$OWNED touch_conversion_chrome156.json touch_list_index_chrome156.json document_replacement_shadow.html document_replacement_shadow_chrome156.json document_replacement_realm_chrome156.json"
+OWNED="$OWNED touch_event_realm_chrome156.json touch_event_sequence_chrome156.json touch_event_intrinsics_chrome156.json"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"
