@@ -87,18 +87,25 @@ fn full_page_scroll_extent_survives_css_clip_without_painting_clipped_ink() {
         width: 100,
         height: 80,
     };
-    // Chrome 156 includes clipped positioned boxes in scrollHeight even though
-    // their ink is absent; an ancestor overflow clip is tested separately above.
-    for (body, height) in [
-        ("<div style='position:absolute;top:220px;width:20px;height:20px;background:red;clip:rect(0,0,0,0)'></div>", 240),
-        ("<div style='position:absolute;top:20px;width:20px;height:20px;clip:rect(0,0,0,0)'><div style='position:absolute;top:220px;width:20px;height:20px;background:red'></div></div>", 260),
-    ] {
-        let html = format!("<!doctype html><body style='margin:0'>{body}");
-        let scene = turbo_dom_raster::PreparedScreenshot::new(&html, "", viewport, &ImageAssets::new(), &options);
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/full-page-clip-chrome156.json")).unwrap();
+    for case in control["cases"].as_array().unwrap() {
+        let height = case["height"].as_u64().unwrap() as u32;
+        assert_eq!(case["height"], case["scrollHeight"]);
+        let scene = turbo_dom_raster::PreparedScreenshot::new(
+            case["html"].as_str().unwrap(),
+            "",
+            viewport,
+            &ImageAssets::new(),
+            &options,
+        );
         let png = scene.png().unwrap();
         let pixels = image::load_from_memory(&png).unwrap().to_rgba8();
         assert_eq!(pixels.dimensions(), (100, height));
         assert!(pixels.pixels().all(|p| p.0 == [255; 4]));
-        assert!(scene.svg().unwrap().contains(&format!("height=\"{height}\"")));
+        assert!(scene
+            .svg()
+            .unwrap()
+            .contains(&format!("height=\"{height}\"")));
     }
 }
