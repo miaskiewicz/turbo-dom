@@ -78,6 +78,12 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   and the mode is independent of CSS/media and touch settings. A jsdom-27 control covers
   inline/rule declarations, updates/removal and explicit values.
 
+- **Explicit text-decoration color coherence**: jsdom-mode shorthand metadata now uses
+  the same declared CSSOM serialization as inline and rule styles. Explicit hexadecimal
+  colors therefore agree with canonical RGB values, and equivalent hex/RGB assignments
+  cannot leave retained computed-style views holding an older spelling. Line-only values
+  still omit synthetic colors.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)

@@ -89,8 +89,11 @@ Chrome's behaviour. Embedders select jsdom compatibility explicitly for their te
 
 The computed-style mode is independent of media, CSS motion and touch-event mode. It
 currently scopes compatibility to the declared `text-decoration` shorthand: explicit color
-and style tokens remain intact, while separately declared longhands do not synthesize a
-shorthand. Mode changes invalidate computed snapshots, including retained live views.
+and style tokens remain represented using declared CSSOM serialization, while separately declared longhands do not synthesize a
+shorthand. Explicit colors use the same canonical spelling as the declared style (for
+example, a hexadecimal color serialized as RGB); equivalent format-only assignments
+therefore preserve coherent retained views. Mode changes invalidate computed snapshots,
+including retained live views.
 
 The touch-event switch is independent of media and CSS motion. It affects future event
 construction in the current realm; existing lists and other realms are unchanged. jsdom

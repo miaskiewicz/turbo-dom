@@ -3158,7 +3158,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function parseLonghandText(name,value){if(!$c.startsWith(name,'--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}')),accepted=null;$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1||$c.trim($c.slice(part,0,index))!==name)return;var text=$c.trim($c.slice(part,index+1));if($c.test(/\s*!important\s*$/i,text))return;if(!$c.startsWith(name,'--')&&!deferredCssText(text)&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
-  function parseDeclaration(record,text){record.jsdomTextDecoration=null;if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries&&name==='text-decoration'&&(!record.jsdomTextDecoration||!record.jsdomTextDecoration.important||list[index+2]))record.jsdomTextDecoration={text:list[index+1],important:!!list[index+2]};if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
+  function parseDeclaration(record,text){record.jsdomTextDecoration=null;if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries){$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});if(name==='text-decoration'&&(!record.jsdomTextDecoration||!record.jsdomTextDecoration.important||list[index+2]))record.jsdomTextDecoration={text:shorthandValue(record,name),important:!!list[index+2]};}}return;}parseLegacyDeclaration(record,text);}
   // Accept / reject a legacy-parsed property name before its value is classified.
   function parseLegacyNameKnown(record, name){ return record.fontFace || $c.startsWith(name, '--') || knownProperty(name); }
   // Accept / reject the value through Typed OM once the !important suffix is stripped.
@@ -3176,8 +3176,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);
     var entries=declarationEntries(name,value);
     if(!entries)return;
-    if(name==='text-decoration')record.jsdomTextDecoration={text:value,important:priority==='important'};
     $c.forEach(entries,function(entry){storeDeclaration(record,entry[0],entry[1],priority,entry[2],entry[3]);});
+    if(name==='text-decoration')record.jsdomTextDecoration={text:shorthandValue(record,name),important:priority==='important'};
     commitDeclaration(record);
   }
   function setDeclarationLegacyParse(record,name,value,priority){
