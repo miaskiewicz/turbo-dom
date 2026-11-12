@@ -375,6 +375,11 @@ pub fn replace_document_content<'s>(
     if !valid || dom_implementation::is_xml_document(scope, document) {
         return Err("A browsing-context document is required");
     }
+    // Parser wrappers must originate in the target Window, including foreign host calls.
+    let context = document
+        .get_creation_context(scope)
+        .ok_or("Document realm unavailable")?;
+    let scope = &mut v8::ContextScope::new(scope, context);
     let (parsed, parser_nodes) = parse_replacement_document(scope, units);
     let children = {
         let _parsed = DomScope::for_object(scope, parsed);

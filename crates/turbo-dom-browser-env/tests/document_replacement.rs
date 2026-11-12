@@ -1,4 +1,5 @@
 //! Host document-stream handoff without replacing a Window or V8 context.
+use sha2::{Digest, Sha256};
 use turbo_dom_browser_env::browser_env::{
     install_independent_html, install_inline_event_handlers, install_with_html, node_nonce,
     parse_html_document_units, prepare_script, replace_document_content, reset,
@@ -133,6 +134,8 @@ fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_wo
     );
     let invalid = v8::Object::new(scope);
     assert!(replace_document_content(scope, invalid, &[]).is_err());
+    let ctor_key = v8::String::new(scope, "HTMLScriptElement").unwrap();
+    let target_ctor = context.global(scope).get(scope, ctor_key.into()).unwrap();
     let child = v8::Context::new(scope, Default::default());
     {
         let scope = &mut v8::ContextScope::new(scope, child);
@@ -144,6 +147,60 @@ fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_wo
             .unwrap()
             .to_object(scope)
             .unwrap();
+        let foreign_source: Vec<u16> = "<p id=target>next</p><script>foreign</script>"
+            .encode_utf16()
+            .collect();
+        let foreign_scripts = replace_document_content(scope, document, &foreign_source).unwrap();
+        assert_eq!(foreign_scripts.len(), 1);
+        assert_eq!(
+            foreign_scripts[0].get_creation_context(scope).unwrap(),
+            context,
+            "replacement parser nodes belong to the target Window realm"
+        );
+        assert_eq!(
+            scope.get_current_context(),
+            child,
+            "host call restores caller context"
+        );
+        for (name, value) in [
+            ("foreignScript", foreign_scripts[0].into()),
+            ("targetDocument", document.into()),
+            ("targetScriptCtor", target_ctor),
+            ("callerDocument", other.into()),
+        ] {
+            let key = v8::String::new(scope, name).unwrap();
+            child.global(scope).set(scope, key.into(), value);
+        }
+        let control: serde_json::Value = serde_json::from_str(include_str!(
+            "../src/document_replacement_realm_chrome156.json"
+        ))
+        .unwrap();
+        assert!(control["browser"]
+            .as_str()
+            .unwrap()
+            .starts_with("156.0.8078."));
+        assert_eq!(
+            control["probeSha256"],
+            format!(
+                "{:x}",
+                Sha256::digest(include_str!(
+                    "../scripts/document-replacement-realm-probe.js"
+                ))
+            )
+        );
+        let actual:serde_json::Value=serde_json::from_str(&eval(scope,"JSON.stringify({targetRealm:foreignScript instanceof targetScriptCtor,callerRealm:foreignScript instanceof HTMLScriptElement,owner:foreignScript.ownerDocument===targetDocument,callerUnaffected:document===callerDocument})")).unwrap();
+        assert_eq!(actual, control["result"]);
+        let prepared = prepare_script(scope, foreign_scripts[0]).unwrap();
+        assert!(prepared.parser_inserted);
+        assert_eq!(prepared.source, "foreign");
+        assert!(prepare_script(scope, foreign_scripts[0]).is_none());
+        let invalid = v8::Object::new(scope);
+        assert!(replace_document_content(scope, invalid, &[]).is_err());
+        assert_eq!(
+            scope.get_current_context(),
+            child,
+            "failed host call preserves caller context"
+        );
         let source: Vec<u16> = "<p>isolated</p>".encode_utf16().collect();
         assert!(replace_document_content(scope, other, &source)
             .unwrap()

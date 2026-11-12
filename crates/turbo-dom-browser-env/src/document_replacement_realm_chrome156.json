@@ -1,0 +1,10 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "f8b9dffa48a454511792559ad3afeb1d2f7f35254a08699a006755dd1f075dc2",
+  "result": {
+    "targetRealm": true,
+    "callerRealm": false,
+    "owner": true,
+    "callerUnaffected": true
+  }
+}
