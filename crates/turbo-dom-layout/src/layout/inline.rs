@@ -2873,14 +2873,14 @@ impl LinePlacement {
             self.baseline - ascent + font.ascent
         }
     }
-    fn record_trailing_space(&mut self, x0: f32, runs: usize) {
+    fn record_trailing_space(&mut self, x0: f32, runs: usize, space_level: Option<u8>) {
         let Some(record) = self.record.as_mut() else {
             return;
         };
-        if self.pen <= x0 && self.runs.len() <= runs {
+        if !(self.pen > x0 || self.runs.len() > runs) {
             return;
         }
-        let level = record.level;
+        let level = space_level.unwrap_or(record.level);
         let pending = if self.pen > x0 {
             Vec::new()
         } else {
@@ -2921,10 +2921,7 @@ impl LinePlacement {
         self.begin_space(word, has_next);
         self.spaces(word, has_next);
         self.advance_space(word, has_next);
-        if let Some(record) = self.record.as_mut() {
-            record.level = word.space_level.unwrap_or(record.level);
-        }
-        self.record_trailing_space(x0, runs);
+        self.record_trailing_space(x0, runs, word.space_level);
     }
     fn atom(&mut self, atom: &InlineAtom, shift: f32, level: u8) {
         let x0 = self.pen;
@@ -3842,5 +3839,39 @@ mod tests {
         assert_eq!(lines(&span("pre-wrap", "auto", "ab    cd")), 1);
         assert_eq!(lines(&span("pre-wrap", "1px", "ab  cd")), 2);
         assert_eq!(lines(&span("nowrap", "1px", " ab cd")), 1);
+    }
+    #[test]
+    fn unplaced_collapsed_space_does_not_change_the_last_recorded_bidi_level() {
+        let mut recorder = Recorder::new(&[]);
+        recorder.push((0.0, 12.0), 2, 0..0, None);
+        let mut placement = LinePlacement {
+            pen: 12.0,
+            baseline: 0.0,
+            height: 20.0,
+            policy: (false, false, NativeScale::NONE),
+            central: false,
+            runs: Vec::new(),
+            atoms: Vec::new(),
+            inline_edges: Vec::new(),
+            advances: None,
+            record: Some(recorder),
+        };
+        let mut collapsed = break_word();
+        collapsed.break_after = false;
+        collapsed.space_level = Some(1);
+        placement.word(&collapsed, false);
+        let recorder = placement.record.as_mut().unwrap();
+        assert_eq!(
+            recorder.items.len(),
+            1,
+            "a collapsed-away gap places no item"
+        );
+        assert_eq!(
+            recorder.level, 2,
+            "empty boxes must inherit the last actual item's level"
+        );
+        // Empty inline edges use this level when creating their zero-width item.
+        recorder.push((12.0, 12.0), recorder.level, 0..0, None);
+        assert_eq!(recorder.items[1].level, recorder.items[0].level);
     }
 }
