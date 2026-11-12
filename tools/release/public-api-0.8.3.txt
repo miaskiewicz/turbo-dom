@@ -1,7 +1,7 @@
 # Public Rust API diff, v0.8.2 -> v0.8.3 release candidate
 # Previous: v0.8.2 annotated tag 09a6034e99ceb378a853235ec8c2718b0feeca15,
 #   peeled commit 11a8b725a88a3872b274474b0028496cf6cba796 (verified against origin).
-# Candidate: 0356b07f42c0597d76b6f4e4938b2fcf6ab3639d.
+# Candidate: 7e3f24b268045379c328d701ffcd2f4801452008.
 # Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02).
 # cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
 # Reproduce in separate clean worktrees at both commits, with the same nightly/tool:
@@ -62,3 +62,7 @@
 + pub turbo_dom_browser_env::browser_env::TouchEventMode::Chrome
 + pub turbo_dom_browser_env::browser_env::TouchEventMode::Jsdom
 + pub fn turbo_dom_browser_env::browser_env::set_touch_event_mode(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::TouchEventMode)
++ pub enum turbo_dom_browser_env::browser_env::ComputedStyleMode
++ pub turbo_dom_browser_env::browser_env::ComputedStyleMode::Chrome
++ pub turbo_dom_browser_env::browser_env::ComputedStyleMode::Jsdom
++ pub fn turbo_dom_browser_env::browser_env::set_computed_style_mode(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::ComputedStyleMode)
