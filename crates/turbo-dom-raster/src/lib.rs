@@ -311,7 +311,9 @@ pub struct ScreenshotOptions<'a> {
     /// Leave unauthored canvas pixels transparent, retaining authored backgrounds.
     pub omit_background: bool,
     /// Output pixels per CSS pixel, independent of the layout viewport. Default: 1.
-    pub device_scale: f32,
+    /// Canvas dimensions round to nearest, with positive half-pixel ties up.
+    /// The native painter must be able to represent the finite positive scale.
+    pub device_scale: f64,
     /// Resolve fonts against the installed system fonts too (see
     /// [`screenshot_png_with_opts`]).
     pub system_fonts: bool,
@@ -402,13 +404,19 @@ pub fn screenshot_svg_with_options(
 pub(crate) fn screenshot_pixel_size(
     width: u32,
     height: u32,
-    scale: f32,
+    scale: f64,
 ) -> Result<(u32, u32), String> {
     if !scale.is_finite() || scale <= 0.0 {
         return Err("screenshot device scale must be finite and positive".into());
     }
-    let axis = |n| (f64::from(n) * f64::from(scale)).ceil() as u32;
-    let size = (axis(width), axis(height));
+    let native_scale = scale as f32;
+    if !native_scale.is_finite() || native_scale == 0.0 {
+        return Err("screenshot device scale is outside the native painter range".into());
+    }
+    let size = (
+        screenshot_axis(width, scale),
+        screenshot_axis(height, scale),
+    );
     if size.0 == 0 || size.1 == 0 {
         return Err(format!("bad canvas {}x{}", size.0, size.1));
     }
@@ -416,6 +424,12 @@ pub(crate) fn screenshot_pixel_size(
         return Err("scaled screenshot exceeds the canvas size limit".into());
     }
     Ok(size)
+}
+
+// Chrome's device-pixel canvas size rounds a double-precision CSS-size/DPR
+// product to the nearest pixel, with positive half-pixel ties rounding up.
+fn screenshot_axis(css: u32, scale: f64) -> u32 {
+    (f64::from(css) * scale).round() as u32
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every

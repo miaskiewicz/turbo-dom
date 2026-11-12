@@ -39,7 +39,7 @@
 + pub turbo_dom_raster::ScreenshotMask::rect: turbo_dom_raster::ScreenshotRect
 + impl turbo_dom_raster::ScreenshotMask
 + pub const fn turbo_dom_raster::ScreenshotMask::new(turbo_dom_raster::ScreenshotRect) -> Self
-+ pub turbo_dom_raster::ScreenshotOptions::device_scale: f32
++ pub turbo_dom_raster::ScreenshotOptions::device_scale: f64
 + pub turbo_dom_raster::ScreenshotOptions::image_metadata: core::option::Option<&'a turbo_dom_raster::ImageMetadata>
 + pub turbo_dom_raster::ScreenshotOptions::masks: &'a [turbo_dom_raster::ScreenshotMask]
 + pub turbo_dom_raster::ScreenshotOptions::omit_background: bool

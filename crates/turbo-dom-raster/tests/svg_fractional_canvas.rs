@@ -6,12 +6,12 @@ use turbo_dom_raster::{
 #[test]
 fn fractional_canvas_background_covers_every_output_pixel() {
     let viewport = Viewport {
-        width: 101,
-        height: 81,
+        width: 103,
+        height: 83,
     };
     let assets = ImageAssets::new();
     let mut options = ScreenshotOptions::default();
-    options.device_scale = 1.25;
+    options.device_scale = 1.2;
     for (omit_background, html, expected) in [
         (false, "", [255, 255, 255, 255]),
         (
@@ -31,14 +31,14 @@ fn fractional_canvas_background_covers_every_output_pixel() {
         let png = image::load_from_memory(&png).unwrap().to_rgba8();
         let svg = screenshot_svg_with_options(html, "", viewport, &assets, &options).unwrap();
         let tree = resvg::usvg::Tree::from_str(&svg, &resvg::usvg::Options::default()).unwrap();
-        let mut vector = tiny_skia::Pixmap::new(127, 102).unwrap();
+        let mut vector = tiny_skia::Pixmap::new(124, 100).unwrap();
         resvg::render(
             &tree,
             tiny_skia::Transform::identity(),
             &mut vector.as_mut(),
         );
-        assert_eq!(png.dimensions(), (127, 102));
-        for (x, y) in [(126, 0), (0, 101), (126, 101), (126, 50), (50, 101)] {
+        assert_eq!(png.dimensions(), (124, 100));
+        for (x, y) in [(123, 0), (0, 99), (123, 99), (123, 50), (50, 99)] {
             assert_eq!(png.get_pixel(x, y).0, expected, "PNG at {x},{y}");
             let pixel = vector.pixel(x, y).unwrap().demultiply();
             assert_eq!(

@@ -62,7 +62,7 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 
     | field | type | effect |
     |---|---|---|
-    | `device_scale` | `f32` | output pixels per CSS pixel (default 1), without changing layout; fractional dimensions round outward; finite positive values only |
+    | `device_scale` | `f64` | output pixels per CSS pixel (default 1), without changing layout; dimensions round to the nearest device pixel, with positive half-pixel ties up (Chrome 156); finite positive values representable by the native painter only |
     | `omit_background` | `bool` | leave the initial canvas transparent; authored root/body backgrounds still paint |
     | `masks` | `&[ScreenshotMask]` | CSS-pixel overlays painted last; `ScreenshotMask::new(rect)` uses opaque magenta, or set its RGBA color |
     | `full_page` | `bool` | paint the full content height instead of the viewport |

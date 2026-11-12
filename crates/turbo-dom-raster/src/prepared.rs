@@ -21,7 +21,7 @@ pub struct PreparedScreenshot {
     width: u32,
     height: u32,
     background: Rgba,
-    scale: f32,
+    scale: f64,
     masks: Vec<crate::ScreenshotMask>,
 }
 

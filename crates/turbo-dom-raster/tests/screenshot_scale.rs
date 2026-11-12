@@ -53,7 +53,7 @@ fn device_scale_preserves_css_layout_at_integer_and_fractional_scales() {
 }
 
 #[test]
-fn fractional_dimensions_round_outward_and_invalid_scales_reject() {
+fn fractional_dimensions_round_to_nearest_and_invalid_scales_reject() {
     let viewport = Viewport {
         width: 101,
         height: 81,
@@ -65,9 +65,9 @@ fn fractional_dimensions_round_outward_and_invalid_scales_reject() {
     options.full_page = true;
     let png = screenshot_png_with_options("", "", viewport, &images, &options).unwrap();
     let pixels = image::load_from_memory(&png).unwrap().to_rgba8();
-    assert_eq!(pixels.dimensions(), (127, 102));
-    assert_eq!(pixels.get_pixel(126, 101).0, [0; 4]);
-    for scale in [0.0, -1.0, f32::NAN, f32::INFINITY, f32::MAX] {
+    assert_eq!(pixels.dimensions(), (126, 101));
+    assert_eq!(pixels.get_pixel(125, 100).0, [0; 4]);
+    for scale in [0.0, -1.0, f64::NAN, f64::INFINITY, f64::MAX] {
         options.device_scale = scale;
         assert!(screenshot_png_with_options("", "", viewport, &images, &options).is_err());
         assert!(screenshot_svg_with_options("", "", viewport, &images, &options).is_err());
