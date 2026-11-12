@@ -826,6 +826,26 @@ pub fn parse_html_document_units<'s>(
         sanitize,
     )
 }
+
+/// The replacement parser keeps original script order before declarative templates
+/// are consumed. Ordinary template contents remain inert and are not parser work.
+fn parse_replacement_document<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    units: &[u16],
+) -> (v8::Local<'s, v8::Object>, Vec<v8::Local<'s, v8::Object>>) {
+    let tree = Tree::parse_utf16_with_processing_instructions(units);
+    let order = script_state::parse_order(&tree);
+    let document = parse_html_tree_with(scope, tree, true, None);
+    let _owner = DomScope::for_object(scope, document);
+    let scripts = order
+        .into_iter()
+        .filter(|&node| {
+            with_tree(|tree| tree.is_live(node) && is_connected(tree, node)).unwrap_or(false)
+        })
+        .map(|node| wrap(scope, node))
+        .collect();
+    (document, scripts)
+}
 fn parse_html_tree<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     tree: Tree,
@@ -970,8 +990,7 @@ pub fn import_document_node<'s>(
     import_document_node_with_construction(scope, document, node, deep, true)
 }
 
-/// Parser materialization copies identity before insertion, deferring construction
-/// to the canonical insertion reactions once the new document contents are active.
+/// Import a node with optional deferred custom-element construction.
 fn import_document_node_with_construction<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     document: v8::Local<v8::Object>,

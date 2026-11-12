@@ -352,7 +352,8 @@ pub(super) fn expose_test_namespace(scope: &mut v8::PinScope) {
 /// This is the host handoff for `setContent`: parsing and DOM replacement finish
 /// synchronously; no parser script runs here. Custom-element constructors and
 /// reactions run synchronously after the new content is attached and may mutate
-/// that content. The returned nodes are in parser
+/// that content. Declarative shadow roots exist before those constructors run;
+/// ordinary template contents stay inert. The returned nodes are in parser
 /// order, with fresh parser-inserted flags. Feed them through [`prepare_script`]
 /// and the embedder's existing CSP/module/resource scheduler. The embedder owns
 /// ready-state transitions and DOMContentLoaded/load completion, as on initial
@@ -374,7 +375,7 @@ pub fn replace_document_content<'s>(
     if !valid || dom_implementation::is_xml_document(scope, document) {
         return Err("A browsing-context document is required");
     }
-    let parsed = parse_html_document_units(scope, units, false);
+    let (parsed, parser_nodes) = parse_replacement_document(scope, units);
     let children = {
         let _parsed = DomScope::for_object(scope, parsed);
         let parsed_root = handle_of(scope, parsed).ok_or("Document tree unavailable")?;
@@ -387,17 +388,22 @@ pub fn replace_document_content<'s>(
     let mut incoming = Vec::with_capacity(children.len());
     let mut roots = Vec::with_capacity(children.len());
     for child in children {
-        let node = import_document_node_with_construction(scope, document, child, true, false)?;
+        // Fresh parser nodes have no observable source owner. Adoption preserves
+        // their declarative roots even when those roots are not clonable.
+        let node = document_basics::adopt(scope, document, child)?;
         roots.push(handle_of(scope, node).expect("imported nodes have native handles"));
         incoming.push(dom_mutations::Incoming::Node(node));
     }
     // Establish only materialized parser nodes before insertion runs authored
     // custom-element reactions. Those reactions may create and admit dynamic
     // scripts; inspecting/resetting the whole document afterwards admits them twice.
+    let scripts = parser_nodes
+        .iter()
+        .map(|node| handle_of(scope, *node).expect("parser nodes have native handles"))
+        .collect::<Vec<_>>();
     let (scripts, previous_scripts) = DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
         let state = dom.as_mut().unwrap();
-        let scripts = script_state::parse_order_roots(&state.tree, &roots);
         state
             .scripts
             .extend(script_state::initial_roots(&state.tree, &roots));

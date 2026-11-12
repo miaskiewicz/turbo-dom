@@ -1,0 +1,34 @@
+{
+  "browser": "156.0.8078.47",
+  "htmlSha256": "bf74a9d95402084b30e6145edea134c9ca42d202e4dc4a9c60f960334c507e8a",
+  "probeSha256": "f21ea1a97289822f27dab71fab1266986f02d4754a1f986a8081cf1acba74f8d",
+  "result": {
+    "title": "shadow replacement",
+    "openSeen": {
+      "shadow": true,
+      "owner": true,
+      "mode": "open",
+      "clonable": false,
+      "serializable": true,
+      "delegatesFocus": true,
+      "text": "shadow"
+    },
+    "closedSeen": {
+      "mode": "closed",
+      "clonable": false,
+      "owner": true,
+      "hidden": true,
+      "host": "closed"
+    },
+    "handlerMark": 91,
+    "order": [
+      "before",
+      "light-first",
+      "shadow",
+      "light-last",
+      "closed",
+      "after"
+    ],
+    "templates": 1
+  }
+}
