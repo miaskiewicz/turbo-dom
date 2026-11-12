@@ -385,23 +385,30 @@ pub fn replace_document_content<'s>(
             .collect::<Vec<_>>()
     };
     let mut incoming = Vec::with_capacity(children.len());
+    let mut roots = Vec::with_capacity(children.len());
     for child in children {
-        incoming.push(dom_mutations::Incoming::Node(
-            import_document_node_with_construction(scope, document, child, true, false)?,
-        ));
+        let node = import_document_node_with_construction(scope, document, child, true, false)?;
+        roots.push(handle_of(scope, node).expect("imported nodes have native handles"));
+        incoming.push(dom_mutations::Incoming::Node(node));
     }
-    let remove = with_tree(|tree| tree.children(root)).unwrap_or_default();
-    if !dom_mutations::insert_inputs(scope, root, &incoming, None, &remove) {
-        return Err("Document replacement failed");
-    }
-    let scripts = DOM.with(|dom| {
+    // Establish only materialized parser nodes before insertion runs authored
+    // custom-element reactions. Those reactions may create and admit dynamic
+    // scripts; inspecting/resetting the whole document afterwards admits them twice.
+    let (scripts, previous_scripts) = DOM.with(|dom| {
         let mut dom = dom.borrow_mut();
         let state = dom.as_mut().unwrap();
-        let scripts = script_state::parse_order(&state.tree);
-        state.scripts.extend(script_state::initial(&state.tree));
-        state.parser_scripts = scripts.clone();
-        scripts
+        let scripts = script_state::parse_order_roots(&state.tree, &roots);
+        state
+            .scripts
+            .extend(script_state::initial_roots(&state.tree, &roots));
+        let previous = std::mem::replace(&mut state.parser_scripts, scripts.clone());
+        (scripts, previous)
     });
+    let remove = with_tree(|tree| tree.children(root)).unwrap_or_default();
+    if !dom_mutations::insert_inputs(scope, root, &incoming, None, &remove) {
+        DOM.with(|dom| dom.borrow_mut().as_mut().unwrap().parser_scripts = previous_scripts);
+        return Err("Document replacement failed");
+    }
     let attrs = with_tree(|tree| {
         tree.query_selector_all("*")
             .iter()
@@ -418,5 +425,11 @@ pub fn replace_document_content<'s>(
     for (node, name) in attrs {
         event_handlers::record_set_phase(scope, node, &name);
     }
-    Ok(scripts.into_iter().map(|node| wrap(scope, node)).collect())
+    Ok(scripts
+        .into_iter()
+        .filter(|&node| {
+            with_tree(|tree| tree.is_live(node) && is_connected(tree, node)).unwrap_or(false)
+        })
+        .map(|node| wrap(scope, node))
+        .collect())
 }

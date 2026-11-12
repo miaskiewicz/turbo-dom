@@ -13,6 +13,15 @@ fn eval(scope: &mut v8::PinScope, source: &str) -> String {
         .to_rust_string_lossy(scope)
 }
 
+fn claim_script(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    let node = args.get(0).to_object(scope).unwrap();
+    result.set_bool(prepare_script(scope, node).is_some());
+}
+
 #[test]
 fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_work() {
     let platform = v8::new_default_platform(0, false).make_shared();
@@ -77,6 +86,28 @@ fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_wo
         eval(scope, "JSON.stringify(upgrades)"),
         "[\"construct:new\",\"connected:new\",\"construct:new\"]"
     );
+    let claim = v8::Function::new(scope, claim_script).unwrap();
+    let claim_key = v8::String::new(scope, "claimScript").unwrap();
+    context
+        .global(scope)
+        .set(scope, claim_key.into(), claim.into());
+    eval(scope, "globalThis.claims=[]; customElements.define('x-script-state',class extends HTMLElement {constructor(){super();let script=document.createElement('script');script.textContent='dynamic';document.body.append(script);globalThis.dynamicScript=script;claims.push(claimScript(script))}})");
+    let scripted: Vec<u16> = "<body><script>parser</script><x-script-state></x-script-state>"
+        .encode_utf16()
+        .collect();
+    let scripts = replace_document_content(scope, document, &scripted).unwrap();
+    assert_eq!(eval(scope, "JSON.stringify(claims)"), "[true]");
+    assert_eq!(
+        eval(scope, "claimScript(dynamicScript)"),
+        "false",
+        "a dynamically admitted script must remain started"
+    );
+    assert_eq!(
+        scripts.len(),
+        1,
+        "constructor-created dynamic scripts are not parser work"
+    );
+    assert!(prepare_script(scope, scripts[0]).unwrap().parser_inserted);
     let source = v8::String::new(
         scope,
         "(()=>{globalThis.policyCalls=(globalThis.policyCalls||0)+1;return false})",

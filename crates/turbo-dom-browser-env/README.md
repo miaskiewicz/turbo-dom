@@ -250,6 +250,8 @@ nodes in parser order. Parser scripts do not execute inside the call. Custom-ele
 constructors and reactions run synchronously through the normal insertion path
 after the replacement content is attached; they can observe and mutate that
 content. Their execution is distinct from the host loader completion signal.
+Scripts created by those reactions retain their dynamic admission state and are
+not returned as newly parsed work; a host-admitted script is never reset.
 
 ```rust,ignore
 let scripts = replace_document_content(scope, document, &html.encode_utf16().collect::<Vec<_>>())?;
