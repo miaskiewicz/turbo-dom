@@ -1,7 +1,7 @@
 # Public Rust API diff, v0.8.2 -> v0.8.3 release candidate
 # Previous: v0.8.2 annotated tag 09a6034e99ceb378a853235ec8c2718b0feeca15,
 #   peeled commit 11a8b725a88a3872b274474b0028496cf6cba796 (verified against origin).
-# Candidate: ed2eb1d37e420958c68948dfdca13d2aec225cd9.
+# Candidate: 89aaaa8a2ff11f9854584a2961df592c01bf319f.
 # Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02).
 # cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
 # Reproduce in separate clean worktrees at both commits, with the same nightly/tool:
@@ -15,14 +15,16 @@
 # '+' = candidate-only line; '-' = previous-only line; no removed/changed public items.
 # ScreenshotOptions was already non_exhaustive. Its existing derived Default became a
 # manual implementation (scale defaults to 1), so -sss now includes that implementation.
-# The new layout entry is also re-exported at the crate root; both public paths are listed.
+# The new layout entries are also re-exported at the crate root; both public paths are listed.
 
 ## turbo-dom
 
 ## turbo-dom-parser
 
 ## turbo-dom-layout
++ pub fn turbo_dom_layout::html_layout::layout_html_tree_capture_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::fragment::Fragment
 + pub fn turbo_dom_layout::html_layout::layout_html_tree_recorded_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::LaidOut
++ pub fn turbo_dom_layout::layout_html_tree_capture_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::fragment::Fragment
 + pub fn turbo_dom_layout::layout_html_tree_recorded_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::LaidOut
 
 ## turbo-dom-raster
