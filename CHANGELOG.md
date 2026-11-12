@@ -29,7 +29,9 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   `ImageMetadata` independently of pixel bodies. Options add transparent initial canvas,
   device scale independent of CSS viewport, and colored masking rectangles with exact
   serialized-snapshot element geometry mapping. Full-page bounds include positioned overflow
-  and retain the viewport minimum and safety cap. Geometry for rotated/rounded clips and
+  and retain the viewport minimum and safety cap. Decimal DPRs retain double precision,
+  and output dimensions follow independently recorded Chrome rounding (#505), so a
+  100×80 CSS viewport at DPR 1.2 yields 120×96 pixels. Geometry for rotated/rounded clips and
   rasterized SVG descendants is conservatively bounded. Reusable offline harnesses assert
   pixel/byte equality and deterministic layout work.
 - **AbortSignal contract (#487, #488, #498)**: the standalone timeout/any polyfill has its
