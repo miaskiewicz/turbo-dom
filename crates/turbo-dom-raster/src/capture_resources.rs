@@ -116,6 +116,13 @@ pub(crate) fn add_metadata(
     metadata: Option<&ImageMetadata>,
 ) {
     for (key, intrinsic) in metadata.into_iter().flatten() {
+        // Self-contained bodies must reach the ordinary decoder, not become placeholders.
+        if key
+            .get(..5)
+            .is_some_and(|scheme| scheme.eq_ignore_ascii_case("data:"))
+        {
+            continue;
+        }
         decoded
             .entry(key.clone())
             .or_insert_with(|| image_paint::DecodedImage {

@@ -239,3 +239,65 @@ fn visible_metadata_without_a_pixel_body_uses_missing_image_placeholder() {
     assert_eq!(pixels.pixel(5, 5).unwrap().green(), 255);
     assert_eq!(pixels.pixel(5, 5).unwrap().red(), 0);
 }
+
+#[test]
+fn metadata_does_not_replace_self_contained_image_pixels() {
+    let source="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='10'%20height='10'%3E%3Crect%20width='10'%20height='10'%20fill='red'/%3E%3C/svg%3E";
+    let cases = [
+        (
+            format!("<body style='margin:0'><img src=\"{source}\" style='display:block'>"),
+            String::new(),
+        ),
+        (
+            String::from("<body style='margin:0'><div></div>"),
+            format!("div{{width:10px;height:10px;background-image:url(\"{source}\")}}"),
+        ),
+    ];
+    let vp = Viewport {
+        width: 20,
+        height: 20,
+    };
+    let metadata = [(source.into(), Intrinsic::new(10, 10, false))]
+        .into_iter()
+        .collect();
+    let mut options = ScreenshotOptions::default();
+    options.image_metadata = Some(&metadata);
+    for (html, css) in cases {
+        let plain = screenshot_png_with_options(
+            &html,
+            &css,
+            vp,
+            &ImageAssets::new(),
+            &ScreenshotOptions::default(),
+        )
+        .unwrap();
+        let pixel = tiny_skia::Pixmap::decode_png(&plain)
+            .unwrap()
+            .pixel(2, 2)
+            .unwrap();
+        assert_eq!((pixel.red(), pixel.green()), (255, 0));
+        assert_eq!(
+            plain,
+            screenshot_png_with_options(&html, &css, vp, &ImageAssets::new(), &options).unwrap()
+        );
+        let scene = turbo_dom_raster::PreparedScreenshot::new(
+            &html,
+            &css,
+            vp,
+            &ImageAssets::new(),
+            &options,
+        );
+        assert_eq!(plain, scene.png().unwrap());
+        assert_eq!(
+            turbo_dom_raster::screenshot_svg_with_options(
+                &html,
+                &css,
+                vp,
+                &ImageAssets::new(),
+                &ScreenshotOptions::default()
+            )
+            .unwrap(),
+            scene.svg().unwrap()
+        );
+    }
+}
