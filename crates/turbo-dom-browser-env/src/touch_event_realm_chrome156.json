@@ -1,0 +1,97 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "0354d5c2890b1a5a73761813f7d3ae550922a22cd75eb501badd2b76c8b658a7",
+  "result": {
+    "own": [
+      [
+        "touches",
+        [
+          1,
+          9,
+          true
+        ]
+      ],
+      [
+        "targetTouches",
+        [
+          1,
+          9,
+          true
+        ]
+      ],
+      [
+        "changedTouches",
+        [
+          1,
+          9,
+          true
+        ]
+      ],
+      [
+        "altKey",
+        true
+      ],
+      [
+        "metaKey",
+        false
+      ],
+      [
+        "ctrlKey",
+        true
+      ],
+      [
+        "shiftKey",
+        false
+      ]
+    ],
+    "invalid": [
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ],
+      [
+        "TypeError",
+        "TypeError",
+        "TypeError",
+        "TypeError"
+      ]
+    ],
+    "listBrand": [
+      1,
+      true
+    ],
+    "readonly": true
+  }
+}

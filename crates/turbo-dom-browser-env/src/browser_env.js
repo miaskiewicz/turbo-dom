@@ -2493,11 +2493,11 @@
       collectionSet(list,{kind:'TouchList',items:items});
       return list;
     }
-    var touchEventStates=new WeakMap();
     class TouchEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.touches=touchList(init.touches);state.targetTouches=touchList(init.targetTouches);state.changedTouches=touchList(init.changedTouches);$call($wmSet,touchEventStates,this,state);}
+      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.kind='TouchEvent';state.changedTouches=touchList(init.changedTouches);state.targetTouches=touchList(init.targetTouches);state.touches=touchList(init.touches);collectionSet(this,state);}
     }
-    readonly(TouchEvent.prototype,touchEventStates,['touches','targetTouches','changedTouches','altKey','metaKey','ctrlKey','shiftKey']);tagEvent(TouchEvent,'TouchEvent');
+    function touchEventGetter(name){member(TouchEvent.prototype,name,{get:function(){return touchRecord(this,'TouchEvent')[name];}});}
+    ['touches','targetTouches','changedTouches','altKey','metaKey','ctrlKey','shiftKey'].forEach(touchEventGetter);tagEvent(TouchEvent,'TouchEvent');
     // Use the native class bridge for actual implementations, preserving private
     // records and subclass new.target rather than replacing Function.toString.
     [Touch,TouchList,TouchEvent,UIEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent,PointerEvent,WheelEvent,CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){var name=implementation.name,constructor=__ns.makeNativeFunction?__ns.makeNativeFunction(implementation,name,name==='TouchList'?0:1,true,true):implementation;constructor.prototype=implementation.prototype;Object.defineProperty(constructor.prototype,'constructor',{value:constructor,writable:true,configurable:true});Object.defineProperty(constructor,'prototype',{writable:false});Object.keys(implementation).forEach(function(key){Object.defineProperty(constructor,key,Object.getOwnPropertyDescriptor(implementation,key));});Object.defineProperty(g,name,{value:constructor,writable:true,configurable:true,enumerable:false});});
