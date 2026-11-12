@@ -2494,7 +2494,7 @@
       return list;
     }
     class TouchEvent extends UIEvent {
-      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state=modifiers(init);state.kind='TouchEvent';state.changedTouches=touchList(init.changedTouches);state.targetTouches=touchList(init.targetTouches);state.touches=touchList(init.touches);collectionSet(this,state);}
+      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state={__proto__:null,kind:'TouchEvent',...modifiers(init)};state.changedTouches=touchList(init.changedTouches);state.targetTouches=touchList(init.targetTouches);state.touches=touchList(init.touches);collectionSet(this,state);}
     }
     function touchEventGetter(name){member(TouchEvent.prototype,name,{get:function(){return touchRecord(this,'TouchEvent')[name];}});}
     ['touches','targetTouches','changedTouches','altKey','metaKey','ctrlKey','shiftKey'].forEach(touchEventGetter);tagEvent(TouchEvent,'TouchEvent');
