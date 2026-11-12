@@ -15,6 +15,7 @@ use core_foundation::string::CFString;
 use core_graphics::base::kCGImageAlphaPremultipliedLast;
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
+use core_text::font::CTFont;
 use core_text::line::CTLine;
 use tiny_skia::Pixmap;
 use turbo_dom_layout::Rgba;
