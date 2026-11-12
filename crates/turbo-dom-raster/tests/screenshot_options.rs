@@ -51,7 +51,6 @@ fn full_page_includes_positioned_overflow_and_viewport_minimum() {
         ("<body style='margin:0'>", 80),
         ("<body style='margin:0'><div style='width:20px;height:20px;background:red;transform:translateY(220px)'></div>", 240),
         ("<body style='margin:0'><div style='height:20px;overflow:hidden'><div style='position:relative;top:220px;width:20px;height:20px;background:red'></div></div>", 80),
-        ("<body style='margin:0'><div style='position:absolute;top:220px;width:20px;height:20px;background:red;clip:rect(0,0,0,0)'></div>", 80),
         ("<body style='margin:0'><div style='position:absolute;top:220px;width:20px;height:20px;background:red'></div>", 240),
         ("<body style='margin:0'><div style='position:relative;top:220px;width:20px;height:20px;background:red'></div>", 240),
     ] {
@@ -77,5 +76,29 @@ fn full_page_extent_retains_the_safety_cap_and_viewport_capture() {
         let png =
             screenshot_png_with_options(html, "", viewport, &ImageAssets::new(), &options).unwrap();
         assert_eq!(image::load_from_memory(&png).unwrap().height(), height);
+    }
+}
+
+#[test]
+fn full_page_scroll_extent_survives_css_clip_without_painting_clipped_ink() {
+    let mut options = ScreenshotOptions::default();
+    options.full_page = true;
+    let viewport = Viewport {
+        width: 100,
+        height: 80,
+    };
+    // Chrome 156 includes clipped positioned boxes in scrollHeight even though
+    // their ink is absent; an ancestor overflow clip is tested separately above.
+    for (body, height) in [
+        ("<div style='position:absolute;top:220px;width:20px;height:20px;background:red;clip:rect(0,0,0,0)'></div>", 240),
+        ("<div style='position:absolute;top:20px;width:20px;height:20px;clip:rect(0,0,0,0)'><div style='position:absolute;top:220px;width:20px;height:20px;background:red'></div></div>", 260),
+    ] {
+        let html = format!("<!doctype html><body style='margin:0'>{body}");
+        let scene = turbo_dom_raster::PreparedScreenshot::new(&html, "", viewport, &ImageAssets::new(), &options);
+        let png = scene.png().unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgba8();
+        assert_eq!(pixels.dimensions(), (100, height));
+        assert!(pixels.pixels().all(|p| p.0 == [255; 4]));
+        assert!(scene.svg().unwrap().contains(&format!("height=\"{height}\"")));
     }
 }

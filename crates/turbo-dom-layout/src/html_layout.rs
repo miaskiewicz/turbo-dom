@@ -230,12 +230,16 @@ fn lay_out_document(
     fonts: &FontRegistry,
     images: &ImageCtx,
     options: LayoutOptions,
+    keep_clipped_boxes: bool,
     diags: &mut Diagnostics,
 ) -> Fragment {
     let canvas = propagate_canvas_background(&mut styled);
     let _root_font = root_font_scope(document_root_font_px(&styled));
-    let mut galley =
-        crate::layout::layout_in_viewport(&styled, viewport, fonts, images, &options, diags);
+    let mut galley = if keep_clipped_boxes {
+        crate::layout::layout_geometry(&styled, viewport, fonts, images, &options, diags)
+    } else {
+        crate::layout::layout_in_viewport(&styled, viewport, fonts, images, &options, diags)
+    };
     if let FragmentContent::Box { background, .. } = &mut galley.content {
         *background = canvas;
     }
@@ -375,7 +379,42 @@ pub fn layout_html_tree_in_viewport_with(
     let mut styled = style_document(tree, extra_css, cb_width, options);
     post_cascade(&mut styled);
     let viewport = (cb_width, viewport_height);
-    lay_out_document(styled, viewport, fonts, images, options.layout(), diags)
+    lay_out_document(
+        styled,
+        viewport,
+        fonts,
+        images,
+        options.layout(),
+        false,
+        diags,
+    )
+}
+
+/// HTML viewport layout retaining zero-area CSS-clipped boxes for capture scroll bounds.
+/// The clip remains on the galley and still suppresses ink; render-only callers can use
+/// [`layout_html_tree_in_viewport_with`] to omit these pixel-inert subtrees entirely.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_html_tree_capture_in_viewport_with(
+    tree: &Tree,
+    extra_css: &str,
+    viewport: (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    post_cascade: impl FnOnce(&mut [StyledNode]),
+    diags: &mut Diagnostics,
+) -> Fragment {
+    let mut styled = style_document(tree, extra_css, viewport.0, options);
+    post_cascade(&mut styled);
+    lay_out_document(
+        styled,
+        viewport,
+        fonts,
+        images,
+        options.layout(),
+        true,
+        diags,
+    )
 }
 
 /// [`layout_html_tree_in_viewport_with`] with the source identity of every generated box.

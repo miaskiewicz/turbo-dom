@@ -197,7 +197,8 @@ pub fn layout_in_viewport(
 
 /// [`layout_in_viewport`] for the geometry seam ([`crate::layout_boxes`]): boxes that
 /// paint nothing at any size (a zero-area `clip: rect()`) are laid out too, so their
-/// border boxes are reported (miaskiewicz/turbo-dom#75). Not a render galley.
+/// border boxes are reported (miaskiewicz/turbo-dom#75). Consumers painting this
+/// galley must honor its retained clips.
 #[allow(clippy::trivially_copy_pass_by_ref)] // mirrors `layout_with_options`
 pub(crate) fn layout_geometry(
     styled: &[StyledNode],

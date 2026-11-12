@@ -36,9 +36,9 @@ pub mod text;
 pub use error::{CompileError, Diagnostics, ErrorCode, Lint, LintCode, RenderError, Span};
 pub use html_layout::{
     collect_style_css_tree, layout_boxes, layout_boxes_tree, layout_html, layout_html_tree,
-    layout_html_tree_in_viewport, layout_html_tree_in_viewport_with,
-    layout_html_tree_recorded_in_viewport_with, layout_html_with_images, parse_html_tree,
-    style_html_tree, CidBox, HtmlOptions,
+    layout_html_tree_capture_in_viewport_with, layout_html_tree_in_viewport,
+    layout_html_tree_in_viewport_with, layout_html_tree_recorded_in_viewport_with,
+    layout_html_with_images, parse_html_tree, style_html_tree, CidBox, HtmlOptions,
 };
 pub use image::{ImageResolver, NoImages};
 pub use layout::canvas_content::{canvas_bitmap_size, canvas_image_name};

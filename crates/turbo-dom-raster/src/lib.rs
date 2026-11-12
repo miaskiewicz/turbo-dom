@@ -138,8 +138,9 @@ use std::collections::{HashMap, HashSet};
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    layout_html_tree_in_viewport_with, parse_html_tree, Attr, Diagnostics, Fragment,
-    FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag, INDETERMINATE_ATTR,
+    layout_html_tree_capture_in_viewport_with, layout_html_tree_in_viewport_with, parse_html_tree,
+    Attr, Diagnostics, Fragment, FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag,
+    INDETERMINATE_ATTR,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -636,14 +637,19 @@ fn lay_out(
     // height (miaskiewicz/turbo-dom#81). The post-cascade hook carries the live
     // IDL state (today: the `indeterminate` checkbox flag) a screenshot has no
     // script to set onto the matching styled boxes (miaskiewicz/turbo-dom#371).
-    layout_html_tree_in_viewport_with(
+    let layout = if screenshot_options.full_page {
+        layout_html_tree_capture_in_viewport_with
+    } else {
+        layout_html_tree_in_viewport_with
+    };
+    layout(
         tree,
         "",
         (width as f32, height as f32),
         fonts,
         &image_ctx,
         &options,
-        |styled| apply_idl_states(styled, screenshot_options.idl_states),
+        |styled: &mut [StyledNode]| apply_idl_states(styled, screenshot_options.idl_states),
         &mut diags,
     )
 }

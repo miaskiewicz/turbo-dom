@@ -1,4 +1,4 @@
-//! Capture bounds in CSS pixels, retaining positioned descendants and CSS clipping.
+//! Scroll bounds in CSS pixels and shared transform/clip geometry for capture.
 use tiny_skia::{Rect, Transform};
 use turbo_dom_layout::{Fragment, FragmentContent};
 
@@ -38,21 +38,15 @@ pub(crate) fn intersect(a: Option<Rect>, b: Rect) -> Option<Rect> {
 
 fn subtree_bottom(f: &Fragment, parent: Transform, inherited_clip: Option<Rect>) -> f32 {
     let xf = box_transform(f, parent);
-    let Ok(clip) = clip_region(
-        f,
-        xf,
-        inherited_clip,
-        f.clip.map(|c| (c.x, c.y, c.width, c.height)),
-    ) else {
-        return 0.0;
-    };
+    // CSS clip hides ink without changing scrollable overflow. Only ancestor
+    // overflow clipping constrains the positioned boxes in a full-page capture.
     let mut bottom = transformed_rect(f.x, f.y, f.width, f.height, xf)
-        .and_then(|r| intersect(clip, r))
+        .and_then(|r| intersect(inherited_clip, r))
         .map_or(0.0, |r| r.bottom());
     let Ok(child_clip) = clip_region(
         f,
         xf,
-        clip,
+        inherited_clip,
         f.overflow_clip.map(|c| (c.x, c.y, c.width, c.height)),
     ) else {
         return bottom;
@@ -126,14 +120,18 @@ mod tests {
     }
 
     #[test]
-    fn disjoint_inherited_clip_distinguishes_element_and_overflow_clipping() {
+    fn scroll_extent_ignores_css_clip_but_respects_ancestor_overflow() {
         let inherited = Rect::from_xywh(0.0, 0.0, 20.0, 20.0);
         let mut root = fragment(0.0, 100.0);
         root.children.push(fragment(0.0, 200.0));
         let mut outside = clip(20.0, 10.0);
         outside.y = 40.0;
         root.clip = Some(outside);
-        assert_eq!(subtree_bottom(&root, Transform::identity(), inherited), 0.0);
+        assert_eq!(content_bottom(&root), 200.0);
+        assert_eq!(
+            subtree_bottom(&root, Transform::identity(), inherited),
+            20.0
+        );
         root.clip = None;
         root.overflow_clip = Some(OverflowClip {
             x: outside.x,

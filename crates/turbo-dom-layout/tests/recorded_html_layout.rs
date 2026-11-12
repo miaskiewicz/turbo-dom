@@ -1,8 +1,9 @@
 use turbo_dom_layout::style::ComputedStyle;
 use turbo_dom_layout::turbo_dom::{Handle, Tree};
 use turbo_dom_layout::{
-    layout_html_tree_in_viewport_with, layout_html_tree_recorded_in_viewport_with, Diagnostics,
-    FontRegistry, Fragment, FragmentContent, HtmlOptions, ImageCtx, LaidOut, NoImages, StyledNode,
+    layout_html_tree_capture_in_viewport_with, layout_html_tree_in_viewport_with,
+    layout_html_tree_recorded_in_viewport_with, Diagnostics, FontRegistry, Fragment,
+    FragmentContent, HtmlOptions, ImageCtx, LaidOut, NoImages, StyledNode,
 };
 
 fn patch_target(nodes: &mut [StyledNode], target: Handle) {
@@ -64,6 +65,17 @@ fn recording_keeps_canvas_cascade_hook_viewport_and_transformed_source_geometry(
             |nodes| patch_target(nodes, target),
             &mut Diagnostics::default(),
         );
+        let capture = layout_html_tree_capture_in_viewport_with(
+            &tree,
+            &css,
+            (120.0, 80.0),
+            &fonts,
+            &images,
+            &options,
+            |nodes| patch_target(nodes, target),
+            &mut Diagnostics::default(),
+        );
+        assert_eq!(format!("{ordinary:?}"), format!("{capture:?}"));
         let recorded = layout_html_tree_recorded_in_viewport_with(
             &tree,
             &css,
@@ -141,4 +153,54 @@ fn recorded_handles_belong_to_the_supplied_tree_across_independent_documents() {
         source_box(&a, first.get_element_by_id("first").unwrap()).width,
         11.0
     );
+}
+
+#[test]
+fn capture_keeps_zero_area_clipped_boxes_and_their_positioned_descendants() {
+    fn boxes(fragment: &Fragment) -> Vec<&Fragment> {
+        let mut out = vec![fragment];
+        for child in &fragment.children {
+            out.extend(boxes(child));
+        }
+        out
+    }
+    let tree = Tree::parse("<!doctype html><html><body style='margin:0'><div id=target style='position:absolute;top:20px;width:1px;height:20px;clip:rect(0,0,0,0)'><div style='position:absolute;top:220px;width:11px;height:9px;background:red'></div></div></body></html>");
+    let target = tree.get_element_by_id("target").unwrap();
+    let fonts = FontRegistry::new();
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    let capture = layout_html_tree_capture_in_viewport_with(
+        &tree,
+        "html{font-size:20px}",
+        (100.0, 80.0),
+        &fonts,
+        &images,
+        &HtmlOptions::default(),
+        |nodes| patch_target(nodes, target),
+        &mut Diagnostics::default(),
+    );
+    let fragments = boxes(&capture);
+    let clipped = fragments.iter().find(|f| f.clip.is_some()).unwrap();
+    assert_eq!(
+        (clipped.x, clipped.y, clipped.width, clipped.height),
+        (0.0, 20.0, 40.0, 20.0)
+    );
+    assert_eq!(clipped.clip.unwrap().width, 0.0);
+    assert_eq!(clipped.clip.unwrap().height, 0.0);
+    assert!(fragments
+        .iter()
+        .any(|f| (f.x, f.y, f.width, f.height) == (0.0, 240.0, 11.0, 9.0)));
+    let ordinary = layout_html_tree_in_viewport_with(
+        &tree,
+        "html{font-size:20px}",
+        (100.0, 80.0),
+        &fonts,
+        &images,
+        &HtmlOptions::default(),
+        |_| {},
+        &mut Diagnostics::default(),
+    );
+    assert!(boxes(&ordinary).iter().all(|f| f.clip.is_none()));
 }
