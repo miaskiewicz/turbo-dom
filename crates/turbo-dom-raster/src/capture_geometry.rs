@@ -75,3 +75,76 @@ pub(crate) fn clip_region(
     let bounds = transformed_rect(f.x + x, f.y + y, w, h, xf).ok_or(())?;
     intersect(inherited, bounds).map(Some).ok_or(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use turbo_dom_layout::layout::value::BorderEdges;
+    use turbo_dom_layout::{BorderRadii, ClipRect, NodeId, OverflowClip};
+
+    fn fragment(y: f32, height: f32) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            0.0,
+            y,
+            20.0,
+            height,
+            FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: BorderRadii::ZERO,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn clip(width: f32, height: f32) -> ClipRect {
+        ClipRect {
+            x: 0.0,
+            y: 0.0,
+            width,
+            height,
+            radii: BorderRadii::ZERO,
+        }
+    }
+
+    #[test]
+    fn empty_overflow_clip_suppresses_children_but_retains_own_box() {
+        let mut root = fragment(30.0, 20.0);
+        root.children.push(fragment(200.0, 40.0));
+        assert_eq!(content_bottom(&root), 240.0);
+        root.overflow_clip = Some(OverflowClip {
+            x: 0.0,
+            y: 0.0,
+            width: 20.0,
+            height: 0.0,
+            radii: BorderRadii::ZERO,
+        });
+        assert_eq!(content_bottom(&root), 50.0);
+    }
+
+    #[test]
+    fn disjoint_inherited_clip_distinguishes_element_and_overflow_clipping() {
+        let inherited = Rect::from_xywh(0.0, 0.0, 20.0, 20.0);
+        let mut root = fragment(0.0, 100.0);
+        root.children.push(fragment(0.0, 200.0));
+        let mut outside = clip(20.0, 10.0);
+        outside.y = 40.0;
+        root.clip = Some(outside);
+        assert_eq!(subtree_bottom(&root, Transform::identity(), inherited), 0.0);
+        root.clip = None;
+        root.overflow_clip = Some(OverflowClip {
+            x: outside.x,
+            y: outside.y,
+            width: outside.width,
+            height: outside.height,
+            radii: outside.radii,
+        });
+        assert_eq!(
+            subtree_bottom(&root, Transform::identity(), inherited),
+            20.0
+        );
+    }
+}
