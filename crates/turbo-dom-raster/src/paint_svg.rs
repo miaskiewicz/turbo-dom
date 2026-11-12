@@ -50,22 +50,23 @@ pub(crate) fn paint_at_size(
 
 pub(crate) fn paint_at_size_with_masks(
     galley: &Fragment,
-    css_size: (u32, u32),
+    _css_size: (u32, u32),
     pixel_size: (u32, u32),
     bg: Rgba,
     images: &DecodedAssets,
     scale: f32,
     masks: &[crate::ScreenshotMask],
 ) -> String {
-    let (width, height) = css_size;
     let (pixel_width, pixel_height) = pixel_size;
     let view_width = f64::from(pixel_width) / f64::from(scale);
     let view_height = f64::from(pixel_height) / f64::from(scale);
+    // Outward device-pixel rounding enlarges the canvas beyond the CSS viewport.
+    // Fill that entire canvas, as the PNG painter does, without changing layout.
     let mut svg = String::with_capacity(4096);
     let _ = writeln!(
         svg,
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{pixel_width}\" height=\"{pixel_height}\" \
-         viewBox=\"0 0 {view_width} {view_height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
+         viewBox=\"0 0 {view_width} {view_height}\">\n<rect width=\"{view_width}\" height=\"{view_height}\" {}/>",
         fill_attrs(bg)
     );
     SHARED.with(|memo| memo.borrow_mut().take());
