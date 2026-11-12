@@ -246,7 +246,10 @@ License: MIT.
 `Page.setContent`. It preserves the existing Window, document wrapper, detached
 old nodes, document listeners, URL, compatibility mode and installed host policies.
 It synchronously parses and replaces the document's children, then returns script
-nodes in parser order. No authored script executes inside the call.
+nodes in parser order. Parser scripts do not execute inside the call. Custom-element
+constructors and reactions run synchronously through the normal insertion path
+after the replacement content is attached; they can observe and mutate that
+content. Their execution is distinct from the host loader completion signal.
 
 ```rust,ignore
 let scripts = replace_document_content(scope, document, &html.encode_utf16().collect::<Vec<_>>())?;

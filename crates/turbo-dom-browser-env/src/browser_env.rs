@@ -967,6 +967,18 @@ pub fn import_document_node<'s>(
     node: v8::Local<'s, v8::Object>,
     deep: bool,
 ) -> Result<v8::Local<'s, v8::Object>, &'static str> {
+    import_document_node_with_construction(scope, document, node, deep, true)
+}
+
+/// Parser materialization copies identity before insertion, deferring construction
+/// to the canonical insertion reactions once the new document contents are active.
+fn import_document_node_with_construction<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<v8::Object>,
+    node: v8::Local<'s, v8::Object>,
+    deep: bool,
+    construct: bool,
+) -> Result<v8::Local<'s, v8::Object>, &'static str> {
     let source_node = node;
     struct Snapshot {
         kind: u8,
@@ -1066,7 +1078,7 @@ pub fn import_document_node<'s>(
     document_basics::copy_nonces(scope, source_node, clone, deep);
     script_state::copy(scope, source_node, clone, deep);
     template_contents::copy_contents(scope, source_node, clone, deep);
-    custom_elements::cloned(scope, source_node, clone, deep);
+    custom_elements::cloned_with_construction(scope, source_node, clone, deep, construct);
     shadow_html::clone_roots(scope, source_node, clone, deep);
     Ok(clone)
 }

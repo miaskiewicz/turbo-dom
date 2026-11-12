@@ -919,7 +919,7 @@
     } else if (kind(node) === 1 && wget(associations, node) === undefined)
       wset(associations, node, associationFor(node));
   };
-  g.__captureCustomElementClone = (source, clone, deep) => {
+  g.__captureCustomElementClone = (source, clone, deep, construct = true) => {
     const a = objectCreate(null),
       b = objectCreate(null);
     let count = 1;
@@ -933,7 +933,7 @@
       const is = nativePrivate(first);
       if (is !== undefined) nativePrivate(second, is);
       const selected = registryFor(second);
-      if (kind(second) === 1) {
+      if (construct && kind(second) === 1) {
         const definition = definitionFor(second, selected);
         if (definition) upgraded(second, definition);
       }

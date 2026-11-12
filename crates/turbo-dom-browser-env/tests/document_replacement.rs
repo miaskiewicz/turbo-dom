@@ -1,7 +1,7 @@
 //! Host document-stream handoff without replacing a Window or V8 context.
 use turbo_dom_browser_env::browser_env::{
     install_independent_html, install_inline_event_handlers, install_with_html, node_nonce,
-    prepare_script, replace_document_content, reset,
+    parse_html_document_units, prepare_script, replace_document_content, reset,
 };
 
 fn eval(scope: &mut v8::PinScope, source: &str) -> String {
@@ -35,7 +35,7 @@ fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_wo
     let scripts = replace_document_content(scope, document, &html).unwrap();
     assert_eq!(eval(scope, "JSON.stringify([document===savedDocument,document.getElementById('target').textContent,oldNode.textContent,oldNode.isConnected,marker])"), "[true,\"new\",\"old\",false,40]");
     assert_eq!(scripts.len(), 3);
-    // The embedder retains its existing script policy and loading scheduler. No script
+    // The embedder retains its existing script policy and loading scheduler. No parser script
     // executes during replacement; each returned script can be admitted exactly once.
     for (index, node) in scripts.into_iter().enumerate() {
         let prepared = prepare_script(scope, node).unwrap();
@@ -53,6 +53,29 @@ fn replacement_preserves_realm_document_and_detached_nodes_and_returns_parser_wo
     assert_eq!(
         eval(scope, "JSON.stringify([marker,order])"),
         "[44,[\"first\",\"external\",\"last\",\"listener\"]]"
+    );
+    eval(scope, "globalThis.upgrades=[]; customElements.define('x-content',class extends HTMLElement { constructor(){super(); upgrades.push('construct:'+document.getElementById('phase').textContent)} connectedCallback(){upgrades.push('connected:'+document.getElementById('phase').textContent)} }); document.body.innerHTML='<p id=phase>old</p>'");
+    let custom: Vec<u16> = "<body><p id=phase>new</p><x-content></x-content><template><x-content></x-content></template>".encode_utf16().collect();
+    assert!(replace_document_content(scope, document, &custom)
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        eval(scope, "JSON.stringify(upgrades)"),
+        "[\"construct:new\",\"connected:new\"]"
+    );
+    let inert_source: Vec<u16> = "<x-content></x-content>".encode_utf16().collect();
+    let inert = parse_html_document_units(scope, &inert_source, false);
+    let inert_key = v8::String::new(scope, "inertDocument").unwrap();
+    context
+        .global(scope)
+        .set(scope, inert_key.into(), inert.into());
+    eval(
+        scope,
+        "document.importNode(inertDocument.querySelector('x-content'),true)",
+    );
+    assert_eq!(
+        eval(scope, "JSON.stringify(upgrades)"),
+        "[\"construct:new\",\"connected:new\",\"construct:new\"]"
     );
     let source = v8::String::new(
         scope,

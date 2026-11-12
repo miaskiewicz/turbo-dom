@@ -350,7 +350,9 @@ pub(super) fn expose_test_namespace(scope: &mut v8::PinScope) {
 /// native document identity, host policies, or existing document listeners.
 ///
 /// This is the host handoff for `setContent`: parsing and DOM replacement finish
-/// synchronously; no authored script runs here. The returned nodes are in parser
+/// synchronously; no parser script runs here. Custom-element constructors and
+/// reactions run synchronously after the new content is attached and may mutate
+/// that content. The returned nodes are in parser
 /// order, with fresh parser-inserted flags. Feed them through [`prepare_script`]
 /// and the embedder's existing CSP/module/resource scheduler. The embedder owns
 /// ready-state transitions and DOMContentLoaded/load completion, as on initial
@@ -384,9 +386,9 @@ pub fn replace_document_content<'s>(
     };
     let mut incoming = Vec::with_capacity(children.len());
     for child in children {
-        incoming.push(dom_mutations::Incoming::Node(import_document_node(
-            scope, document, child, true,
-        )?));
+        incoming.push(dom_mutations::Incoming::Node(
+            import_document_node_with_construction(scope, document, child, true, false)?,
+        ));
     }
     let remove = with_tree(|tree| tree.children(root)).unwrap_or_default();
     if !dom_mutations::insert_inputs(scope, root, &incoming, None, &remove) {
