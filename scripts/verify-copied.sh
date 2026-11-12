@@ -411,7 +411,9 @@ event_listeners.rs: 0.8.1 turbo-dom#398 PR-C1 workspace cc <= 15 gate: aborted /
 event_listeners.js: 0.8.3 turbo-dom#488 the AbortSignal.timeout/.any polyfill is moved out to its own abort_signal_polyfill.js run_js call (crate-owned, OWNED below); this file no longer installs it
 event_listeners.rs: 0.8.3 turbo-dom#488 registers abort_signal_polyfill.js as a separate init script run
 browser_env.js: 0.8.3 PR#489 review: Touch dictionary members convert once in lexical order using Web IDL ToNumber
+browser_env.js: 0.8.3 PR#489 review two: TouchList uses canonical native indexed-object hooks for readonly operations and ordinary 2^32-1 property
 script_state.rs: 0.8.3 PR#489 review: initialize parser scripts from imported roots before custom-element reactions
+browser_env.rs: 0.8.3 PR#489 review two: replacement parser preserves original script order before canonical declarative-shadow attachment
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -431,7 +433,7 @@ OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js me
 OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
 OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
-OWNED="$OWNED touch_conversion_chrome156.json"
+OWNED="$OWNED touch_conversion_chrome156.json touch_list_index_chrome156.json document_replacement_shadow.html document_replacement_shadow_chrome156.json"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"

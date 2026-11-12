@@ -46,6 +46,12 @@ Native browser binding fixes and additive screenshot APIs for turbo-surf integra
   dispatch tables reject inherited object keys. Full-page capture retains scroll extents
   of CSS-clipped boxes while keeping their pixels clipped.
 
+- **Adversarial review, round two (#489)**: TouchList indexed writes and property
+  definitions acknowledge success without changing readonly entries; missing indices
+  delete successfully, and `4294967295` remains an ordinary property. Document replacement
+  attaches declarative shadow roots, preserving parser-script order and non-clonable roots
+  while keeping ordinary templates inert and custom-element reactions on the live document.
+
 Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
 inputs change and resolve masks against the same serialized document snapshot. Native
 per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
