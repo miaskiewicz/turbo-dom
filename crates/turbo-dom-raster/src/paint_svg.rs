@@ -45,6 +45,18 @@ pub(crate) fn paint_at_size(
     images: &DecodedAssets,
     scale: f32,
 ) -> String {
+    paint_at_size_with_masks(galley, css_size, pixel_size, bg, images, scale, &[])
+}
+
+pub(crate) fn paint_at_size_with_masks(
+    galley: &Fragment,
+    css_size: (u32, u32),
+    pixel_size: (u32, u32),
+    bg: Rgba,
+    images: &DecodedAssets,
+    scale: f32,
+    masks: &[crate::ScreenshotMask],
+) -> String {
     let (width, height) = css_size;
     let (pixel_width, pixel_height) = pixel_size;
     let view_width = f64::from(pixel_width) / f64::from(scale);
@@ -59,6 +71,7 @@ pub(crate) fn paint_at_size(
     SHARED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut svg, galley, images);
     glyph_filters(&mut svg);
+    crate::masks::paint_svg(&mut svg, masks);
     svg.push_str("</svg>\n");
     svg
 }

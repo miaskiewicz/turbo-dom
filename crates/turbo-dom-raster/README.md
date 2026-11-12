@@ -64,6 +64,7 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
     |---|---|---|
     | `device_scale` | `f32` | output pixels per CSS pixel (default 1), without changing layout; fractional dimensions round outward; finite positive values only |
     | `omit_background` | `bool` | leave the initial canvas transparent; authored root/body backgrounds still paint |
+    | `masks` | `&[ScreenshotMask]` | CSS-pixel overlays painted last; `ScreenshotMask::new(rect)` uses opaque magenta, or set its RGBA color |
     | `full_page` | `bool` | paint the full content height instead of the viewport |
     | `system_fonts` | `bool` | resolve against installed system fonts (`FontRegistry::system`) |
     | `canvases` | `Option<&'a CanvasContents>` | the embedder's canvas pixels (below) |

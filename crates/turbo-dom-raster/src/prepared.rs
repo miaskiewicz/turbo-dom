@@ -22,6 +22,7 @@ pub struct PreparedScreenshot {
     height: u32,
     background: Rgba,
     scale: f32,
+    masks: Vec<crate::ScreenshotMask>,
 }
 
 impl PreparedScreenshot {
@@ -49,11 +50,23 @@ impl PreparedScreenshot {
             height,
             background,
             scale: options.device_scale,
+            masks: options.masks.to_vec(),
         }
     }
 
     /// Paint the retained layout to PNG without re-reading any preparation input.
     pub fn png(&self) -> Result<Vec<u8>, String> {
+        if !self.masks.is_empty() {
+            return paint_png::paint_scaled_with_masks(
+                &self.galley,
+                self.width,
+                self.height,
+                self.background,
+                &self.decoded,
+                self.scale,
+                &self.masks,
+            );
+        }
         if self.scale == 1.0 {
             return paint_png::paint(
                 &self.galley,
@@ -76,6 +89,17 @@ impl PreparedScreenshot {
     /// Paint the same retained layout to a standalone SVG.
     pub fn svg(&self) -> Result<String, String> {
         let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
+        if !self.masks.is_empty() {
+            return Ok(paint_svg::paint_at_size_with_masks(
+                &self.galley,
+                (self.width, self.height),
+                pixels,
+                self.background,
+                &self.decoded,
+                self.scale,
+                &self.masks,
+            ));
+        }
         if self.scale == 1.0 {
             return Ok(paint_svg::paint(
                 &self.galley,

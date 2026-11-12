@@ -143,6 +143,13 @@ pub(crate) fn html_elements(tree: &Tree, name: &str) -> Vec<Handle> {
 /// breaking out of foreign content) applies. Each source is the element re-serialized as
 /// namespace-well-formed XML ([`svg_markup`]).
 pub fn inline_svg_to_img(tree: &mut Tree) -> Vec<(String, String)> {
+    inline_svg_to_img_with(tree, |_, _, _| {})
+}
+
+pub(crate) fn inline_svg_to_img_with(
+    tree: &mut Tree,
+    mut replaced: impl FnMut(&Tree, Handle, Handle),
+) -> Vec<(String, String)> {
     let roots = svg_roots(tree);
     let mut assets = Vec::with_capacity(roots.len());
     for svg in roots {
@@ -155,6 +162,7 @@ pub fn inline_svg_to_img(tree: &mut Tree) -> Vec<(String, String)> {
                 tree.set_attribute(img, name, &value);
             }
         }
+        replaced(tree, svg, img);
         tree.replace_with(svg, &[img]);
         assets.push((key, source));
     }

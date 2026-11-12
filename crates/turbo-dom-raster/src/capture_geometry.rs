@@ -6,7 +6,7 @@ pub(crate) fn content_bottom(root: &Fragment) -> f32 {
     subtree_bottom(root, Transform::identity(), None)
 }
 
-fn box_transform(f: &Fragment, parent: Transform) -> Transform {
+pub(crate) fn box_transform(f: &Fragment, parent: Transform) -> Transform {
     let FragmentContent::Box {
         transform: Some(t), ..
     } = &f.content
@@ -22,11 +22,17 @@ fn box_transform(f: &Fragment, parent: Transform) -> Transform {
     )
 }
 
-fn transformed_rect(x: f32, y: f32, width: f32, height: f32, xf: Transform) -> Option<Rect> {
+pub(crate) fn transformed_rect(
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    xf: Transform,
+) -> Option<Rect> {
     Rect::from_xywh(x, y, width, height)?.transform(xf)
 }
 
-fn intersect(a: Option<Rect>, b: Rect) -> Option<Rect> {
+pub(crate) fn intersect(a: Option<Rect>, b: Rect) -> Option<Rect> {
     a.map_or(Some(b), |a| a.intersect(&b))
 }
 
@@ -57,7 +63,7 @@ fn subtree_bottom(f: &Fragment, parent: Transform, inherited_clip: Option<Rect>)
     bottom
 }
 
-fn clip_region(
+pub(crate) fn clip_region(
     f: &Fragment,
     xf: Transform,
     inherited: Option<Rect>,

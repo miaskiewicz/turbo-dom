@@ -32,6 +32,7 @@ mod glyph;
 mod glyph_raster;
 mod image_paint;
 mod jxl;
+mod masks;
 mod paint_canvas;
 #[cfg(all(target_os = "macos", feature = "coretext"))]
 mod paint_canvas_coretext;
@@ -127,6 +128,7 @@ fn canvas_too_large(width: u32, height: u32) -> bool {
     u64::from(width) * u64::from(height) > 268_435_456
 }
 pub use canvas_content::{CanvasContent, CanvasContents};
+pub use masks::{screenshot_element_rects, ScreenshotMask, ScreenshotRect};
 pub use style_extract::{
     delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
 };
@@ -301,6 +303,8 @@ pub fn screenshot_svg_with_opts(
 pub struct ScreenshotOptions<'a> {
     /// Intrinsic headers retained independently of fetched pixel bytes.
     pub image_metadata: Option<&'a ImageMetadata>,
+    /// CSS-pixel overlays painted after the document, in slice order. Empty by default.
+    pub masks: &'a [ScreenshotMask],
     /// Paint the full content height instead of the viewport height (see
     /// [`screenshot_png_with_assets`]).
     pub full_page: bool,
@@ -348,6 +352,7 @@ impl Default for ScreenshotOptions<'_> {
     fn default() -> Self {
         Self {
             image_metadata: None,
+            masks: &[],
             full_page: false,
             omit_background: false,
             device_scale: 1.0,
@@ -545,13 +550,30 @@ fn parse_document(
     decoded: &mut image_paint::DecodedAssets,
     options: &ScreenshotOptions,
 ) -> Tree {
-    let mut tree = parse_html_tree(html);
+    prepare_document(parse_html_tree(html), decoded, options, None)
+}
+
+type SvgReplacement<'a> = &'a mut dyn FnMut(
+    &Tree,
+    turbo_dom_layout::turbo_dom::Handle,
+    turbo_dom_layout::turbo_dom::Handle,
+);
+
+fn prepare_document(
+    mut tree: Tree,
+    decoded: &mut image_paint::DecodedAssets,
+    options: &ScreenshotOptions,
+    replaced: Option<SvgReplacement<'_>>,
+) -> Tree {
     style_extract::delazy_tree(&mut tree);
     image_paint::add_img_data_urls(decoded, &tree);
     if let Some(canvases) = options.canvases {
         canvas_content::add_canvases(decoded, &tree, canvases);
     }
-    let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
+    let inline_svgs = match replaced {
+        Some(replaced) => image_paint::inline_svg_to_img_with(&mut tree, replaced),
+        None => image_paint::inline_svg_to_img(&mut tree),
+    };
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree
 }

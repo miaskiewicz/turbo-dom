@@ -65,12 +65,25 @@ pub(crate) fn paint_scaled(
     images: &DecodedAssets,
     scale: f32,
 ) -> Result<Vec<u8>, String> {
+    paint_scaled_with_masks(galley, width, height, bg, images, scale, &[])
+}
+
+pub(crate) fn paint_scaled_with_masks(
+    galley: &Fragment,
+    width: u32,
+    height: u32,
+    bg: Rgba,
+    images: &DecodedAssets,
+    scale: f32,
+    masks: &[crate::ScreenshotMask],
+) -> Result<Vec<u8>, String> {
     let (width, height) = crate::screenshot_pixel_size(width, height, scale)?;
     let mut pm =
         Pixmap::new(width, height).ok_or_else(|| format!("bad canvas {width}x{height}"))?;
     pm.fill(tiny_skia::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a));
     SCALED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut pm, galley, images, Transform::from_scale(scale, scale));
+    crate::masks::paint_png(&mut pm, masks, scale);
     pm.encode_png().map_err(|e| format!("png encode: {e}"))
 }
 

@@ -378,6 +378,38 @@ pub fn layout_html_tree_in_viewport_with(
     lay_out_document(styled, viewport, fonts, images, options.layout(), diags)
 }
 
+/// [`layout_html_tree_in_viewport_with`] with the source identity of every generated box.
+/// Recording changes neither the cascade nor the painted galley; source handles refer to
+/// `tree`, letting snapshot consumers map fragments back to that exact document.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_html_tree_recorded_in_viewport_with(
+    tree: &Tree,
+    extra_css: &str,
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    post_cascade: impl FnOnce(&mut [StyledNode]),
+    diags: &mut Diagnostics,
+) -> crate::LaidOut {
+    let mut styled = style_document(tree, extra_css, cb_width, options);
+    post_cascade(&mut styled);
+    let canvas = propagate_canvas_background(&mut styled);
+    let _root_font = root_font_scope(document_root_font_px(&styled));
+    let mut output = crate::layout::layout_recorded_in_viewport(
+        &styled,
+        (cb_width, viewport_height),
+        fonts,
+        images,
+        &options.layout(),
+        diags,
+    );
+    if let FragmentContent::Box { background, .. } = &mut output.galley.content {
+        *background = canvas;
+    }
+    output
+}
+
 /// One laid-out box paired with the `data-cid` its source element carried
 /// ([`layout_boxes`]). Coordinates are absolute px in the galley's top-down
 /// space (a fragment's `x`/`y` are already accumulated to page origin), and the
