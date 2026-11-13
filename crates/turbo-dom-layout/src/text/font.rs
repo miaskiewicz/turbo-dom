@@ -651,6 +651,11 @@ impl FontFace {
 /// The direction the shaper picks for `text` on its own (its script's).
 #[must_use]
 pub fn guessed_rtl(text: &str) -> bool {
+    // ASCII has no RTL script; Rustybuzz defaults common/control-only runs to LTR.
+    if text.is_ascii() {
+        return false;
+    }
+    crate::hot!("font.direction_guess_buffer");
     let mut buffer = UnicodeBuffer::new();
     buffer.push_str(text);
     buffer.guess_segment_properties();
@@ -1236,3 +1241,7 @@ mod cache_tests;
 
 #[path = "font_plan.rs"]
 mod plan;
+
+#[cfg(test)]
+#[path = "font_ascii_tests.rs"]
+mod ascii_tests;
