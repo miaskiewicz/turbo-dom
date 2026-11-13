@@ -922,7 +922,10 @@ pub struct ResolveCtx {
     pub cb_width: f32,
 }
 
-fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
+/// Resolve only the font size, with the same inheritance and relative-unit
+/// semantics used by [`resolve_box_style`], without resolving the other box facts.
+#[must_use]
+pub fn resolve_font_size(s: &ComputedStyle, parent: f32) -> f32 {
     let Some(raw) = s.get("font-size") else {
         return parent;
     };
@@ -1583,6 +1586,19 @@ fn font_weight(s: &ComputedStyle) -> u16 {
     }
 }
 
+fn font_italic(s: &ComputedStyle) -> bool {
+    matches!(
+        s.get("font-style").map(str::trim),
+        Some("italic" | "oblique")
+    )
+}
+
+fn letter_spacing(s: &ComputedStyle, fs: f32) -> f32 {
+    s.get("letter-spacing")
+        .and_then(|v| parse_px(v, fs))
+        .unwrap_or(0.0)
+}
+
 fn line_height(s: &ComputedStyle, fs: f32) -> Option<f32> {
     let v = s.get("line-height")?.trim();
     if v.eq_ignore_ascii_case("normal") {
@@ -1752,20 +1768,14 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         font_families: font_families(s),
         font_size: fs,
         font_weight: font_weight(s),
-        italic: matches!(
-            s.get("font-style").map(str::trim),
-            Some("italic" | "oblique")
-        ),
+        italic: font_italic(s),
         color: colour_of(s),
         line_height: line_height(s, fs),
         text_align: align_of(s),
         legacy_align: legacy_align_of(s),
         rtl: s.get("direction").map(str::trim) == Some("rtl"),
         white_space: white_space_of(s),
-        letter_spacing: s
-            .get("letter-spacing")
-            .and_then(|v| parse_px(v, fs))
-            .unwrap_or(0.0),
+        letter_spacing: letter_spacing(s, fs),
         vertical_align: vertical_align_of(s),
         break_before: break_rule_of(s, "break-before"),
         break_after: break_rule_of(s, "break-after"),
@@ -2466,6 +2476,37 @@ pub fn resolve_box_style(s: &ComputedStyle, ctx: ResolveCtx) -> BoxStyle {
     crate::hot!("layout.resolve_box_style");
     let fs = resolve_font_size(s, ctx.parent_font_size);
     resolve_box_metrics(s, fs, ctx)
+}
+
+/// The used values a text run reads; frame and paint-box properties are not needed.
+#[derive(Debug, PartialEq)]
+pub(crate) struct TextRunStyle {
+    pub font_families: Vec<String>,
+    pub font_weight: u16,
+    pub italic: bool,
+    pub font_size: f32,
+    pub line_height: Option<f32>,
+    pub letter_spacing: f32,
+    pub color: Rgba,
+    pub vertical_align: VAlign,
+}
+
+/// Reuse the box resolver's text semantics without parsing borders, backgrounds,
+/// transforms and dimensions for every inline run.
+#[must_use]
+pub(crate) fn resolve_text_run_style(s: &ComputedStyle, parent_font_size: f32) -> TextRunStyle {
+    crate::hot!("layout.resolve_text_style");
+    let fs = resolve_font_size(s, parent_font_size);
+    TextRunStyle {
+        font_families: font_families(s),
+        font_weight: font_weight(s),
+        italic: font_italic(s),
+        font_size: fs,
+        line_height: line_height(s, fs),
+        letter_spacing: letter_spacing(s, fs),
+        color: colour_of(s),
+        vertical_align: vertical_align_of(s),
+    }
 }
 
 /// Whether `resolve_box_style(s, ctx)` is the same for every `ctx` — i.e. the box
@@ -3395,3 +3436,7 @@ mod direction_tests {
         assert_eq!(align(&[rtl, ("text-align", "-webkit-right")]), Align::Right);
     }
 }
+
+#[cfg(test)]
+#[path = "value_text_tests.rs"]
+mod text_run_style_tests;

@@ -43,7 +43,7 @@ manual_midpoint = "allow"
 
 [package]
 name = "turbo-dom-parser"
-version = "0.8.3"
+version = "0.8.4"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
 # Ships to npm only (napi/wasm addon); never published to crates.io.

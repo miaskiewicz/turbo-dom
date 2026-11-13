@@ -653,7 +653,12 @@ fn content_box_height(bs: &BoxStyle, content_h: f32, pct_basis: f32) -> f32 {
 // inline (Lines) layout
 // --------------------------------------------------------------------------
 
-fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) -> Option<InlineRun> {
+fn text_run(
+    item: &InlineItem,
+    parent_fs: f32,
+    _cw: f32,
+    fonts: &FontRegistry,
+) -> Option<InlineRun> {
     let InlineItem::Text {
         node_id,
         style,
@@ -662,20 +667,14 @@ fn text_run(item: &InlineItem, parent_fs: f32, cw: f32, fonts: &FontRegistry) ->
     else {
         return None;
     };
-    let bs = resolve_box_style(
-        style,
-        ResolveCtx {
-            parent_font_size: parent_fs,
-            cb_width: cw,
-        },
-    );
+    let bs = super::value::resolve_text_run_style(style, parent_fs);
     let families: Vec<&str> = bs.font_families.iter().map(String::as_str).collect();
     let face = fonts.select(&families, bs.font_weight, bs.italic)?.clone();
     Some(InlineRun {
         node_id: *node_id,
         text: text.clone(),
         face,
-        families: bs.font_families.clone(),
+        families: bs.font_families,
         weight: bs.font_weight,
         italic: bs.italic,
         font_size: bs.font_size,
@@ -4123,3 +4122,7 @@ mod tests {
         assert!(zero_or_auto(LengthPct::Calc { pct: 0.0, px: 0.0 }));
     }
 }
+
+#[cfg(all(test, feature = "perf"))]
+#[path = "block_text_resolver_tests.rs"]
+mod text_resolver_tests;

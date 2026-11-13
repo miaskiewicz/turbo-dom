@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.3**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.4** (local unreleased candidate). turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -17,15 +17,19 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## What is published
+## Packages in this candidate
+
+Version 0.8.4 is under local development; the published registry release remains
+0.8.3. Local consumers override these candidate requirements with `[patch.crates-io]`
+until the release is published.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.3 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.3 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.3 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.3 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.3 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.4 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.4 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.4 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.4 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.4 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.1 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -107,10 +111,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.8.3"
-turbo-dom-layout = "0.8.3"                 # bundled fonts on by default
-turbo-dom-raster = "0.8.3"
-turbo-dom-browser-env = "0.8.3"            # needs a V8 archive, see its README
+turbo-dom = "0.8.4"
+turbo-dom-layout = "0.8.4"                 # bundled fonts on by default
+turbo-dom-raster = "0.8.4"
+turbo-dom-browser-env = "0.8.4"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -155,6 +159,10 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 features (for example `simdutf`).
 
 ## Status
+
+- **0.8.4 (unreleased):** bounded shaping-cache retention, shared immutable styles
+  and font-family storage, and inline text paths that avoid unused box parsing and
+  disabled wrapping work. See the unreleased changelog and turbo-dom#508.
 
 - **0.8.3:** browser binding fixes include branded Touch events, hidden-control geometry,
   and document replacement that preserves Window/document identity. Screenshot APIs add

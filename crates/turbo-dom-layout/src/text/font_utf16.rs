@@ -8,9 +8,7 @@ impl FontFace {
             .shape_cache
             .lock()
             .expect("shape cache not poisoned")
-            .units_entries
-            .get(units)
-            .cloned()
+            .get_units(units)
         {
             return hit;
         }

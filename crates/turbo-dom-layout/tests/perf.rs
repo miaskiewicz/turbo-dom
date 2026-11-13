@@ -194,3 +194,14 @@ fn clone_bookkeeping_grows_linearly_with_a_line() {
         }
     }
 }
+
+#[test]
+fn frequently_reused_labels_are_shaped_once_during_unique_row_churn() {
+    let face = common::evolventa();
+    perf::reset();
+    for index in 0..512 {
+        std::hint::black_box(face.shape("repeated invoice label"));
+        std::hint::black_box(face.shape(&format!("unique row {index}")));
+    }
+    assert_eq!(perf::count("font.shape"), 513);
+}

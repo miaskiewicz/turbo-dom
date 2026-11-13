@@ -4,6 +4,7 @@
 //! UA < author sheets < tokens < node styles < inline < `!important` (AC-4.9).
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use super::parser::{parse_declarations, Declaration, Rule};
 use super::token::{resolve_tokens, TokenSet};
@@ -14,7 +15,7 @@ use turbo_dom::Handle;
 /// Computed property values for one element.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ComputedStyle {
-    map: BTreeMap<String, String>,
+    map: Arc<BTreeMap<String, String>>,
 }
 
 impl ComputedStyle {
@@ -45,12 +46,18 @@ impl ComputedStyle {
     /// Remove a property (the HTML drive moves a propagated background off its
     /// element; see `html_layout`).
     pub(crate) fn remove(&mut self, property: &str) -> Option<String> {
-        self.map.remove(property)
+        if !self.map.contains_key(property) {
+            return None;
+        }
+        Arc::make_mut(&mut self.map).remove(property)
     }
 
     /// Set a property's computed value.
     pub(crate) fn set(&mut self, property: &str, value: String) {
-        self.map.insert(property.to_string(), value);
+        if self.map.get(property) == Some(&value) {
+            return;
+        }
+        Arc::make_mut(&mut self.map).insert(property.to_string(), value);
     }
 
     pub(crate) fn inline_fragment_style(&self, first: bool, last: bool) -> Self {
@@ -62,7 +69,7 @@ impl ComputedStyle {
                     format!("padding-{side}"),
                     format!("border-{side}-width"),
                 ] {
-                    style.map.insert(property, "0px".into());
+                    Arc::make_mut(&mut style.map).insert(property, "0px".into());
                 }
             }
         }
@@ -94,7 +101,7 @@ impl ComputedStyle {
             .into_iter()
             .map(|(k, v)| (k.into(), v.into()))
             .collect();
-        ComputedStyle { map }
+        ComputedStyle { map: Arc::new(map) }
     }
 }
 
@@ -656,7 +663,7 @@ fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedSty
         }
     }
     // Custom properties (`--*`) inherit by default (they're how `var()` cascades).
-    for (k, v) in &parent.map {
+    for (k, v) in parent.map.iter() {
         if k.starts_with("--") {
             map.insert(k.clone(), v.clone());
         }
@@ -666,7 +673,7 @@ fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedSty
     resolve_explicit_inherit(&mut map, parent);
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
-    ComputedStyle { map }
+    ComputedStyle { map: Arc::new(map) }
 }
 
 /// The initial value of each inherited property (and of `display`, whose absence
@@ -1275,3 +1282,7 @@ mod background_shorthand_tests {
         assert_eq!(style.get("background-color"), None);
     }
 }
+
+#[cfg(test)]
+#[path = "computed_style_cow_tests.rs"]
+mod computed_style_cow_tests;

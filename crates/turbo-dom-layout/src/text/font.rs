@@ -129,7 +129,7 @@ pub struct FontFace {
     /// MUST parse at this index, else the glyph ids (which index the selected face's
     /// tables) draw the wrong sub-font's glyphs.
     index: u32,
-    family: String,
+    family: Arc<str>,
     weight: u16,
     italic: bool,
     units_per_em: u16,
@@ -307,7 +307,7 @@ impl FontFace {
         Some(FontFace {
             faces: Arc::new(faces),
             index,
-            family: family.into(),
+            family: Arc::from(family.into()),
             weight,
             italic,
             units_per_em,
@@ -377,7 +377,7 @@ impl FontFace {
     #[must_use]
     pub fn with_family(&self, family: impl Into<String>) -> FontFace {
         FontFace {
-            family: family.into(),
+            family: Arc::from(family.into()),
             ..self.clone()
         }
     }
@@ -539,9 +539,9 @@ impl FontFace {
         if guessed_rtl(text) == rtl {
             return self.shape(text);
         }
-        // A key no plain text has: a direction mark ahead of the text.
+        // Forced runs occupy a separate cache domain: raw text may contain these marks.
         let key = format!("{}{text}", if rtl { '\u{200f}' } else { '\u{200e}' });
-        if let Some(hit) = self.cached_shape(&key) {
+        if let Some(hit) = self.cached_forced_shape(&key) {
             return hit;
         }
         let mut buffer = UnicodeBuffer::new();
@@ -557,7 +557,7 @@ impl FontFace {
             &[],
             buffer,
         ));
-        self.store_shape(&key, &glyphs);
+        self.store_forced_shape(&key, &glyphs);
         glyphs
     }
 
@@ -573,9 +573,7 @@ impl FontFace {
         self.shape_cache
             .lock()
             .expect("shape cache not poisoned")
-            .entries
             .get(text)
-            .cloned()
     }
 
     fn store_shape(&self, text: &str, glyphs: &[ShapedGlyph]) {
@@ -583,6 +581,20 @@ impl FontFace {
             .lock()
             .expect("shape cache not poisoned")
             .insert(text, glyphs);
+    }
+
+    fn cached_forced_shape(&self, key: &str) -> Option<Vec<ShapedGlyph>> {
+        self.shape_cache
+            .lock()
+            .expect("shape cache not poisoned")
+            .get_forced(key)
+    }
+
+    fn store_forced_shape(&self, key: &str, glyphs: &[ShapedGlyph]) {
+        self.shape_cache
+            .lock()
+            .expect("shape cache not poisoned")
+            .insert_forced(key, glyphs);
     }
 
     /// Measure the advance width of `text` in pixels at `font_size`, adding
@@ -695,11 +707,52 @@ const SHAPE_CACHE_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Default)]
 struct ShapeCache {
-    entries: HashMap<String, Vec<ShapedGlyph>>,
-    units_entries: HashMap<Vec<u16>, Vec<ShapedGlyph>>,
+    entries: HashMap<String, ShapeEntry>,
+    forced_entries: HashMap<String, ShapeEntry>,
+    units_entries: HashMap<Vec<u16>, ShapeEntry>,
     bytes: usize,
+    clock: u64,
+}
+
+struct ShapeEntry {
+    glyphs: Vec<ShapedGlyph>,
+    bytes: usize,
+    used: u64,
 }
 impl ShapeCache {
+    fn get(&mut self, text: &str) -> Option<Vec<ShapedGlyph>> {
+        let used = self.next_tick();
+        let entry = self.entries.get_mut(text)?;
+        entry.used = used;
+        Some(entry.glyphs.clone())
+    }
+
+    fn get_forced(&mut self, key: &str) -> Option<Vec<ShapedGlyph>> {
+        let used = self.next_tick();
+        let entry = self.forced_entries.get_mut(key)?;
+        entry.used = used;
+        Some(entry.glyphs.clone())
+    }
+
+    fn get_units(&mut self, units: &[u16]) -> Option<Vec<ShapedGlyph>> {
+        let used = self.next_tick();
+        let entry = self.units_entries.get_mut(units)?;
+        entry.used = used;
+        Some(entry.glyphs.clone())
+    }
+
+    fn next_tick(&mut self) -> u64 {
+        if self.clock == u64::MAX {
+            self.entries.clear();
+            self.forced_entries.clear();
+            self.units_entries.clear();
+            self.bytes = 0;
+            self.clock = 0;
+        }
+        self.clock += 1;
+        self.clock
+    }
+
     fn insert(&mut self, text: &str, glyphs: &[ShapedGlyph]) {
         let Some(bytes) = shape_payload_bytes(text, glyphs) else {
             return;
@@ -708,9 +761,37 @@ impl ShapeCache {
             return;
         }
         self.make_room(bytes);
-        self.entries.insert(text.to_string(), glyphs.to_vec());
+        let used = self.next_tick();
+        self.entries.insert(
+            text.to_string(),
+            ShapeEntry {
+                glyphs: glyphs.to_vec(),
+                bytes,
+                used,
+            },
+        );
         self.bytes += bytes;
     }
+    fn insert_forced(&mut self, key: &str, glyphs: &[ShapedGlyph]) {
+        let Some(bytes) = shape_payload_bytes(key, glyphs) else {
+            return;
+        };
+        if self.forced_entries.contains_key(key) {
+            return;
+        }
+        self.make_room(bytes);
+        let used = self.next_tick();
+        self.forced_entries.insert(
+            key.to_string(),
+            ShapeEntry {
+                glyphs: glyphs.to_vec(),
+                bytes,
+                used,
+            },
+        );
+        self.bytes += bytes;
+    }
+
     fn insert_units(&mut self, units: &[u16], glyphs: &[ShapedGlyph]) {
         let Some(bytes) = unit_payload_bytes(units, glyphs) else {
             return;
@@ -719,19 +800,54 @@ impl ShapeCache {
             return;
         }
         self.make_room(bytes);
-        self.units_entries.insert(units.to_vec(), glyphs.to_vec());
+        let used = self.next_tick();
+        self.units_entries.insert(
+            units.to_vec(),
+            ShapeEntry {
+                glyphs: glyphs.to_vec(),
+                bytes,
+                used,
+            },
+        );
         self.bytes += bytes;
     }
     fn make_room(&mut self, bytes: usize) {
-        if self.entries.len() + self.units_entries.len() >= SHAPE_CACHE_ENTRIES
+        while self.entries.len() + self.forced_entries.len() + self.units_entries.len()
+            >= SHAPE_CACHE_ENTRIES
             || self.bytes + bytes > SHAPE_CACHE_BYTES
         {
-            self.entries.clear();
-            self.units_entries.clear();
-            self.bytes = 0;
+            self.evict_oldest();
         }
     }
+
+    fn evict_oldest(&mut self) {
+        // Admitted payloads fit the byte limit, so pressure implies a resident entry.
+        let oldest = self
+            .entries
+            .values()
+            .chain(self.forced_entries.values())
+            .chain(self.units_entries.values())
+            .map(|entry| entry.used)
+            .min()
+            .expect("cache pressure has a resident entry");
+        self.entries
+            .retain(|_, entry| retain_recent(entry, oldest, &mut self.bytes));
+        self.forced_entries
+            .retain(|_, entry| retain_recent(entry, oldest, &mut self.bytes));
+        self.units_entries
+            .retain(|_, entry| retain_recent(entry, oldest, &mut self.bytes));
+    }
 }
+
+fn retain_recent(entry: &ShapeEntry, oldest: u64, bytes: &mut usize) -> bool {
+    if entry.used == oldest {
+        *bytes -= entry.bytes;
+        false
+    } else {
+        true
+    }
+}
+
 fn shape_payload_bytes(text: &str, glyphs: &[ShapedGlyph]) -> Option<usize> {
     let bytes = glyphs
         .len()
@@ -1113,3 +1229,7 @@ mod canvas_measure_chrome {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "font_cache_tests.rs"]
+mod cache_tests;

@@ -5,6 +5,24 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.4] — Unreleased
+
+- **Layout performance (#508)**: retain recently used UTF-8 and original UTF-16
+  shaping results under churn with shared least-recently-used eviction. The
+  per-face 128-entry and 8 MiB payload budgets are unchanged.
+- **Inline performance (#508)**: share cloned font-family storage, compare segment
+  family names without allocating, and skip disabled automatic-hyphenation and
+  emergency-wrapping preparation. Inline text resolves its font/text facts through
+  the existing parsers without also resolving unused box geometry and paint.
+- **Style reuse (#508)**: computed-style clones share immutable property maps and
+  detach on mutation, preserving property iteration and independent style updates.
+- **Text correctness (#508)**: keep raw UTF-8 text and forced-direction shaping
+  in separate cache domains, so authored LRM/RLM characters cannot reuse another
+  run's glyph order or byte clusters. All domains share the same cache budgets.
+- **Layout API (#508)**: expose the existing `layout::value::resolve_font_size`
+  helper so consumers can resolve inherited font sizes without resolving full
+  box styles a second time. Resolution semantics are unchanged.
+
 ## [0.8.3] — 2026-11-13
 
 Native browser binding fixes and additive screenshot APIs for turbo-surf integration.
