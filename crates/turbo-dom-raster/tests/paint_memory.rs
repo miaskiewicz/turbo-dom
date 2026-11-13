@@ -4,10 +4,14 @@
 //! image tile, a canvas-sized layer per inset shadow on a tall page) fails here.
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-use turbo_dom_raster::{screenshot_png_with_opts, ImageAssets, Viewport};
+use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry, Fragment};
+use turbo_dom_raster::{
+    screenshot_png_with_opts, ImageAssets, PreparedScreenshot, ScreenshotOptions, Viewport,
+};
 
 struct Peak;
 
@@ -172,4 +176,70 @@ fn millions_of_fractional_tiles_paint_the_whole_box_in_bounded_work() {
     assert_eq!(pixel(&png, 100, 199), [255, 0, 0]);
     // 800 x 800 / 1.5^2 = 284444 tiles; walking them allocates at least once per tile.
     assert!(count < 20_000, "{count} allocations");
+}
+
+fn full_opacity_boxes(fragment: &Fragment, opacity: f32) -> usize {
+    let selected = fragment.width == 1024.0
+        && fragment.height == 1024.0
+        && fragment.opacity == opacity
+        && fragment.is_positioned;
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(|child| full_opacity_boxes(child, opacity))
+            .sum::<usize>()
+}
+
+#[test]
+fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
+    const BOXES: usize = 20;
+    let viewport = Viewport {
+        width: 1024,
+        height: 1024,
+    };
+    for opacity in [0.0, 1.0] {
+        let mut html = String::from("<body style='margin:0;background:#fff'>");
+        for _ in 0..BOXES {
+            write!(html, "<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;opacity:{opacity}'></div>").unwrap();
+        }
+        let galley = layout_html(
+            &html,
+            "",
+            1024.0,
+            &FontRegistry::new(),
+            &mut Diagnostics::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            full_opacity_boxes(&galley, opacity),
+            BOXES,
+            "the public layout must retain all target boxes"
+        );
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            viewport,
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        let (_, big) = allocations(|| {
+            let png = prepared.png().unwrap();
+            let image = image::load_from_memory(&png).unwrap().to_rgb8();
+            let expected = if opacity == 0.0 {
+                [255; 3]
+            } else {
+                [255, 0, 0]
+            };
+            assert_eq!(image.get_pixel(512, 512).0, expected);
+            assert_eq!(image.get_pixel(1023, 1023).0, expected);
+        });
+        // The canvas, PNG encoder and verification decoder need only a handful
+        // of large buffers. One 4-MiB group per target box would exceed this
+        // budget even though the redundant groups leave every output pixel equal.
+        assert!(
+            big < BOXES,
+            "opacity {opacity}: {big} allocations of at least 1 MiB"
+        );
+    }
 }

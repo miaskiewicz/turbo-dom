@@ -1837,6 +1837,82 @@ mod tests {
     }
 
     #[test]
+    fn an_image_touching_the_canvas_edge_has_no_visible_resampling_window() {
+        for (x, y) in [
+            (12.0, 0.0),
+            (0.0, 12.0),
+            (12.0, 12.0),
+            (-4.0, 0.0),
+            (0.0, -4.0),
+        ] {
+            assert_eq!(
+                visible_window(Transform::from_translate(x, y), (4, 4), (12, 12)),
+                None,
+                "an edge-only intersection at ({x}, {y}) contains no image pixels",
+            );
+        }
+    }
+
+    #[test]
+    fn opacity_groups_keep_hard_shadow_spread_at_fractional_scaled_edges() {
+        let mut groups = Vec::new();
+        for (dx, dy) in [(6, 6), (-6, 6), (6, -6), (-6, -6)] {
+            groups.push(with_box(
+                plain(6.0, 6.0, 5.0, 5.0, None),
+                |_, shadow, _, _| {
+                    *shadow = Some(BoxShadow {
+                        offset_x: dx,
+                        offset_y: dy,
+                        blur: 0,
+                        spread: 4,
+                        color: RED,
+                        inset: false,
+                    });
+                },
+            ));
+        }
+        // The silhouette width rounds up when its large spread is added. Its
+        // actual right edge reaches device x=4; summing the box's right edge and
+        // spread separately only reaches x=3. The conservative margin must keep
+        // that real shadow pixel rather than trusting associative f32 addition.
+        groups.push(with_box(
+            plain(0.0, 0.0, 3.0 / 32.0, 1.0, None),
+            |_, shadow, _, transform| {
+                *shadow = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 0,
+                    blur: 0,
+                    spread: 262_144,
+                    color: RED,
+                    inset: false,
+                });
+                *transform = Some(BoxTransform {
+                    matrix: [32.0, 0.0, 0.0, 32.0, -8_388_608.0, 0.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            },
+        ));
+        for (index, mut group) in groups.into_iter().enumerate() {
+            group.opacity = 0.5;
+            let expected = full_layer_reference(&group, 24, 24, &HashMap::new());
+            assert!(
+                !all_white(&expected),
+                "reference case {index} must actually paint"
+            );
+            if index == 4 {
+                assert_ne!(
+                    rgb(&expected, 3, 8),
+                    [255; 3],
+                    "the rounded shadow edge paints x=3"
+                );
+            }
+            let actual = render(&group, 24, 24, &HashMap::new());
+            assert_eq!(actual.data(), expected.data(), "shadow group {index}");
+        }
+    }
+
+    #[test]
     fn an_opacity_layer_covers_only_its_subtree_ink() {
         // miaskiewicz/turbo-dom#206 follow-up: a canvas-sized layer per opacity box made
         // 2000 one-pixel `opacity:.5` divs take 14 s at 1280x800.
