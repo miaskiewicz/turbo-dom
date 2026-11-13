@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **ASCII shaping preparation (#508)**: skip Unicode direction-buffer creation
+  for ASCII text, whose inferred direction is always left-to-right. Non-ASCII
+  inference and explicit shaping directions retain their existing paths.
+- **Paired intrinsic text preparation (#508)**: prepare eligible table-cell text
+  once for minimum and maximum width queries, retaining independent placement
+  passes and the existing sizing arithmetic. Numeric caches remain local to the
+  layout tree and are invalidated by the existing layout policies.
 - **Scoped animation lifecycle (#509)**: discover open and closed shadow-root
   stylesheets and adopted sheets when inspecting canonical effects. Keyframe
   lookup follows the actual root, reflects CSSOM changes and preserves strict
