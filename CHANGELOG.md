@@ -7,6 +7,15 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Scoped animation lifecycle (#509)**: discover open and closed shadow-root
+  stylesheets and adopted sheets when inspecting canonical effects. Keyframe
+  lookup follows the actual root, reflects CSSOM changes and preserves strict
+  handling of missing rules, isolated roots and foreign documents.
+- **Host animation presentation policy (#511)**: let each genuine Window's host
+  suppress CSS and script effect presentation while retaining animation APIs,
+  canonical timing, events, promises, timers and animation-frame callbacks.
+  Trusted per-element snapshots expose suppression proof for underlying geometry;
+  existing CSS/jsdom compatibility switches remain independent.
 - **Canonical hyperlink activation (#510)**: let a host-owned per-context policy
   consume uncancelled primary clicks on connected HTML links, including authored
   `click()` and bubbling descendant clicks. A private per-dispatch receipt covers
