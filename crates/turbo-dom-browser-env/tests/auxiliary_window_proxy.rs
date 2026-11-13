@@ -11,6 +11,9 @@ struct Host {
     contexts: RefCell<Vec<v8::Global<v8::Context>>>,
     opens: RefCell<Vec<OpenRequest>>,
     messages: RefCell<Vec<(AuxiliaryContextId, AuxiliaryContextId, String)>>,
+    children: RefCell<Vec<v8::Global<v8::Context>>>,
+    navigations: RefCell<Vec<(AuxiliaryContextId, AuxiliaryContextId, String)>>,
+    actions: RefCell<Vec<(AuxiliaryContextId, AuxiliaryContextId, bool)>>,
 }
 
 fn init() {
@@ -324,4 +327,203 @@ fn retained_lexical_and_native_callbacks_cannot_access_a_cross_origin_replacemen
         host.contexts.borrow_mut().clear();
     }
     isolate.remove_slot::<Rc<Host>>();
+}
+
+fn fixture(
+    test: impl for<'s, 'i> FnOnce(
+        &mut v8::PinScope<'s, 'i>,
+        &Rc<Host>,
+        v8::Local<'s, v8::Context>,
+        v8::Local<'s, v8::Context>,
+    ),
+) {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    isolate.set_failed_access_check_callback(auxiliary_window_failed_access);
+    let host = Rc::new(Host::default());
+    isolate.set_slot(Rc::clone(&host));
+    {
+        v8::scope!(let scope, &mut isolate);
+        let source = root(scope, "https://source.example", true);
+        let target = root(scope, "https://target.example", false);
+        let scope = &mut v8::ContextScope::new(scope, source);
+        let window = target.global(scope);
+        set(scope, source, "target", window.into());
+        test(scope, &host, source, target);
+        host.children.borrow_mut().clear();
+        host.contexts.borrow_mut().clear();
+    }
+    isolate.remove_slot::<Rc<Host>>();
+}
+
+fn children<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    _: v8::Local<'s, v8::Context>,
+) -> Vec<v8::Local<'s, v8::Context>> {
+    let host = scope.get_slot::<Rc<Host>>().cloned().unwrap();
+    let children = host.children.borrow();
+    children
+        .iter()
+        .map(|child| v8::Local::new(scope, child))
+        .collect()
+}
+
+fn location<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    _: v8::Local<'s, v8::Context>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    Some(
+        v8::String::new(scope, "host-controlled-location")
+            .unwrap()
+            .into(),
+    )
+}
+
+fn navigate<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    source: v8::Local<'s, v8::Context>,
+    target: v8::Local<'s, v8::Context>,
+    value: v8::Local<'s, v8::Value>,
+) -> bool {
+    let value = value.to_rust_string_lossy(scope);
+    scope
+        .get_slot::<Rc<Host>>()
+        .unwrap()
+        .navigations
+        .borrow_mut()
+        .push((
+            auxiliary_context_identity(source).unwrap().id,
+            auxiliary_context_identity(target).unwrap().id,
+            value,
+        ));
+    true
+}
+
+fn focus<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    source: v8::Local<'s, v8::Context>,
+    target: v8::Local<'s, v8::Context>,
+    focused: bool,
+) -> bool {
+    scope
+        .get_slot::<Rc<Host>>()
+        .unwrap()
+        .actions
+        .borrow_mut()
+        .push((
+            auxiliary_context_identity(source).unwrap().id,
+            auxiliary_context_identity(target).unwrap().id,
+            focused,
+        ));
+    true
+}
+
+#[test]
+fn cross_origin_children_and_property_introspection_are_host_owned() {
+    fixture(|scope, host, _, target| {
+        let child = root(scope, "https://child.example", false);
+        host.children
+            .borrow_mut()
+            .push(v8::Global::new(scope, child));
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                children: Some(children),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "target.length===1&&target[0].window===target[0]&&target.frames===target&&target.then===undefined");
+        assert_js(scope, "Reflect.ownKeys(target).filter(k=>typeof k==='string').join(',')==='0,window,self,location,closed,frames,length,top,opener,parent,blur,close,focus,postMessage,then'");
+        assert_js(scope, "[Symbol.toStringTag,Symbol.hasInstance,Symbol.isConcatSpreadable].every(k=>target[k]===undefined&&k in target&&Object.getOwnPropertyDescriptor(target,k).value===undefined)");
+        assert_js(scope, "'length' in target&&'focus' in target");
+        assert_js(scope, "['then','focus','blur','postMessage'].every(k=>{const d=Object.getOwnPropertyDescriptor(target,k);return !d.enumerable&&d.configurable&&!d.writable&&d.value===target[k]})");
+        assert_js(scope, "['window','self','frames','length','top','parent','opener','closed'].every(k=>{const d=Object.getOwnPropertyDescriptor(target,k);return !d.enumerable&&d.configurable&&d.get.call(target)===target[k]&&d.get.constructor===Function})");
+        assert_js(
+            scope,
+            "(()=>{try{void target[1]}catch(e){return e.name==='SecurityError'}return false})()",
+        );
+        assert_js(
+            scope,
+            "(()=>{try{return 'document' in target}catch(e){return e.name==='SecurityError'}})()",
+        );
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'document')}catch(e){return e.name==='SecurityError'}return false})()");
+        assert_js(scope, "(()=>{try{void target[Symbol.iterator]}catch(e){return e.name==='SecurityError'}return false})()");
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'closed').get.call({})}catch(e){return e instanceof TypeError&&e.message==='Illegal invocation'}return false})()");
+    });
+}
+
+#[test]
+fn cross_origin_location_and_actions_delegate_exact_source_target_to_host() {
+    fixture(|scope, host, source, target| {
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                location: Some(location),
+                navigate: Some(navigate),
+                focus: Some(focus),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "target.location==='host-controlled-location'&&Object.getOwnPropertyDescriptor(target,'location').get.call(target)==='host-controlled-location'");
+        eval(scope, "target.location='/first';Object.getOwnPropertyDescriptor(target,'location').set.call(target,'/second');target.focus();target.blur()");
+        let source = auxiliary_context_identity(source).unwrap().id;
+        let target_id = auxiliary_context_identity(target).unwrap().id;
+        assert_eq!(
+            *host.navigations.borrow(),
+            vec![
+                (source, target_id, "/first".to_owned()),
+                (source, target_id, "/second".to_owned())
+            ]
+        );
+        assert_eq!(
+            *host.actions.borrow(),
+            vec![(source, target_id, true), (source, target_id, false)]
+        );
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'location').set.call({},'/forbidden')}catch(e){return e instanceof TypeError&&e.message==='Illegal invocation'}return false})()");
+        assert_eq!(host.navigations.borrow().len(), 2);
+        assert_js(scope, "(()=>{try{target.closed=true}catch(e){return e.name==='SecurityError'}return false})()");
+        assert_js(scope, "(()=>{try{target[Symbol.toStringTag]='forged'}catch(e){return e.name==='SecurityError'}return false})()");
+        // A host root was not opened by script and must not close another actor.
+        assert_js(scope, "target.close();target.close();!target.closed");
+    });
+}
+
+#[test]
+fn absent_host_capabilities_fail_truthfully_and_cannot_be_forged_by_guest() {
+    fixture(|scope, _, _, _| {
+        assert_js(scope, "['focus','blur','postMessage'].every(k=>{try{target[k]('x','*');return false}catch(e){return e.name==='NotSupportedError'&&e instanceof DOMException}})");
+        assert_js(scope, "(()=>{try{target.location='/not-admitted'}catch(e){return e.name==='NotSupportedError'}return false})()");
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'location').set.call(target,'/not-admitted')}catch(e){return e.name==='NotSupportedError'}return false})()");
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'location').get.call(target)}catch(e){return e.name==='NotSupportedError'}return false})()");
+        assert_js(scope, "(()=>{const Original=DOMException;globalThis.DOMException=function(){throw Error('guest constructor')};try{void target.document}catch(e){return e.name==='SecurityError'&&e instanceof Original}return false})()");
+    });
+}
+
+#[test]
+fn window_constructor_and_document_getter_reject_borrowed_receivers() {
+    fixture(|scope, _, source, _| {
+        assert!(install_auxiliary_window_document_guard(scope, source));
+        assert!(capture_auxiliary_window_exception(scope, source));
+        assert_js(scope, "(()=>{try{Window()}catch(e){return e instanceof TypeError&&e.message==='Illegal constructor'}return false})()");
+        assert_js(scope, "(()=>{try{new Window()}catch(e){return e instanceof TypeError&&e.message===\"Failed to construct 'Window': Illegal constructor\"}return false})()");
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(window,'document').get.call({})}catch(e){return e instanceof TypeError&&e.message==='Illegal invocation'}return false})()");
+    });
+}
+
+#[test]
+fn cross_origin_denial_before_dom_install_has_safe_named_error_fallback() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    isolate.set_failed_access_check_callback(auxiliary_window_failed_access);
+    v8::scope!(let scope, &mut isolate);
+    let caller = v8::Context::new(scope, Default::default());
+    let target = root(scope, "https://target.example", true);
+    let scope = &mut v8::ContextScope::new(scope, caller);
+    assert!(!capture_auxiliary_window_exception(scope, caller));
+    assert!(!install_auxiliary_window_document_guard(scope, caller));
+    let window = target.global(scope);
+    set(scope, caller, "target", window.into());
+    assert_js(scope, "(()=>{try{void target.document}catch(e){return e instanceof Error&&e.name==='SecurityError'&&e.message==='Blocked cross-origin window access'}return false})()");
 }
