@@ -31,6 +31,7 @@ pub struct CssEffectLifecycle {
     pub play_state: String,
     pub phase: CssEffectPhase,
     pub pending: bool,
+    /// Canonical timing contribution, before the separate host presentation policy.
     pub contributes: bool,
     pub fill: String,
     pub finite: bool,
@@ -63,6 +64,9 @@ pub struct CssEffectSnapshot {
     pub effects: Vec<CssEffectLifecycle>,
     pub css_animations_enabled: bool,
     pub css_transitions_enabled: bool,
+    /// Trusted per-Window policy suppresses all CSS and script effect presentation.
+    /// This is independent of lifecycle, CSS compatibility switches and ordinary styles.
+    pub presentation_suppressed: bool,
     /// A declared timeline/composition unsupported by this narrow proof.
     pub unsupported: bool,
 }
@@ -75,24 +79,28 @@ struct SnapshotData {
     effects: Vec<CssEffectLifecycle>,
     css_animations_enabled: bool,
     css_transitions_enabled: bool,
+    presentation_suppressed: bool,
     unsupported: bool,
 }
 
 impl CssEffectSnapshot {
-    /// Whether every declared CSS animation is proven complete and non-filling,
-    /// with no other indexed effect. Missing rules, disabled kinds, script effects,
-    /// transitions and unsupported declarations fail closed. This says nothing about
+    /// Whether the trusted host policy suppresses all effect presentation, or every
+    /// declared CSS animation is proven complete and non-filling,
+    /// with no other indexed effect. When presentation is enabled, missing rules,
+    /// disabled kinds, script effects, transitions and unsupported declarations
+    /// fail closed. This says nothing about
     /// transforms or effects on ancestors/descendants: inspect each captured element.
     pub fn allows_underlying_geometry(&self) -> bool {
-        !self.unsupported
-            && self.css_animations_enabled
-            && self.css_transitions_enabled
-            && self.animation_names.len() == self.effects.len()
-            && self
-                .animation_names
-                .iter()
-                .zip(&self.effects)
-                .all(|(name, effect)| name == &effect.name && effect.completed_non_filling)
+        self.presentation_suppressed
+            || (!self.unsupported
+                && self.css_animations_enabled
+                && self.css_transitions_enabled
+                && self.animation_names.len() == self.effects.len()
+                && self
+                    .animation_names
+                    .iter()
+                    .zip(&self.effects)
+                    .all(|(name, effect)| name == &effect.name && effect.completed_non_filling))
     }
 }
 
@@ -135,6 +143,7 @@ pub fn css_effect_lifecycle(
         effects: data.effects,
         css_animations_enabled: data.css_animations_enabled,
         css_transitions_enabled: data.css_transitions_enabled,
+        presentation_suppressed: data.presentation_suppressed,
         unsupported: data.unsupported,
     })
 }
