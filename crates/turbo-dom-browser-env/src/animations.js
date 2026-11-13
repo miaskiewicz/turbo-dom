@@ -2129,9 +2129,16 @@
     if (paused && state !== 'paused' && state !== 'idle') pause(animation, record, '');
     else if (!paused && state === 'paused') play(animation, record, false, '');
   }
-  function keyframesRule(name) {
-    if (!cssKeyframes) cssKeyframes = ns.cssKeyframes ? ns.cssKeyframes() : create(null);
-    return cssKeyframes[name];
+  function keyframesRule(name, element) {
+    if (!cssKeyframes) cssKeyframes = store();
+    const root = apply(rootOf, element, []);
+    const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null;
+    let entry = cssKeyframes.get(root);
+    if (!entry || !stamp || !entry.stamp || !sameList(entry.stamp, stamp)) {
+      entry = { stamp, rules: ns.cssKeyframes ? ns.cssKeyframes(element) : create(null) };
+      cssKeyframes.set(root, entry);
+    }
+    return entry.rules[name];
   }
   // The element's existing animation of `name` not yet matched this update (kept by name).
   function ownedAnimation(state, name, kept) {
@@ -2148,7 +2155,7 @@
     for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
       if (name === 'none') continue;
-      const rule = keyframesRule(name);
+      const rule = keyframesRule(name, element);
       if (!rule) continue;
       let entry = ownedAnimation(state, name, kept);
       if (entry) cssRefresh(element, entry.animation, rule, lists, i, underlying);
@@ -2247,11 +2254,11 @@
   // animation recomputes the style on every read).
   const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end'];
   let cssUpdates = store();
-  function cssInputs(read, underlying) {
+  function cssInputs(element, read, underlying) {
     const out = [];
     for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
     const names = splitList(out[0]);
-    for (let i = 0; i < names.length; i++) push(out, names[i] !== "none" && !!keyframesRule(names[i]));
+    for (let i = 0; i < names.length; i++) push(out, names[i] !== "none" && !!keyframesRule(names[i], element));
     const properties = transitionedFor(out[8]);
     for (const property in properties) { push(out, property); push(out, underlying(property)); }
     return out;
@@ -2266,7 +2273,7 @@
   }
   function cssUpdateBody(element, read, inherited, snapshots, ownDisplay) {
     const underlying = cssUpdateUnderlying(read, inherited);
-    const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(read, underlying), last = cssUpdates.get(element);
+    const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(element, read, underlying), last = cssUpdates.get(element);
     if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
     if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
     cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
@@ -2602,7 +2609,9 @@
     const subtree = input !== null && !!input.subtree;
     const element = this;
     if (!apply(connectedGetter, element, [])) return [];
-    cssFlush(apply(ownerGetter, element, []));
+    // The owning document does not traverse a shadow root, including closed roots.
+    // Flush this element's actual native tree before collecting its effects.
+    cssFlush(apply(rootOf, element, []));
     // Pseudo-element targets count only once the pseudo-element is generated; without a
     // layout tree none is, so subtree queries skip them as Chrome does for content-less ones.
     return collect(effect => effect.pseudo === null && (effect.target === element || (subtree && apply(containsNode, element, [effect.target]))));

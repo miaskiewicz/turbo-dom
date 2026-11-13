@@ -18,6 +18,11 @@ surface with **no JavaScript DOM implementation**:
 - XML internal DTD subsets: ATTLIST defaults (attributes and namespace declarations),
   with entity expansion bounded like Chrome ("Entity too big").
 
+Scoped CSS animation discovery reads the element's native shadow root (open or
+closed), its live stylesheet records and adopted sheets. Host lifecycle snapshots
+therefore identify the actual scoped animation names; missing keyframes remain
+unproven rather than being treated as completed effects.
+
 Behaviour is held to Chrome by committed Chrome 155/156 controls asserted in the crate's
 tests. The crate ships its engine JS (`src/*.js`, run in V8) and production JSON with it.
 

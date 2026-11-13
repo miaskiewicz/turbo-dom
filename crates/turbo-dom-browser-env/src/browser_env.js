@@ -958,8 +958,8 @@
   }
   // The style sheets whose rules can select `el`: its owner's sheets, plus the document's
   // adopted sheets, for elements of the document tree. A shadow tree is its own style scope:
-  // document rules never select its elements (turbo-dom#68; its own rules come from the
-  // native shadow-scoped cascade).
+  // document rules never select its elements (turbo-dom#68). Its own live CSSOM and
+  // adopted sheets are selected through the captured native root, even when closed.
   // The owner's sheet list, reread only when its tree version or the CSSOM epoch moved: every
   // element of one cascade (the read element and each ancestor) shares it. A reread list that
   // differs from the last one (a <style> / <link> inserted, removed or re-parsed through the
@@ -1228,7 +1228,11 @@
   // A tree other than the document's: a shadow tree (no document sheets) or a child iframe
   // document (its own sheets); null for the document tree and other detached elements.
   function computedScopeSheets(el,owner){
-    if(cssApply(computedStyleNativeRoot,el,[])===owner)return null;
+    var root=cssApply(computedStyleNativeRoot,el,[]);
+    if(root===owner)return null;
+    // Resolve the native root, including closed roots, without consulting guest
+    // getRootNode/styleSheets/adoptedStyleSheets properties. CSSOM records stay live.
+    if(cssApply(adoptionShadowCheck,root,[]))return computedSheetsWithAdopted(root,el,frameSheets(root),adoptionStates&&$c.get(adoptionStates,root));
     if(cssApply(computedStyleNativeConnected,el,[]))return [];
     var frameRoot=computedFrameRoot(el);
     return frameRoot?frameSheets(frameRoot):null;
@@ -4923,10 +4927,13 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     documentCSSRecord.cssHost.readSheets=function(){return cssRecord(documentSheets).items;};
     // Private @keyframes export for CSS animations (turbo-dom#187): name -> [{selector, values:[[longhand, text]]}],
     // read from the rule records (never page-visible properties); a later rule of a name wins.
-    __ns.cssKeyframes=function(){var out={__proto__:null},sheets=cssRecord(documentSheets).items;
+    __ns.cssKeyframes=function(element){var out={__proto__:null};
       function frames(record){var list=[],kids=cssItems(record.cssRules);for(var k=0;k<kids.length;k++){var kid=cssRuleRecord(kids[k]);if(kid.type!==1)continue;var decl=declarationRecord(kid.style),values=[];for(var n=0;n<decl.names.length;n++)$c.push(values,[decl.names[n],cssMapGet(decl.values,decl.names[n]).text]);$c.push(list,{selector:kid.selectorText,values:values});}return list;}
-      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules&&(name=$c.exec(/^@(?:-webkit-)?keyframes\s+["']?([^"']+?)["']?\s*$/i,record.prelude)))out[name[1]]=frames(record);}}
-      for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}return out;};
+      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules&&(name=$c.exec(/^@(?:-webkit-)?keyframes\s+["']?([^"']+?)["']?\s*$/i,record.prelude)))out[name[1]]=frames(record);else if(record.cssRules&&record.grouping){if(record.kind==='media'&&cssMediaState(record,0)===2)continue;if(record.kind==='supports'&&!cssSupportsMatches(preludeRest(record),element))continue;if(record.kind==='container'||record.kind==='starting-style')continue;visit(record.cssRules);}}}
+      // Chrome 156 resolves these names in the target's native root only: neither
+      // sibling nor ancestor shadow sheets supply a missing local definition.
+      function scopeSheets(target){var sheets=computedSheets(target);for(var si=0;si<sheets.length;si++){var sheet=sheetRecord(sheets[si]);if(!sheet.disabled)visit(sheet.rules);}}
+      if(element)scopeSheets(element);else{var sheets=cssRecord(documentSheets).items;for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}}return out;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 
