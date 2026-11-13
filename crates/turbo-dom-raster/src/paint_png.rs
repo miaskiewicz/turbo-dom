@@ -1527,7 +1527,6 @@ fn paint_gradient(
     };
     let paint = Paint {
         shader,
-        anti_alias: true,
         ..Paint::default()
     };
     if border_radius.is_rounded() {
