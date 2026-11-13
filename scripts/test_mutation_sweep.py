@@ -159,6 +159,9 @@ class MutationEvidenceTests(unittest.TestCase):
             self.assertIn("+second\n", result)
             self.assertIn("+third\n", result)
             self.assertNotIn("+first\n", result)
+            self.assertIn("@@ -1,0 +2,1 @@", result)
+            self.assertIn("@@ -2,0 +3,1 @@", result)
+            self.assertFalse(any(line.startswith("-") for line in result.splitlines()[2:]))
 
     def test_exact_replay_rejects_struct_field_extras_before_mutation(self):
         item = {"name":"wanted", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}}

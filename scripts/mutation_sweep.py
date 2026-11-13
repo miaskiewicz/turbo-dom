@@ -101,7 +101,9 @@ def selection_diff(inventory, names, root=ROOT):
         for line in sorted(selected):
             if line > len(source):
                 raise ValueError("replay source location exceeds current file")
-            result.extend([f"@@ -{line},1 +{line},1 @@", "-// exact mutation selection mask", "+" + source[line - 1]])
+            # Deleted lines include their neighbors in cargo-mutants' diff
+            # filter. An addition-only mask selects precisely this new line.
+            result.extend([f"@@ -{line - 1},0 +{line},1 @@", "+" + source[line - 1]])
     return "\n".join(result) + "\n"
 
 
