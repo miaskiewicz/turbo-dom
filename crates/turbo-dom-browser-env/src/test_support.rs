@@ -48,6 +48,13 @@ pub const CSS_EFFECT_LIFECYCLE_CHROME156_JSON: &str =
     include_str!("css_effect_lifecycle_chrome156.json");
 /// `src/css_effect_lifecycle_probe.js`.
 pub const CSS_EFFECT_LIFECYCLE_PROBE_JS: &str = include_str!("css_effect_lifecycle_probe.js");
+/// `src/auxiliary_contexts_cases.json` (turbo-dom#504).
+pub const AUXILIARY_CONTEXTS_CASES_JSON: &[u8] = include_bytes!("auxiliary_contexts_cases.json");
+/// Independent real-window Chrome 156 observations and host target evidence.
+pub const AUXILIARY_CONTEXTS_CHROME156_JSON: &str =
+    include_str!("auxiliary_contexts_chrome156.json");
+/// Shared page probe; consumers drive their real Page/network/actor host.
+pub const AUXILIARY_CONTEXTS_PROBE_JS: &str = include_str!("auxiliary_contexts_probe.js");
 /// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
 /// defaults, and documents without a parsed `<title>`).
 pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
@@ -285,6 +292,18 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "animations_frames_probe.js",
         ANIMATIONS_FRAMES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "auxiliary_contexts_cases.json",
+        AUXILIARY_CONTEXTS_CASES_JSON,
+    ),
+    (
+        "auxiliary_contexts_chrome156.json",
+        AUXILIARY_CONTEXTS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "auxiliary_contexts_probe.js",
+        AUXILIARY_CONTEXTS_PROBE_JS.as_bytes(),
     ),
     ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
     (

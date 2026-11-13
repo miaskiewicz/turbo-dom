@@ -485,6 +485,8 @@ OWNED="$OWNED init_script_tests.rs"
 OWNED="$OWNED abort_signal_polyfill.js"
 # turbo-dom#507 host-only CSS effect lifecycle API and Chrome control fixtures.
 OWNED="$OWNED css_effect_lifecycle.rs css_effect_lifecycle_probe.js css_effect_lifecycle_cases.json css_effect_lifecycle_chrome156.json"
+# turbo-dom#504 canonical auxiliary contexts and independent browser controls.
+OWNED="$OWNED auxiliary_contexts.rs auxiliary_window_proxy.rs auxiliary_contexts_probe.js auxiliary_contexts_cases.json auxiliary_contexts_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

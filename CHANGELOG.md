@@ -19,6 +19,16 @@ at the time); this file reconstructs them from history.
   `resolve_box_flow_style` for clients reading pagination/frame geometry. The
   projection uses the full resolver's parsers and unquantized semantics without
   resolving unused text and paint properties.
+- **Auxiliary browsing contexts (#504)**: add host-only synchronous admission
+  over genuine same-isolate WindowProxy identities, native named-target/opener/
+  closed records, staged source-positioned documents and a reentrant pre-return
+  ready hook. Native origin guards protect retained lexical callbacks across
+  navigation; isolated commits sever old proxy access without closing another
+  Page's actor. The consumer owns network/sandbox policy and real Page events.
+- **V8 integration (#504)**: require the 150.4.2 fork candidate for native access
+  checks and stable global-proxy backing changes, using the unchanged official
+  V8 archive. Independent Chrome 156 controls pin popup creation, named noopener,
+  reserved targets, referrer policy, cross-origin access and sandbox denial.
 - **Shaping plans (#508)**: reuse up to eight Rustybuzz shaping plans per font
   face, keyed by the resolved direction, script and language, instead of rebuilding
   the same plan for each distinct string. Glyph results and cache budgets are unchanged.
