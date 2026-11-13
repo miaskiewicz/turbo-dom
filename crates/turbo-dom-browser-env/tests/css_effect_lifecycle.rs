@@ -408,3 +408,69 @@ fn automatic_microtask_policy_is_unavailable_and_does_not_flush_guest_jobs() {
         assert!(eval(scope, "__jobRan===true").is_true());
     });
 }
+
+#[test]
+fn trusted_surf_date_adapter_does_not_disable_static_or_completed_geometry() {
+    with_dom(|scope| {
+        // Same Date/Date.prototype changes as Surf's trusted ENV_BOOTSTRAP. Clock
+        // ownership remains the already installed private animation host.
+        eval(
+            scope,
+            r#"
+          const RealDate=Date,construct=Reflect.construct;
+          Object.defineProperty(RealDate,'now',{value:()=>123456,configurable:true,writable:true});
+          function DateShim(...args){
+            if(!new.target)return new RealDate(123456).toString();
+            return construct(RealDate,args.length?args:[123456],new.target);
+          }
+          Object.defineProperty(DateShim,'prototype',{value:RealDate.prototype,writable:false});
+          Object.defineProperty(RealDate.prototype,'constructor',{value:DateShim,configurable:true,writable:true});
+          for(const name of ['now','parse','UTC'])Object.defineProperty(DateShim,name,Object.getOwnPropertyDescriptor(RealDate,name));
+          Object.defineProperty(DateShim,'name',{value:'Date',configurable:true});
+          Object.defineProperty(DateShim,'length',{value:7,configurable:true});
+          globalThis.Date=DateShim;
+        "#,
+        );
+        for selector in [
+            "document.documentElement",
+            "document.body",
+            "document.getElementById('feedback')",
+        ] {
+            let target = element(scope, selector);
+            assert!(css_effect_lifecycle(scope, target)
+                .unwrap()
+                .allows_underlying_geometry());
+        }
+        assert!(!sample(scope).allows_underlying_geometry());
+        frame(scope, 16);
+        frame(scope, 400);
+        assert!(sample(scope).allows_underlying_geometry());
+    });
+}
+
+#[test]
+fn inspection_cancellation_never_reads_guest_performance_or_date_clocks() {
+    for poison in [
+        "Object.defineProperty(globalThis,'performance',{configurable:true,get(){__clockCalls++;throw Error('guest performance')}})",
+        "globalThis.performance={get now(){__clockCalls++;throw Error('guest now')}}",
+        "globalThis.performance=undefined;Object.defineProperty(Date,'now',{configurable:true,get(){__clockCalls++;throw Error('guest date now')}})",
+        "globalThis.performance=undefined;Object.defineProperty(globalThis,'Date',{configurable:true,get(){__clockCalls++;throw Error('guest Date')}})",
+    ] {
+        with_dom(|scope| {
+            sample(scope);frame(scope,16);
+            eval(scope,"globalThis.__cancelTimestamp=null;message.getAnimations()[0].oncancel=e=>{__cancelTimestamp=e.timeStamp}");
+            // Removing a running CSS animation constructs both playback/cancel and
+            // CSS cancellation events during this host-only style synchronization.
+            eval(scope,"globalThis.__clockCalls=0;message.style.animation='none'");
+            eval(scope,poison);
+            let cancelled=sample(scope);
+            assert!(!cancelled.allows_underlying_geometry());
+            assert!(eval(scope,"__clockCalls===0").is_true());
+            assert_eq!(cancelled.sample_time,Some(1016.0));
+            frame(scope,0);
+            assert!(eval(scope,"__cancelTimestamp===1016 && __clockCalls===0").is_true());
+            // The inspection override must not leak into ordinary page events.
+            assert!(eval(scope,"(()=>{try{new Event('normal');return false}catch{return __clockCalls===1}})()").is_true());
+        });
+    }
+}

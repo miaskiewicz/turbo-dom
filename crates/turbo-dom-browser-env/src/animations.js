@@ -849,6 +849,9 @@
   // ---- timelines and the host frame clock -------------------------------------------------
   let host = null, lastClock = -Infinity, frameRequested = false, inspectionClock = null;
   const queue = [];
+  // CSS synchronization can construct cancellation events. Their timestamp must
+  // not consult page-replaceable performance/Date while native capture is active.
+  ns.cssEffectInspectionTimestamp = () => inspectionClock === null ? 0 : inspectionClock;
   const clock = () => {
     if (inspectionClock !== null) return inspectionClock;
     if (!host) return null;
@@ -2298,7 +2301,7 @@
     }
     return true;
   }
-  const builtinNames = ['Object', 'Function', 'Array', 'String', 'Number', 'Boolean', 'Symbol', 'BigInt', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Proxy', 'Reflect', 'Math', 'JSON', 'RegExp', 'Date', 'Promise', 'Error', 'TypeError', 'RangeError', 'parseInt', 'parseFloat', 'isFinite', 'isNaN'];
+  const builtinNames = ['Object', 'Function', 'Array', 'String', 'Number', 'Boolean', 'Symbol', 'BigInt', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Proxy', 'Reflect', 'Math', 'JSON', 'RegExp', 'Promise', 'Error', 'TypeError', 'RangeError', 'parseInt', 'parseFloat', 'isFinite', 'isNaN'];
   const builtinGlobals = create(null), builtinShapes = [];
   function rememberBuiltinShape(object) {
     const keys = ownKeys(object), descriptors = create(null);

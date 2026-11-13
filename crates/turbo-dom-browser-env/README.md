@@ -136,6 +136,9 @@ It reads private canonical animation records, including completed CSS animations
 returned by `getAnimations()`. It never calls page-overridable animation getters, flushes the
 whole document, composes/interpolates effects, resolves transforms or invokes native layout.
 There is no page JavaScript entry point. Normal Chrome animation behavior stays enabled.
+Cancellation events constructed by inspection use its pinned private host-clock sample,
+so runtime Date adapters and page replacements of Date/performance cannot intercept the
+read. Ordinary event construction keeps its existing clock behavior.
 
 The returned snapshot identifies the native document/element, declared names and canonical
 effect identities, timing phases, play states, fill, contribution and script overrides.

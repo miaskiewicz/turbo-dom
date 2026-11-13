@@ -18,6 +18,8 @@ at the time); this file reconstructs them from history.
   distinguished from active, paused, infinite, filling or script-modified effects,
   without a document-wide style flush, interpolation or native-layout reentry.
   Chrome's normal animation behavior and guest isolation remain unchanged.
+  Inspection-created cancellation events use the pinned animation clock, supporting
+  trusted Date adapters without consulting page-replaceable Date/performance clocks.
 
 - **Layout performance (#508)**: retain recently used UTF-8 and original UTF-16
   shaping results under churn with shared least-recently-used eviction. The

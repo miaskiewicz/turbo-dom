@@ -2312,7 +2312,7 @@
       init = init || {};
       var state = {__proto__:null,type:eventString(type), bubbles:!!init.bubbles, cancelable:!!init.cancelable,
         composed:!!init.composed, defaultPrevented:false, target:null, currentTarget:null,
-        stop:false, stopImmediate:false, eventPhase:0, timeStamp:g.performance&&typeof g.performance.now==='function'?g.performance.now():Date.now()-eventClockOrigin,
+        stop:false, stopImmediate:false, eventPhase:0, timeStamp:computedEffectInspection?__ns.cssEffectInspectionTimestamp():g.performance&&typeof g.performance.now==='function'?g.performance.now():Date.now()-eventClockOrigin,
         trusted:false, dispatching:false, passive:false, path:[]};
       setEventRecord(this,state);
       var get = ({get isTrusted(){return eventRecord(this).trusted;}});
