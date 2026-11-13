@@ -356,3 +356,20 @@ fn every_captured_node_intrinsic_is_a_function_after_install() {
     );
     reset();
 }
+
+/// A watchdog interrupt during lazy handler compilation is not a JavaScript
+/// error. Cancelling the interrupt must not later report a spurious null error.
+#[test]
+fn inline_handler_termination_does_not_queue_a_script_error() {
+    assert_eq!(
+        at_checkpoint(
+            "handler:compile",
+            Some(false),
+            "globalThis.errors = []; addEventListener('error', e => { errors.push(e.error); e.preventDefault(); }); \
+             const p = document.getElementById('p'); p.setAttribute('onclick', '}'); \
+             void p.onclick; globalThis.resumed = true;",
+            "[globalThis.resumed ?? false, document.getElementById('p').onclick, errors]",
+        ),
+        "[false,null,[]]",
+    );
+}
