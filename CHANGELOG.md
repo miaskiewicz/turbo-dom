@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Raster mutation regressions (#487)**: cover repeated dash spacing, precise
+  shadow edges and allocator-test isolation. Remove proven redundant SVG
+  predicates while preserving ordinary SVG output; bound invalid-rule test probes
+  so rendering regressions fail assertions instead of hanging the test process.
 - **Raster rendering progress (#487)**: prevent PNG and SVG column-rule painting
   from hanging when a large coordinate makes a dotted or dashed cursor step round
   back to its starting value. Precision-sensitive rules use a local coordinate
