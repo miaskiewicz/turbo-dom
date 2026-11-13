@@ -348,6 +348,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             v8::script_compiler::CompileOptions::NoCompileOptions,
             v8::script_compiler::NoCacheReason::NoReason,
         );
+        termination_checkpoint(scope, "handler:compile");
         if function.is_none() && !scope.has_terminated() {
             if let Some(error) = scope.exception() {
                 let error = v8::Global::new(scope, error);

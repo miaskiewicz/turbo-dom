@@ -341,3 +341,47 @@ fn out_of_range_keyframe_selectors_drop_the_rule() {
         "[0,0,1,1,0,0,1,1,1,0]"
     );
 }
+
+/// Re-recording an unchanged parser handler preserves its compiled slot and does
+/// not report the set-phase policy again (for example after host reconciliation).
+#[test]
+fn inline_handler_repeated_source_preserves_compiled_function_and_policy_reports() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><div id=d onclick='return 7'></div>");
+    let policy = function(
+        scope,
+        "((doc, el, kind) => { if (kind === 'script-src-attr') globalThis.calls++; return true; })",
+    );
+    let initialize = v8::String::new(scope, "globalThis.calls = 0").unwrap();
+    v8::Script::compile(scope, initialize, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    install_inline_event_handlers(scope, policy, "https://test/");
+    let initialize = v8::String::new(
+        scope,
+        "globalThis.first = document.getElementById('d').onclick",
+    )
+    .unwrap();
+    v8::Script::compile(scope, initialize, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    let node = with_tree(|tree| tree.query_selector_all("#d")[0]).unwrap();
+    event_handlers::record_set_phase(scope, node, "onclick");
+    let check = v8::String::new(
+        scope,
+        "JSON.stringify([document.getElementById('d').onclick === first, calls, first()])",
+    )
+    .unwrap();
+    let value = v8::Script::compile(scope, check, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    assert_eq!(value.to_rust_string_lossy(scope), "[true,2,7]");
+    reset();
+}
