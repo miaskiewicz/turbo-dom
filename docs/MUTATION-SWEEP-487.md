@@ -25,7 +25,7 @@ after a step timeout. A timeout is unresolved evidence, never a passing result.
 Before authorizing the full matrix, read the pilot's actual baseline times and
 per-mutant Build/Test durations from `outcomes.json`. No measured runtime is
 claimed before that pilot. The original reviewed matrix used 1,479 mutants. After the validated large-coordinate
-PNG/SVG fixes, a fresh inventory at `655404321e2ae05a93e25aad8752726800246944` is:
+PNG/SVG fixes, a fresh inventory at `7ad8b3fe1880254179e208c65491b05d2584541a` is:
 
 | Target | Current mutants | Proposed shards |
 |---|---:|---:|
@@ -33,9 +33,9 @@ PNG/SVG fixes, a fresh inventory at `655404321e2ae05a93e25aad8752726800246944` i
 | worker_scope | 11 | 1 |
 | trusted_types | 98 | 2 |
 | paint_png | 922 | 12 |
-| paint_svg | 439 | 6 |
+| paint_svg | 432 | 6 |
 
-That is **1,510 mutants** across the same 25 jobs, at most four concurrent.
+That is **1,503 mutants** across the same 25 jobs, at most four concurrent.
 The plan records the source reference and reviewed per-file counts; an actual
 inventory with extra, missing or duplicate mutants stops before any baseline or
 mutation. Re-enumerate and review after further production changes rather than
@@ -77,7 +77,9 @@ browser jobs enable host-internals/test-support and raster jobs use defaults.
    showed the unrelated full browser lib suite alone can take 170–355 seconds,
    so repeating it for every relevant helper mutation would dominate the sweep
    and can exceed the fixed 300-second mutant timeout even without a mutation.
-   Raster primary runs retain the complete library suite. No primary survivor is
+   Raster primary runs retain the complete library suite and add the existing
+   `multicol_rule_chrome` control and public rule-progress integration targets;
+   PNG also includes `paint_memory` allocation assertions. No primary survivor is
    accepted merely because it is outside these filters: step 3 still runs it
    against all targets without any filter.
 3. Retry every lib-suite survivor against the full all-targets tests, selected by
@@ -158,3 +160,10 @@ named package binaries; a Cargo build lock does not establish attribution of a
 later test invocation. Recovery records source and binary hashes, uses its own
 APFS-cloned cache, and cleans only that private target's workspace artifacts
 before validating. Never clean another worktree's or a shared target directory.
+
+A completed primary shard now writes `source-after-primary.json` and
+`primary-summary.json` before any expensive full fallback. Source restoration
+must match exactly at that boundary. These receipts preserve which primary
+mutants were caught or compiler-unviable even if the later bounded fallback is
+interrupted. Primary misses/timeouts are not acceptance: the ordinary summary
+and project aggregate remain failing until every selected mutant is resolved.

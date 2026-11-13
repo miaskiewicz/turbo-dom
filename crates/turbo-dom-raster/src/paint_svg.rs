@@ -131,12 +131,18 @@ fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
     ((from_linear(lum) * 255.0).round() as u32) >> 5
 }
 
+/// Replicate a three-bit class (0..=7) across an eight-bit luminance value.
+fn class_luminance(top: u32) -> u32 {
+    // For the three-bit input, disjoint copies sum to 32*top + 4*top + top/2.
+    top * 36 + top / 2
+}
+
 /// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) of luminance class
 /// `top` ([`luminance_class`], replicated back to 8 bits): the coverage is boosted by the
 /// contrast where the assumed backdrop (the opposite luminance) is light, and the table
 /// undoes the sRGB blend so the result is a blend at [`GAMMA`].
 fn preblend_class(top: u32) -> [f32; 256] {
-    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
+    let src = class_luminance(top) as f32 / 255.0;
     let dst = 1.0 - src;
     let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
     let contrast = CONTRAST * lin_dst;
@@ -370,11 +376,9 @@ fn paint_subpixel_dotted_rule(
     color: Rgba,
     (px_left, diameter, end): (f32, f32, f32),
 ) {
-    // Clamp the leading cap and last dash just as the ordinary subpixel path.
-    if f.y < end {
-        let cap_h = (end - f.y).min(diameter);
-        rect(svg, px_left, f.y, diameter, cap_h, color);
-    }
+    // rect_r also rejects empty/reversed caps and non-finite origins.
+    let cap_h = (end - f.y).min(diameter);
+    rect(svg, px_left, f.y, diameter, cap_h, color);
     let mut y = f.y + diameter;
     while y < end {
         let dash_h = (end - y).min(diameter);
@@ -404,9 +408,7 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let mut dash_top = f.y;
     while dash_top < end {
         let dash_h = dash.min(end - dash_top);
-        if dash_h > 0.0 {
-            rect(svg, f.x, dash_top, width, dash_h, color);
-        }
+        rect(svg, f.x, dash_top, width, dash_h, color);
         let next = dash_top + period;
         if next <= dash_top {
             break;
@@ -811,7 +813,7 @@ fn paint_inset_shadow(
     );
     if hw >= 0.5 && hh >= 0.5 {
         let blur = crate::paint_png::shadow_blur(sh);
-        let filter = if blur < 0.5 {
+        let filter = if sh.blur == 0 {
             String::new()
         } else {
             let _ = write!(
@@ -1913,6 +1915,16 @@ mod tests {
     }
 
     #[test]
+    fn preblend_classes_keep_the_fixed_three_bit_luminances() {
+        // abc expands to abcabcab; this fixed reference is independent of the
+        // production packing expression and its derived pre-blend tables.
+        let expected = [0, 36, 73, 109, 146, 182, 219, 255];
+        for (class, luminance) in expected.into_iter().enumerate() {
+            assert_eq!(class_luminance(class as u32), luminance);
+        }
+    }
+
+    #[test]
     fn glyph_runs_share_one_pre_blend_filter_per_luminance_class() {
         // miaskiewicz/turbo-dom#294: each run's coverage goes through its text colour's
         // pre-blend table, one filter per luminance class the document uses.
@@ -2533,6 +2545,45 @@ mod tests {
                 panic!("stalled rule helpers did not stop within three seconds");
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins() {
+        for height in [0.0, -1.0] {
+            for y in [
+                0.0,
+                1_000_000_000.0,
+                f32::NAN,
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+            ] {
+                let f = rule(1.0, y, 0.5, height, ColumnRuleStyle::Dotted, RED);
+                let mut output = String::new();
+                paint_dotted_rule(&mut output, &f, RED);
+                assert!(output.is_empty(), "height={height}, y={y}: {output}");
+            }
+        }
+    }
+
+    #[test]
+    fn inset_shadow_integer_blur_boundaries_keep_filter_semantics() {
+        let mut capped = None;
+        for blur in [0, 1, 256, u32::MAX] {
+            let f = decorated(1.0, 2.0, 10.0, 10.0, 0.0, |slot, _, _| {
+                *slot = Some(shadow(1, 2, blur, 0, RED, true));
+            });
+            let output = body(&f, &HashMap::new());
+            assert_eq!(output.contains("<filter id=\"insetblur"), blur != 0);
+            if blur == 1 {
+                assert!(output.contains("stdDeviation=\"0.50\""));
+            }
+            if blur == 256 {
+                capped = Some(output.clone());
+            }
+            if blur == u32::MAX {
+                assert_eq!(output, capped.as_ref().unwrap().as_str());
+            }
         }
     }
 }

@@ -28,6 +28,15 @@ PRIMARY_FILTERS = {
     "trusted_types": "trusted_types::",
 }
 
+PRIMARY_CARGO_TARGETS = {
+    "paint_png": ["--lib", "--test", "multicol_rule_chrome", "--test", "paint_memory", "--test", "png_rule_progress"],
+    "paint_svg": ["--lib", "--test", "multicol_rule_chrome", "--test", "svg_rule_progress"],
+}
+
+
+def primary_cargo_targets(target):
+    return PRIMARY_CARGO_TARGETS.get(target, ["--lib"])
+
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,26 +259,43 @@ def run_job(args):
         report["full_fallback_timeout_seconds"] = fallback_budget
         primary_filter = PRIMARY_FILTERS.get(args.target)
         primary_args = [primary_filter] if primary_filter else []
-        if primary_args:
-            primary_baseline = command(["cargo", "test", "--locked", "-p", package,
-                                        *feature_args, "--lib", *primary_args],
-                                       output / "primary-baseline.log")
-            report["primary_baseline"] = primary_baseline
-            if primary_baseline["exit_code"]:
-                raise ValueError("exact filtered library baseline failed")
-            passed = sum(int(value) for value in re.findall(
-                r"test result:\s+ok\.\s+(\d+) passed;",
-                (output / "primary-baseline.log").read_text()))
-            report["primary_baseline_passed_tests"] = passed
-            if not passed:
-                raise ValueError("filtered baseline executed zero tests")
+        primary_targets = primary_cargo_targets(args.target)
+        primary_baseline = command(["cargo", "test", "--locked", "-p", package,
+                                    *feature_args, *primary_targets, *primary_args],
+                                   output / "primary-baseline.log")
+        report["primary_baseline"] = primary_baseline
+        report["primary_cargo_targets"] = primary_targets
+        if primary_baseline["exit_code"]:
+            raise ValueError("exact primary baseline failed")
+        passed = sum(int(value) for value in re.findall(
+            r"test result:\s+ok\.\s+(\d+) passed;",
+            (output / "primary-baseline.log").read_text()))
+        report["primary_baseline_passed_tests"] = passed
+        if not passed:
+            raise ValueError("filtered baseline executed zero tests")
         flags = mutation_flags()
         lib_dir = output / "lib"
         lib_dir.mkdir()
-        report["lib_run"] = command([*common, *flags, "-C", "--lib", "--shard",
+        primary_target_flags = [flag for target_arg in primary_targets for flag in ("-C", target_arg)]
+        report["lib_run"] = command([*common, *flags, *primary_target_flags, "--shard",
                                      f"{shard}/{shards}", "-o", str(lib_dir),
                                      *( ["--", *primary_args] if primary_args else [])], output / "lib.log")
         rows = outcomes(lib_dir, names)
+        after_primary = source_receipt(package)
+        write_json(output / "source-after-primary.json", after_primary)
+        if before != after_primary or not source_clean():
+            raise ValueError("primary mutation runner did not restore the exact source graph")
+        report["primary_phase_complete"] = True
+        primary_results = {name: row["summary"] for name, row in rows.items()}
+        write_json(output / "primary-summary.json", {
+            "primary_phase_complete": True, "complete_scope": False,
+            "commit": before["commit"], "tree": before["tree"],
+            "target": args.target, "mode": args.mode,
+            "shard": args.shard, "shards": args.shards,
+            "all_names": report["all_names"], "selected_names": names,
+            "results": primary_results,
+            "acceptance_passed": all(value in {"CaughtMutant", "Unviable"} for value in primary_results.values()),
+        })
         missed = [name for name, row in rows.items() if row["summary"] == "MissedMutant"]
         if missed:
             # External integration controls may catch a mutant missed by lib tests.

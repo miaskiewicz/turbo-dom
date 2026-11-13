@@ -3830,6 +3830,67 @@ mod exact_tests {
         assert!(circle_path(5.0, 5.0, 0.5).is_some(), "r > 0");
     }
 
+    // Invalid-size mutations must fail a bounded test, not leave the whole
+    // mutation runner waiting on a painter loop in the test process.
+    fn rule_probe_child(name: &str) -> bool {
+        const CHILD: &str = "TURBO_DOM_PNG_INVALID_RULE_CHILD";
+        if std::env::var(CHILD).ok().as_deref() == Some(name) {
+            return true;
+        }
+        let filter = format!("paint_png::exact_tests::{name}");
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", &filter, "--nocapture"])
+            .env(CHILD, name)
+            .stdin(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                assert!(
+                    status.success(),
+                    "invalid-rule child failed: {name}: {status}"
+                );
+                return false;
+            }
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                child.wait().unwrap();
+                panic!("invalid-rule helper did not finish within three seconds: {name}");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn dashed_rules_repeat_two_width_ink_and_one_width_gap() {
+        let mut pm = white(8, 22);
+        let f = Fragment::new(
+            NodeId(0),
+            2.0,
+            1.0,
+            2.0,
+            20.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dashed,
+                color: RED,
+            },
+        );
+        paint_dashed_rule(&mut pm, &f, RED, Transform::identity());
+        for y in 0..22 {
+            for x in 0..8 {
+                let ink = (2..4).contains(&x) && (1..21).contains(&y) && (y - 1) % 6 < 4;
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = pm.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
     // The `paint_dotted_rule` and `paint_dashed_rule` helpers both guard
     // `period <= 0.0` so a zero-width rule can never infinite-loop
     // (`cy += period` of 0, `dash_top += period` of 0). The caller
@@ -3840,6 +3901,9 @@ mod exact_tests {
     // flipped the guard's `<=` to `<`.
     #[test]
     fn dotted_and_dashed_helpers_return_on_zero_width_fragments() {
+        if !rule_probe_child("dotted_and_dashed_helpers_return_on_zero_width_fragments") {
+            return;
+        }
         let mut pm = white(10, 10);
         let id = Transform::identity();
         let f = Fragment::new(
@@ -3869,6 +3933,9 @@ mod exact_tests {
     // guard must reject both.
     #[test]
     fn paint_column_rule_is_a_no_op_on_non_finite_fragments() {
+        if !rule_probe_child("paint_column_rule_is_a_no_op_on_non_finite_fragments") {
+            return;
+        }
         for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
             for style in [
                 ColumnRuleStyle::Solid,
@@ -3895,6 +3962,9 @@ mod exact_tests {
     // a `NaN` / `Infinity` width to pin that contract.
     #[test]
     fn rule_helpers_are_a_no_op_on_non_finite_fragments() {
+        if !rule_probe_child("rule_helpers_are_a_no_op_on_non_finite_fragments") {
+            return;
+        }
         let id = Transform::identity();
         for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
             let mut pm = white(10, 10);
@@ -3932,6 +4002,11 @@ mod exact_tests {
     // mostly white rather than full red.
     #[test]
     fn paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments() {
+        if !rule_probe_child(
+            "paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments",
+        ) {
+            return;
+        }
         let mut pm = white(10, 10);
         let id = Transform::identity();
         // cx=5.5, y_top=1.0, height=0.3, diameter=1.0.

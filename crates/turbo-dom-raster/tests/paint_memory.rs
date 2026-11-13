@@ -199,6 +199,10 @@ fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
         height: 1024,
     };
     for opacity in [0.0, 1.0] {
+        // Preparation allocates too: keep it out of other tests' measurements.
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut html = String::from("<body style='margin:0;background:#fff'>");
         for _ in 0..BOXES {
             write!(html, "<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;opacity:{opacity}'></div>").unwrap();
@@ -223,6 +227,7 @@ fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
             &HashMap::new(),
             &ScreenshotOptions::default(),
         );
+        drop(preparation);
         let (_, big) = allocations(|| {
             let png = prepared.png().unwrap();
             let image = image::load_from_memory(&png).unwrap().to_rgb8();
