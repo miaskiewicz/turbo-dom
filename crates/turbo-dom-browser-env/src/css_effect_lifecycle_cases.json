@@ -1,0 +1,6 @@
+[
+  {
+    "id": "finite-fadeInUp-and-guarded-states",
+    "html": "<!doctype html><style>@keyframes fadeInUp {from {opacity:0;transform:translateY(8px)} to {opacity:1;transform:translateY(0)}} #message {animation:fadeInUp .3s ease-out} button {width:32px;height:32px;padding:0;border:0}</style><div id=\"message\"><button id=\"feedback\">Vote</button></div>"
+  }
+]

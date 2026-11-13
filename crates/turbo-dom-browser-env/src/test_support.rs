@@ -40,6 +40,14 @@ pub const ANIMATIONS_FRAMES_CASES_JSON: &[u8] = include_bytes!("animations_frame
 pub const ANIMATIONS_FRAMES_CHROME156_JSON: &str = include_str!("animations_frames_chrome156.json");
 /// `src/animations_frames_probe.js`.
 pub const ANIMATIONS_FRAMES_PROBE_JS: &str = include_str!("animations_frames_probe.js");
+/// `src/css_effect_lifecycle_cases.json` (#507's finite fadeInUp repro).
+pub const CSS_EFFECT_LIFECYCLE_CASES_JSON: &[u8] =
+    include_bytes!("css_effect_lifecycle_cases.json");
+/// `src/css_effect_lifecycle_chrome156.json`.
+pub const CSS_EFFECT_LIFECYCLE_CHROME156_JSON: &str =
+    include_str!("css_effect_lifecycle_chrome156.json");
+/// `src/css_effect_lifecycle_probe.js`.
+pub const CSS_EFFECT_LIFECYCLE_PROBE_JS: &str = include_str!("css_effect_lifecycle_probe.js");
 /// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
 /// defaults, and documents without a parsed `<title>`).
 pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
@@ -332,6 +340,18 @@ pub const FILES: &[(&str, &[u8])] = &[
         CSS_ADOPTION_OWNERSHIP_PROBE_JS.as_bytes(),
     ),
     ("css_adoption_probe.js", CSS_ADOPTION_PROBE_JS.as_bytes()),
+    (
+        "css_effect_lifecycle_cases.json",
+        CSS_EFFECT_LIFECYCLE_CASES_JSON,
+    ),
+    (
+        "css_effect_lifecycle_chrome156.json",
+        CSS_EFFECT_LIFECYCLE_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "css_effect_lifecycle_probe.js",
+        CSS_EFFECT_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
     (
         "custom_elements_callbacks_chrome155.json",
         CUSTOM_ELEMENTS_CALLBACKS_CHROME155_JSON.as_bytes(),

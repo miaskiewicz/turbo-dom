@@ -12,7 +12,7 @@
   const Native = globalThis.__animationsNative; delete globalThis.__animationsNative;
   const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
-  const ownKeys = Reflect.ownKeys, getOwnDescriptor = Object.getOwnPropertyDescriptor, setPrototype = Object.setPrototypeOf;
+  const ownKeys = Reflect.ownKeys, getOwnDescriptor = Object.getOwnPropertyDescriptor, setPrototype = Object.setPrototypeOf, getPrototype = Object.getPrototypeOf, sameValue = Object.is;
   const ErrorType = TypeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
   const EventType = g.Event, TargetType = g.EventTarget;
   const listen = g.EventTarget.prototype.addEventListener, unlisten = g.EventTarget.prototype.removeEventListener;
@@ -27,7 +27,7 @@
   const computedStyle = g.getComputedStyle;
   const store = () => { const map = new WeakMap(), get = WeakMap.prototype.get, set = WeakMap.prototype.set, has = WeakMap.prototype.has; return { get: key => apply(get, map, [key]), set: (key, value) => apply(set, map, [key, value]), has: key => apply(has, map, [key]) }; };
   const animations = store(), effects = store(), timelines = store(), events = store(), targets = store(), documentTimelines = store();
-  const SetType = Set, setAdd = Set.prototype.add, setDelete = Set.prototype.delete, setValues = Set.prototype.values;
+  const SetType = Set, setAdd = Set.prototype.add, setHas = Set.prototype.has, setDelete = Set.prototype.delete, setValues = Set.prototype.values;
   const MapType = Map, mapGet = Map.prototype.get, mapSet = Map.prototype.set;
   const live = new SetType();
   // Set iteration through the captured %SetIteratorPrototype%.next: for-of would look up the
@@ -35,7 +35,7 @@
   const setIteratorNext = Object.getPrototypeOf(apply(setValues, new SetType(), [])).next;
   const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
   const intrinsic = ns.intrinsics, toPrecision = Number.prototype.toPrecision;
-  const push = (array, value) => { array[array.length] = value; return array; };
+  const push = (array, value) => { intrinsic.push(array, value); return array; };
   const contains = (array, value) => { for (let index = 0; index < array.length; index++) if (array[index] === value) return true; return false; };
   const sortBy = (array, key) => { for (let i = 1; i < array.length; i++) { const item = array[i], k = key(item); let j = i - 1; while (j >= 0 && key(array[j]) > k) { array[j + 1] = array[j]; j--; } array[j + 1] = item; } return array; };
 
@@ -88,7 +88,7 @@
   function bezier(x1, y1, x2, y2) {
     const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
     const sampleX = t => ((ax * t + bx) * t + cx) * t, sampleY = t => ((ay * t + by) * t + cy) * t, slope = t => (3 * ax * t + 2 * bx) * t + cx;
-    const samples = []; for (let i = 0; i < 11; i++) samples[i] = sampleX(i * 0.1);
+    const samples = []; for (let i = 0; i < 11; i++) push(samples, sampleX(i * 0.1));
     let start, end;
     if (x1 > 0) start = y1 / x1; else if (!y1 && x2 > 0) start = y2 / x2; else if (!y1 && !y2) start = 1; else start = 0;
     if (x2 < 1) end = (y2 - 1) / (x2 - 1); else if (y2 === 1 && x1 < 1) end = (y1 - 1) / (x1 - 1); else if (y2 === 1 && y1 === 1) end = 1; else end = 0;
@@ -158,7 +158,7 @@
   function cubicBezierEasing(body) {
     const values = intrinsic.map(intrinsic.split(body, ','), part => intrinsic.trim(part));
     if (values.length !== 4 || !intrinsic.every(values, value => intrinsic.test(NUMBER, value))) return null;
-    const [x1, y1, x2, y2] = intrinsic.map(values, value => +value);
+    const x1 = +values[0], y1 = +values[1], x2 = +values[2], y2 = +values[3];
     if (x1 < 0 || x1 > 1 || x2 < 0 || x2 > 1) return null;
     return { text: `cubic-bezier(${format(x1)}, ${format(y1)}, ${format(x2)}, ${format(y2)})`, evaluate: bezier(x1, y1, x2, y2) };
   }
@@ -647,7 +647,7 @@
     if (item !== undefined && item !== null && !objectLike(item)) throw new ErrorType(`${prefix}Keyframes must be objects, or null or undefined`);
     const source = item === undefined || item === null ? {} : item;
     const composite = source.composite, easingText = source.easing, offset = source.offset;
-    const frame = { offset: offsetValue(offset, prefix, 'BaseKeyframe'), easing: easingText === undefined ? 'linear' : string(easingText), composite: composite === undefined ? 'auto' : enumeration(composite, COMPOSITE_AUTO, prefix, 'composite', 'BaseKeyframe', 'CompositeOperationOrAuto'), values: [] };
+    const frame = { __proto__: null, offset: offsetValue(offset, prefix, 'BaseKeyframe'), easing: easingText === undefined ? 'linear' : string(easingText), composite: composite === undefined ? 'auto' : enumeration(composite, COMPOSITE_AUTO, prefix, 'composite', 'BaseKeyframe', 'CompositeOperationOrAuto'), values: [] };
     const names = propertyNames(source);
     for (let i = 0; i < names.length; i++) push(frame.values, { idl: names[i].idl, css: names[i].css, text: string(source[names[i].idl]) });
     return frame;
@@ -678,7 +678,7 @@
         const computed = values.length === 1 ? 1 : j / (values.length - 1);
         let frame = null;
         for (let k = 0; k < byOffset.length; k++) if (byOffset[k].computed === computed) frame = byOffset[k];
-        if (!frame) push(byOffset, frame = { computed, offset: null, easing: 'linear', composite: 'auto', values: [] });
+        if (!frame) push(byOffset, frame = { __proto__: null, computed, offset: null, easing: 'linear', composite: 'auto', values: [] });
         push(frame.values, { idl: names[i].idl, css: names[i].css, text: values[j] });
       }
     }
@@ -724,10 +724,17 @@
     return kept;
   }
   // https://drafts.csswg.org/web-animations-1/#process-a-keyframes-argument
-  function processKeyframes(input, prefix) {
+  function processKeyframes(input, prefix, trusted) {
     if (input === null || input === undefined) return [];
-    const method = input[iteratorSymbol];
-    const frames = method !== undefined && method !== null ? sequenceKeyframes(input, method, prefix) : indexedKeyframes(input, prefix);
+    let frames;
+    if (trusted) {
+      // Producer-owned CSS input must not invoke the page's Array iterator.
+      frames = [];
+      for (let i = 0; i < input.length; i++) push(frames, sequenceKeyframe(input[i], prefix));
+    } else {
+      const method = input[iteratorSymbol];
+      frames = method !== undefined && method !== null ? sequenceKeyframes(input, method, prefix) : indexedKeyframes(input, prefix);
+    }
     checkKeyframeOffsets(frames, prefix);
     for (let i = 0; i < frames.length; i++) { const parsed = easing(frames[i].easing, prefix); frames[i].easing = parsed.text; frames[i].easingFn = parsed.evaluate; }
     for (let i = 0; i < frames.length; i++) frames[i].values = keptKeyframeValues(frames[i].values);
@@ -839,9 +846,10 @@
   }
 
   // ---- timelines and the host frame clock -------------------------------------------------
-  let host = null, lastClock = -Infinity, frameRequested = false;
+  let host = null, lastClock = -Infinity, frameRequested = false, inspectionClock = null;
   const queue = [];
   const clock = () => {
+    if (inspectionClock !== null) return inspectionClock;
     if (!host) return null;
     const time = +host.now();
     if (time !== time) return null;
@@ -1420,20 +1428,20 @@
     if (normalized === null) throw new Exception(`${prefix}${value} is a syntactically invalid pseudo-element`, 'SyntaxError');
     return normalized;
   }
-  function createEffect(effect, target, keyframes, options, prefix, extra) {
+  function createEffect(effect, target, keyframes, options, prefix, extra, trusted) {
     const parsed = readEffectOptions(options, prefix);
     const more = extra ? extra(parsed.input) : null;
     validateTiming(parsed.timing, prefix);
     const pseudo = pseudoElement(parsed.pseudo, prefix);
-    const frames = processKeyframes(keyframes, prefix);
-    const record = { target, pseudo, composite: parsed.composite, timing: parsed.timing, keyframes: frames, frames: propertyFrames(frames), animation: null };
+    const frames = processKeyframes(keyframes, prefix, trusted);
+    const record = { __proto__: null, target, pseudo, composite: parsed.composite, timing: parsed.timing, keyframes: frames, frames: propertyFrames(frames), animation: null };
     effects.set(effect, record);
     return more;
   }
   function keyframeEffectClone(dest, source, prefix) {
     if (!source || !(source.frames)) throw new ErrorType(`${prefix}parameter 1 is not of type 'KeyframeEffect'.`);
     const timing = create(null); for (const key in source.timing) timing[key] = source.timing[key];
-    effects.set(dest, { target: source.target, pseudo: source.pseudo, composite: source.composite, timing, keyframes: source.keyframes, frames: source.frames, animation: null });
+    effects.set(dest, { __proto__: null, target: source.target, pseudo: source.pseudo, composite: source.composite, timing, keyframes: source.keyframes, frames: source.frames, animation: null });
   }
   const KeyframeEffectDelegate = function KeyframeEffect(target, keyframes, options) {
     requireNew(new.target, 'KeyframeEffect');
@@ -1453,16 +1461,18 @@
     const next = value === undefined ? null : value;
     if (effect.animation) index(effect.animation, effect.target, next);
     effect.target = next;
+    effect.inspectionModified = true;
     ownerTouched(effect);
   });
   accessor(KP, 'pseudoElement', function () { return effectRecord(this).pseudo; }, function (value) {
     const effect = effectRecord(this);
     effect.pseudo = pseudoElement(value === null ? null : string(value), setting('pseudoElement', 'KeyframeEffect'));
+    effect.inspectionModified = true;
     ownerTouched(effect);
   });
   accessor(KP, 'composite', function () { return effectRecord(this).composite; }, function (value) {
     const effect = effectRecord(this), text = string(value);
-    if (intrinsic.indexOf(COMPOSITE, text) >= 0) effect.composite = text;
+    if (intrinsic.indexOf(COMPOSITE, text) >= 0) { effect.composite = text; effect.inspectionModified = true; }
   });
   method(KP, 'getKeyframes', function () {
     const effect = effectRecord(this), out = [];
@@ -1569,7 +1579,7 @@
 
   // Animation
   function newAnimation(object, effect, timeline) {
-    const record = { timeline, effect: null, start: null, hold: null, rate: 1, pendingRate: null, task: null, ready: null, finished: deferred(false), previousTime: null, id: '', replace: 'active', seq: ++sequence, finishTask: null, handlers: create(null), range: [null, null] };
+    const record = { __proto__: null, timeline, effect: null, start: null, hold: null, rate: 1, pendingRate: null, task: null, ready: null, finished: deferred(false), previousTime: null, id: '', replace: 'active', seq: ++sequence, finishTask: null, handlers: create(null), range: [null, null], inspectionModified: false };
     record.ready = deferred(true, object);
     animations.set(object, record);
     if (effect) setEffect(object, record, effect);
@@ -1587,7 +1597,7 @@
   const Animation = make(AnimationDelegate, 'Animation', 0, true, true, false);
   finishInterface(Animation, AnimationDelegate, 'Animation', TargetType, TargetType.prototype);
   const AP = AnimationDelegate.prototype;
-  const mutate = (animation, record, operation) => { const result = operation(); track(animation); return result; };
+  const mutate = (animation, record, operation) => { const result = operation(); record.inspectionModified = true; track(animation); return result; };
   accessor(AP, 'effect', function () { return animationRecord(this).effect; }, function (value) {
     const record = animationRecord(this);
     if (value !== null && value !== undefined && !(objectLike(value) && effects.has(value))) throw new ErrorType(`${setting('effect', 'Animation')}Failed to convert value to 'AnimationEffect'.`);
@@ -1689,7 +1699,7 @@
     });
   }, 0);
   method(AP, 'pause', function () { const record = animationRecord(this); scriptPlayState(record); mutate(this, record, () => pause(this, record, executing('pause', 'Animation'))); }, 0);
-  method(AP, 'persist', function () { animationRecord(this).replace = 'persisted'; }, 0);
+  method(AP, 'persist', function () { const record = animationRecord(this); record.replace = 'persisted'; record.inspectionModified = true; }, 0);
   method(AP, 'play', function () { const record = animationRecord(this); scriptPlayState(record); mutate(this, record, () => play(this, record, true, executing('play', 'Animation'))); }, 0);
   method(AP, 'reverse', function () {
     const record = animationRecord(this), prefix = executing('reverse', 'Animation');
@@ -1728,12 +1738,14 @@
   accessor(AP, 'rangeStart', function () { return rangeObject(animationRecord(this).range[0]); }, function (value) {
     const record = animationRecord(this), prefix = setting('rangeStart', 'Animation');
     record.range[0] = rangeOffset(rangeInput(value, prefix, prefix), prefix, 0);
+    record.inspectionModified = true;
     if (record.css && record.css.rangeSet) record.css.rangeSet[0] = true;
   });
   accessor(AP, 'rangeEnd', function () { return rangeObject(animationRecord(this).range[1]); }, function (value) {
     const record = animationRecord(this), prefix = setting('rangeEnd', 'Animation');
     // Chrome 156 reads a range end set without an offset as 1% (its options read 100%).
     record.range[1] = rangeOffset(rangeInput(value, prefix, prefix), prefix, 1);
+    record.inspectionModified = true;
     if (record.css && record.css.rangeSet) record.css.rangeSet[1] = true;
   });
   reorder(AP, ['effect', 'timeline', 'startTime', 'currentTime', 'playbackRate', 'rangeStart', 'rangeEnd', 'playState', 'replaceState', 'pending', 'id', 'onfinish', 'oncancel', 'onremove', 'finished', 'ready', 'cancel', 'commitStyles', 'finish', 'pause', 'persist', 'play', 'reverse', 'updatePlaybackRate', 'overallProgress']);
@@ -1775,10 +1787,10 @@
   function baseStyle(element) {
     suppressStyle = true;
     let style, parent;
-    try { style = apply(computedStyle, g, [element]); parent = element.parentElement ? apply(computedStyle, g, [element.parentElement]) : null; } finally { suppressStyle = false; }
+    try { style = apply(computedStyle, g, [element]); parent = apply(parentGetter, element, []); parent = parent ? apply(computedStyle, g, [parent]) : null; } finally { suppressStyle = false; }
     const values = new MapType(), parents = new MapType();
-    const read = name => { let value = apply(mapGet, values, [name]); if (value === undefined) { suppressStyle = true; try { value = style.getPropertyValue(name); } finally { suppressStyle = false; } apply(mapSet, values, [name, value]); } return value; };
-    const inherited = name => { if (!parent) return ''; let value = apply(mapGet, parents, [name]); if (value === undefined) { suppressStyle = true; try { value = parent.getPropertyValue(name); } finally { suppressStyle = false; } apply(mapSet, parents, [name, value]); } return value; };
+    const read = name => { let value = apply(mapGet, values, [name]); if (value === undefined) { suppressStyle = true; try { value = ns.computedStyleValue(style, name); } finally { suppressStyle = false; } apply(mapSet, values, [name, value]); } return value; };
+    const inherited = name => { if (!parent) return ''; let value = apply(mapGet, parents, [name]); if (value === undefined) { suppressStyle = true; try { value = ns.computedStyleValue(parent, name); } finally { suppressStyle = false; } apply(mapSet, parents, [name, value]); } return value; };
     return { read, inherited };
   }
 
@@ -1876,8 +1888,9 @@
   }
   function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { animations: [], transitions: create(null), values: create(null) }); return state; }
   function cssCreate(constructor, element, keyframes, timing, css) {
+    setPrototype(css, null);
     const effect = construct(function () {}, [], KeyframeEffect);
-    createEffect(effect, element, keyframes, timing, '', null);
+    createEffect(effect, element, keyframes, timing, '', null, true);
     const effectData = effects.get(effect);
     insertionOrder(effectData.keyframes, keyframes);
     // What script overrode (updateTiming keys, setKeyframes); see scriptPlayState.
@@ -1995,7 +2008,7 @@
       for (let j = 0; j < offsets.length; j++) {
         let frame = null;
         for (let k = 0; k < byOffset.length; k++) if (byOffset[k].offset === offsets[j]) frame = byOffset[k];
-        if (!frame) push(byOffset, frame = { offset: offsets[j], easing: easingText, composite: 'auto', values: create(null) });
+        if (!frame) push(byOffset, frame = { __proto__: null, offset: offsets[j], easing: easingText, composite: 'auto', values: create(null) });
         cssFrameValues(frame, rule[i].values, properties, underlying);
       }
     }
@@ -2005,7 +2018,7 @@
     cssBoundary(byOffset, 1, all, easingText, underlying);
     const out = [];
     for (let i = 0; i < byOffset.length; i++) {
-      const frame = byOffset[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite }, order = [];
+      const frame = byOffset[i], object = { __proto__: null, offset: frame.offset, easing: frame.easing, composite: frame.composite }, order = [];
       for (const name in frame.values) { object[idlName(name)] = frame.values[name]; push(order, name); }
       object[INSERTION] = order;
       push(out, object);
@@ -2045,8 +2058,9 @@
       else if (frames[j].offset > offset && at === frames.length) at = j;
     }
     if (!target) {
-      target = { offset, easing: easingText, composite: 'replace', values: create(null) };
-      for (let j = frames.length; j > at; j--) frames[j] = frames[j - 1];
+      target = { __proto__: null, offset, easing: easingText, composite: 'replace', values: create(null) };
+      push(frames, null);
+      for (let j = frames.length - 1; j > at; j--) frames[j] = frames[j - 1];
       frames[at] = target;
     }
     for (let i = 0; i < missing.length; i++) target.values[missing[i]] = COLORS[missing[i]] ? cssColor(underlying(missing[i]), underlying) : underlying(missing[i]);
@@ -2057,7 +2071,7 @@
   }
   function cssTiming(lists, i) {
     const count = pickList(lists['iteration-count'], i, '1');
-    return { duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
+    return { __proto__: null, duration: milliseconds(pickList(lists.duration, i, '0s')), delay: milliseconds(pickList(lists.delay, i, '0s')), iterations: count === 'infinite' ? Infinity : +count, direction: pickList(lists.direction, i, 'normal'), fill: pickList(lists['fill-mode'], i, 'none'), easing: 'linear' };
   }
   function cssFrames(element, rule, lists, i, underlying) {
     // Boundary values the declared/initial tables lack come from the element's computed style.
@@ -2101,7 +2115,7 @@
     const signature = frameSignature(input);
     if (signature === effect.css.signature) return false;
     effect.css.signature = signature;
-    effect.keyframes = processKeyframes(input, '');
+    effect.keyframes = processKeyframes(input, '', true);
     insertionOrder(effect.keyframes, input);
     effect.frames = propertyFrames(effect.keyframes);
     return true;
@@ -2201,10 +2215,10 @@
       const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
       if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
       if (state.transitions[property]) cssCancel(state.transitions[property]);
-      const idl = idlName(property), from = { offset: 0, easing: 'linear', composite: 'auto' }, to = { offset: 1, easing: 'linear', composite: 'auto' };
+      const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
       from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
       to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
-      const timing = { duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
+      const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
       state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
@@ -2263,6 +2277,185 @@
     try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay); }
     finally { cssBusy.set(element, false); }
   }
+  // Private native-geometry seam. Never compose/interpolate an effect here: resolving
+  // a percentage transform can call native layout, whose capture is asking this question.
+  // CSS synchronization is canonical and bounded to the target and its style dependencies.
+  let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false;
+  const stringifyEffects = JSON.stringify;
+  // Promise resolution observes `animation.then`. Reject hostile promise/prototype
+  // shapes before canonical CSS synchronization could resolve a ready promise. Inspect
+  // only captured ordinary objects; never traverse a page-inserted Proxy prototype.
+  const arrayPrototype = Array.prototype, objectPrototype = Object.prototype;
+  const objectPrototypeKeys = ownKeys(objectPrototype), objectPrototypeDescriptors = create(null);
+  for (let i = 0; i < objectPrototypeKeys.length; i++) objectPrototypeDescriptors[objectPrototypeKeys[i]] = getOwnDescriptor(objectPrototype, objectPrototypeKeys[i]);
+  function samePrivateDescriptor(left, right) {
+    if (!left || !right) return left === right;
+    const fields = ['value', 'writable', 'get', 'set', 'enumerable', 'configurable'];
+    for (let i = 0; i < fields.length; i++) {
+      const a = getOwnDescriptor(left, fields[i]), b = getOwnDescriptor(right, fields[i]);
+      if (!!a !== !!b || (a && !sameValue(a.value, b.value))) return false;
+    }
+    return true;
+  }
+  const builtinNames = ['Object', 'Function', 'Array', 'String', 'Number', 'Boolean', 'Symbol', 'BigInt', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Proxy', 'Reflect', 'Math', 'JSON', 'RegExp', 'Date', 'Promise', 'Error', 'TypeError', 'RangeError', 'parseInt', 'parseFloat', 'isFinite', 'isNaN'];
+  const builtinGlobals = create(null), builtinShapes = [];
+  function rememberBuiltinShape(object) {
+    const keys = ownKeys(object), descriptors = create(null);
+    for (let i = 0; i < keys.length; i++) descriptors[keys[i]] = getOwnDescriptor(object, keys[i]);
+    push(builtinShapes, { __proto__: null, object, keys, descriptors, prototype: getPrototype(object) });
+  }
+  function captureBuiltinShapes() {
+    builtinShapes.length = 0;
+    for (let i = 0; i < builtinNames.length; i++) {
+      const descriptor = getOwnDescriptor(g, builtinNames[i]);
+      builtinGlobals[builtinNames[i]] = descriptor;
+      if (!descriptor) continue;
+      const value = descriptor.value;
+      if (!objectLike(value)) continue;
+      rememberBuiltinShape(value);
+      const prototype = getOwnDescriptor(value, 'prototype');
+      if (prototype && objectLike(prototype.value)) rememberBuiltinShape(prototype.value);
+    }
+  }
+  captureBuiltinShapes();
+  // V8 may materialize new native builtin methods while deserializing a startup
+  // snapshot. Rust calls this only at trusted rehydration, before any guest runs.
+  ns.rehydrateCssEffectTrust = function () {
+    delete ns.rehydrateCssEffectTrust;
+    // Never forgive a modified original property if an embedder tries to attach
+    // after page code. Only newly materialized keys on original builtin objects
+    // may be adopted; shared Object/array and promise shapes remain strict.
+    if (!safeSharedObjectPrototype() || !safePrototypeIndices(arrayPrototype) ||
+        !safePrototypeIndices(objectPrototype)) return;
+    for (let i = 0; i < builtinNames.length; i++)
+      if (!samePrivateDescriptor(getOwnDescriptor(g, builtinNames[i]), builtinGlobals[builtinNames[i]])) return;
+    for (let i = 0; i < builtinShapes.length; i++) {
+      const shape = builtinShapes[i];
+      if (getPrototype(shape.object) !== shape.prototype) return;
+      for (let j = 0; j < shape.keys.length; j++)
+        if (!samePrivateDescriptor(getOwnDescriptor(shape.object, shape.keys[j]), shape.descriptors[shape.keys[j]])) return;
+    }
+    for (let i = 0; i < promiseShapes.length; i++) if (!safePromiseShape(null, promiseShapes[i])) return;
+    captureBuiltinShapes();
+  };
+  function safeBuiltinShapes() {
+    for (let i = 0; i < builtinNames.length; i++)
+      if (!samePrivateDescriptor(getOwnDescriptor(g, builtinNames[i]), builtinGlobals[builtinNames[i]])) return false;
+    for (let i = 0; i < builtinShapes.length; i++) {
+      const shape = builtinShapes[i], keys = ownKeys(shape.object);
+      if (keys.length !== shape.keys.length || getPrototype(shape.object) !== shape.prototype) return false;
+      for (let j = 0; j < keys.length; j++)
+        if (keys[j] !== shape.keys[j] || !samePrivateDescriptor(getOwnDescriptor(shape.object, keys[j]), shape.descriptors[keys[j]])) return false;
+    }
+    return true;
+  }
+  function safeSharedObjectPrototype() {
+    const keys = ownKeys(objectPrototype);
+    if (keys.length !== objectPrototypeKeys.length) return false;
+    for (let i = 0; i < keys.length; i++)
+      if (keys[i] !== objectPrototypeKeys[i] || !samePrivateDescriptor(getOwnDescriptor(objectPrototype, keys[i]), objectPrototypeDescriptors[keys[i]])) return false;
+    return true;
+  }
+  const promiseShapes = [];
+  for (const constructor of [CSSAnimation, CSSTransition]) {
+    const chain = []; let prototype = constructor.prototype;
+    while (prototype) { push(chain, prototype); prototype = getPrototype(prototype); }
+    push(promiseShapes, chain);
+  }
+  function safePrototypeIndices(prototype) {
+    const keys = ownKeys(prototype);
+    for (let i = 0; i < keys.length; i++)
+      if (typeof keys[i] === 'string' && intrinsic.test(/^(?:0|[1-9][0-9]*)$/, keys[i])) return false;
+    return true;
+  }
+  function safePromiseShape(animation, chain) {
+    if (animation && (getPrototype(animation) !== chain[0] || getOwnDescriptor(animation, 'then'))) return false;
+    for (let i = 0; i < chain.length; i++)
+      if (getPrototype(chain[i]) !== (chain[i + 1] || null) || getOwnDescriptor(chain[i], 'then')) return false;
+    return true;
+  }
+  function safeInspectionPrototypes() {
+    if (!safeBuiltinShapes() || !safeSharedObjectPrototype() || getPrototype(arrayPrototype) !== objectPrototype || !safePrototypeIndices(arrayPrototype) || !safePrototypeIndices(objectPrototype)) return false;
+    for (let i = 0; i < promiseShapes.length; i++) if (!safePromiseShape(null, promiseShapes[i])) return false;
+    return true;
+  }
+  function safeOwnedAnimationPromises(element) {
+    const state = cssStates.get(element), indexed = targets.get(element);
+    if (state) for (let i = 0; i < state.animations.length; i++)
+      if (!safePromiseShape(state.animations[i].animation, promiseShapes[0])) return false;
+    if (indexed) for (let i = 0; i < indexed.length; i++) {
+      const record = animations.get(indexed[i]), descriptor = getOwnDescriptor(record, 'css');
+      if (descriptor && !safePromiseShape(indexed[i], promiseShapes[descriptor.value.kind === CSS_ANIMATION ? 0 : 1])) return false;
+    }
+    return true;
+  }
+  ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay) {
+    if (cssBusy.get(element) || suppressStyle || !safeOwnedAnimationPromises(element)) { inspectionUnavailable = true; return; }
+    if (element === inspectionTarget) {
+      inspectionNames = splitList(read('animation-name') || 'none');
+      const composition = splitList(read('animation-composition') || 'replace');
+      for (let i = 0; i < composition.length; i++) if (composition[i] !== 'replace') inspectionUnsupported = true;
+      const timeline = read('animation-timeline');
+      if (timeline && timeline !== 'auto') inspectionUnsupported = true;
+    }
+    cssUpdate(element, read, inherited, snapshots, ownDisplay);
+  };
+  function effectInspectionEntry(animation, element, owned) {
+    const record = animations.get(animation), effect = record.effect ? effects.get(record.effect) : null;
+    const cssDescriptor = getOwnDescriptor(record, 'css'), css = cssDescriptor ? cssDescriptor.value : null;
+    const effectCssDescriptor = effect ? getOwnDescriptor(effect, 'css') : null, effectCss = effectCssDescriptor ? effectCssDescriptor.value : null;
+    const entry = create(null), state = effect ? effectState(record) : null;
+    entry.identity = record.seq;
+    entry.name = css && css.kind === CSS_ANIMATION ? css.name : '';
+    entry.kind = css ? (css.kind === CSS_ANIMATION ? 'animation' : 'transition') : 'script';
+    entry.play_state = playState(record);
+    entry.phase = state ? state.phase : 'idle';
+    entry.pending = record.task !== null;
+    entry.contributes = !!state && state.activeTime !== null && record.replace !== 'removed' && effect.target === element;
+    entry.fill = effect ? effect.timing.fill : 'auto';
+    entry.finite = !!state && state.active !== Infinity && state.end !== Infinity;
+    entry.replaced = record.replace === 'removed';
+    let modified = !effect || !effectCss || effectCss.frames || effect.composite !== 'replace';
+    if (effectCss) for (const key in effectCss.timing) modified = true;
+    entry.script_modified = !!modified || !!record.inspectionModified || !!(effect && effect.inspectionModified) || !!(css && css.scriptPlayState);
+    // A clock read alone is insufficient: the canonical finish task must have settled.
+    // Keep cancelled, retargeted, pseudo, additive and script-owned effects conservative.
+    entry.completed_non_filling = !!owned && entry.kind === 'animation' && !entry.script_modified &&
+      css.owner === element && effect.target === element && effect.pseudo === null && entry.finite && !entry.pending &&
+      !entry.replaced && entry.play_state === 'finished' && state.phase === 'after' &&
+      state.activeTime === null && record.finished.state === 'resolved' &&
+      (entry.fill === 'none' || entry.fill === 'auto') && record.rate > 0;
+    return entry;
+  }
+  ns.inspectElementCssEffects = function (element) {
+    if (inspectingEffects || suppressStyle || cssBusy.get(element) || !safeInspectionPrototypes()) return null;
+    if (nodeType(element) !== 1 || (apply(ownerGetter, element, []) || realmDocument) !== realmDocument) return null;
+    inspectionClock = clock();
+    inspectingEffects = true; inspectionUnavailable = false; inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false; cssKeyframes = null;
+    try {
+      if (!ns.refreshCssEffectInputs(element) || inspectionUnavailable) return null;
+      const result = create(null), entries = [], seen = new SetType();
+      setPrototype(entries, null);
+      const state = cssStates.get(element), owned = state ? state.animations : [];
+      for (let i = 0; i < owned.length; i++) {
+        apply(setAdd, seen, [owned[i].animation]);
+        entries[entries.length] = effectInspectionEntry(owned[i].animation, element, true);
+      }
+      const indexed = targets.get(element);
+      if (indexed) for (let i = 0; i < indexed.length; i++) if (!apply(setHas, seen, [indexed[i]]))
+        entries[entries.length] = effectInspectionEntry(indexed[i], element, false);
+      const names = []; setPrototype(names, null);
+      if (!inspectionNames) return null;
+      for (let i = 0; i < inspectionNames.length; i++) if (inspectionNames[i] !== 'none') names[names.length] = inspectionNames[i];
+      result.unsupported = inspectionUnsupported;
+      result.animation_names = names;
+      result.sample_time = inspectionClock;
+      result.effects = entries;
+      result.css_animations_enabled = cssAnimationsOn;
+      result.css_transitions_enabled = cssTransitionsOn;
+      return apply(stringifyEffects, null, [result]);
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
+  };
   // The switched-on kinds' update (set_css_animations / set_css_transitions).
   function cssRun(element, read, underlying, hidden) {
     if (cssAnimationsOn) cssAnimations(element, read, underlying, hidden);

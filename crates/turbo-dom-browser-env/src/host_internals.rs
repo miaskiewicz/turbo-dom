@@ -29,6 +29,12 @@ use crate::browser_env::{
     DOM_CONTEXTS, DOM_ID,
 };
 
+#[path = "css_effect_lifecycle.rs"]
+mod css_effect_lifecycle;
+pub use css_effect_lifecycle::{
+    css_effect_lifecycle, CssEffectKind, CssEffectLifecycle, CssEffectPhase, CssEffectSnapshot,
+};
+
 pub use crate::browser_env::host_composed_children;
 pub use crate::css_snapshot::{RuleSnapshot, SheetSnapshot};
 pub use turbo_dom_parser::rtdom::cascade::StylePolicy;
