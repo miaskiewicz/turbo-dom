@@ -43,15 +43,18 @@ def target_path(target):
     return f"crates/{package}/src/{target}.rs"
 
 
-def matrix(mode):
+def matrix(mode, target=""):
     plan = json.loads(PLAN.read_text())
     mode = mode or plan["mode"]
     if mode not in {"pilot", "full"}:
         raise ValueError("mode must be pilot or full")
     if set(plan["full_shards"]) != set(TARGETS):
         raise ValueError("all five targets must be present")
+    if target not in ("", "all", *TARGETS):
+        raise ValueError("unknown mutation target")
+    selected_targets = TARGETS if target in ("", "all") else (target,)
     jobs = []
-    for target in TARGETS:
+    for target in selected_targets:
         count = 1 if mode == "pilot" else plan["full_shards"][target]
         if not isinstance(count, int) or not 1 <= count <= 12:
             raise ValueError("each target must have between 1 and 12 shards")
@@ -67,6 +70,45 @@ def matrix(mode):
 def rust_regex_literal(text):
     # Match regex::escape without Python's unnecessary escaped whitespace.
     return "".join("\\" + c if c in r"\.+*?()|[]{}^$#&-~" else c for c in text)
+
+
+
+def selection_diff(inventory, names, root=ROOT):
+    """A source-matching line mask, not a claimed VCS change or source edit."""
+    by_name = {item["name"]: item for item in inventory}
+    if len(by_name) != len(inventory) or not names or len(set(names)) != len(names):
+        raise ValueError("duplicate or empty exact replay selection")
+    lines_by_file = {}
+    for name in names:
+        item = by_name[name]
+        path, line = item["file"], item["span"]["start"]["line"]
+        if Path(path).is_absolute() or ".." in Path(path).parts or type(line) is not int or line < 1:
+            raise ValueError("invalid replay source location")
+        lines_by_file.setdefault(path, set()).add(line)
+    result = []
+    for path, selected in sorted(lines_by_file.items()):
+        source = (root / path).read_text().splitlines()
+        result.extend([f"--- a/{path}", f"+++ b/{path}"])
+        for line in sorted(selected):
+            if line > len(source):
+                raise ValueError("replay source location exceeds current file")
+            result.extend([f"@@ -{line},1 +{line},1 @@", "-// exact mutation selection mask", "+" + source[line - 1]])
+    return "\n".join(result) + "\n"
+
+
+def exact_replay_filters(common, inventory, names, output):
+    # cargo-mutants 27.1.0's StructField visitor bypasses --re. Its later
+    # --in-diff pass filters every genre; validate the resulting exact set.
+    mask = output / "fallback-selection.diff"
+    mask.write_text(selection_diff(inventory, names))
+    pattern = "^(?:" + "|".join(map(rust_regex_literal, names)) + ")$"
+    filters = ["--re", pattern, "--in-diff", str(mask)]
+    selected = json.loads(capture([*common, "--list", "--json", *filters]))
+    actual = [item["name"] for item in selected]
+    write_json(output / "fallback-inventory-selected.json", selected)
+    if len(actual) != len(set(actual)) or set(actual) != set(names):
+        raise ValueError("exact replay inventory contains missing or unexpected mutants")
+    return filters
 
 
 def mutation_flags():
@@ -218,13 +260,13 @@ def run_job(args):
         missed = [name for name, row in rows.items() if row["summary"] == "MissedMutant"]
         if missed:
             # External integration controls may catch a mutant missed by lib tests.
-            pattern = "^(?:" + "|".join(map(rust_regex_literal, missed)) + ")$"
+            replay_filters = exact_replay_filters(common, inventory, missed, output)
             full_dir = output / "all-targets"
             full_dir.mkdir()
             full_flags = flags.copy()
             full_flags[full_flags.index("--timeout") + 1] = str(fallback_budget)
             report["all_target_run"] = command([*common, *full_flags, "-C", "--all-targets",
-                                                "--re", pattern, "-o", str(full_dir)], output / "all-targets.log")
+                                                *replay_filters, "-o", str(full_dir)], output / "all-targets.log")
             rows.update(outcomes(full_dir, missed))
         report["results"] = {name: row["summary"] for name, row in rows.items()}
         report["unresolved"] = [name for name, row in rows.items()
@@ -241,7 +283,7 @@ def run_job(args):
     return 0 if report["ok"] else 1
 
 
-def aggregate(directory):
+def aggregate(directory, target=""):
     reports = [json.loads(path.read_text()) for path in Path(directory).rglob("summary.json")]
     if not reports or not all(report.get("ok") for report in reports):
         raise ValueError("missing or failing shard evidence")
@@ -250,8 +292,13 @@ def aggregate(directory):
         raise ValueError("mixed pilot/full evidence")
     if len({(report["commit"], report["tree"]) for report in reports}) != 1:
         raise ValueError("mixed source revisions")
+    if target not in ("", "all", *TARGETS):
+        raise ValueError("unknown mutation target")
+    selected_targets = TARGETS if target in ("", "all") else (target,)
+    if {report["target"] for report in reports} != set(selected_targets):
+        raise ValueError("missing or unexpected target scope")
     counts = {}
-    for target in TARGETS:
+    for target in selected_targets:
         group = [report for report in reports if report["target"] == target]
         if not group:
             raise ValueError(f"missing target {target}")
@@ -265,7 +312,8 @@ def aggregate(directory):
             raise ValueError(f"incomplete full sweep for {target}")
         counts[target] = {"tested": len(selected), "inventory": len(expected)}
     result = {"ok": True, "mode": next(iter(modes)),
-              "complete_scope": modes == {"full"}, "counts": counts,
+              "complete_scope": modes == {"full"} and set(selected_targets) == set(TARGETS),
+              "requested_targets": list(selected_targets), "counts": counts,
               "commit": reports[0]["commit"], "tree": reports[0]["tree"]}
     write_json(Path(directory) / "aggregate.json", result)
     print(json.dumps(result))
@@ -276,6 +324,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     mat = sub.add_parser("matrix")
     mat.add_argument("--mode", choices=("", "pilot", "full"), default="")
+    mat.add_argument("--target", choices=("", "all", *TARGETS), default="")
     run = sub.add_parser("run")
     run.add_argument("--target", choices=TARGETS, required=True)
     run.add_argument("--mode", choices=("pilot", "full"), required=True)
@@ -284,13 +333,14 @@ def main():
     run.add_argument("--output", required=True)
     agg = sub.add_parser("aggregate")
     agg.add_argument("directory")
+    agg.add_argument("--target", choices=("", "all", *TARGETS), default="")
     args = parser.parse_args()
     if args.command == "matrix":
-        print(json.dumps(matrix(args.mode)))
+        print(json.dumps(matrix(args.mode, args.target)))
     elif args.command == "run":
         return run_job(args)
     else:
-        aggregate(args.directory)
+        aggregate(args.directory, args.target)
     return 0
 
 

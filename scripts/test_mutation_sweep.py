@@ -54,6 +54,16 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertLessEqual(len(jobs), 32)
         self.assertEqual(len(jobs), len({job["id"] for job in jobs}))
 
+    def test_targeted_full_recheck_covers_only_the_requested_file(self):
+        jobs = ms.matrix("full", "event_handlers")["include"]
+        self.assertEqual({job["target"] for job in jobs}, {"event_handlers"})
+        self.assertEqual([job["shard"] for job in jobs], list(range(len(jobs))))
+        self.assertTrue(all(job["mode"] == "full" for job in jobs))
+
+    def test_unknown_recheck_target_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "unknown mutation target"):
+            ms.matrix("full", "not-a-target")
+
     def test_in_place_uses_implicit_serial_execution(self):
         self.assertIn("--in-place", ms.mutation_flags())
         self.assertNotIn("--jobs", ms.mutation_flags())
@@ -65,7 +75,7 @@ class MutationEvidenceTests(unittest.TestCase):
             if argv == ["cargo", "mutants", "--version"]:
                 return "cargo-mutants 27.1.0"
             if "--list" in argv:
-                return '[{"name":"one"}]'
+                return json.dumps([{"name":"one", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}}])
             if "metadata" in argv:
                 return "{}"
             self.fail(f"unexpected command {argv}")
@@ -99,6 +109,31 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertNotIn("worker_scope::", fallback)
         self.assertIn("--all-targets", fallback)
 
+    def test_selection_diff_matches_current_text_and_deduplicates_lines(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "a.rs").write_text("first\nsecond\nthird\n")
+            items = [{"name":name, "file":"a.rs", "span":{"start":{"line":line}}}
+                     for name, line in (("one", 2), ("two", 2), ("three", 3))]
+            result = ms.selection_diff(items, ["three", "two", "one"], root)
+            self.assertEqual(result.count("@@"), 4)
+            self.assertIn("+second\n", result)
+            self.assertIn("+third\n", result)
+            self.assertNotIn("+first\n", result)
+
+    def test_exact_replay_rejects_struct_field_extras_before_mutation(self):
+        item = {"name":"wanted", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}}
+        with tempfile.TemporaryDirectory() as temp, patch.object(ms, "capture", return_value='[{"name":"wanted"},{"name":"unexpected field"}]'):
+            with self.assertRaisesRegex(ValueError, "unexpected mutants"):
+                ms.exact_replay_filters([], [item], ["wanted"], Path(temp))
+
+    def test_exact_replay_requires_exact_preflight_inventory(self):
+        item = {"name":"wanted", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}}
+        for response in ('[]', '[{"name":"wanted"},{"name":"wanted"}]'):
+            with self.subTest(response=response), tempfile.TemporaryDirectory() as temp, patch.object(ms, "capture", return_value=response):
+                with self.assertRaisesRegex(ValueError, "unexpected mutants"):
+                    ms.exact_replay_filters([], [item], ["wanted"], Path(temp))
+
     def test_zero_test_filtered_baseline_stops_before_mutating(self):
         result, calls, report = self.run_fake_job(0)
         self.assertEqual(result, 1)
@@ -129,6 +164,18 @@ class MutationEvidenceTests(unittest.TestCase):
     def test_fallback_ceiling_fails_instead_of_silently_clamping(self):
         with self.assertRaisesRegex(ValueError, "ceiling"):
             ms.full_fallback_timeout({"phase":"Test", "exit_code":0, "seconds":435.1})
+
+    def test_targeted_full_aggregate_cannot_claim_complete_project_scope(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ms.write_json(root / "summary.json", {"ok":True, "mode":"full", "commit":"one", "tree":"one",
+                "target":"event_handlers", "all_names":["one"], "selected_names":["one"]})
+            ms.aggregate(root, "event_handlers")
+            result = json.loads((root / "aggregate.json").read_text())
+            self.assertTrue(result["ok"])
+            self.assertFalse(result["complete_scope"])
+            with self.assertRaisesRegex(ValueError, "scope"):
+                ms.aggregate(root)
 
     def test_partial_full_artifacts_cannot_pass(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -95,10 +95,16 @@ Any equivalent mutant needs an individual source proof and review; this runner
 does not silently exempt it. Any genuine survivor needs a behavior assertion or
 implementation fix and a retained red/green receipt. Then rerun its exact mutant.
 The issue stays open until all five full inventories are accounted for on the
-final source graph. The acceptance graph is frozen to release commit
-`26272a83e8f8c1f335d9c615c942674b1de8ec1a` plus mutation tooling and necessary
-test fixes. The separate #504 feature is excluded from this sweep. Any later
-production or dependency change requires explicit provenance review.
+final source graph. The original sweep used release commit
+`26272a83e8f8c1f335d9c615c942674b1de8ec1a` plus mutation tooling; its
+[43483416004 run](https://github.com/miaskiewicz/turbo-dom/actions/runs/43483416004)
+retains both complete and deadline-limited partial artifacts. Recovery tooling
+and regression tests are rebased onto release candidate
+`46b1dcc939a033d09fb5708eb517fde49af56771`, including #509/#511. New acceptance
+runs retain separate source/dependency receipts on that graph. Old spans are
+reused only after proving the corresponding production source byte-identical.
+The separate #504 feature remains excluded. Any subsequent production or
+dependency change requires explicit provenance review.
 
 ## Commands
 
@@ -116,3 +122,34 @@ CARGO_ENCODED_RUSTFLAGS=--cap-lints=warn \
 The pilot orchestration has fourteen fail-closed Python tests and the installed
 tool's exact-name regex selection was checked without building Rust. No mutation
 outcomes or timings are claimed from that source-only preparation.
+
+## Exact replay selection and bounded rechecks
+
+cargo-mutants 27.1.0's `StructField` visitor pushes those mutants directly rather
+than applying its usual name-regex filter. A real PNG replay requested 25 names
+but `--re` alone selected 37, including 12 unrelated struct-field deletions.
+The runner therefore adds a source-matching `--in-diff` line mask, which the tool
+applies to every mutation genre after discovery. This mask is explicitly a
+selection aid, not a claimed Git change, and does not edit production source.
+
+Before compiling a replay, `--list --json` must return exactly the requested name
+set, with no duplicates, omissions or extras. The actual pinned tool selected
+exactly 25/25 in the PNG reproduction after adding the mask. If a same-line
+collision still prevents exact selection, the runner stops for review; it never
+silently drops a mutation genre or accepts unexpected outcomes. The full primary
+inventory remains unchanged. Python tests cover exact selection failures and
+source-matching line-mask generation.
+
+`workflow_dispatch` can select one `target` (default `all`) with `mode: full`.
+It runs that file's complete existing shard plan, without restarting unrelated
+files. A per-file aggregate validates its explicitly requested complete inventory but
+keeps `complete_scope: false`; the default all-target aggregate still requires
+all five inventories on the same acceptance graph. Existing matrix
+ceilings, deadlines, unfiltered all-targets fallback and quality floors remain.
+
+Local native validation must use a target directory owned by its worktree.
+Parallel worktrees sharing a Cargo target directory can overwrite identically
+named package binaries; a Cargo build lock does not establish attribution of a
+later test invocation. Recovery records source and binary hashes, uses its own
+APFS-cloned cache, and cleans only that private target's workspace artifacts
+before validating. Never clean another worktree's or a shared target directory.
