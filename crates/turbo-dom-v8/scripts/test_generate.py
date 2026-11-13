@@ -103,7 +103,7 @@ class ManifestTransformTests(unittest.TestCase):
     def test_package_identity_license_links_and_metadata(self):
         package = self.result["package"]
         self.assertEqual(package["name"], "turbo-dom-v8")
-        self.assertEqual(package["version"], "150.4.1")
+        self.assertEqual(package["version"], "150.4.2")
         self.assertEqual(package["links"], "rusty_v8")
         self.assertEqual(package["rust-version"], "1.91")
         self.assertEqual(package["repository"], "https://github.com/miaskiewicz/turbo-dom")
@@ -158,8 +158,10 @@ class CommittedInputsTests(unittest.TestCase):
         self.assertTrue(pinned["patched_function_sha256"].startswith("b12f0237"))
         self.assertEqual(pinned["patched_isolate_sha256"],
                          "4eb4214ba55192c0146bd4eccef66b13b7fcbeaa0b79233fee3cf0ecc8836543")
-        self.assertEqual(PINS["generated"]["key_files"]["src/function.rs"], pinned["patched_function_sha256"])
-        self.assertEqual(PINS["generated"]["key_files"]["src/isolate.rs"], pinned["patched_isolate_sha256"])
+        # The original reviewed fixes remain pinned at stage two. The final
+        # files now additionally contain the separate WindowProxy delta.
+        self.assertNotEqual(PINS["generated"]["key_files"]["src/function.rs"], pinned["patched_function_sha256"])
+        self.assertNotEqual(PINS["generated"]["key_files"]["src/isolate.rs"], pinned["patched_isolate_sha256"])
         self.assertEqual(PINS["generated"]["key_files"]["LICENSE"], pinned["license_sha256"])
 
     def test_build_patch_pins_upstream_version_at_both_download_sites(self):
@@ -183,6 +185,20 @@ class CommittedInputsTests(unittest.TestCase):
         interceptor = (GENERATE.CRATE / "tests/interceptor_should_throw.rs").read_text()
         self.assertEqual(interceptor.count("#[test]"), 4)
         self.assertNotIn("#[ignore", interceptor)
+
+    def test_window_proxy_primitives_use_exported_sdk_members_and_explicit_layouts(self):
+        patch = (GENERATE.CRATE / "patches/window-proxy.patch").read_text()
+        for method in ["DetachGlobal", "SetAccessCheckCallbackAndHandler", "SetFailedAccessCheckCallbackFunction"]:
+            self.assertIn(method, patch)
+        self.assertIn("+pub const FORK_WINDOW_PROXY: bool = true;", patch)
+        self.assertIn("+struct NativeNamedPropertyHandlerConfiguration", patch)
+        self.assertIn("+struct NativeIndexedPropertyHandlerConfiguration", patch)
+        self.assertIn("+  index_of: *const std::ffi::c_void,", patch)
+        self.assertIn("offset_of!(NativeIndexedPropertyHandlerConfiguration, data) == 8 * word", patch)
+        self.assertIn('target_env = "msvc"', patch)
+        self.assertIn("v8__Undefined(v8__Isolate__GetCurrent())", patch)
+        self.assertNotIn("a/src/binding.cc", patch)
+        self.assertIn("window_proxy", GENERATE.OWN_TESTS)
 
     def test_rustfmt_uses_upstream_two_space_style(self):
         config = tomllib.loads((GENERATE.CRATE / "rustfmt.toml").read_text())

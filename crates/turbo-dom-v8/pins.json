@@ -1,10 +1,10 @@
 {
   "package": "turbo-dom-v8",
-  "version": "150.4.1",
+  "version": "150.4.2",
   "rust_version": "1.91",
   "repository": "https://github.com/miaskiewicz/turbo-dom",
-  "description": "turbo-dom fork of rusty_v8 (v8 150.4.0) with the interceptor ShouldThrowOnError and isolate weak-teardown fixes and PinScope::get_incumbent_context: Rust bindings to V8",
-  "scope": "Rust-only changes (src/function.rs interceptor ShouldThrowOnError, src/isolate.rs weak teardown, src/scope.rs + src/scope/raw.rs get_incumbent_context over V8's exported v8::Isolate::GetIncumbentContext); official prebuilt v150.4.0 SDK and generated bindings unchanged",
+  "description": "turbo-dom fork of rusty_v8 (v8 150.4.0) with interceptor/teardown fixes, incumbent context and native WindowProxy primitives: Rust bindings to V8",
+  "scope": "Rust-only changes: interceptor ShouldThrowOnError, isolate weak teardown, incumbent context and native access checks/global detachment over V8 exported member symbols; official prebuilt v150.4.0 SDK and generated bindings unchanged",
   "upstream": {
     "package": "v8",
     "version": "150.4.0",
@@ -42,18 +42,19 @@
     "v8-teardown-tests.patch": "d5185408eb43c657f10dab2f0683c6797b2302d82a95823039164ac15df7e87c",
     "lib-test-init.patch": "c6ff2657b257348214f32a737ee0125c3ba4e5bc57d0e52ef578e9f2e56a39b0",
     "doctests.patch": "c771b47979ab2d933a0481ca851276088cd7241860fe1dbe7982afbc342d9514",
-    "incumbent-context.patch": "53363d95f6cb7ef416f8c4a656d08055144efd5c8c39dd3af6fa649cee6d68ba"
+    "incumbent-context.patch": "53363d95f6cb7ef416f8c4a656d08055144efd5c8c39dd3af6fa649cee6d68ba",
+    "window-proxy.patch": "de043ea43ac57a156675f91d5fe3afd972ff88594ec3d09bf991845182a9653d"
   },
   "generated": {
-    "files": 189,
-    "tree_sha256": "730d98eb567ad178dde22709115f6b8c7ba93e76a2a05c88fd2d4add82c549ec",
+    "files": 190,
+    "tree_sha256": "730c7c23d28b46b6618485897df1994ce917fd61b2f5a81c66e94ea82ef74ef3",
     "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
     "key_files": {
-      "Cargo.toml": "88abdab354aeaaf9a8187f5bd2701d097166ef8cefb4612c69f846c2eddd9e76",
+      "Cargo.toml": "fb976777341ee8f894c600725ad990058ffa4dd6f92e954d2c8331101d616247",
       "build.rs": "7cdac7cec16ef0d8a39b0b6d78d550826248be2f4d2bd1e31d1bcf3e91f00d0c",
-      "src/lib.rs": "647aea9ba7621934b5d7ee3d3ab344f1534f456ac06c56ebc27b0898bfb15b65",
-      "src/function.rs": "b12f0237fcb8622171a5d8ffd23407b04c860fa188ef96f26e53fcf6a79de05f",
-      "src/isolate.rs": "4eb4214ba55192c0146bd4eccef66b13b7fcbeaa0b79233fee3cf0ecc8836543",
+      "src/lib.rs": "0c4b1484c02219c64df911dbecf0b0f2ef20379eb3530d689a7d4e05250f5426",
+      "src/function.rs": "fcd66161879185b76ae91af92bdcc09e626bab2f6c297beffd6f6ec784eff08c",
+      "src/isolate.rs": "980e44814c5b0f4ea8572b1bfa4a42b72951d31498f89936469a5148e8b827d9",
       "LICENSE": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d",
       "tests/interceptor_should_throw.rs": "fd64854325c54d960a343780d5e7e67fff21e4f978c102043196b8705e4ed053"
     }

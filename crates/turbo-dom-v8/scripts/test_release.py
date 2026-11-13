@@ -37,7 +37,7 @@ def package_bytes(changes=None):
 
 class ReleaseTurboDomV8Tests(unittest.TestCase):
     def test_identity_comes_from_pins(self):
-        self.assertEqual((RELEASE.NAME, RELEASE.VERSION), ("turbo-dom-v8", "150.4.1"))
+        self.assertEqual((RELEASE.NAME, RELEASE.VERSION), ("turbo-dom-v8", "150.4.2"))
 
     def test_published_runtime_manifest_or_license_changes_are_rejected(self):
         for changes in [{"src/isolate.rs": b"unpatched runtime"},
@@ -56,7 +56,7 @@ class ReleaseTurboDomV8Tests(unittest.TestCase):
 
     def test_wrong_identity_or_missing_reviewed_sources_are_rejected(self):
         for changes in [{"Cargo.toml": f'[package]\nname="v8"\nversion="{RELEASE.VERSION}"\n'.encode()},
-                        {"Cargo.toml": f'[package]\nname="{RELEASE.NAME}"\nversion="150.4.2"\n'.encode()},
+                        {"Cargo.toml": f'[package]\nname="{RELEASE.NAME}"\nversion="150.4.3"\n'.encode()},
                         {"LICENSE": None}, {"src/function.rs": None}]:
             with self.assertRaises((ValueError, KeyError)):
                 RELEASE.archive_payload(package_bytes(changes))
@@ -71,7 +71,7 @@ class ReleaseTurboDomV8Tests(unittest.TestCase):
             self.assertIsNone(RELEASE.published_archive())
         self.assertEqual(request.call_count, 1)
         self.assertEqual(request.call_args.args[0].full_url,
-                         "https://crates.io/api/v1/crates/turbo-dom-v8/150.4.1")
+                         "https://crates.io/api/v1/crates/turbo-dom-v8/150.4.2")
 
     def test_present_version_downloads_the_exact_static_archive(self):
         archive = package_bytes()
@@ -80,7 +80,7 @@ class ReleaseTurboDomV8Tests(unittest.TestCase):
             self.assertEqual(RELEASE.published_archive(), archive)
         self.assertEqual(request.call_count, 2)
         self.assertEqual(request.call_args.args[0].full_url,
-                         "https://static.crates.io/crates/turbo-dom-v8/turbo-dom-v8-150.4.1.crate")
+                         "https://static.crates.io/crates/turbo-dom-v8/turbo-dom-v8-150.4.2.crate")
 
     def test_api_or_existing_archive_403_remains_a_failure(self):
         for after_metadata in [False, True]:
