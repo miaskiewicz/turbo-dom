@@ -382,9 +382,13 @@ fn paint_subpixel_dotted_rule(
     let cap_h = (end - f.y).min(diameter);
     rect(svg, px_left, f.y, diameter, cap_h, color);
     let mut y = f.y + diameter;
-    while y < end {
-        let dash_h = (end - y).min(diameter);
-        rect(svg, px_left, y, diameter, dash_h, color);
+    // Rectangle admission owns the empty end-cap check as well as emission.
+    while rect_r(
+        svg,
+        (px_left, y, diameter, (end - y).min(diameter)),
+        color,
+        &BorderRadii::ZERO,
+    ) {
         let next = y + 2.0;
         if next <= y {
             break;
@@ -408,9 +412,13 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     }
     let end = f.y + f.height;
     let mut dash_top = f.y;
-    while dash_top < end {
-        let dash_h = dash.min(end - dash_top);
-        rect(svg, f.x, dash_top, width, dash_h, color);
+    // Rectangle admission owns the empty end-cap check as well as emission.
+    while rect_r(
+        svg,
+        (f.x, dash_top, width, dash.min(end - dash_top)),
+        color,
+        &BorderRadii::ZERO,
+    ) {
         let next = dash_top + period;
         if next <= dash_top {
             break;
@@ -890,7 +898,8 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
 }
 
 /// A filled box `rect` with corner radii `radii` (square unless rounded).
-fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
+/// Returns whether a finite, nonempty, visible rectangle was emitted.
+fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) -> bool {
     // R3 H1: `rect.2 <= 0.0 || rect.3 <= 0.0` is false for `NaN` (every
     // comparison with NaN is false) and for `Infinity` (strictly positive),
     // so a non-finite rect would reach `shape` and serialize `width="NaN"` /
@@ -903,7 +912,7 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
         || rect.3 <= 0.0
         || c.a == 0
     {
-        return;
+        return false;
     }
     let radii = if radii.is_rounded() {
         *radii
@@ -912,6 +921,7 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
     };
     shape(svg, rect, &radii, &fill_attrs(c));
     svg.push('\n');
+    true
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
@@ -2084,6 +2094,62 @@ mod tests {
         )
     }
 
+    fn bounded_rule_test(name: &str, run: impl FnOnce()) {
+        const ENV: &str = "TURBO_SVG_ADMISSION_CHILD";
+        const MARKER: &str = "SVG_ADMISSION_CHILD_COMPLETED";
+        if std::env::var(ENV).ok().as_deref() == Some(name) {
+            run();
+            println!("{MARKER}");
+            return;
+        }
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", name, "--nocapture"])
+            .env(ENV, name)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if child.try_wait().unwrap().is_some() {
+                let result = child.wait_with_output().unwrap();
+                assert!(result.status.success(), "{result:?}");
+                assert!(String::from_utf8(result.stdout).unwrap().contains(MARKER));
+                return;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("SVG rectangle admission failed to terminate: {name}");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn rectangle_emission_reports_only_finite_nonempty_visible_shapes() {
+        let mut svg = String::new();
+        assert!(rect_r(
+            &mut svg,
+            (2.0, 3.0, 4.0, 5.0),
+            RED,
+            &BorderRadii::ZERO
+        ));
+        assert!(svg.contains("x=\"2.00\" y=\"3.00\" width=\"4.00\" height=\"5.00\""));
+        for (bounds, color) in [
+            ((2.0, 3.0, 4.0, 0.0), RED),
+            ((2.0, 3.0, 4.0, -1.0), RED),
+            ((2.0, 3.0, 0.0, 5.0), RED),
+            ((2.0, f32::NAN, 4.0, 5.0), RED),
+            ((2.0, 3.0, 4.0, f32::INFINITY), RED),
+            ((2.0, 3.0, 4.0, 5.0), Rgba::new(255, 0, 0, 0)),
+        ] {
+            let before = svg.clone();
+            assert!(!rect_r(&mut svg, bounds, color, &BorderRadii::ZERO));
+            assert_eq!(svg, before);
+        }
+    }
+
     #[test]
     fn clipped_svg_uses_both_relative_offsets_and_empty_axes() {
         let f = plain(5.0, 7.0, 20.0, 30.0, Some(RED));
@@ -2129,56 +2195,62 @@ mod tests {
 
     #[test]
     fn rule_svg_geometry_keeps_independent_pattern_boundaries() {
-        let render = |w, h, style| body(&rule(2.0, 3.0, w, h, style, RED), &HashMap::new());
-        let short = render(2.0, 1.0, ColumnRuleStyle::Dotted);
-        assert_eq!(short.matches("<circle ").count(), 1, "{short}");
-        assert!(
-            short.contains("cx=\"3.00\" cy=\"4.00\" r=\"1.00\""),
-            "{short}"
-        );
-        let dots = render(2.0, 8.0, ColumnRuleStyle::Dotted);
-        assert_eq!(dots.matches("<circle ").count(), 2, "{dots}");
-        assert!(dots.contains("cy=\"4.00\""), "{dots}");
-        assert!(dots.contains("cy=\"8.00\""), "{dots}");
-        let subpixel = render(0.5, 3.5, ColumnRuleStyle::Dotted);
-        for expected in [
-            "x=\"2.00\" y=\"3.00\" width=\"1.00\" height=\"1.00\"",
-            "x=\"2.00\" y=\"4.00\" width=\"1.00\" height=\"1.00\"",
-            "x=\"2.00\" y=\"6.00\" width=\"1.00\" height=\"0.50\"",
-        ] {
-            assert!(subpixel.contains(expected), "{expected}: {subpixel}");
-        }
-        assert_eq!(subpixel.matches("<rect ").count(), 3, "{subpixel}");
-        let dashes = render(2.0, 15.0, ColumnRuleStyle::Dashed);
-        for expected in [
-            "y=\"3.00\" width=\"2.00\" height=\"4.00\"",
-            "y=\"9.00\" width=\"2.00\" height=\"4.00\"",
-            "y=\"15.00\" width=\"2.00\" height=\"3.00\"",
-        ] {
-            assert!(dashes.contains(expected), "{expected}: {dashes}");
-        }
-        assert_eq!(dashes.matches("<rect ").count(), 3, "{dashes}");
-        let narrow_dashes = render(1.0, 8.0, ColumnRuleStyle::Dashed);
-        assert_eq!(
-            narrow_dashes.matches("<rect ").count(),
-            3,
-            "{narrow_dashes}"
-        );
-        for y in ["3.00", "6.00", "9.00"] {
-            assert!(
-                narrow_dashes.contains(&format!("y=\"{y}\" width=\"1.00\" height=\"2.00\"")),
-                "{narrow_dashes}"
-            );
-        }
-        let double = render(3.0, 8.0, ColumnRuleStyle::Double);
-        assert_eq!(double.matches("<rect ").count(), 2, "{double}");
-        assert!(
-            double.contains("x=\"2.00\" y=\"3.00\" width=\"1.00\""),
-            "{double}"
-        );
-        assert!(
-            double.contains("x=\"4.00\" y=\"3.00\" width=\"1.00\""),
-            "{double}"
+        bounded_rule_test(
+            "paint_svg::tests::rule_svg_geometry_keeps_independent_pattern_boundaries",
+            || {
+                let render = |w, h, style| body(&rule(2.0, 3.0, w, h, style, RED), &HashMap::new());
+                let short = render(2.0, 1.0, ColumnRuleStyle::Dotted);
+                assert_eq!(short.matches("<circle ").count(), 1, "{short}");
+                assert!(
+                    short.contains("cx=\"3.00\" cy=\"4.00\" r=\"1.00\""),
+                    "{short}"
+                );
+                let dots = render(2.0, 8.0, ColumnRuleStyle::Dotted);
+                assert_eq!(dots.matches("<circle ").count(), 2, "{dots}");
+                assert!(dots.contains("cy=\"4.00\""), "{dots}");
+                assert!(dots.contains("cy=\"8.00\""), "{dots}");
+                let subpixel = render(0.5, 3.5, ColumnRuleStyle::Dotted);
+                for expected in [
+                    "x=\"2.00\" y=\"3.00\" width=\"1.00\" height=\"1.00\"",
+                    "x=\"2.00\" y=\"4.00\" width=\"1.00\" height=\"1.00\"",
+                    "x=\"2.00\" y=\"6.00\" width=\"1.00\" height=\"0.50\"",
+                ] {
+                    assert!(subpixel.contains(expected), "{expected}: {subpixel}");
+                }
+                assert_eq!(subpixel.matches("<rect ").count(), 3, "{subpixel}");
+                let dashes = render(2.0, 15.0, ColumnRuleStyle::Dashed);
+                for expected in [
+                    "y=\"3.00\" width=\"2.00\" height=\"4.00\"",
+                    "y=\"9.00\" width=\"2.00\" height=\"4.00\"",
+                    "y=\"15.00\" width=\"2.00\" height=\"3.00\"",
+                ] {
+                    assert!(dashes.contains(expected), "{expected}: {dashes}");
+                }
+                assert_eq!(dashes.matches("<rect ").count(), 3, "{dashes}");
+                let narrow_dashes = render(1.0, 8.0, ColumnRuleStyle::Dashed);
+                assert_eq!(
+                    narrow_dashes.matches("<rect ").count(),
+                    3,
+                    "{narrow_dashes}"
+                );
+                for y in ["3.00", "6.00", "9.00"] {
+                    assert!(
+                        narrow_dashes
+                            .contains(&format!("y=\"{y}\" width=\"1.00\" height=\"2.00\"")),
+                        "{narrow_dashes}"
+                    );
+                }
+                let double = render(3.0, 8.0, ColumnRuleStyle::Double);
+                assert_eq!(double.matches("<rect ").count(), 2, "{double}");
+                assert!(
+                    double.contains("x=\"2.00\" y=\"3.00\" width=\"1.00\""),
+                    "{double}"
+                );
+                assert!(
+                    double.contains("x=\"4.00\" y=\"3.00\" width=\"1.00\""),
+                    "{double}"
+                );
+            },
         );
     }
 
@@ -2694,20 +2766,25 @@ mod tests {
 
     #[test]
     fn subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins() {
-        for height in [0.0, -1.0] {
-            for y in [
-                0.0,
-                1_000_000_000.0,
-                f32::NAN,
-                f32::INFINITY,
-                f32::NEG_INFINITY,
-            ] {
-                let f = rule(1.0, y, 0.5, height, ColumnRuleStyle::Dotted, RED);
-                let mut output = String::new();
-                paint_dotted_rule(&mut output, &f, RED);
-                assert!(output.is_empty(), "height={height}, y={y}: {output}");
-            }
-        }
+        bounded_rule_test(
+            "paint_svg::tests::subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins",
+            || {
+                for height in [0.0, -1.0] {
+                    for y in [
+                        0.0,
+                        1_000_000_000.0,
+                        f32::NAN,
+                        f32::INFINITY,
+                        f32::NEG_INFINITY,
+                    ] {
+                        let f = rule(1.0, y, 0.5, height, ColumnRuleStyle::Dotted, RED);
+                        let mut output = String::new();
+                        paint_dotted_rule(&mut output, &f, RED);
+                        assert!(output.is_empty(), "height={height}, y={y}: {output}");
+                    }
+                }
+            },
+        );
     }
 
     #[test]
