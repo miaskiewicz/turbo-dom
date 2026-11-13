@@ -1996,6 +1996,58 @@ mod tests {
     }
 
     #[test]
+    fn public_large_spread_blur_preserves_rounded_visible_shadow_edge() {
+        let mut group = with_box(
+            plain(0.0, 0.0, 4.0, 4.0, None),
+            |_, shadow, _, transform| {
+                *shadow = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 0,
+                    blur: 3,
+                    spread: 67_108_860,
+                    color: RED,
+                    inset: false,
+                });
+                *transform = Some(BoxTransform {
+                    matrix: [1.0, 0.0, 0.0, 1.0, -67_108_832.0, 0.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            },
+        );
+        group.opacity = 0.5;
+        let expected = full_layer_reference(&group, 128, 64, &HashMap::new());
+        assert_ne!(
+            rgb(&expected, 35, 16),
+            [255; 3],
+            "real blurred shadow ink reaches beyond x=32"
+        );
+        let html = "<!doctype html><body style='margin:0;background:white'><div style='position:absolute;left:0;top:0;width:4px;height:4px;opacity:0.5;box-shadow:0 0 3px 67108860px red;transform:translateX(-67108832px);transform-origin:0 0'></div>";
+        let png = crate::screenshot_png_with_opts(
+            html,
+            "",
+            crate::Viewport {
+                width: 128,
+                height: 64,
+            },
+            &HashMap::new(),
+            false,
+            false,
+        )
+        .unwrap();
+        let actual = Pixmap::decode_png(&png).unwrap();
+        let first_difference = actual
+            .pixels()
+            .iter()
+            .zip(expected.pixels())
+            .position(|(a, b)| a != b);
+        assert!(
+            first_difference.is_none(),
+            "public shadow edge differs from independent full-canvas paint at {first_difference:?}"
+        );
+    }
+
+    #[test]
     fn opacity_groups_keep_signed_shadow_offsets_and_spreads() {
         for position in [-8.0, 0.0, 6.0] {
             for dx in [-6, 0, 6] {
