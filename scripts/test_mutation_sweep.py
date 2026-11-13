@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 
 SPEC = importlib.util.spec_from_file_location("mutation_sweep", Path(__file__).with_name("mutation_sweep.py"))
 ms = importlib.util.module_from_spec(SPEC)
@@ -55,6 +57,53 @@ class MutationEvidenceTests(unittest.TestCase):
     def test_in_place_uses_implicit_serial_execution(self):
         self.assertIn("--in-place", ms.mutation_flags())
         self.assertNotIn("--jobs", ms.mutation_flags())
+
+    def run_fake_job(self, primary_count):
+        calls = []
+
+        def capture(argv):
+            if argv == ["cargo", "mutants", "--version"]:
+                return "cargo-mutants 27.1.0"
+            if "--list" in argv:
+                return '[{"name":"one"}]'
+            if "metadata" in argv:
+                return "{}"
+            self.fail(f"unexpected command {argv}")
+
+        def command(argv, log):
+            calls.append((argv, log.name))
+            log.write_text(f"test result: ok. {primary_count} passed; 0 failed;" if log.name == "primary-baseline.log"
+                           else "actual command output")
+            if log.name in {"lib.log", "all-targets.log"}:
+                directory = log.parent / ("lib" if log.name == "lib.log" else "all-targets")
+                summary = "MissedMutant" if log.name == "lib.log" else "CaughtMutant"
+                self.write_outcomes(directory, ["one"], {"one": summary})
+            return {"argv": argv, "exit_code": 0, "seconds": 0}
+
+        with tempfile.TemporaryDirectory() as temp:
+            args = SimpleNamespace(output=temp, target="worker_scope", mode="full", shard=0, shards=1)
+            with patch.object(ms, "capture", capture), patch.object(ms, "command", command), \
+                    patch.object(ms, "source_clean", return_value=True), \
+                    patch.object(ms, "source_receipt", return_value={"commit":"one", "tree":"one"}), \
+                    patch.dict(ms.os.environ, {}, clear=True):
+                result = ms.run_job(args)
+            report = json.loads((Path(temp) / "summary.json").read_text())
+        return result, calls, report
+
+    def test_browser_primary_filters_do_not_filter_full_fallback(self):
+        result, calls, _ = self.run_fake_job(11)
+        self.assertEqual(result, 0)
+        primary = next(argv for argv, name in calls if name == "lib.log")
+        fallback = next(argv for argv, name in calls if name == "all-targets.log")
+        self.assertIn("worker_scope::", primary)
+        self.assertNotIn("worker_scope::", fallback)
+        self.assertIn("--all-targets", fallback)
+
+    def test_zero_test_filtered_baseline_stops_before_mutating(self):
+        result, calls, report = self.run_fake_job(0)
+        self.assertEqual(result, 1)
+        self.assertIn("zero tests", report["error"])
+        self.assertFalse(any(name == "lib.log" for _, name in calls))
 
     def test_partial_full_artifacts_cannot_pass(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -22,6 +22,11 @@ TARGETS = {
     "paint_svg": ("turbo-dom-raster", ""),
 }
 TOOL_VERSION = "27.1.0"
+PRIMARY_FILTERS = {
+    "event_handlers": "handler",
+    "worker_scope": "worker_scope::",
+    "trusted_types": "trusted_types::",
+}
 
 
 def write_json(path, value):
@@ -168,11 +173,27 @@ def run_job(args):
         report["baseline"] = baseline
         if baseline["exit_code"]:
             raise ValueError("unmutated all-targets baseline failed")
+        primary_filter = PRIMARY_FILTERS.get(args.target)
+        primary_args = [primary_filter] if primary_filter else []
+        if primary_args:
+            primary_baseline = command(["cargo", "test", "--locked", "-p", package,
+                                        *feature_args, "--lib", *primary_args],
+                                       output / "primary-baseline.log")
+            report["primary_baseline"] = primary_baseline
+            if primary_baseline["exit_code"]:
+                raise ValueError("exact filtered library baseline failed")
+            passed = sum(int(value) for value in re.findall(
+                r"test result:\s+ok\.\s+(\d+) passed;",
+                (output / "primary-baseline.log").read_text()))
+            report["primary_baseline_passed_tests"] = passed
+            if not passed:
+                raise ValueError("filtered baseline executed zero tests")
         flags = mutation_flags()
         lib_dir = output / "lib"
         lib_dir.mkdir()
         report["lib_run"] = command([*common, *flags, "-C", "--lib", "--shard",
-                                     f"{shard}/{shards}", "-o", str(lib_dir)], output / "lib.log")
+                                     f"{shard}/{shards}", "-o", str(lib_dir),
+                                     *( ["--", *primary_args] if primary_args else [])], output / "lib.log")
         rows = outcomes(lib_dir, names)
         missed = [name for name, row in rows.items() if row["summary"] == "MissedMutant"]
         if missed:
