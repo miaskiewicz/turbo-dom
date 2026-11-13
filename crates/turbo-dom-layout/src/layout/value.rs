@@ -10,6 +10,10 @@
 mod affine;
 pub(crate) use affine::{native_transform, NativeTransform};
 
+#[path = "value_flow.rs"]
+mod flow;
+pub use flow::{resolve_box_flow_style, BoxFlowStyle};
+
 use crate::style::ComputedStyle;
 
 /// Pixels per inch for absolute-unit conversion (the CSS reference pixel).

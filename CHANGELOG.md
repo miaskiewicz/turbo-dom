@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Flow inspection performance (#508)**: add `BoxFlowStyle` and
+  `resolve_box_flow_style` for clients reading pagination/frame geometry. The
+  projection uses the full resolver's parsers and unquantized semantics without
+  resolving unused text and paint properties.
 - **Shaping plans (#508)**: reuse up to eight Rustybuzz shaping plans per font
   face, keyed by the resolved direction, script and language, instead of rebuilding
   the same plan for each distinct string. Glyph results and cache budgets are unchanged.
