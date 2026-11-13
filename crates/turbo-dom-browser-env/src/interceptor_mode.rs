@@ -109,22 +109,22 @@ mod tests {
         SEEN.with(|seen| seen.borrow_mut().push((operation, frame, accessor)));
     }
 
-    fn named_setter<'s>(
+    fn named_setter<'s, T>(
         scope: &mut v8::PinScope<'s, '_>,
         _: v8::Local<'s, v8::Name>,
         _: v8::Local<'s, v8::Value>,
         args: v8::PropertyCallbackArguments<'s>,
-        _: v8::ReturnValue<()>,
+        _: v8::ReturnValue<T>,
     ) -> v8::Intercepted {
         record("named-set", scope, &args);
         v8::Intercepted::kNo
     }
-    fn named_definer<'s>(
+    fn named_definer<'s, T>(
         scope: &mut v8::PinScope<'s, '_>,
         _: v8::Local<'s, v8::Name>,
         _: &v8::PropertyDescriptor,
         args: v8::PropertyCallbackArguments<'s>,
-        _: v8::ReturnValue<()>,
+        _: v8::ReturnValue<T>,
     ) -> v8::Intercepted {
         record("named-define", scope, &args);
         v8::Intercepted::kNo
@@ -138,22 +138,22 @@ mod tests {
         record("named-delete", scope, &args);
         v8::Intercepted::kNo
     }
-    fn indexed_setter<'s>(
+    fn indexed_setter<'s, T>(
         scope: &mut v8::PinScope<'s, '_>,
         _: u32,
         _: v8::Local<'s, v8::Value>,
         args: v8::PropertyCallbackArguments<'s>,
-        _: v8::ReturnValue<()>,
+        _: v8::ReturnValue<T>,
     ) -> v8::Intercepted {
         record("indexed-set", scope, &args);
         v8::Intercepted::kNo
     }
-    fn indexed_definer<'s>(
+    fn indexed_definer<'s, T>(
         scope: &mut v8::PinScope<'s, '_>,
         _: u32,
         _: &v8::PropertyDescriptor,
         args: v8::PropertyCallbackArguments<'s>,
-        _: v8::ReturnValue<()>,
+        _: v8::ReturnValue<T>,
     ) -> v8::Intercepted {
         record("indexed-define", scope, &args);
         v8::Intercepted::kNo

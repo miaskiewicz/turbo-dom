@@ -11,6 +11,10 @@ at the time); this file reconstructs them from history.
   from hanging when a large coordinate makes a dotted or dashed cursor step round
   back to its starting value. Precision-sensitive rules use a local coordinate
   frame, preserving ordinary output and transformed visible patterns.
+- **Typed native mutation callbacks (#512)**: share the existing typed result
+  writer with auxiliary navigation setters and host integrations. Callback
+  mappings select the default void or SDK Boolean result type without ABI casts
+  or engine-version guesses. Actual SDK154/155 linking/runtime gates remain separate.
 - **ASCII shaping preparation (#508)**: skip Unicode direction-buffer creation
   for ASCII text, whose inferred direction is always left-to-right. Non-ASCII
   inference and explicit shaping directions retain their existing paths.

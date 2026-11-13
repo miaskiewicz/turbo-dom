@@ -350,3 +350,9 @@ click defaults and read `hyperlink_activation_handled` after dispatch to prevent
 a duplicate driver default. Navigation/download/CSP/sandbox admission remains
 host policy, including denied and noopener-null requests. See
 [AUXILIARY-CONTEXTS.md](AUXILIARY-CONTEXTS.md#guest-hyperlink-activation).
+
+With `host-internals`, `NamedMutationResult` lets host setter callbacks report
+success through the actual typed `ReturnValue` selected by V8. Generic callbacks
+can satisfy the default void return slot and the native SDK Boolean slot without
+casting their callback frames or guessing the ABI from an engine version. Native
+SDK compilation, linking and runtime validation remain separate requirements.

@@ -3,6 +3,7 @@
 //! Network navigation, resource policy and message delivery belong to the host.
 //! This module only dispatches those capabilities; missing capabilities fail
 //! explicitly rather than pretending that a navigation or message succeeded.
+use super::NamedMutationResult;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -512,13 +513,16 @@ fn cross_get<'s>(
     v8::Intercepted::kYes
 }
 
-fn cross_set<'s>(
-    scope: &mut v8::PinScope<'s, '_>,
+fn cross_set<'s, 'i, T: 'static>(
+    scope: &mut v8::PinScope<'s, 'i>,
     name: v8::Local<'s, v8::Name>,
     value: v8::Local<'s, v8::Value>,
     args: v8::PropertyCallbackArguments<'s>,
-    _result: v8::ReturnValue<()>,
-) -> v8::Intercepted {
+    mut result: v8::ReturnValue<T>,
+) -> v8::Intercepted
+where
+    for<'cb> v8::ReturnValue<'cb, T>: NamedMutationResult,
+{
     if name.is_symbol() || name.to_rust_string_lossy(scope) != "location" {
         deny(scope);
         return v8::Intercepted::kYes;
@@ -531,7 +535,9 @@ fn cross_set<'s>(
     let callback = target
         .get_slot::<HostHooks>()
         .and_then(|hooks| hooks.navigate);
-    if !callback.is_some_and(|callback| callback(scope, source, target, value)) {
+    let accepted = callback.is_some_and(|callback| callback(scope, source, target, value));
+    result.set_success(accepted);
+    if !accepted {
         unsupported(scope);
     }
     v8::Intercepted::kYes

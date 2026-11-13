@@ -471,13 +471,18 @@ fn cross_origin_location_and_actions_delegate_exact_source_target_to_host() {
         );
         assert_js(scope, "target.location==='host-controlled-location'&&Object.getOwnPropertyDescriptor(target,'location').get.call(target)==='host-controlled-location'");
         eval(scope, "target.location='/first';Object.getOwnPropertyDescriptor(target,'location').set.call(target,'/second');target.focus();target.blur()");
+        assert_js(
+            scope,
+            "Reflect.set(target,'location','/reflected') === true",
+        );
         let source = auxiliary_context_identity(source).unwrap().id;
         let target_id = auxiliary_context_identity(target).unwrap().id;
         assert_eq!(
             *host.navigations.borrow(),
             vec![
                 (source, target_id, "/first".to_owned()),
-                (source, target_id, "/second".to_owned())
+                (source, target_id, "/second".to_owned()),
+                (source, target_id, "/reflected".to_owned())
             ]
         );
         assert_eq!(
@@ -485,7 +490,7 @@ fn cross_origin_location_and_actions_delegate_exact_source_target_to_host() {
             vec![(source, target_id, true), (source, target_id, false)]
         );
         assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'location').set.call({},'/forbidden')}catch(e){return e instanceof TypeError&&e.message==='Illegal invocation'}return false})()");
-        assert_eq!(host.navigations.borrow().len(), 2);
+        assert_eq!(host.navigations.borrow().len(), 3);
         assert_js(scope, "(()=>{try{target.closed=true}catch(e){return e.name==='SecurityError'}return false})()");
         assert_js(scope, "(()=>{try{target[Symbol.toStringTag]='forged'}catch(e){return e.name==='SecurityError'}return false})()");
         // A host root was not opened by script and must not close another actor.
@@ -895,5 +900,70 @@ fn retired_parent_cannot_republish_a_live_child_name_from_a_stale_host_capture()
         assert!(retire_auxiliary_context(scope, target));
         assert_js(scope, "target.closed&&(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()");
         assert!(!auxiliary_context_identity(child).unwrap().closed);
+    });
+}
+
+fn reject_navigation<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    source: v8::Local<'s, v8::Context>,
+    target: v8::Local<'s, v8::Context>,
+    value: v8::Local<'s, v8::Value>,
+) -> bool {
+    navigate(scope, source, target, value);
+    false
+}
+
+#[test]
+fn reflect_set_navigation_reports_native_admission_and_incumbent_source() {
+    fixture(|scope, host, source, target| {
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                navigate: Some(navigate),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "Reflect.set(target,'location','/accepted')===true");
+        let other = root(scope, "https://other-source.example", false);
+        let window = target.global(scope);
+        set(scope, other, "target", window.into());
+        let callback = {
+            let scope = &mut v8::ContextScope::new(scope, other);
+            let callback = eval(scope, "(function setOtherLocation(){return Reflect.set(target,'location','/from-other')})");
+            v8::Global::new(scope, callback)
+        };
+        let callback = v8::Local::new(scope, &callback);
+        set(scope, source, "setOtherLocation", callback);
+        assert_js(scope, "setOtherLocation()===true");
+        let source_id = auxiliary_context_identity(source).unwrap().id;
+        let other_id = auxiliary_context_identity(other).unwrap().id;
+        let target_id = auxiliary_context_identity(target).unwrap().id;
+        assert_eq!(
+            *host.navigations.borrow(),
+            vec![
+                (source_id, target_id, "/accepted".to_owned()),
+                (other_id, target_id, "/from-other".to_owned()),
+            ]
+        );
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                navigate: Some(reject_navigation),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "(()=>{try{Reflect.set(target,'location','/rejected');return false}catch(e){return e.name==='NotSupportedError'&&e instanceof DOMException}})()");
+        assert_eq!(
+            host.navigations.borrow().last().unwrap(),
+            &(source_id, target_id, "/rejected".to_owned())
+        );
+        let attempts = host.navigations.borrow().len();
+        assert_js(scope, "['closed','document'].every(key=>{try{Reflect.set(target,key,'forged');return false}catch(e){return e.name==='SecurityError'&&e instanceof DOMException}})");
+        assert_js(scope, "(()=>{try{Reflect.set(target,Symbol.toStringTag,'forged');return false}catch(e){return e.name==='SecurityError'}})()");
+        assert_eq!(host.navigations.borrow().len(), attempts);
+        install_auxiliary_window_hooks(target, AuxiliaryWindowHooks::default());
+        assert_js(scope, "(()=>{try{Reflect.set(target,'location','/unavailable');return false}catch(e){return e.name==='NotSupportedError'}})()");
+        assert_eq!(host.navigations.borrow().len(), attempts);
+        assert_js(scope, "!target.closed");
     });
 }

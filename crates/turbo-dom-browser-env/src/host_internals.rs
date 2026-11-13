@@ -182,3 +182,6 @@ pub fn interface_record<'s>(
 pub fn cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     css_policy::cascade_policy(scope)
 }
+
+/// Typed result writer for native setter/definer callbacks over the selected V8 ABI.
+pub use crate::browser_env::mutation_result::NamedMutationResult;

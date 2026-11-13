@@ -182,6 +182,9 @@ mod html_popover;
 #[cfg(feature = "host-internals")]
 #[path = "hyperlink_activation.rs"]
 pub(super) mod hyperlink_activation;
+#[path = "mutation_result.rs"]
+pub(super) mod mutation_result;
+use mutation_result::NamedMutationResult;
 #[path = "pointer_events.rs"]
 mod pointer_events;
 #[path = "typed_om.rs"]
@@ -7778,19 +7781,6 @@ fn named_enumerator<'s, 'i>(
         .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
     {
         rv.set(value);
-    }
-}
-trait NamedMutationResult {
-    fn set_success(&mut self, success: bool);
-}
-impl NamedMutationResult for v8::ReturnValue<'_, ()> {
-    fn set_success(&mut self, success: bool) {
-        self.set_bool(success);
-    }
-}
-impl NamedMutationResult for v8::ReturnValue<'_, v8::Boolean> {
-    fn set_success(&mut self, success: bool) {
-        self.set_bool(success);
     }
 }
 fn named_setter<'s, 'i, T: 'static>(
