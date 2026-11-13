@@ -1,0 +1,60 @@
+{
+  "browser": "Google Chrome for Testing 156.0.8078.47",
+  "cases": [
+    [
+      "shapeMargin",
+      "calc(10% + 1px)"
+    ],
+    [
+      "shapeMargin",
+      "min(10%, 2em)"
+    ],
+    [
+      "shapeMargin",
+      "max(10%, 2em)"
+    ],
+    [
+      "shapeMargin",
+      "clamp(1px, 10%, 2em)"
+    ],
+    [
+      "shapeMargin",
+      "calc((10% + 1px) * 2)"
+    ],
+    [
+      "shapeMargin",
+      "calc(10% /* comment */ + 1px)"
+    ],
+    [
+      "x",
+      "25%"
+    ],
+    [
+      "r",
+      "-10%"
+    ],
+    [
+      "columnWidth",
+      "10%"
+    ],
+    [
+      "outlineOffset",
+      "-2px"
+    ]
+  ],
+  "members_present": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true
+  ],
+  "scope": "Keyframe property acceptance only; no serialization/interpolation claim",
+  "probe_source": "const cases=[[\"shapeMargin\", \"calc(10% + 1px)\"], [\"shapeMargin\", \"min(10%, 2em)\"], [\"shapeMargin\", \"max(10%, 2em)\"], [\"shapeMargin\", \"clamp(1px, 10%, 2em)\"], [\"shapeMargin\", \"calc((10% + 1px) * 2)\"], [\"shapeMargin\", \"calc(10% /* comment */ + 1px)\"], [\"x\", \"25%\"], [\"r\", \"-10%\"], [\"columnWidth\", \"10%\"], [\"outlineOffset\", \"-2px\"]];const el=document.createElement(\"div\");document.body.appendChild(el);document.body.textContent=JSON.stringify(cases.map(([p,v])=>{const f=new KeyframeEffect(el,[{[p]:v}],{duration:100}).getKeyframes()[0];return Object.prototype.hasOwnProperty.call(f,p)}));",
+  "probeSha256": "ce5d1a07e2fb5c229fb7d285344113746a1ec452c5edeea4f628c7f835bc06f4"
+}
