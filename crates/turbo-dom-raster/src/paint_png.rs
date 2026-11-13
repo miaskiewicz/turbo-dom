@@ -1108,25 +1108,41 @@ fn solid(c: Rgba) -> Paint<'static> {
 }
 
 fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Transform) {
-    if w <= 0.0 || h <= 0.0 || c.a == 0 {
-        return;
+    fill_admitted_rect(pm, x, y, w, h, c, xf);
+}
+
+/// Paint a finite nonempty rectangle and report whether it was admitted.
+fn fill_admitted_rect(
+    pm: &mut Pixmap,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    c: Rgba,
+    xf: Transform,
+) -> bool {
+    if c.a == 0 {
+        return false;
     }
-    if let Some(rect) = Rect::from_xywh(x, y, w, h) {
-        // The optimized AA rectangle scan assumes a full interior pixel between
-        // fractional edges. A narrow border can cover two partial columns with
-        // none between them; use the general path scan for that valid geometry.
-        if xf.is_identity() && rect.width() < 2.0 {
-            pm.fill_path(
-                &PathBuilder::from_rect(rect),
-                &solid(c),
-                FillRule::Winding,
-                xf,
-                None,
-            );
-        } else {
-            pm.fill_rect(rect, &solid(c), xf, None);
-        }
+    let Some(bounds) = tiny_skia::NonZeroRect::from_xywh(x, y, w, h) else {
+        return false;
+    };
+    let rect = bounds.to_rect();
+    // The optimized AA rectangle scan assumes a full interior pixel between
+    // fractional edges. A narrow border can cover two partial columns with
+    // none between them; use the general path scan for that valid geometry.
+    if xf.is_identity() && rect.width() < 2.0 {
+        pm.fill_path(
+            &PathBuilder::from_rect(rect),
+            &solid(c),
+            FillRule::Winding,
+            xf,
+            None,
+        );
+    } else {
+        pm.fill_rect(rect, &solid(c), xf, None);
     }
+    true
 }
 
 /// Paint each border side as a filled edge band (no line styles — width + colour only).
@@ -3381,6 +3397,52 @@ mod tests {
         );
         let painted = render(&boxed(10.0, 90.0, 2), 10, 10, &images);
         assert!(rgb(&painted, 0, 5)[0] > 200 && rgb(&painted, 9, 5)[2] > 200);
+    }
+    #[test]
+    fn rectangle_admission_reports_nonempty_paint_requests() {
+        let mut pm = Pixmap::new(8, 8).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        for (width, height) in [
+            (0.0, 2.0),
+            (-1.0, 2.0),
+            (2.0, 0.0),
+            (2.0, -1.0),
+            (f32::NAN, 2.0),
+            (2.0, f32::INFINITY),
+        ] {
+            assert!(!fill_admitted_rect(
+                &mut pm,
+                2.0,
+                2.0,
+                width,
+                height,
+                RED,
+                Transform::identity()
+            ));
+        }
+        assert!(all_white(&pm));
+        assert!(fill_admitted_rect(
+            &mut pm,
+            2.0,
+            2.0,
+            3.0,
+            2.0,
+            RED,
+            Transform::identity()
+        ));
+        assert_eq!(rgb(&pm, 2, 2), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 4, 3), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 5, 3), [255, 255, 255]);
+        assert!(!fill_admitted_rect(
+            &mut pm,
+            2.0,
+            2.0,
+            3.0,
+            2.0,
+            Rgba::new(0, 0, 255, 0),
+            Transform::identity()
+        ));
+        assert_eq!(rgb(&pm, 2, 2), [255, 0, 0]);
     }
 }
 
