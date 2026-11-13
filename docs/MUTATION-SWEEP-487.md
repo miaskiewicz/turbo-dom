@@ -39,11 +39,12 @@ counts from observed pilot cost before changing the tracked plan to `full`.
 The plan generator rejects more than 12 shards per target or 32 total jobs.
 This is a ceiling, not authorization to consume the ceiling without review.
 
-GitHub does not dispatch a new `workflow_dispatch` file until it is available on
-the default branch. The narrow push trigger allows this reviewed branch-only
-pilot without creating a PR or changing main. A later approved plan-mode commit
-on the same branch triggers the full sweep. Do not push this workflow before
-the parent reviews it.
+The narrow push trigger starts the reviewed branch-only pilot without creating
+a PR or changing main. GitHub documents that the manual UI button depends on the
+default branch, while a workflow that has run can be dispatched against a branch
+through the API/CLI; see [workflow_dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch).
+A later approved plan-mode commit or dispatch can start the full sweep after
+its shard counts are reviewed. Do not push this workflow before parent review.
 
 ## Evidence and fail-closed execution
 
@@ -63,6 +64,15 @@ browser jobs enable host-internals/test-support and raster jobs use defaults.
    when its value is one. `-C --lib` restricts both build
    and test phases; passing `--lib` after the tool's `--` would restrict only the
    test phase in cargo-mutants 27.1.0 and waste relinking integration binaries.
+   Browser primary runs filter to `handler`, `worker_scope::` or `trusted_types::`
+   respectively, after an additional exact filtered unmutated baseline that must
+   execute at least one passing test (zero selection fails before mutating). The pilot
+   showed the unrelated full browser lib suite alone can take 170–355 seconds,
+   so repeating it for every relevant helper mutation would dominate the sweep
+   and can exceed the fixed 300-second mutant timeout even without a mutation.
+   Raster primary runs retain the complete library suite. No primary survivor is
+   accepted merely because it is outside these filters: step 3 still runs it
+   against all targets without any filter.
 3. Retry every lib-suite survivor against the full all-targets tests, selected by
    its exact escaped name. All-targets baseline was already verified in step 1.
 4. Require one outcome and nonempty raw diff/log for every selected mutant. A
@@ -94,6 +104,6 @@ CARGO_ENCODED_RUSTFLAGS=--cap-lints=warn \
   --shard 0 --shards 1 --output /private/tmp/mutation-487-worker-pilot
 ```
 
-The pilot orchestration has seven fail-closed Python tests and the installed
+The pilot orchestration has nine fail-closed Python tests and the installed
 tool's exact-name regex selection was checked without building Rust. No mutation
 outcomes or timings are claimed from that source-only preparation.
