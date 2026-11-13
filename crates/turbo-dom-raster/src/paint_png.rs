@@ -3863,6 +3863,127 @@ mod exact_tests {
     }
 
     #[test]
+    fn an_overflow_clip_with_children_limits_their_ink() {
+        let f = clipping(
+            region(3.0, 5.0, 7.0, 9.0, 0.0),
+            vec![boxed(0.0, 0.0, 40.0, 40.0, 0.0, None)],
+        );
+        let got = drawn(&f, 40, 40);
+        for y in 0..40 {
+            for x in 0..40 {
+                let expected = if (13..20).contains(&x) && (15..24).contains(&y) {
+                    [255, 0, 0, 255]
+                } else {
+                    [255; 4]
+                };
+                let p = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [p.red(), p.green(), p.blue(), p.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn clip_offsets_are_relative_to_the_fragment_origin() {
+        let mut f = boxed(10.0, 11.0, 24.0, 24.0, 0.0, None);
+        f.clip = Some(ClipRect {
+            x: 3.0,
+            y: 5.0,
+            width: 7.0,
+            height: 9.0,
+            radii: BorderRadii::ZERO,
+        });
+        let got = drawn(&f, 40, 40);
+        for y in 0..40 {
+            for x in 0..40 {
+                let ink = (13..20).contains(&x) && (16..25).contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let p = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [p.red(), p.green(), p.blue(), p.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dotted_rules_keep_circle_spacing_and_exclude_a_dot_starting_at_the_end() {
+        for (width, height, centers) in [
+            (1.0, 4.0, vec![1.5, 3.5]),
+            (2.0, 8.0, vec![2.0, 6.0]),
+            (3.0, 14.0, vec![2.5, 8.5, 14.5]),
+        ] {
+            let mut got = white(10, 20);
+            let f = Fragment::new(
+                NodeId(0),
+                3.0,
+                1.0,
+                width,
+                height,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            paint_dotted_rule(&mut got, &f, RED, Transform::identity());
+            let mut expected = white(10, 20);
+            for center in centers {
+                let path =
+                    PathBuilder::from_circle(3.0 + width / 2.0, center, width / 2.0).unwrap();
+                expected.fill_path(
+                    &path,
+                    &solid(RED),
+                    FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
+            }
+            assert_eq!(
+                got.data(),
+                expected.data(),
+                "width={width}, height={height}"
+            );
+        }
+    }
+
+    #[test]
+    fn containment_accounts_for_both_origins_and_both_far_edges() {
+        let region = (5.0, 10.0, 10.0, 10.0);
+        for (x, y, w, h, expected) in [
+            (7.0, 13.0, 3.0, 4.0, true),
+            (5.0, 10.0, 10.0, 10.0, true),
+            (7.0, 13.0, 9.0, 4.0, false),
+            (7.0, 13.0, 3.0, 8.0, false),
+            (4.0, 13.0, 3.0, 4.0, false),
+            (7.0, 9.0, 3.0, 4.0, false),
+            (17.0, 13.0, 3.0, 4.0, false),
+            (7.0, 23.0, 3.0, 4.0, false),
+        ] {
+            let f = boxed(x, y, w, h, 0.0, None);
+            assert_eq!(within(&f, region), expected, "box {x},{y},{w},{h}");
+        }
+    }
+
+    #[test]
+    fn device_span_excludes_exact_canvas_edges() {
+        for (x, y, w, h) in [(10.0, 2.0, 1.0, 3.0), (2.0, 10.0, 3.0, 1.0)] {
+            assert_eq!(
+                device_span(Rect::from_xywh(x, y, w, h).unwrap(), 10, 10),
+                None
+            );
+        }
+        assert_eq!(
+            device_span(Rect::from_xywh(9.0, 9.0, 2.0, 2.0).unwrap(), 10, 10),
+            Some((9, 9, 1, 1))
+        );
+    }
+
+    #[test]
     fn dashed_rules_repeat_two_width_ink_and_one_width_gap() {
         let mut pm = white(8, 22);
         let f = Fragment::new(
