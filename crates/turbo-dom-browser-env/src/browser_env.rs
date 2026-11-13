@@ -38,6 +38,12 @@ pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
 mod storage_ownership;
 pub use storage_ownership::{collect_native_storage, NativeNodePin, NativeStorageReport};
 
+#[cfg(feature = "host-internals")]
+#[path = "auxiliary_contexts.rs"]
+pub(super) mod auxiliary_contexts;
+#[cfg(feature = "host-internals")]
+#[path = "auxiliary_window_proxy.rs"]
+pub(super) mod auxiliary_window_proxy;
 #[path = "collection_records.rs"]
 mod collection_records;
 #[path = "control_labels.rs"]
@@ -759,6 +765,16 @@ pub fn install_independent_utf16_source_positions(scope: &mut v8::PinScope, unit
     );
 }
 fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
+    install_independent_tree_mode(scope, tree, true);
+}
+#[cfg(feature = "host-internals")]
+pub(super) fn install_independent_tree_without_init(scope: &mut v8::PinScope, tree: Tree) {
+    install_independent_tree_mode(scope, tree, false);
+}
+fn install_independent_tree_mode(scope: &mut v8::PinScope, tree: Tree, init_scripts: bool) {
+    if !init_scripts && is_worker_context(scope.get_current_context()) {
+        return;
+    }
     dom_isolation::install(scope);
     let context = scope.get_current_context();
     let id = context
@@ -774,7 +790,11 @@ fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
             id
         });
     let _dom = DomScope::enter(id);
-    install_with_tree(scope, tree);
+    if init_scripts {
+        install_with_tree(scope, tree);
+    } else {
+        install_document_body(scope, tree);
+    }
 }
 
 fn dom_id_of(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> u64 {

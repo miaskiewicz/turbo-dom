@@ -120,4 +120,4 @@ debug = true
 # from crates.io (`scripts/publish-crates.py drop-v8-patch`, PUBLISHING.md). Re-point it
 # after every reviewed fork change; check-versions.py asserts the locked version.
 [patch.crates-io]
-turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "a673f79e22006b85315670493800418932f2df31" }
+turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "0cfe2c3a405ce33809c23afd7dd30a05fab3f06c" }

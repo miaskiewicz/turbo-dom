@@ -2888,8 +2888,8 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-v8"
-version = "150.4.1"
-source = "git+https://github.com/miaskiewicz/turbo-dom?rev=a673f79e22006b85315670493800418932f2df31#a673f79e22006b85315670493800418932f2df31"
+version = "150.4.2"
+source = "git+https://github.com/miaskiewicz/turbo-dom?rev=0cfe2c3a405ce33809c23afd7dd30a05fab3f06c#0cfe2c3a405ce33809c23afd7dd30a05fab3f06c"
 dependencies = [
  "bindgen",
  "bitflags 2.12.1",

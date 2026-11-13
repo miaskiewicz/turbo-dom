@@ -22,6 +22,8 @@ and the publish order.
 Version 0.8.4 is under local development; the published registry release remains
 0.8.3. Local consumers override these candidate requirements with `[patch.crates-io]`
 until the release is published.
+The V8 fork's published version remains 150.4.1; the 150.4.2 candidate below is
+consumed through the exact pre-release git pin.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
@@ -30,7 +32,7 @@ until the release is published.
 | [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.4 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
 | [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.4 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
 | [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.4 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
-| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.1 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
+| [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.2 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
 
@@ -163,6 +165,9 @@ features (for example `simdutf`).
 - **0.8.4 (unreleased):** bounded shaping-cache retention, shared immutable styles
   and font-family storage, and inline text paths that avoid unused box parsing and
   disabled wrapping work. See the unreleased changelog and turbo-dom#508.
+  The host-only auxiliary browsing-context boundary (#504) adds genuine native
+  WindowProxy admission and lifecycle APIs; a consumer must supply its real Page,
+  network and policy integration. See the browser-env auxiliary-context guide.
 
 - **0.8.3:** browser binding fixes include branded Touch events, hidden-control geometry,
   and document replacement that preserves Window/document identity. Screenshot APIs add

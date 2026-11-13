@@ -483,6 +483,8 @@ OWNED="$OWNED worker_scope.rs worker_scope.js dedicated_worker_global_scope_prob
 OWNED="$OWNED init_script_tests.rs"
 # turbo-dom#488 AbortSignal.timeout/.any polyfill split into its own crate-owned run_js call.
 OWNED="$OWNED abort_signal_polyfill.js"
+# turbo-dom#504 canonical auxiliary contexts and independent browser controls.
+OWNED="$OWNED auxiliary_contexts.rs auxiliary_window_proxy.rs auxiliary_contexts_probe.js auxiliary_contexts_cases.json auxiliary_contexts_chrome156.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

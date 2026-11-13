@@ -43,9 +43,15 @@ turbo-dom-browser-env = "0.8"                       # embedders: features = ["ho
 turbo-dom-browser-env = { version = "0.8", features = ["test-support"] }
 ```
 
-MSRV 1.91. The crate links `turbo-dom-v8` `~150.4`, which downloads the prebuilt rusty_v8
+MSRV 1.91. The v0.8.4 candidate requires `turbo-dom-v8` `~150.4.2`, which downloads the prebuilt rusty_v8
 150.4.0 static library unless `RUSTY_V8_ARCHIVE` points at one. A dependency graph holds
 exactly one turbo-dom-v8 (`links = "rusty_v8"`).
+
+The host-only auxiliary browsing-context candidate (#504) uses genuine native
+WindowProxy primitives and synchronous admission, rather than a JS popup shim.
+See [AUXILIARY-CONTEXTS.md](AUXILIARY-CONTEXTS.md) for the initialization, identity,
+navigation and Page-owner contract. The host must supply network/popup policy and
+Page lifecycle integration; the boundary alone is not a complete consumer feature.
 
 ## Features
 

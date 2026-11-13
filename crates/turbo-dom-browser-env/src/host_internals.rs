@@ -29,6 +29,33 @@ use crate::browser_env::{
     DOM_CONTEXTS, DOM_ID,
 };
 
+pub use crate::browser_env::auxiliary_contexts::{
+    commit_isolated_navigation as commit_isolated_auxiliary_navigation,
+    commit_navigation as commit_auxiliary_navigation,
+    document_fallback_base as auxiliary_document_fallback_base,
+    document_url as auxiliary_document_url, identity as auxiliary_context_identity,
+    initialize_document as initialize_auxiliary_document,
+    initialize_root_document as initialize_root_auxiliary_document,
+    initialize_root_utf16_source_positions as initialize_root_auxiliary_utf16_source_positions,
+    initialize_utf16_source_positions as initialize_auxiliary_utf16_source_positions,
+    install as install_auxiliary_context, install_nested as install_nested_auxiliary_source,
+    is_closed as auxiliary_context_closed, open as open_auxiliary_context,
+    open_hyperlink as open_auxiliary_hyperlink, opener as auxiliary_context_opener,
+    retire as retire_auxiliary_context, run_init_scripts as run_auxiliary_init_scripts,
+    set_ready_host as set_auxiliary_ready_host, sever_opener as sever_auxiliary_opener,
+    AuxiliaryContextId, AuxiliaryHost, AuxiliaryIdentity, CloseHost, OpenHost, OpenRequest,
+    OpenSource, ReadyAction as AuxiliaryReadyAction, ReadyHost as AuxiliaryReadyHost,
+};
+pub use crate::browser_env::auxiliary_window_proxy::{
+    capture_exception as capture_auxiliary_window_exception,
+    create_context as create_auxiliary_window_context,
+    failed_access as auxiliary_window_failed_access,
+    install_document as install_auxiliary_window_document_guard,
+    install_host_hooks as install_auxiliary_window_hooks,
+    is_window_context as is_auxiliary_window_context,
+    synchronize_origins as synchronize_auxiliary_window_origins,
+    template as auxiliary_window_template, HostHooks as AuxiliaryWindowHooks,
+};
 pub use crate::browser_env::host_composed_children;
 pub use crate::css_snapshot::{RuleSnapshot, SheetSnapshot};
 pub use turbo_dom_parser::rtdom::cascade::StylePolicy;
