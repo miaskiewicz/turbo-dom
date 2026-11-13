@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Raster rendering progress (#487)**: prevent PNG and SVG column-rule painting
+  from hanging when a large coordinate makes a dotted or dashed cursor step round
+  back to its starting value. Precision-sensitive rules use a local coordinate
+  frame, preserving ordinary output and transformed visible patterns.
 - **ASCII shaping preparation (#508)**: skip Unicode direction-buffer creation
   for ASCII text, whose inferred direction is always left-to-right. Non-ASCII
   inference and explicit shaping directions retain their existing paths.
