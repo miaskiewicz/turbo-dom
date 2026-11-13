@@ -563,7 +563,7 @@ fn paint_pixel_dots(
     let (y_top, xf) = column_rule_space(y_top, 2.0 * diameter, xf);
     // Use the rasterizer's actual rectangle admission once for the whole
     // series. Localize first: a large finite origin can swallow a short height.
-    let Some(bounds) = Rect::from_xywh(px_left, y_top, diameter, height) else {
+    let Some(bounds) = tiny_skia::NonZeroRect::from_xywh(px_left, y_top, diameter, height) else {
         return;
     };
     let end = bounds.bottom();
