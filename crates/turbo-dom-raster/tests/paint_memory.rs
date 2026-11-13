@@ -279,22 +279,31 @@ fn empty_opacity_boxes_do_not_allocate_scratch_layers() {
     );
 }
 
-fn transparent_outer_shadows(fragment: &Fragment) -> usize {
+fn transparent_shadows(fragment: &Fragment, inset: bool) -> usize {
     let selected = matches!(
         &fragment.content,
         FragmentContent::Box { shadow: Some(shadow), .. }
-            if !shadow.inset && shadow.color.a == 0 && shadow.blur > 0
+            if shadow.inset == inset && shadow.color.a == 0 && shadow.blur > 0
     );
     usize::from(selected)
         + fragment
             .children
             .iter()
-            .map(transparent_outer_shadows)
+            .map(|child| transparent_shadows(child, inset))
             .sum::<usize>()
 }
 
 #[test]
 fn transparent_outer_shadows_do_not_allocate_blur_layers() {
+    check_transparent_shadow_allocations(false);
+}
+
+#[test]
+fn transparent_inset_shadows_do_not_allocate_blur_layers() {
+    check_transparent_shadow_allocations(true);
+}
+
+fn check_transparent_shadow_allocations(inset: bool) {
     const BOXES: usize = 20;
     let viewport = Viewport {
         width: 1024,
@@ -304,8 +313,9 @@ fn transparent_outer_shadows_do_not_allocate_blur_layers() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut html = String::from("<body style='margin:0;background:#fff'>");
+    let keyword = if inset { " inset" } else { "" };
     for _ in 0..BOXES {
-        html.push_str("<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;box-shadow:0 0 10px rgba(0,0,0,0)'></div>");
+        write!(html, "<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;box-shadow:0 0 10px rgba(0,0,0,0){keyword}'></div>").unwrap();
     }
     let galley = layout_html(
         &html,
@@ -316,7 +326,7 @@ fn transparent_outer_shadows_do_not_allocate_blur_layers() {
     )
     .unwrap();
     assert_eq!(
-        transparent_outer_shadows(&galley),
+        transparent_shadows(&galley, inset),
         BOXES,
         "public layout must retain every transparent shadow"
     );

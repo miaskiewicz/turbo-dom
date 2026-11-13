@@ -1246,7 +1246,8 @@ fn paint_box_shadow(
     }
     let radii = rrect::shadow_radii(border_radius, spread);
     let blur = shadow_blur(sh);
-    if blur < 0.5 {
+    // shadow_blur is a capped integer radius; only zero is a hard shadow.
+    if blur == 0.0 {
         fill_rrect(pm, (sx, sy, sw, sh_h), &radii, sh.color, xf);
         return;
     }
@@ -1304,7 +1305,7 @@ fn paint_inset_shadow(
     if hole.width >= 0.5 && hole.height >= 0.5 {
         let mut cut = Pixmap::new(w, h).expect("a layer within the canvas");
         let blur = shadow_blur(sh);
-        if blur < 0.5 {
+        if blur == 0.0 {
             fill_rrect(
                 &mut cut,
                 (hole.x, hole.y, hole.width, hole.height),
@@ -3823,6 +3824,139 @@ mod exact_tests {
             (s.y as i32 - margin) as f32,
         ));
         pm.draw_pixmap(0, 0, tmp.as_ref(), &PixmapPaint::default(), place, None);
+    }
+
+    #[test]
+    fn inset_shadow_holes_follow_offsets_spread_and_opaque_cut_alpha() {
+        let f = boxed(10.0, 12.0, 20.0, 24.0, 0.0, None);
+        let color = Rgba::new(0, 0, 255, 128);
+        for (offset_x, offset_y, spread, hole, radius) in [
+            (3, 5, 2, (5.0, 7.0, 16.0, 20.0), 0.0),
+            (-3, -5, 2, (-1.0, -3.0, 16.0, 20.0), 0.0),
+            (3, 5, -2, (1.0, 3.0, 24.0, 28.0), 2.0),
+        ] {
+            for blur in [0, 1, 3] {
+                let sh = BoxShadow {
+                    offset_x,
+                    offset_y,
+                    spread,
+                    blur,
+                    color,
+                    inset: true,
+                };
+                let mut got = white(50, 50);
+                paint_inset_shadow(
+                    &mut got,
+                    &f,
+                    &BorderEdges::default(),
+                    &BorderRadii::ZERO,
+                    Some(&sh),
+                    Transform::identity(),
+                );
+                let mut layer = Pixmap::new(20, 24).unwrap();
+                layer.fill(tiny_skia::Color::from_rgba8(0, 0, 255, 128));
+                let mut cut = Pixmap::new(20, 24).unwrap();
+                if blur == 0 {
+                    fill_round_rect(
+                        &mut cut,
+                        hole.0,
+                        hole.1,
+                        hole.2,
+                        hole.3,
+                        radius,
+                        BLUE,
+                        Transform::identity(),
+                    );
+                } else {
+                    reference_shadow(
+                        &mut cut,
+                        &Silhouette {
+                            x: hole.0,
+                            y: hole.1,
+                            width: hole.2,
+                            height: hole.3,
+                            radii: BorderRadii::uniform(radius),
+                            color: BLUE,
+                        },
+                        blur as f32,
+                        Transform::identity(),
+                    );
+                }
+                layer.draw_pixmap(
+                    0,
+                    0,
+                    cut.as_ref(),
+                    &PixmapPaint {
+                        blend_mode: tiny_skia::BlendMode::DestinationOut,
+                        ..PixmapPaint::default()
+                    },
+                    Transform::identity(),
+                    None,
+                );
+                let mut expected = white(50, 50);
+                expected.draw_pixmap(
+                    10,
+                    12,
+                    layer.as_ref(),
+                    &PixmapPaint::default(),
+                    Transform::identity(),
+                    None,
+                );
+                assert!(!is_blank(&expected));
+                assert_eq!(
+                    got.data(),
+                    expected.data(),
+                    "offset={offset_x},{offset_y},spread={spread},blur={blur}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_shadow_silhouette_or_inset_hole_below_half_a_pixel_on_one_axis_is_empty() {
+        for (width, height) in [(0.25, 8.0), (8.0, 0.25)] {
+            let f = boxed(5.0, 7.0, width, height, 0.0, None);
+            let mut got = white(40, 40);
+            paint_box_shadow(
+                &mut got,
+                &f,
+                &BorderRadii::ZERO,
+                &hard(0, 0, 0),
+                Transform::identity(),
+            );
+            assert!(is_blank(&got));
+        }
+        for (width, height) in [(20.25, 24.0), (24.0, 20.25)] {
+            let f = boxed(5.0, 7.0, width, height, 0.0, None);
+            let sh = BoxShadow {
+                offset_x: -10,
+                offset_y: -10,
+                spread: 10,
+                blur: 0,
+                color: BLUE,
+                inset: true,
+            };
+            let mut got = white(40, 40);
+            paint_inset_shadow(
+                &mut got,
+                &f,
+                &BorderEdges::default(),
+                &BorderRadii::ZERO,
+                Some(&sh),
+                Transform::identity(),
+            );
+            let mut expected = white(40, 40);
+            fill_rect(
+                &mut expected,
+                5.0,
+                7.0,
+                width,
+                height,
+                BLUE,
+                Transform::identity(),
+            );
+            assert_eq!(got.data(), expected.data());
+        }
     }
 
     #[test]
