@@ -1610,7 +1610,9 @@ fn paint_round_border(
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut ring = PathBuilder::new();
     trace(&mut ring, &rrect::outline(rect, radii));
-    if inner.2 > 0.0 && inner.3 > 0.0 {
+    // Only a positive representable area cuts a hole. Keep the original tuple
+    // for its radii and outline: rebuilding widths from bounds would round again.
+    if tiny_skia::NonZeroRect::from_xywh(inner.0, inner.1, inner.2, inner.3).is_some() {
         trace(&mut ring, &rrect::outline(inner, &inner_radii));
     }
     let Some(ring) = ring.finish() else {
@@ -4320,6 +4322,58 @@ mod exact_tests {
     // paint_dotted_rule would then stamp at every y step on the centerline.
     // The direct test keeps the contract pinned without touching the raster
     // walk.
+    #[test]
+    fn png11_unrepresentable_inner_area_preserves_outer_border_pixels() {
+        let red = Rgba::new(255, 0, 0, 128);
+        let side = |width| BorderSide {
+            width,
+            color: Some(red),
+        };
+        for (x, width, height, left, right, top, bottom, xf) in [
+            (2.0, 20.0, 10.0, 10, 10, 1, 1, Transform::identity()),
+            (2.0, 20.0, 10.0, 1, 1, 5, 5, Transform::identity()),
+            (
+                16_777_216.0,
+                6.0,
+                14.0,
+                3,
+                2,
+                1,
+                1,
+                Transform::from_translate(-16_777_216.0, 0.0),
+            ),
+        ] {
+            let f = boxed(x, 3.0, width, height, 0.0, None);
+            let b = BorderEdges {
+                left: side(left),
+                right: side(right),
+                top: side(top),
+                bottom: side(bottom),
+            };
+            let radii = 4.0.into();
+            let mut actual = white(30, 20);
+            let mut expected = white(30, 20);
+            paint_round_border(&mut actual, &f, &b, &radii, xf);
+            fill_rrect(&mut expected, (x, 3.0, width, height), &radii, red, xf);
+            assert!(!is_blank(&expected), "outer silhouette must paint");
+            assert_eq!(actual.data(), expected.data(), "collapsed inner area at{x}");
+        }
+        let b = BorderEdges {
+            left: side(1),
+            right: side(1),
+            top: side(1),
+            bottom: side(1),
+        };
+        for f in [
+            boxed(f32::MAX, 3.0, f32::MAX, 14.0, 0.0, None),
+            boxed(2.0, f32::MAX, 20.0, f32::MAX, 0.0, None),
+        ] {
+            let mut actual = white(30, 20);
+            paint_round_border(&mut actual, &f, &b, &4.0.into(), Transform::identity());
+            assert!(is_blank(&actual), "overflowing outline must not paint");
+        }
+    }
+
     #[test]
     fn png11_uniform_translucent_border_has_no_diagonal_seam() {
         let red = Rgba::new(255, 0, 0, 128);
