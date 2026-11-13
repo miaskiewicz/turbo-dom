@@ -513,7 +513,7 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
     if f.width < 1.0 {
-        paint_dotted_rule_stroked(pm, cx, f.y, f.height, diameter, color, xf);
+        paint_dotted_rule_stroked(pm, cx, f.y, f.height, color, xf);
         return;
     }
     let radius = diameter / 2.0;
@@ -545,22 +545,22 @@ fn paint_dotted_rule_stroked(
     cx: f32,
     y_top: f32,
     height: f32,
-    diameter: f32,
     color: Rgba,
     xf: Transform,
 ) {
-    paint_pixel_dots(pm, cx.floor(), (y_top, height), diameter, color, xf);
+    paint_pixel_dots(pm, cx.floor(), (y_top, height), color, xf);
 }
 
 fn paint_pixel_dots(
     pm: &mut Pixmap,
     px_left: f32,
     (y_top, height): (f32, f32),
-    diameter: f32,
     color: Rgba,
     xf: Transform,
 ) {
-    let (y_top, xf) = column_rule_space(y_top, 2.0 * diameter, xf);
+    // The sole production caller selects the one-pixel subpixel-width fallback.
+    let diameter = 1.0;
+    let (y_top, xf) = column_rule_space(y_top, 2.0, xf);
     // Use the rasterizer's actual rectangle admission once for the whole
     // series. Localize first: a large finite origin can swallow a short height.
     let Some(bounds) = tiny_skia::NonZeroRect::from_xywh(px_left, y_top, diameter, height) else {
@@ -572,16 +572,13 @@ fn paint_pixel_dots(
     // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
     // leak past `end` — Blink's round cap collapses with the rule
     // height, and the probe on a 0.3 px rule never paints a full pixel.
-    if y_top < end {
-        let cap_h = (end - y_top).min(diameter);
-        fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
-    }
+    // NonZeroRect admission guarantees end > y_top, including after localization.
+    let cap_h = (end - y_top).min(diameter);
+    fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
     // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
     let mut y = y_top + diameter;
-    while y < end {
-        let dash_h = (end - y).min(diameter);
-        fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
-        let Some(next) = next_column_rule_step(y, 2.0 * diameter) else {
+    while fill_admitted_rect(pm, px_left, y, diameter, (end - y).min(diameter), color, xf) {
+        let Some(next) = next_column_rule_step(y, 2.0) else {
             break;
         };
         y = next;
@@ -629,11 +626,15 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     let (top, xf) = column_rule_space(f.y, period, xf);
     let end = top + f.height;
     let mut dash_top = top;
-    while dash_top < end {
-        let dash_h = dash.min(end - dash_top);
-        if dash_h > 0.0 {
-            fill_rect(pm, f.x, dash_top, width, dash_h, color, xf);
-        }
+    while fill_admitted_rect(
+        pm,
+        f.x,
+        dash_top,
+        width,
+        dash.min(end - dash_top),
+        color,
+        xf,
+    ) {
         let Some(next) = next_column_rule_step(dash_top, period) else {
             break;
         };
@@ -662,19 +663,8 @@ fn column_rule_space(y: f32, period: f32, xf: Transform) -> (f32, Transform) {
 /// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
 /// painter falls back to one solid band so a thin double rule still shows.
 fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    // R1 M1 + L1: reject `NaN` / `Infinity` — `f.width < 3.0` is false
-    // for either, so without this guard an `Infinity` width would run
-    // the two-band path with Inf band widths, and a NaN would make
-    // `f.width - band = NaN`.
-    if !f.width.is_finite() || !f.height.is_finite() {
-        return;
-    }
-    // R1 L2: the thin-double fallback below handles every `f.width < 3.0`
-    // case, so from here on `f.width >= 3.0`, which forces
-    // `(f.width / 3.0).floor() >= 1.0` — the earlier `.max(1.0)` was a
-    // dead branch unreachable after the short-circuit. Computing `band`
-    // AFTER the fallback also avoids a wasted divide + floor on the
-    // thin path. Proof: f.width >= 3.0 && floor(x) <= x => floor(f.width / 3.0) >= 1.0.
+    // Finite widths at least three give bands at least one pixel wide.
+    // Rectangle admission rejects all invalid derived bounds before painting.
     if f.width < 3.0 {
         fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
         return;
@@ -698,13 +688,7 @@ fn paint_shaded_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    // The outer `paint_column_rule` already rejects non-finite / non-positive
-    // sizes; the helper's direct contract keeps a future caller from feeding
-    // it NaN / Infinity (`is_finite` rejects both) or a zero-area fragment
-    // (nothing to paint — `fill_rect` would early-return anyway).
-    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
-        return;
-    }
+    // Rectangle admission rejects non-finite and nonpositive derived halves.
     // Chrome 156: left band = darker shade for `groove` / `outset`, lighter
     // shade for `ridge` / `inset`; right band is the other. Split at the
     // rule's inline midpoint (`f.width / 2.0`); the right band takes the
@@ -747,7 +731,8 @@ fn paint_tiles(
     let Some(first) = tiles.next() else {
         return;
     };
-    let canvas = u64::from(pm.width()) * u64::from(pm.height());
+    // The scratch budget is the authoritative number of pixels in the canvas.
+    let canvas = pm.pixels().len() as u64;
     if tiles.next().is_some() {
         if repeats_tiles(pattern) {
             if let Some(texture) = tile_texture(pattern, images, cell_scale(xf), canvas) {
@@ -4184,7 +4169,7 @@ mod exact_tests {
             (33_554_432.0, Transform::from_translate(0.0, -33_554_432.0)),
         ] {
             let mut actual = white(12, 12);
-            paint_dotted_rule_stroked(&mut actual, 3.25, top, 3.5, 1.0, RED, xf);
+            paint_dotted_rule_stroked(&mut actual, 3.25, top, 3.5, RED, xf);
             assert_eq!(actual.data(), expected.data(), "origin {top}");
         }
     }
@@ -4523,8 +4508,7 @@ mod exact_tests {
             paint_dashed_rule(&mut pm, &f, RED, id);
             paint_double_rule(&mut pm, &f, RED, id);
             paint_shaded_rule(&mut pm, &f, ColumnRuleStyle::Groove, RED, id);
-            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, 1.0, RED, id);
-            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, 8.0, bad, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, RED, id);
             assert!(
                 is_blank(&pm),
                 "non-finite width/height helpers must not paint or loop ({bad})"
@@ -4550,7 +4534,7 @@ mod exact_tests {
         let mut pm = white(10, 10);
         let id = Transform::identity();
         // cx=5.5, y_top=1.0, height=0.3, diameter=1.0.
-        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, 1.0, RED, id);
+        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, RED, id);
         let c = pm.pixel(5, 1).unwrap();
         assert!(
             c.green() > 100 && c.blue() > 100,
@@ -4926,21 +4910,10 @@ mod exact_tests {
         }
     }
 
-    fn assert_stroked_rule_blank(cx: f32, top: f32, height: f32, diameter: f32) {
+    fn assert_stroked_rule_blank(cx: f32, top: f32, height: f32) {
         let mut pm = white(10, 10);
-        paint_dotted_rule_stroked(
-            &mut pm,
-            cx,
-            top,
-            height,
-            diameter,
-            RED,
-            Transform::identity(),
-        );
-        assert!(
-            is_blank(&pm),
-            "stroked input {cx},{top},{height},{diameter}"
-        );
+        paint_dotted_rule_stroked(&mut pm, cx, top, height, RED, Transform::identity());
+        assert!(is_blank(&pm), "stroked input {cx},{top},{height}");
     }
 
     #[test]
@@ -4950,14 +4923,17 @@ mod exact_tests {
         }
         // An invalid center must reject even a long off-canvas series without
         // walking millions of individually rejected rectangles.
-        assert_stroked_rule_blank(f32::INFINITY, 1.0, 1.0e9, 1.0);
+        assert_stroked_rule_blank(f32::INFINITY, 1.0, 1.0e9);
         for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
-            assert_stroked_rule_blank(bad, 1.0, 8.0, 1.0);
-            assert_stroked_rule_blank(5.0, bad, 8.0, 1.0);
+            assert_stroked_rule_blank(bad, 1.0, 8.0);
+            assert_stroked_rule_blank(5.0, bad, 8.0);
         }
         for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -1.0] {
-            assert_stroked_rule_blank(5.0, 1.0, bad, 1.0);
-            assert_stroked_rule_blank(5.0, 1.0, 8.0, bad);
+            assert_stroked_rule_blank(5.0, 1.0, bad);
+            let f = rule(1.0, 1.0, bad, 8.0, ColumnRuleStyle::Dotted, RED);
+            let mut pm = white(10, 10);
+            paint_dotted_rule(&mut pm, &f, RED, Transform::identity());
+            assert!(is_blank(&pm), "invalid declared dotted width {bad}");
         }
     }
 
@@ -4967,15 +4943,7 @@ mod exact_tests {
             return;
         }
         let mut expected = white(10, 10);
-        paint_dotted_rule_stroked(
-            &mut expected,
-            5.0,
-            0.0,
-            0.3,
-            1.0,
-            RED,
-            Transform::identity(),
-        );
+        paint_dotted_rule_stroked(&mut expected, 5.0, 0.0, 0.3, RED, Transform::identity());
         assert!(!is_blank(&expected), "the short cap must remain visible");
         let mut actual = white(10, 10);
         paint_dotted_rule_stroked(
@@ -4983,7 +4951,6 @@ mod exact_tests {
             5.0,
             1.0e9,
             0.3,
-            1.0,
             RED,
             Transform::from_translate(0.0, -1.0e9),
         );
