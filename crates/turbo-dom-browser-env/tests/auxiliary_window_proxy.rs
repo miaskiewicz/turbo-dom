@@ -345,6 +345,8 @@ fn fixture(
     isolate.set_slot(Rc::clone(&host));
     {
         v8::scope!(let scope, &mut isolate);
+        let bootstrap = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, bootstrap);
         let source = root(scope, "https://source.example", true);
         let target = root(scope, "https://target.example", false);
         let scope = &mut v8::ContextScope::new(scope, source);
@@ -519,8 +521,8 @@ fn cross_origin_denial_before_dom_install_has_safe_named_error_fallback() {
     isolate.set_failed_access_check_callback(auxiliary_window_failed_access);
     v8::scope!(let scope, &mut isolate);
     let caller = v8::Context::new(scope, Default::default());
-    let target = root(scope, "https://target.example", true);
     let scope = &mut v8::ContextScope::new(scope, caller);
+    let target = root(scope, "https://target.example", true);
     assert!(!capture_auxiliary_window_exception(scope, caller));
     assert!(!install_auxiliary_window_document_guard(scope, caller));
     let window = target.global(scope);
