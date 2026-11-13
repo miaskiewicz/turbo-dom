@@ -131,12 +131,18 @@ fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
     ((from_linear(lum) * 255.0).round() as u32) >> 5
 }
 
+/// Replicate a three-bit class (0..=7) across an eight-bit luminance value.
+fn class_luminance(top: u32) -> u32 {
+    // For the three-bit input, disjoint copies sum to 32*top + 4*top + top/2.
+    top * 36 + top / 2
+}
+
 /// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) of luminance class
 /// `top` ([`luminance_class`], replicated back to 8 bits): the coverage is boosted by the
 /// contrast where the assumed backdrop (the opposite luminance) is light, and the table
 /// undoes the sRGB blend so the result is a blend at [`GAMMA`].
 fn preblend_class(top: u32) -> [f32; 256] {
-    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
+    let src = class_luminance(top) as f32 / 255.0;
     let dst = 1.0 - src;
     let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
     let contrast = CONTRAST * lin_dst;
@@ -1906,6 +1912,16 @@ mod tests {
             (0, 1)
         );
         assert_eq!(luminance_class(255, 255, 255), 7);
+    }
+
+    #[test]
+    fn preblend_classes_keep_the_fixed_three_bit_luminances() {
+        // abc expands to abcabcab; this fixed reference is independent of the
+        // production packing expression and its derived pre-blend tables.
+        let expected = [0, 36, 73, 109, 146, 182, 219, 255];
+        for (class, luminance) in expected.into_iter().enumerate() {
+            assert_eq!(class_luminance(class as u32), luminance);
+        }
     }
 
     #[test]
