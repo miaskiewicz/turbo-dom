@@ -175,3 +175,30 @@ reserved; guest prototype copying cannot manufacture them. Root installation
 returns false without assigning an auxiliary identity on an unsupported profile,
 so the host can retain its ordinary Page behavior. Nested-frame source admission
 still requires the host's actual frame ownership/policy integration.
+
+## Guest hyperlink activation
+
+The host-only `set_hyperlink_activation_handler(context, Some(handler))` registers
+navigation policy separately for each root, frame, or auxiliary context before its
+guest code runs. A primary MouseEvent `click` selects the canonical activation
+target before listeners, then invokes this handler only when the click remains
+uncanceled and that target is still a connected HTML `a` or `area` with `href`.
+The binding uses captured event accessors and native tree attributes; guest
+`button`, `defaultPrevented`, `href`, `target`, or `rel` getters cannot forge the
+decision. Other existing element activation behaviors are unchanged.
+
+The handler receives the actual anchor wrapper. It applies the host's download,
+navigation, CSP and sandbox policy and may call `open_auxiliary_hyperlink` for an
+admitted auxiliary request. Returning `true` means the default was consumed,
+including a denied request or a genuine noopener open whose guest result is
+`null`; returning `false` means it was not consumed. No callback is installed by
+default, and passing `None` removes a context's callback. The stored native
+function pointer retains no guest object or context.
+
+After dispatch, driver integrations read
+`hyperlink_activation_handled(scope, event)` to avoid running their own default
+again. This native private receipt resets at each valid dispatch, including
+redispatch of the same Event, and cannot be forged with a guest property or
+symbol. It reports consumption rather than success, popup visibility, or a
+`window.open` result. Register policy on each context explicitly; it is not
+inherited from the opener's mutable guest properties.

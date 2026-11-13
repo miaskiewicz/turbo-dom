@@ -135,8 +135,8 @@
   // Only a MouseEvent `click` has an activation target (isTrusted is irrelevant): the target
   // itself, or for bubbling events its nearest ancestor with activation behavior, crossing
   // shadow roots only when the event is composed.
-  g.__captureActivationTarget = function (event, target) {
-    try { call(mouseButton, event); } catch (_) { return null; }
+  g.__captureActivationTarget = function (event, target, primaryOnly) {
+    try { if (call(mouseButton, event) !== 0 && primaryOnly) return null; } catch (_) { return null; }
     let node = target;
     if (activates(node)) return node;
     if (!call(bubblesOf, event)) return null;

@@ -108,6 +108,8 @@ pub fn clear_context_capabilities(scope: &mut v8::PinScope) {
             context.remove_slot::<HostEventDispatcher>();
             context.remove_slot::<InlineHandlerSetter>();
             context.remove_slot::<EngineTaskScope>();
+            #[cfg(feature = "host-internals")]
+            hyperlink_activation::set_hyperlink_activation_handler(context, None);
             event_listeners::clear_context(context);
             range_contents::clear_context(context);
         }
@@ -177,6 +179,9 @@ mod html_invokers;
 mod html_media;
 #[path = "html_popover.rs"]
 mod html_popover;
+#[cfg(feature = "host-internals")]
+#[path = "hyperlink_activation.rs"]
+pub(super) mod hyperlink_activation;
 #[path = "pointer_events.rs"]
 mod pointer_events;
 #[path = "typed_om.rs"]
@@ -5360,6 +5365,8 @@ fn finalize_dispatch_targets(
 
 struct ClickActivation {
     activation_target: Option<Handle>,
+    #[cfg(feature = "host-internals")]
+    hyperlink_target: Option<Handle>,
     checked_target: Handle,
     click_check: Option<CheckKind>,
     check_snapshot: Option<Vec<(Handle, bool)>>,
@@ -5383,6 +5390,8 @@ fn begin_click_activation(
     } else {
         None
     };
+    #[cfg(feature = "host-internals")]
+    let hyperlink_target = hyperlink_activation::target(scope, event_obj, activation_target);
     let checked_target = activation_target.unwrap_or(target);
     let click_check = activation_target.and_then(checkable_kind);
     let check_snapshot = click_check.map(|_| form_checked_state::snapshot(checked_target));
@@ -5395,6 +5404,8 @@ fn begin_click_activation(
     }
     ClickActivation {
         activation_target,
+        #[cfg(feature = "host-internals")]
+        hyperlink_target,
         checked_target,
         click_check,
         check_snapshot,
@@ -5486,6 +5497,8 @@ fn el_dispatch_event<'s>(
     let Some((event_obj, record, ty)) = validate_dispatch_event(scope, event) else {
         return;
     };
+    #[cfg(feature = "host-internals")]
+    hyperlink_activation::reset(scope, event_obj);
     event_handlers::refresh(scope, target, &format!("on{ty}"));
     let bubbles = get_bool_prop(scope, record, "bubbles");
     let trusted = args.data().is_true();
@@ -5502,6 +5515,8 @@ fn el_dispatch_event<'s>(
 
     let ClickActivation {
         activation_target,
+        #[cfg(feature = "host-internals")]
+        hyperlink_target,
         checked_target,
         click_check,
         check_snapshot,
@@ -5684,6 +5699,8 @@ fn el_dispatch_event<'s>(
         return;
     }
 
+    #[cfg(feature = "host-internals")]
+    hyperlink_activation::dispatch(scope, event_obj, hyperlink_target, not_prevented);
     dispatch_default_submission(scope, not_prevented, activation_target);
 
     if let (true, Some(activation)) = (not_prevented, activation_target) {

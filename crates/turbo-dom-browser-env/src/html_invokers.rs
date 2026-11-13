@@ -90,12 +90,35 @@ pub(super) fn activation_target(
     event: v8::Local<v8::Object>,
     target: Handle,
 ) -> Option<Handle> {
+    find_activation_target(scope, event, target, false)
+}
+
+#[cfg(feature = "host-internals")]
+pub(super) fn primary_activation_target(
+    scope: &mut v8::PinScope,
+    event: v8::Local<v8::Object>,
+    target: Handle,
+) -> Option<Handle> {
+    find_activation_target(scope, event, target, true)
+}
+
+fn find_activation_target(
+    scope: &mut v8::PinScope,
+    event: v8::Local<v8::Object>,
+    target: Handle,
+    primary_only: bool,
+) -> Option<Handle> {
     let node = wrap(scope, target);
     let context = node.get_creation_context(scope)?;
     let finder = context.get_slot::<ActivationTarget>()?;
     let function = dom_ownership::local(scope, &finder.0);
     let receiver = v8::undefined(scope);
-    let found = function.call(scope, receiver.into(), &[event.into(), node.into()])?;
+    let primary = v8::Boolean::new(scope, primary_only);
+    let found = function.call(
+        scope,
+        receiver.into(),
+        &[event.into(), node.into(), primary.into()],
+    )?;
     let found = v8::Local::<v8::Object>::try_from(found).ok()?;
     handle_of(scope, found)
 }

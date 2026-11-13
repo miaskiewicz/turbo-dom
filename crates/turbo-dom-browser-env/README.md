@@ -338,3 +338,10 @@ for content replacement instead of evaluating those stub methods or reopening a
 PageSession. In particular turbo-surf must thread the returned scripts into its
 existing parser/CSP/resource scheduler and use that scheduler's completion signal;
 merely calling the replacement function cannot satisfy a load-state wait.
+
+With `host-internals`, embedders can register
+`set_hyperlink_activation_handler` for canonical uncanceled primary hyperlink
+click defaults and read `hyperlink_activation_handled` after dispatch to prevent
+a duplicate driver default. Navigation/download/CSP/sandbox admission remains
+host policy, including denied and noopener-null requests. See
+[AUXILIARY-CONTEXTS.md](AUXILIARY-CONTEXTS.md#guest-hyperlink-activation).
