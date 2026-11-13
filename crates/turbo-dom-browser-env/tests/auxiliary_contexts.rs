@@ -14,6 +14,7 @@ struct HostState {
     deny: RefCell<bool>,
     ready_mode: Cell<u8>,
     fail_surface: Cell<bool>,
+    admission_mode: Cell<u8>,
     events: RefCell<Vec<(&'static str, AuxiliaryContextId)>>,
 }
 
@@ -45,6 +46,27 @@ fn admit<'s>(
     host.requests.borrow_mut().push(request.clone());
     if *host.deny.borrow() {
         return None;
+    }
+    match (host.admission_mode.get(), selected) {
+        (1, _) => return Some(source),
+        (2, _) => return Some(v8::Context::new(scope, Default::default())),
+        (3, Some(_)) => {
+            let other = create_auxiliary_window_context(scope, None);
+            let scope = &mut v8::ContextScope::new(scope, other);
+            initialize_auxiliary_document(scope, "<!doctype html><body>wrong target</body>");
+            return Some(other);
+        }
+        (4, Some(selected)) => {
+            retire_auxiliary_context(scope, selected);
+            return Some(selected);
+        }
+        (5, _) => {
+            let other = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, other);
+            initialize_auxiliary_document(scope, "<!doctype html><body>ordinary target</body>");
+            return Some(other);
+        }
+        _ => {}
     }
     if let Some(selected) = selected {
         return Some(selected);
@@ -1154,5 +1176,132 @@ fn hyperlink_helper_uses_native_base_target_and_rejects_nonlinks() {
     assert_eq!(request.url, "https://frames.test/assets/page");
     assert_eq!(String::from_utf16(&request.target).unwrap(), "report");
     assert!(!request.noopener);
+    host.windows.borrow_mut().clear();
+}
+
+#[test]
+fn invalid_host_admissions_never_publish_or_replace_a_window_identity() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let bootstrap = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, bootstrap);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    let root_id = auxiliary_context_identity(root).unwrap().id;
+    for mode in [1, 2, 5] {
+        host.admission_mode.set(mode);
+        assert_js(scope, "open('/invalid-host')===null&&!closed");
+        assert!(host.windows.borrow().is_empty());
+        assert_eq!(auxiliary_context_identity(root).unwrap().id, root_id);
+    }
+    host.admission_mode.set(0);
+    assert_js(
+        scope,
+        "globalThis.first=open('','existing');first.opener===window",
+    );
+    let target = v8::Local::new(scope, &host.windows.borrow()[0]);
+    let target_id = auxiliary_context_identity(target).unwrap().id;
+    host.admission_mode.set(3);
+    assert_js(
+        scope,
+        "open('','existing')===null&&!first.closed&&first.opener===window",
+    );
+    assert_eq!(auxiliary_context_identity(target).unwrap().id, target_id);
+    host.admission_mode.set(4);
+    assert_js(scope, "open('','existing')===null&&first.closed&&!closed");
+    assert_eq!(auxiliary_context_closed(target), Some(true));
+    assert_eq!(*host.closes.borrow(), 0);
+    host.admission_mode.set(0);
+    assert_js(scope, "open('','existing')!==first");
+    host.windows.borrow_mut().clear();
+}
+
+#[test]
+fn conflicting_document_guard_does_not_publish_a_second_document_or_identity() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    v8::scope!(let scope, &mut isolate);
+    let bootstrap = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, bootstrap);
+    let root = coverage_context(scope);
+    let scope = &mut v8::ContextScope::new(scope, root);
+    assert_js(scope, "globalThis.originalDocument=document;globalThis.legacyMarker={legacy:true};Object.defineProperty(window,'document',{get(){return legacyMarker},configurable:false});document===legacyMarker");
+    let catch = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut catch.init();
+    assert!(!install_auxiliary_window_document_guard(scope, root));
+    scope.reset();
+    assert!(!install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        None
+    ));
+    scope.reset();
+    assert!(auxiliary_context_identity(root).is_none());
+    assert_js(scope, "document===legacyMarker&&originalDocument.body.textContent==='frame'&&Object.getOwnPropertyDescriptor(window,'document').configurable===false");
+}
+
+#[test]
+fn host_window_ownership_excludes_inert_template_nodes_and_guest_objects() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    v8::scope!(let scope, &mut isolate);
+    let bootstrap = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, bootstrap);
+    let root = coverage_context(scope);
+    let scope = &mut v8::ContextScope::new(scope, root);
+    let plain = v8::Object::new(scope);
+    assert!(!browser_env::node_has_window_owner(scope, plain));
+    let value = eval(scope, "globalThis.template=document.createElement('template');template.innerHTML='<style>b{color:red}</style><b>inert</b>';template.content.firstChild");
+    let inert = v8::Local::<v8::Object>::try_from(value).unwrap();
+    assert!(!browser_env::node_has_window_owner(scope, inert));
+    let value = eval(scope, "document.body.appendChild(template);template");
+    let template = v8::Local::<v8::Object>::try_from(value).unwrap();
+    assert!(browser_env::node_has_window_owner(scope, template));
+    assert!(!browser_env::node_has_window_owner(scope, inert));
+    let value = eval(
+        scope,
+        "document.body.appendChild(template.content.firstChild)",
+    );
+    let activated = v8::Local::<v8::Object>::try_from(value).unwrap();
+    assert!(browser_env::node_has_window_owner(scope, activated));
+}
+
+#[test]
+fn feature_separators_and_foreign_close_receivers_preserve_host_actor_ownership() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let bootstrap = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, bootstrap);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    assert_js(scope, "open('','_blank','noopener, , =')===null&&!closed");
+    assert!(host.requests.borrow().last().unwrap().noopener);
+    assert_eq!(host.windows.borrow().len(), 1);
+    assert_js(scope, "try{close.call({})}catch{};!closed");
+    assert_eq!(*host.closes.borrow(), 0);
+    let popup = v8::Local::new(scope, &host.windows.borrow()[0]);
+    let request = host.requests.borrow().last().unwrap().clone();
+    assert!(retire_auxiliary_context(scope, popup));
+    assert!(open_auxiliary_context(scope, popup, &request).is_none());
+    assert_eq!(host.requests.borrow().len(), 1);
     host.windows.borrow_mut().clear();
 }
