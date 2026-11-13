@@ -14,6 +14,10 @@ at the time); this file reconstructs them from history.
   once for minimum and maximum width queries, retaining independent placement
   passes and the existing sizing arithmetic. Numeric caches remain local to the
   layout tree and are invalidated by the existing layout policies.
+- **Cross-origin child-window indexes (#504)**: expose native read-only,
+  enumerable child-index descriptors and membership alongside indexed reads.
+  `Object.keys()` now enumerates actual child indexes; absent indexes keep the
+  cross-origin access guard. Independent Chrome 156 controls pin the metadata.
 - **Scoped animation lifecycle (#509)**: discover open and closed shadow-root
   stylesheets and adopted sheets when inspecting canonical effects. Keyframe
   lookup follows the actual root, reflects CSSOM changes and preserves strict

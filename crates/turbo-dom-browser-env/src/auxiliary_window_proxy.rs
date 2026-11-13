@@ -508,6 +508,65 @@ fn cross_index<'s>(
     v8::Intercepted::kYes
 }
 
+fn cross_index_query<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    index: u32,
+    args: v8::PropertyCallbackArguments<'s>,
+    mut result: v8::ReturnValue<v8::Integer>,
+) -> v8::Intercepted {
+    if args
+        .holder()
+        .get_creation_context(scope)
+        .is_some_and(|context| children(scope, context).get(index as usize).is_some())
+    {
+        result.set_int32(v8::PropertyAttribute::READ_ONLY.as_u32() as i32);
+    } else {
+        deny(scope);
+    }
+    v8::Intercepted::kYes
+}
+
+fn cross_index_descriptor<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    index: u32,
+    args: v8::PropertyCallbackArguments<'s>,
+    mut result: v8::ReturnValue,
+) -> v8::Intercepted {
+    let child = args
+        .holder()
+        .get_creation_context(scope)
+        .and_then(|context| children(scope, context).get(index as usize).copied());
+    if let Some(child) = child {
+        let descriptor = v8::Object::new(scope);
+        let no = v8::Boolean::new(scope, false);
+        let yes = v8::Boolean::new(scope, true);
+        let window = child.global(scope);
+        descriptor_field(scope, descriptor, "value", window.into());
+        descriptor_field(scope, descriptor, "writable", no.into());
+        descriptor_field(scope, descriptor, "enumerable", yes.into());
+        descriptor_field(scope, descriptor, "configurable", yes.into());
+        result.set(descriptor.into());
+    } else {
+        deny(scope);
+    }
+    v8::Intercepted::kYes
+}
+
+fn cross_index_keys<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::PropertyCallbackArguments<'s>,
+    mut result: v8::ReturnValue<v8::Array>,
+) {
+    let count = args
+        .holder()
+        .get_creation_context(scope)
+        .map_or(0, |context| children(scope, context).len());
+    let keys: Vec<_> = (0..count)
+        .map(|index| v8::Integer::new_from_unsigned(scope, index as u32).into())
+        .collect();
+    result.set(v8::Array::new_with_elements(scope, &keys));
+}
+
 fn cross_query<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     name: v8::Local<'s, v8::Name>,
@@ -526,16 +585,10 @@ fn cross_query<'s>(
 
 fn cross_keys<'s>(
     scope: &mut v8::PinScope<'s, '_>,
-    args: v8::PropertyCallbackArguments<'s>,
+    _args: v8::PropertyCallbackArguments<'s>,
     mut result: v8::ReturnValue<v8::Array>,
 ) {
-    let count = args
-        .holder()
-        .get_creation_context(scope)
-        .map_or(0, |context| children(scope, context).len());
-    let mut keys: Vec<v8::Local<v8::Value>> = (0..count)
-        .map(|index| v8::String::new(scope, &index.to_string()).unwrap().into())
-        .collect();
+    let mut keys = Vec::with_capacity(KEYS.len() + 3);
     for key in KEYS {
         keys.push(v8::String::new(scope, key).unwrap().into());
     }
@@ -721,7 +774,13 @@ pub fn template<'s>(scope: &mut v8::PinScope<'s, '_, ()>) -> v8::Local<'s, v8::O
             .descriptor(ext!(NamedPropertyDescriptorCallback, cross_descriptor))
             .enumerator(ext!(NamedPropertyEnumeratorCallback, cross_keys)),
         v8::IndexedPropertyHandlerConfiguration::new()
-            .getter(ext!(IndexedPropertyGetterCallback, cross_index)),
+            .getter(ext!(IndexedPropertyGetterCallback, cross_index))
+            .query(ext!(IndexedPropertyQueryCallback, cross_index_query))
+            .enumerator(ext!(IndexedPropertyEnumeratorCallback, cross_index_keys))
+            .descriptor(ext!(
+                IndexedPropertyDescriptorCallback,
+                cross_index_descriptor
+            )),
         None,
     );
     // Native-only layout: guest prototype changes cannot manufacture these fields.

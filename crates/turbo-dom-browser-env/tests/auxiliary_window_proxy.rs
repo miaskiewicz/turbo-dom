@@ -4,6 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Once;
 
+use sha2::{Digest, Sha256};
+
 use turbo_dom_browser_env::host_internals::*;
 
 #[derive(Default)]
@@ -528,4 +530,85 @@ fn cross_origin_denial_before_dom_install_has_safe_named_error_fallback() {
     let window = target.global(scope);
     set(scope, caller, "target", window.into());
     assert_js(scope, "(()=>{try{void target.document}catch(e){return e instanceof Error&&e.name==='SecurityError'&&e.message==='Blocked cross-origin window access'}return false})()");
+}
+
+#[test]
+fn cross_origin_child_index_metadata_matches_pinned_chrome_156() {
+    let oracle: serde_json::Value = serde_json::from_str(include_str!(
+        "../src/auxiliary_window_indexes_chrome156.json"
+    ))
+    .unwrap();
+    assert_eq!(oracle["browser"], "HeadlessChrome/156.0.8078.47");
+    assert_eq!(oracle["errors"], serde_json::json!([]));
+    for (field, bytes) in [
+        (
+            "casesSha256",
+            include_bytes!("../src/auxiliary_window_indexes_cases.json").as_slice(),
+        ),
+        (
+            "probeSha256",
+            include_bytes!("../src/auxiliary_window_indexes_probe.js").as_slice(),
+        ),
+        (
+            "collectorSha256",
+            include_bytes!("../scripts/auxiliary-window-indexes-chrome-control.mjs").as_slice(),
+        ),
+    ] {
+        assert_eq!(oracle[field], format!("{:x}", Sha256::digest(bytes)));
+    }
+
+    let mut actual = Vec::new();
+    for count in 0..=2 {
+        fixture(|scope, host, source, target| {
+            for index in 0..count {
+                let child = create_auxiliary_window_context(scope, None);
+                child.set_security_token(target.get_security_token(scope));
+                {
+                    let scope = &mut v8::ContextScope::new(scope, child);
+                    initialize_auxiliary_document(scope, "<!doctype html><body>child</body>");
+                    assert!(install_nested_auxiliary_source(
+                        scope,
+                        child,
+                        target,
+                        "https://target.example/nested",
+                        &format!("NamedChild{index}")
+                            .encode_utf16()
+                            .collect::<Vec<_>>(),
+                        None,
+                    ));
+                }
+                host.children
+                    .borrow_mut()
+                    .push(v8::Global::new(scope, child));
+            }
+            install_auxiliary_window_hooks(
+                target,
+                AuxiliaryWindowHooks {
+                    children: Some(children),
+                    ..Default::default()
+                },
+            );
+            let window = target.global(scope);
+            set(scope, source, "__windowIndexTarget", window.into());
+            let probe = include_str!("../src/auxiliary_window_indexes_probe.js");
+            let json = eval(scope, &format!("JSON.stringify({probe})"));
+            let result: serde_json::Value =
+                serde_json::from_str(&json.to_rust_string_lossy(scope)).unwrap();
+            println!("native child-index count={count}: {result}");
+            actual.push(serde_json::json!({"count": count, "result": result}));
+        });
+    }
+    let mut expected = oracle["rows"].clone();
+    let mut actual = serde_json::Value::Array(actual);
+    // This regression pins numeric index metadata. Named child access has a
+    // distinct policy/lookup path and remains a separately recorded oracle lead.
+    for rows in [&mut actual, &mut expected] {
+        for row in rows.as_array_mut().unwrap() {
+            row["result"]["properties"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|property| property["key"] != "NamedChild0");
+        }
+    }
+    assert_eq!(actual, expected);
 }
