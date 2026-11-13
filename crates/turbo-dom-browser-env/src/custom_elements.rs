@@ -1317,6 +1317,89 @@ mod tests {
         reset();
     }
     #[test]
+    fn context_collection_job_roots_diagnostic() {
+        use std::io::Write;
+        let full_gc = std::env::var_os("TURBO_DOM_DIAGNOSTIC_FULL_GC").is_some();
+        if full_gc {
+            // This diagnostic is run alone in a fresh process for this mode.
+            v8::V8::set_flags_from_string("--expose-gc");
+        }
+        super::super::tests::init_v8();
+        for explicit in [false, true] {
+            for weak_ref in [false, true] {
+                for strong in [false, true] {
+                    let mut isolate = crate::browser_env::tests::new_isolate();
+                    let default_policy = format!("{:?}", isolate.get_microtasks_policy());
+                    if explicit {
+                        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+                    }
+                    let (context, mut retained) = {
+                        v8::scope!(let scope,&mut isolate);
+                        let context = v8::Context::new(scope, Default::default());
+                        let scope = &mut v8::ContextScope::new(scope, context);
+                        install_with_html(scope, "<!doctype html><body>");
+                        if weak_ref {
+                            assert!(
+                                eval(scope, "new WeakRef(document).deref()===document").is_true()
+                            );
+                        }
+                        (
+                            v8::Weak::new(scope, context),
+                            strong.then(|| v8::Global::new(scope, context)),
+                        )
+                    };
+                    for _ in 0..3 {
+                        isolate.low_memory_notification();
+                    }
+                    let before_checkpoint = !context.is_empty();
+                    println!("GC_CONTROL snapshot={} default_policy={default_policy} explicit={explicit} weak_ref={weak_ref} strong={strong} phase=low3 retained={before_checkpoint}", snapshot_path_configured());
+                    if strong || (explicit && weak_ref) {
+                        assert!(!context.is_empty());
+                    }
+                    if before_checkpoint && !strong {
+                        if let Some(dir) = std::env::var_os("TURBO_DOM_GC_DIAGNOSTIC_DIR") {
+                            let dir = std::path::PathBuf::from(dir);
+                            std::fs::create_dir_all(&dir).unwrap();
+                            let mut file =
+                                std::fs::File::create(dir.join(format!(
+                                    "explicit-{explicit}-weak-{weak_ref}.heapsnapshot"
+                                )))
+                                .unwrap();
+                            isolate.take_heap_snapshot(|bytes| file.write_all(bytes).is_ok());
+                            println!(
+                                "GC_CONTROL phase=after-heap-snapshot retained={}",
+                                !context.is_empty()
+                            );
+                        }
+                    }
+                    isolate.perform_microtask_checkpoint();
+                    for _ in 0..3 {
+                        isolate.low_memory_notification();
+                    }
+                    println!("GC_CONTROL explicit={explicit} weak_ref={weak_ref} strong={strong} phase=checkpoint-low3 retained={}", !context.is_empty());
+                    if full_gc {
+                        isolate.request_garbage_collection_for_testing(
+                            v8::GarbageCollectionType::Full,
+                        );
+                        println!("GC_CONTROL explicit={explicit} weak_ref={weak_ref} strong={strong} phase=testing-full retained={}", !context.is_empty());
+                    }
+                    if strong {
+                        assert!(!context.is_empty());
+                    }
+                    retained.take();
+                    isolate.perform_microtask_checkpoint();
+                    for _ in 0..3 {
+                        isolate.low_memory_notification();
+                    }
+                    println!("GC_CONTROL explicit={explicit} weak_ref={weak_ref} strong={strong} phase=drop-strong-checkpoint-low3 retained={}", !context.is_empty());
+                    assert!(context.is_empty());
+                    clear_interface_records(&mut isolate);
+                    reset();
+                }
+            }
+        }
+    }
+    #[test]
     fn installed_document_without_custom_definitions_releases_context() {
         super::super::tests::init_v8();
         let mut isolate = crate::browser_env::tests::new_isolate();
@@ -1330,9 +1413,40 @@ mod tests {
         for _ in 0..3 {
             isolate.low_memory_notification();
         }
-        assert!(context.is_empty());
+        let assertion = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            assert!(context.is_empty());
+        }));
+        if let Err(panic) = assertion {
+            if let Some(dir) = std::env::var_os("TURBO_DOM_GC_DIAGNOSTIC_DIR") {
+                let dir = std::path::PathBuf::from(dir);
+                std::fs::create_dir_all(&dir).unwrap();
+                let mut file =
+                    std::fs::File::create(dir.join("original-retained-context.heapsnapshot"))
+                        .unwrap();
+                println!(
+                    "ORIGINAL_CONTEXT retained_before_heap_snapshot=true policy={:?}",
+                    isolate.get_microtasks_policy()
+                );
+                isolate.take_heap_snapshot(|bytes| {
+                    std::io::Write::write_all(&mut file, bytes).is_ok()
+                });
+                println!(
+                    "ORIGINAL_CONTEXT retained_after_heap_snapshot={}",
+                    !context.is_empty()
+                );
+            }
+            // Taking a diagnostic snapshot may collect; preserve the original failure.
+            std::panic::resume_unwind(panic);
+        }
         clear_interface_records(&mut isolate);
         reset();
+    }
+    #[test]
+    fn context_repeated_scope_release_diagnostic() {
+        for iteration in 0..200 {
+            println!("ORIGINAL_CONTEXT_REPEAT iteration={iteration}");
+            installed_document_without_custom_definitions_releases_context();
+        }
     }
     #[test]
     fn custom_element_private_records_retain_live_nodes_and_collect_unused_cycles() {

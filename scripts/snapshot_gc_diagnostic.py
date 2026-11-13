@@ -32,6 +32,8 @@ for snapshot in [False, True]:
               ('custom-elements-eight', 'browser_env::custom_elements::tests::', '8')]
     if snapshot:
         cases.append(('full-library-default-threads', '', None))
+    cases += [('repeat-original-same-process', 'context_repeated_scope_release_diagnostic', '1'),
+              ('actual-job-root-controls', 'context_collection_job_roots_diagnostic', '1')]
     for label, test_filter, threads in cases:
         command = [binaries[0]]
         if test_filter:
@@ -41,6 +43,7 @@ for snapshot in [False, True]:
         command.append('--nocapture')
         name = mode + '-' + label
         started = time.monotonic()
+        env['TURBO_DOM_GC_DIAGNOSTIC_DIR'] = str((args.out / (name + '-roots')).resolve())
         with (args.out / (name + '.log')).open('wb') as log:
             try:
                 result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=240)
@@ -51,4 +54,12 @@ for snapshot in [False, True]:
         records.append(record)
         (args.out / 'summary.json').write_text(json.dumps(records, indent=2) + '\n')
         print(json.dumps(record), flush=True)
+env = base.copy()
+env['TURBO_DOM_SNAPSHOT_PATH'] = '1'
+env['TURBO_DOM_DIAGNOSTIC_FULL_GC'] = '1'
+env['TURBO_DOM_GC_DIAGNOSTIC_DIR'] = str((args.out / 'testing-full-roots').resolve())
+with (args.out / 'testing-full-controls.log').open('wb') as log:
+    result = subprocess.run([binaries[0], 'context_collection_job_roots_diagnostic', '--test-threads=1', '--nocapture'], env=env, stdout=log, stderr=subprocess.STDOUT, timeout=120)
+records.append(dict(name='testing-full-controls-fresh-process', exit=result.returncode))
+(args.out / 'summary.json').write_text(json.dumps(records, indent=2) + '\n')
 raise SystemExit(1 if any(record['exit'] != 0 for record in records) else 0)
