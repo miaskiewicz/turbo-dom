@@ -4033,6 +4033,94 @@ mod exact_tests {
     // The direct test keeps the contract pinned without touching the raster
     // walk.
     #[test]
+    fn png45_circle_paths_keep_analytic_interior_and_exterior_pixels() {
+        for (cx, cy, radius) in [(43.5, 51.25, 27.25), (51.25, 43.5, 31.0)] {
+            let path = circle_path(cx, cy, radius).unwrap();
+            let mut actual = white(104, 104);
+            actual.fill_path(
+                &path,
+                &solid(RED),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+            let mut checked = 0;
+            for y in 0..104 {
+                for x in 0..104 {
+                    let dx = (x as f32 + 0.5 - cx).abs();
+                    let dy = (y as f32 + 0.5 - cy).abs();
+                    let far = (dx + 0.5).hypot(dy + 0.5);
+                    let near = (dx - 0.5).max(0.0).hypot((dy - 0.5).max(0.0));
+                    // Ignore boundary pixels: the circle's cubic approximation and
+                    // the rasterizer's AA can legitimately differ there. Entire
+                    // pixel squares safely inside/outside the analytic disk agree.
+                    let expected = if far < radius - 0.25 {
+                        Some([255, 0, 0, 255])
+                    } else if near > radius + 0.25 {
+                        Some([255; 4])
+                    } else {
+                        None
+                    };
+                    if let Some(expected) = expected {
+                        let pixel = actual.pixel(x, y).unwrap();
+                        assert_eq!(
+                            [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                            expected,
+                            "circle {cx},{cy},r{radius}, pixel{x},{y}"
+                        );
+                        checked += 1;
+                    }
+                }
+            }
+            assert!(checked > 10_000, "circle oracle must inspect most pixels");
+        }
+    }
+
+    #[test]
+    fn png45_subpixel_dots_keep_cap_spacing_and_partial_last_pixel() {
+        if !rule_probe_child("png45_subpixel_dots_keep_cap_spacing_and_partial_last_pixel") {
+            return;
+        }
+        let mut expected = white(12, 12);
+        for (top, height) in [(0.0, 1.0), (1.0, 1.0), (3.0, 0.5)] {
+            expected.fill_path(
+                &PathBuilder::from_rect(Rect::from_xywh(3.0, top, 1.0, height).unwrap()),
+                &solid(RED),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+        }
+        for (top, xf) in [
+            (0.0, Transform::identity()),
+            (33_554_432.0, Transform::from_translate(0.0, -33_554_432.0)),
+        ] {
+            let mut actual = white(12, 12);
+            paint_dotted_rule_stroked(&mut actual, 3.25, top, 3.5, 1.0, RED, xf);
+            assert_eq!(actual.data(), expected.data(), "origin {top}");
+        }
+    }
+
+    #[test]
+    fn png45_double_boundary_keeps_a_visible_middle_gap() {
+        let mut actual = white(12, 12);
+        let f = rule(3.0, 2.0, 3.0, 7.0, ColumnRuleStyle::Double, RED);
+        paint_double_rule(&mut actual, &f, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..12 {
+                let ink = (x == 3 || x == 5) && (2..9).contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn circle_path_is_none_for_a_non_positive_radius() {
         assert!(circle_path(5.0, 5.0, 0.0).is_none(), "r = 0");
         assert!(circle_path(5.0, 5.0, -0.5).is_none(), "r < 0");
@@ -4126,6 +4214,11 @@ mod exact_tests {
 
     #[test]
     fn dotted_rules_keep_circle_spacing_and_exclude_a_dot_starting_at_the_end() {
+        if !rule_probe_child(
+            "dotted_rules_keep_circle_spacing_and_exclude_a_dot_starting_at_the_end",
+        ) {
+            return;
+        }
         for (width, height, centers) in [
             (1.0, 4.0, vec![1.5, 3.5]),
             (2.0, 8.0, vec![2.0, 6.0]),
@@ -4198,6 +4291,9 @@ mod exact_tests {
 
     #[test]
     fn dashed_rules_repeat_two_width_ink_and_one_width_gap() {
+        if !rule_probe_child("dashed_rules_repeat_two_width_ink_and_one_width_gap") {
+            return;
+        }
         let mut pm = white(8, 22);
         let f = Fragment::new(
             NodeId(0),
@@ -4757,6 +4853,9 @@ mod exact_tests {
 
     #[test]
     fn short_subpixel_dots_survive_large_origin_localization() {
+        if !rule_probe_child("short_subpixel_dots_survive_large_origin_localization") {
+            return;
+        }
         let mut expected = white(10, 10);
         paint_dotted_rule_stroked(
             &mut expected,
