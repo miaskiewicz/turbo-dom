@@ -1134,9 +1134,8 @@ fn fill_admitted_rect(
 /// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
 /// right bands first, then the top and bottom ones mitred on the corner diagonals.
 fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
-    s.color
-        .filter(|_| s.width > 0)
-        .map(|c| (f32::from(s.width), c))
+    let width = std::num::NonZeroU16::new(s.width)?;
+    Some((f32::from(width.get()), s.color?))
 }
 
 fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
