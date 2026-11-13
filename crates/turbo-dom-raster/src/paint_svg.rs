@@ -370,11 +370,9 @@ fn paint_subpixel_dotted_rule(
     color: Rgba,
     (px_left, diameter, end): (f32, f32, f32),
 ) {
-    // Clamp the leading cap and last dash just as the ordinary subpixel path.
-    if f.y < end {
-        let cap_h = (end - f.y).min(diameter);
-        rect(svg, px_left, f.y, diameter, cap_h, color);
-    }
+    // rect_r also rejects empty/reversed caps and non-finite origins.
+    let cap_h = (end - f.y).min(diameter);
+    rect(svg, px_left, f.y, diameter, cap_h, color);
     let mut y = f.y + diameter;
     while y < end {
         let dash_h = (end - y).min(diameter);
@@ -404,9 +402,7 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let mut dash_top = f.y;
     while dash_top < end {
         let dash_h = dash.min(end - dash_top);
-        if dash_h > 0.0 {
-            rect(svg, f.x, dash_top, width, dash_h, color);
-        }
+        rect(svg, f.x, dash_top, width, dash_h, color);
         let next = dash_top + period;
         if next <= dash_top {
             break;
@@ -811,7 +807,7 @@ fn paint_inset_shadow(
     );
     if hw >= 0.5 && hh >= 0.5 {
         let blur = crate::paint_png::shadow_blur(sh);
-        let filter = if blur < 0.5 {
+        let filter = if sh.blur == 0 {
             String::new()
         } else {
             let _ = write!(
@@ -2533,6 +2529,45 @@ mod tests {
                 panic!("stalled rule helpers did not stop within three seconds");
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins() {
+        for height in [0.0, -1.0] {
+            for y in [
+                0.0,
+                1_000_000_000.0,
+                f32::NAN,
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+            ] {
+                let f = rule(1.0, y, 0.5, height, ColumnRuleStyle::Dotted, RED);
+                let mut output = String::new();
+                paint_dotted_rule(&mut output, &f, RED);
+                assert!(output.is_empty(), "height={height}, y={y}: {output}");
+            }
+        }
+    }
+
+    #[test]
+    fn inset_shadow_integer_blur_boundaries_keep_filter_semantics() {
+        let mut capped = None;
+        for blur in [0, 1, 256, u32::MAX] {
+            let f = decorated(1.0, 2.0, 10.0, 10.0, 0.0, |slot, _, _| {
+                *slot = Some(shadow(1, 2, blur, 0, RED, true));
+            });
+            let output = body(&f, &HashMap::new());
+            assert_eq!(output.contains("<filter id=\"insetblur"), blur != 0);
+            if blur == 1 {
+                assert!(output.contains("stdDeviation=\"0.50\""));
+            }
+            if blur == 256 {
+                capped = Some(output.clone());
+            }
+            if blur == u32::MAX {
+                assert_eq!(output, capped.as_ref().unwrap().as_str());
+            }
         }
     }
 }
