@@ -377,7 +377,7 @@ fn shared_object_prototype_hooks_fail_closed_without_executing_guest_code() {
 
 #[test]
 fn replaced_standard_globals_are_unavailable_without_calling_guest_constructors() {
-    for name in ["String", "Map", "Proxy", "Object", "parseFloat"] {
+    for name in ["String", "Map", "WeakSet", "Proxy", "Object", "parseFloat"] {
         with_dom(|scope| {
             eval(
                 scope,

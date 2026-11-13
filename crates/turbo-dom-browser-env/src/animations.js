@@ -27,8 +27,9 @@
   const computedStyle = g.getComputedStyle;
   const store = () => { const map = new WeakMap(), get = WeakMap.prototype.get, set = WeakMap.prototype.set, has = WeakMap.prototype.has; return { get: key => apply(get, map, [key]), set: (key, value) => apply(set, map, [key, value]), has: key => apply(has, map, [key]) }; };
   const animations = store(), effects = store(), timelines = store(), events = store(), targets = store(), documentTimelines = store();
-  const SetType = Set, setAdd = Set.prototype.add, setHas = Set.prototype.has, setDelete = Set.prototype.delete, setValues = Set.prototype.values;
+  const SetType = Set, setAdd = Set.prototype.add, setDelete = Set.prototype.delete, setValues = Set.prototype.values;
   const MapType = Map, mapGet = Map.prototype.get, mapSet = Map.prototype.set;
+  const WeakSetType = WeakSet, weakSetAdd = WeakSet.prototype.add, weakSetHas = WeakSet.prototype.has;
   const live = new SetType();
   // Set iteration through the captured %SetIteratorPrototype%.next: for-of would look up the
   // page-replaceable %IteratorPrototype%[@@iterator] (turbo-dom#199).
@@ -2434,15 +2435,15 @@
     inspectingEffects = true; inspectionUnavailable = false; inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false; cssKeyframes = null;
     try {
       if (!ns.refreshCssEffectInputs(element) || inspectionUnavailable) return null;
-      const result = create(null), entries = [], seen = new SetType();
+      const result = create(null), entries = [], seen = new WeakSetType();
       setPrototype(entries, null);
       const state = cssStates.get(element), owned = state ? state.animations : [];
       for (let i = 0; i < owned.length; i++) {
-        apply(setAdd, seen, [owned[i].animation]);
+        apply(weakSetAdd, seen, [owned[i].animation]);
         entries[entries.length] = effectInspectionEntry(owned[i].animation, element, true);
       }
       const indexed = targets.get(element);
-      if (indexed) for (let i = 0; i < indexed.length; i++) if (!apply(setHas, seen, [indexed[i]]))
+      if (indexed) for (let i = 0; i < indexed.length; i++) if (!apply(weakSetHas, seen, [indexed[i]]))
         entries[entries.length] = effectInspectionEntry(indexed[i], element, false);
       const names = []; setPrototype(names, null);
       if (!inspectionNames) return null;
