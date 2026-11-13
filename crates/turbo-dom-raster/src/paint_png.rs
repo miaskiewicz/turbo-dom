@@ -3655,6 +3655,22 @@ mod tests {
             assert!(all_white(&actual), "reversed bounds {bounds:?}");
         }
     }
+    #[test]
+    fn vertical_blur_averages_columns_and_repeats_edge_samples() {
+        let mut pixels = vec![
+            0, 0, 0, 255, 60, 0, 0, 255, 90, 0, 0, 255, 150, 0, 0, 255, 240, 0, 0, 255, 240, 0, 0,
+            255,
+        ];
+        box_blur_vertical(&mut pixels, 2, 3, 1);
+        // Each column's three-sample window repeats its nearest edge pixel.
+        assert_eq!(
+            pixels,
+            [
+                30, 0, 0, 255, 90, 0, 0, 255, 110, 0, 0, 255, 150, 0, 0, 255, 190, 0, 0, 255, 210,
+                0, 0, 255,
+            ]
+        );
+    }
 }
 
 /// Exact-output checks of the painters against independent references (P5-cov mutation
