@@ -2094,6 +2094,140 @@ mod tests {
         )
     }
 
+    #[test]
+    fn outer_shadow_keeps_independent_minimum_axes_and_one_pixel_blur() {
+        for (width, height) in [(0.25, 8.0), (8.0, 0.25)] {
+            let f = decorated(2.0, 3.0, width, height, 0.0, |s, _, _| {
+                *s = Some(shadow(0, 0, 4, 0, RED, false));
+            });
+            assert_eq!(body(&f, &HashMap::new()), "");
+        }
+        let f = decorated(2.0, 3.0, 8.0, 9.0, 0.0, |s, _, _| {
+            *s = Some(shadow(0, 0, 1, 0, RED, false));
+        });
+        let svg = body(&f, &HashMap::new());
+        assert!(
+            svg.contains("<feGaussianBlur stdDeviation=\"0.50\"/>"),
+            "{svg}"
+        );
+        assert!(svg.contains("filter=\"url(#sh"), "{svg}");
+    }
+
+    #[test]
+    fn inset_shadow_keeps_each_empty_padding_axis_and_positive_offset() {
+        let f = plain(5.0, 7.0, 20.0, 30.0, None);
+        let sh = shadow(2, 3, 0, 1, RED, true);
+        let side = BorderSide {
+            width: 0,
+            color: Some(RED),
+        };
+        for (left, top) in [(20, 0), (0, 30)] {
+            let b = BorderEdges {
+                left: BorderSide {
+                    width: left,
+                    ..side
+                },
+                top: BorderSide { width: top, ..side },
+                right: side,
+                bottom: side,
+            };
+            let mut svg = String::new();
+            paint_inset_shadow(&mut svg, &f, &b, &BorderRadii::ZERO, Some(&sh));
+            assert!(svg.is_empty(), "{left},{top}: {svg}");
+        }
+        let b = BorderEdges {
+            left: BorderSide { width: 1, ..side },
+            top: BorderSide { width: 2, ..side },
+            right: side,
+            bottom: side,
+        };
+        let mut svg = String::new();
+        paint_inset_shadow(&mut svg, &f, &b, &BorderRadii::ZERO, Some(&sh));
+        assert!(
+            svg.contains(
+                "x=\"9.00\" y=\"13.00\" width=\"17.00\" height=\"26.00\" fill=\"#000000\""
+            ),
+            "{svg}"
+        );
+    }
+
+    #[test]
+    fn gradient_keeps_its_independent_minimum_height() {
+        let f = decorated(2.0, 3.0, 8.0, 0.25, 0.0, |_, g, _| {
+            *g = Some(CssGradient {
+                angle_deg: 90.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: 0.0,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            });
+        });
+        assert_eq!(body(&f, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn square_border_does_not_emit_a_zero_width_mitred_top() {
+        let side = |width, color| BorderSide {
+            width,
+            color: Some(color),
+        };
+        let b = BorderEdges {
+            top: side(0, RED),
+            right: side(1, Rgba::new(0, 255, 0, 255)),
+            bottom: side(1, RED),
+            left: side(1, Rgba::new(0, 0, 255, 255)),
+        };
+        let f = plain(2.0, 3.0, 20.0, 10.0, None);
+        let mut svg = String::new();
+        paint_border(&mut svg, &f, &b);
+        assert_eq!(svg.matches("<rect ").count(), 2, "{svg}");
+        assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(svg.contains("L22.00 13.00 L2.00 13.00"), "{svg}");
+    }
+
+    #[test]
+    fn rounded_border_omits_each_collapsed_inner_axis_and_absent_side() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let f = plain(2.0, 3.0, 20.0, 10.0, None);
+        for (left, right, top, bottom) in
+            [(10, 10, 1, 1), (1, 1, 5, 5), (11, 10, 1, 1), (1, 1, 6, 5)]
+        {
+            let b = BorderEdges {
+                left: side(left),
+                right: side(right),
+                top: side(top),
+                bottom: side(bottom),
+            };
+            let mut svg = String::new();
+            paint_round_border(&mut svg, &f, &b, &4.0.into());
+            assert_eq!(
+                svg.matches(" M").count(),
+                0,
+                "{left},{right},{top},{bottom}: {svg}"
+            );
+            assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        }
+        let b = BorderEdges {
+            left: side(1),
+            right: side(1),
+            top: side(0),
+            bottom: side(1),
+        };
+        let mut svg = String::new();
+        paint_round_border(&mut svg, &f, &b, &4.0.into());
+        assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(!svg.contains("<clipPath"), "{svg}");
+    }
+
     fn bounded_rule_test(name: &str, run: impl FnOnce()) {
         const ENV: &str = "TURBO_SVG_ADMISSION_CHILD";
         const MARKER: &str = "SVG_ADMISSION_CHILD_COMPLETED";
