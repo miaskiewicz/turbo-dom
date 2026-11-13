@@ -467,17 +467,9 @@ fn paint_column_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    // v0.8.2 R1 M1 + L1: reject non-finite sizes too — `f.width <= 0.0`
-    // alone is false for `NaN` (every comparison with NaN is false) and
-    // `f.width <= 0.0` is false for `Infinity`, so a NaN would cascade
-    // into `cx = NaN / 2.0 = NaN` and `period = 2 * NaN = NaN`, feeding
-    // tiny-skia NaN coordinates.
-    if color.a == 0
-        || !f.width.is_finite()
-        || !f.height.is_finite()
-        || f.width <= 0.0
-        || f.height <= 0.0
-    {
+    // Geometry admission belongs to each style's primitive; alpha admission
+    // also avoids walking a long, wholly invisible dotted or dashed rule.
+    if color.a == 0 {
         return;
     }
     match style {
@@ -557,19 +549,6 @@ fn paint_dotted_rule_stroked(
     color: Rgba,
     xf: Transform,
 ) {
-    // R1 M1: non-finite inputs (NaN / Infinity) escape every `<`/`<=`
-    // comparison — reject them so `y_top + height = NaN` never leaks
-    // into the loop and `end = y_top + Infinity = Infinity` never runs
-    // the dash loop forever.
-    if !cx.is_finite()
-        || !y_top.is_finite()
-        || !height.is_finite()
-        || !diameter.is_finite()
-        || height <= 0.0
-        || diameter <= 0.0
-    {
-        return;
-    }
     paint_pixel_dots(pm, cx.floor(), (y_top, height), diameter, color, xf);
 }
 
@@ -582,7 +561,12 @@ fn paint_pixel_dots(
     xf: Transform,
 ) {
     let (y_top, xf) = column_rule_space(y_top, 2.0 * diameter, xf);
-    let end = y_top + height;
+    // Use the rasterizer's actual rectangle admission once for the whole
+    // series. Localize first: a large finite origin can swallow a short height.
+    let Some(bounds) = Rect::from_xywh(px_left, y_top, diameter, height) else {
+        return;
+    };
+    let end = bounds.bottom();
     // Leading cap: one px above the first dash (Blink's round line-cap).
     // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
     // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
@@ -4529,6 +4513,9 @@ mod exact_tests {
         if !rule_probe_child("invalid_stroked_geometry_never_paints_or_stalls") {
             return;
         }
+        // An invalid center must reject even a long off-canvas series without
+        // walking millions of individually rejected rectangles.
+        assert_stroked_rule_blank(f32::INFINITY, 1.0, 1.0e9, 1.0);
         for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
             assert_stroked_rule_blank(bad, 1.0, 8.0, 1.0);
             assert_stroked_rule_blank(5.0, bad, 8.0, 1.0);
@@ -4537,5 +4524,31 @@ mod exact_tests {
             assert_stroked_rule_blank(5.0, 1.0, bad, 1.0);
             assert_stroked_rule_blank(5.0, 1.0, 8.0, bad);
         }
+    }
+
+    #[test]
+    fn short_subpixel_dots_survive_large_origin_localization() {
+        let mut expected = white(10, 10);
+        paint_dotted_rule_stroked(
+            &mut expected,
+            5.0,
+            0.0,
+            0.3,
+            1.0,
+            RED,
+            Transform::identity(),
+        );
+        assert!(!is_blank(&expected), "the short cap must remain visible");
+        let mut actual = white(10, 10);
+        paint_dotted_rule_stroked(
+            &mut actual,
+            5.0,
+            1.0e9,
+            0.3,
+            1.0,
+            RED,
+            Transform::from_translate(0.0, -1.0e9),
+        );
+        assert_eq!(actual.data(), expected.data());
     }
 }

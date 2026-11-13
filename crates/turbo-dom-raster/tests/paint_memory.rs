@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry, Fragment};
+use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry, Fragment, FragmentContent};
 use turbo_dom_raster::{
     screenshot_png_with_opts, ImageAssets, PreparedScreenshot, ScreenshotOptions, Viewport,
 };
@@ -247,4 +247,64 @@ fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
             "opacity {opacity}: {big} allocations of at least 1 MiB"
         );
     }
+}
+
+fn transparent_outer_shadows(fragment: &Fragment) -> usize {
+    let selected = matches!(
+        &fragment.content,
+        FragmentContent::Box { shadow: Some(shadow), .. }
+            if !shadow.inset && shadow.color.a == 0 && shadow.blur > 0
+    );
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(transparent_outer_shadows)
+            .sum::<usize>()
+}
+
+#[test]
+fn transparent_outer_shadows_do_not_allocate_blur_layers() {
+    const BOXES: usize = 20;
+    let viewport = Viewport {
+        width: 1024,
+        height: 1024,
+    };
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut html = String::from("<body style='margin:0;background:#fff'>");
+    for _ in 0..BOXES {
+        html.push_str("<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;box-shadow:0 0 10px rgba(0,0,0,0)'></div>");
+    }
+    let galley = layout_html(
+        &html,
+        "",
+        1024.0,
+        &FontRegistry::new(),
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        transparent_outer_shadows(&galley),
+        BOXES,
+        "public layout must retain every transparent shadow"
+    );
+    let prepared = PreparedScreenshot::new(
+        &html,
+        "",
+        viewport,
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let image = image::load_from_memory(&png).unwrap().to_rgb8();
+        assert_eq!(image.get_pixel(512, 512).0, [255, 0, 0]);
+        assert_eq!(image.get_pixel(1023, 1023).0, [255, 0, 0]);
+    });
+    // Invisible shadows need no blur scratch. Raster/encoder/decoder buffers
+    // fit below one large allocation per retained shadow.
+    assert!(big < BOXES, "{big} allocations of at least 1 MiB");
 }
