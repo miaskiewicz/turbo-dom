@@ -3862,6 +3862,35 @@ mod exact_tests {
         }
     }
 
+    #[test]
+    fn dashed_rules_repeat_two_width_ink_and_one_width_gap() {
+        let mut pm = white(8, 22);
+        let f = Fragment::new(
+            NodeId(0),
+            2.0,
+            1.0,
+            2.0,
+            20.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dashed,
+                color: RED,
+            },
+        );
+        paint_dashed_rule(&mut pm, &f, RED, Transform::identity());
+        for y in 0..22 {
+            for x in 0..8 {
+                let ink = (2..4).contains(&x) && (1..21).contains(&y) && (y - 1) % 6 < 4;
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = pm.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
     // The `paint_dotted_rule` and `paint_dashed_rule` helpers both guard
     // `period <= 0.0` so a zero-width rule can never infinite-loop
     // (`cy += period` of 0, `dash_top += period` of 0). The caller
