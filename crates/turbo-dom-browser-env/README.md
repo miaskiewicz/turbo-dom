@@ -122,10 +122,41 @@ Also in the crate:
   - `current_document_id`, `document_id_of`, `is_browsing_context`,
     `current_document_context`, `retire_context`;
   - `interface_record`, `cascade_policy`;
+  - `css_effect_lifecycle(scope, element)` and `CssEffectSnapshot`: trusted per-element
+    CSS/Web Animations lifecycle inspection for native geometry (see below);
   - re-exports of `Tree`, `Handle`, `StylePolicy`, `zoom_value` and the snapshot types.
-- `test_support` has 95 constants named after their files (for example
+- `test_support` has 98 constants named after their files (for example
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
+
+**Native geometry and animations (#507).** With `host-internals`,
+`css_effect_lifecycle(scope, element)` enters the wrapper's creation realm and native
+owning document, then synchronizes only its underlying CSS cascade and style dependencies.
+It reads private canonical animation records, including completed CSS animations no longer
+returned by `getAnimations()`. It never calls page-overridable animation getters, flushes the
+whole document, composes/interpolates effects, resolves transforms or invokes native layout.
+There is no page JavaScript entry point. Normal Chrome animation behavior stays enabled.
+
+The returned snapshot identifies the native document/element, declared names and canonical
+effect identities, timing phases, play states, fill, contribution and script overrides.
+`allows_underlying_geometry()` proves only that every declared animation has naturally
+completed, is finite and non-filling, with no other indexed effects. Active/pending/paused,
+infinite, filling, cancelled, replaced, retargeted or script-modified animations, missing
+rules, unsupported timelines/composition and disabled CSS kinds retain strict guards.
+`None` means unavailable/error/reentry, never an inactive-effect proof. Modified standard builtins/shared
+prototypes, indexed prototype properties and promise-assimilation hooks also fail
+closed before CSS synchronization can execute guest code. Inspect every element
+whose geometry is captured; a target's proof says nothing about its ancestors or descendants.
+
+The host must use explicit microtask checkpoints on the isolate and any separately
+attached context queue. The API rejects the isolate's `Auto` policy and never checkpoints
+microtasks itself; hosts creating custom queues must configure those queues as `Explicit`.
+A snapshot is instantaneous and pins one canonical host-clock sample. Consume it in the same
+synchronous native capture without guest JS reentry or advancing the host clock. Requery after
+CSSOM/DOM edits, animation methods or frame tasks: private animation changes need not change
+the DOM tree epoch. Do not persist these snapshots as a layout-cache permission. The host still
+owns the frame clock/animation scheduler and must drive it normally; inspection neither
+advances frames nor finishes/cancels animations on the caller's behalf.
 
 **Install phases (turbo-dom#249).** Inside, an install has two parts. The engine bootstrap
 (`bootstrap_engine`) does the tree-independent work: templates, natives and the engine

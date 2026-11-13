@@ -292,6 +292,9 @@ pub(crate) fn rehydrate(scope: &mut v8::PinScope) -> bool {
     html_popover::capture(scope);
     template_contents::rehydrate(scope);
     range_live::rehydrate(scope);
+    // Deserialization can materialize additional native builtin methods. Capture
+    // their shapes at this trusted boundary, never lazily after page script runs.
+    animations::rehydrate_trust(scope);
     true
 }
 

@@ -620,3 +620,21 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     bind_method(scope, global, "__animationsNative", native);
     run_js(scope, include_str!("animations.js"));
 }
+
+/// Refresh the one-shot builtin trust baseline during fresh snapshot rehydration,
+/// before guest code. Call the retained helper directly: attach executes no engine script.
+pub(super) fn rehydrate_trust(scope: &mut v8::PinScope) {
+    let Some(namespace) = engine_namespace(scope) else {
+        return;
+    };
+    let Some(name) = v8::String::new(scope, "rehydrateCssEffectTrust") else {
+        return;
+    };
+    let Some(function) = namespace
+        .get(scope, name.into())
+        .and_then(|value| v8::Local::<v8::Function>::try_from(value).ok())
+    else {
+        return;
+    };
+    function.call(scope, namespace.into(), &[]);
+}

@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Native animation lifecycle (#507)**: add host-only per-element CSS effect snapshots
+  for geometry consumers. Canonical completed finite animations without fill can be
+  distinguished from active, paused, infinite, filling or script-modified effects,
+  without a document-wide style flush, interpolation or native-layout reentry.
+  Chrome's normal animation behavior and guest isolation remain unchanged.
+
 - **Layout performance (#508)**: retain recently used UTF-8 and original UTF-16
   shaping results under churn with shared least-recently-used eviction. The
   per-face 128-entry and 8 MiB payload budgets are unchanged.

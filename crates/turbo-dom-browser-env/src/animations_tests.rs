@@ -572,3 +572,20 @@ fn css_event_switches_are_independent() {
     });
     assert!(none.is_empty(), "{none:?}");
 }
+
+#[test]
+fn css_effect_lifecycle_guest_behavior_matches_chrome156() {
+    let probe = include_str!("css_effect_lifecycle_probe.js");
+    let (mut expected, case) = control(
+        include_str!("css_effect_lifecycle_chrome156.json"),
+        probe,
+        include_bytes!("css_effect_lifecycle_cases.json"),
+    );
+    // Geometry itself is the native consumer's responsibility. The Chrome control
+    // establishes the reported 32px repro; this bare binding tests lifecycle parity.
+    assert_eq!(expected["finite"]["width"], serde_json::json!(32));
+    expected["finite"].as_object_mut().unwrap().remove("width");
+    let mut actual = run_probe(case["html"].as_str().unwrap(), probe, false);
+    actual["finite"].as_object_mut().unwrap().remove("width");
+    assert_eq!(actual, expected);
+}
