@@ -7,6 +7,9 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Empty opacity groups (#487)**: avoid scratch and path allocations for empty
+  opacity boxes while retaining visible descendants and transformed bounds.
+  Public allocator and pixel regressions pin the resource improvement.
 - **Raster geometry admission (#487)**: share rectangle validation with PNG/SVG
   rule painting and strip iteration, retaining finite/positive geometry and loop
   progress checks. Independent pixel, allocation and output-parity controls cover
