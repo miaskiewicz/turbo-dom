@@ -861,3 +861,298 @@ fn native_root_profile_query_rejects_ordinary_context_and_copied_prototype() {
     assert!(auxiliary_context_identity(ordinary).is_none());
     assert_js(scope, "document.body.textContent==='ordinary page'");
 }
+
+fn coverage_context<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Context> {
+    let context = create_auxiliary_window_context(scope, None);
+    let token = v8::String::new(scope, "https://frames.test").unwrap();
+    context.set_security_token(token.into());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    initialize_auxiliary_document(scope, "<!doctype html><body>frame</body>");
+    context
+}
+
+#[test]
+fn nested_sources_keep_parent_top_named_targets_and_fallback_urls_distinct() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let host_context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, host_context);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/root/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let frame = coverage_context(scope);
+    assert!(install_nested_auxiliary_source(
+        scope,
+        frame,
+        root,
+        "https://frames.test/frame/",
+        &"frame".encode_utf16().collect::<Vec<_>>(),
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let leaf = coverage_context(scope);
+    assert!(install_nested_auxiliary_source(
+        scope,
+        leaf,
+        frame,
+        "https://frames.test/leaf/",
+        &"leaf".encode_utf16().collect::<Vec<_>>(),
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    assert!(!auxiliary_context_identity(frame).unwrap().auxiliary);
+    assert_eq!(
+        auxiliary_document_url(leaf).as_deref(),
+        Some("https://frames.test/leaf/")
+    );
+    assert_eq!(
+        auxiliary_document_fallback_base(leaf).as_deref(),
+        Some("https://frames.test/leaf/")
+    );
+    {
+        let scope = &mut v8::ContextScope::new(scope, leaf);
+        let key = v8::String::new(scope, "rootWindow").unwrap();
+        let root_global = root.global(scope);
+        leaf.global(scope)
+            .set(scope, key.into(), root_global.into());
+        let key = v8::String::new(scope, "parentWindow").unwrap();
+        let frame_global = frame.global(scope);
+        leaf.global(scope)
+            .set(scope, key.into(), frame_global.into());
+        assert_js(scope, "open('', '_self')===window&&open('', '_parent')===parentWindow&&open('', '_top')===rootWindow&&open('', 'frame')===parentWindow");
+        assert_js(scope, "globalThis.child=open('relative','nested-popup');child.opener===window&&child.parent===child&&child.top===child&&length===0");
+    }
+    let popup = v8::Local::new(scope, host.windows.borrow().last().unwrap());
+    assert_eq!(
+        auxiliary_document_url(popup).as_deref(),
+        Some("about:blank")
+    );
+    assert_eq!(
+        auxiliary_document_fallback_base(popup).as_deref(),
+        Some("https://frames.test/leaf/")
+    );
+    assert_eq!(
+        host.requests.borrow().last().unwrap().url,
+        "https://frames.test/leaf/relative"
+    );
+    assert_eq!(
+        auxiliary_context_identity(popup).unwrap().creation_source,
+        Some(auxiliary_context_identity(leaf).unwrap().id)
+    );
+    host.windows.borrow_mut().clear();
+}
+
+#[test]
+fn host_severance_retires_name_selection_without_closing_the_popup() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let host_context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, host_context);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    assert_js(
+        scope,
+        "globalThis.first=open('','severed');first.opener===window",
+    );
+    let popup = v8::Local::new(scope, &host.windows.borrow()[0]);
+    let identity = auxiliary_context_identity(popup).unwrap();
+    assert!(sever_auxiliary_opener(scope, popup));
+    assert!(auxiliary_context_opener(scope, popup).is_none());
+    assert_eq!(auxiliary_context_identity(popup).unwrap().id, identity.id);
+    assert_js(
+        scope,
+        "first.opener===null&&!first.closed&&open('','severed')!==first",
+    );
+    assert_eq!(*host.closes.borrow(), 0);
+    assert_eq!(host.windows.borrow().len(), 2);
+    host.windows.borrow_mut().clear();
+}
+
+#[test]
+fn unregistered_and_duplicate_host_context_operations_fail_without_identity_changes() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    v8::scope!(let scope, &mut isolate);
+    let host_context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, host_context);
+    let root = coverage_context(scope);
+    let other = coverage_context(scope);
+    assert!(!install_nested_auxiliary_source(
+        scope,
+        other,
+        root,
+        "https://frames.test/",
+        &[],
+        None
+    ));
+    assert!(!run_auxiliary_init_scripts(scope, other));
+    assert!(!sever_auxiliary_opener(scope, other));
+    assert!(!retire_auxiliary_context(scope, other));
+    assert!(!commit_auxiliary_navigation(
+        scope,
+        other,
+        root,
+        "https://frames.test/"
+    ));
+    assert!(!commit_isolated_auxiliary_navigation(
+        scope,
+        other,
+        root,
+        "https://frames.test/"
+    ));
+    assert!(auxiliary_document_url(other).is_none());
+    assert!(auxiliary_document_fallback_base(other).is_none());
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        None
+    ));
+    let id = auxiliary_context_identity(root).unwrap().id;
+    let empty = create_auxiliary_window_context(scope, None);
+    assert!(!install_auxiliary_context(
+        scope,
+        empty,
+        "https://frames.test/",
+        None
+    ));
+    assert!(!install_nested_auxiliary_source(
+        scope,
+        empty,
+        root,
+        "https://frames.test/",
+        &[],
+        None
+    ));
+    assert!(!commit_isolated_auxiliary_navigation(
+        scope,
+        root,
+        empty,
+        "https://frames.test/"
+    ));
+    assert!(!install_auxiliary_context(
+        scope,
+        root,
+        "https://different.test/",
+        None
+    ));
+    assert!(!install_nested_auxiliary_source(
+        scope,
+        root,
+        root,
+        "https://frames.test/",
+        &[],
+        None
+    ));
+    assert!(!commit_auxiliary_navigation(
+        scope,
+        root,
+        other,
+        "https://frames.test/"
+    ));
+    assert!(!commit_isolated_auxiliary_navigation(
+        scope,
+        root,
+        root,
+        "https://frames.test/"
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    set_auxiliary_ready_host(root, Some(ready));
+    set_auxiliary_ready_host(root, None);
+    assert_js(scope, "open()===null&&!closed");
+    assert_eq!(auxiliary_context_identity(root).unwrap().id, id);
+    assert_eq!(
+        auxiliary_document_url(root).as_deref(),
+        Some("https://frames.test/")
+    );
+}
+
+#[test]
+fn window_open_converts_all_arguments_before_admission_and_rejects_illegal_receivers() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let host_context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, host_context);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(window,'name').get.call({})}catch(e){return e.name==='TypeError'}return false})()&&['name','opener'].every(key=>{const d=Object.getOwnPropertyDescriptor(window,key);try{d.set.call({},null);return false}catch(e){return e.name==='TypeError'}})");
+    assert_js(
+        scope,
+        "(()=>{try{open.call({})}catch(e){return e.name==='TypeError'}return false})()",
+    );
+    assert_js(scope, "[1,2].every(index=>{const args=['','_blank',''];args[index]={toString(){throw Error('argument '+index)}};try{open(...args)}catch(e){return e.message==='argument '+index}return false})");
+    assert_js(
+        scope,
+        "(()=>{try{open('http://[')}catch(e){return e.name==='SyntaxError'}return false})()",
+    );
+    assert!(host.requests.borrow().is_empty());
+    set_auxiliary_ready_host(root, Some(ready));
+    set_auxiliary_ready_host(root, None);
+    assert_js(scope, "globalThis.child=open();child.opener={hostMarker:7};child.opener.hostMarker===7&&length===0");
+    assert_eq!(host.requests.borrow().len(), 1);
+    assert!(host.events.borrow().is_empty());
+    host.windows.borrow_mut().clear();
+}
+
+#[test]
+fn hyperlink_helper_uses_native_base_target_and_rejects_nonlinks() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(HostState::default());
+    isolate.set_slot(Rc::clone(&host));
+    v8::scope!(let scope, &mut isolate);
+    let host_context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, host_context);
+    let root = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        root,
+        "https://frames.test/root/",
+        Some(AuxiliaryHost { open: admit, close })
+    ));
+    let scope = &mut v8::ContextScope::new(scope, root);
+    eval(scope, "document.head.innerHTML='<base href=\"/assets/\" target=\"report\">';document.body.innerHTML='<a id=a href=\"page\">link</a><a id=empty>empty</a><div id=div>div</div>'");
+    for code in [
+        "document.getElementById('empty')",
+        "document.getElementById('div')",
+        "document.createElement('a')",
+        "({})",
+    ] {
+        let value = eval(scope, code);
+        let value = v8::Local::<v8::Object>::try_from(value).unwrap();
+        assert!(open_auxiliary_hyperlink(scope, value).is_none());
+    }
+    assert!(host.requests.borrow().is_empty());
+    let anchor = eval(scope, "document.getElementById('a')");
+    let anchor = v8::Local::<v8::Object>::try_from(anchor).unwrap();
+    assert!(open_auxiliary_hyperlink(scope, anchor).is_some());
+    let request = host.requests.borrow().last().unwrap().clone();
+    assert_eq!(request.url, "https://frames.test/assets/page");
+    assert_eq!(String::from_utf16(&request.target).unwrap(), "report");
+    assert!(!request.noopener);
+    host.windows.borrow_mut().clear();
+}
