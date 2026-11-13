@@ -3455,6 +3455,207 @@ mod tests {
         ));
         assert_eq!(rgb(&pm, 2, 2), [255, 0, 0]);
     }
+    #[test]
+    fn scaled_tile_cells_keep_both_device_axes_and_edge_pixels() {
+        let grid = tiles(
+            (0.0, 0.0, 2.0, 3.0),
+            RED,
+            (0.0, 0.0),
+            (2.0, 3.0),
+            (2.0, 3.0),
+        );
+        let FragmentContent::Tiles(pattern) = grid.content else {
+            panic!("tile fixture");
+        };
+        let cell = TileCell::new(&pattern, (0.0, 0.0, 2.0, 3.0));
+        let pixels = cell_pixmap(
+            &pattern,
+            &cell,
+            &HashMap::new(),
+            (Transform::from_scale(4.0, 4.0), 1000),
+        )
+        .unwrap();
+        assert_eq!((pixels.width(), pixels.height()), (8, 12));
+        assert_eq!(rgb(&pixels, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&pixels, 7, 11), [255, 0, 0]);
+    }
+
+    #[test]
+    fn mask_tint_combines_source_and_colour_opacity() {
+        let mut source = Pixmap::new(1, 1).unwrap();
+        source.pixels_mut()[0] = tiny_skia::PremultipliedColorU8::from_rgba(0, 0, 0, 128).unwrap();
+        let actual = tint_pixmap(&source, Rgba::new(255, 128, 64, 128));
+        assert_eq!(actual.data(), &[64, 32, 16, 64]);
+    }
+
+    #[test]
+    fn unequal_square_border_widths_keep_the_declared_outer_edges() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side(1),
+            right: side(4),
+            bottom: side(3),
+            left: side(2),
+        };
+        let f = plain(5.0, 4.0, 12.0, 13.0, None);
+        let mut actual = Pixmap::new(24, 24).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        paint_border(&mut actual, &f, &border, Transform::identity());
+        let mut expected = Pixmap::new(24, 24).unwrap();
+        expected.fill(tiny_skia::Color::WHITE);
+        for (x, y, width, height) in [
+            (5.0, 4.0, 12.0, 1.0),
+            (5.0, 14.0, 12.0, 3.0),
+            (5.0, 4.0, 2.0, 13.0),
+            (13.0, 4.0, 4.0, 13.0),
+        ] {
+            expected.fill_rect(
+                Rect::from_xywh(x, y, width, height).unwrap(),
+                &solid(RED),
+                Transform::identity(),
+                None,
+            );
+        }
+        assert_eq!(actual.data(), expected.data());
+    }
+
+    #[test]
+    fn mixed_border_colours_keep_top_bottom_and_vertical_bands() {
+        let blue = Rgba::new(0, 0, 255, 255);
+        let green = Rgba::new(0, 255, 0, 255);
+        let yellow = Rgba::new(255, 255, 0, 255);
+        let side = |width, color| BorderSide {
+            width,
+            color: Some(color),
+        };
+        let border = BorderEdges {
+            top: side(1, RED),
+            right: side(4, green),
+            bottom: side(3, yellow),
+            left: side(2, blue),
+        };
+        let f = plain(5.0, 4.0, 12.0, 13.0, None);
+        let mut actual = Pixmap::new(24, 24).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        paint_border(&mut actual, &f, &border, Transform::identity());
+        assert_eq!(rgb(&actual, 11, 4), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 11, 16), [255, 255, 0]);
+        assert_eq!(rgb(&actual, 5, 10), [0, 0, 255]);
+        assert_eq!(rgb(&actual, 16, 10), [0, 255, 0]);
+        assert_eq!(rgb(&actual, 11, 10), [255, 255, 255]);
+    }
+
+    #[test]
+    fn untranslated_tile_edges_keep_nearest_pixel_coverage() {
+        let mut tile = Pixmap::new(2, 2).unwrap();
+        tile.fill(tiny_skia::Color::from_rgba8(255, 0, 0, 255));
+        let cell = TileCell {
+            origin: (0.0, 0.0),
+            size: (2.0, 2.0),
+            repeats: (true, true),
+        };
+        let rect = (0.25, 0.25, 2.0, 2.0);
+        let mut actual = Pixmap::new(4, 4).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        fill_pattern(
+            &mut actual,
+            &tile,
+            (rect, rect, &cell),
+            Transform::identity(),
+        );
+        assert_eq!(rgb(&actual, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 1, 1), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 2, 1), [255, 255, 255]);
+        assert_eq!(rgb(&actual, 1, 2), [255, 255, 255]);
+    }
+
+    fn sampled_square_image(pixels: Vec<u8>, matrix: [f32; 6]) -> (Fragment, DecodedAssets) {
+        let decoded = crate::image_paint::DecodedImage {
+            width: 2,
+            height: 2,
+            rgba: pixels,
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(2, 2, false),
+            placeholder: false,
+        };
+        let mut picture = image("samples", None);
+        (picture.x, picture.y, picture.width, picture.height) = (0.0, 0.0, 2.0, 2.0);
+        let mut group = with_box(plain(0.0, 0.0, 8.0, 8.0, None), |_, _, _, transform| {
+            *transform = Some(Transform2D {
+                matrix,
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        group.children.push(picture);
+        (group, [("samples".into(), decoded)].into_iter().collect())
+    }
+
+    #[test]
+    fn zoomed_images_cover_the_full_device_resolution() {
+        let (group, images) =
+            sampled_square_image([255, 0, 0, 255].repeat(4), [3.0, 0.0, 0.0, 3.0, 0.0, 0.0]);
+        let actual = render(&group, 10, 10, &images);
+        assert_eq!(rgb(&actual, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 5, 5), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 6, 5), [255, 255, 255]);
+        assert_eq!(rgb(&actual, 5, 6), [255, 255, 255]);
+    }
+
+    #[test]
+    fn shrunk_images_use_bilinear_filtering_at_fractional_placement() {
+        let rgba = vec![
+            255, 0, 0, 255, 0, 0, 255, 255, 0, 255, 0, 255, 255, 255, 255, 255,
+        ];
+        let matrix = [0.6, 0.4, -0.4, 0.6, 3.0, 2.0];
+        let (group, images) = sampled_square_image(rgba.clone(), matrix);
+        let actual = render(&group, 8, 8, &images);
+        let mut source = Pixmap::new(2, 2).unwrap();
+        source.data_mut().copy_from_slice(&rgba);
+        let xf = Transform::from_row(0.6, 0.4, -0.4, 0.6, 3.0, 2.0);
+        let expected = |quality| {
+            let mut result = Pixmap::new(8, 8).unwrap();
+            result.fill(tiny_skia::Color::WHITE);
+            result.draw_pixmap(
+                0,
+                0,
+                source.as_ref(),
+                &PixmapPaint {
+                    quality,
+                    ..PixmapPaint::default()
+                },
+                xf,
+                None,
+            );
+            result
+        };
+        let bilinear = expected(tiny_skia::FilterQuality::Bilinear);
+        let nearest = expected(tiny_skia::FilterQuality::Nearest);
+        assert_ne!(
+            bilinear.data(),
+            nearest.data(),
+            "fixture must observe filtering"
+        );
+        assert_eq!(actual.data(), bilinear.data());
+    }
+
+    #[test]
+    fn reversed_rounded_rectangles_paint_no_reflected_pixels() {
+        for bounds in [(6.0, 4.0, -3.0, 5.0), (3.0, 8.0, 4.0, -3.0)] {
+            let mut actual = Pixmap::new(12, 12).unwrap();
+            actual.fill(tiny_skia::Color::WHITE);
+            fill_rrect(
+                &mut actual,
+                bounds,
+                &BorderRadii::uniform(1.0),
+                RED,
+                Transform::identity(),
+            );
+            assert!(all_white(&actual), "reversed bounds {bounds:?}");
+        }
+    }
 }
 
 /// Exact-output checks of the painters against independent references (P5-cov mutation
