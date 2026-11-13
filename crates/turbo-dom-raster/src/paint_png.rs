@@ -4477,4 +4477,65 @@ mod exact_tests {
             }
         }
     }
+
+    #[test]
+    fn invalid_rule_geometry_never_paints_or_stalls() {
+        if !rule_probe_child("invalid_rule_geometry_never_paints_or_stalls") {
+            return;
+        }
+        let styles = [
+            ColumnRuleStyle::Solid,
+            ColumnRuleStyle::Dotted,
+            ColumnRuleStyle::Dashed,
+            ColumnRuleStyle::Double,
+            ColumnRuleStyle::Groove,
+            ColumnRuleStyle::Ridge,
+            ColumnRuleStyle::Inset,
+            ColumnRuleStyle::Outset,
+        ];
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -1.0] {
+            for style in styles {
+                for (width, height) in [(bad, 8.0), (4.0, bad)] {
+                    let f = rule(1.0, 1.0, width, height, style, RED);
+                    assert!(is_blank(&drawn(&f, 10, 10)), "{style:?}: {width}x{height}");
+                }
+            }
+            let mut pm = white(10, 10);
+            let f = rule(1.0, 1.0, 1.0, bad, ColumnRuleStyle::Dotted, RED);
+            paint_dotted_rule(&mut pm, &f, RED, Transform::identity());
+            assert!(is_blank(&pm), "direct dotted height {bad}");
+        }
+    }
+
+    fn assert_stroked_rule_blank(cx: f32, top: f32, height: f32, diameter: f32) {
+        let mut pm = white(10, 10);
+        paint_dotted_rule_stroked(
+            &mut pm,
+            cx,
+            top,
+            height,
+            diameter,
+            RED,
+            Transform::identity(),
+        );
+        assert!(
+            is_blank(&pm),
+            "stroked input {cx},{top},{height},{diameter}"
+        );
+    }
+
+    #[test]
+    fn invalid_stroked_geometry_never_paints_or_stalls() {
+        if !rule_probe_child("invalid_stroked_geometry_never_paints_or_stalls") {
+            return;
+        }
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert_stroked_rule_blank(bad, 1.0, 8.0, 1.0);
+            assert_stroked_rule_blank(5.0, bad, 8.0, 1.0);
+        }
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -1.0] {
+            assert_stroked_rule_blank(5.0, 1.0, bad, 1.0);
+            assert_stroked_rule_blank(5.0, 1.0, 8.0, bad);
+        }
+    }
 }
