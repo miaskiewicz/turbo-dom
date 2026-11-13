@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Raster geometry admission (#487)**: share rectangle validation with PNG/SVG
+  rule painting and strip iteration, retaining finite/positive geometry and loop
+  progress checks. Independent pixel, allocation and output-parity controls cover
+  the consolidated paths without exempting mutation cases.
 - **Raster mutation regressions (#487)**: cover repeated dash spacing, precise
   shadow edges and allocator-test isolation. Remove proven redundant SVG
   predicates while preserving ordinary SVG output; bound invalid-rule test probes
