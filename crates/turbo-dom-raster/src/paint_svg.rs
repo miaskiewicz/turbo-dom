@@ -1208,6 +1208,16 @@ mod tests {
             row.contains("<rect x=\"0\" y=\"2\" width=\"10\" height=\"3\""),
             "{row}"
         );
+        // A lone column must keep its snapped width instead of filling the box.
+        let column = body(&tiles((2.25, 0.0), (3.0, 1.5), (0.0, 1.5)), &HashMap::new());
+        assert!(
+            column.contains("width=\"3\" height=\"66\"><image"),
+            "{column}"
+        );
+        assert!(
+            column.contains("<rect x=\"2\" y=\"0\" width=\"3\" height=\"10\""),
+            "{column}"
+        );
         // No tile meets the box: nothing.
         assert_eq!(
             body(&tiles((20.0, 0.0), (1.0, 1.0), (0.0, 2.0)), &HashMap::new()),
