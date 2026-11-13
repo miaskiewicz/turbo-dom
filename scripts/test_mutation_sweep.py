@@ -78,7 +78,7 @@ class MutationEvidenceTests(unittest.TestCase):
                 directory = log.parent / ("lib" if log.name == "lib.log" else "all-targets")
                 summary = "MissedMutant" if log.name == "lib.log" else "CaughtMutant"
                 self.write_outcomes(directory, ["one"], {"one": summary})
-            return {"argv": argv, "exit_code": 0, "seconds": 0}
+            return {"argv": argv, "exit_code": 0, "seconds": 1}
 
         with tempfile.TemporaryDirectory() as temp:
             args = SimpleNamespace(output=temp, target="worker_scope", mode="full", shard=0, shards=1)
@@ -104,6 +104,31 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertIn("zero tests", report["error"])
         self.assertFalse(any(name == "lib.log" for _, name in calls))
+
+    def test_fallback_budget_uses_test_phase_only(self):
+        self.assertEqual(ms.full_fallback_timeout({"phase":"Test", "exit_code":0, "seconds":355}), 740)
+        self.assertEqual(ms.full_fallback_timeout({"phase":"Test", "exit_code":0, "seconds":135}), 300)
+        self.assertEqual(ms.full_fallback_timeout({"phase":"Test", "exit_code":0, "seconds":435}), 900)
+
+    def test_fallback_rejects_build_or_combined_phase(self):
+        for phase in ("Build", "BuildAndTest", None):
+            with self.subTest(phase=phase), self.assertRaises(ValueError):
+                ms.full_fallback_timeout({"phase":phase, "exit_code":0, "seconds":355})
+
+    def test_fallback_rejects_missing_or_invalid_duration(self):
+        for value in ({}, {"phase":"Test", "exit_code":0},
+                      *({"phase":"Test", "exit_code":0, "seconds":v}
+                        for v in (None, "355", True, 0, -1, float("nan"), float("inf")))):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                ms.full_fallback_timeout(value)
+
+    def test_fallback_rejects_failed_baseline(self):
+        with self.assertRaises(ValueError):
+            ms.full_fallback_timeout({"phase":"Test", "exit_code":1, "seconds":355})
+
+    def test_fallback_ceiling_fails_instead_of_silently_clamping(self):
+        with self.assertRaisesRegex(ValueError, "ceiling"):
+            ms.full_fallback_timeout({"phase":"Test", "exit_code":0, "seconds":435.1})
 
     def test_partial_full_artifacts_cannot_pass(self):
         with tempfile.TemporaryDirectory() as temp:
