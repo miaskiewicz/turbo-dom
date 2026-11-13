@@ -59,6 +59,16 @@ struct Switches {
 
 /// [`run_probe`] under the embedder's CSS [`Switches`].
 fn run_probe_in(html: &str, probe: &str, frozen: bool, switches: Switches) -> serde_json::Value {
+    run_policy_probe(html, probe, frozen, switches, true)
+}
+
+fn run_policy_probe(
+    html: &str,
+    probe: &str,
+    frozen: bool,
+    switches: Switches,
+    presentation: bool,
+) -> serde_json::Value {
     super::tests::init_v8();
     let isolate = &mut crate::browser_env::tests::new_isolate();
     v8::scope!(let scope, isolate);
@@ -70,6 +80,12 @@ fn run_probe_in(html: &str, probe: &str, frozen: bool, switches: Switches) -> se
     }
     if let Some(enabled) = switches.animations {
         set_css_animations(scope, enabled);
+    }
+    if !presentation {
+        assert!(set_animation_presentation(
+            scope,
+            AnimationPresentation::Disabled
+        ));
     }
     run_js(scope, &format!("globalThis.__frozenTimeline = {frozen};"));
     run_js(scope, LOOP);
@@ -601,5 +617,126 @@ fn scoped_shadow_css_effects_match_chrome156() {
     assert_eq!(
         run_probe(case["html"].as_str().unwrap(), probe, false),
         expected
+    );
+}
+
+#[test]
+fn disabled_presentation_retains_finite_lifecycle_and_underlying_styles() {
+    let actual = run_policy_probe(
+        "<!doctype html><style>#target{opacity:0.6;transform:none}</style><div id=target></div>",
+        r#"(async()=>{
+          const target=document.getElementById('target');
+          const animation=target.animate({opacity:[0,1],transform:['rotate(0deg)','rotate(90deg)']},{duration:64,fill:'both'});
+          await animation.ready;
+          const middle=[getComputedStyle(target).opacity,getComputedStyle(target).transform];
+          const result=await animation.finished;
+          return [middle,getComputedStyle(target).opacity,getComputedStyle(target).transform,
+            result===animation,animation.playState,typeof target.animate,typeof document.timeline];
+        })()"#,
+        false,
+        Switches::default(),
+        false,
+    );
+    assert_eq!(
+        actual,
+        serde_json::json!([
+            ["0.6", "none"],
+            "0.6",
+            "none",
+            true,
+            "finished",
+            "function",
+            "object"
+        ])
+    );
+}
+
+#[test]
+fn disabled_presentation_does_not_cancel_infinite_or_paused_effects() {
+    let actual = run_policy_probe(
+        "<!doctype html><div id=target style='opacity:0.6;transform:none'></div>",
+        r#"(async()=>{
+          const target=document.getElementById('target');
+          const animation=target.animate({opacity:[0,1],transform:['rotate(0deg)','rotate(90deg)']},{duration:64,iterations:Infinity,fill:'both'});
+          await animation.ready;animation.pause();await animation.ready;animation.currentTime=32;
+          let settled=false;animation.finished.then(()=>settled=true,()=>settled=true);
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+          return [getComputedStyle(target).opacity,getComputedStyle(target).transform,animation.playState,settled];
+        })()"#,
+        false,
+        Switches::default(),
+        false,
+    );
+    assert_eq!(actual, serde_json::json!(["0.6", "none", "paused", false]));
+}
+
+#[test]
+fn disabled_css_presentation_keeps_canonical_events_and_later_effects() {
+    let actual = run_policy_probe(
+        "<!doctype html><style>@keyframes spin{to{transform:rotate(90deg)}}#target{opacity:0.4;transform:none;animation:spin 64ms both}</style><div id=target></div>",
+        r#"(async()=>{
+          const target=document.getElementById('target'), events=[];
+          target.addEventListener('animationend',event=>events.push([event.type,event.isTrusted]));
+          const css=target.getAnimations()[0];await css.finished;
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+          const child=document.createElement('div');child.style.cssText='opacity:0.3;transform:none';document.body.append(child);
+          const later=child.animate({opacity:[0,1]}, {duration:64,fill:'both'});await later.ready;
+          return [getComputedStyle(target).transform,events,getComputedStyle(child).opacity,typeof Animation];
+        })()"#,
+        false,
+        Switches::default(),
+        false,
+    );
+    assert_eq!(
+        actual,
+        serde_json::json!(["none", [["animationend", true]], "0.3", "function"])
+    );
+}
+
+#[test]
+fn disabled_presentation_preserves_transitions_timers_raf_and_updated_underlying_values() {
+    let actual = run_policy_probe(
+        "<!doctype html><div id=target style='opacity:0.2;transition:opacity 64ms linear'></div>",
+        r#"(async()=>{
+          const target=document.getElementById('target'),events=[];
+          for(const type of ['transitionrun','transitionstart','transitionend'])target.addEventListener(type,e=>events.push([e.type,e.isTrusted]));
+          getComputedStyle(target).opacity;
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+          target.style.opacity='0.7';const initial=getComputedStyle(target).opacity;
+          const transition=target.getAnimations()[0];
+          await transition.ready;
+          const ready=getComputedStyle(target).opacity;
+          let timer=false,raf=false;
+          setTimeout(()=>timer=true,0);requestAnimationFrame(()=>raf=true);
+          const finished=await transition.finished;
+          const finishedState=transition.playState;
+          await new Promise(resolve=>setTimeout(resolve,0));
+          const later=target.animate({opacity:[0,1]},{duration:64,iterations:Infinity});
+          await later.ready;target.style.opacity='0.4';
+          let settled=false;later.finished.then(()=>settled=true,()=>settled=true);
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+          return [initial,ready,finished===transition,finishedState,events,timer,raf,getComputedStyle(target).opacity,settled];
+        })()"#,
+        false,
+        Switches::default(),
+        false,
+    );
+    assert_eq!(
+        actual,
+        serde_json::json!([
+            "0.7",
+            "0.7",
+            true,
+            "finished",
+            [
+                ["transitionrun", true],
+                ["transitionstart", true],
+                ["transitionend", true]
+            ],
+            true,
+            true,
+            "0.4",
+            false
+        ])
     );
 }

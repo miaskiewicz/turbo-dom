@@ -1343,6 +1343,7 @@
   ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay) {
     if (suppressStyle) return null;
     cssUpdate(element, read, inherited, snapshots, ownDisplay);
+    if (!animationPresentationOn) return null;
     const stack = effectStack(element, null);
     return stack ? stackResult(stack, read, inherited) : null;
   };
@@ -2464,6 +2465,7 @@
       result.effects = entries;
       result.css_animations_enabled = cssAnimationsOn;
       result.css_transitions_enabled = cssTransitionsOn;
+      result.presentation_suppressed = !animationPresentationOn;
       return apply(stringifyEffects, null, [result]);
     } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
   };
@@ -2630,6 +2632,15 @@
     cssFlush(shadow);
     return collect(effect => root(effect.target) === shadow);
   }, 0);
+
+  // Host presentation is independent of canonical effect creation and timing.
+  let animationPresentationOn = true;
+  ns.setAnimationPresentation = function (on) {
+    on = !!on;
+    if (on === animationPresentationOn) return;
+    animationPresentationOn = on;
+    ns.invalidateComputedStyles();
+  };
 
   // set_css_transitions / set_css_animations (turbo-dom#313): each kind runs, and dispatches
   // its events, only while its switch is on (both are, as in Chrome). Off is jsdom 27's: no

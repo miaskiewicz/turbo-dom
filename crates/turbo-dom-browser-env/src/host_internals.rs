@@ -62,9 +62,11 @@ pub use crate::browser_env::auxiliary_window_proxy::{
     synchronize_origins as synchronize_auxiliary_window_origins,
     template as auxiliary_window_template, HostHooks as AuxiliaryWindowHooks,
 };
-pub use crate::browser_env::host_composed_children;
 pub use crate::browser_env::hyperlink_activation::{
     hyperlink_activation_handled, set_hyperlink_activation_handler, HyperlinkActivationHandler,
+};
+pub use crate::browser_env::{
+    host_composed_children, set_animation_presentation, AnimationPresentation,
 };
 pub use crate::css_snapshot::{RuleSnapshot, SheetSnapshot};
 pub use turbo_dom_parser::rtdom::cascade::StylePolicy;

@@ -55,3 +55,30 @@ layout implementation. It does not add missing grouping-rule interface members,
 complete CSS nesting/cascade layers, font-resource loading, all font-descriptor
 normalizations or layout geometry. Those remain independently testable engine
 work. Exporting a declaration does not establish that a renderer supports it.
+
+
+## Host animation presentation
+
+`browser_env::set_animation_presentation(scope, AnimationPresentation::Disabled)`
+configures the current installed Window through its private engine capability.
+It returns `false` if that live capability is unavailable; callers must treat a
+failed setup as an error. The default is `Enabled`. Configure each independent
+child or auxiliary Window before its guest scripts, using the session's policy.
+The binding does not copy a parent's policy implicitly.
+
+Disabled presentation returns underlying computed styles for CSS animations,
+transitions and script-created Web Animations, including effects created later.
+It leaves ordinary transforms and other underlying declarations intact. Effect
+records, interfaces, event dispatch, canonical clocks, ready/finished promises,
+ordinary timers and animation-frame callbacks continue normally. This differs
+from the existing jsdom compatibility switches, which suppress CSS effect
+creation and can hide Web Animations interfaces.
+
+A fresh `host_internals::css_effect_lifecycle` observation includes the authoritative
+`presentation_suppressed` field for its actual native element and document.
+`allows_underlying_geometry()` accepts this policy proof; with enabled presentation
+its existing finite, naturally completed, non-filling certificate remains strict.
+An unavailable observation is still unknown, regardless of session configuration.
+The proof applies only to effect contributions, not unsupported underlying styles,
+ancestor/descendant effects or general sampled animation geometry. Inspect every
+captured element without guest reentry, and refresh after clock or state changes.

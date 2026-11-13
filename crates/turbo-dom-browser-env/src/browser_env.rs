@@ -2215,6 +2215,63 @@ pub fn set_css_animations(scope: &mut v8::PinScope, enabled: bool) {
     set_css_switch(scope, "setCssAnimations", enabled);
 }
 
+/// Host-owned effect presentation policy for one installed Window. Timing, events,
+/// promises and Web Animations interfaces are independent of this policy.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AnimationPresentation {
+    Enabled,
+    Disabled,
+}
+
+/// Configure the current genuine Window's animation presentation. Install this
+/// before guest scripts when configuring a session; independently installed child
+/// Windows start enabled and require their own host setup. Disabled presentation
+/// exposes underlying computed styles for CSS and script effects without changing
+/// their canonical records or clock. This does not disable ordinary transforms.
+/// Returns false when the private installed capability is unavailable.
+pub fn set_animation_presentation(scope: &mut v8::PinScope, policy: AnimationPresentation) -> bool {
+    let context = scope.get_current_context();
+    let id = context.get_slot::<DomContextId>().map_or(0, |id| id.0);
+    let owner = DOM_CONTEXTS.with(|contexts| {
+        contexts
+            .borrow()
+            .get(&id)
+            .and_then(|context| context.to_local(scope))
+    });
+    if owner != Some(context) {
+        return false;
+    }
+    let _dom = DomScope::enter(id);
+    if !DOM.with(|state| {
+        state
+            .borrow()
+            .as_ref()
+            .is_some_and(|state| state.browsing_context)
+    }) {
+        return false;
+    }
+    v8::tc_scope!(let scope, scope);
+    let Some(namespace) = crate_surface::engine_namespace(scope) else {
+        return false;
+    };
+    let Some(name) = v8::String::new(scope, "setAnimationPresentation") else {
+        return false;
+    };
+    if namespace.has_own_property(scope, name.into()) != Some(true) {
+        return false;
+    }
+    let Some(value) = namespace.get(scope, name.into()) else {
+        return false;
+    };
+    let Ok(function) = v8::Local::<v8::Function>::try_from(value) else {
+        return false;
+    };
+    let enabled = v8::Boolean::new(scope, policy == AnimationPresentation::Enabled);
+    function
+        .call(scope, namespace.into(), &[enabled.into()])
+        .is_some()
+}
+
 /// Run one of animations.js's CSS switches in the current window's DOM.
 fn set_css_switch(scope: &mut v8::PinScope, switch: &str, enabled: bool) {
     let id = scope
