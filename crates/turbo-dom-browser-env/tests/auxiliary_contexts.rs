@@ -1305,3 +1305,57 @@ fn feature_separators_and_foreign_close_receivers_preserve_host_actor_ownership(
     assert_eq!(host.requests.borrow().len(), 1);
     host.windows.borrow_mut().clear();
 }
+
+#[test]
+fn collected_navigation_histories_do_not_root_contexts_or_revive_old_documents() {
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    v8::scope!(let scope, &mut isolate);
+    let bootstrap = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, bootstrap);
+    let active = coverage_context(scope);
+    assert!(install_auxiliary_context(
+        scope,
+        active,
+        "https://frames.test/active",
+        None
+    ));
+    let (old, retired) = {
+        v8::scope!(let inner, scope);
+        let previous = coverage_context(inner);
+        assert!(install_auxiliary_context(
+            inner,
+            previous,
+            "https://frames.test/previous",
+            None
+        ));
+        let current = create_auxiliary_window_context(inner, Some(previous));
+        {
+            let inner = &mut v8::ContextScope::new(inner, current);
+            initialize_auxiliary_document(inner, "<!doctype html><body>retired</body>");
+        }
+        assert!(commit_auxiliary_navigation(
+            inner,
+            previous,
+            current,
+            "https://frames.test/retired"
+        ));
+        assert!(retire_auxiliary_context(inner, current));
+        (
+            v8::Weak::new(inner, previous),
+            v8::Weak::new(inner, current),
+        )
+    };
+    for _ in 0..3 {
+        scope.low_memory_notification();
+        browser_env::flush_ownership(scope);
+    }
+    assert!(old.is_empty() && retired.is_empty());
+    synchronize_auxiliary_window_origins(scope, active);
+    assert!(old.is_empty() && retired.is_empty());
+    let scope = &mut v8::ContextScope::new(scope, active);
+    assert_js(
+        scope,
+        "document.body.textContent==='frame'&&!closed&&opener===null",
+    );
+}
