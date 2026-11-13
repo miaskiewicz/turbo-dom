@@ -525,13 +525,17 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
         return;
     }
     let radius = diameter / 2.0;
-    let mut cy = f.y + radius;
-    let end = f.y + f.height;
+    let (top, xf) = column_rule_space(f.y, period, xf);
+    let mut cy = top + radius;
+    let end = top + f.height;
     while cy - radius < end {
         if let Some(path) = circle_path(cx, cy, radius) {
             pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
         }
-        cy += period;
+        let Some(next) = next_column_rule_step(cy, period) else {
+            break;
+        };
+        cy = next;
     }
 }
 
@@ -566,7 +570,18 @@ fn paint_dotted_rule_stroked(
     {
         return;
     }
-    let px_left = cx.floor();
+    paint_pixel_dots(pm, cx.floor(), (y_top, height), diameter, color, xf);
+}
+
+fn paint_pixel_dots(
+    pm: &mut Pixmap,
+    px_left: f32,
+    (y_top, height): (f32, f32),
+    diameter: f32,
+    color: Rgba,
+    xf: Transform,
+) {
+    let (y_top, xf) = column_rule_space(y_top, 2.0 * diameter, xf);
     let end = y_top + height;
     // Leading cap: one px above the first dash (Blink's round line-cap).
     // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
@@ -582,7 +597,10 @@ fn paint_dotted_rule_stroked(
     while y < end {
         let dash_h = (end - y).min(diameter);
         fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
-        y += 2.0 * diameter;
+        let Some(next) = next_column_rule_step(y, 2.0 * diameter) else {
+            break;
+        };
+        y = next;
     }
 }
 
@@ -624,14 +642,35 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     if period <= 0.0 {
         return;
     }
-    let end = f.y + f.height;
-    let mut dash_top = f.y;
+    let (top, xf) = column_rule_space(f.y, period, xf);
+    let end = top + f.height;
+    let mut dash_top = top;
     while dash_top < end {
         let dash_h = dash.min(end - dash_top);
         if dash_h > 0.0 {
             fill_rect(pm, f.x, dash_top, width, dash_h, color, xf);
         }
-        dash_top += period;
+        let Some(next) = next_column_rule_step(dash_top, period) else {
+            break;
+        };
+        dash_top = next;
+    }
+}
+
+/// A rule cursor must move strictly forward; a swallowed period cannot spin.
+fn next_column_rule_step(cursor: f32, period: f32) -> Option<f32> {
+    let next = cursor + period;
+    (next > cursor).then_some(next)
+}
+
+/// Keep ordinary coordinates unchanged, but iterate locally when a finite
+/// origin swallows the rule's period. Composing that origin into the transform
+/// preserves the full visible pattern when an ancestor translates it onscreen.
+fn column_rule_space(y: f32, period: f32, xf: Transform) -> (f32, Transform) {
+    if !y.is_finite() || y + period > y {
+        (y, xf)
+    } else {
+        (0.0, xf.pre_concat(Transform::from_translate(0.0, y)))
     }
 }
 
@@ -1837,6 +1876,31 @@ mod tests {
     }
 
     #[test]
+    fn column_rule_steps_require_strictly_forward_coordinates() {
+        for (cursor, period, expected) in [
+            (0.0, 3.0, Some(3.0)),
+            (-3.0, 2.0, Some(-1.0)),
+            (1_000_000_000.0, 3.0, None),
+            (1.0, 0.0, None),
+            (1.0, -1.0, None),
+            (f32::NAN, 1.0, None),
+            (f32::INFINITY, 1.0, None),
+            (1.0, f32::NAN, None),
+        ] {
+            assert_eq!(next_column_rule_step(cursor, period), expected);
+        }
+        let transform = Transform::from_translate(7.0, 11.0);
+        assert_eq!(column_rule_space(5.0, 3.0, transform), (5.0, transform));
+        let (top, local) = column_rule_space(
+            1_000_000_000.0,
+            3.0,
+            Transform::from_translate(0.0, -1_000_000_000.0),
+        );
+        assert_eq!(top, 0.0);
+        assert_eq!(local, Transform::identity());
+    }
+
+    #[test]
     fn an_image_touching_the_canvas_edge_has_no_visible_resampling_window() {
         for (x, y) in [
             (12.0, 0.0),
@@ -1909,6 +1973,195 @@ mod tests {
             }
             let actual = render(&group, 24, 24, &HashMap::new());
             assert_eq!(actual.data(), expected.data(), "shadow group {index}");
+        }
+    }
+
+    fn check_opacity_ink(mut group: Fragment, images: &DecodedAssets, label: &str) {
+        group.opacity = 0.5;
+        let expected = full_layer_reference(&group, 256, 256, images);
+        assert!(
+            !all_white(&expected),
+            "{label}: the independent reference paints"
+        );
+        let actual = render(&group, 256, 256, images);
+        let first_difference = actual
+            .pixels()
+            .iter()
+            .zip(expected.pixels())
+            .position(|(a, b)| a != b);
+        assert!(
+            first_difference.is_none(),
+            "{label}: first differing pixel {first_difference:?}"
+        );
+    }
+
+    #[test]
+    fn opacity_groups_keep_signed_shadow_offsets_and_spreads() {
+        for position in [-8.0, 0.0, 6.0] {
+            for dx in [-6, 0, 6] {
+                for dy in [-6, 0, 6] {
+                    for spread in [0, 4, 10] {
+                        let group = with_box(
+                            plain(position, position, 5.0, 5.0, None),
+                            |_, shadow, _, transform| {
+                                *shadow = Some(BoxShadow {
+                                    offset_x: dx,
+                                    offset_y: dy,
+                                    blur: 0,
+                                    spread,
+                                    color: RED,
+                                    inset: false,
+                                });
+                                *transform = Some(BoxTransform {
+                                    matrix: [1.0, 0.0, 0.0, 1.0, 32.0, 32.0],
+                                    origin_x: 0.0,
+                                    origin_y: 0.0,
+                                });
+                            },
+                        );
+                        check_opacity_ink(
+                            group,
+                            &HashMap::new(),
+                            &format!("shadow {position}/{dx}/{dy}/{spread}"),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn ink_test_line(
+        face: &FontFace,
+        character: char,
+        origin: (f32, f32),
+        pen: (f32, f32),
+        font_size: f32,
+    ) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            origin.0,
+            origin.1,
+            1.0,
+            1.0,
+            FragmentContent::TextLine {
+                glyphs: vec![PositionedGlyph {
+                    glyph_id: face.glyph_index(character).unwrap(),
+                    x: pen.0,
+                    y: pen.1,
+                    text_start: 0,
+                    text_end: 0,
+                }],
+                text: character.to_string(),
+                face: face.clone(),
+                font_size,
+                color: RED,
+                vertical: false,
+                upright: false,
+            },
+        )
+    }
+
+    #[test]
+    fn opacity_groups_keep_real_mark_overhangs_and_remote_glyph_pens() {
+        let arabic = FontFace::from_bytes(
+            include_bytes!(
+                "../../turbo-dom-layout/assets/fonts/noto-sans-arabic/NotoSansArabic-Regular.ttf"
+            )
+            .to_vec(),
+            "Noto Sans Arabic",
+            400,
+            false,
+        )
+        .unwrap();
+        let italic = FontFace::from_bytes(
+            include_bytes!("../../turbo-dom-layout/assets/fonts/inter/Inter-Italic.otf").to_vec(),
+            "Inter",
+            400,
+            true,
+        )
+        .unwrap();
+        let mark = '\u{0898}';
+        assert_eq!(
+            arabic.glyph_advance(arabic.glyph_index(mark).unwrap()),
+            0,
+            "a real combining mark has no advance width"
+        );
+        check_opacity_ink(
+            ink_test_line(&arabic, mark, (80.0, 80.0), (0.0, 0.0), 64.0),
+            &HashMap::new(),
+            "high Arabic mark",
+        );
+        check_opacity_ink(
+            ink_test_line(&italic, 'M', (0.0, 0.0), (80.0, 80.0), 16.0),
+            &HashMap::new(),
+            "remote glyph pen",
+        );
+        let mut translated = with_box(plain(-80.0, -80.0, 1.0, 1.0, None), |_, _, _, transform| {
+            *transform = Some(BoxTransform {
+                matrix: [1.0, 0.0, 0.0, 1.0, 100.0, 100.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        translated.children.push(ink_test_line(
+            &italic,
+            'j',
+            (-80.0, -80.0),
+            (0.0, 0.0),
+            32.0,
+        ));
+        check_opacity_ink(
+            translated,
+            &HashMap::new(),
+            "negative pen with real italic overhang and descender",
+        );
+        let mut translated_mark =
+            with_box(plain(80.0, -80.0, 1.0, 1.0, None), |_, _, _, transform| {
+                *transform = Some(BoxTransform {
+                    matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 100.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            });
+        translated_mark.children.push(ink_test_line(
+            &arabic,
+            mark,
+            (80.0, -80.0),
+            (0.0, 0.0),
+            16.0,
+        ));
+        check_opacity_ink(translated_mark, &HashMap::new(), "negative mark baseline");
+    }
+
+    #[test]
+    fn opacity_groups_keep_image_pixels_rounded_before_scaled_placement() {
+        let mut images = HashMap::new();
+        images.insert(
+            "pic".to_string(),
+            crate::image_paint::DecodedImage {
+                width: 1,
+                height: 1,
+                rgba: vec![255, 0, 0, 255],
+                intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+                placeholder: false,
+            },
+        );
+        for (position, size) in [(7.0, 6.0), (7.25, 6.25), (7.75, 6.75)] {
+            let mut group = with_box(
+                plain(position, position, 1.0, 1.0, None),
+                |_, _, _, transform| {
+                    *transform = Some(BoxTransform {
+                        matrix: [4.0, 0.0, 0.0, 4.0, 0.0, 0.0],
+                        origin_x: 0.0,
+                        origin_y: 0.0,
+                    });
+                },
+            );
+            let mut picture = image("pic", None);
+            (picture.x, picture.y, picture.width, picture.height) =
+                (position, position, size, size);
+            group.children.push(picture);
+            check_opacity_ink(group, &images, &format!("rounded image {position}/{size}"));
         }
     }
 
