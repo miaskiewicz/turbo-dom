@@ -76,6 +76,18 @@ def mutation_flags():
             "--cap-lints", "false", "-C", "--locked"]
 
 
+def full_fallback_timeout(test_phase):
+    if not isinstance(test_phase, dict) or test_phase.get("phase") != "Test" or test_phase.get("exit_code") != 0:
+        raise ValueError("fallback requires a successful separate unmutated Test phase")
+    seconds = test_phase.get("seconds")
+    if type(seconds) not in (int, float) or not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("fallback requires a finite positive observed test duration")
+    budget = max(300, math.ceil(2 * seconds + 30))
+    if budget > 900:
+        raise ValueError("observed Test phase exceeds the reviewed 900-second fallback ceiling")
+    return budget
+
+
 def command(argv, log):
     started = time.monotonic()
     with log.open("w") as output:
@@ -167,12 +179,20 @@ def run_job(args):
         report["all_names"] = [item["name"] for item in inventory]
         report["selected_names"] = names
         # The exact unmutated package/all-targets graph is checked before either skip.
-        baseline = command(["cargo", "test", "--locked", "-p", package,
-                            *feature_args, "--all-targets"],
-                           output / "baseline.log")
-        report["baseline"] = baseline
-        if baseline["exit_code"]:
-            raise ValueError("unmutated all-targets baseline failed")
+        baseline_argv = ["cargo", "test", "--locked", "-p", package,
+                         *feature_args, "--all-targets"]
+        build_phase = command([*baseline_argv, "--no-run"], output / "baseline-build.log")
+        build_phase["phase"] = "Build"
+        report["baseline_build"] = build_phase
+        if build_phase["exit_code"]:
+            raise ValueError("unmutated all-targets Build phase failed")
+        test_phase = command(baseline_argv, output / "baseline-test.log")
+        test_phase["phase"] = "Test"
+        report["baseline_test"] = test_phase
+        if test_phase["exit_code"]:
+            raise ValueError("unmutated all-targets Test phase failed")
+        fallback_budget = full_fallback_timeout(test_phase)
+        report["full_fallback_timeout_seconds"] = fallback_budget
         primary_filter = PRIMARY_FILTERS.get(args.target)
         primary_args = [primary_filter] if primary_filter else []
         if primary_args:
@@ -201,7 +221,9 @@ def run_job(args):
             pattern = "^(?:" + "|".join(map(rust_regex_literal, missed)) + ")$"
             full_dir = output / "all-targets"
             full_dir.mkdir()
-            report["all_target_run"] = command([*common, *flags, "-C", "--all-targets",
+            full_flags = flags.copy()
+            full_flags[full_flags.index("--timeout") + 1] = str(fallback_budget)
+            report["all_target_run"] = command([*common, *full_flags, "-C", "--all-targets",
                                                 "--re", pattern, "-o", str(full_dir)], output / "all-targets.log")
             rows.update(outcomes(full_dir, missed))
         report["results"] = {name: row["summary"] for name, row in rows.items()}

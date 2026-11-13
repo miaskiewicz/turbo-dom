@@ -9,7 +9,7 @@ Consequently the current Trusted Types inventory is included in full.
 
 ## Reviewable pilot, before the full run
 
-`scripts/mutation-sweep-plan.json` deliberately starts in **pilot** mode. The
+`scripts/mutation-sweep-plan.json` now selects **full** mode after the reviewed pilot. The
 standalone workflow runs on pushes only to `codex/084-mutation-487`; it does not
 change ordinary CI, release gates, floors or complexity limits. It uses Rust
 1.98.0, cargo-mutants 27.1.0 and immutable commits resolved from the repository's
@@ -28,13 +28,13 @@ claimed before that pilot. The proposed full matrix is currently:
 
 | Target | Current mutants | Proposed shards |
 |---|---:|---:|
-| event_handlers | 40 | 1 |
+| event_handlers | 40 | 4 |
 | worker_scope | 11 | 1 |
-| trusted_types | 98 | 1 |
-| paint_png | 906 | 6 |
-| paint_svg | 424 | 4 |
+| trusted_types | 98 | 2 |
+| paint_png | 906 | 12 |
+| paint_svg | 424 | 6 |
 
-That is 1,479 mutants across 13 jobs, at most four concurrent. Adjust the shard
+That is 1,479 mutants across 25 jobs, at most four concurrent. Adjust the shard
 counts from observed pilot cost before changing the tracked plan to `full`.
 The plan generator rejects more than 12 shards per target or 32 total jobs.
 This is a ceiling, not authorization to consume the ceiling without review.
@@ -55,8 +55,10 @@ official archive, as ordinary CI does; no untracked local path override enters
 the graph. Current mutation targets contain no production feature-gated blocks;
 browser jobs enable host-internals/test-support and raster jobs use defaults.
 
-1. Run the unmodified package's **all-targets** tests. No mutation starts if that
-   baseline fails. Warning capping applies equally to baseline and mutants only;
+1. Build the unmodified package's **all-targets** tests with `--no-run`, then run
+   them in a separate timed command. Build/Test argv, logs and elapsed durations
+   are separate; compile time is never included in the fallback timeout model.
+   No mutation starts if that baseline fails. Warning capping applies equally to baseline and mutants only;
    ordinary strict Clippy remains independent and unchanged.
 2. Run the deterministic file/shard using `--in-place --no-shuffle --timeout 300
    --build-timeout 300 --baseline skip`. In-place execution is inherently serial;
@@ -75,6 +77,12 @@ browser jobs enable host-internals/test-support and raster jobs use defaults.
    against all targets without any filter.
 3. Retry every lib-suite survivor against the full all-targets tests, selected by
    its exact escaped name. All-targets baseline was already verified in step 1.
+   Only this unfiltered fallback's test budget is `max(300, ceil(2*T + 30))`,
+   where `T` is the observed successful unmutated **Test** command duration after
+   the completed no-run build. Missing/malformed/zero/nonfinite or combined-phase
+   timing is rejected. A computed budget above 900 seconds fails for review
+   instead of silently clamping. Primary mutant test timeouts remain 300 seconds;
+   neither production/test-source timeouts nor any quality floors are raised.
 4. Require one outcome and nonempty raw diff/log for every selected mutant. A
    caught mutant passes. Unviable mutants retain compiler evidence separately.
    Misses, timeouts, unexpected successes, unknown outcomes, missing records or
@@ -87,9 +95,10 @@ Any equivalent mutant needs an individual source proof and review; this runner
 does not silently exempt it. Any genuine survivor needs a behavior assertion or
 implementation fix and a retained red/green receipt. Then rerun its exact mutant.
 The issue stays open until all five full inventories are accounted for on the
-final source graph. The #504 branch is still changing; pilot costs may be learned
-now, but the full acceptance run must use the integrated release graph, or prove
-unchanged production source and monotonic test/dependency behavior explicitly.
+final source graph. The acceptance graph is frozen to release commit
+`26272a83e8f8c1f335d9c615c942674b1de8ec1a` plus mutation tooling and necessary
+test fixes. The separate #504 feature is excluded from this sweep. Any later
+production or dependency change requires explicit provenance review.
 
 ## Commands
 
@@ -104,6 +113,6 @@ CARGO_ENCODED_RUSTFLAGS=--cap-lints=warn \
   --shard 0 --shards 1 --output /private/tmp/mutation-487-worker-pilot
 ```
 
-The pilot orchestration has nine fail-closed Python tests and the installed
+The pilot orchestration has fourteen fail-closed Python tests and the installed
 tool's exact-name regex selection was checked without building Rust. No mutation
 outcomes or timings are claimed from that source-only preparation.
