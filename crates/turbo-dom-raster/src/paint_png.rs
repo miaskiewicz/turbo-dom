@@ -4321,6 +4321,61 @@ mod exact_tests {
     // The direct test keeps the contract pinned without touching the raster
     // walk.
     #[test]
+    fn png11_uniform_translucent_border_has_no_diagonal_seam() {
+        let red = Rgba::new(255, 0, 0, 128);
+        let side = |width| BorderSide {
+            width,
+            color: Some(red),
+        };
+        let borders = BorderEdges {
+            top: side(0),
+            right: side(3),
+            bottom: side(3),
+            left: side(3),
+        };
+        let f = boxed(2.0, 3.0, 20.0, 10.0, 0.0, None);
+        let mut pm = white(26, 17);
+        paint_round_border(&mut pm, &f, &borders, &4.0.into(), Transform::identity());
+        // This pixel lies wholly within the bottom-left ring, where the two
+        // side regions meet. A uniform border composites its color only once.
+        let pixel = pm.pixel(4, 10).unwrap();
+        assert_eq!(
+            [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+            [255, 127, 127, 255]
+        );
+        let hole = pm.pixel(12, 6).unwrap();
+        assert_eq!(
+            [hole.red(), hole.green(), hole.blue(), hole.alpha()],
+            [255; 4]
+        );
+    }
+
+    #[test]
+    fn png11_collapsed_single_padding_axis_does_not_punch_an_inverted_hole() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let f = boxed(2.0, 3.0, 20.0, 10.0, 0.0, None);
+        for (left, right, top, bottom, x, y) in [(11, 10, 1, 1, 12, 7), (1, 1, 6, 5, 12, 8)] {
+            let borders = BorderEdges {
+                top: side(top),
+                right: side(right),
+                bottom: side(bottom),
+                left: side(left),
+            };
+            let mut pm = white(26, 17);
+            paint_round_border(&mut pm, &f, &borders, &4.0.into(), Transform::identity());
+            let pixel = pm.pixel(x, y).unwrap();
+            assert_eq!(
+                [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                [255, 0, 0, 255],
+                "inner collapse {left},{right},{top},{bottom}"
+            );
+        }
+    }
+
+    #[test]
     fn png45_circle_paths_keep_analytic_interior_and_exterior_pixels() {
         for (cx, cy, radius) in [(43.5, 51.25, 27.25), (51.25, 43.5, 31.0)] {
             let path = circle_path(cx, cy, radius).unwrap();
