@@ -152,6 +152,16 @@ def source_receipt(package):
             "cargo": capture(["cargo", "--version"]), "files": hashes}
 
 
+
+def validate_inventory_count(target, inventory):
+    counts = json.loads(PLAN.read_text())["expected_inventory_counts"]
+    if set(counts) != set(TARGETS) or any(type(value) is not int or value <= 0 for value in counts.values()):
+        raise ValueError("invalid reviewed inventory counts")
+    names = [item["name"] for item in inventory]
+    if len(names) != len(set(names)) or len(names) != counts[target]:
+        raise ValueError(f"inventory mismatch for {target}: reviewed {counts[target]}, actual {len(names)}")
+
+
 def source_clean():
     changed = capture(["git", "diff", "HEAD", "--name-only"])
     untracked = capture(["git", "ls-files", "--others", "--exclude-standard", "crates"])
@@ -207,6 +217,9 @@ def run_job(args):
                   "-f", target_path(args.target), *feature_args]
         inventory = json.loads(capture([*common, "--list", "--json"]))
         write_json(output / "inventory-all.json", inventory)
+        report["actual_inventory_count"] = len(inventory)
+        report["inventory_reference_commit"] = json.loads(PLAN.read_text())["inventory_reference_commit"]
+        validate_inventory_count(args.target, inventory)
         shard, shards = args.shard, args.shards
         if args.mode == "pilot":
             limit = json.loads(PLAN.read_text())["pilot_mutants_per_target"]

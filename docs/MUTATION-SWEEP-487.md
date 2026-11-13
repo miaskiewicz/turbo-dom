@@ -24,17 +24,22 @@ after a step timeout. A timeout is unresolved evidence, never a passing result.
 
 Before authorizing the full matrix, read the pilot's actual baseline times and
 per-mutant Build/Test durations from `outcomes.json`. No measured runtime is
-claimed before that pilot. The proposed full matrix is currently:
+claimed before that pilot. The original reviewed matrix used 1,479 mutants. After the validated large-coordinate
+PNG/SVG fixes, a fresh inventory at `655404321e2ae05a93e25aad8752726800246944` is:
 
 | Target | Current mutants | Proposed shards |
 |---|---:|---:|
 | event_handlers | 40 | 4 |
 | worker_scope | 11 | 1 |
 | trusted_types | 98 | 2 |
-| paint_png | 906 | 12 |
-| paint_svg | 424 | 6 |
+| paint_png | 922 | 12 |
+| paint_svg | 439 | 6 |
 
-That is 1,479 mutants across 25 jobs, at most four concurrent. Adjust the shard
+That is **1,510 mutants** across the same 25 jobs, at most four concurrent.
+The plan records the source reference and reviewed per-file counts; an actual
+inventory with extra, missing or duplicate mutants stops before any baseline or
+mutation. Re-enumerate and review after further production changes rather than
+reusing the old 906/424 painter totals. Adjust the shard
 counts from observed pilot cost before changing the tracked plan to `full`.
 The plan generator rejects more than 12 shards per target or 32 total jobs.
 This is a ceiling, not authorization to consume the ceiling without review.

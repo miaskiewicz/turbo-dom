@@ -26,6 +26,13 @@ class MutationEvidenceTests(unittest.TestCase):
                          "log_path": log, "diff_path": diff})
         (directory / "outcomes.json").write_text(json.dumps({"outcomes": rows, "total_mutants": len(rows)}))
 
+    def test_reviewed_inventory_count_rejects_missing_new_or_duplicate_mutants(self):
+        valid = [{"name":str(index)} for index in range(11)]
+        ms.validate_inventory_count("worker_scope", valid)
+        for items in (valid[:-1], valid + [{"name":"new"}], valid[:-1] + [valid[0]]):
+            with self.subTest(items=items), self.assertRaisesRegex(ValueError, "inventory mismatch"):
+                ms.validate_inventory_count("worker_scope", items)
+
     def test_missing_mutant_cannot_pass(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -68,14 +75,14 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertIn("--in-place", ms.mutation_flags())
         self.assertNotIn("--jobs", ms.mutation_flags())
 
-    def run_fake_job(self, primary_count):
+    def run_fake_job(self, primary_count, inventory_count=11):
         calls = []
 
         def capture(argv):
             if argv == ["cargo", "mutants", "--version"]:
                 return "cargo-mutants 27.1.0"
             if "--list" in argv:
-                return json.dumps([{"name":"one", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}}])
+                return json.dumps([{"name":f"one-{index}", "file":"crates/turbo-dom-browser-env/src/worker_scope.rs", "span":{"start":{"line":1}}} for index in range(inventory_count)])
             if "metadata" in argv:
                 return "{}"
             self.fail(f"unexpected command {argv}")
@@ -87,7 +94,8 @@ class MutationEvidenceTests(unittest.TestCase):
             if log.name in {"lib.log", "all-targets.log"}:
                 directory = log.parent / ("lib" if log.name == "lib.log" else "all-targets")
                 summary = "MissedMutant" if log.name == "lib.log" else "CaughtMutant"
-                self.write_outcomes(directory, ["one"], {"one": summary})
+                names = [f"one-{index}" for index in range(11)]
+                self.write_outcomes(directory, names, dict.fromkeys(names, summary))
             return {"argv": argv, "exit_code": 0, "seconds": 1}
 
         with tempfile.TemporaryDirectory() as temp:
@@ -99,6 +107,13 @@ class MutationEvidenceTests(unittest.TestCase):
                 result = ms.run_job(args)
             report = json.loads((Path(temp) / "summary.json").read_text())
         return result, calls, report
+
+    def test_inventory_drift_stops_before_building_or_testing(self):
+        result, calls, report = self.run_fake_job(11, inventory_count=10)
+        self.assertEqual(result, 1)
+        self.assertIn("inventory mismatch", report["error"])
+        self.assertEqual(report["actual_inventory_count"], 10)
+        self.assertEqual(calls, [])
 
     def test_browser_primary_filters_do_not_filter_full_fallback(self):
         result, calls, _ = self.run_fake_job(11)
