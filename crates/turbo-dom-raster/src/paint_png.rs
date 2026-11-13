@@ -245,9 +245,9 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
         FragmentContent::Image(_) => (l, t, r, b) = (l - 1.0, t - 1.0, r + 1.0, b + 1.0),
         _ => {}
     }
-    let mut ink = PathBuilder::from_rect(Rect::from_ltrb(l, t, r.max(l + 1.0), b.max(t + 1.0))?)
-        .transform(xf)?
-        .bounds();
+    // Zero-sized boxes have no ink of their own. Keep their valid empty bounds
+    // while unioning descendants, rather than allocating a one-pixel opacity layer.
+    let mut ink = Rect::from_ltrb(l, t, r.max(l), b.max(t))?.transform(xf)?;
     for c in &f.children {
         let cb = ink_bounds(c, xf)?;
         ink = Rect::from_ltrb(
@@ -2167,6 +2167,15 @@ mod tests {
             16.0,
         ));
         check_opacity_ink(translated_mark, &HashMap::new(), "negative mark baseline");
+    }
+
+    #[test]
+    fn nonpositive_opacity_ancestors_keep_visible_descendant_ink() {
+        for (width, height) in [(0.0, 4.0), (4.0, 0.0), (0.0, 0.0), (-4.0, 4.0), (4.0, -4.0)] {
+            let mut group = plain(7.0, 9.0, width, height, None);
+            group.children.push(plain(11.0, 13.0, 8.0, 6.0, Some(RED)));
+            check_opacity_ink(group, &HashMap::new(), "nonpositive opacity ancestor");
+        }
     }
 
     #[test]

@@ -249,6 +249,36 @@ fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
     }
 }
 
+#[test]
+fn empty_opacity_boxes_do_not_allocate_scratch_layers() {
+    let mut counts = [0; 2];
+    for (i, opacity) in [1.0, 0.5].into_iter().enumerate() {
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut html = String::from("<body style='margin:0;background:white'>");
+        for _ in 0..200 {
+            write!(html, "<div style='position:absolute;left:10px;top:10px;width:0;height:0;opacity:{opacity}'></div>").unwrap();
+        }
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            VIEWPORT,
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        drop(preparation);
+        counts[i] = allocation_count(|| {
+            let png = prepared.png().unwrap();
+            assert_eq!(pixel(&png, 10, 10), [255; 3]);
+        });
+    }
+    assert_eq!(
+        counts[0], counts[1],
+        "empty boxes must not create opacity scratch layers: {counts:?}"
+    );
+}
+
 fn transparent_outer_shadows(fragment: &Fragment) -> usize {
     let selected = matches!(
         &fragment.content,
