@@ -3905,7 +3905,8 @@ mod tests {
     }
 
     fn allocation_runs(texts: &[&str]) -> (FontRegistry, Vec<InlineRun>) {
-        let reg = FontRegistry::new();
+        let mut reg = FontRegistry::new();
+        reg.add(FontFace::collection_fixture_faces()[0].clone());
         let runs = texts
             .iter()
             .map(|text| match run(text, &reg, None) {
