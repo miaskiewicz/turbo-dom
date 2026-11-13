@@ -4,11 +4,11 @@ Release **0.8.3**. turbo-dom is the shared browser-engine base of three projects
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
-- **[turbo-surf](https://github.com/miaskiewicz/turbo-surf)**, a headless browser that uses the DOM, the V8 binding, the layout engine and the screenshot painter.
+- **[turbo-surf](https://github.com/miaskiewicz/turbo-surf)**, a browserless crawler and MCP server that uses the DOM, the V8 binding, the layout engine and the screenshot painter.
 
 > Agents: start at [docs/AGENTS.md](docs/AGENTS.md) for the one-command workflows in `scripts/agent/`.
 
-turbo-dom is also a standalone npm package: a fast, spec-correct DOM environment for
+turbo-dom is also a standalone npm package: a fast DOM environment for
 **vitest** and **jest**, usable in place of jsdom or happy-dom.
 
 Up to 0.5.x, each consumer kept its own copy of these pieces. Since 0.6.0 each piece lives
@@ -21,11 +21,11 @@ and the publish order.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.7.0 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.7.0 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.7.0 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.7.0 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.7.0 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.3 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.3 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.3 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.3 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.3 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.1 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -107,10 +107,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.8"
-turbo-dom-layout = "0.8"                 # bundled fonts on by default
-turbo-dom-raster = "0.8"
-turbo-dom-browser-env = "0.8"            # needs a V8 archive, see its README
+turbo-dom = "0.8.3"
+turbo-dom-layout = "0.8.3"                 # bundled fonts on by default
+turbo-dom-raster = "0.8.3"
+turbo-dom-browser-env = "0.8.3"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -151,11 +151,18 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | | `native-sdk-frame-read` | off | reads the interceptor's should-throw mode from the V8 frame, for native SDKs without the fork fix |
 | `turbo-dom-parser` (npm) | `napi-bind` / `wasm-bind` / `wasm-runtime` | `napi-bind` | the native addon, the WASM parser and the WASM DOM-runtime spike |
 
-`turbo-dom` and `turbo-dom-v8` have no features of their own. `turbo-dom-v8` forwards
-upstream rusty_v8's features (for example `simdutf`).
+`turbo-dom` declares no feature flags. `turbo-dom-v8` forwards upstream rusty_v8's
+features (for example `simdutf`).
 
 ## Status
 
+- **0.8.3:** browser binding fixes include branded Touch events, hidden-control geometry,
+  and document replacement that preserves Window/document identity. Screenshot APIs add
+  reusable prepared scenes, resource planning, masks and fractional device-scale handling.
+  Embedders can independently opt into jsdom-compatible TouchEvent init lists and declared
+  computed `text-decoration` serialization; Chrome behavior remains the default. See the
+  [browser-env compatibility switches](crates/turbo-dom-browser-env/README.md#api)
+  and [CHANGELOG.md](CHANGELOG.md) for scope and limitations.
 - **Parser:** html5lib-tests conformance is 99.94% through the npm parser (happy-dom
   37.35%, jsdom 97.03%). The remaining misses are `<select>`-family proposals that
   upstream html5ever has not adopted yet. The Rust `rtdom` tree passes its direct
@@ -235,8 +242,8 @@ cargo test -p turbo-dom-layout          # + --features svg / perf / serde,test-s
 cargo test -p turbo-dom-raster          # + --features avif / jxl
 python3 crates/turbo-dom-v8/scripts/generate.py --download --write   # generate the V8 fork
 cargo test -p turbo-dom-browser-env --features host-internals,test-support   # needs RUSTY_V8_ARCHIVE
-npm run complexity:rust    # cc-check --max 15 (install: CLAUDE.md)
-npm run complexity:js      # oxlint complexity <= 15 over src/ + crates/turbo-dom-browser-env/src
+npm run complexity:rust    # cc-check --max 9 over tracked Rust except browser-env (install: CLAUDE.md)
+npm run complexity:js      # oxlint complexity <= 9 over src/ (npm runtime)
 ```
 
 [CLAUDE.md](CLAUDE.md) has the complete command list and the design rules.
@@ -254,7 +261,7 @@ the host-font policy itself read system fonts.
 |---|---|---|
 | line coverage (tarpaulin, LLVM) | `ci.yml` `coverage` | **blocking**. Floors: turbo-dom 100, turbo-dom-parser `src/core.rs` 100, turbo-dom-layout 99.8, turbo-dom-raster 100 (default / avif / jxl), turbo-dom-browser-env 97.6 |
 | JS runtime coverage | `npm run test:cov` (pre-commit hook) | lines 100 / functions 100 / branches 97.3 |
-| cyclomatic complexity ≤ 15 (Rust cc-check, JS oxlint) | `ci.yml` `complexity-rust`, `complexity-js` | **report-only** (`continue-on-error`) until the post-release refactor clears the backlog ([docs/CONSOLIDATION.md](docs/CONSOLIDATION.md#complexity)) |
+| cyclomatic complexity ≤ 9 (Rust cc-check, JS oxlint) | `ci.yml` `complexity-rust`, `complexity-js` | **blocking** for tracked Rust outside browser-env and the npm runtime (`src/`); browser-env remains excluded from both scans |
 | clippy pedantic `-D warnings`, rustfmt, MSRV 1.89, version agreement, churn allocation gate, verify-copied reviews | `ci.yml` | blocking |
 
 **CI runners.** Pull requests and pushes to `main` run on Linux (x64 and arm64) and on
@@ -271,7 +278,8 @@ concurrency group, so they are never cancelled or dropped while pending.
 One annotated `vX.Y.Z` tag on the release merge commit publishes everything in dependency
 order. The order is turbo-dom-v8 → turbo-dom → turbo-dom-layout → turbo-dom-raster →
 turbo-dom-browser-env → npm. See [PUBLISHING.md](PUBLISHING.md) and the history in
-[CHANGELOG.md](CHANGELOG.md).
+[CHANGELOG.md](CHANGELOG.md). This repository publishes to npm and crates.io; it has
+no PyPI package or Python release tag.
 
 ## License
 
