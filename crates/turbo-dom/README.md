@@ -10,7 +10,7 @@ from before 0.6.0; see [BENCHMARKS-history](../../docs/BENCHMARKS-history.md)).
 
 ## Where it sits
 
-The base of the turbo-dom crate family (0.7.0)
+The base of the turbo-dom crate family (0.8.3)
 ([docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)):
 
 ```
@@ -108,7 +108,7 @@ Modules (`turbo_dom::rtdom::*`):
 - The parser core (`turbo_dom::core`) shares the parser crate's html5ever options and
   passes html5lib-tests tree-construction conformance at **99.94%** there (the rtdom-direct
   gate: 100%).
-- CI: Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 15 per function) is report-only until the post-release refactor.
+- CI: Pull-request CI runs this crate's jobs on Linux; macOS arm64 is added in the release run only (`publish.yml` calls `ci.yml` with `darwin: true`). Complexity (<= 9 per function) is blocking.
 - Honest by design: `getComputedStyle` only returns values a real rule/inline/
   inherited declaration set (no invented initial values, no layout/`@media`/state).
 
@@ -145,7 +145,7 @@ Embedder entry points beyond the browser-facing API:
   (`npm run conformance:rtdom`). The perf gate `churn_alloc_gate` (≤ 380 allocs/op) runs alone:
   `cargo test -p turbo-dom churn_alloc_gate -- --ignored`.
 - clippy pedantic `-D warnings`, rustfmt, MSRV 1.89 check.
-- Cyclomatic complexity ≤ 15 per function is **report-only** until the post-release refactor.
+- Cyclomatic complexity ≤ 9 per function is **blocking**.
 - CI runs on Linux for pull requests; macOS arm64 is added only in the release run.
 
 ## Testing

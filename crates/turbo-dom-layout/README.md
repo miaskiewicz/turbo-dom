@@ -161,7 +161,7 @@ fn lay_out(html: &str) -> Result<Fragment, RenderError> {
   - wasm32 and musl checks.
 - MSRV 1.89 check.
 - Pull requests run on Linux; macOS is added in the release run.
-- Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297). It replaces
+- Cyclomatic complexity ≤ 9 is **blocking** in 0.8.3. It replaces
   the old cc ≤ 5 allow-list.
 
 ## Testing

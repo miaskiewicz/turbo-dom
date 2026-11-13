@@ -77,8 +77,7 @@ turbo-dom is the leaf: consumers (turbo-test, turbo-html2pdf, turbo-surf) pin a
 pre-publish `turbo-dom-*` through `[patch.crates-io]` against this repo's
 release branch while the release PR is open. The order is:
 
-1. Open and merge this repo's release PR into `release/0.8.0` (or `main` once
-   0.8.0 is on `main`).
+1. Open and merge this repo's release PR into `main` with a merge commit.
 2. Create an **annotated** `vX.Y.Z` tag on the actual merge commit
    (not the PR branch tip). Pushing it triggers `publish.yml`.
 3. Once crates.io lists every crate, consumers drop their `[patch.crates-io]`
@@ -100,7 +99,7 @@ The hook is `.githooks/pre-commit`, zero-dep, wired by the `prepare` script at
   bypass it.
 - Commit subjects: short, lower-case / sentence-case, scope in parens
   (`fix(runtime): ...`, `chore(release): ...`). Match the style of
-  `git log --oneline` on `release/0.8.0`.
+  `git log --oneline` on `main`.
 - A Chrome-control probe you hand-edit must be biome-formatted before it lands
   (the record helper does this for you).
 

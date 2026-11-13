@@ -190,8 +190,9 @@ every item that turbo-test and turbo-surf call, from outside the crate.
     archives.
   - The release run adds macOS arm64.
 - The crate is lint-exempt by design (`#![allow(unused, clippy::all)]` in `src/lib.rs`).
-- Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297), for both the
-  Rust code and the shipped JS (`npm run complexity:js` scans `src/`).
+- Browser-env is excluded from both complexity scans after build-breaking extractions
+  were reverted (#490). The blocking cc ≤ 9 gates cover the other tracked Rust crates
+  and the npm runtime (`src/`); they do not certify this binding.
 - Native guards reachable by page-controlled values must throw, never abort. Examples:
   oversized strings raise `RangeError` (turbo-dom#183), and a terminated setup returns
   `SetupTerminated` (#184).

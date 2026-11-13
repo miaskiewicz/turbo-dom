@@ -161,7 +161,7 @@ size-only fallback is one branch shared by both features.
 - CI `raster` job: clippy pedantic `-D warnings` and tests (default, `avif`, `jxl`), a
   `gpu-metal` check on Linux, and `coretext` / `gpu-metal` on macOS in the release run.
   Pull requests run on Linux only.
-- MSRV 1.89. Cyclomatic complexity ≤ 15 is **blocking** since 0.8.0 (turbo-dom#297).
+- MSRV 1.89. Cyclomatic complexity ≤ 9 is **blocking** in 0.8.3.
 
 ## Testing
 

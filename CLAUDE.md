@@ -4,7 +4,7 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.7.0):
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.8.3):
 
 - the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
   native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
@@ -40,8 +40,8 @@ python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-d
 python3 scripts/check-versions.py                        # one release version in every manifest (CI guard; --tag in publish)
 python3 -m unittest discover -s scripts -p 'test_*.py'   # release helper (publish-crates.py) self-tests
 python3 -m unittest discover -s tools/parity -p 'test_*.py'  # parity harness self-test
-npm run complexity:rust   # cc-check --max 12 over every tracked .rs file (needs cc-check on PATH, below)
-npm run complexity:js     # oxlint `complexity` max 15 over src/ + crates/turbo-dom-browser-env/src (.oxlintrc.complexity.json)
+npm run complexity:rust   # cc-check --max 9 over tracked Rust except browser-env (needs cc-check on PATH, below)
+npm run complexity:js     # oxlint `complexity` max 9 over src/ (.oxlintrc.complexity.json)
 ```
 
 CI (`.github/workflows/ci.yml`) has one job family per crate (base / layout / raster / v8 +
@@ -90,7 +90,7 @@ for -v8/-browser-env; `source $HOME/.cargo/env` if cargo isn't on PATH).
 **Pre-commit hook** (`.githooks/pre-commit`, zero-dep — wired via the `prepare` script setting
 `core.hooksPath=.githooks` on `npm install`): runs `npm run test:cov` when `src/`/`test/` is
 staged, so every commit gates tests + coverage + conformance (conformance.test.mjs runs in the
-suite). Bypass with `git commit --no-verify`. Coverage-ignore a truly-unreachable defensive line
+suite). Never bypass it with `git commit --no-verify`. Coverage-ignore a truly-unreachable defensive line
 with `/* node:coverage ignore next */` (sparingly) — prefer restructuring or a test.
 
 **Lint + perf gates (CI-enforced, not pre-commit).** The parser and the turbo-dom / -layout /
@@ -105,40 +105,21 @@ on CI where wall-clock would flake). It's `#[ignore]`'d and run ALONE in its own
 (`cargo test -p turbo-dom churn_alloc_gate -- --ignored`) because `CountingAlloc` is a process-
 global allocator that a parallel test would pollute. Don't loosen either threshold to pass a change.
 
-**Complexity gates (CI jobs `complexity / rust (cc <= 15)` and `complexity / js (cc <= 15)`).**
-Every function's cyclomatic complexity must be <= 15 — one limit for the whole repo, no
-baseline, no per-function allow-list (turbo-html2pdf's own crates stay at its stricter cc < 6).
-0.8.1 #379 refactored the non-hot-path fns across both Rust (3 lanes) and JS (5 lanes) to
-cc <= 12, but the ceiling drop 15 -> 12 is deferred to v0.9.0 along with the remaining
-hot-path extractions — 10 Rust fns (cascade/cssom parse_stylesheet + 8
-`unit_tokenizer::step_group_*`) and 10 JS fns (turbo-dom #462 / #463 / #464). A further step
-to cc <= 9 is tracked for a later release.
-The JS gate excludes 17 named files (`.oxlintrc.complexity.json` `ignorePatterns`) that cannot
-be refactored: the vendored `xpath_provider/xpath.js` (byte-identical to upstream, SHA-256
-pinned in its README) and 16 browser-env `*_probe.js` Chrome-control fixtures whose control
-JSON pins the probe's SHA-256 (editing one invalidates its recorded Chrome output; several were
-captured on Chromes not cached here). `computed_defaults_probe.js` was edited in 0.8.0 (#316,
-#317, #353) and recaptured, so its pin matches the current file; it stays excluded because the
-control pins the hash. New probes are gated like any other file. Rust is
-measured by turbo-html2pdf's `cc-check` (a `match` counts once; `if`/loops/`?`/`&&`/`||` add 1;
-closures are scored on their own), installed from its home rather than copied here:
+**Complexity gates (CI jobs `complexity / rust (cc <= 9)` and `complexity / js (cc <= 9)`).**
+Both jobs are blocking. The Rust gate scans tracked `.rs` files except
+`crates/turbo-dom-browser-env/`; the JS gate scans the npm runtime under `src/`.
+Browser-env remains excluded from both scans after build-breaking extractions were
+reverted (#490), so the whole-repository #379 goal remains incomplete. Do not describe
+that binding as an upstream copy: this repository owns and edits it. Chrome-control
+probe edits require regenerating their source-hashed controls.
+
+Rust is measured by turbo-html2pdf's `cc-check` (`match` counts once;
+`if`/loops/`?`/`&&`/`||` add 1; closures are scored separately), installed with CI's pin:
 `cargo install --locked --git https://github.com/miaskiewicz/turbo-html2pdf --rev
-923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check` (CI pins the same rev). It scans every
-tracked `.rs` file (`git ls-files`, so the generated `crates/turbo-dom-v8/crate/` is never
-scanned). JS uses oxlint's ESLint-compatible `complexity` rule (pinned `oxlint@1.87.0` via npx,
-no devDependency) over `src/` and `crates/turbo-dom-browser-env/src`; the vendored xpath@0.0.35
-drop (`crates/turbo-dom-browser-env/src/xpath_provider/xpath.js`) is excluded by the config's
-`ignorePatterns`, because it must stay byte-identical to upstream (its README pins the
-SHA-256), and so are 16 named Chrome-control `*_probe.js` files whose control JSON pins the
-probe's SHA-256 (editing one invalidates its recorded Chrome output; new probes stay gated).
-0.8.1 #379 refactored the non-hot-path fns in both Rust and JS to cc <= 12; the gate stays at
-cc <= 15 pending the hot-path extractions deferred to v0.9.0. **0.8.0 flips both jobs
-blocking at cc ≤ 15**: the pre-release refactor (turbo-dom#297) drives the Rust and JS counts
-to zero, and the workflow drops `continue-on-error` on both jobs so a new over-ceiling function
-(cc > 15) fails CI and blocks `publish.yml` like any other required check. The
-report-only phase that carried 0.6.0 and 0.7.0 (59 Rust / 228 JS functions above the
-limit, measured 2026-10-28; `docs/CONSOLIDATION.md` "Complexity") is over. Don't add new
-ones, and never raise the limit to turn the jobs green.
+923c89f791f3a89cb089a59626a25cef0a9cbd5f cc-check`.
+JS uses oxlint's ESLint-compatible `complexity` rule, pinned to `oxlint@1.87.0`
+through npx. Neither gate has a per-function allow-list or baseline. Never raise
+its limit to make a change pass. turbo-html2pdf's own crates retain cc < 6.
 
 ## Releasing (`vX.Y.Z`)
 
@@ -496,8 +477,9 @@ npm run bench:query     # query-heavy DOM work (RTL-style) vs jsdom
 npm run bench:wasm      # wasm vs native parseBuffer
 npm run bench:all       # all of the above
 ```
-0.6.0 / 0.7.0 are not re-benchmarked yet (re-run of all four repos planned); the last
-measured numbers (v0.1.55, 2026-06-07, darwin-arm64) are in `docs/BENCHMARKS-history.md`.
+The latest recorded npm-runtime benchmark is v0.8.2 (2026-11-10, darwin-arm64),
+with the v0.1.55 baseline preserved in `docs/BENCHMARKS-history.md`. Neither is a
+measurement of v0.8.3.
 Conformance: 99.94% vs jsdom 97.03% vs happy-dom 37.35% (99.72% before turbo-dom#104).
 - querySelectorAll/getElementsBy*/getElementById results are cached per (selector,
   Document.__version); a static querySelectorAll list is safe to reuse until the next

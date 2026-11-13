@@ -5,7 +5,7 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.3] — 2026-11-12
+## [0.8.3] — 2026-11-13
 
 Native browser binding fixes and additive screenshot APIs for turbo-surf integration.
 
