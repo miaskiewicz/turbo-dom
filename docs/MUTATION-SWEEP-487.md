@@ -58,7 +58,9 @@ browser jobs enable host-internals/test-support and raster jobs use defaults.
    baseline fails. Warning capping applies equally to baseline and mutants only;
    ordinary strict Clippy remains independent and unchanged.
 2. Run the deterministic file/shard using `--in-place --no-shuffle --timeout 300
-   --build-timeout 300 --baseline skip --jobs 1`. `-C --lib` restricts both build
+   --build-timeout 300 --baseline skip`. In-place execution is inherently serial;
+   version 27.1.0 rejects an explicit `--jobs` together with `--in-place`, even
+   when its value is one. `-C --lib` restricts both build
    and test phases; passing `--lib` after the tool's `--` would restrict only the
    test phase in cargo-mutants 27.1.0 and waste relinking integration binaries.
 3. Retry every lib-suite survivor against the full all-targets tests, selected by
@@ -92,6 +94,6 @@ CARGO_ENCODED_RUSTFLAGS=--cap-lints=warn \
   --shard 0 --shards 1 --output /private/tmp/mutation-487-worker-pilot
 ```
 
-The pilot orchestration has six fail-closed Python tests and the installed
+The pilot orchestration has seven fail-closed Python tests and the installed
 tool's exact-name regex selection was checked without building Rust. No mutation
 outcomes or timings are claimed from that source-only preparation.

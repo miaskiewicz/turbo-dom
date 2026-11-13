@@ -64,6 +64,13 @@ def rust_regex_literal(text):
     return "".join("\\" + c if c in r"\.+*?()|[]{}^$#&-~" else c for c in text)
 
 
+def mutation_flags():
+    # --in-place forces serial mutation; cargo-mutants rejects even --jobs 1.
+    return ["--in-place", "--no-shuffle", "--baseline", "skip",
+            "--timeout", "300", "--build-timeout", "300",
+            "--cap-lints", "false", "-C", "--locked"]
+
+
 def command(argv, log):
     started = time.monotonic()
     with log.open("w") as output:
@@ -161,9 +168,7 @@ def run_job(args):
         report["baseline"] = baseline
         if baseline["exit_code"]:
             raise ValueError("unmutated all-targets baseline failed")
-        flags = ["--in-place", "--no-shuffle", "--baseline", "skip",
-                 "--timeout", "300", "--build-timeout", "300", "--jobs", "1",
-                 "--cap-lints", "false", "-C", "--locked"]
+        flags = mutation_flags()
         lib_dir = output / "lib"
         lib_dir.mkdir()
         report["lib_run"] = command([*common, *flags, "-C", "--lib", "--shard",
