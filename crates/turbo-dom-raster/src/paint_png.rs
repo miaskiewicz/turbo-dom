@@ -2420,6 +2420,32 @@ mod tests {
     }
 
     #[test]
+    fn png45_fractional_texture_budget_preserves_an_opaque_repeated_fill() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::png45_fractional_texture_budget_preserves_an_opaque_repeated_fill",
+        ) {
+            return;
+        }
+        let f = tiles(
+            (0.0, 0.0, 12.0, 12.0),
+            RED,
+            (0.25, 0.25),
+            (8.5, 8.5),
+            (8.5, 8.5),
+        );
+        let pm = render(&f, 12, 12, &HashMap::new());
+        for y in 0..12 {
+            for x in 0..12 {
+                assert_eq!(
+                    rgb(&pm, x, y),
+                    [255, 0, 0],
+                    "opaque repeated tile at{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn fractional_tiles_too_big_for_a_texture_paint_tile_by_tile() {
         if !super::exact_tests::rule_probe_child(
             "paint_png::tests::fractional_tiles_too_big_for_a_texture_paint_tile_by_tile",
@@ -4160,6 +4186,28 @@ mod exact_tests {
             let mut actual = white(12, 12);
             paint_dotted_rule_stroked(&mut actual, 3.25, top, 3.5, 1.0, RED, xf);
             assert_eq!(actual.data(), expected.data(), "origin {top}");
+        }
+    }
+
+    #[test]
+    fn png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap() {
+        if !rule_probe_child("png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap") {
+            return;
+        }
+        let f = rule(3.0, 1.0, 1.0, 8.0, ColumnRuleStyle::Dashed, RED);
+        let mut actual = white(10, 12);
+        paint_dashed_rule(&mut actual, &f, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..10 {
+                let ink = x == 3 && [1, 2, 4, 5, 7, 8].contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
         }
     }
 
