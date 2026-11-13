@@ -487,6 +487,8 @@ OWNED="$OWNED abort_signal_polyfill.js"
 OWNED="$OWNED css_effect_lifecycle.rs css_effect_lifecycle_probe.js css_effect_lifecycle_cases.json css_effect_lifecycle_chrome156.json"
 # turbo-dom#504 canonical auxiliary contexts and independent browser controls.
 OWNED="$OWNED auxiliary_contexts.rs auxiliary_window_proxy.rs auxiliary_contexts_probe.js auxiliary_contexts_cases.json auxiliary_contexts_chrome156.json"
+# Canonical host hyperlink activation is owned by turbo-dom (turbo-dom#510).
+OWNED="$OWNED hyperlink_activation.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
