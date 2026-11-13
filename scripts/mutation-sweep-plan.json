@@ -1,0 +1,11 @@
+{
+  "mode": "pilot",
+  "pilot_mutants_per_target": 5,
+  "full_shards": {
+    "event_handlers": 1,
+    "worker_scope": 1,
+    "trusted_types": 1,
+    "paint_png": 6,
+    "paint_svg": 4
+  }
+}
