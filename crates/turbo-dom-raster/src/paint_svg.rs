@@ -351,7 +351,7 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let period = 2.0 * diameter;
     let end = f.y + f.height;
     if f.width < 1.0 {
-        paint_subpixel_dotted_rule(svg, f, color, (cx.floor(), diameter, end));
+        paint_subpixel_dotted_rule(svg, f, color, (cx.floor(), end));
         return;
     }
     let radius = diameter / 2.0;
@@ -374,8 +374,10 @@ fn paint_subpixel_dotted_rule(
     svg: &mut String,
     f: &Fragment,
     color: Rgba,
-    (px_left, diameter, end): (f32, f32, f32),
+    (px_left, end): (f32, f32),
 ) {
+    // The sole caller selects a positive width below one pixel, floored to one.
+    let diameter = 1.0;
     // rect_r also rejects empty/reversed caps and non-finite origins.
     let cap_h = (end - f.y).min(diameter);
     rect(svg, px_left, f.y, diameter, cap_h, color);
@@ -383,7 +385,7 @@ fn paint_subpixel_dotted_rule(
     while y < end {
         let dash_h = (end - y).min(diameter);
         rect(svg, px_left, y, diameter, dash_h, color);
-        let next = y + 2.0 * diameter;
+        let next = y + 2.0;
         if next <= y {
             break;
         }
@@ -418,12 +420,8 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 }
 
 fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
-    // R1 M1 + L1: reject non-finite sizes. R1 L2: after the `< 3.0`
-    // short-circuit `f.width >= 3.0` forces `(f.width / 3.0).floor() >= 1.0`,
-    // so the trailing `.max(1.0)` is unreachable — dropped.
-    if !f.width.is_finite() || !f.height.is_finite() {
-        return;
-    }
+    // Finite widths at least three give bands at least one pixel wide.
+    // rect_r validates both emitted bands, including all non-finite bounds.
     if f.width < 3.0 {
         rect(svg, f.x, f.y, f.width, f.height, color);
         return;
@@ -439,9 +437,7 @@ fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 /// and the right half light; `ridge` / `inset` swap them. The rule is
 /// vertical, so "left" and "right" are the two vertical bands.
 fn paint_shaded_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
-    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
-        return;
-    }
+    // Both halves pass through rect_r, which rejects invalid or empty bounds.
     let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
     let left_color = border_style_colour(color, left_dark);
     let right_color = border_style_colour(color, !left_dark);
