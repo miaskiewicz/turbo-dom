@@ -598,17 +598,302 @@ fn cross_origin_child_index_metadata_matches_pinned_chrome_156() {
             actual.push(serde_json::json!({"count": count, "result": result}));
         });
     }
-    let mut expected = oracle["rows"].clone();
-    let mut actual = serde_json::Value::Array(actual);
-    // This regression pins numeric index metadata. Named child access has a
-    // distinct policy/lookup path and remains a separately recorded oracle lead.
-    for rows in [&mut actual, &mut expected] {
-        for row in rows.as_array_mut().unwrap() {
-            row["result"]["properties"]
-                .as_array_mut()
-                .unwrap()
-                .retain(|property| property["key"] != "NamedChild0");
-        }
+    assert_eq!(serde_json::Value::Array(actual), oracle["rows"]);
+}
+
+fn nested_child<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    parent: v8::Local<'s, v8::Context>,
+    name: &[u16],
+) -> v8::Local<'s, v8::Context> {
+    let child = create_auxiliary_window_context(scope, None);
+    child.set_security_token(parent.get_security_token(scope));
+    {
+        let scope = &mut v8::ContextScope::new(scope, child);
+        initialize_auxiliary_document(scope, "<!doctype html><body>named child</body>");
+        assert!(install_nested_auxiliary_source(
+            scope,
+            child,
+            parent,
+            "https://target.example/named",
+            name,
+            None
+        ));
     }
-    assert_eq!(actual, expected);
+    child
+}
+
+#[test]
+fn cross_origin_named_child_lookup_matches_pinned_chrome_without_guest_getters() {
+    let oracle: serde_json::Value =
+        serde_json::from_str(include_str!("../src/auxiliary_window_names_chrome156.json")).unwrap();
+    assert_eq!(oracle["browser"], "HeadlessChrome/156.0.8078.47");
+    assert_eq!(oracle["errors"], serde_json::json!([]));
+    for (field, bytes) in [
+        (
+            "casesSha256",
+            include_bytes!("../src/auxiliary_window_names_cases.json").as_slice(),
+        ),
+        (
+            "probeSha256",
+            include_bytes!("../src/auxiliary_window_names_probe.js").as_slice(),
+        ),
+        (
+            "collectorSha256",
+            include_bytes!("../scripts/auxiliary-window-names-chrome-control.mjs").as_slice(),
+        ),
+    ] {
+        assert_eq!(oracle[field], format!("{:x}", Sha256::digest(bytes)));
+    }
+    let mut rows = Vec::new();
+    for case in 0..oracle["rows"].as_array().unwrap().len() {
+        fixture(|scope, host, source, target| {
+            // V8 parses the JSON names so lone UTF-16 surrogates stay lossless;
+            // result keys are represented as code-unit arrays in the control.
+            let entry = eval(
+                scope,
+                &format!(
+                    "globalThis.__windowNameCase=({})[{case}]",
+                    include_str!("../src/auxiliary_window_names_cases.json")
+                ),
+            );
+            let entry = v8::Local::<v8::Object>::try_from(entry).unwrap();
+            let key = v8::String::new(scope, "names").unwrap();
+            let value = entry.get(scope, key.into()).unwrap();
+            let names = v8::Local::<v8::Array>::try_from(value).unwrap();
+            let key = v8::String::new(scope, "rename").unwrap();
+            let rename = entry.get(scope, key.into()).unwrap();
+            let key = v8::String::new(scope, "trap").unwrap();
+            let trapped = entry.get(scope, key.into()).unwrap().is_true();
+            for index in 0..names.length() {
+                let name = names.get_index(scope, index).unwrap();
+                let name = v8::Local::<v8::String>::try_from(name).unwrap();
+                let mut units = vec![0; name.length()];
+                name.write_v2(scope, 0, &mut units, v8::WriteFlags::empty());
+                let child = nested_child(scope, target, &units);
+                {
+                    let scope = &mut v8::ContextScope::new(scope, child);
+                    if index == 0 && rename.is_string() {
+                        set(scope, child, "__renamed", rename);
+                        eval(scope, "window.name=__renamed");
+                    }
+                    if trapped {
+                        eval(scope, "globalThis.__nameGetterReads=0;Object.defineProperty(window,'name',{get(){__nameGetterReads++;throw Error('guest name getter')}})");
+                    }
+                }
+                host.children
+                    .borrow_mut()
+                    .push(v8::Global::new(scope, child));
+            }
+            install_auxiliary_window_hooks(
+                target,
+                AuxiliaryWindowHooks {
+                    children: Some(children),
+                    location: Some(location),
+                    ..Default::default()
+                },
+            );
+            let window = target.global(scope);
+            set(scope, source, "__windowIndexTarget", window.into());
+            let value = eval(
+                scope,
+                &format!(
+                    "JSON.stringify({})",
+                    include_str!("../src/auxiliary_window_names_probe.js")
+                ),
+            );
+            let result: serde_json::Value =
+                serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap();
+            let key = v8::String::new(scope, "id").unwrap();
+            let id = entry
+                .get(scope, key.into())
+                .unwrap()
+                .to_rust_string_lossy(scope);
+            println!("native child-name case={id}: {result}");
+            rows.push(serde_json::json!({"id":id,"result":result}));
+            if trapped {
+                for index in 0..host.children.borrow().len() {
+                    let child = v8::Local::new(scope, &host.children.borrow()[index]);
+                    let scope = &mut v8::ContextScope::new(scope, child);
+                    assert_js(scope, "__nameGetterReads===0");
+                }
+            }
+        });
+    }
+    assert_eq!(serde_json::Value::Array(rows), oracle["rows"]);
+}
+
+#[test]
+fn named_children_require_current_document_parent_and_live_native_identity() {
+    fixture(|scope, host, _, target| {
+        let child = nested_child(scope, target, &"Owned".encode_utf16().collect::<Vec<_>>());
+        host.children
+            .borrow_mut()
+            .push(v8::Global::new(scope, child));
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                children: Some(children),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "target.Owned===target[0]");
+        let isolated = create_auxiliary_window_context(scope, None);
+        isolated.set_security_token(target.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, isolated);
+            initialize_auxiliary_document(scope, "<!doctype html><body>isolated</body>");
+        }
+        // A nested child cannot acquire a top-level COOP/group-separation identity.
+        assert!(!commit_isolated_auxiliary_navigation(
+            scope,
+            child,
+            isolated,
+            "https://isolated.example/"
+        ));
+        assert_js(scope, "target.Owned===target[0]");
+        let replacement = create_auxiliary_window_context(scope, Some(child));
+        replacement.set_security_token(target.get_security_token(scope));
+        assert_js(
+            scope,
+            "(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()",
+        );
+        {
+            let scope = &mut v8::ContextScope::new(scope, replacement);
+            initialize_auxiliary_document(scope, "<!doctype html><body>replacement</body>");
+        }
+        assert!(commit_auxiliary_navigation(
+            scope,
+            child,
+            replacement,
+            "https://target.example/replaced"
+        ));
+        // A stale host capture cannot authorize a name using an old lexical realm.
+        assert_js(
+            scope,
+            "(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()",
+        );
+        host.children.borrow_mut()[0] = v8::Global::new(scope, replacement);
+        assert_js(scope, "target.Owned===target[0]");
+        assert!(retire_auxiliary_context(scope, replacement));
+        assert_js(
+            scope,
+            "(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()",
+        );
+        // Even a genuine unrelated Window in a mistaken host list is not a child.
+        let unrelated = root(scope, "https://target.example", false);
+        {
+            let scope = &mut v8::ContextScope::new(scope, unrelated);
+            eval(scope, "name='Owned'");
+        }
+        host.children.borrow_mut()[0] = v8::Global::new(scope, unrelated);
+        assert_js(scope, "(()=>{try{Object.getOwnPropertyDescriptor(target,'Owned')}catch(e){return e.name==='SecurityError'}return false})()");
+        let unregistered = create_auxiliary_window_context(scope, None);
+        {
+            let scope = &mut v8::ContextScope::new(scope, unregistered);
+            initialize_auxiliary_document(scope, "<!doctype html><body>unregistered</body>");
+            eval(scope, "name='Owned'");
+        }
+        host.children.borrow_mut()[0] = v8::Global::new(scope, unregistered);
+        assert_js(
+            scope,
+            "(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()",
+        );
+    });
+}
+
+fn navigated_document<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    old: v8::Local<'s, v8::Context>,
+    token: v8::Local<'s, v8::Value>,
+    url: &str,
+    body: &str,
+) -> v8::Local<'s, v8::Context> {
+    let current = create_auxiliary_window_context(scope, Some(old));
+    current.set_security_token(token);
+    {
+        let scope = &mut v8::ContextScope::new(scope, current);
+        initialize_auxiliary_document(scope, body);
+    }
+    assert!(commit_auxiliary_navigation(scope, old, current, url));
+    current
+}
+
+#[test]
+fn interleaved_popup_navigations_restore_only_the_matching_proxy_origin() {
+    fixture(|scope, host, source, _| {
+        eval(
+            scope,
+            "globalThis.first=open('', 'First');globalThis.second=open('', 'Second')",
+        );
+        let first = v8::Local::new(scope, &host.contexts.borrow()[0]);
+        let second = v8::Local::new(scope, &host.contexts.borrow()[1]);
+        let saved_first = {
+            let scope = &mut v8::ContextScope::new(scope, first);
+            let callback = eval(scope, "Function('return document.body.textContent')");
+            v8::Global::new(scope, callback)
+        };
+        let saved_second = {
+            let scope = &mut v8::ContextScope::new(scope, second);
+            let callback = eval(scope, "Function('return document.body.textContent')");
+            v8::Global::new(scope, callback)
+        };
+        let saved_first = v8::Local::new(scope, &saved_first);
+        let saved_second = v8::Local::new(scope, &saved_second);
+        set(scope, source, "savedFirst", saved_first);
+        set(scope, source, "savedSecond", saved_second);
+        let foreign = v8::String::new(scope, "https://other.example").unwrap();
+        let first_foreign = navigated_document(
+            scope,
+            first,
+            foreign.into(),
+            "https://other.example/",
+            "<!doctype html><body>foreign first</body>",
+        );
+        let token = source.get_security_token(scope);
+        let second_current = navigated_document(
+            scope,
+            second,
+            token,
+            "https://source.example/second",
+            "<!doctype html><body>current second</body>",
+        );
+        assert_js(scope, "(()=>{try{savedFirst();return false}catch(e){return e.name==='SecurityError'}})()&&savedSecond()==='current second'");
+        let first_restored = navigated_document(
+            scope,
+            first_foreign,
+            token,
+            "https://source.example/first",
+            "<!doctype html><body>restored first</body>",
+        );
+        assert_js(
+            scope,
+            "savedFirst()==='restored first'&&savedSecond()==='current second'&&first!==second",
+        );
+        assert_ne!(
+            auxiliary_context_identity(first_restored).unwrap().id,
+            auxiliary_context_identity(second_current).unwrap().id
+        );
+    });
+}
+
+#[test]
+fn retired_parent_cannot_republish_a_live_child_name_from_a_stale_host_capture() {
+    fixture(|scope, host, _, target| {
+        let child = nested_child(scope, target, &"Owned".encode_utf16().collect::<Vec<_>>());
+        host.children
+            .borrow_mut()
+            .push(v8::Global::new(scope, child));
+        install_auxiliary_window_hooks(
+            target,
+            AuxiliaryWindowHooks {
+                children: Some(children),
+                ..Default::default()
+            },
+        );
+        assert_js(scope, "target.Owned===target[0]");
+        assert!(retire_auxiliary_context(scope, target));
+        assert_js(scope, "target.closed&&(()=>{try{void target.Owned}catch(e){return e.name==='SecurityError'}return false})()");
+        assert!(!auxiliary_context_identity(child).unwrap().closed);
+    });
 }

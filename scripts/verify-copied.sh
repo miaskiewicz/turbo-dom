@@ -490,6 +490,7 @@ OWNED="$OWNED auxiliary_contexts.rs auxiliary_window_proxy.rs auxiliary_contexts
 # Canonical host hyperlink activation is owned by turbo-dom (turbo-dom#510).
 OWNED="$OWNED hyperlink_activation.rs"
 OWNED="$OWNED auxiliary_window_indexes_cases.json auxiliary_window_indexes_probe.js auxiliary_window_indexes_chrome156.json"
+OWNED="$OWNED auxiliary_window_names_cases.json auxiliary_window_names_probe.js auxiliary_window_names_chrome156.json"
 # turbo-dom#509 scoped shadow stylesheet lifecycle Chrome controls.
 OWNED="$OWNED css_effect_shadow_probe.js css_effect_shadow_cases.json css_effect_shadow_chrome156.json"
 

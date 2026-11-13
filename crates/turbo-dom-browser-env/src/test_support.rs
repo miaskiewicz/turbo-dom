@@ -64,6 +64,14 @@ pub const AUXILIARY_WINDOW_INDEXES_CHROME156_JSON: &str =
 /// Shared cross-origin child-window index observation probe.
 pub const AUXILIARY_WINDOW_INDEXES_PROBE_JS: &str =
     include_str!("auxiliary_window_indexes_probe.js");
+/// Cross-origin child-window name and precedence controls (turbo-dom#504).
+pub const AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8] =
+    include_bytes!("auxiliary_window_names_cases.json");
+/// Recorded UTF-16 name lookup and membership from pinned Chrome 156.
+pub const AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str =
+    include_str!("auxiliary_window_names_chrome156.json");
+/// Shared cross-origin child-window name observation probe.
+pub const AUXILIARY_WINDOW_NAMES_PROBE_JS: &str = include_str!("auxiliary_window_names_probe.js");
 
 /// `src/css_effect_shadow_cases.json` (#509 scoped stylesheet ownership).
 pub const CSS_EFFECT_SHADOW_CASES_JSON: &[u8] = include_bytes!("css_effect_shadow_cases.json");
@@ -332,6 +340,18 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "auxiliary_window_indexes_probe.js",
         AUXILIARY_WINDOW_INDEXES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "auxiliary_window_names_cases.json",
+        AUXILIARY_WINDOW_NAMES_CASES_JSON,
+    ),
+    (
+        "auxiliary_window_names_chrome156.json",
+        AUXILIARY_WINDOW_NAMES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "auxiliary_window_names_probe.js",
+        AUXILIARY_WINDOW_NAMES_PROBE_JS.as_bytes(),
     ),
     ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
     (

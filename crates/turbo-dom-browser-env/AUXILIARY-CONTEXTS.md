@@ -127,6 +127,15 @@ an ordinary dictionary that leaks its href. Message and navigation callbacks
 receive the actual incumbent source context and enforce their corresponding
 resource and navigation policy. Missing capabilities throw explicitly.
 
+The live child-context callback supplies numeric child indexes, their read-only
+configurable/enumerable descriptors, membership and enumeration. Cross-origin
+named lookup additionally requires `install_nested_auxiliary_source`'s native
+parent, live document and UTF-16 name records; guest `child.name` getters are not
+consulted. Genuine fixed Window properties win over child names. The `then`
+fallback can be shadowed by a child name; it remains denied to `in` checks,
+matching the pinned Chrome 156 controls. Named child descriptors are
+non-enumerable and do not add entries to the Window's own-key sequence.
+
 When adapting an existing WindowProxy host, delegate canonical document-guard
 installation to `install_auxiliary_window_document_guard`. Installing two
 different nonconfigurable `window.document` getters is refused. Existing native

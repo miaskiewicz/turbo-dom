@@ -14,6 +14,10 @@ at the time); this file reconstructs them from history.
   once for minimum and maximum width queries, retaining independent placement
   passes and the existing sizing arithmetic. Numeric caches remain local to the
   layout tree and are invalidated by the existing layout policies.
+- **Cross-origin named child windows (#504)**: resolve only genuine live child
+  names through native parent/document records, including lossless UTF-16 names.
+  Preserve Chrome's fixed-property and `then` fallback precedence, descriptor
+  metadata and strict membership checks without calling guest name getters.
 - **Cross-origin child-window indexes (#504)**: expose native read-only,
   enumerable child-index descriptors and membership alongside indexed reads.
   `Object.keys()` now enumerates actual child indexes; absent indexes keep the

@@ -1,0 +1,988 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "24f53d8a6ab787451054476d2d7520868ac1925745771908761b935a8c882c04",
+  "probeSha256": "56a6a60864b326d7fad3f8e7720be1eb24f3cad001cb46ca48ae3596dbb5f90b",
+  "collectorSha256": "4535514e53cc5b5798ac70b6ccf9e6e20f50a8098b4019a2a5f976265cd5e00c",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "about:blank"
+  ],
+  "errors": [],
+  "rows": [
+    {
+      "id": "collisions",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              108,
+              101,
+              110,
+              103,
+              116,
+              104
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "accessor",
+                "childIndex": null,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              108,
+              111,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "accessor",
+                "childIndex": null,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              112,
+              111,
+              115,
+              116,
+              77,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": null,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              116,
+              104,
+              101,
+              110
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 3,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 3,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              78,
+              97,
+              109,
+              101,
+              100,
+              67,
+              104,
+              105,
+              108,
+              100,
+              48
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 4,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 4,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4"
+          ]
+        }
+      }
+    },
+    {
+      "id": "unicode",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              65,
+              115,
+              116,
+              114,
+              97,
+              108,
+              55357,
+              56832
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              76,
+              111,
+              110,
+              101,
+              55296
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 1,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 1,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "renamed",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              79,
+              114,
+              105,
+              103,
+              105,
+              110,
+              97,
+              108
+            ],
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "keyUnits": [
+              82,
+              101,
+              110,
+              97,
+              109,
+              101,
+              100
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0"
+          ]
+        }
+      }
+    },
+    {
+      "id": "getter-trap",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              84,
+              114,
+              97,
+              112,
+              112,
+              101,
+              100
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0"
+          ]
+        }
+      }
+    },
+    {
+      "id": "no-named-child",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              108,
+              101,
+              110,
+              103,
+              116,
+              104
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "accessor",
+                "childIndex": null,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              108,
+              111,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "accessor",
+                "childIndex": null,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              112,
+              111,
+              115,
+              116,
+              77,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": null,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              116,
+              104,
+              101,
+              110
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": null,
+                "isUndefined": true
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": null,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              77,
+              105,
+              115,
+              115,
+              105,
+              110,
+              103
+            ],
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": []
+        }
+      }
+    },
+    {
+      "id": "duplicate-names",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              82,
+              101,
+              112,
+              101,
+              97,
+              116,
+              101,
+              100
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "empty-and-numeric-names",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [],
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "keyUnits": [
+              48,
+              48
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 1,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 1,
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              48
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": true,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "2",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "2"
+          ]
+        }
+      }
+    },
+    {
+      "id": "numeric-name-outside",
+      "result": {
+        "properties": [
+          {
+            "keyUnits": [
+              57
+            ],
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "keyUnits": [
+              48
+            ],
+            "read": {
+              "ok": true,
+              "value": {
+                "childIndex": 0,
+                "isUndefined": false
+              }
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "kind": "data",
+                "childIndex": 0,
+                "writable": false,
+                "enumerable": true,
+                "configurable": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "keyUnits": [
+              48,
+              57
+            ],
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0"
+          ]
+        }
+      }
+    }
+  ]
+}

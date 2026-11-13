@@ -446,6 +446,45 @@ fn cross_value<'s>(
     })
 }
 
+fn named_child<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    window: v8::Local<'s, v8::Object>,
+    name: v8::Local<'s, v8::Name>,
+) -> Option<v8::Local<'s, v8::Context>> {
+    let name = v8::Local::<v8::String>::try_from(name).ok()?;
+    if name.length() == 0 {
+        return None;
+    }
+    let mut units = vec![0; name.length()];
+    name.write_v2(scope, 0, &mut units, v8::WriteFlags::empty());
+    let parent = window.get_creation_context(scope)?;
+    children(scope, parent)
+        .into_iter()
+        .find(|&child| super::auxiliary_contexts::matches_child_name(scope, child, parent, &units))
+}
+
+fn may_name_child(property: &str) -> bool {
+    // `then` is a cross-origin fallback, not a genuine own Window property.
+    property == "then" || !KEYS.contains(&property)
+}
+
+fn child_descriptor<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    child: v8::Local<'s, v8::Context>,
+    enumerable: bool,
+) -> v8::Local<'s, v8::Object> {
+    let descriptor = v8::Object::new(scope);
+    let no = v8::Boolean::new(scope, false);
+    let yes = v8::Boolean::new(scope, true);
+    let enumerable = v8::Boolean::new(scope, enumerable);
+    let window = child.global(scope);
+    descriptor_field(scope, descriptor, "value", window.into());
+    descriptor_field(scope, descriptor, "writable", no.into());
+    descriptor_field(scope, descriptor, "enumerable", enumerable.into());
+    descriptor_field(scope, descriptor, "configurable", yes.into());
+    descriptor
+}
+
 fn cross_get<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     name: v8::Local<'s, v8::Name>,
@@ -460,6 +499,12 @@ fn cross_get<'s>(
         }
     } else {
         let property = name.to_rust_string_lossy(scope);
+        if may_name_child(&property) {
+            if let Some(child) = named_child(scope, args.holder(), name) {
+                result.set(child.global(scope).into());
+                return v8::Intercepted::kYes;
+            }
+        }
         if let Some(value) = cross_value(scope, args.holder(), &property) {
             result.set(value);
         }
@@ -537,14 +582,7 @@ fn cross_index_descriptor<'s>(
         .get_creation_context(scope)
         .and_then(|context| children(scope, context).get(index as usize).copied());
     if let Some(child) = child {
-        let descriptor = v8::Object::new(scope);
-        let no = v8::Boolean::new(scope, false);
-        let yes = v8::Boolean::new(scope, true);
-        let window = child.global(scope);
-        descriptor_field(scope, descriptor, "value", window.into());
-        descriptor_field(scope, descriptor, "writable", no.into());
-        descriptor_field(scope, descriptor, "enumerable", yes.into());
-        descriptor_field(scope, descriptor, "configurable", yes.into());
+        let descriptor = child_descriptor(scope, child, true);
         result.set(descriptor.into());
     } else {
         deny(scope);
@@ -573,9 +611,13 @@ fn cross_query<'s>(
     _args: v8::PropertyCallbackArguments<'s>,
     mut result: v8::ReturnValue<v8::Integer>,
 ) -> v8::Intercepted {
-    if allowed_symbol(scope, name)
-        || (!name.is_symbol() && KEYS.contains(&name.to_rust_string_lossy(scope).as_str()))
-    {
+    let property = (!name.is_symbol()).then(|| name.to_rust_string_lossy(scope));
+    if property.as_deref() == Some("then") {
+        // V8 rejects direct membership while skipping this non-enumerable
+        // cross-origin fallback when filtering Object.keys().
+        return v8::Intercepted::kNo;
+    }
+    if allowed_symbol(scope, name) || property.as_deref().is_some_and(|name| KEYS.contains(&name)) {
         result.set_int32(v8::PropertyAttribute::DONT_ENUM.as_u32() as i32);
     } else {
         deny(scope);
@@ -675,6 +717,13 @@ fn cross_descriptor<'s>(
     mut result: v8::ReturnValue,
 ) -> v8::Intercepted {
     let property = (!name.is_symbol()).then(|| name.to_rust_string_lossy(scope));
+    if property.as_deref().is_some_and(may_name_child) {
+        if let Some(child) = named_child(scope, args.holder(), name) {
+            let descriptor = child_descriptor(scope, child, false);
+            result.set(descriptor.into());
+            return v8::Intercepted::kYes;
+        }
+    }
     if !allowed_symbol(scope, name) && !property.as_deref().is_some_and(|name| KEYS.contains(&name))
     {
         deny(scope);

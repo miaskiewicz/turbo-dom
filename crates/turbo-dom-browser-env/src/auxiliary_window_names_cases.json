@@ -1,0 +1,72 @@
+[
+  {
+    "id": "collisions",
+    "names": [
+      "length",
+      "location",
+      "postMessage",
+      "then",
+      "NamedChild0"
+    ]
+  },
+  {
+    "id": "unicode",
+    "names": [
+      "Astral\ud83d\ude00",
+      "Lone\ud800"
+    ]
+  },
+  {
+    "id": "renamed",
+    "names": [
+      "Original"
+    ],
+    "rename": "Renamed",
+    "extraKeys": [
+      "Renamed"
+    ]
+  },
+  {
+    "id": "getter-trap",
+    "names": [
+      "Trapped"
+    ],
+    "trap": true
+  },
+  {
+    "id": "no-named-child",
+    "names": [],
+    "extraKeys": [
+      "length",
+      "location",
+      "postMessage",
+      "then",
+      "Missing"
+    ]
+  },
+  {
+    "id": "duplicate-names",
+    "names": [
+      "Repeated",
+      "Repeated"
+    ]
+  },
+  {
+    "id": "empty-and-numeric-names",
+    "names": [
+      "",
+      "00",
+      "0"
+    ]
+  },
+  {
+    "id": "numeric-name-outside",
+    "names": [
+      "9"
+    ],
+    "extraKeys": [
+      "0",
+      "09"
+    ]
+  }
+]

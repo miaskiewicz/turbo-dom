@@ -339,6 +339,38 @@ pub fn install_nested(
     install_registered_surface(scope, context)
 }
 
+fn current_record(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    record: &State,
+) -> bool {
+    !record.closed.get()
+        && record.context.borrow().to_local(scope) == Some(context)
+        && context.global(scope).get_creation_context(scope) == Some(context)
+}
+
+pub(super) fn matches_child_name(
+    scope: &mut v8::PinScope,
+    context: v8::Local<v8::Context>,
+    parent: v8::Local<v8::Context>,
+    name: &[u16],
+) -> bool {
+    let Some(record) = state(context) else {
+        return false;
+    };
+    let Some(parent_record) = state(parent) else {
+        return false;
+    };
+    current_record(scope, context, &record)
+        && current_record(scope, parent, &parent_record)
+        && record
+            .parent
+            .as_ref()
+            .and_then(|parent| parent.to_local(scope))
+            == Some(parent)
+        && record.name.borrow().as_slice() == name
+}
+
 /// Trusted opener identity for a native WindowProxy cross-origin handler.
 pub fn opener<'s>(
     scope: &mut v8::PinScope<'s, '_>,
