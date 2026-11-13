@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.2**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.3**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.

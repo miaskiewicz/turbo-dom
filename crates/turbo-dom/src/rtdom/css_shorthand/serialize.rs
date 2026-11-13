@@ -908,8 +908,8 @@ const STRETCH_KEYWORDS: &[(&str, &str)] = &[
     ("200%", "ultra-expanded"),
 ];
 
-fn font(v: &Values<'_>) -> String {
-    for (name, initial) in [
+fn font_prefix_ok(v: &Values<'_>) -> bool {
+    [
         ("font-variant-ligatures", "normal"),
         ("font-variant-numeric", "normal"),
         ("font-variant-east-asian", "normal"),
@@ -922,13 +922,25 @@ fn font(v: &Values<'_>) -> String {
         ("font-feature-settings", "normal"),
         ("font-variation-settings", "normal"),
         ("font-language-override", "normal"),
-    ] {
-        if v.get(name) != initial {
-            return String::new();
-        }
+    ]
+    .iter()
+    .all(|(name, initial)| v.get(name) == *initial)
+}
+
+fn non_normal(value: &str) -> &str {
+    if value == "normal" {
+        ""
+    } else {
+        value
+    }
+}
+
+fn font(v: &Values<'_>) -> String {
+    if !font_prefix_ok(v) {
+        return String::new();
     }
     let caps = v.get("font-variant-caps");
-    if caps != "normal" && caps != "small-caps" {
+    if !matches!(caps, "normal" | "small-caps") {
         return String::new();
     }
     let mut stretch = v.get("font-stretch");
@@ -952,10 +964,10 @@ fn font(v: &Values<'_>) -> String {
         format!("{size} / {line_height}")
     };
     joined(&[
-        if style == "normal" { "" } else { style },
-        if caps == "normal" { "" } else { caps },
-        if weight == "normal" { "" } else { weight },
-        if stretch == "normal" { "" } else { stretch },
+        non_normal(style),
+        non_normal(caps),
+        non_normal(weight),
+        non_normal(stretch),
         &size,
         family,
     ])

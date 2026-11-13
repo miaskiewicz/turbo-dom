@@ -10,7 +10,7 @@ use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
-    FragmentContent, LinearGradient as CssGradient, PositionedGlyph, Rgba, TilePattern,
+    FragmentContent, LinearGradient as CssGradient, NodeId, PositionedGlyph, Rgba, TilePattern,
 };
 
 use crate::image_paint::{self, DecodedAssets};
@@ -34,16 +34,45 @@ pub fn paint(
     bg: Rgba,
     images: &DecodedAssets,
 ) -> String {
+    paint_at_size(galley, (width, height), (width, height), bg, images, 1.0)
+}
+
+pub(crate) fn paint_at_size(
+    galley: &Fragment,
+    css_size: (u32, u32),
+    pixel_size: (u32, u32),
+    bg: Rgba,
+    images: &DecodedAssets,
+    scale: f64,
+) -> String {
+    paint_at_size_with_masks(galley, css_size, pixel_size, bg, images, scale, &[])
+}
+
+pub(crate) fn paint_at_size_with_masks(
+    galley: &Fragment,
+    _css_size: (u32, u32),
+    pixel_size: (u32, u32),
+    bg: Rgba,
+    images: &DecodedAssets,
+    scale: f64,
+    masks: &[crate::ScreenshotMask],
+) -> String {
+    let (pixel_width, pixel_height) = pixel_size;
+    let view_width = f64::from(pixel_width) / scale;
+    let view_height = f64::from(pixel_height) / scale;
+    // Device-pixel rounding can enlarge the canvas beyond the CSS viewport.
+    // Fill that entire canvas, as the PNG painter does, without changing layout.
     let mut svg = String::with_capacity(4096);
     let _ = writeln!(
         svg,
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" \
-         viewBox=\"0 0 {width} {height}\">\n<rect width=\"{width}\" height=\"{height}\" {}/>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{pixel_width}\" height=\"{pixel_height}\" \
+         viewBox=\"0 0 {view_width} {view_height}\">\n<rect width=\"{view_width}\" height=\"{view_height}\" {}/>",
         fill_attrs(bg)
     );
     SHARED.with(|memo| memo.borrow_mut().take());
     paint_fragment(&mut svg, galley, images);
     glyph_filters(&mut svg);
+    crate::masks::paint_svg(&mut svg, masks);
     svg.push_str("</svg>\n");
     svg
 }
@@ -382,28 +411,26 @@ const MAX_LISTED_TILES: usize = 4096;
 /// that does not repeat). Tiles without a whole-pixel period (a `round` or `space` step
 /// off the pixel grid) are written one by one when there are at most
 /// [`MAX_LISTED_TILES`] of them. The pattern id is the document offset, unique.
-fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
-    if !fragment_finite_positive(f) {
-        return;
+fn paint_listed_tiles(
+    svg: &mut String,
+    node_id: NodeId,
+    pattern: &TilePattern,
+    area: (f32, f32, f32, f32),
+    images: &DecodedAssets,
+) {
+    for (x, y, w, h) in pattern.tiles(area) {
+        let tile = Fragment::new(node_id, x, y, w, h, (*pattern.tile).clone());
+        paint_subtree(svg, &tile, images);
     }
-    let area = (f.x, f.y, f.width, f.height);
-    let Some(first) = pattern.tiles(area).next() else {
-        return;
-    };
-    if pattern.period().is_none()
-        && crate::paint_png::repeats_tiles(pattern)
-        && pattern.tiles(area).nth(1).is_some()
-        && paint_tile_texture(svg, f, pattern, (images, first)).is_some()
-    {
-        return;
-    }
-    if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
-        for (x, y, w, h) in pattern.tiles(area) {
-            let tile = Fragment::new(f.node_id, x, y, w, h, (*pattern.tile).clone());
-            paint_subtree(svg, &tile, images);
-        }
-        return;
-    }
+}
+
+fn paint_pattern_tiles(
+    svg: &mut String,
+    f: &Fragment,
+    pattern: &TilePattern,
+    first: (f32, f32, f32, f32),
+    images: &DecodedAssets,
+) {
     let cell = TileCell::new(pattern, first);
     let ((x, y), (pw, ph)) = (cell.origin, cell.size);
     let along = |repeats: bool, (from, len): (f32, f32), (at, size): (f32, f32)| {
@@ -421,11 +448,7 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
         "<pattern id=\"tiles{id}\" patternUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" \
          width=\"{pw}\" height=\"{ph}\">"
     );
-    // A tile's `<image>` lives in the pattern: no `<use>` outside may share it.
     SHARED.with(|memo| memo.borrow_mut().take());
-    // The cell's tiles meet edge to edge on whole pixels: drawn without anti-aliasing
-    // their shared edges leave no seam however small a viewer draws the cell (a
-    // `scale(0.25)` box: 0.75 device px).
     svg.push_str("<g shape-rendering=\"crispEdges\">");
     for (tx, ty, w, h) in cell.tiles(pattern) {
         let tile = Fragment::new(f.node_id, tx, ty, w, h, (*pattern.tile).clone());
@@ -436,6 +459,28 @@ fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &D
         svg,
         "</g></pattern><rect x=\"{fx}\" y=\"{fy}\" width=\"{fw}\" height=\"{fh}\" fill=\"url(#tiles{id})\"/>"
     );
+}
+
+fn paint_tiles(svg: &mut String, f: &Fragment, pattern: &TilePattern, images: &DecodedAssets) {
+    if !fragment_finite_positive(f) {
+        return;
+    }
+    let area = (f.x, f.y, f.width, f.height);
+    let Some(first) = pattern.tiles(area).next() else {
+        return;
+    };
+    if pattern.period().is_none()
+        && crate::paint_png::repeats_tiles(pattern)
+        && pattern.tiles(area).nth(1).is_some()
+        && paint_tile_texture(svg, f, pattern, (images, first)).is_some()
+    {
+        return;
+    }
+    if pattern.period().is_none() && pattern.tiles(area).nth(MAX_LISTED_TILES).is_none() {
+        paint_listed_tiles(svg, f.node_id, pattern, area, images);
+        return;
+    }
+    paint_pattern_tiles(svg, f, pattern, first, images);
 }
 
 /// The most pixels of one fractional tile's image [`paint_tile_texture`] embeds.

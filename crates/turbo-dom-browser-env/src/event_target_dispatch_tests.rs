@@ -120,6 +120,66 @@ fn engine_task_scope_binding(
     }
 }
 
+/// A host bridge may enter the binding through a retained controller callback,
+/// rather than dispatch_host_event. Official timeout algorithms use this shape.
+#[test]
+fn retained_abort_callback_requires_engine_task_scope_for_host_delivery() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    let global = context.global(scope);
+    bind_method(scope, global, "__engineScope", engine_task_scope_binding);
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+      const Original = AbortController;
+      const abort = Original.prototype.abort;
+      const signal = Object.getOwnPropertyDescriptor(Original.prototype, 'signal').get;
+      const apply = Reflect.apply;
+      const trace = [];
+      function bridge(label, host) {
+        const controller = new Original();
+        const front = apply(signal, controller, []);
+        // An embedder's official interface can retain the binding signal as its
+        // dispatch frontend while replacing the exposed interface prototype.
+        Object.setPrototypeOf(front, Object.create(Object.getPrototypeOf(front)));
+        const inner = new Original();
+        apply(signal, inner, []).addEventListener('abort', () => {
+          trace.push(label + ':inner');
+          Promise.resolve().then(() => trace.push(label + ':inner-microtask'));
+        });
+        front.addEventListener('abort', () => {
+          trace.push(label + ':first');
+          apply(abort, inner, []);
+          trace.push(label + ':after-inner');
+          Promise.resolve().then(() => trace.push(label + ':microtask'));
+        });
+        front.addEventListener('abort', () => trace.push(label + ':second'));
+        const callback = () => apply(abort, controller, ['timeout']);
+        if (host) __engineScope(callback); else callback();
+        trace.push(label + ':returned');
+      }
+      bridge('host', true);
+      bridge('page', false);
+      return JSON.stringify(trace);
+    })()"#,
+    )
+    .unwrap();
+    let actual = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        actual,
+        r#"["host:first","host:inner","host:after-inner","host:inner-microtask","host:microtask","host:second","host:returned","page:first","page:inner","page:after-inner","page:second","page:returned"]"#
+    );
+    reset();
+}
+
 /// turbo-dom#381: phase records across the parent chain match Chrome 156 IDB.
 #[test]
 fn non_node_event_target_phases_match_chrome156() {
@@ -1111,6 +1171,86 @@ fn trusted_flag_survives_nested_re_dispatch_from_microtask() {
     reset();
 }
 
+/// turbo-dom#487: `drainMicrotasksAcrossDispatch` saves `record.target` and
+/// restores it after the checkpoint, so a microtask that re-dispatches the
+/// same event object on a DIFFERENT EventTarget does not leak the inner
+/// dispatch's target into the outer's remaining listeners. Without the
+/// save/restore, `dispatchTarget`'s entry writes `record.target = innerTarget`
+/// and the outer's bubble listeners would see `event.target === other` instead
+/// of the original child.
+#[test]
+fn nested_re_dispatch_on_different_target_preserves_outer_event_target() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install(scope);
+    let global = context.global(scope);
+    bind_method(scope, global, "__hostDispatchTarget", host_dispatch_target);
+    super::crate_surface::run_engine_script(
+        scope,
+        "globalThis.__testSetParent = __tsNs.setEventTargetParent;",
+    )
+    .unwrap();
+    // Chain: child -> parent.  Separate: other (no parent chain).
+    // Host-dispatch on child. child's capture listener queues a microtask
+    // that dispatches the same event on `other` (a completely separate
+    // target). After the microtask returns, the outer's bubble listener
+    // on parent must see event.target === child, not other.
+    let source = r#"(() => {
+      const child = new EventTarget(), parent = new EventTarget();
+      const other = new EventTarget();
+      globalThis.__testSetParent(child, () => parent);
+      const trace = [];
+      child.addEventListener('x', (event) => {
+        trace.push('child:target=' + (event.target === child ? 'child' : 'other'));
+        Promise.resolve().then(() => {
+          try { other.dispatchEvent(event); }
+          catch (e) { trace.push('inner-threw:' + (e && e.name || String(e))); }
+        });
+      }, { capture: true });
+      parent.addEventListener('x', (event) => {
+        trace.push('parent-bubble:target=' + (event.target === child ? 'child' : event.target === other ? 'other' : 'unknown'));
+      });
+      globalThis.__hostDispatchTarget(new Event('x', { bubbles: true }), child);
+      return JSON.stringify(trace);
+    })()"#;
+    let source = v8::String::new(scope, source).unwrap();
+    let scope = std::pin::pin!(v8::TryCatch::new(scope));
+    let scope = &mut scope.init();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap_or_else(|| {
+            panic!(
+                "target-leak script: {:?}",
+                scope
+                    .exception()
+                    .map(|value| value.to_rust_string_lossy(scope))
+            )
+        })
+        .to_rust_string_lossy(scope);
+    let trace: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let array = trace.as_array().unwrap();
+    let strs: Vec<String> = array
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    let has = |needle: &str| strs.iter().any(|s| s == needle);
+    assert!(
+        has("child:target=child"),
+        "outer:child must see event.target === child. Trace: {trace}",
+    );
+    assert!(
+        has("parent-bubble:target=child"),
+        "outer:parent-bubble must see event.target === child — the inner \
+         dispatch's re-targeting to `other` must NOT leak into the outer \
+         (record.target restore in drainMicrotasksAcrossDispatch). \
+         Trace: {trace}",
+    );
+    reset();
+}
+
 /// turbo-dom#452: the `collectPath` 10 000-hop cap (R1 H1) was only exercised at 101 hops
 /// (the pre-fix silent-truncation boundary). The band between 101 and 10 000 — where Chrome
 /// still walks and the fix's raised ceiling matters — was untested, as was the 10 001-hop
@@ -1871,6 +2011,47 @@ fn abort_signal_timeout_polyfill_installs_through_install_with_html() {
          `[L0:enter,L0:microtask,L1:enter,L1:microtask,after]`. (If the IIFE \
          threw silently before the override, `run_js` swallowed the exception; \
          a drop to V8 natives points at that too.)",
+    );
+    reset();
+}
+
+/// turbo-dom#488: the polyfill uses `globalThis.setTimeout` at call time, so
+/// the behavioural install probe (install a FIFO setTimeout, call
+/// `AbortSignal.timeout`, check for the captured call) detects whether the
+/// polyfill — not V8's native internal timer — is driving the abort. The
+/// probe matches the one in the issue.
+#[test]
+fn abort_signal_timeout_polyfill_routes_through_global_set_timeout() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    super::install_with_html(scope, "<!doctype html><body>");
+    let source = v8::String::new(
+        scope,
+        r#"(() => {
+          const calls = [];
+          const noop = () => 0;
+          globalThis.setTimeout = (fn, ms) => {
+            calls.push(['ts', ms]);
+            return noop;
+          };
+          const sig = AbortSignal.timeout(50);
+          return JSON.stringify({calls});
+        })()"#,
+    )
+    .unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result, r#"{"calls":[["ts",50]]}"#,
+        "AbortSignal.timeout MUST route through globalThis.setTimeout (the \
+         polyfill path) — not V8's internal timer. Empty calls means the \
+         polyfill did not install. Observed: {result}",
     );
     reset();
 }

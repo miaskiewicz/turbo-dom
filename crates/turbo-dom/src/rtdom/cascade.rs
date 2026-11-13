@@ -352,47 +352,62 @@ fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
     let mut order = start_order;
     let mut i = 0;
     while i < n {
-        let mut j = i;
-        while j < n && bytes[j] != b'{' && bytes[j] != b'}' && bytes[j] != b';' {
-            j += 1;
-        }
+        let j = scan_to_delimiter(bytes, i);
         if j >= n {
             break;
         }
-        if bytes[j] == b';' {
-            // A `;` outside any block terminates a statement at-rule (@import/@charset/
-            // @namespace) or a stray semicolon — it has no block, so skip just the
-            // statement and keep scanning for the next real selector. Without this the
-            // statement would be glued onto the following selector and (starting with
-            // `@`) drag that whole rule into the skip.
-            order += 1;
-            i = j + 1;
-            continue;
-        }
-        if bytes[j] == b'}' {
-            i = j + 1;
-            continue;
-        }
-        let sel = css[i..j].trim().to_string();
-        let mut depth = 1i32;
-        let mut k = j + 1;
-        while k < n && depth > 0 {
-            match bytes[k] {
-                b'{' => depth += 1,
-                b'}' => depth -= 1,
-                _ => {}
+        match bytes[j] {
+            b';' => {
+                order += 1;
+                i = j + 1;
             }
-            k += 1;
+            b'}' => i = j + 1,
+            _ => i = parse_rule_block(&css, i, bytes, j, &mut order, rules),
         }
-        if !sel.is_empty() && !sel.starts_with('@') {
-            let body = &css[j + 1..k.saturating_sub(1)];
-            emit_rule_list(&sel, body, &mut order, rules);
-        } else {
-            order += 1;
-        }
-        i = k;
     }
     order
+}
+
+fn scan_to_delimiter(bytes: &[u8], start: usize) -> usize {
+    let mut j = start;
+    while j < bytes.len() && bytes[j] != b'{' && bytes[j] != b'}' && bytes[j] != b';' {
+        j += 1;
+    }
+    j
+}
+
+fn parse_rule_block(
+    css: &str,
+    sel_start: usize,
+    bytes: &[u8],
+    open: usize,
+    order: &mut u32,
+    rules: &mut Vec<Rule>,
+) -> usize {
+    let sel = css[sel_start..open].trim().to_string();
+    let k = skip_brace_block(bytes, open + 1);
+    if !sel.is_empty() && !sel.starts_with('@') {
+        let body = &css[open + 1..k.saturating_sub(1)];
+        emit_rule_list(&sel, body, order, rules);
+    } else {
+        *order += 1;
+    }
+    k
+}
+
+fn skip_brace_block(bytes: &[u8], start: usize) -> usize {
+    let n = bytes.len();
+    let mut depth = 1i32;
+    let mut k = start;
+    while k < n && depth > 0 {
+        match bytes[k] {
+            b'{' => depth += 1,
+            b'}' => depth -= 1,
+            _ => {}
+        }
+        k += 1;
+    }
+    k
 }
 
 fn emit_rule_list(sel: &str, body: &str, order: &mut u32, rules: &mut Vec<Rule>) {
@@ -512,26 +527,27 @@ fn slotted_selector(sel: &str) -> Option<&str> {
 /// Look up a resolved property from the cascade map, applying shorthand fallback,
 /// bare-0 → `0px`, font-family comma spacing, and color canonicalization.
 fn lookup(map: &HashMap<String, String>, prop: &str) -> String {
-    let mut v: Option<String> = map.get(prop).cloned();
-    if v.is_none() {
-        if let Some(sh) = shorthand_of(prop) {
-            if let Some(s) = map.get(sh) {
-                if !s.trim().contains(char::is_whitespace) {
-                    v = Some(s.clone());
-                }
-            }
-        }
-    }
+    let v = map
+        .get(prop)
+        .cloned()
+        .or_else(|| shorthand_fallback(map, prop));
     let Some(v) = v else { return String::new() };
-    // px-normalize a bare `0` for length properties (browsers report `0px`)
+    normalize_lookup_value(prop, v)
+}
+
+fn shorthand_fallback(map: &HashMap<String, String>, prop: &str) -> Option<String> {
+    let sh = shorthand_of(prop)?;
+    let s = map.get(sh)?;
+    (!s.trim().contains(char::is_whitespace)).then(|| s.clone())
+}
+
+fn normalize_lookup_value(prop: &str, v: String) -> String {
     if v == "0" && is_length_prop(prop) {
         return "0px".to_string();
     }
-    // font-family: browsers serialize the list with ", " regardless of source spacing.
     if prop == "font-family" {
         return normalize_font_family(&v);
     }
-    // <color> properties → rgb()/rgba() (include_named=true). Unrecognized → passthrough.
     if color::is_color_prop(prop) {
         if let Some(c) = color::canonicalize_color(&v, true) {
             return c;

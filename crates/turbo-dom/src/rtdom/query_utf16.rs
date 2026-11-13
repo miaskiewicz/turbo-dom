@@ -296,10 +296,7 @@ fn unquoted_end(source: &[u16]) -> usize {
     }
     end
 }
-fn escaped_end(source: &[u16], position: usize) -> usize {
-    if source[position] != 92 || position + 1 == source.len() {
-        return position + 1;
-    }
+fn scan_hex_escape(source: &[u16], position: usize) -> usize {
     let mut end = position + 1;
     while end < source.len()
         && end < position + 7
@@ -307,9 +304,21 @@ fn escaped_end(source: &[u16], position: usize) -> usize {
     {
         end += 1;
     }
+    end
+}
+
+fn escaped_end(source: &[u16], position: usize) -> usize {
+    if source[position] != 92 || position + 1 == source.len() {
+        return position + 1;
+    }
+    let end = scan_hex_escape(source, position);
     if end == position + 1 {
         return (position + 2).min(source.len());
     }
+    skip_escape_whitespace(source, end)
+}
+
+fn skip_escape_whitespace(source: &[u16], mut end: usize) -> usize {
     if source.get(end).is_some_and(|&u| whitespace(u)) {
         if source.get(end) == Some(&13) && source.get(end + 1) == Some(&10) {
             end += 1;
@@ -340,31 +349,38 @@ pub(super) fn specialized_attribute(inner: &str) -> Option<Attr> {
         _ => None,
     }
 }
+fn split_step(unit: u16, depth: &mut i32, quote: &mut u16, escaped: &mut bool) -> bool {
+    if *escaped {
+        *escaped = false;
+        return false;
+    }
+    if unit == 92 {
+        *escaped = true;
+        return false;
+    }
+    if *quote != 0 {
+        if unit == *quote {
+            *quote = 0;
+        }
+        return false;
+    }
+    match unit {
+        34 | 39 => *quote = unit,
+        40 | 91 => *depth += 1,
+        41 | 93 => *depth -= 1,
+        _ => {}
+    }
+    true
+}
+
 fn split(units: &[u16], separator: u16) -> Vec<&[u16]> {
     let mut parts = Vec::new();
     let (mut depth, mut quote, mut escaped, mut start) = (0, 0, false, 0);
     for (i, &unit) in units.iter().enumerate() {
-        if escaped {
-            escaped = false;
+        if !split_step(unit, &mut depth, &mut quote, &mut escaped) {
             continue;
         }
-        if unit == 92 {
-            escaped = true;
-            continue;
-        }
-        if quote != 0 {
-            if unit == quote {
-                quote = 0;
-            }
-            continue;
-        }
-        match unit {
-            34 | 39 => quote = unit,
-            40 | 91 => depth += 1,
-            41 | 93 => depth -= 1,
-            _ => {}
-        }
-        if unit == separator && depth == 0 && quote == 0 {
+        if unit == separator && depth == 0 {
             parts.push(&units[start..i]);
             start = i + 1;
         }
@@ -372,28 +388,48 @@ fn split(units: &[u16], separator: u16) -> Vec<&[u16]> {
     parts.push(&units[start..]);
     parts
 }
+fn balanced_step(
+    unit: u16,
+    open: u16,
+    close: u16,
+    depth: &mut i32,
+    quote: &mut u16,
+    escaped: &mut bool,
+) -> bool {
+    if *escaped {
+        *escaped = false;
+    } else if unit == 92 {
+        *escaped = true;
+    } else if *quote != 0 {
+        if unit == *quote {
+            *quote = 0;
+        }
+    } else if matches!(unit, 34 | 39) {
+        *quote = unit;
+    } else if unit == open {
+        *depth += 1;
+    } else if unit == close {
+        *depth -= 1;
+        if *depth == 0 {
+            return true;
+        }
+    }
+    false
+}
+
 fn balanced<'a>(source: &'a [u16], index: &mut usize, open: u16, close: u16) -> &'a [u16] {
     let start = *index;
     let (mut depth, mut quote, mut escaped) = (1, 0, false);
     while *index < source.len() {
-        let unit = source[*index];
-        if escaped {
-            escaped = false;
-        } else if unit == 92 {
-            escaped = true;
-        } else if quote != 0 {
-            if unit == quote {
-                quote = 0;
-            }
-        } else if matches!(unit, 34 | 39) {
-            quote = unit;
-        } else if unit == open {
-            depth += 1;
-        } else if unit == close {
-            depth -= 1;
-            if depth == 0 {
-                break;
-            }
+        if balanced_step(
+            source[*index],
+            open,
+            close,
+            &mut depth,
+            &mut quote,
+            &mut escaped,
+        ) {
+            break;
         }
         *index += 1;
     }
@@ -528,6 +564,17 @@ fn invalid_item(item: &[u16], relative: bool) -> bool {
             && item.len().checked_sub(2).and_then(|at| item.get(at)) != Some(&92))
         || (!relative && matches!(item.first(), Some(62 | 43 | 126)))
 }
+fn parse_type_selector(source: &[u16], index: &mut usize, compound: &mut Compound) {
+    let start = *index;
+    let tag = ident(source, index);
+    if let Some((namespace, name)) = namespaced_type(&source[start..*index]) {
+        compound.namespace = namespace;
+        compound.tag = name;
+    } else if tag != "*" && !tag.is_empty() {
+        compound.tag = Some(tag);
+    }
+}
+
 fn complex(source: &[u16]) -> Option<Complex> {
     let mut index = 0;
     let mut first = None;
@@ -559,14 +606,7 @@ fn complex(source: &[u16]) -> Option<Complex> {
         let begin = index;
         let mut compound = Compound::default();
         if !matches!(source[index], 35 | 46 | 58 | 91) {
-            let start = index;
-            let tag = ident(source, &mut index);
-            if let Some((namespace, name)) = namespaced_type(&source[start..index]) {
-                compound.namespace = namespace;
-                compound.tag = name;
-            } else if tag != "*" && !tag.is_empty() {
-                compound.tag = Some(tag);
-            }
+            parse_type_selector(source, &mut index, &mut compound);
         }
         parse_compound_parts(source, &mut index, &mut compound);
         if index == begin {

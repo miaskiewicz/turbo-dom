@@ -119,6 +119,18 @@ pub(crate) fn audio_panel(
 /// Push the horizontal audio-panel controls onto `parts`: play button, time
 /// display, timeline, volume button and the menu dots, each gated by its
 /// width threshold (`-webkit-media-controls-*`, `audio_scan.mjs`).
+fn timeline_start_x(pw: f32) -> f32 {
+    if pw >= SHOW_TIME_REMAINING {
+        128.4
+    } else if pw >= SHOW_CURRENT_TIME {
+        89.25
+    } else if pw >= SHOW_PLAY {
+        42.0
+    } else {
+        10.0
+    }
+}
+
 fn push_horizontal_controls(
     parts: &mut Vec<Fragment>,
     pw: f32,
@@ -134,22 +146,12 @@ fn push_horizontal_controls(
     } else if pw >= SHOW_CURRENT_TIME {
         parts.extend(current_time(id, at(47.0, 32.0), fonts));
     }
-    // The timeline: between the left items (play / time) and the right items
-    // (volume / menu); Chrome 156's `-webkit-media-controls-timeline`.
-    let timeline_start = if pw >= SHOW_TIME_REMAINING {
-        128.4
-    } else if pw >= SHOW_CURRENT_TIME {
-        89.25
-    } else if pw >= SHOW_PLAY {
-        42.0
-    } else {
-        10.0
-    };
     let right_items_start = if pw >= SHOW_VOLUME {
         pw - 90.4
     } else {
         pw - 32.0
     };
+    let timeline_start = timeline_start_x(pw);
     let timeline_end = right_items_start.max(timeline_start + 32.0);
     parts.push(rounded(
         id,

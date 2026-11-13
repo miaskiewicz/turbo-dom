@@ -365,6 +365,42 @@ fn box_pieces(
 /// The placed line `runs` / `atoms` / `edges` (logical order, starting at `pen`)
 /// reordered visually: items move, and the inline edges are replaced by each box
 /// fragment's start (its left side) and end (its right side) edges.
+fn emit_piece_edges(
+    pieces: &[BoxPiece],
+    boxes: &std::collections::HashMap<NodeId, LineBox>,
+    position: usize,
+    start: bool,
+    x: &mut f32,
+    visual: &mut Vec<PlacedInlineEdge>,
+) {
+    let mut matched: Vec<&BoxPiece> = if start {
+        pieces.iter().filter(|p| p.first == position).collect()
+    } else {
+        pieces.iter().filter(|p| p.last == position).collect()
+    };
+    if start {
+        matched.sort_by_key(|p| boxes[&p.node].depth);
+    } else {
+        matched.sort_by_key(|p| std::cmp::Reverse(boxes[&p.node].depth));
+    }
+    for piece in matched {
+        let line_box = &boxes[&piece.node];
+        let has_edge = if start { piece.left } else { piece.right };
+        let advance = if has_edge {
+            (if start {
+                line_box.left()
+            } else {
+                line_box.right()
+            })
+            .unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        visual.push(visual_edge(line_box, start, *x, advance, has_edge));
+        *x += advance;
+    }
+}
+
 pub(super) fn reorder_line(
     mut items: Vec<LineItem>,
     pen: f32,
@@ -376,8 +412,6 @@ pub(super) fn reorder_line(
     ),
 ) {
     let (runs, atoms, edges) = placed;
-    // Not L1: Chrome hangs a line's trailing collapsible space next to the character
-    // before it, at that character's level and in its boxes.
     if let Some(last) = items.iter().rposition(|item| !item.space) {
         let (level, boxes) = (items[last].level, items[last].boxes.clone());
         for item in &mut items[last + 1..] {
@@ -393,18 +427,7 @@ pub(super) fn reorder_line(
     let mut visual = Vec::new();
     let mut x = pen;
     for (position, &index) in order.iter().enumerate() {
-        let mut starting: Vec<&BoxPiece> = pieces.iter().filter(|p| p.first == position).collect();
-        starting.sort_by_key(|p| boxes[&p.node].depth);
-        for piece in starting {
-            let line_box = &boxes[&piece.node];
-            let advance = if piece.left {
-                line_box.left().unwrap_or(0.0)
-            } else {
-                0.0
-            };
-            visual.push(visual_edge(line_box, true, x, advance, piece.left));
-            x += advance;
-        }
+        emit_piece_edges(&pieces, &boxes, position, true, &mut x, &mut visual);
         let item = &items[index];
         let dx = x - item.x0;
         for run in &mut runs[item.runs.clone()] {
@@ -414,18 +437,7 @@ pub(super) fn reorder_line(
             atoms[atom].x += dx;
         }
         x += item.x1 - item.x0;
-        let mut ending: Vec<&BoxPiece> = pieces.iter().filter(|p| p.last == position).collect();
-        ending.sort_by_key(|p| std::cmp::Reverse(boxes[&p.node].depth));
-        for piece in ending {
-            let line_box = &boxes[&piece.node];
-            let advance = if piece.right {
-                line_box.right().unwrap_or(0.0)
-            } else {
-                0.0
-            };
-            visual.push(visual_edge(line_box, false, x, advance, piece.right));
-            x += advance;
-        }
+        emit_piece_edges(&pieces, &boxes, position, false, &mut x, &mut visual);
     }
     *edges = visual;
 }

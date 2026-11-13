@@ -126,7 +126,8 @@ fn product(comps: &[Comp]) -> Expr {
     if factors.is_empty() {
         return Expr::Literal(vec![coefficient]);
     }
-    if coefficient == (String::new(), 1.0) && factors.len() == 1 && !factors[0].0 {
+    if matches!((&coefficient, factors.as_slice()), ((u, v), [(false, _)]) if u.is_empty() && *v == 1.0)
+    {
         return factors.remove(0).1;
     }
     Expr::Product(coefficient, factors)

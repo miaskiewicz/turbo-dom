@@ -199,6 +199,7 @@ test('live collection traps handle symbol + non-index keys', () => {
   document.body.innerHTML = '<i></i>';
   const c = document.getElementsByTagName('i');
   assert.equal(c[Symbol('x')], undefined);                          // get: symbol fallthrough
+  assert.equal(c.noSuchProp, undefined);                             // get: unknown string key
   assert.equal(Symbol.iterator in c, false);                         // has: non-string key
   assert.equal(Object.getOwnPropertyDescriptor(c, 'item'), undefined); // descriptor: non-index string
 });

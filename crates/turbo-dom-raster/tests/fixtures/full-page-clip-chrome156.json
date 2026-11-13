@@ -1,0 +1,35 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "851765c6b2a9951d7d65500d62c4dd34c9dee95926f78f3ebf9cb792bc8b7a5b",
+  "args": [
+    "--use-mock-keychain",
+    "--password-store=basic"
+  ],
+  "viewport": {
+    "width": 100,
+    "height": 80
+  },
+  "cases": [
+    {
+      "id": "own-empty-clip",
+      "html": "<!doctype html><body style='margin:0;background:white'><div style='position:absolute;top:220px;width:20px;height:20px;background:red;clip:rect(0,0,0,0)'></div>",
+      "scrollHeight": 240,
+      "width": 100,
+      "height": 240
+    },
+    {
+      "id": "clipped-parent",
+      "html": "<!doctype html><body style='margin:0;background:white'><div style='position:absolute;top:20px;width:20px;height:20px;clip:rect(0,0,0,0)'><div style='position:absolute;top:220px;width:20px;height:20px;background:red'></div></div>",
+      "scrollHeight": 260,
+      "width": 100,
+      "height": 260
+    },
+    {
+      "id": "overflow-hidden",
+      "html": "<!doctype html><body style='margin:0;background:white'><div style='height:20px;overflow:hidden'><div style='position:relative;top:220px;width:20px;height:20px;background:red'></div></div>",
+      "scrollHeight": 80,
+      "width": 100,
+      "height": 80
+    }
+  ]
+}

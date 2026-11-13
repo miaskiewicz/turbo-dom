@@ -505,7 +505,7 @@
   var monospaceInputTypes = { __proto__: null, 'date': 1, 'time': 1, 'datetime-local': 1, 'month': 1, 'week': 1 };
   var buttonInputTypes = { __proto__: null, 'button': 1, 'submit': 1, 'reset': 1 };
   function formControlUserAgent(el, tag){
-    if (tag === 'BUTTON') return { 'display': 'inline-block', 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline', 'background-color': 'rgb(239, 239, 239)' };
+    if (tag === 'BUTTON') return { 'font': '13.3333px Arial', 'margin': '0px', 'padding': '1px 6px', 'border-width': '2px', 'vertical-align': 'baseline', 'background-color': 'rgb(239, 239, 239)' };
     if (tag === 'TEXTAREA') return { 'font': '13.3333px monospace' };
     if (tag === 'SELECT') return { 'font': '13.3333px Arial' };
     if (tag === 'OPTGROUP') return { 'font-weight': 'bolder' };
@@ -1389,8 +1389,8 @@
     // has no computed style.
     return entry.base;
   }
-  function computedBaseCapture(decl,priorities,uaValues){
-    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead};
+  function computedBaseCapture(decl,priorities,uaValues,decoration){
+    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,decoration:decoration,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead};
     for(var name in decl)if(typeof decl[name]!=='function'&&name!=='length')out.decl[name]=decl[name];
     for(var name in priorities)out.priorities[name]=priorities[name];
     if(uaValues){out.ua={__proto__:null};for(var name in uaValues)out.ua[name]=uaValues[name];}
@@ -1767,6 +1767,7 @@
   // One computeStyleFresh read's state, shared by its phases below.
   function ComputedCascade(el,snapshots,sink,pseudo,deps,base,inFrame){
     this.el=el;this.snapshots=snapshots;this.sink=sink;this.pseudo=pseudo;this.deps=deps;this.base=base;this.inFrame=inFrame;
+    $def(this,'jsdomTextDecoration',{value:null,writable:true});
     this.decl=null;this.priorities=null;this.uaValues=null;this.expanding=null;this.info=null;this.layer='';
     this.parentStyle=null;this.setProp=null;this.bucketIndex=undefined;this.bucketOrder=undefined;
     this.inheritParent=null;this.inheritSnapshot=null;this.inheritedValue=null;this.connected=false;
@@ -1806,8 +1807,16 @@
     if (sink) sink.order[name] = ++sink.count;
     if (typeof val === 'string') { var outer = cs.expanding; cs.expanding = name; try { expandShorthand(name, val, function(property,value){cascadeSetProp(cs,property,value,important);}); } finally { cs.expanding = outer; } }
   }
+  // jsdom keeps this shorthand independent of its longhands; preserve authored text
+  // before Chrome's computed color/default normalization synthesizes a new value.
+  function computedDeclaredDecoration(cs,record,accepts,only){
+    var value=record.jsdomTextDecoration;
+    if(!value||accepts&&!accepts('text-decoration')||only!==undefined&&only!==value.important)return;
+    if(cs.jsdomTextDecoration&&cs.jsdomTextDecoration.important&&!value.important)return;
+    cs.jsdomTextDecoration=value;
+  }
   // `only`: true applies just the !important declarations, false just the normal ones.
-  function cascadeApplyDeclarations(cs,record,accepts,only){for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;cascadeSetProp(cs,name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
+  function cascadeApplyDeclarations(cs,record,accepts,only){computedDeclaredDecoration(cs,record,accepts,only);for(var index=0;index<record.names.length;index++){var name=record.names[index],value=cssMapGet(record.values,name);if(accepts&&$c.slice(name,0,2)!=='--'&&!accepts(name))continue;if(only!==undefined&&only!==(value.priority==='important'))continue;cascadeSetProp(cs,name,value.pending?value.pending[1]:value.raw||value.text,value.priority==='important');}}
   // A disconnected element has no style (turbo-dom#67): every value reads "" until it is
   // connected again (the declaration stays live). Typed OM's cascade read (`sink`) still
   // reports the cascaded values. A pseudo-element of a disconnected (or <video>/<audio>
@@ -1897,11 +1906,11 @@
   function computedCascadeDecls(cs){
     var base=cs.base,reused=base?base.use:null,share=computedShareProbe(cs,reused);
     if(share&&share.hit)reused=share.hit;
-    if(reused){computedBaseRestore(reused,cs.decl,cs.priorities);cs.uaValues=reused.ua;return;}
+    if(reused){computedBaseRestore(reused,cs.decl,cs.priorities);cs.uaValues=reused.ua;cs.jsdomTextDecoration=reused.decoration;return;}
     computedApplyCascade(cs);
     // (A cascade goes volatile before this point only in a tree that never shares: an unkeyed
     // state rule has scope 8, an @import's media has scope -1.)
-    if(base&&!cs.pseudo&&!cs.sink){base.out=computedBaseCapture(cs.decl,cs.priorities,cs.uaValues);if(share&&!base.out.stateRead)styleShareStore(cs.el,share,base.out,cs.bucketIndex,cs.bucketOrder);}
+    if(base&&!cs.pseudo&&!cs.sink){base.out=computedBaseCapture(cs.decl,cs.priorities,cs.uaValues,cs.jsdomTextDecoration);if(share&&!base.out.stateRead)styleShareStore(cs.el,share,base.out,cs.bucketIndex,cs.bucketOrder);}
   }
   function computedSinkValues(decl){ var cascaded = { __proto__: null }; $c.forEach($O.keys(decl),function(name){ if (typeof decl[name] === 'string' && ($c.slice(name,0, 2) === '--' || name === $c.toLowerCase(name))) cascaded[name] = decl[name]; }); return cascaded; }
   // Inherited values come from the composed parent's snapshot in this read, so
@@ -2188,6 +2197,7 @@
     computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
+    if(computedStyleJsdom){var record=$c.get(declarationRecords,snapshot),decoration=cs.jsdomTextDecoration;$c.set(record.values,'text-decoration',{text:decoration?decoration.text:'',priority:'',pending:null,raw:null});}
     computeStyleFreshStore(el,pseudo,snapshots,snapshot);
     return snapshot;
   }
@@ -2224,6 +2234,8 @@
   // 27's behaviour for vitest parity: no matchMedia / MediaQueryList / MediaQueryListEvent,
   // and a media list applies only when one of its items is exactly `screen` (jsdom's
   // forEachMatchingSheetRuleOfElement); an @import also applies with no media list.
+  var computedStyleJsdom=false;
+  __ns.setComputedStyleMode=function(mode){var next=mode==='jsdom';if(next===computedStyleJsdom)return;computedStyleJsdom=next;invalidateComputedStyles();};
   var mediaMode = 'chrome', jsdomHidden = null;
   function jsdomScreen(text){ var items = $c.split(String(text), ','); for (var i = 0; i < items.length; i++) if ($c.trim(items[i]) === 'screen') return true; return false; }
   __ns.setMediaMode = function(mode){
@@ -2426,13 +2438,87 @@
       constructor(type,init={}){if(!arguments.length)throw new TypeError('A type is required');super(type,init);init=init||{};$call($wmSet,closeStates,this,{wasClean:!!init.wasClean,code:intValue(init.code)&65535,reason:stringValue(init.reason)});}
     }
     readonly(CloseEvent.prototype,closeStates,['wasClean','code','reason']);tagEvent(CloseEvent,'CloseEvent');
+    // Native ephemeron records keep Touch brands valid across same-isolate realms.
+    var TouchError=TypeError,touchFinite=Number.isFinite,touchFloat=Math.fround,touchIterator=Symbol.iterator,touchListFactory=__ns.makeNamedObject;
+    function touchNumberValue(value){return value===undefined?0:+value;}
+    function touchRecord(value,kind){var record=collectionGet(value);if(!record||record.kind!==kind)throw new TouchError('Illegal invocation');return record;}
+    var touchFields=['screenX','screenY','clientX','clientY','pageX','pageY','radiusX','radiusY','rotationAngle','force'];
+    var touchInitFields=['clientX','clientY','force','identifier','pageX','pageY','radiusX','radiusY','rotationAngle','screenX','screenY','target'];
+    var touchFloatFields={__proto__:null,force:true,radiusX:true,radiusY:true,rotationAngle:true};
+    function touchTarget(value){
+      if(value===undefined)throw new TouchError('target is required');
+      // The native EventTarget getter brands foreign-realm targets too.
+      if(!value||!((__ns.eventTargetNativeBrand&&__ns.eventTargetNativeBrand(value))||value===g||$call($N.nodeType,value)))throw new TouchError('target must be an EventTarget');
+      return value;
+    }
+    function touchInitValue(name,value){
+      if(name==='target')return touchTarget(value);
+      if(name==='identifier'){
+        if(value===undefined)throw new TouchError('identifier is required');
+        return touchNumberValue(value)>>0;
+      }
+      var number=touchNumberValue(value);
+      if(!touchFinite(number))throw new TouchError('Touch coordinates must be finite');
+      if(touchFloatFields[name])number=touchFloat(number);
+      if(!touchFinite(number))throw new TouchError('Touch coordinates must be finite');
+      return number;
+    }
+    class Touch {
+      constructor(init){
+        if(!init||(typeof init!=='object'&&typeof init!=='function'))throw new TouchError('TouchInit must be a dictionary');
+        // Web IDL converts dictionary members once, in lexicographic order, before construction.
+        var record={__proto__:null,kind:'Touch'};
+        for(var i=0;i<touchInitFields.length;i++){var name=touchInitFields[i];record[name]=touchInitValue(name,init[name]);}
+        collectionSet(this,record);
+      }
+    }
+    function touchGetter(name){member(Touch.prototype,name,{get:function(){return touchRecord(this,'Touch')[name];}});}
+    touchGetter('identifier');touchGetter('target');
+    for(var touchField=0;touchField<touchFields.length;touchField++)touchGetter(touchFields[touchField]);
+    tagEvent(Touch,'Touch');
+    var touchEventJsdom=false;
+    __ns.setTouchEventMode=function(mode){touchEventJsdom=mode==='jsdom';};
+    class TouchList {constructor(){throw new TouchError('Illegal constructor');}}
+    member(TouchList.prototype,'length',{get:function(){return touchRecord(this,'TouchList').items.length;}});
+    member(TouchList.prototype,'item',{value:function item(index){if(!arguments.length)throw new TouchError('An index is required');var items=touchRecord(this,'TouchList').items,at=touchNumberValue(index)>>>0;return at<items.length?items[at]:null;}});
+    var touchValues=function values(){var items=touchRecord(this,'TouchList').items,index=0;return {next:function(){return index<items.length?{value:items[index++],done:false}:{value:undefined,done:true};},[touchIterator]:function(){return this;}};};
+    $def(TouchList.prototype,touchIterator,{value:__ns.makeNativeFunction(touchValues,'values',0),writable:true,configurable:true});tagEvent(TouchList,'TouchList');
+    function touchIndex(key){return typeof key==='string'&&key!==''&&key!=='4294967295'&&''+(key>>>0)===key;}
+    function touchListOperation(items,operation,key){
+      if(operation==='indices'){var keys=[];for(var i=0;i<items.length;i++)$c.push(keys,i);return keys;}
+      if(operation==='keys')return [];
+      if(!touchIndex(key))return undefined;
+      return touchListIndexOperation(items,operation,key>>>0);
+    }
+    function touchListIndexOperation(items,operation,index){
+      var supported=index<items.length;
+      if(operation==='set'||operation==='define')return true;
+      if(operation==='delete')return !supported;
+      if(operation==='has')return supported;
+      if(operation==='descriptor')return supported?{__proto__:null,value:items[index],writable:false,enumerable:true,configurable:true}:undefined;
+      return supported?items[index]:undefined;
+    }
+    function touchList(sequence){
+      var items=[];
+      if(sequence!==undefined)for(var touch of sequence){if(!touchEventJsdom)touchRecord(touch,'Touch');$c.push(items,touch);}
+      // Blink acknowledges indexed writes/definitions without changing readonly
+      // entries, even for non-configurable descriptors: a Proxy cannot model this.
+      var list=touchListFactory(TouchList.prototype,function(operation,key){return touchListOperation(items,operation,key);},true);
+      collectionSet(list,{kind:'TouchList',items:items});
+      return list;
+    }
+    class TouchEvent extends UIEvent {
+      constructor(type,init={}){if(!arguments.length)throw new TouchError('A type is required');super(type,init);init=init||{};var state={__proto__:null,kind:'TouchEvent',...modifiers(init)};state.changedTouches=touchList(init.changedTouches);state.targetTouches=touchList(init.targetTouches);state.touches=touchList(init.touches);collectionSet(this,state);}
+    }
+    function touchEventGetter(name){member(TouchEvent.prototype,name,{get:function(){return touchRecord(this,'TouchEvent')[name];}});}
+    ['touches','targetTouches','changedTouches','altKey','metaKey','ctrlKey','shiftKey'].forEach(touchEventGetter);tagEvent(TouchEvent,'TouchEvent');
     // Use the native class bridge for actual implementations, preserving private
     // records and subclass new.target rather than replacing Function.toString.
-    [UIEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent,PointerEvent,WheelEvent,CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){var name=implementation.name,constructor=__ns.makeNativeFunction?__ns.makeNativeFunction(implementation,name,1,true,true):implementation;constructor.prototype=implementation.prototype;Object.defineProperty(constructor.prototype,'constructor',{value:constructor,writable:true,configurable:true});Object.defineProperty(constructor,'prototype',{writable:false});Object.keys(implementation).forEach(function(key){Object.defineProperty(constructor,key,Object.getOwnPropertyDescriptor(implementation,key));});Object.defineProperty(g,name,{value:constructor,writable:true,configurable:true,enumerable:false});});
-    [MouseEvent,KeyboardEvent,InputEvent,FocusEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.UIEvent);});
+    [Touch,TouchList,TouchEvent,UIEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent,PointerEvent,WheelEvent,CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){var name=implementation.name,constructor=__ns.makeNativeFunction?__ns.makeNativeFunction(implementation,name,name==='TouchList'?0:1,true,true):implementation;constructor.prototype=implementation.prototype;Object.defineProperty(constructor.prototype,'constructor',{value:constructor,writable:true,configurable:true});Object.defineProperty(constructor,'prototype',{writable:false});Object.keys(implementation).forEach(function(key){Object.defineProperty(constructor,key,Object.getOwnPropertyDescriptor(implementation,key));});Object.defineProperty(g,name,{value:constructor,writable:true,configurable:true,enumerable:false});});
+    [TouchEvent,MouseEvent,KeyboardEvent,InputEvent,FocusEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.UIEvent);});
     [CustomEvent,PopStateEvent,HashChangeEvent,ProgressEvent,CloseEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],Event);});
     [PointerEvent,WheelEvent].forEach(function(implementation){Object.setPrototypeOf(g[implementation.name],g.MouseEvent);});
-    sub('CompositionEvent'); sub('DragEvent'); sub('TouchEvent'); sub('ClipboardEvent');
+    sub('CompositionEvent'); sub('DragEvent'); sub('ClipboardEvent');
     // document.createEvent: html_reflections.js (turbo-dom#341).
     // The installer captures and deletes this function before guest execution.
     g.__captureEventRecord=function(event){return getEventRecord(event);};
@@ -3072,7 +3158,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function parseLonghandText(name,value){if(!$c.startsWith(name,'--')&&!knownProperty(name))return null;var parsed=typeof cssNativeParse==='function'?cssNativeParse('x { '+name+': '+value+' }'):'x { '+name+': '+value+' }';var body=$c.slice(parsed,$c.indexOf(parsed,'{')+1,$c.lastIndexOf(parsed,'}')),accepted=null;$c.forEach(cssParts(body,';'),function(part){var index=$c.indexOf(part,':');if(index<1||$c.trim($c.slice(part,0,index))!==name)return;var text=$c.trim($c.slice(part,index+1));if($c.test(/\s*!important\s*$/i,text))return;if(!$c.startsWith(name,'--')&&!deferredCssText(text)&&__ns.typedOmValid&&!__ns.typedOmValid(name,text))return;accepted=text;});return accepted;}
   // The [[name, text, pending, raw], ...] a declaration sets, or null when it is invalid.
   function declarationEntries(name,value){name=propertyAlias(name);if(shorthandName(name))return expandShorthandValue(name,value);var text=longhandText(name,value);return text===null?null:[[name,text[0],null,text[1]]];}
-  function parseDeclaration(record,text){if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries)$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});}return;}parseLegacyDeclaration(record,text);}
+  function parseDeclaration(record,text){record.jsdomTextDecoration=null;if(cssShorthand&&!record.fontFace){record.names=[];record.values=new Map();var list=cssShorthand('declarations',text);for(var index=0;index<list.length;index+=3){var name=list[index];if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);var entries=declarationEntries(name,list[index+1]);if(entries){$c.forEach(entries,function(entry){parsedDeclaration(record,entry[0],entry[1],list[index+2]?'important':'',entry[2],entry[3]);});if(name==='text-decoration'&&(!record.jsdomTextDecoration||!record.jsdomTextDecoration.important||list[index+2]))record.jsdomTextDecoration={text:shorthandValue(record,name),important:!!list[index+2]};}}return;}parseLegacyDeclaration(record,text);}
   // Accept / reject a legacy-parsed property name before its value is classified.
   function parseLegacyNameKnown(record, name){ return record.fontFace || $c.startsWith(name, '--') || knownProperty(name); }
   // Accept / reject the value through Typed OM once the !important suffix is stripped.
@@ -3084,17 +3170,18 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   function writableDeclaration(record){if(record.readOnly)throw new __ns.DOMException('The declaration is read-only','NoModificationAllowedError');if(!record.owner)bumpCssomEpoch();}
   function commitDeclaration(record){if(record.owner){record.source=declarationText(record);$c.call(appliedInlineWrite,record.owner,record.source);}}
   // removeProperty: a shorthand removes its longhands and returns '' (Chrome).
-  function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
+  function removeDeclaration(record,name){if(!record.fontFace){name=propertyAlias(name);if(name==='text-decoration')record.jsdomTextDecoration=null;var longhands=shorthandName(name)&&cssShorthand('longhands',name);if(longhands){var removed=false;$c.forEach(longhands,function(longhand){if($c.delete(record.values,longhand)){$c.splice(record.names,$c.indexOf(record.names,longhand),1);removed=true;}});if(removed)commitDeclaration(record);return '';}}var previous=$c.get(record.values,name);if(!previous)return '';$c.delete(record.values,name);$c.splice(record.names,$c.indexOf(record.names,name),1);commitDeclaration(record);return previous.text;}
   function setDeclarationShorthand(record,name,value,priority){
     if(priority&&priority!=='important')return;
     if($c.slice(name,0,2)!=='--')name=$c.toLowerCase(name);
     var entries=declarationEntries(name,value);
     if(!entries)return;
     $c.forEach(entries,function(entry){storeDeclaration(record,entry[0],entry[1],priority,entry[2],entry[3]);});
+    if(name==='text-decoration')record.jsdomTextDecoration={text:shorthandValue(record,name),important:priority==='important'};
     commitDeclaration(record);
   }
   function setDeclarationLegacyParse(record,name,value,priority){
-    var parsed={names:[],values:new Map(),fontFace:record.fontFace};
+    var parsed={__proto__:null,names:[],values:new Map(),fontFace:record.fontFace};
     parseDeclaration(parsed,name+': '+value+(priority?' !important':'')+';');
     var accepted=$c.get(parsed.values,name);
     if(!accepted&&record.fontFace&&knownProperty(name)){

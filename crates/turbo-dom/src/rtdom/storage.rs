@@ -109,20 +109,11 @@ impl Tree {
         }
     }
 
-    fn charge_preflight(
+    fn charge_per_handle_attrs(
         &self,
         work: &mut usize,
         budget: CollectionBudget,
     ) -> Result<(), CollectionError> {
-        for pool in [
-            &self.buf.tag_names,
-            &self.buf.attr_names,
-            &self.buf.attr_prefixes,
-            &self.buf.attr_values,
-            &self.buf.strings,
-        ] {
-            charge(work, pool.len(), budget)?;
-        }
         for h in self.handles() {
             charge(work, 1, budget)?;
             let count = self.attrs_ov.get(h).map_or_else(
@@ -140,6 +131,14 @@ impl Tree {
             );
             charge(work, count, budget)?;
         }
+        Ok(())
+    }
+
+    fn charge_metadata(
+        &self,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<(), CollectionError> {
         charge(work, self.mutation_log.as_ref().map_or(0, Vec::len), budget)?;
         charge(
             work,
@@ -160,6 +159,24 @@ impl Tree {
         charge(work, self.custom_element_states.len(), budget)?;
         charge(work, self.fullscreen_stack.len(), budget)?;
         Ok(())
+    }
+
+    fn charge_preflight(
+        &self,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<(), CollectionError> {
+        for pool in [
+            &self.buf.tag_names,
+            &self.buf.attr_names,
+            &self.buf.attr_prefixes,
+            &self.buf.attr_values,
+            &self.buf.strings,
+        ] {
+            charge(work, pool.len(), budget)?;
+        }
+        self.charge_per_handle_attrs(work, budget)?;
+        self.charge_metadata(work, budget)
     }
 
     fn collect_roots(
@@ -244,6 +261,34 @@ impl Tree {
         Ok(())
     }
 
+    fn walk_visit_node(
+        &self,
+        node: Handle,
+        owned_attrs: &FxHashMap<Handle, Vec<Handle>>,
+        pending: &mut Vec<Handle>,
+        work: &mut usize,
+        budget: CollectionBudget,
+    ) -> Result<(), CollectionError> {
+        let children = self.children(node);
+        charge(work, children.len(), budget)?;
+        for child in children {
+            if self.parent(child) != Some(node) {
+                return Err(CollectionError::InvalidGraph);
+            }
+            pending.push(child);
+        }
+        if let Some(shadow) = self.shadow_root(node) {
+            if self.shadow_host(shadow) != Some(node) {
+                return Err(CollectionError::InvalidGraph);
+            }
+            pending.push(shadow);
+        }
+        if let Some(attrs) = owned_attrs.get(&node) {
+            pending.extend_from_slice(attrs);
+        }
+        Ok(())
+    }
+
     fn walk_subtree(
         &self,
         root: Handle,
@@ -261,23 +306,7 @@ impl Tree {
             if !retained.insert(node) {
                 continue;
             }
-            let children = self.children(node);
-            charge(work, children.len(), budget)?;
-            for child in children {
-                if self.parent(child) != Some(node) {
-                    return Err(CollectionError::InvalidGraph);
-                }
-                pending.push(child);
-            }
-            if let Some(shadow) = self.shadow_root(node) {
-                if self.shadow_host(shadow) != Some(node) {
-                    return Err(CollectionError::InvalidGraph);
-                }
-                pending.push(shadow);
-            }
-            if let Some(attrs) = owned_attrs.get(&node) {
-                pending.extend_from_slice(attrs);
-            }
+            self.walk_visit_node(node, owned_attrs, &mut pending, work, budget)?;
         }
         Ok(())
     }

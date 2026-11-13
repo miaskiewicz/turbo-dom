@@ -43,6 +43,12 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 ```
 
 - **Screenshots:**
+  - `PreparedScreenshot::new(html, external_css, viewport, images, &options)` owns an
+    immutable prepared layout and decoded image pixels. Repeated `.png()` / `.svg()`
+    calls skip parse, image decode and layout. Prepare a replacement whenever HTML,
+    CSS, viewport, assets, fonts, canvas contents or IDL state changes; old scenes
+    retain their original output independently and release resources on drop. This
+    explicit snapshot API has no shared mutable cache or revision-key contract.
   - `screenshot(html, viewport, Format::{Png, Svg})`, `screenshot_png`, `screenshot_svg`;
   - `*_with_css` adds external CSS;
   - `*_with_assets` adds caller-fetched images (`ImageAssets` = URL → bytes) and
@@ -56,6 +62,9 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 
     | field | type | effect |
     |---|---|---|
+    | `device_scale` | `f64` | output pixels per CSS pixel (default 1), without changing layout; dimensions round to the nearest device pixel, with positive half-pixel ties up (Chrome 156); finite positive values representable by the native painter only |
+    | `omit_background` | `bool` | leave the initial canvas transparent; authored root/body backgrounds still paint |
+    | `masks` | `&[ScreenshotMask]` | CSS-pixel overlays painted last; `ScreenshotMask::new(rect)` uses opaque magenta, or set its RGBA color |
     | `full_page` | `bool` | paint the full content height instead of the viewport |
     | `system_fonts` | `bool` | resolve against installed system fonts (`FontRegistry::system`) |
     | `canvases` | `Option<&'a CanvasContents>` | the embedder's canvas pixels (below) |
@@ -84,6 +93,19 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
 - **Resource discovery** (works on the parsed document, never on source text):
   `image_urls`, `image_urls_in_css`, `stylesheet_hrefs`, and `delazy_tree` /
   `delazy_images` (fill lazy `<img>`s).
+- **Capture resource planning:** `capture_resources(html, css, viewport, &metadata, &options)`
+  returns sorted `pixel_urls` and deterministic `fragments_examined`. `ImageMetadata`
+  maps resolver keys to `turbo_dom_layout::image::Intrinsic` headers; retain these
+  independently of image bodies and set `options.image_metadata = Some(&metadata)`
+  when painting only selected bodies. Layout uses the same inputs and viewport as
+  screenshots. Unknown headers are always selected because their intrinsic sizes
+  can change layout. Positioned descendants are visited independently of ancestor
+  bounds; transforms, shadows and filters conservatively keep resources. Selection
+  ignores clipping and occlusion, so the result may contain extra URLs. No image
+  bytes or references are retained by the returned plan. Recompute after changing
+  markup, CSS, viewport, metadata, fonts or live IDL inputs.
+  Run the scalable offline correctness/timing harness with
+  `cargo run -p turbo-dom-raster --example capture_resources -- 1000`.
 - **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
@@ -145,11 +167,16 @@ size-only fallback is one branch shared by both features.
 
 ```bash
 cargo test -p turbo-dom-raster                    # unit tests, tests/screenshot.rs, Chrome 156 controls
+cargo run --release -p turbo-dom-raster --example retained_capture -- 5000 10
 cargo test -p turbo-dom-raster --features avif
 cargo test -p turbo-dom-raster --features jxl
 cargo check -p turbo-dom-raster --features gpu-metal,coretext
 cargo tarpaulin --engine llvm -p turbo-dom-raster [--features avif|jxl] --include-files 'crates/turbo-dom-raster/src/*'
 ```
+
+The offline `retained_capture` harness accepts row count and repeat count, checks
+pixel/byte equivalence and snapshot isolation, and prints timings plus layout-pass
+counts. Timings are diagnostic; normal tests gate deterministic work and output.
 
 Pixel expectations come from **Chrome 156 controls**, recorded by the repository's
 `scripts/*-chrome-control.mjs`. Each test pairs with one script:

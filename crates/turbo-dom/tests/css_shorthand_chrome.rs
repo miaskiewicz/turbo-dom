@@ -88,6 +88,51 @@ fn differences(path: &str, actual: &Value, expected: &Value, out: &mut Vec<Strin
     }
 }
 
+fn check_assembled(
+    block: &DeclarationBlock,
+    assembled: &Value,
+    table: &Value,
+    out: &mut Vec<String>,
+) {
+    let items: Vec<(String, String)> = (0..block.len())
+        .map(|index| {
+            let name = block.item(index).unwrap().to_string();
+            let value = block.property_value(&name);
+            (name, value)
+        })
+        .collect();
+    let build = |list: &[(String, String, &str)]| {
+        let mut target = DeclarationBlock::new();
+        for (name, value, priority) in list.iter().rev() {
+            target.set_property(name, value, priority, &longhand);
+        }
+        record(&target, table)
+    };
+    let all: Vec<_> = items
+        .iter()
+        .map(|(n, v)| (n.clone(), v.clone(), ""))
+        .collect();
+    let mut keyword = all.clone();
+    keyword[0].1 = "inherit".into();
+    let mut important = all.clone();
+    important[0].2 = "important";
+    for (label, built) in [
+        ("all", build(&all)),
+        ("partial", build(&all[1..])),
+        ("keyword", build(&keyword)),
+        ("important", build(&important)),
+    ] {
+        for key in ["cssText", "items", "shorthands"] {
+            differences(
+                &format!("assembled.{label}.{key}"),
+                &built[key],
+                &assembled[label][key],
+                out,
+            );
+        }
+    }
+}
+
 #[test]
 fn shorthands_expand_and_serialize_like_chrome156() {
     let control: Value = serde_json::from_str(CONTROL).unwrap();
@@ -139,43 +184,7 @@ fn shorthands_expand_and_serialize_like_chrome156() {
             differences("returns", &json!(returns), expected, &mut out);
         }
         if let Some(assembled) = row.get("assembled") {
-            let items: Vec<(String, String)> = (0..block.len())
-                .map(|index| {
-                    let name = block.item(index).unwrap().to_string();
-                    let value = block.property_value(&name);
-                    (name, value)
-                })
-                .collect();
-            let build = |list: &[(String, String, &str)]| {
-                let mut target = DeclarationBlock::new();
-                for (name, value, priority) in list.iter().rev() {
-                    target.set_property(name, value, priority, &longhand);
-                }
-                record(&target, table)
-            };
-            let all: Vec<_> = items
-                .iter()
-                .map(|(n, v)| (n.clone(), v.clone(), ""))
-                .collect();
-            let mut keyword = all.clone();
-            keyword[0].1 = "inherit".into();
-            let mut important = all.clone();
-            important[0].2 = "important";
-            for (label, built) in [
-                ("all", build(&all)),
-                ("partial", build(&all[1..])),
-                ("keyword", build(&keyword)),
-                ("important", build(&important)),
-            ] {
-                for key in ["cssText", "items", "shorthands"] {
-                    differences(
-                        &format!("assembled.{label}.{key}"),
-                        &built[key],
-                        &assembled[label][key],
-                        &mut out,
-                    );
-                }
-            }
+            check_assembled(&block, assembled, table, &mut out);
         }
         if !out.is_empty() {
             failed_ids.push(id.to_string());

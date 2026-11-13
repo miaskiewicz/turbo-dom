@@ -506,7 +506,7 @@ fn sum_terms(inner: &[Comp]) -> Option<Vec<(String, f64)>> {
             Kind::Slash | Kind::Delim('/') => current = scale(current, 1.0 / scalar(&next)?),
             Kind::Delim(operator @ ('+' | '-')) => {
                 push(&mut terms, current, sign);
-                sign = if operator == '+' { 1.0 } else { -1.0 };
+                sign = [(-1.0_f64), 1.0][usize::from(operator == '+')];
                 current = next;
             }
             _ => unreachable!("a checked calc() sum has only * / + - operators"),
@@ -610,6 +610,22 @@ fn unit_category(unit: &str) -> Option<u8> {
 /// The type of a `calc()` sum, `None` when Chrome rejects it: a sum mixes numbers and
 /// dimensions or two dimension categories, a product multiplies two dimensions, or a divisor
 /// has a unit.
+fn multiply_type(a: CalcType, b: CalcType) -> Option<CalcType> {
+    if unit_type(a) && unit_type(b) {
+        return None;
+    }
+    Some(match (a, b) {
+        (CalcType::Number | CalcType::Unknown, other) | (other, _) => other,
+    })
+}
+
+fn accumulate_type(total: Option<CalcType>, product: CalcType) -> Option<CalcType> {
+    match total {
+        None => Some(product),
+        Some(total) => sum_type(total, product),
+    }
+}
+
 fn calc_type(inner: &[Comp]) -> Option<CalcType> {
     let operand = |comp: &Comp| match &comp.kind {
         Kind::Number { .. } => Some(CalcType::Number),
@@ -638,23 +654,11 @@ fn calc_type(inner: &[Comp]) -> Option<CalcType> {
         };
         let next = operand(next)?;
         match operator.kind {
-            Kind::Delim('*') => {
-                product = match (product, next) {
-                    (a, b) if unit_type(a) && unit_type(b) => return None,
-                    // At most one side carries a unit: the product has its type.
-                    (CalcType::Number | CalcType::Unknown, other) | (other, _) => other,
-                };
-            }
-            Kind::Slash | Kind::Delim('/') => {
-                if unit_type(next) {
-                    return None;
-                }
-            }
+            Kind::Delim('*') => product = multiply_type(product, next)?,
+            Kind::Slash | Kind::Delim('/') if unit_type(next) => return None,
+            Kind::Slash | Kind::Delim('/') => {}
             Kind::Delim('+' | '-') => {
-                total = Some(match total {
-                    None => product,
-                    Some(total) => sum_type(total, product)?,
-                });
+                total = Some(accumulate_type(total, product)?);
                 product = next;
             }
             _ => return None,
@@ -797,6 +801,34 @@ fn rgb_hsl_modern_space_valid(inner: &[Comp]) -> bool {
 /// `clamp()` / `abs()` / `sign()` take type-checked sums (`clamp()` bounds may be `none`),
 /// `rgb()` / `hsl()` have three channels (and an alpha) in one syntax with an angle or number
 /// hue, `linear()` stops a number and at most two percentages, `cubic-bezier()` four numbers.
+fn steps_valid(inner: &[Comp]) -> bool {
+    let count = |comp: &Comp, minimum: f32| match comp.kind {
+        Kind::Number {
+            value,
+            integer: true,
+        } => value >= minimum,
+        _ => comp.is_math(),
+    };
+    match inner {
+        [steps] => count(steps, 1.0),
+        [steps, comma, position] if comma.kind == Kind::Comma => {
+            let Some(position) = position.keyword(&[
+                "start",
+                "end",
+                "jump-start",
+                "jump-end",
+                "jump-none",
+                "jump-both",
+            ]) else {
+                return false;
+            };
+            let minimum = if position == "jump-none" { 2.0 } else { 1.0 };
+            count(steps, minimum)
+        }
+        _ => false,
+    }
+}
+
 fn function_valid(name: &str, inner: &[Comp]) -> bool {
     match name {
         "calc" => checked_sum(inner).is_some(),
@@ -808,11 +840,8 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
             arguments.len() == 3 && !is_none(arguments[1]) && arguments_type(inner).is_some()
         }
         "abs" | "sign" => !inner.iter().any(Comp::is_comma) && checked_sum(inner).is_some(),
-        // The tree-counting functions take no arguments.
         "sibling-index" | "sibling-count" => inner.is_empty(),
         "rgb" | "rgba" | "hsl" | "hsla" => rgb_hsl_valid(name, inner),
-        // Each stop is an output and at most two input positions, literals once `read`
-        // resolved the math functions.
         "linear" => {
             let output = |comp: &Comp| matches!(comp.kind, Kind::Number { .. });
             let position = |comp: &Comp| matches!(comp.kind, Kind::Percentage(_));
@@ -823,36 +852,7 @@ fn function_valid(name: &str, inner: &[Comp]) -> bool {
                         && stop[1..].iter().all(position)
                 })
         }
-        "steps" => {
-            // The step count: an integer literal, or a math function Chrome checks later.
-            let count = |comp: &Comp, minimum: f32| match comp.kind {
-                Kind::Number {
-                    value,
-                    integer: true,
-                } => value >= minimum,
-                _ => comp.is_math(),
-            };
-            match inner {
-                [steps] => count(steps, 1.0),
-                [steps, comma, position] if comma.kind == Kind::Comma => {
-                    let Some(position) = position.keyword(&[
-                        "start",
-                        "end",
-                        "jump-start",
-                        "jump-end",
-                        "jump-none",
-                        "jump-both",
-                    ]) else {
-                        return false;
-                    };
-                    let minimum = if position == "jump-none" { 2.0 } else { 1.0 };
-                    count(steps, minimum)
-                }
-                _ => false,
-            }
-        }
-        // Four numbers (literals once `read` resolved the math functions); the x coordinates
-        // are in [0, 1].
+        "steps" => steps_valid(inner),
         "cubic-bezier" => {
             let arguments = arguments(inner);
             arguments.len() == 4

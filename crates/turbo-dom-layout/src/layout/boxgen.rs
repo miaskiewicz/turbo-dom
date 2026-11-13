@@ -307,26 +307,44 @@ impl Containment {
     /// `contain: size | strict` / `container-type: size` contain both axes, `contain:
     /// inline-size` / `container-type: inline-size` the inline axis (the height in a
     /// vertical writing mode).
-    pub(crate) fn of(style: &ComputedStyle) -> Containment {
-        let has = |property, word: &str| {
-            style
-                .get(property)
-                .is_some_and(|v| v.split_whitespace().any(|t| t.eq_ignore_ascii_case(word)))
-        };
-        let size =
-            has("contain", "size") || has("contain", "strict") || has("container-type", "size");
-        let inline = has("contain", "inline-size") || has("container-type", "inline-size");
-        let vertical = super::writing::WritingMode::of(style).vertical();
-        let layout = ["layout", "content", "strict"]
+    fn style_has(style: &ComputedStyle, property: &str, word: &str) -> bool {
+        style
+            .get(property)
+            .is_some_and(|v| v.split_whitespace().any(|t| t.eq_ignore_ascii_case(word)))
+    }
+
+    fn contain_size(style: &ComputedStyle) -> bool {
+        Self::style_has(style, "contain", "size")
+            || Self::style_has(style, "contain", "strict")
+            || Self::style_has(style, "container-type", "size")
+    }
+
+    fn contain_inline(style: &ComputedStyle) -> bool {
+        Self::style_has(style, "contain", "inline-size")
+            || Self::style_has(style, "container-type", "inline-size")
+    }
+
+    fn contain_layout(style: &ComputedStyle) -> bool {
+        ["layout", "content", "strict"]
             .iter()
-            .any(|word| has("contain", word));
+            .any(|word| Self::style_has(style, "contain", word))
+    }
+
+    fn container_type_any(style: &ComputedStyle) -> bool {
+        Self::style_has(style, "container-type", "size")
+            || Self::style_has(style, "container-type", "inline-size")
+    }
+
+    pub(crate) fn of(style: &ComputedStyle) -> Containment {
+        let size = Self::contain_size(style);
+        let inline = Self::contain_inline(style);
+        let vertical = super::writing::WritingMode::of(style).vertical();
+        let layout = Self::contain_layout(style);
         Containment {
             width: size || (inline && !vertical),
             height: size || (inline && vertical),
             layout,
-            formatting_root: layout
-                || has("container-type", "size")
-                || has("container-type", "inline-size"),
+            formatting_root: layout || Self::container_type_any(style),
         }
     }
 }

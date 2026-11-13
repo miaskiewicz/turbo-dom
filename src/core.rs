@@ -174,6 +174,32 @@ fn has_attribute(node: &Handle, local: &str) -> bool {
         if attrs.borrow().iter().any(|a| a.name.ns == ns!() && &*a.name.local == local))
 }
 
+fn classify_select_child(
+    node: &Handle,
+    options: &mut Vec<(Handle, bool)>,
+    blocked: &mut bool,
+    in_option: &mut bool,
+    grouped: &mut bool,
+    group_disabled: &mut bool,
+) {
+    if html_element(node, "option") {
+        if !*blocked {
+            options.push((
+                node.clone(),
+                *group_disabled || has_attribute(node, "disabled"),
+            ));
+        }
+        *blocked = true;
+        *in_option = true;
+    } else if html_element(node, "datalist") || html_element(node, "hr") {
+        *blocked = true;
+    } else if html_element(node, "optgroup") {
+        *blocked |= *grouped;
+        *grouped = true;
+        *group_disabled |= has_attribute(node, "disabled");
+    }
+}
+
 /// A select's options (with whether each is disabled) and selectedcontent elements, in tree
 /// order: an option counts unless an option, datalist or hr, or a second optgroup, lies
 /// between it and the select; a selectedcontent inside an option is not the select's
@@ -191,27 +217,18 @@ fn select_parts(select: &Handle) -> (Vec<(Handle, bool)>, Vec<Handle>) {
     while let Some((node, mut blocked, mut in_option, mut grouped, mut group_disabled)) =
         pending.pop()
     {
-        // (the parser never nests a select: a `<select>` start tag closes an open one)
         if html_element(&node, "selectedcontent") && !in_option {
             contents.push(node);
             continue;
         }
-        if html_element(&node, "option") {
-            if !blocked {
-                options.push((
-                    node.clone(),
-                    group_disabled || has_attribute(&node, "disabled"),
-                ));
-            }
-            blocked = true;
-            in_option = true;
-        } else if html_element(&node, "datalist") || html_element(&node, "hr") {
-            blocked = true;
-        } else if html_element(&node, "optgroup") {
-            blocked |= grouped;
-            grouped = true;
-            group_disabled |= has_attribute(&node, "disabled");
-        }
+        classify_select_child(
+            &node,
+            &mut options,
+            &mut blocked,
+            &mut in_option,
+            &mut grouped,
+            &mut group_disabled,
+        );
         for child in node.children.borrow().iter().rev() {
             pending.push((child.clone(), blocked, in_option, grouped, group_disabled));
         }

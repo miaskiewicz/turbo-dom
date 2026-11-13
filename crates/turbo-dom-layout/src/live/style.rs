@@ -137,6 +137,11 @@ impl Styler<'_, '_> {
             .into_iter()
             .map(|declaration| author(declaration, depth, false, 0))
             .collect();
+        // Embedders need not supply HTML's attribute-dependent UA rules. Keep this
+        // at the UA origin so an author display override still reveals the element.
+        if has_hidden_presentation(tree, node, local) {
+            declarations.push(crate::style::hidden_declaration());
+        }
         // Chrome's quirks.css (miaskiewicz/turbo-dom#282): a BackCompat document's forms
         // take `margin-block-end: 1em` at the UA level, beneath every embedder rule.
         if self.capture.quirks && local == "form" {
@@ -272,4 +277,12 @@ fn author(
         specificity: (0, 0, 0),
         order,
     }
+}
+
+fn has_hidden_presentation(tree: &turbo_dom::Tree, node: Handle, local: &str) -> bool {
+    tree.namespace_uri(node) == Some("http://www.w3.org/1999/xhtml")
+        && local != "embed"
+        && tree
+            .get_attribute(node, "hidden")
+            .is_some_and(|value| !value.eq_ignore_ascii_case("until-found"))
 }

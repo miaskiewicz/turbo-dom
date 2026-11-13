@@ -146,7 +146,7 @@ impl Dom {
         path: &[Handle],
         registry: &mut std::collections::HashMap<Handle, Vec<Listener>>,
     ) {
-        'outer: for phase in [Phase::Capturing, Phase::AtTarget, Phase::Bubbling] {
+        for phase in [Phase::Capturing, Phase::AtTarget, Phase::Bubbling] {
             if phase == Phase::Bubbling && !event.bubbles {
                 break;
             }
@@ -155,22 +155,34 @@ impl Dom {
                 Phase::AtTarget => vec![target],
                 _ => path[1..].to_vec(),
             };
-            for node in nodes {
-                if event.propagation_stopped && phase != Phase::AtTarget {
-                    break 'outer;
-                }
-                event.current_target = Some(node);
-                event.phase = phase;
-                if let Some(list) = registry.get_mut(&node) {
-                    self.invoke_listeners_on_node(list, phase, event);
-                }
-                if event.propagation_stopped
-                    && (phase == Phase::Bubbling || phase == Phase::Capturing)
-                {
-                    break 'outer;
-                }
+            if self.run_phase_nodes(&nodes, phase, event, registry) {
+                break;
             }
         }
+    }
+
+    fn run_phase_nodes(
+        &mut self,
+        nodes: &[Handle],
+        phase: Phase,
+        event: &mut Event,
+        registry: &mut std::collections::HashMap<Handle, Vec<Listener>>,
+    ) -> bool {
+        for &node in nodes {
+            if event.propagation_stopped && phase != Phase::AtTarget {
+                return true;
+            }
+            event.current_target = Some(node);
+            event.phase = phase;
+            if let Some(list) = registry.get_mut(&node) {
+                self.invoke_listeners_on_node(list, phase, event);
+            }
+            if event.propagation_stopped && (phase == Phase::Bubbling || phase == Phase::Capturing)
+            {
+                return true;
+            }
+        }
+        false
     }
 
     fn invoke_listeners_on_node(

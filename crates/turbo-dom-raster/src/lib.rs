@@ -22,13 +22,17 @@
 
 mod avif;
 mod canvas_content;
+mod capture_resources;
+pub use capture_resources::{capture_resources, CaptureResources, ImageMetadata};
 mod canvas_ops;
+mod capture_geometry;
 #[cfg(test)]
 mod form_native_chrome_tests;
 mod glyph;
 mod glyph_raster;
 mod image_paint;
 mod jxl;
+mod masks;
 mod paint_canvas;
 #[cfg(all(target_os = "macos", feature = "coretext"))]
 mod paint_canvas_coretext;
@@ -36,6 +40,8 @@ mod paint_canvas_coretext;
 mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
+mod prepared;
+pub use prepared::PreparedScreenshot;
 mod rrect;
 mod style_extract;
 mod tile_cell;
@@ -122,6 +128,7 @@ fn canvas_too_large(width: u32, height: u32) -> bool {
     u64::from(width) * u64::from(height) > 268_435_456
 }
 pub use canvas_content::{CanvasContent, CanvasContents};
+pub use masks::{screenshot_element_rects, ScreenshotMask, ScreenshotRect};
 pub use style_extract::{
     delazy_images, delazy_tree, image_urls, image_urls_in_css, stylesheet_hrefs,
 };
@@ -131,8 +138,9 @@ use std::collections::{HashMap, HashSet};
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    layout_html_tree_in_viewport_with, parse_html_tree, Attr, Diagnostics, Fragment,
-    FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag, INDETERMINATE_ATTR,
+    layout_html_tree_capture_in_viewport_with, layout_html_tree_in_viewport_with, parse_html_tree,
+    Attr, Diagnostics, Fragment, FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag,
+    INDETERMINATE_ATTR,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -219,7 +227,10 @@ fn paint_height(galley: &Fragment, viewport: Viewport, full_page: bool) -> u32 {
     if !full_page {
         return viewport.height;
     }
-    let content = galley.bottom().ceil().max(1.0) as u32;
+    let content = capture_geometry::content_bottom(galley)
+        .max(viewport.height as f32)
+        .ceil()
+        .max(1.0) as u32;
     content.min(MAX_FULL_PAGE_HEIGHT)
 }
 
@@ -288,12 +299,22 @@ pub fn screenshot_svg_with_opts(
 /// page, its stylesheets and its images. Start from [`ScreenshotOptions::default`] (every
 /// switch off, nothing supplied) and set the fields you need; new fields are added with a
 /// default that keeps today's render.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct ScreenshotOptions<'a> {
+    /// Intrinsic headers retained independently of fetched pixel bytes.
+    pub image_metadata: Option<&'a ImageMetadata>,
+    /// CSS-pixel overlays painted after the document, in slice order. Empty by default.
+    pub masks: &'a [ScreenshotMask],
     /// Paint the full content height instead of the viewport height (see
     /// [`screenshot_png_with_assets`]).
     pub full_page: bool,
+    /// Leave unauthored canvas pixels transparent, retaining authored backgrounds.
+    pub omit_background: bool,
+    /// Output pixels per CSS pixel, independent of the layout viewport. Default: 1.
+    /// Canvas dimensions round to nearest, with positive half-pixel ties up.
+    /// The native painter must be able to represent the finite positive scale.
+    pub device_scale: f64,
     /// Resolve fonts against the installed system fonts too (see
     /// [`screenshot_png_with_opts`]).
     pub system_fonts: bool,
@@ -330,6 +351,22 @@ pub struct IdlStates {
     pub indeterminate_inputs: HashSet<usize>,
 }
 
+impl Default for ScreenshotOptions<'_> {
+    fn default() -> Self {
+        Self {
+            image_metadata: None,
+            masks: &[],
+            full_page: false,
+            omit_background: false,
+            device_scale: 1.0,
+            system_fonts: false,
+            canvases: None,
+            fonts: None,
+            idl_states: None,
+        }
+    }
+}
+
 impl ScreenshotOptions<'_> {
     /// Lay out with the caller's [`fonts`](Self::fonts), else the bundled (or, with
     /// `system_fonts`, system) registry.
@@ -350,16 +387,7 @@ pub fn screenshot_png_with_options(
     images: &ImageAssets,
     options: &ScreenshotOptions,
 ) -> Result<Vec<u8>, String> {
-    let mut decoded = image_paint::decode_all(images);
-    // Recover inline `data:` image masks/backgrounds the fetch step skips (nothing
-    // to fetch) — e.g. Wikipedia's TOC-toggle chevron mask-image.
-    image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded, options);
-    let galley = options
-        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = canvas_background(&galley);
-    let height = paint_height(&galley, viewport, options.full_page);
-    paint_png::paint(&galley, viewport.width, height, bg, &decoded)
+    PreparedScreenshot::new(html, external_css, viewport, images, options).png()
 }
 
 /// [`screenshot_png_with_options`] as a standalone SVG document (images embed as base64
@@ -371,20 +399,38 @@ pub fn screenshot_svg_with_options(
     images: &ImageAssets,
     options: &ScreenshotOptions,
 ) -> Result<String, String> {
-    let mut decoded = image_paint::decode_all(images);
-    image_paint::add_data_uri_images(&mut decoded, external_css, html);
-    let tree = parse_document(html, &mut decoded, options);
-    let galley = options
-        .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
-    let bg = canvas_background(&galley);
-    let height = paint_height(&galley, viewport, options.full_page);
-    Ok(paint_svg::paint(
-        &galley,
-        viewport.width,
-        height,
-        bg,
-        &decoded,
-    ))
+    PreparedScreenshot::new(html, external_css, viewport, images, options).svg()
+}
+
+pub(crate) fn screenshot_pixel_size(
+    width: u32,
+    height: u32,
+    scale: f64,
+) -> Result<(u32, u32), String> {
+    if !scale.is_finite() || scale <= 0.0 {
+        return Err("screenshot device scale must be finite and positive".into());
+    }
+    let native_scale = scale as f32;
+    if !native_scale.is_finite() || native_scale == 0.0 {
+        return Err("screenshot device scale is outside the native painter range".into());
+    }
+    let size = (
+        screenshot_axis(width, scale),
+        screenshot_axis(height, scale),
+    );
+    if size.0 == 0 || size.1 == 0 {
+        return Err(format!("bad canvas {}x{}", size.0, size.1));
+    }
+    if canvas_too_large(size.0, size.1) {
+        return Err("scaled screenshot exceeds the canvas size limit".into());
+    }
+    Ok(size)
+}
+
+// Chrome's device-pixel canvas size rounds a double-precision CSS-size/DPR
+// product to the nearest pixel, with positive half-pixel ties rounding up.
+fn screenshot_axis(css: u32, scale: f64) -> u32 {
+    (f64::from(css) * scale).round() as u32
 }
 
 /// The font registry for a render: the bundled fallback set, plus (opt-in) every
@@ -449,6 +495,24 @@ pub fn measure_canvas_text_with_fonts(text: &str, font: &str, fonts: &FontRegist
 /// turbo-dom-layout's HTML drive propagated from the root element (or `<body>`) onto
 /// the galley root, composited over the white initial canvas; white when the page
 /// sets none.
+fn screenshot_canvas_background(galley: &Fragment, omit_background: bool) -> Rgba {
+    if !omit_background {
+        return canvas_background(galley);
+    }
+    match &galley.content {
+        FragmentContent::Box {
+            background: Some(bg),
+            ..
+        } => *bg,
+        _ => Rgba {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        },
+    }
+}
+
 fn canvas_background(galley: &Fragment) -> Rgba {
     let white = Rgba {
         r: 255,
@@ -501,15 +565,37 @@ fn parse_document(
     decoded: &mut image_paint::DecodedAssets,
     options: &ScreenshotOptions,
 ) -> Tree {
-    let mut tree = parse_html_tree(html);
+    prepare_document(parse_html_tree(html), decoded, options, None)
+}
+
+type SvgReplacement<'a> = &'a mut dyn FnMut(
+    &Tree,
+    turbo_dom_layout::turbo_dom::Handle,
+    turbo_dom_layout::turbo_dom::Handle,
+);
+
+fn prepare_document(
+    mut tree: Tree,
+    decoded: &mut image_paint::DecodedAssets,
+    options: &ScreenshotOptions,
+    replaced: Option<SvgReplacement<'_>>,
+) -> Tree {
     style_extract::delazy_tree(&mut tree);
     image_paint::add_img_data_urls(decoded, &tree);
     if let Some(canvases) = options.canvases {
         canvas_content::add_canvases(decoded, &tree, canvases);
     }
-    let inline_svgs = image_paint::inline_svg_to_img(&mut tree);
+    let inline_svgs = match replaced {
+        Some(replaced) => image_paint::inline_svg_to_img_with(&mut tree, replaced),
+        None => image_paint::inline_svg_to_img(&mut tree),
+    };
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree
+}
+
+#[cfg(test)]
+thread_local! {
+    static LAYOUT_PASSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// Drive the borrowed layout engine: lay the parsed document out at viewport width
@@ -525,6 +611,8 @@ fn lay_out(
     fonts: &FontRegistry,
     screenshot_options: &ScreenshotOptions,
 ) -> Fragment {
+    #[cfg(test)]
+    LAYOUT_PASSES.with(|passes| passes.set(passes.get() + 1));
     let Viewport { width, height } = viewport;
     // Tell the cascade the viewport HEIGHT so `@media (min-height/max-height:…)`
     // conditions evaluate correctly (else every height feature is ignored and its
@@ -549,14 +637,19 @@ fn lay_out(
     // height (miaskiewicz/turbo-dom#81). The post-cascade hook carries the live
     // IDL state (today: the `indeterminate` checkbox flag) a screenshot has no
     // script to set onto the matching styled boxes (miaskiewicz/turbo-dom#371).
-    layout_html_tree_in_viewport_with(
+    let layout = if screenshot_options.full_page {
+        layout_html_tree_capture_in_viewport_with
+    } else {
+        layout_html_tree_in_viewport_with
+    };
+    layout(
         tree,
         "",
         (width as f32, height as f32),
         fonts,
         &image_ctx,
         &options,
-        |styled| apply_idl_states(styled, screenshot_options.idl_states),
+        |styled: &mut [StyledNode]| apply_idl_states(styled, screenshot_options.idl_states),
         &mut diags,
     )
 }

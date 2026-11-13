@@ -268,8 +268,12 @@ pub fn adopt<'s>(
     let mapping = {
         let _target = DomScope::for_object(scope, document);
         let mut mapping = Vec::new();
-        with_tree_mut(|tree| materialize(tree, source, None, &mut mapping))
-            .ok_or("Document tree unavailable")?;
+        // These attributes/children are construction, not guest mutations. A
+        // source-removal flush must not publish target wrappers before transfer.
+        mutation_observers::quiet(scope, |_| {
+            with_tree_mut(|tree| materialize(tree, source, None, &mut mapping))
+                .ok_or("Document tree unavailable")
+        })?;
         mapping
     };
     let (cache, styles, listeners, nonces, modes, handlers, scripts, custom_states, checked_states) = {

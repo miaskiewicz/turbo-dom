@@ -2480,6 +2480,21 @@ impl Tree {
     /// children of `parent` first, with ONE childList record for the whole change, as the
     /// DOM does when it converts `nodes` into a fragment. A node moved from another parent
     /// still records its removal there; a fragment records the removal of its children.
+    fn flatten_fragment(&mut self, n: Handle, flat: &mut Vec<Handle>) {
+        let kids = self.children(n);
+        let log = self.mutation_log.take();
+        for &k in &kids {
+            self.remove_child(n, k);
+        }
+        self.mutation_log = log;
+        if self.is_recording() && !kids.is_empty() {
+            let rec =
+                crate::rtdom::mutations::MutationRecord::child_list(n, Vec::new(), kids.clone());
+            self.record_event(rec, None, None, None);
+        }
+        flat.extend(kids);
+    }
+
     fn insert_nodes(
         &mut self,
         parent: Handle,
@@ -2491,23 +2506,7 @@ impl Tree {
         for &n in nodes {
             match self.node_type(n) {
                 NodeType::Attribute => {}
-                NodeType::Fragment => {
-                    let kids = self.children(n);
-                    let log = self.mutation_log.take();
-                    for &k in &kids {
-                        self.remove_child(n, k);
-                    }
-                    self.mutation_log = log;
-                    if self.is_recording() && !kids.is_empty() {
-                        let rec = crate::rtdom::mutations::MutationRecord::child_list(
-                            n,
-                            Vec::new(),
-                            kids.clone(),
-                        );
-                        self.record_event(rec, None, None, None);
-                    }
-                    flat.extend(kids);
-                }
+                NodeType::Fragment => self.flatten_fragment(n, &mut flat),
                 _ => {
                     self.detach(n);
                     flat.push(n);

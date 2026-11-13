@@ -322,19 +322,28 @@ fn offset_parent_stops(
     style: &super::scroll::SourceStyle,
     used: crate::layout_snapshot::UsedBoxMetrics,
 ) -> bool {
-    let positioned = parent_style
-        .style
-        .get("position")
-        .is_some_and(|value| value != "static");
-    let transformed = parent_style
-        .style
-        .get("transform")
-        .is_some_and(|value| value != "none")
-        && !is_inline_fragment(snapshot, parent);
+    let (positioned, transformed) = is_positioned_or_transformed(snapshot, parent, parent_style);
     let table = used.position == crate::layout::value::Position::Static
         && matches!(parent_style.tag.as_str(), "table" | "td" | "th");
     let zoomed = parent_style.zoom != style.zoom;
     positioned || transformed || table || zoomed || parent_style.tag == "body"
+}
+
+fn is_positioned_or_transformed(
+    snapshot: &LayoutSnapshot,
+    id: SourceId,
+    style: &super::scroll::SourceStyle,
+) -> (bool, bool) {
+    let positioned = style
+        .style
+        .get("position")
+        .is_some_and(|value| value != "static");
+    let transformed = style
+        .style
+        .get("transform")
+        .is_some_and(|value| value != "none")
+        && !is_inline_fragment(snapshot, id);
+    (positioned, transformed)
 }
 
 fn offset_parent_origin(
@@ -342,15 +351,7 @@ fn offset_parent_origin(
     parent: SourceId,
     parent_style: &super::scroll::SourceStyle,
 ) -> Result<(f32, f32), String> {
-    let positioned = parent_style
-        .style
-        .get("position")
-        .is_some_and(|value| value != "static");
-    let transformed = parent_style
-        .style
-        .get("transform")
-        .is_some_and(|value| value != "none")
-        && !is_inline_fragment(snapshot, parent);
+    let (positioned, transformed) = is_positioned_or_transformed(snapshot, parent, parent_style);
     if parent_style.tag == "body" && !positioned && !transformed {
         return Ok((0.0, 0.0));
     }
@@ -366,19 +367,10 @@ fn offset_parent_origin(
     let metrics = box_
         .used_box
         .ok_or("native offset parent used box missing")?;
+    let border_offset = |inline: bool, value: f32| if inline { 0.0 } else { value };
     Ok((
-        box_.rect.x
-            + if metrics.inline_fragment {
-                0.0
-            } else {
-                metrics.border.left
-            },
-        box_.rect.y
-            + if metrics.inline_fragment {
-                0.0
-            } else {
-                metrics.border.top
-            },
+        box_.rect.x + border_offset(metrics.inline_fragment, metrics.border.left),
+        box_.rect.y + border_offset(metrics.inline_fragment, metrics.border.top),
     ))
 }
 
@@ -396,6 +388,21 @@ mod tests {
     fn id(tree: &Tree, selector: &str) -> SourceId {
         testing::id(tree, selector)
     }
+    #[test]
+    fn hidden_controls_and_descendants_have_no_geometry_but_author_override_does() {
+        let (tree, snapshot) = capture("<html><body><button id=own hidden>hidden</button><div hidden><button id=child>child</button></div><button id=override hidden style='display:block;width:40px;height:20px'>visible</button></body></html>");
+        for selector in ["#own", "#child"] {
+            assert_eq!(
+                element_geometry(&snapshot, id(&tree, selector)).unwrap(),
+                empty_geometry(),
+                "{selector}"
+            );
+        }
+        let shown = element_geometry(&snapshot, id(&tree, "#override")).unwrap();
+        assert!(shown.bounds.width >= 40.0);
+        assert!(shown.bounds.height >= 20.0);
+    }
+
     #[test]
     fn transformed_border_rect_and_untransformed_client_offset_metrics_are_distinct() {
         let (tree,snapshot)=capture("<html><body style='margin:0'><div id=x style='width:40px;height:20px;padding:5px;border:2px solid;transform:scale(2);transform-origin:0 0'></div></body></html>");

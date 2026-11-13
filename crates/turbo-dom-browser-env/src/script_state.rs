@@ -59,8 +59,16 @@ pub(super) fn recording() -> bool {
 }
 
 pub(super) fn initial(tree: &Tree) -> HashMap<Handle, ScriptState> {
+    initial_roots(tree, &[tree.root()])
+}
+
+pub(super) fn initial_roots(tree: &Tree, roots: &[Handle]) -> HashMap<Handle, ScriptState> {
     let mut states = HashMap::new();
-    let mut pending = vec![(tree.root(), false)];
+    let mut pending = roots
+        .iter()
+        .rev()
+        .map(|&node| (node, false))
+        .collect::<Vec<_>>();
     while let Some((node, inherited_template)) = pending.pop() {
         let template = inherited_template
             || tree.node_type_id(node) == 1 && tree.local_name(node) == Some("template");
@@ -97,8 +105,12 @@ pub(super) fn initial(tree: &Tree) -> HashMap<Handle, ScriptState> {
 /// parsed tree in parse order, taken before declarative shadow roots attach:
 /// a root's scripts keep the position of the template that declared them.
 pub(super) fn parse_order(tree: &Tree) -> Vec<Handle> {
+    parse_order_roots(tree, &[tree.root()])
+}
+
+pub(super) fn parse_order_roots(tree: &Tree, roots: &[Handle]) -> Vec<Handle> {
     let mut order = Vec::new();
-    let mut pending = vec![tree.root()];
+    let mut pending = roots.iter().rev().copied().collect::<Vec<_>>();
     while let Some(node) = pending.pop() {
         if tree.node_type_id(node) == 1 && tree.local_name(node) == Some("script") {
             order.push(node);

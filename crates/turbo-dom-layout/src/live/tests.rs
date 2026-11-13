@@ -834,3 +834,25 @@ fn snapshot_errors_pass_through() {
         "native HTML viewport dimensions must be finite and non-negative"
     );
 }
+
+#[test]
+fn hidden_presentation_in_live_style_respects_html_state_and_author_origin() {
+    use crate::layout::value::{display_of, Display};
+    let styled = Styled::new("<body><button id=hidden hidden></button><button id=until hidden=UNTIL-FOUND></button><embed id=embed hidden><svg><g id=svg hidden></g></svg><button id=author hidden style='display:block'></button></body>");
+    let (_, values) = styled
+        .run(&[], &[], &|_| Ok(0), |nodes| {
+            Ok(["hidden", "until", "embed", "svg", "author"]
+                .map(|id| display_of(&find(nodes, styled.el(id)).unwrap().style)))
+        })
+        .unwrap();
+    assert_eq!(
+        values,
+        [
+            Display::None,
+            Display::InlineBlock,
+            Display::Inline,
+            Display::Inline,
+            Display::Block
+        ]
+    );
+}

@@ -471,6 +471,24 @@ pub(crate) fn layout_root_sized(
     layout_root_in(lb, origin, (bbw, Some(bbw)), parent_fs, ctx)
 }
 
+fn prepare_root(
+    lb: &super::boxgen::LayoutBox,
+    relabel: Relabel,
+    sized: Option<f32>,
+) -> super::boxgen::LayoutBox {
+    let mut root = lb.relabelled(relabel);
+    root.orthogonal_root = false;
+    if let Some(bbw) = sized {
+        let axis = if relabel.swap { "height" } else { "width" };
+        root.style.set(axis, format!("{bbw}px"));
+        root.style.set("box-sizing", "border-box".to_string());
+        for limit in ["min-", "max-"] {
+            root.style.remove(&format!("{limit}{axis}"));
+        }
+    }
+    root
+}
+
 fn layout_root_in(
     lb: &super::boxgen::LayoutBox,
     (bx, by): (f32, f32),
@@ -485,18 +503,7 @@ fn layout_root_in(
     }
     crate::hot!("layout.writing.root");
     let relabel = Relabel::between(parent, mode);
-    let mut root = lb.relabelled(relabel);
-    // In its own space the root is no orthogonal flow (its intrinsic widths measure
-    // its content there, not through [`orthogonal_extent`]).
-    root.orthogonal_root = false;
-    if let Some(bbw) = sized {
-        let axis = if relabel.swap { "height" } else { "width" };
-        root.style.set(axis, format!("{bbw}px"));
-        root.style.set("box-sizing", "border-box".to_string());
-        for limit in ["min-", "max-"] {
-            root.style.remove(&format!("{limit}{axis}"));
-        }
-    }
+    let root = prepare_root(lb, relabel, sized);
     let orthogonal = relabel.swap;
     let available = if orthogonal {
         orthogonal_available(parent, ctx)
@@ -510,7 +517,6 @@ fn layout_root_in(
         cb: (ctx.cb_h, ctx.cb_h_known),
     };
     if orthogonal {
-        // The root's block size resolves percentages against the parent's inline size.
         (ctx.cb_h, ctx.cb_h_known) = (cb_width, true);
     }
     let mut frag = super::block::layout_root_box(&root, available, parent_fs, orthogonal, ctx);

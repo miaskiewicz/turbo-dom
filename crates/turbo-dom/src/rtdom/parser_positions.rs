@@ -135,6 +135,29 @@ fn attribute_name(name: &QualName) -> Box<[u16]> {
     qualified.extend(parser_units::decode(name.local.as_ref()));
     qualified.into_boxed_slice()
 }
+fn map_attr_positions(
+    source: &RcHandle,
+    target: Handle,
+    attribute_positions: &AttributePositions,
+    tree: &mut Tree,
+) {
+    if let NodeData::Element { attrs, .. } = &source.data {
+        for attribute in attrs.borrow().iter() {
+            let name = attribute_name(&attribute.name);
+            if let Some((weak, position)) =
+                attribute_positions.get(&(Rc::as_ptr(source) as usize, name.clone()))
+            {
+                if weak.upgrade().is_some_and(|node| Rc::ptr_eq(&node, source)) {
+                    tree.source_attribute_positions
+                        .entry(target)
+                        .or_default()
+                        .insert(name, *position);
+                }
+            }
+        }
+    }
+}
+
 type AttributePositions = FxHashMap<(usize, Box<[u16]>), (WeakHandle, SourcePosition)>;
 struct PositionedDom {
     dom: RcDom,
@@ -416,24 +439,7 @@ impl Tree {
                     tree.source_positions.insert(target, *position);
                 }
             }
-            if let NodeData::Element { attrs, .. } = &source.data {
-                for attribute in attrs.borrow().iter() {
-                    let name = attribute_name(&attribute.name);
-                    if let Some((weak, position)) =
-                        attribute_positions.get(&(Rc::as_ptr(&source) as usize, name.clone()))
-                    {
-                        if weak
-                            .upgrade()
-                            .is_some_and(|node| Rc::ptr_eq(&node, &source))
-                        {
-                            tree.source_attribute_positions
-                                .entry(target)
-                                .or_default()
-                                .insert(name, *position);
-                        }
-                    }
-                }
-            }
+            map_attr_positions(&source, target, &attribute_positions, &mut tree);
             let mut children = source.children.borrow().clone();
             if let NodeData::Element {
                 template_contents, ..

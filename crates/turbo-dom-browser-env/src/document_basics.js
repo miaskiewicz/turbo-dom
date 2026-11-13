@@ -156,6 +156,19 @@
     return result;
   }
 
+  // A title lookup stops in document order: unrelated later subtrees must not be
+  // materialized, but a title moved outside the head still participates.
+  function firstDescendant(receiver, match) {
+    const children = call(rawChildren, receiver);
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (call(type, child) === 1 && match(child)) return child;
+      const found = firstDescendant(child, match);
+      if (found) return found;
+    }
+    return null;
+  }
+
   let formIteratorRead = null;
   function collectionInterface(name) {
     const ctor = make(function () { throw new TypeError('Illegal constructor'); }, name, 0, true);
@@ -355,7 +368,7 @@
     const current=this.body;if(value===current)return;if(current)current.parentNode.replaceChild(value,current);else if(this.documentElement)this.documentElement.appendChild(value);else throw new ns.DOMException('The document has no document element','HierarchyRequestError');
   });
   for (const name of ['documentElement','head','body']) if(Object.hasOwn(g.document,name))delete g.document[name];
-  property(g.Document.prototype, 'title', function () { check(this,[9]); const title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=descendants(this,node=>call(namespace, node)===html&&node.localName==='title')[0];if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
+  property(g.Document.prototype, 'title', function () { check(this,[9]); const title=firstDescendant(this,node=>call(namespace, node)===html&&local(node)==='title');return title?(title.textContent||'').replace(/[\t\n\f\r ]+/g,' ').trim():''; },function(value){check(this,[9]);value=string(value);let title=firstDescendant(this,node=>call(namespace, node)===html&&local(node)==='title');if(!title){if(!this.head)return;title=this.createElement('title');this.head.append(title);}title.textContent=value;});
   property(g.Document.prototype, 'compatMode', function () { return native('compatMode', this); });
   property(g.Document.prototype, 'doctype', function () {
     const node = native('doctype', this);

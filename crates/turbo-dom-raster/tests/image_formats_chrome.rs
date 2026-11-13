@@ -35,6 +35,54 @@ fn class([r, g, b]: [u8; 3]) -> char {
 /// the inline-`<svg>` conversion works on parsed elements: miaskiewicz/turbo-dom#25.)
 const OTHER_SIZING: &[&str] = &["svg-viewbox-only", "svg-no-size", "svg-fractional", "tiff"];
 
+fn expected_samples<'a>(id: &str, case: &'a serde_json::Value) -> &'a str {
+    if (id.starts_with("avif") && !cfg!(feature = "avif"))
+        || (id.starts_with("jxl") && !cfg!(feature = "jxl"))
+    {
+        "WWWW"
+    } else {
+        case["samples"].as_str().unwrap()
+    }
+}
+
+fn compare_jxl(id: &str, case: &serde_json::Value, pm: &tiny_skia::Pixmap) -> Option<String> {
+    let got: Vec<[u8; 3]> = case["points"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
+            let c = pm.pixel(x, y).expect("in bounds");
+            [c.red(), c.green(), c.blue()]
+        })
+        .collect();
+    let want: Vec<[u8; 3]> = serde_json::from_value(case["rgb"].clone()).unwrap();
+    let near = got
+        .iter()
+        .zip(&want)
+        .all(|(g, w)| g.iter().zip(w).all(|(a, b)| a.abs_diff(*b) <= 8));
+    (!near).then(|| format!("{id}: {got:?}, Chrome {want:?}"))
+}
+
+fn compare_class(
+    id: &str,
+    case: &serde_json::Value,
+    pm: &tiny_skia::Pixmap,
+    want: &str,
+) -> Option<String> {
+    let got: String = case["points"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
+            let c = pm.pixel(x, y).expect("in bounds");
+            class([c.red(), c.green(), c.blue()])
+        })
+        .collect();
+    (got != want).then(|| format!("{id}: {got}, want {want} (Chrome {})", case["samples"]))
+}
+
 #[test]
 fn decoded_pixels_match_chrome_156() {
     let path = concat!(
@@ -67,56 +115,17 @@ fn decoded_pixels_match_chrome_156() {
         if OTHER_SIZING.contains(&id) {
             continue;
         }
-        // Without the `avif` feature an AVIF is laid out at its size but not decoded: the
-        // box paints as the light-grey placeholder (class W; the backdrop is T); so is a
-        // JPEG XL without a decoder.
-        let want = if (id.starts_with("avif") && !cfg!(feature = "avif"))
-            || (id.starts_with("jxl") && !cfg!(feature = "jxl"))
-        {
-            "WWWW"
-        } else {
-            case["samples"].as_str().unwrap()
-        };
-        // With the `jxl` decoder the (solid black) JPEG XL test images compare their
-        // pixels with Chrome's within a small tolerance.
+        let want = expected_samples(id, case);
         if id.starts_with("jxl") && cfg!(feature = "jxl") {
             compared += 1;
-            let got: Vec<[u8; 3]> = case["points"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|p| {
-                    let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
-                    let c = pm.pixel(x, y).expect("in bounds");
-                    [c.red(), c.green(), c.blue()]
-                })
-                .collect();
-            let want: Vec<[u8; 3]> = serde_json::from_value(case["rgb"].clone()).unwrap();
-            let near = got
-                .iter()
-                .zip(&want)
-                .all(|(g, w)| g.iter().zip(w).all(|(a, b)| a.abs_diff(*b) <= 8));
-            if !near {
-                failures.push(format!("{id}: {got:?}, Chrome {want:?}"));
+            if let Some(msg) = compare_jxl(id, case, &pm) {
+                failures.push(msg);
             }
             continue;
         }
-        let got: String = case["points"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|p| {
-                let (x, y) = (p[0].as_u64().unwrap() as u32, p[1].as_u64().unwrap() as u32);
-                let c = pm.pixel(x, y).expect("in bounds");
-                class([c.red(), c.green(), c.blue()])
-            })
-            .collect();
         compared += 1;
-        if got != want {
-            failures.push(format!(
-                "{id}: {got}, want {want} (Chrome {})",
-                case["samples"]
-            ));
+        if let Some(msg) = compare_class(id, case, &pm, want) {
+            failures.push(msg);
         }
     }
     assert!(

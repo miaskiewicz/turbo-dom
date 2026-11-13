@@ -521,6 +521,21 @@ fn lex_strict(src: &str) -> Result<Vec<StrictTok>, SelectorError> {
     Ok(out)
 }
 
+fn lex_id_or_class(
+    chars: &[char],
+    i: &mut usize,
+    c: char,
+    out: &mut Vec<StrictTok>,
+    after_pseudo_element: bool,
+) -> Result<(), SelectorError> {
+    *i += 1;
+    if !starts_ident(chars, *i) {
+        return Err(SelectorError::UnexpectedChar(c));
+    }
+    scan_name(chars, i, is_name_char);
+    push_part(out, StrictTok::Part, after_pseudo_element)
+}
+
 fn lex_strict_step(
     chars: &[char],
     i: &mut usize,
@@ -533,13 +548,8 @@ fn lex_strict_step(
     }
     if c == '*' || (c == '|' && !matches!(out.last(), Some(StrictTok::Part | StrictTok::Type))) {
         lex_universal_or_ns_prefix(chars, i, c, out, *after_pseudo_element)
-    } else if c == '#' || c == '.' {
-        *i += 1;
-        if !starts_ident(chars, *i) {
-            return Err(SelectorError::UnexpectedChar(c));
-        }
-        scan_name(chars, i, is_name_char);
-        push_part(out, StrictTok::Part, *after_pseudo_element)
+    } else if matches!(c, '#' | '.') {
+        lex_id_or_class(chars, i, c, out, *after_pseudo_element)
     } else if c == '[' {
         lex_attribute(chars, i, out, *after_pseudo_element)
     } else if c == ':' {
@@ -642,7 +652,7 @@ fn lex_pseudo(
         .iter()
         .collect::<String>()
         .to_ascii_lowercase();
-    if double || (!*after_pseudo_element && LEGACY_PSEUDO_ELEMENT_NAMES.contains(&lower.as_str())) {
+    if double || LEGACY_PSEUDO_ELEMENT_NAMES.contains(&lower.as_str()) {
         *after_pseudo_element = true;
     }
     let selector_list = matches!(lower.as_str(), "not" | "has");
@@ -657,6 +667,10 @@ fn lex_pseudo(
     }
     out.push(StrictTok::Part);
     Ok(())
+}
+
+fn invalid_state_ident(argument: &str, at_end: bool) -> bool {
+    at_end || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>()).is_none()
 }
 
 fn lex_pseudo_argument(
@@ -676,10 +690,7 @@ fn lex_pseudo_argument(
             lex_strict(&argument[at + 2..])?;
         }
     }
-    if state
-        && (*i == n
-            || units::state_argument(&argument.encode_utf16().collect::<Vec<_>>()).is_none())
-    {
+    if state && invalid_state_ident(argument.as_str(), *i == n) {
         return Err(SelectorError::UnexpectedChar('('));
     }
     if *i < n {
@@ -760,14 +771,14 @@ fn scan_balanced(chars: &[char], i: &mut usize, open: char, close: char) -> Stri
     while *i < chars.len() {
         let c = chars[*i];
         if c == '\\' {
-            *i += if *i + 1 < chars.len() { 2 } else { 1 };
+            *i = (*i + 2).min(chars.len());
             continue;
         }
         if let Some(q) = quote {
             if c == q {
                 quote = None;
             }
-        } else if c == '"' || c == '\'' {
+        } else if matches!(c, '"' | '\'') {
             quote = Some(c);
         } else if c == open {
             depth += 1;
@@ -1222,12 +1233,18 @@ fn split_nth_of(arg: &str) -> Option<(&str, &str)> {
 /// the sign glued to its number or `n` (`2n + 1`, `2n- 1`, `-n+3`, `+5`), ASCII
 /// case-insensitive, surrounded by optional whitespace. `foo`, `2n+`, `+ 2n`, `2 n` and
 /// `2.5n` are not (Chrome: `SyntaxError`).
+fn anb_glued_overflow(b: &[u8], s: &str, i: usize) -> bool {
+    b.get(i) == Some(&b'-')
+        && b.get(i + 1).is_some_and(u8::is_ascii_digit)
+        && clamped_int(true, &s[i + 1..]) == i64::from(i32::MIN) - 1
+}
+
 fn valid_anb(arg: &str) -> bool {
     let space = |b: u8| matches!(b, b' ' | b'\t' | b'\n' | b'\r' | 0x0c);
     let s = arg
         .trim_matches(|c: char| c.is_ascii() && space(c as u8))
         .to_ascii_lowercase();
-    if s == "odd" || s == "even" {
+    if matches!(s.as_str(), "odd" | "even") {
         return true;
     }
     let b = s.as_bytes();
@@ -1244,10 +1261,7 @@ fn valid_anb(arg: &str) -> bool {
         return coefficient && i == b.len();
     }
     i += 1;
-    // `n-123` is one ident (or dimension unit): Chrome converts its integer exactly, so
-    // it must fit 32 bits (a separate number token is clamped instead)
-    let glued = b.get(i) == Some(&b'-') && b.get(i + 1).is_some_and(u8::is_ascii_digit);
-    if glued && clamped_int(true, &s[i + 1..]) == i64::from(i32::MIN) - 1 {
+    if anb_glued_overflow(b, &s, i) {
         return false;
     }
     let skip = |i: &mut usize| {
@@ -1929,12 +1943,11 @@ fn matches_compound<N: Navigator + ?Sized>(nav: &N, h: Handle, c: &Compound) -> 
             return false;
         }
     }
-    if let Some(id) = &c.id {
-        if tree.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
+    if c.id.as_ref().is_some_and(|id| {
+        tree.get_attribute_ns_borrowed(h, None, "id") != Some(id.as_str())
             || !tree.attribute_is_scalar(h, "id")
-        {
-            return false;
-        }
+    }) {
+        return false;
     }
     if !compound_classes_match(tree, h, c) {
         return false;
@@ -2068,6 +2081,40 @@ fn matches_complex<N: Navigator + ?Sized>(nav: &N, h: Handle, cx: &Complex) -> b
 /// in addition to matching, relate to the scope element `el` by `comb` — so a
 /// relative selector's head is anchored to the `:has()` subject. `None` (plain
 /// matching) means the leftmost compound stands alone.
+fn matches_ancestor_chain<N: Navigator + ?Sized>(
+    nav: &N,
+    h: Handle,
+    cx: &Complex,
+    k: usize,
+    scope: Option<(Combinator, Handle)>,
+) -> bool {
+    let mut anc = nav.parent(h);
+    while let Some(a) = anc {
+        if matches_chain(nav, a, cx, k, scope) {
+            return true;
+        }
+        anc = nav.parent(a);
+    }
+    false
+}
+
+fn matches_sibling_chain<N: Navigator + ?Sized>(
+    nav: &N,
+    h: Handle,
+    cx: &Complex,
+    k: usize,
+    scope: Option<(Combinator, Handle)>,
+) -> bool {
+    let mut prev = nav.previous_element_sibling(h);
+    while let Some(p) = prev {
+        if matches_chain(nav, p, cx, k, scope) {
+            return true;
+        }
+        prev = nav.previous_element_sibling(p);
+    }
+    false
+}
+
 fn matches_chain<N: Navigator + ?Sized>(
     nav: &N,
     h: Handle,
@@ -2079,49 +2126,20 @@ fn matches_chain<N: Navigator + ?Sized>(
         return false;
     }
     if k == 0 {
-        // matched the leftmost compound — plain matching is done; `:has()` must also
-        // check the head relates to the scope element by the leading combinator.
         return match scope {
             None => true,
             Some((comb, el)) => relates_to_scope(nav, h, comb, el),
         };
     }
     match cx.rest[k - 1].0 {
-        // the direct parent must match the remaining prefix
-        Combinator::Child => match nav.parent(h) {
-            Some(p) => matches_chain(nav, p, cx, k - 1, scope),
-            None => false,
-        },
-        // ANY ancestor may match the remaining prefix — try each, backtracking
-        Combinator::Descendant => {
-            let mut anc = nav.parent(h);
-            while let Some(a) = anc {
-                if matches_chain(nav, a, cx, k - 1, scope) {
-                    return true;
-                }
-                anc = nav.parent(a);
-            }
-            false
-        }
-        // the IMMEDIATELY-preceding element sibling must match the prefix
-        // (single step — mirrors the JS `'+'` arm).
-        Combinator::Adjacent => match nav.previous_element_sibling(h) {
-            Some(prev) => matches_chain(nav, prev, cx, k - 1, scope),
-            None => false,
-        },
-        // ANY preceding element sibling may match the prefix — try each,
-        // backtracking (like Descendant but over previous element siblings;
-        // mirrors the JS `'~'` arm).
-        Combinator::GeneralSibling => {
-            let mut prev = nav.previous_element_sibling(h);
-            while let Some(p) = prev {
-                if matches_chain(nav, p, cx, k - 1, scope) {
-                    return true;
-                }
-                prev = nav.previous_element_sibling(p);
-            }
-            false
-        }
+        Combinator::Child => nav
+            .parent(h)
+            .is_some_and(|p| matches_chain(nav, p, cx, k - 1, scope)),
+        Combinator::Descendant => matches_ancestor_chain(nav, h, cx, k - 1, scope),
+        Combinator::Adjacent => nav
+            .previous_element_sibling(h)
+            .is_some_and(|prev| matches_chain(nav, prev, cx, k - 1, scope)),
+        Combinator::GeneralSibling => matches_sibling_chain(nav, h, cx, k - 1, scope),
     }
 }
 

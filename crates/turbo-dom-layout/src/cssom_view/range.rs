@@ -131,6 +131,22 @@ pub fn select(
     Ok(result)
 }
 
+fn text_intersects(
+    handle: Handle,
+    begin: u64,
+    finish: u64,
+    base: u64,
+    end_position: u64,
+    start: (Handle, usize),
+    end: (Handle, usize),
+) -> bool {
+    if begin == finish {
+        begin >= base && begin <= end_position
+    } else {
+        (begin < end_position && finish > base) || handle == start.0 || handle == end.0
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn emit_selection(
     order: &Order,
@@ -160,12 +176,7 @@ fn emit_selection(
         return;
     }
     let end_position = base + units as u64;
-    let intersects = if begin == finish {
-        begin >= base && begin <= end_position
-    } else {
-        (begin < end_position && finish > base) || handle == start.0 || handle == end.0
-    };
-    if intersects {
+    if text_intersects(handle, begin, finish, base, end_position, start, end) {
         result.push(Selection::Text {
             source,
             start: begin.saturating_sub(base).min(units as u64) as usize,

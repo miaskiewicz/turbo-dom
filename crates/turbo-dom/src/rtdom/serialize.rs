@@ -87,11 +87,39 @@ fn push_escaped_attr(out: &mut String, s: &str) {
 
 /// Serialize `h` and its subtree (the node itself + descendants). `parent_tag` is the
 /// qualified name of the parent HTML element, used only for the raw-text text-node rule.
-fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, out: &mut String) {
-    enum Task<'a> {
-        Node(Handle, Option<&'a str>),
-        Close(&'a str),
+enum Task<'a> {
+    Node(Handle, Option<&'a str>),
+    Close(&'a str),
+}
+
+fn emit_element<'a>(tree: &'a Tree, h: Handle, out: &mut String, pending: &mut Vec<Task<'a>>) {
+    let tag = tree.qualified_name(h).unwrap_or("");
+    out.push('<');
+    out.push_str(tag);
+    tree.for_each_attr_full(h, |prefix, name, value| {
+        out.push(' ');
+        if !prefix.is_empty() {
+            out.push_str(prefix);
+            out.push(':');
+        }
+        out.push_str(name);
+        out.push_str("=\"");
+        push_escaped_attr(out, value);
+        out.push('"');
+    });
+    out.push('>');
+    let is_html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
+    if is_html && is_void(tree.local_name(h).unwrap_or("")) {
+        return;
     }
+    pending.push(Task::Close(tag));
+    let parent = if is_html { tag } else { "" };
+    for child in tree.children(h).into_iter().rev() {
+        pending.push(Task::Node(child, Some(parent)));
+    }
+}
+
+fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, out: &mut String) {
     let mut pending = vec![Task::Node(h, parent_tag)];
     while let Some(task) = pending.pop() {
         let (h, parent_tag) = match task {
@@ -104,39 +132,7 @@ fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, ou
             }
         };
         match tree.node_type(h) {
-            NodeType::Element => {
-                // local_name borrows &Tree; serialize is all-immutable, so no String alloc.
-                let tag = tree.qualified_name(h).unwrap_or("");
-                out.push('<');
-                out.push_str(tag);
-                // Foreign-content attributes carry a namespace prefix (xlink/xml/xmlns) that
-                // is stored separately from the local name; the HTML serialization re-qualifies
-                // them as `prefix:name` (e.g. `xlink:href`). Plain attributes have an empty
-                // prefix and serialize as just the name.
-                tree.for_each_attr_full(h, |prefix, name, value| {
-                    out.push(' ');
-                    if !prefix.is_empty() {
-                        out.push_str(prefix);
-                        out.push(':');
-                    }
-                    out.push_str(name);
-                    out.push_str("=\"");
-                    push_escaped_attr(out, value);
-                    out.push('"');
-                });
-                out.push('>');
-                let is_html = tree.namespace_uri(h) == Some("http://www.w3.org/1999/xhtml");
-                if is_html && is_void(tree.local_name(h).unwrap_or("")) {
-                    continue;
-                }
-                pending.push(Task::Close(tag));
-                // Chrome 156 keys raw text on the qualified name: <h:script> escapes.
-                let parent = if is_html { tag } else { "" };
-                for child in tree.children(h).into_iter().rev() {
-                    pending.push(Task::Node(child, Some(parent)));
-                }
-            }
-            // Chrome's HTML serialization writes a CDATA section as escaped text.
+            NodeType::Element => emit_element(tree, h, out, &mut pending),
             NodeType::Text | NodeType::CDataSection => {
                 let data = tree.node_value(h).unwrap_or_default();
                 if parent_tag.is_some_and(is_raw_text) {
@@ -158,10 +154,6 @@ fn serialize_node<'a>(tree: &'a Tree, h: Handle, parent_tag: Option<&'a str>, ou
                 out.push_str("?>");
             }
             NodeType::Doctype => {
-                // Serialize `<!DOCTYPE ` + the node's name + `>` (the JS serializer emits
-                // `<!DOCTYPE ${node.name}>`; public/system ids are not part of the HTML
-                // fragment serialization). Falls back to "html" only if the name is somehow
-                // unavailable (e.g. a runtime-created doctype, which has no constructor here).
                 out.push_str("<!DOCTYPE ");
                 out.push_str(tree.doctype_name(h).unwrap_or("html"));
                 out.push('>');

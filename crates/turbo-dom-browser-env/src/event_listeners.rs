@@ -299,6 +299,11 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         global.set(scope, name.into(), function.into());
     }
     run_js(scope, include_str!("event_listeners.js"));
+    // turbo-dom#488: the AbortSignal.timeout / .any polyfill runs as its own
+    // `run_js` call so that a throw inside the main IIFE cannot silently prevent
+    // the override from installing. The polyfill captures its dependencies from
+    // globalThis / AbortSignal.prototype independently.
+    run_js(scope, include_str!("abort_signal_polyfill.js"));
     for (name, family) in [
         ("__captureWindowEventPhase", 0),
         ("__captureListenerOptions", 1),

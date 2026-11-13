@@ -15,6 +15,7 @@ use core_foundation::string::CFString;
 use core_graphics::base::kCGImageAlphaPremultipliedLast;
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
+use core_text::font::CTFont;
 use core_text::line::CTLine;
 use tiny_skia::Pixmap;
 use turbo_dom_layout::Rgba;
@@ -22,61 +23,33 @@ use turbo_dom_layout::Rgba;
 /// Rasterize `text` at canvas coords `(x, y)` (baseline) in `color` and source-over composite it
 /// onto `pm`. Returns `false` (caller falls back to the vector glyph trace) when the CTM is not a
 /// pure identity/translate. Never panics.
-pub(crate) fn render_text(
-    pm: &mut Pixmap,
-    st: &State,
-    text: &str,
-    x: f32,
-    y: f32,
-    color: Rgba,
-) -> bool {
-    if text.is_empty() {
-        return true;
-    }
-    // Only pure identity/translate: [a,b,c,d,e,f] with a==1,b==0,c==0,d==1.
-    let m = st.ctm.0;
+fn ctm_translate(m: &[f32; 6]) -> Option<(f32, f32)> {
     let is_translate = (m[0] - 1.0).abs() < 1e-3
         && m[1].abs() < 1e-3
         && m[2].abs() < 1e-3
         && (m[3] - 1.0).abs() < 1e-3;
-    if !is_translate {
-        return false;
-    }
-    let (w, h) = (pm.width() as usize, pm.height() as usize);
-    if w == 0 || h == 0 {
-        return false;
-    }
-    let dx = f64::from(x + m[4]);
-    let dy = f64::from(y + m[5]);
+    is_translate.then_some((m[4], m[5]))
+}
 
-    // Transparent bitmap context, premultiplied RGBA (matches tiny-skia's byte layout).
-    let cs = CGColorSpace::create_device_rgb();
-    let Ok(mut ctx) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        CGContext::create_bitmap_context(None, w, h, 8, w * 4, &cs, kCGImageAlphaPremultipliedLast)
-    })) else {
-        return false;
-    };
-    ctx.set_should_antialias(true);
-    ctx.set_should_smooth_fonts(true);
-
-    let Some(font) = ct_font(st) else {
-        return false;
-    };
-
-    // Attributed string: font + explicit foreground color (straight-alpha RGBA → 0..1).
+fn draw_line(
+    ctx: &mut CGContext,
+    font: &CTFont,
+    text: &str,
+    color: Rgba,
+    dx: f64,
+    dy: f64,
+    h: usize,
+) {
     let cfs = CFString::new(text);
     let mut att = CFMutableAttributedString::new();
     att.replace_str(&cfs, CFRange::init(0, 0));
-    // CFAttributedString ranges are in UTF-16 code units, not Unicode scalars — an
-    // astral char (emoji, CJK-ext) is one `char` but two UTF-16 units, so counting
-    // scalars would leave the trailing units unstyled. Count UTF-16 units.
     let n = text.encode_utf16().count() as isize;
     let full = CFRange::init(0, n);
     unsafe {
         att.set_attribute(
             full,
             core_text::string_attributes::kCTFontAttributeName,
-            &font,
+            font,
         );
         let cg = core_graphics::color::CGColor::rgb(
             f64::from(color.r) / 255.0,
@@ -91,13 +64,52 @@ pub(crate) fn render_text(
         );
     }
     let line = CTLine::new_with_attributed_string(att.as_concrete_TypeRef());
-    // CoreGraphics origin is bottom-left; canvas baseline y grows downward → CG y = h - dy.
     ctx.set_text_position(dx, h as f64 - dy);
-    line.draw(&ctx);
+    line.draw(ctx);
+}
 
-    // Source-over composite the (premultiplied) CG bitmap onto the (premultiplied) pixmap.
-    let src = ctx.data();
-    let dst = pm.data_mut();
+pub(crate) fn render_text(
+    pm: &mut Pixmap,
+    st: &State,
+    text: &str,
+    x: f32,
+    y: f32,
+    color: Rgba,
+) -> bool {
+    if text.is_empty() {
+        return true;
+    }
+    let Some((tx, ty)) = ctm_translate(&st.ctm.0) else {
+        return false;
+    };
+    let (w, h) = (pm.width() as usize, pm.height() as usize);
+    if w == 0 || h == 0 {
+        return false;
+    }
+    let cs = CGColorSpace::create_device_rgb();
+    let Ok(mut ctx) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        CGContext::create_bitmap_context(None, w, h, 8, w * 4, &cs, kCGImageAlphaPremultipliedLast)
+    })) else {
+        return false;
+    };
+    ctx.set_should_antialias(true);
+    ctx.set_should_smooth_fonts(true);
+    let Some(font) = ct_font(st) else {
+        return false;
+    };
+    draw_line(
+        &mut ctx,
+        &font,
+        text,
+        color,
+        f64::from(x + tx),
+        f64::from(y + ty),
+        h,
+    );
+    composite_over(ctx.data(), pm.data_mut())
+}
+
+fn composite_over(src: &[u8], dst: &mut [u8]) -> bool {
     if src.len() != dst.len() {
         return false;
     }

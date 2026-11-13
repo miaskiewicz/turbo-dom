@@ -5,6 +5,90 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.3] — 2026-11-12
+
+Native browser binding fixes and additive screenshot APIs for turbo-surf integration.
+
+- **Complexity (#379, #462–#464)**: the blocking ceiling is now cc <= 9 for the Rust
+  parser/DOM/layout/raster and npm runtime. The browser-env binding remains excluded from
+  both complexity scans; its attempted extractions were reverted after build regressions
+  (#490). No coverage floor was lowered.
+- **Browser binding (#499, #502, #503)**: constructible, branded `Touch` and genuine
+  `TouchEvent`/`TouchList` payloads; captured base `Event` identity survives embedder
+  constructor replacement; HTML hidden controls and suppressed descendants have correct
+  UA display and zero geometry while author display overrides remain effective.
+- **Document replacement (#500)**: additive `replace_document_content` preserves the
+  existing Window/document and detached nodes, returning parser-ordered scripts for the
+  host's policy/loader/completion pipeline. Custom elements construct after attachment.
+  Ordinary guest `document.open/write/close` streaming remains unsupported.
+- **Title performance (#492)**: reads and writes stop at the first HTML title in document
+  order, preserving mutation and malformed-document semantics. An offline scalable harness
+  asserts bounded native work independently of diagnostic timings.
+- **Screenshot APIs (#491, #493–#497)**: immutable owned `PreparedScreenshot` scenes reuse
+  layout and decoded resources; conservative `capture_resources` planning accepts intrinsic
+  `ImageMetadata` independently of pixel bodies. Options add transparent initial canvas,
+  device scale independent of CSS viewport, and colored masking rectangles with exact
+  serialized-snapshot element geometry mapping. Full-page bounds include positioned overflow
+  and retain the viewport minimum and safety cap. Decimal DPRs retain double precision,
+  and output dimensions follow independently recorded Chrome rounding (#505), so a
+  100×80 CSS viewport at DPR 1.2 yields 120×96 pixels. Geometry for rotated/rounded clips and
+  rasterized SVG descendants is conservatively bounded. Reusable offline harnesses assert
+  pixel/byte equality and deterministic layout work.
+- **AbortSignal contract (#487, #488, #498)**: the standalone timeout/any polyfill has its
+  own installation call; tests cover retained host callback task scopes and nested/page
+  dispatch ordering. Embedders must enter `engine_task_scope` for runtime-owned host timer
+  callbacks; producer tests alone do not certify surf's official Deno integration.
+
+- **Adversarial review, round one (#489)**: image metadata no longer suppresses
+  embedded data-image decoding; document replacement preserves dynamically admitted
+  custom-element scripts; Touch dictionaries read members once in Web IDL order and
+  reject boxed BigInts. Collapsed trailing spaces preserve bidi state, and npm runtime
+  dispatch tables reject inherited object keys. Full-page capture retains scroll extents
+  of CSS-clipped boxes while keeping their pixels clipped.
+
+- **Adversarial review, round two (#489)**: TouchList indexed writes and property
+  definitions acknowledge success without changing readonly entries; missing indices
+  delete successfully, and `4294967295` remains an ordinary property. Document replacement
+  attaches declarative shadow roots, preserving parser-script order and non-clonable roots
+  while keeping ordinary templates inert and custom-element reactions on the live document.
+
+- **Adversarial review, round three (#489)**: TouchEvent sequence conversion order
+  matches Chrome, borrowed getters accept valid foreign-realm events, and private records
+  resist guest prototype setters. Document replacement creates nodes in the target realm.
+  Selector dispatch ignores inherited prototype keys. Resource planning conservatively
+  retains image bodies at rounded fractional-DPR capture edges, preserving pixel equality
+  between full and selected resource sets.
+
+- **Replacement resource handoff (#506)**: adoption keeps internal target construction
+  private until wrapper identity transfers. Reentrant resource consumers first observe
+  canonical nodes with parser flags established, preserving single image admission and
+  parser ordering. Distinct same-URL elements, authored `src` reloads, and synchronous
+  custom-element resource callbacks retain their normal behavior.
+
+- **jsdom TouchEvent compatibility**: additive per-realm `set_touch_event_mode` /
+  `TouchEventMode` accepts plain-object touch entries unchanged when explicitly set to
+  `Jsdom`. Chrome-strict branded `Touch` validation remains the default. This switch is
+  independent of media and CSS-motion settings; lists retain index, iteration and `item()`
+  access without copying entry objects. An exact jsdom 27 control covers the regression.
+
+- **jsdom computed text-decoration**: additive per-realm `ComputedStyleMode` /
+  `set_computed_style_mode` keeps the winning declared shorthand in `Jsdom` mode instead
+  of appending a synthesized computed color. Explicit authored colors remain intact;
+  longhand-only declarations do not synthesize a shorthand. Chrome remains the default,
+  and the mode is independent of CSS/media and touch settings. A jsdom-27 control covers
+  inline/rule declarations, updates/removal and explicit values.
+
+- **Explicit text-decoration color coherence**: jsdom-mode shorthand metadata now uses
+  the same declared CSSOM serialization as inline and rule styles. Explicit hexadecimal
+  colors therefore agree with canonical RGB values, and equivalent hex/RGB assignments
+  cannot leave retained computed-style views holding an older spelling. Line-only values
+  still omit synthetic colors.
+
+Public Rust API changes are additive. Callers must rebuild prepared screenshot scenes when
+inputs change and resolve masks against the same serialized document snapshot. Native
+per-context timezone defaults (#501) are deferred to v0.9.0; auxiliary popup identities (#504)
+are deferred to v0.8.4. No process-global timezone workaround or partial popup API is added.
+
 ## [0.8.2] — 2026-11-09
 
 Follow-up release addressing issues surfaced during the v0.8.1 R1-R4 adversarial reviews.

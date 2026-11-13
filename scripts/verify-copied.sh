@@ -408,6 +408,19 @@ editing.js: 0.8.0 turbo-dom#389 review 2: skipZwjSequencesBackward takes a skin-
 editing_input_steps.json: 0.8.0 turbo-dom#389 review 2: Backspace / execCommand('delete') after x + 👨🏽‍💻 and Backspace after x + ❤️‍🔥 steps
 editing_input_chrome156.json: 0.8.0 turbo-dom#389 review 2: recaptured with the frozen headless shell over the extended steps; the 38 existing rows and collectorSha256 are unchanged
 event_listeners.rs: 0.8.1 turbo-dom#398 PR-C1 workspace cc <= 15 gate: aborted / error branches of the records native lifted into helpers (behaviour-preserving)
+event_listeners.js: 0.8.3 turbo-dom#488 the AbortSignal.timeout/.any polyfill is moved out to its own abort_signal_polyfill.js run_js call (crate-owned, OWNED below); this file no longer installs it
+event_listeners.rs: 0.8.3 turbo-dom#488 registers abort_signal_polyfill.js as a separate init script run
+browser_env.js: 0.8.3 PR#489 review: Touch dictionary members convert once in lexical order using Web IDL ToNumber
+browser_env.js: 0.8.3 PR#489 review two: TouchList uses canonical native indexed-object hooks for readonly operations and ordinary 2^32-1 property
+browser_env.js: 0.8.3 PR#489 review three: TouchEvent sequences convert in dictionary order and native ephemeron records brand foreign-realm getters
+script_state.rs: 0.8.3 PR#489 review: initialize parser scripts from imported roots before custom-element reactions
+browser_env.rs: 0.8.3 PR#489 review two: replacement parser preserves original script order before canonical declarative-shadow attachment
+document_basics.rs: 0.8.3 turbo-dom#506 internal target adoption construction is quiet until canonical wrapper cache transfer
+browser_env.js: 0.8.3 explicit per-realm jsdom TouchEvent list compatibility switch, independent of CSS/media; strict Chrome remains default
+browser_env.rs: 0.8.3 public TouchEventMode and set_touch_event_mode configure the private per-realm list policy
+browser_env.js: 0.8.3 independent computed-style mode retains admitted authored text-decoration shorthand through cascade/cache, without computed color synthesis
+browser_env.rs: 0.8.3 public ComputedStyleMode and set_computed_style_mode configure scoped computed serialization
+browser_env.js: 0.8.3 text-decoration compatibility metadata captures declared CSSOM serialization after entries are stored, keeping explicit colors and format-only updates coherent
 "
 # Crate-owned files under src/ that were not part of the move.
 OWNED="lib.rs crate_surface.rs host_internals.rs test_support.rs css_snapshot.rs option_factory_probe.js option_factory_cases.json option_factory_chrome156.json html_image.js html_image_tests.rs html_image_probe.js html_image_cases.json html_image_chrome156.json custom_elements_defined_probe.js custom_elements_defined_cases.json custom_elements_defined_chrome156.json computed_defaults_probe.js computed_defaults_cases.json computed_defaults_chrome156.json computed_defaults_tests.rs dom_reactions_names_probe.js dom_reactions_names_cases.json dom_reactions_names_chrome156.json dom_reactions_tests.rs dom_adoption_reactions_probe.js dom_adoption_reactions_cases.json dom_adoption_reactions_chrome156.json shadow_events_probe.js shadow_events_cases.json shadow_events_chrome156.json shadow_events_tests.rs html_track_probe.js html_track_cases.json html_track_chrome156.json html_track_tests.rs html_track.js"
@@ -427,6 +440,10 @@ OWNED="$OWNED member_edges_tests.rs host_edges_tests.rs member_edges_probe.js me
 OWNED="$OWNED guard_edges_tests.rs guard_edges_probe.js guard_edges_chrome156.json"
 OWNED="$OWNED stack_edge_tests.rs stack_edge_probe.js stack_edge_chrome156.json"
 OWNED="$OWNED reflection_regressions_tests.rs"
+OWNED="$OWNED touch_conversion_chrome156.json touch_list_index_chrome156.json document_replacement_shadow.html document_replacement_shadow_chrome156.json document_replacement_realm_chrome156.json"
+OWNED="$OWNED touch_event_realm_chrome156.json touch_event_sequence_chrome156.json touch_event_intrinsics_chrome156.json"
+OWNED="$OWNED touch_jsdom_jsdom27.json"
+OWNED="$OWNED text_decoration_jsdom27.json"
 OWNED="$OWNED native_guards_hostile_probe.js native_guards_hostile_chrome156.json"
 OWNED="$OWNED reaction_volume_probe.js reaction_volume_chrome156.json"
 OWNED="$OWNED computed_form_background_probe.js computed_form_background_chrome156.json"
@@ -464,6 +481,8 @@ OWNED="$OWNED event_target_dispatch_chrome156.json event_target_dispatch_tests.r
 OWNED="$OWNED worker_scope.rs worker_scope.js dedicated_worker_global_scope_probe.js dedicated_worker_global_scope_chrome156.json"
 # turbo-dom#394 embedder init scripts run before parser inline <script>.
 OWNED="$OWNED init_script_tests.rs"
+# turbo-dom#488 AbortSignal.timeout/.any polyfill split into its own crate-owned run_js call.
+OWNED="$OWNED abort_signal_polyfill.js"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

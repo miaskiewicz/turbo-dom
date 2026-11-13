@@ -115,32 +115,38 @@ function normalizeRgb(v) {
   return rgb(nums[0], nums[1], nums[2], nums[3]);
 }
 
-function hslToRgb(v) {
+function hueChannel(p, q, t) {
+  if (t < 0) t += 1; if (t > 1) t -= 1;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+  return p;
+}
+
+function parseHslParts(v) {
   const open = v.indexOf('(');
   if (open === -1 || v[v.length - 1] !== ')') return null;
   const parts = v.slice(open + 1, -1).split(/[,\s/]+/).filter(Boolean);
   if (parts.length < 3 || parts.length > 4) return null;
-  let h = parseFloat(parts[0]);
+  const h = parseFloat(parts[0]);
   const s = parseFloat(parts[1]) / 100;
   const l = parseFloat(parts[2]) / 100;
   if (Number.isNaN(h) || Number.isNaN(s) || Number.isNaN(l)) return null;
   const a = parts[3] !== undefined ? parseFloat(parts[3]) : undefined;
-  h = ((h % 360) + 360) % 360 / 360;
-  const hue = (p, q, t) => {
-    if (t < 0) t += 1; if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  };
+  return { h: ((h % 360) + 360) % 360 / 360, s, l, a };
+}
+
+function hslToRgb(v) {
+  const p = parseHslParts(v);
+  if (!p) return null;
   let r, g, b;
-  if (s === 0) { r = g = b = l; }
+  if (p.s === 0) { r = g = b = p.l; }
   else {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue(p, q, h + 1 / 3); g = hue(p, q, h); b = hue(p, q, h - 1 / 3);
+    const q = p.l < 0.5 ? p.l * (1 + p.s) : p.l + p.s - p.l * p.s;
+    const pp = 2 * p.l - q;
+    r = hueChannel(pp, q, p.h + 1 / 3); g = hueChannel(pp, q, p.h); b = hueChannel(pp, q, p.h - 1 / 3);
   }
-  return rgb(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), a);
+  return rgb(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), p.a);
 }
 
 // Canonicalize one color value, or null if unrecognized (→ caller passthrough).

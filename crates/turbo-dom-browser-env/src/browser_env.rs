@@ -826,6 +826,26 @@ pub fn parse_html_document_units<'s>(
         sanitize,
     )
 }
+
+/// The replacement parser keeps original script order before declarative templates
+/// are consumed. Ordinary template contents remain inert and are not parser work.
+fn parse_replacement_document<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    units: &[u16],
+) -> (v8::Local<'s, v8::Object>, Vec<v8::Local<'s, v8::Object>>) {
+    let tree = Tree::parse_utf16_with_processing_instructions(units);
+    let order = script_state::parse_order(&tree);
+    let document = parse_html_tree_with(scope, tree, true, None);
+    let _owner = DomScope::for_object(scope, document);
+    let scripts = order
+        .into_iter()
+        .filter(|&node| {
+            with_tree(|tree| tree.is_live(node) && is_connected(tree, node)).unwrap_or(false)
+        })
+        .map(|node| wrap(scope, node))
+        .collect();
+    (document, scripts)
+}
 fn parse_html_tree<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     tree: Tree,
@@ -967,6 +987,17 @@ pub fn import_document_node<'s>(
     node: v8::Local<'s, v8::Object>,
     deep: bool,
 ) -> Result<v8::Local<'s, v8::Object>, &'static str> {
+    import_document_node_with_construction(scope, document, node, deep, true)
+}
+
+/// Import a node with optional deferred custom-element construction.
+fn import_document_node_with_construction<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    document: v8::Local<v8::Object>,
+    node: v8::Local<'s, v8::Object>,
+    deep: bool,
+    construct: bool,
+) -> Result<v8::Local<'s, v8::Object>, &'static str> {
     let source_node = node;
     struct Snapshot {
         kind: u8,
@@ -1066,7 +1097,7 @@ pub fn import_document_node<'s>(
     document_basics::copy_nonces(scope, source_node, clone, deep);
     script_state::copy(scope, source_node, clone, deep);
     template_contents::copy_contents(scope, source_node, clone, deep);
-    custom_elements::cloned(scope, source_node, clone, deep);
+    custom_elements::cloned_with_construction(scope, source_node, clone, deep, construct);
     shadow_html::clone_roots(scope, source_node, clone, deep);
     Ok(clone)
 }
@@ -2082,6 +2113,48 @@ pub fn set_media_mode(scope: &mut v8::PinScope, mode: MediaMode) {
         match mode {
             MediaMode::Chrome => "__tsNs.setMediaMode('chrome')",
             MediaMode::Jsdom => "__tsNs.setMediaMode('jsdom')",
+        },
+    );
+}
+
+/// Validation of entries in TouchEvent init lists, independently of CSS/media settings.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TouchEventMode {
+    /// Require branded Touch objects, as Chrome does (the default).
+    #[default]
+    Chrome,
+    /// Retain arbitrary list entries unchanged, for jsdom test environments.
+    Jsdom,
+}
+
+/// Set the current realm's TouchEvent list validation mode. Existing lists are unchanged.
+pub fn set_touch_event_mode(scope: &mut v8::PinScope, mode: TouchEventMode) {
+    run_js(
+        scope,
+        match mode {
+            TouchEventMode::Chrome => "__tsNs.setTouchEventMode('chrome')",
+            TouchEventMode::Jsdom => "__tsNs.setTouchEventMode('jsdom')",
+        },
+    );
+}
+
+/// Serialization compatibility for computed text-decoration (other properties retain Chrome semantics).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ComputedStyleMode {
+    /// Chrome computed-value serialization (the default).
+    #[default]
+    Chrome,
+    /// Preserve the declared text-decoration shorthand, as jsdom does.
+    Jsdom,
+}
+
+/// Set the current realm's computed-style serialization mode, independently of CSS/media switches.
+pub fn set_computed_style_mode(scope: &mut v8::PinScope, mode: ComputedStyleMode) {
+    run_js(
+        scope,
+        match mode {
+            ComputedStyleMode::Chrome => "__tsNs.setComputedStyleMode('chrome')",
+            ComputedStyleMode::Jsdom => "__tsNs.setComputedStyleMode('jsdom')",
         },
     );
 }
@@ -5002,6 +5075,12 @@ pub fn dispatch_host_event_did_listeners_throw(
 /// `callback` receives no arguments; its return value is propagated. The JS
 /// hook wraps the call in try/finally so the counter is always restored (a
 /// throwing callback rethrows here).
+///
+/// Enter this scope at every native task-to-callback handoff, including timers
+/// owned by an embedding runtime rather than the page's `setTimeout` runner.
+/// A retained callback that invokes `AbortController.abort` needs the bracket
+/// during that invocation: checkpointing only after it returns cannot interleave
+/// its listeners. Page-originated aborts must remain outside the bracket.
 pub fn engine_task_scope<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     callback: v8::Local<v8::Function>,

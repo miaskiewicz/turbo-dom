@@ -143,6 +143,13 @@ pub(crate) fn html_elements(tree: &Tree, name: &str) -> Vec<Handle> {
 /// breaking out of foreign content) applies. Each source is the element re-serialized as
 /// namespace-well-formed XML ([`svg_markup`]).
 pub fn inline_svg_to_img(tree: &mut Tree) -> Vec<(String, String)> {
+    inline_svg_to_img_with(tree, |_, _, _| {})
+}
+
+pub(crate) fn inline_svg_to_img_with(
+    tree: &mut Tree,
+    mut replaced: impl FnMut(&Tree, Handle, Handle),
+) -> Vec<(String, String)> {
     let roots = svg_roots(tree);
     let mut assets = Vec::with_capacity(roots.len());
     for svg in roots {
@@ -155,6 +162,7 @@ pub fn inline_svg_to_img(tree: &mut Tree) -> Vec<(String, String)> {
                 tree.set_attribute(img, name, &value);
             }
         }
+        replaced(tree, svg, img);
         tree.replace_with(svg, &[img]);
         assets.push((key, source));
     }
@@ -444,39 +452,11 @@ fn base64_decode(s: &str) -> Option<Vec<u8>> {
 /// Decode PNG (turbo-dom-layout's shared decoder), JPEG/GIF/WebP (the `image` crate)
 /// or SVG (the shared rasterizer, 1x) into straight-alpha RGBA. `None` on an
 /// unrecognized or corrupt image.
-pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
-    if is_svg(bytes) {
-        return decode_svg(bytes);
-    }
-    let format = layout_image::sniff(bytes);
-    // Blink's load decision for a cut-short body (turbo-dom#59): a PNG/JPEG/GIF/WebP the
-    // shared probe cannot size yet is broken, one it sizes loads even when the pixels do
-    // not decode (laid out at its size, painting nothing: turbo-dom#107).
-    let size_point = matches!(
-        format,
-        Some(Format::Png | Format::Jpeg | Format::Gif | Format::WebP)
-    );
-    if size_point && layout_image::probe(bytes).is_none() {
-        return None;
-    }
-    // No decoder for the format (an AVIF without the `avif` feature, a JPEG XL without
-    // `jxl`): laid out at its size, painted as the placeholder.
-    let no_decoder = (matches!(format, Some(Format::Avif)) && !cfg!(feature = "avif"))
-        || (matches!(format, Some(Format::Jxl)) && !cfg!(feature = "jxl"));
-    // One pixel budget for every format, checked on the header size before any decoder
-    // allocates: a decoder's own limit counts its native output (3-byte RGB, or none at
-    // all for JPEG XL), not the RGBA copy. Over it, laid out at its size, painting nothing.
-    if layout_image::probe(bytes).is_some_and(|i| over_budget(i.width, i.height)) {
-        return size_only(bytes, no_decoder);
-    }
-    let pixels = match format {
+fn decode_pixels(bytes: &[u8], format: Option<Format>) -> Option<Rgba8Image> {
+    match format {
         Some(Format::Png) => layout_image::decode_png_rgba(bytes),
         Some(Format::Avif) => crate::avif::decode(bytes),
         Some(Format::Jxl) => crate::jxl::decode(bytes),
-        // The entry a browser shows: a PNG entry through the shared PNG decoder (the
-        // `image` crate's ICO decoder rejects non-RGBA PNG entries, which Chrome shows),
-        // else the `image` crate's ICO decoder — format forced, as a cursor (resource
-        // type 2) has the same layout but not its magic.
         Some(Format::Ico) => match layout_image::ico_entry(bytes) {
             Some(entry) if entry.png => layout_image::decode_png_rgba(entry.data),
             _ => image_rgba(image::load_from_memory_with_format(
@@ -485,13 +465,31 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
             )),
         },
         _ => image_rgba(image::load_from_memory(bytes)),
-    };
-    let Some(rgba) = pixels else {
-        // A sized PNG/JPEG/GIF/WebP whose pixels do not decode, an AVIF or a JPEG XL still
-        // lays out at the image's real size (the shared header probe). It paints nothing,
-        // as in Chrome (turbo-dom#107), except an AVIF without the `avif` feature or a JPEG
-        // XL without `jxl`: no decoder, so the placeholder. Any other undecodable image is
-        // dropped.
+    }
+}
+
+fn no_decoder_for_format(format: Option<Format>) -> bool {
+    (matches!(format, Some(Format::Avif)) && !cfg!(feature = "avif"))
+        || (matches!(format, Some(Format::Jxl)) && !cfg!(feature = "jxl"))
+}
+
+pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
+    if is_svg(bytes) {
+        return decode_svg(bytes);
+    }
+    let format = layout_image::sniff(bytes);
+    let size_point = matches!(
+        format,
+        Some(Format::Png | Format::Jpeg | Format::Gif | Format::WebP)
+    );
+    if size_point && layout_image::probe(bytes).is_none() {
+        return None;
+    }
+    let no_decoder = no_decoder_for_format(format);
+    if layout_image::probe(bytes).is_some_and(|i| over_budget(i.width, i.height)) {
+        return size_only(bytes, no_decoder);
+    }
+    let Some(rgba) = decode_pixels(bytes, format) else {
         return if size_point || matches!(format, Some(Format::Avif | Format::Jxl)) {
             size_only(bytes, no_decoder)
         } else {
@@ -501,8 +499,6 @@ pub fn decode(bytes: &[u8]) -> Option<DecodedImage> {
     let probed = layout_image::probe(bytes);
     let size = raster_intrinsic(probed, &rgba);
     let mut decoded = with_intrinsic(rgba, size);
-    // The EXIF orientation (JPEG APP1 / PNG eXIf) the shared probe reads; layout turns
-    // the box and the painters turn the pixels (`ImagePlacement::orientation`).
     decoded.intrinsic.orientation = probed.map_or(Orientation::IDENTITY, |i| i.orientation);
     Some(decoded)
 }
@@ -619,7 +615,6 @@ impl DecodedImage {
         if self.width == 0 || self.height == 0 || !inside {
             return None;
         }
-        // `None` for an empty window.
         let mut pm = Pixmap::new(w, h)?;
         let columns: Vec<Taps> = (x0..x0 + w)
             .map(|x| Taps::new(x, size.0, self.width))
@@ -629,38 +624,67 @@ impl DecodedImage {
         let stride = self.width as usize * 4;
         let mut row = vec![[0.0_f32; 4]; to - from];
         for (out_y, y) in (y0..y0 + h).enumerate() {
-            // The vertical pass over the source columns the window reads, kept in f32.
-            // Each cell sums its taps in source order, as `resize` does.
-            let taps = Taps::new(y, size.1, self.height);
-            row.fill([0.0; 4]);
-            for (i, &weight) in taps.weights.iter().enumerate() {
-                let at = (taps.first as usize + i) * stride;
-                let source = &self.rgba[at + from * 4..at + to * 4];
-                for (cell, px) in row.iter_mut().zip(source.as_chunks::<4>().0) {
-                    cell[0] += f32::from(px[0]) * weight;
-                    cell[1] += f32::from(px[1]) * weight;
-                    cell[2] += f32::from(px[2]) * weight;
-                    cell[3] += f32::from(px[3]) * weight;
-                }
-            }
+            accumulate_vertical(
+                &self.rgba,
+                stride,
+                from,
+                to,
+                y,
+                size.1,
+                self.height,
+                &mut row,
+            );
             let out = &mut pm.pixels_mut()[out_y * w as usize..][..w as usize];
-            for (dst, taps) in out.iter_mut().zip(&columns) {
-                let mut sum = [0.0_f32; 4];
-                let cells = &row[taps.first as usize - from..][..taps.weights.len()];
-                for (cell, &weight) in cells.iter().zip(&taps.weights) {
-                    sum[0] += cell[0] * weight;
-                    sum[1] += cell[1] * weight;
-                    sum[2] += cell[2] * weight;
-                    sum[3] += cell[3] * weight;
-                }
-                let [r, g, b, a] = sum.map(|v| v.clamp(0.0, 255.0).round() as u8);
-                // premul(c,a) ≤ a always, so the premultiplied invariant holds.
-                *dst =
-                    PremultipliedColorU8::from_rgba(premul(r, a), premul(g, a), premul(b, a), a)?;
-            }
+            resolve_horizontal(out, &columns, &row, from)?;
         }
         Some(pm)
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn accumulate_vertical(
+    rgba: &[u8],
+    stride: usize,
+    from: usize,
+    to: usize,
+    y: u32,
+    dst_h: u32,
+    src_h: u32,
+    row: &mut [[f32; 4]],
+) {
+    let taps = Taps::new(y, dst_h, src_h);
+    row.fill([0.0; 4]);
+    for (i, &weight) in taps.weights.iter().enumerate() {
+        let at = (taps.first as usize + i) * stride;
+        let source = &rgba[at + from * 4..at + to * 4];
+        for (cell, px) in row.iter_mut().zip(source.as_chunks::<4>().0) {
+            cell[0] += f32::from(px[0]) * weight;
+            cell[1] += f32::from(px[1]) * weight;
+            cell[2] += f32::from(px[2]) * weight;
+            cell[3] += f32::from(px[3]) * weight;
+        }
+    }
+}
+
+fn resolve_horizontal(
+    out: &mut [PremultipliedColorU8],
+    columns: &[Taps],
+    row: &[[f32; 4]],
+    from: usize,
+) -> Option<()> {
+    for (dst, taps) in out.iter_mut().zip(columns) {
+        let mut sum = [0.0_f32; 4];
+        let cells = &row[taps.first as usize - from..][..taps.weights.len()];
+        for (cell, &weight) in cells.iter().zip(&taps.weights) {
+            sum[0] += cell[0] * weight;
+            sum[1] += cell[1] * weight;
+            sum[2] += cell[2] * weight;
+            sum[3] += cell[3] * weight;
+        }
+        let [r, g, b, a] = sum.map(|v| v.clamp(0.0, 255.0).round() as u8);
+        *dst = PremultipliedColorU8::from_rgba(premul(r, a), premul(g, a), premul(b, a), a)?;
+    }
+    Some(())
 }
 
 /// The source pixels one output pixel of a resize reads and their normalized triangle

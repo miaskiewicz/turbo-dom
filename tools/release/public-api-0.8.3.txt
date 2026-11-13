@@ -1,0 +1,68 @@
+# Public Rust API diff, v0.8.2 -> v0.8.3 release candidate
+# Previous: v0.8.2 annotated tag 09a6034e99ceb378a853235ec8c2718b0feeca15,
+#   peeled commit 11a8b725a88a3872b274474b0028496cf6cba796 (verified against origin).
+# Candidate: 7e3f24b268045379c328d701ffcd2f4801452008.
+# Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02).
+# cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
+# Reproduce in separate clean worktrees at both commits, with the same nightly/tool:
+#   cargo +nightly public-api -sss --color never -p turbo-dom
+#   cargo +nightly public-api -sss --color never -p turbo-dom-parser
+#   cargo +nightly public-api -sss --color never -p turbo-dom-layout --features svg,perf,serde,test-support
+#   cargo +nightly public-api -sss --color never -p turbo-dom-raster --features avif,jxl
+#   cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# These are the CI feature surfaces; default features remain enabled in every command.
+# RUSTY_V8_ARCHIVE points to the local matching prebuilt V8 archive; no network API inputs.
+# '+' = candidate-only line; '-' = previous-only line; no removed/changed public items.
+# ScreenshotOptions was already non_exhaustive. Its existing derived Default became a
+# manual implementation (scale defaults to 1), so -sss now includes that implementation.
+# The new layout entries are also re-exported at the crate root; both public paths are listed.
+
+## turbo-dom
+
+## turbo-dom-parser
+
+## turbo-dom-layout
++ pub fn turbo_dom_layout::html_layout::layout_html_tree_capture_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::fragment::Fragment
++ pub fn turbo_dom_layout::html_layout::layout_html_tree_recorded_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::LaidOut
++ pub fn turbo_dom_layout::layout_html_tree_capture_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::fragment::Fragment
++ pub fn turbo_dom_layout::layout_html_tree_recorded_in_viewport_with(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]), &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::LaidOut
+
+## turbo-dom-raster
++ pub struct turbo_dom_raster::CaptureResources
++ pub turbo_dom_raster::CaptureResources::fragments_examined: usize
++ pub turbo_dom_raster::CaptureResources::pixel_urls: alloc::vec::Vec<alloc::string::String>
++ pub struct turbo_dom_raster::PreparedScreenshot
++ impl turbo_dom_raster::PreparedScreenshot
++ pub fn turbo_dom_raster::PreparedScreenshot::new(&str, &str, turbo_dom_raster::Viewport, &turbo_dom_raster::ImageAssets, &turbo_dom_raster::ScreenshotOptions<'_>) -> Self
++ pub fn turbo_dom_raster::PreparedScreenshot::png(&self) -> core::result::Result<alloc::vec::Vec<u8>, alloc::string::String>
++ pub fn turbo_dom_raster::PreparedScreenshot::svg(&self) -> core::result::Result<alloc::string::String, alloc::string::String>
++ pub struct turbo_dom_raster::ScreenshotMask
++ pub turbo_dom_raster::ScreenshotMask::color: [u8; 4]
++ pub turbo_dom_raster::ScreenshotMask::rect: turbo_dom_raster::ScreenshotRect
++ impl turbo_dom_raster::ScreenshotMask
++ pub const fn turbo_dom_raster::ScreenshotMask::new(turbo_dom_raster::ScreenshotRect) -> Self
++ pub turbo_dom_raster::ScreenshotOptions::device_scale: f64
++ pub turbo_dom_raster::ScreenshotOptions::image_metadata: core::option::Option<&'a turbo_dom_raster::ImageMetadata>
++ pub turbo_dom_raster::ScreenshotOptions::masks: &'a [turbo_dom_raster::ScreenshotMask]
++ pub turbo_dom_raster::ScreenshotOptions::omit_background: bool
++ impl core::default::Default for turbo_dom_raster::ScreenshotOptions<'_>
++ pub fn turbo_dom_raster::ScreenshotOptions<'_>::default() -> Self
++ pub struct turbo_dom_raster::ScreenshotRect
++ pub turbo_dom_raster::ScreenshotRect::height: f32
++ pub turbo_dom_raster::ScreenshotRect::width: f32
++ pub turbo_dom_raster::ScreenshotRect::x: f32
++ pub turbo_dom_raster::ScreenshotRect::y: f32
++ pub fn turbo_dom_raster::capture_resources(&str, &str, turbo_dom_raster::Viewport, &turbo_dom_raster::ImageMetadata, &turbo_dom_raster::ScreenshotOptions<'_>) -> turbo_dom_raster::CaptureResources
++ pub fn turbo_dom_raster::screenshot_element_rects(&str, &str, turbo_dom_raster::Viewport, &turbo_dom_raster::ImageAssets, &turbo_dom_raster::ScreenshotOptions<'_>, &[usize]) -> core::result::Result<alloc::vec::Vec<core::option::Option<turbo_dom_raster::ScreenshotRect>>, alloc::string::String>
++ pub type turbo_dom_raster::ImageMetadata = std::collections::hash::map::HashMap<alloc::string::String, turbo_dom_layout::image::Intrinsic>
+
+## turbo-dom-browser-env
++ pub fn turbo_dom_browser_env::browser_env::replace_document_content<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Object>, &[u16]) -> core::result::Result<alloc::vec::Vec<v8::handle::Local<'s, v8::data::Object>>, &'static str>
++ pub enum turbo_dom_browser_env::browser_env::TouchEventMode
++ pub turbo_dom_browser_env::browser_env::TouchEventMode::Chrome
++ pub turbo_dom_browser_env::browser_env::TouchEventMode::Jsdom
++ pub fn turbo_dom_browser_env::browser_env::set_touch_event_mode(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::TouchEventMode)
++ pub enum turbo_dom_browser_env::browser_env::ComputedStyleMode
++ pub turbo_dom_browser_env::browser_env::ComputedStyleMode::Chrome
++ pub turbo_dom_browser_env::browser_env::ComputedStyleMode::Jsdom
++ pub fn turbo_dom_browser_env::browser_env::set_computed_style_mode(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::ComputedStyleMode)

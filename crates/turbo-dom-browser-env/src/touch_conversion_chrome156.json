@@ -1,0 +1,33 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "876f4a903406f01d0a05b440ec66366b49c1094d425249a5e3ba34db159770cb",
+  "result": {
+    "trace": [
+      "clientX",
+      "clientY",
+      "force",
+      "identifier",
+      "pageX",
+      "pageY",
+      "radiusX",
+      "radiusY",
+      "rotationAngle",
+      "screenX",
+      "screenY",
+      "target"
+    ],
+    "identifier": 7,
+    "boxed": [
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "changing": [
+      4,
+      [
+        "identifier",
+        "target"
+      ]
+    ]
+  }
+}

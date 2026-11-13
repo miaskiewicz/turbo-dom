@@ -58,6 +58,35 @@ fn union(a: Rect, b: Rect) -> Rect {
         height: (a.y + a.height).max(b.y + b.height) - y,
     }
 }
+fn check_inline_font_consistency(
+    styles: &SourceStyles,
+    own: &crate::ComputedStyle,
+    run: &crate::layout_snapshot::SnapshotTextRun,
+    id: SourceId,
+) -> Result<(), String> {
+    let start = run
+        .source_ancestors
+        .iter()
+        .position(|source| *source == id)
+        .unwrap();
+    for ancestor in &run.source_ancestors[start..] {
+        check_style(styles, *ancestor)?;
+        let child = &styles[ancestor].style;
+        for property in [
+            "font-family",
+            "font-size",
+            "font-weight",
+            "font-style",
+            "line-height",
+        ] {
+            if own.get(property) != child.get(property) {
+                return Err("native mixed-font inline border production is pending".into());
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn geometry(
     snapshot: &LayoutSnapshot,
     styles: &SourceStyles,
@@ -72,26 +101,7 @@ pub fn geometry(
         .iter()
         .filter(|run| run.source_ancestors.contains(&id))
     {
-        let start = run
-            .source_ancestors
-            .iter()
-            .position(|source| *source == id)
-            .unwrap();
-        for ancestor in &run.source_ancestors[start..] {
-            check_style(styles, *ancestor)?;
-            let child = &styles[ancestor].style;
-            for property in [
-                "font-family",
-                "font-size",
-                "font-weight",
-                "font-style",
-                "line-height",
-            ] {
-                if own.get(property) != child.get(property) {
-                    return Err("native mixed-font inline border production is pending".into());
-                }
-            }
-        }
+        check_inline_font_consistency(styles, own, run, id)?;
         if font.is_some_and(|font| font != run.font_box) {
             return Err("native fallback-font inline border production is pending".into());
         }

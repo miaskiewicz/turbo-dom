@@ -1,0 +1,81 @@
+{
+  "jsdom": "27.0.1",
+  "probeSha256": "c1696e026f0676854c8dd00c36ccc02d08a2553899c7106e65b12f545fe9b64a",
+  "result": [
+    {
+      "name": "unset",
+      "value": "",
+      "property": ""
+    },
+    {
+      "name": "strike",
+      "value": "line-through",
+      "property": "line-through"
+    },
+    {
+      "name": "underline",
+      "value": "underline",
+      "property": "underline"
+    },
+    {
+      "name": "explicit-color",
+      "value": "underline red",
+      "property": "underline red"
+    },
+    {
+      "name": "explicit-style",
+      "value": "underline dotted blue",
+      "property": "underline dotted blue"
+    },
+    {
+      "name": "stylesheet",
+      "value": "underline",
+      "property": "underline"
+    },
+    {
+      "name": "inline-wins",
+      "value": "line-through",
+      "property": "line-through"
+    },
+    {
+      "name": "important",
+      "value": "line-through",
+      "property": "line-through"
+    },
+    {
+      "name": "longhands",
+      "value": "",
+      "property": ""
+    },
+    {
+      "name": "shorthand-then-longhand",
+      "value": "underline",
+      "property": "underline"
+    },
+    {
+      "name": "all-longhands",
+      "value": "",
+      "property": ""
+    },
+    {
+      "name": "idl-setter",
+      "value": "line-through",
+      "property": "line-through"
+    },
+    {
+      "name": "idl-update",
+      "value": "underline",
+      "property": "underline"
+    },
+    {
+      "name": "css-text-replacement",
+      "value": "line-through red",
+      "property": "line-through red"
+    },
+    {
+      "name": "removed",
+      "value": "",
+      "property": ""
+    }
+  ]
+}

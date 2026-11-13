@@ -37,6 +37,47 @@ fn embedder_surface_is_public() {
     assert!(enabled());
 }
 
+#[test]
+fn create_event_keeps_captured_interfaces_after_constructor_replacement() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><button id=target>target</button>");
+    assert_eq!(
+        eval_string(
+            scope,
+            r#"(() => {
+          const BaseEvent = Event, BaseMouseEvent = MouseEvent;
+          globalThis.Event = class EmbedderEvent extends BaseEvent {};
+          globalThis.MouseEvent = class EmbedderMouseEvent extends Event {};
+          const target = document.getElementById('target'), rows = [];
+          for (const name of ['Event', 'Events', 'HTMLEvents', 'SVGEvents', 'eVeNt']) {
+            const event = document.createEvent(name);
+            event.initEvent('legacy', true, true);
+            let received = false;
+            target.addEventListener('legacy', value => { received = value === event; }, { once: true });
+            rows.push(event.constructor === BaseEvent && event instanceof BaseEvent &&
+              !(event instanceof Event) && event.type === 'legacy' && event.bubbles &&
+              event.cancelable && target.dispatchEvent(event) && received);
+          }
+          rows.push(document.createEvent('MouseEvent').constructor === BaseMouseEvent);
+          try { Document.prototype.createEvent.call({}, 'Event'); rows.push(false); }
+          catch (error) { rows.push(error instanceof TypeError); }
+          globalThis.StorageEvent = function FakeStorageEvent() {};
+          try { document.createEvent('StorageEvent'); rows.push(false); }
+          catch (error) { rows.push(error.name === 'NotSupportedError'); }
+          globalThis.StorageEvent = class StorageEvent extends BaseEvent {};
+          rows.push(document.createEvent('StorageEvent') instanceof StorageEvent);
+          return JSON.stringify(rows);
+        })()"#
+        ),
+        "[true,true,true,true,true,true,true,true,true]"
+    );
+    reset();
+}
+
 fn init_v8() {
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {

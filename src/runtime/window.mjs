@@ -163,6 +163,17 @@ const hostClearInterval = globalThis.clearInterval;
 const hostQueueMicrotask = globalThis.queueMicrotask;
 const hostStructuredClone = globalThis.structuredClone;
 
+function materializeLazy(t, k, lazy, touched) {
+  const factory = lazy[k] || SHARED_LAZY[k];
+  if (factory) {
+    touched.add(k);
+    const v = factory();
+    t[k] = v;
+    return v;
+  }
+  return undefined;
+}
+
 export function createWindow(document, { url = 'http://localhost/' } = {}) {
   const touched = new Set();
   let windowProxy;
@@ -205,16 +216,9 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   windowProxy = new Proxy(base, {
     get(t, k) {
       if (k === 'window' || k === 'self' || k === 'globalThis' || k === 'parent' || k === 'top') return windowProxy;
-      if (k in t) return t[k];            // per-env (incl. overrides + materialized lazy)
-      if (k in STATIC_BASE) return STATIC_BASE[k];  // shared stateless globals
-      const factory = lazy[k] || SHARED_LAZY[k];
-      if (factory) {
-        touched.add(k);
-        const v = factory();
-        t[k] = v;                 // self-replace: subsequent reads skip the factory
-        return v;
-      }
-      return undefined;
+      if (k in t) return t[k];
+      if (k in STATIC_BASE) return STATIC_BASE[k];
+      return materializeLazy(t, k, lazy, touched);
     },
     set(t, k, v) { t[k] = v; return true; },  // writes to base → shadows STATIC_BASE per-env
     has(t, k) {

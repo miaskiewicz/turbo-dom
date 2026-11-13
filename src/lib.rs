@@ -104,65 +104,75 @@ mod napi_front {
         pub str_meta: Uint32Array,
     }
 
+    fn pack_soa_columns(s: &core::Soa) -> Vec<u8> {
+        let n = s.node_type.len();
+        let m = s.attr_name_id.len();
+        let mut buf: Vec<u8> = Vec::with_capacity(36 * n + 12 * m);
+        for col in [&s.tag_id] {
+            for v in col {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        for col in [
+            &s.parent,
+            &s.first_child,
+            &s.next_sib,
+            &s.text_id,
+            &s.pub_id,
+            &s.sys_id,
+            &s.attr_start,
+        ] {
+            for v in col {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        for col in [&s.attr_name_id, &s.attr_value_id, &s.attr_prefix_id] {
+            for v in col {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        for v in &s.attr_count {
+            buf.extend_from_slice(&v.to_le_bytes());
+        }
+        buf.extend_from_slice(&s.node_type);
+        buf.extend_from_slice(&s.ns);
+        buf
+    }
+
+    fn pack_soa_strings(s: &core::Soa) -> (Vec<u8>, Vec<u32>) {
+        let tables: [&Vec<String>; 5] = [
+            &s.tag_names,
+            &s.attr_names,
+            &s.attr_prefixes,
+            &s.attr_values,
+            &s.strings,
+        ];
+        let total_strs: usize = tables.iter().map(|t| t.len()).sum();
+        let total_bytes: usize = tables
+            .iter()
+            .flat_map(|t| t.iter())
+            .map(std::string::String::len)
+            .sum();
+        let mut str_blob: Vec<u8> = Vec::with_capacity(total_bytes);
+        let mut str_meta: Vec<u32> = Vec::with_capacity(5 + total_strs);
+        for t in &tables {
+            str_meta.push(t.len() as u32);
+        }
+        for t in &tables {
+            for x in *t {
+                str_meta.push(x.len() as u32);
+                str_blob.extend_from_slice(x.as_bytes());
+            }
+        }
+        (str_blob, str_meta)
+    }
+
     impl From<core::Soa> for JsSoa {
         fn from(s: core::Soa) -> Self {
             let n = s.node_type.len();
             let m = s.attr_name_id.len();
-            let mut buf: Vec<u8> = Vec::with_capacity(36 * n + 12 * m);
-            for col in [&s.tag_id] {
-                for v in col {
-                    buf.extend_from_slice(&v.to_le_bytes());
-                }
-            }
-            for col in [
-                &s.parent,
-                &s.first_child,
-                &s.next_sib,
-                &s.text_id,
-                &s.pub_id,
-                &s.sys_id,
-                &s.attr_start,
-            ] {
-                for v in col {
-                    buf.extend_from_slice(&v.to_le_bytes());
-                }
-            }
-            for col in [&s.attr_name_id, &s.attr_value_id, &s.attr_prefix_id] {
-                for v in col {
-                    buf.extend_from_slice(&v.to_le_bytes());
-                }
-            }
-            for v in &s.attr_count {
-                buf.extend_from_slice(&v.to_le_bytes());
-            }
-            buf.extend_from_slice(&s.node_type);
-            buf.extend_from_slice(&s.ns);
-            // pack all five string tables into one byte blob + meta (5 counts, then
-            // per-string byte lengths in table order). Zero napi string conversion.
-            let tables: [&Vec<String>; 5] = [
-                &s.tag_names,
-                &s.attr_names,
-                &s.attr_prefixes,
-                &s.attr_values,
-                &s.strings,
-            ];
-            let total_strs: usize = tables.iter().map(|t| t.len()).sum();
-            let total_bytes: usize = tables
-                .iter()
-                .flat_map(|t| t.iter())
-                .map(std::string::String::len)
-                .sum();
-            let mut str_blob: Vec<u8> = Vec::with_capacity(total_bytes);
-            let mut str_meta: Vec<u32> = Vec::with_capacity(5 + total_strs);
-            for t in &tables {
-                str_meta.push(t.len() as u32);
-            }
-            for t in &tables {
-                for x in *t {
-                    str_meta.push(x.len() as u32);
-                    str_blob.extend_from_slice(x.as_bytes());
-                }
-            }
+            let buf = pack_soa_columns(&s);
+            let (str_blob, str_meta) = pack_soa_strings(&s);
             JsSoa {
                 packed: Uint8Array::new(buf),
                 n: n as u32,

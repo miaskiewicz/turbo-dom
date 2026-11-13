@@ -800,6 +800,16 @@ pub(super) fn cloned(
     clone: v8::Local<v8::Object>,
     deep: bool,
 ) {
+    cloned_with_construction(scope, source, clone, deep, true);
+}
+
+pub(super) fn cloned_with_construction(
+    scope: &mut v8::PinScope,
+    source: v8::Local<v8::Object>,
+    clone: v8::Local<v8::Object>,
+    deep: bool,
+    construct: bool,
+) {
     let Some(context) = source.get_creation_context(scope) else {
         return;
     };
@@ -811,10 +821,11 @@ pub(super) fn cloned(
     };
     let receiver = v8::undefined(scope);
     let deep = v8::Boolean::new(scope, deep);
+    let construct = v8::Boolean::new(scope, construct);
     function.call(
         scope,
         receiver.into(),
-        &[source.into(), clone.into(), deep.into()],
+        &[source.into(), clone.into(), deep.into(), construct.into()],
     );
 }
 /// `__customElementState(node, status)`: report an element's custom element state to its

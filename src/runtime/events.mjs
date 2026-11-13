@@ -183,48 +183,43 @@ export class EventTarget {
     const target = this;
     event.target = target;
 
-    // Single ancestor walk: build the path AND note whether any node on it has a
-    // listener for this type. React fires thousands of events with zero matching
-    // listeners on the path — those skip the capture/target/bubble invoke loops.
     const path = [];
-    // Pay-for-what-you-use: the shadow-aware walk + per-invoke retargeting only
-    // runs when a shadow root exists in this document. Otherwise the original
-    // flat walk runs (one boolean read, predicted false).
     const doc = this.ownerDocument || this;
     const useShadow = !!(doc && doc.__hasShadow);
     const hasListener = useShadow ? shadowPath(this, event, path) : flatPath(this, event.type, path);
     event._path = path;
 
-    // pre-click activation (WHATWG): checkbox/radio toggle BEFORE click listeners
-    // run, so React's change detection sees the new value. Undone if preventDefault.
-    let activation = null;
-    if (event.type === 'click' && typeof this.__preClickActivation === 'function') {
-      activation = this.__preClickActivation();
-    }
-
-    // relatedTarget (focus/mouseenter/mouseleave) is retargeted per listener
-    // exactly like target. Only relevant under shadow with a non-null value.
-    const relatedTarget = useShadow ? event.relatedTarget : null;
-    // no listener anywhere on the path → skip all three propagation phases
-    if (hasListener) propagate(event, path, useShadow ? target : null, relatedTarget);
-
-    event.eventPhase = PHASE_NONE;
-    event.currentTarget = null;
-    if (useShadow) { // restore from any retargeting
-      event.target = target;
-      if (relatedTarget != null) event.relatedTarget = relatedTarget;
-    }
+    const activation = preClickActivation(this, event);
+    dispatchCore(event, path, hasListener, useShadow, target);
     if (activation) finishActivation(this, event, activation);
-
-    // remaining default actions (label→control, form submit) unless prevented
-    if (!event.defaultPrevented && typeof this.__runDefaultAction === 'function') {
-      this.__runDefaultAction(event);
-    }
+    runDefaultAction(this, event);
     return !event.defaultPrevented;
   }
 }
 
 // dispatchEvent helpers (plain functions: no per-dispatch closure).
+function preClickActivation(target, event) {
+  if (event.type === 'click' && typeof target.__preClickActivation === 'function') {
+    return target.__preClickActivation();
+  }
+  return null;
+}
+function dispatchCore(event, path, hasListener, useShadow, target) {
+  const relatedTarget = useShadow ? event.relatedTarget : null;
+  if (hasListener) propagate(event, path, useShadow ? target : null, relatedTarget);
+  event.eventPhase = PHASE_NONE;
+  event.currentTarget = null;
+  if (useShadow) restoreShadowTargets(event, target, relatedTarget);
+}
+function restoreShadowTargets(event, target, relatedTarget) {
+  event.target = target;
+  if (relatedTarget != null) event.relatedTarget = relatedTarget;
+}
+function runDefaultAction(target, event) {
+  if (!event.defaultPrevented && typeof target.__runDefaultAction === 'function') {
+    target.__runDefaultAction(event);
+  }
+}
 function hasListenerFor(node, type) {
   const l = node.__listeners && node.__listeners.get(type);
   return !!(l && l.length);
@@ -291,22 +286,17 @@ function callListener(node, event, l) {
     event._passiveListener = false;
   }
 }
+function listenerSnapshot(list) {
+  return list.length === 1 ? list : list.slice();
+}
 // Run `node`'s listeners for `event` in `phase`.
 function invoke(event, node, phase, shadowTarget, relatedTarget) {
   const list = node.__listeners && node.__listeners.get(event.type);
   if (!list || list.length === 0) return;
   event.currentTarget = node;
   event.eventPhase = phase;
-  // present `target`/`relatedTarget` retargeted to the listener's tree
-  if (shadowTarget !== null) {
-    event.target = retarget(shadowTarget, node);
-    if (relatedTarget != null) event.relatedTarget = retarget(relatedTarget, node);
-  }
-  // snapshot — listeners added during dispatch don't fire this round. Skip the
-  // slice alloc for the single-listener case (common React-delegated one): a
-  // 1-element, length-captured iteration can't be disturbed by an add/remove in
-  // that one call. Multi-listener keeps the slice (concurrent-mutation guard).
-  const snap = list.length === 1 ? list : list.slice();
+  if (shadowTarget !== null) retargetForListener(event, shadowTarget, relatedTarget, node);
+  const snap = listenerSnapshot(list);
   for (let k = 0, len = snap.length; k < len; k++) {
     const l = snap[k];
     if (skipsPhase(l, phase)) continue;
@@ -314,6 +304,10 @@ function invoke(event, node, phase, shadowTarget, relatedTarget) {
     callListener(node, event, l);
     if (event._stopImmediate) return;
   }
+}
+function retargetForListener(event, shadowTarget, relatedTarget, node) {
+  event.target = retarget(shadowTarget, node);
+  if (relatedTarget != null) event.relatedTarget = retarget(relatedTarget, node);
 }
 // canceled activation: undo the pre-click toggle if default was prevented.
 // Otherwise a checkbox/radio toggle fires input then change (activation

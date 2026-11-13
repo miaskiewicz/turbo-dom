@@ -267,8 +267,10 @@
     const captured = { __proto__: null }, construct = Reflect.construct, checkDocument = accessorOf('nodeType', false, 'Document');
     // Only a real Event interface: the binding's `instanceof` placeholders (browser_env.js
     // ctors) are not one.
-    const EventPrototype = g.Event.prototype, isPrototypeOf = Function.prototype.call.bind(Object.prototype.isPrototypeOf);
-    const eventInterface = (ctor) => typeof ctor === 'function' && (ctor === g.Event || isPrototypeOf(EventPrototype, ctor.prototype));
+    // Embedders can replace the public constructor after install; the captured base
+    // interface must keep its identity, just like the captured subclasses.
+    const EventConstructor = g.Event, EventPrototype = EventConstructor.prototype, isPrototypeOf = Function.prototype.call.bind(Object.prototype.isPrototypeOf);
+    const eventInterface = (ctor) => typeof ctor === 'function' && (ctor === EventConstructor || isPrototypeOf(EventPrototype, ctor.prototype));
     for (const key in table) if (eventInterface(g[table[key]])) captured[table[key]] = g[table[key]];
     const failure = (message) => "Failed to execute 'createEvent' on 'Document': " + message;
     define(g.Document.prototype, 'createEvent', { value: make(function createEvent(type) {
