@@ -55,6 +55,12 @@ pub const AUXILIARY_CONTEXTS_CHROME156_JSON: &str =
     include_str!("auxiliary_contexts_chrome156.json");
 /// Shared page probe; consumers drive their real Page/network/actor host.
 pub const AUXILIARY_CONTEXTS_PROBE_JS: &str = include_str!("auxiliary_contexts_probe.js");
+/// `src/css_effect_shadow_cases.json` (#509 scoped stylesheet ownership).
+pub const CSS_EFFECT_SHADOW_CASES_JSON: &[u8] = include_bytes!("css_effect_shadow_cases.json");
+/// `src/css_effect_shadow_chrome156.json`.
+pub const CSS_EFFECT_SHADOW_CHROME156_JSON: &str = include_str!("css_effect_shadow_chrome156.json");
+/// `src/css_effect_shadow_probe.js`.
+pub const CSS_EFFECT_SHADOW_PROBE_JS: &str = include_str!("css_effect_shadow_probe.js");
 /// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
 /// defaults, and documents without a parsed `<title>`).
 pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
@@ -370,6 +376,15 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "css_effect_lifecycle_probe.js",
         CSS_EFFECT_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    ("css_effect_shadow_cases.json", CSS_EFFECT_SHADOW_CASES_JSON),
+    (
+        "css_effect_shadow_chrome156.json",
+        CSS_EFFECT_SHADOW_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "css_effect_shadow_probe.js",
+        CSS_EFFECT_SHADOW_PROBE_JS.as_bytes(),
     ),
     (
         "custom_elements_callbacks_chrome155.json",

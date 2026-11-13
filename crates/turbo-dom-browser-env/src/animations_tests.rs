@@ -589,3 +589,17 @@ fn css_effect_lifecycle_guest_behavior_matches_chrome156() {
     actual["finite"].as_object_mut().unwrap().remove("width");
     assert_eq!(actual, expected);
 }
+
+#[test]
+fn scoped_shadow_css_effects_match_chrome156() {
+    let probe = include_str!("css_effect_shadow_probe.js");
+    let (expected, case) = control(
+        include_str!("css_effect_shadow_chrome156.json"),
+        probe,
+        include_bytes!("css_effect_shadow_cases.json"),
+    );
+    assert_eq!(
+        run_probe(case["html"].as_str().unwrap(), probe, false),
+        expected
+    );
+}
