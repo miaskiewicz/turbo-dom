@@ -713,6 +713,7 @@ fn character_face(
 // words & segments
 // --------------------------------------------------------------------------
 
+#[derive(Clone)]
 struct Seg {
     baseline_shift: Option<f32>,
     source_bytes: usize,
@@ -748,6 +749,7 @@ struct Seg {
     upright: bool,
 }
 
+#[derive(Clone)]
 struct Word {
     atom_shift: f32,
     spaces: Vec<Seg>,
@@ -1046,6 +1048,7 @@ struct SourcePolicy {
 /// remains unbreakable. Native advance metadata is kept out of PDF callers.
 /// A paragraph's words and whether its lines reorder
 /// ([`bidi::ParagraphLevels::active`]).
+#[derive(Clone)]
 struct ParagraphWords {
     words: Vec<Word>,
     bidi: bool,
@@ -3564,6 +3567,49 @@ pub(crate) fn measure_runs_with_units(
     policy: (bool, Option<f32>),
 ) -> f32 {
     layout_runs_mode(runs, fonts, width, diags, original, policy, true).width
+}
+
+/// Prepare text once for the two intrinsic widths; placement still consumes an
+/// independent word stream, preserving emergency splitting and bidi mutation.
+pub(crate) fn measure_intrinsic_pair(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    (html_metrics, scale): (bool, Option<f32>),
+) -> (f32, f32) {
+    crate::hot!("inline.intrinsic_pair_prepare");
+    let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
+    let scales = if html_metrics {
+        NativeScale::both(scale)
+    } else {
+        NativeScale::STATIC
+    };
+    let mut words = build_pieces(
+        &pieces,
+        fonts,
+        &mut Diagnostics::default(),
+        SourcePolicy {
+            capture: html_metrics,
+            advances: scales.advances.is_some(),
+        },
+        original,
+    );
+    if let Some(scale) = scales.advances {
+        inline_advances::prepare(&mut words.words, scale);
+    }
+    let measure = |words, width| {
+        finalize(wrap_and_place_mode(
+            words,
+            Align::Left,
+            &|_| (0.0, width),
+            0.0,
+            (html_metrics, html_metrics, scales),
+            true,
+        ))
+        .layout
+        .width
+    };
+    (measure(words.clone(), f32::MAX), measure(words, 0.0))
 }
 
 fn layout_runs_mode(

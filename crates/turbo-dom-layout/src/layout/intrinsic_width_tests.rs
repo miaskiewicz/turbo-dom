@@ -45,6 +45,22 @@ fn compare(
         (true, Some(1.25)),
         (true, Some(2.0)),
     ] {
+        let pair = measure_intrinsic_pair(runs, fonts, original, policy);
+        for (width, paired) in [(f32::MAX, pair.0), (0.0, pair.1)] {
+            let independent = measure_runs_with_units(
+                runs,
+                fonts,
+                width,
+                &mut Diagnostics::default(),
+                original,
+                policy,
+            );
+            assert_eq!(
+                paired.to_bits(),
+                independent.to_bits(),
+                "pair {width} {policy:?}"
+            );
+        }
         for width in [0.0, 1.0, 33.25, f32::MAX] {
             let full = layout_runs_with_units(
                 runs,
