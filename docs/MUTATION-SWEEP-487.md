@@ -77,7 +77,9 @@ browser jobs enable host-internals/test-support and raster jobs use defaults.
    showed the unrelated full browser lib suite alone can take 170–355 seconds,
    so repeating it for every relevant helper mutation would dominate the sweep
    and can exceed the fixed 300-second mutant timeout even without a mutation.
-   Raster primary runs retain the complete library suite. No primary survivor is
+   Raster primary runs retain the complete library suite and add the existing
+   `multicol_rule_chrome` control and public rule-progress integration targets;
+   PNG also includes `paint_memory` allocation assertions. No primary survivor is
    accepted merely because it is outside these filters: step 3 still runs it
    against all targets without any filter.
 3. Retry every lib-suite survivor against the full all-targets tests, selected by
@@ -158,3 +160,10 @@ named package binaries; a Cargo build lock does not establish attribution of a
 later test invocation. Recovery records source and binary hashes, uses its own
 APFS-cloned cache, and cleans only that private target's workspace artifacts
 before validating. Never clean another worktree's or a shared target directory.
+
+A completed primary shard now writes `source-after-primary.json` and
+`primary-summary.json` before any expensive full fallback. Source restoration
+must match exactly at that boundary. These receipts preserve which primary
+mutants were caught or compiler-unviable even if the later bounded fallback is
+interrupted. Primary misses/timeouts are not acceptance: the ordinary summary
+and project aggregate remain failing until every selected mutant is resolved.

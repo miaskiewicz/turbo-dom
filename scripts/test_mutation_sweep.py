@@ -71,11 +71,18 @@ class MutationEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown mutation target"):
             ms.matrix("full", "not-a-target")
 
+    def test_painter_primary_reuses_existing_integration_oracles(self):
+        png = ms.primary_cargo_targets("paint_png")
+        svg = ms.primary_cargo_targets("paint_svg")
+        self.assertEqual(png, ["--lib", "--test", "multicol_rule_chrome", "--test", "paint_memory", "--test", "png_rule_progress"])
+        self.assertEqual(svg, ["--lib", "--test", "multicol_rule_chrome", "--test", "svg_rule_progress"])
+        self.assertEqual(ms.primary_cargo_targets("worker_scope"), ["--lib"])
+
     def test_in_place_uses_implicit_serial_execution(self):
         self.assertIn("--in-place", ms.mutation_flags())
         self.assertNotIn("--jobs", ms.mutation_flags())
 
-    def run_fake_job(self, primary_count, inventory_count=11):
+    def run_fake_job(self, primary_count, inventory_count=11, primary_source_changed=False, fallback_times_out=False):
         calls = []
 
         def capture(argv):
@@ -89,6 +96,8 @@ class MutationEvidenceTests(unittest.TestCase):
 
         def command(argv, log):
             calls.append((argv, log.name))
+            if log.name == "all-targets.log" and fallback_times_out:
+                raise ms.subprocess.TimeoutExpired(argv, 1)
             log.write_text(f"test result: ok. {primary_count} passed; 0 failed;" if log.name == "primary-baseline.log"
                            else "actual command output")
             if log.name in {"lib.log", "all-targets.log"}:
@@ -102,11 +111,26 @@ class MutationEvidenceTests(unittest.TestCase):
             args = SimpleNamespace(output=temp, target="worker_scope", mode="full", shard=0, shards=1)
             with patch.object(ms, "capture", capture), patch.object(ms, "command", command), \
                     patch.object(ms, "source_clean", return_value=True), \
-                    patch.object(ms, "source_receipt", return_value={"commit":"one", "tree":"one"}), \
+                    patch.object(ms, "source_receipt", side_effect=[{"commit":"one", "tree":"one"},
+                        {"commit":"changed" if primary_source_changed else "one", "tree":"one"},
+                        {"commit":"one", "tree":"one"}]), \
                     patch.dict(ms.os.environ, {}, clear=True):
                 result = ms.run_job(args)
             report = json.loads((Path(temp) / "summary.json").read_text())
         return result, calls, report
+
+    def test_primary_source_mismatch_stops_before_full_fallback(self):
+        result, calls, report = self.run_fake_job(11, primary_source_changed=True)
+        self.assertEqual(result, 1)
+        self.assertIn("primary mutation runner did not restore", report["error"])
+        self.assertFalse(any(name == "all-targets.log" for _, name in calls))
+        self.assertFalse(report.get("primary_phase_complete", False))
+
+    def test_fallback_timeout_retains_verified_primary_phase_without_acceptance(self):
+        result, _, report = self.run_fake_job(11, fallback_times_out=True)
+        self.assertEqual(result, 1)
+        self.assertTrue(report["primary_phase_complete"])
+        self.assertFalse(report["ok"])
 
     def test_inventory_drift_stops_before_building_or_testing(self):
         result, calls, report = self.run_fake_job(11, inventory_count=10)
