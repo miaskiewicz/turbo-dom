@@ -2453,6 +2453,217 @@ mod tests {
         assert_eq!(rgb(&pm, 7, 5), [255, 0, 0], "its child");
     }
 
+    fn four_color_texture() -> Pixmap {
+        let mut texture = Pixmap::new(4, 6).unwrap();
+        for y in 0..6 {
+            for x in 0..4 {
+                let color = Rgba::new((x * 70) as u8, (y * 40) as u8, 180, 255);
+                fill_rect(
+                    &mut texture,
+                    x as f32,
+                    y as f32,
+                    1.0,
+                    1.0,
+                    color,
+                    Transform::identity(),
+                );
+            }
+        }
+        texture
+    }
+
+    #[test]
+    fn fractional_texture_sampling_keeps_phase_repeat_axes_and_transformed_edges() {
+        let texture = four_color_texture();
+        for (steps, expected_rect) in [
+            ((0.0, 0.0), (5.25, 7.25, 8.0, 12.0)),
+            ((8.0, 0.0), (2.25, 7.25, 24.5, 12.0)),
+            ((0.0, 12.0), (5.25, 3.5, 8.0, 24.25)),
+            ((8.0, 12.0), (2.25, 3.5, 24.5, 24.25)),
+        ] {
+            let f = tiles(
+                (2.25, 3.5, 24.5, 24.25),
+                RED,
+                (5.25, 7.25),
+                (8.0, 12.0),
+                steps,
+            );
+            let FragmentContent::Tiles(pattern) = &f.content else {
+                unreachable!()
+            };
+            for (xf, antialias) in [
+                (Transform::identity(), false),
+                (Transform::from_row(1.25, 0.0, 0.25, 1.5, 0.25, 0.5), true),
+            ] {
+                let mut got = Pixmap::new(48, 48).unwrap();
+                fill_texture(
+                    &mut got,
+                    &texture,
+                    pattern,
+                    ((2.25, 3.5, 24.5, 24.25), (5.25, 7.25, 8.0, 12.0)),
+                    xf,
+                );
+                let mut expected = Pixmap::new(48, 48).unwrap();
+                let paint = Paint {
+                    shader: tiny_skia::Pattern::new(
+                        texture.as_ref(),
+                        SpreadMode::Repeat,
+                        tiny_skia::FilterQuality::Bilinear,
+                        1.0,
+                        Transform::from_row(2.0, 0.0, 0.0, 2.0, 5.25, 7.25),
+                    ),
+                    anti_alias: antialias,
+                    ..Paint::default()
+                };
+                expected.fill_rect(
+                    Rect::from_xywh(
+                        expected_rect.0,
+                        expected_rect.1,
+                        expected_rect.2,
+                        expected_rect.3,
+                    )
+                    .unwrap(),
+                    &paint,
+                    xf,
+                    None,
+                );
+                assert!(expected.pixels().iter().any(|p| p.alpha() > 0));
+                assert_eq!(got.data(), expected.data(), "steps={steps:?}, xf={xf:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn embedded_texture_cells_move_their_positive_origin_to_zero() {
+        let f = tiles(
+            (0.0, 0.0, 100.0, 100.0),
+            RED,
+            (5.25, 7.25),
+            (8.0, 12.0),
+            (0.0, 0.0),
+        );
+        let FragmentContent::Tiles(pattern) = &f.content else {
+            unreachable!()
+        };
+        let (cell, origin) =
+            texture_cell(pattern, &HashMap::new(), (5.0, 7.0, 8.0, 12.0), 1000).unwrap();
+        assert_eq!(origin, (5.0, 7.0));
+        assert_eq!((cell.width(), cell.height()), (8, 12));
+        assert!(cell
+            .pixels()
+            .iter()
+            .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn tile_textures_scale_box_borders_to_their_device_pixel_size() {
+        let mut tile = plain(0.0, 0.0, 8.0, 12.0, Some(RED));
+        if let FragmentContent::Box { border, .. } = &mut tile.content {
+            border.top.width = 1;
+            border.top.color = Some(Rgba::new(0, 0, 255, 255));
+            let side = border.top;
+            *border = BorderEdges {
+                top: side,
+                right: side,
+                bottom: side,
+                left: side,
+            };
+        }
+        let pattern = TilePattern {
+            tile: Box::new(tile.content.clone()),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 8.0,
+            tile_height: 12.0,
+            step_x: 8.0,
+            step_y: 12.0,
+        };
+        let got = tile_texture(&pattern, &HashMap::new(), 2.0, 384).unwrap();
+        let mut expected = Pixmap::new(16, 24).unwrap();
+        paint_subtree(
+            &mut expected,
+            &tile,
+            &HashMap::new(),
+            Transform::from_scale(2.0, 2.0),
+        );
+        assert_eq!((got.width(), got.height()), (16, 24));
+        assert_eq!(rgb(&expected, 1, 1), [0, 0, 255]);
+        assert_eq!(rgb(&expected, 8, 12), [255, 0, 0]);
+        assert_eq!(got.data(), expected.data());
+    }
+
+    #[test]
+    fn translation_classification_excludes_each_linear_transform_component() {
+        assert!(only_translates(Transform::identity()));
+        assert!(only_translates(Transform::from_translate(3.5, -7.25)));
+        for xf in [
+            Transform::from_row(2.0, 0.0, 0.0, 1.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.0, 0.0, 2.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.5, 0.0, 1.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.0, 0.5, 1.0, 3.0, 4.0),
+        ] {
+            assert!(!only_translates(xf), "{xf:?}");
+        }
+    }
+
+    #[test]
+    fn visible_tile_regions_exclude_empty_and_disjoint_intersections() {
+        for (x, y, w, h) in [
+            (10.0, 2.0, 1.0, 3.0),
+            (2.0, 10.0, 3.0, 1.0),
+            (11.0, 11.0, 2.0, 2.0),
+        ] {
+            assert_eq!(
+                visible_region(&plain(x, y, w, h, None), Transform::identity(), (10, 10)),
+                None
+            );
+        }
+        assert_eq!(
+            visible_region(
+                &plain(9.0, 8.0, 4.0, 5.0, None),
+                Transform::identity(),
+                (10, 10)
+            ),
+            Some((9.0, 8.0, 1.0, 2.0))
+        );
+    }
+
+    #[test]
+    fn cell_pixmaps_use_device_resolution_only_within_the_pixel_budget() {
+        let f = tiles(
+            (0.0, 0.0, 30.0, 30.0),
+            RED,
+            (0.0, 0.0),
+            (3.0, 5.0),
+            (3.0, 5.0),
+        );
+        let FragmentContent::Tiles(pattern) = &f.content else {
+            unreachable!()
+        };
+        let cell = TileCell::new(pattern, (0.0, 0.0, 3.0, 5.0));
+        let images = HashMap::new();
+        let xf = Transform::from_scale(3.0, 3.0);
+        for (budget, expected) in [
+            (135, Some((9, 15))),
+            (134, Some((3, 5))),
+            (15, Some((3, 5))),
+            (14, None),
+        ] {
+            let got = cell_pixmap(pattern, &cell, &images, (xf, budget));
+            assert_eq!(
+                got.as_ref().map(|p| (p.width(), p.height())),
+                expected,
+                "budget {budget}"
+            );
+            if let Some(p) = got {
+                assert!(p
+                    .pixels()
+                    .iter()
+                    .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 0, 0, 255]));
+            }
+        }
+    }
+
     /// A tile pattern fragment over `(x, y, w, h)`: solid `colour` tiles of
     /// `tile` px every `step` px from `at`.
     fn tiles(
