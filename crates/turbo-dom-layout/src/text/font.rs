@@ -8,6 +8,8 @@ use std::sync::{Arc, Mutex};
 use rustybuzz::ttf_parser::Face as TtfFace;
 use rustybuzz::{Face as RbFace, UnicodeBuffer};
 
+use self::plan::PlanCache;
+
 /// The parsed faces borrowing the font program: `ttf-parser` for metrics/cmap
 /// and `rustybuzz` for shaping. Parsing a font is the dominant per-call cost, so
 /// both are built once and reused for every metric/coverage/shape query.
@@ -527,8 +529,8 @@ impl FontFace {
         crate::hot!("font.shape");
         let mut buffer = UnicodeBuffer::new();
         buffer.push_str(text);
-        let shaped = rustybuzz::shape(&self.faces.borrow_dependent().rb, &[], buffer);
-        collect_glyphs(&shaped)
+        buffer.guess_segment_properties();
+        self.shape_buffer(buffer)
     }
 
     /// [`shape`](Self::shape) in the direction of a bidi embedding level (`rtl`), which
@@ -552,11 +554,7 @@ impl FontFace {
         } else {
             rustybuzz::Direction::LeftToRight
         });
-        let glyphs = collect_glyphs(&rustybuzz::shape(
-            &self.faces.borrow_dependent().rb,
-            &[],
-            buffer,
-        ));
+        let glyphs = self.shape_buffer(buffer);
         self.store_forced_shape(&key, &glyphs);
         glyphs
     }
@@ -707,6 +705,8 @@ const SHAPE_CACHE_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Default)]
 struct ShapeCache {
+    // Plans stay valid when result entries are evicted or their clock rolls over.
+    plans: PlanCache,
     entries: HashMap<String, ShapeEntry>,
     forced_entries: HashMap<String, ShapeEntry>,
     units_entries: HashMap<Vec<u16>, ShapeEntry>,
@@ -1233,3 +1233,6 @@ mod canvas_measure_chrome {
 #[cfg(test)]
 #[path = "font_cache_tests.rs"]
 mod cache_tests;
+
+#[path = "font_plan.rs"]
+mod plan;

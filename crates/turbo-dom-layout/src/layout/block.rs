@@ -3409,7 +3409,13 @@ fn layout_box(
     if let BoxKind::Table(items) = &lb.kind {
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
         bbw = shrink_auto_table(items, lb, &bs, (bbw, cb_width), ctx);
-        bbw = bbw.max(super::table::min_content_width(items, &lb.style, ctx.fonts) + frame);
+        let min = super::table::layout_min_content_width(
+            items,
+            &lb.style,
+            ctx.fonts,
+            bs.width != LengthPct::Auto,
+        );
+        bbw = bbw.max(min + frame);
     }
     layout_box_sized(lb, &bs, bx, by, bbw, ctx)
 }

@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Shaping plans (#508)**: reuse up to eight Rustybuzz shaping plans per font
+  face, keyed by the resolved direction, script and language, instead of rebuilding
+  the same plan for each distinct string. Glyph results and cache budgets are unchanged.
+- **Table layout (#508)**: measure each eligible cell's intrinsic minimum and
+  maximum widths together before final automatic table layout, retaining the existing
+  sizing arithmetic while avoiding repeated style and text preparation.
 - **Layout performance (#508)**: retain recently used UTF-8 and original UTF-16
   shaping results under churn with shared least-recently-used eviction. The
   per-face 128-entry and 8 MiB payload budgets are unchanged.

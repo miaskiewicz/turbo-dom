@@ -804,22 +804,24 @@ fn column_widths(
 /// A cell's resolved border widths (px). Cheap wrapper so callers read
 /// `.left`/`.right`/`.top`/`.bottom` without re-plumbing a `ResolveCtx`.
 fn cell_border(lb: &LayoutBox) -> Edges {
+    intrinsic_cell_style(lb).border.widths()
+}
+
+fn intrinsic_cell_style(lb: &LayoutBox) -> BoxStyle {
     lb.resolved(ResolveCtx {
         parent_font_size: DEFAULT_FONT_SIZE,
         cb_width: 0.0,
     })
-    .border
-    .widths()
 }
 
 /// A cell's specified content+padding width (px) when it has a `width: <px>` — the
 /// column's preferred track width in the collapse model (borders live on the grid
 /// lines, not inside the track). `None` for an auto width.
 fn explicit_cp(lb: &LayoutBox) -> Option<f32> {
-    let bs = lb.resolved(ResolveCtx {
-        parent_font_size: DEFAULT_FONT_SIZE,
-        cb_width: 0.0,
-    });
+    explicit_cp_style(&intrinsic_cell_style(lb))
+}
+
+fn explicit_cp_style(bs: &BoxStyle) -> Option<f32> {
     // A border-box width includes the cell's collapsed half-borders (Chrome 156).
     let half = bs.border.widths().horizontal() / 2.0;
     match bs.width {
@@ -1036,22 +1038,46 @@ fn collapse_columns(
     fonts: &FontRegistry,
     measure: fn(&LayoutBox, &FontRegistry) -> f32,
 ) -> Vec<f32> {
-    let ncols = seg.len() - 1;
-    // A `px` width is the cell's content+padding (`explicit_cp`: a border-box one less
-    // its collapsed half-borders, miaskiewicz/turbo-dom#65).
-    let cp = |p: &Placed| {
+    collapse_column_values(placed, seg, |_, p| {
         explicit_cp(p.lb)
             .unwrap_or_else(|| (measure(p.lb, fonts) - cell_border(p.lb).horizontal()).max(0.0))
-    };
+    })
+}
+
+/// Keep a cell's min/max shaping adjacent while its glyph results are still resident.
+/// Existing per-box caches retain these widths for later aggregation passes.
+fn paired_cell_intrinsics(placed: &[Placed], fonts: &FontRegistry) -> Vec<(f32, f32)> {
+    placed
+        .iter()
+        .map(|p| {
+            let style = intrinsic_cell_style(p.lb);
+            if let Some(cp) = explicit_cp_style(&style) {
+                return (cp, cp);
+            }
+            let border = style.border.widths().horizontal();
+            let max = (natural_width(p.lb, fonts) - border).max(0.0);
+            let min = (super::flex::min_content_width(p.lb, fonts) - border).max(0.0);
+            (max, min)
+        })
+        .collect()
+}
+
+/// Aggregate pre-resolved content+padding widths with the same grid/span arithmetic.
+fn collapse_column_values(
+    placed: &[Placed],
+    seg: &[Vec<f32>],
+    cp: impl Fn(usize, &Placed) -> f32,
+) -> Vec<f32> {
+    let ncols = seg.len() - 1;
     let edges = |p: &Placed| (seg[p.col][p.row] + seg[p.col + p.colspan][p.row]) / 2.0;
     let mut w = vec![0.0_f32; ncols];
-    for p in placed.iter().filter(|p| p.colspan == 1) {
-        w[p.col] = w[p.col].max(cp(p) + edges(p));
+    for (index, p) in placed.iter().enumerate().filter(|(_, p)| p.colspan == 1) {
+        w[p.col] = w[p.col].max(cp(index, p) + edges(p));
     }
-    for p in placed.iter().filter(|p| p.colspan > 1) {
+    for (index, p) in placed.iter().enumerate().filter(|(_, p)| p.colspan > 1) {
         let span = p.col..p.col + p.colspan;
         let interior: f32 = (p.col + 1..p.col + p.colspan).map(|j| seg[j][p.row]).sum();
-        let need = cp(p) + edges(p) - interior - w[span.clone()].iter().sum::<f32>();
+        let need = cp(index, p) + edges(p) - interior - w[span.clone()].iter().sum::<f32>();
         if need > 0.0 {
             spread(&mut w[span], need);
         }
@@ -1222,9 +1248,10 @@ fn layout_table_collapsed(
         let cols = fixed_collapse_columns(placed, ncols, avail.max(1.0));
         (cols, Some(vert))
     } else {
-        let mut cols = collapse_columns(placed, &vseg, ctx.fonts, natural_width);
+        let intrinsics = paired_cell_intrinsics(placed, ctx.fonts);
+        let mut cols = collapse_column_values(placed, &vseg, |index, _| intrinsics[index].0);
         let limits = Limits {
-            mins: collapse_columns(placed, &vseg, ctx.fonts, super::flex::min_content_width),
+            mins: collapse_column_values(placed, &vseg, |index, _| intrinsics[index].1),
             fixed: px_columns(placed, ncols, explicit_cp),
         };
         fit_columns(
@@ -1822,7 +1849,18 @@ pub(crate) fn min_content_width(
     style: &ComputedStyle,
     fonts: &FontRegistry,
 ) -> f32 {
-    let grid = grid_min_content(grid_items(items), style, fonts);
+    layout_min_content_width(items, style, fonts, false)
+}
+
+/// Actual table layout will need preferred widths after this floor. Prepare them
+/// alongside minima only when an earlier auto-width pass has not measured them.
+pub(crate) fn layout_min_content_width(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+    prepare_max: bool,
+) -> f32 {
+    let grid = grid_min_content_mode(grid_items(items), style, fonts, prepare_max);
     if grid_of(items).is_some() {
         return grid.max(caption_floor(items, style, fonts));
     }
@@ -1831,6 +1869,15 @@ pub(crate) fn min_content_width(
 
 /// The grid's min-content (see [`min_content_width`]).
 fn grid_min_content(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegistry) -> f32 {
+    grid_min_content_mode(items, style, fonts, false)
+}
+
+fn grid_min_content_mode(
+    items: &[LayoutBox],
+    style: &ComputedStyle,
+    fonts: &FontRegistry,
+    prepare_max: bool,
+) -> f32 {
     let rows = collect_rows(items);
     let (placed, ncols) = build_grid(&rows);
     if ncols == 0 {
@@ -1848,11 +1895,25 @@ fn grid_min_content(items: &[LayoutBox], style: &ComputedStyle, fonts: &FontRegi
         }
         let nrows = rows.len();
         let vseg = vsegments(&placed, (nrows, ncols), style);
-        let cp = collapse_columns(&placed, &vseg, fonts, super::flex::min_content_width);
+        let cp = collapsed_min_columns(&placed, &vseg, fonts, prepare_max);
         return collapsed_auto_width(&cp, &vseg, style);
     }
     let (hs, _) = border_spacing(style);
     separated_min_content(&placed, ncols, hs, fonts)
+}
+
+/// Generic min-content queries do not eagerly compute unused preferred widths.
+fn collapsed_min_columns(
+    placed: &[Placed],
+    segments: &[Vec<f32>],
+    fonts: &FontRegistry,
+    prepare_max: bool,
+) -> Vec<f32> {
+    if prepare_max {
+        let widths = paired_cell_intrinsics(placed, fonts);
+        return collapse_column_values(placed, segments, |index, _| widths[index].1);
+    }
+    collapse_columns(placed, segments, fonts, super::flex::min_content_width)
 }
 
 /// The table's max-content width: its columns' natural widths (colspans
@@ -2143,3 +2204,7 @@ mod percent_tests {
         assert_eq!(stronger(BreakRule::Auto, BreakRule::Auto), BreakRule::Auto);
     }
 }
+
+#[cfg(test)]
+#[path = "table_intrinsic_tests.rs"]
+mod intrinsic_tests;
