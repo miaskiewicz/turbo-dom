@@ -2396,6 +2396,11 @@ mod tests {
 
     #[test]
     fn fractional_tiles_too_big_for_a_texture_paint_tile_by_tile() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::fractional_tiles_too_big_for_a_texture_paint_tile_by_tile",
+        ) {
+            return;
+        }
         // 250.5px tiles under scale(0.5) on a 200px canvas: two tiles show, a 251px
         // texture would outgrow the canvas, so the tiles are walked.
         let grid = tiles(
@@ -3816,12 +3821,16 @@ mod exact_tests {
 
     // Invalid-size mutations must fail a bounded test, not leave the whole
     // mutation runner waiting on a painter loop in the test process.
-    fn rule_probe_child(name: &str) -> bool {
+    pub(super) fn rule_probe_child(name: &str) -> bool {
         const CHILD: &str = "TURBO_DOM_PNG_INVALID_RULE_CHILD";
         if std::env::var(CHILD).ok().as_deref() == Some(name) {
             return true;
         }
-        let filter = format!("paint_png::exact_tests::{name}");
+        let filter = if name.starts_with("paint_png::") {
+            name.to_owned()
+        } else {
+            format!("paint_png::exact_tests::{name}")
+        };
         let mut child = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", &filter, "--nocapture"])
             .env(CHILD, name)
