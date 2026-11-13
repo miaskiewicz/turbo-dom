@@ -1054,6 +1054,7 @@ fn paired_cell_intrinsics(placed: &[Placed], fonts: &FontRegistry) -> Vec<(f32, 
             if let Some(cp) = explicit_cp_style(&style) {
                 return (cp, cp);
             }
+            super::flex::prepare_text_intrinsics(p.lb, fonts);
             let border = style.border.widths().horizontal();
             let max = (natural_width(p.lb, fonts) - border).max(0.0);
             let min = (super::flex::min_content_width(p.lb, fonts) - border).max(0.0);

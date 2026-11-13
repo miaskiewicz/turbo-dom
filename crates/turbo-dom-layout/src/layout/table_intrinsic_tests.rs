@@ -178,3 +178,117 @@ fn min_only_and_fixed_or_separated_layouts_do_not_prepare_preferred_widths() {
     assert_eq!(min_natural_calls("fixed", true), 0);
     assert_eq!(min_natural_calls("separate", true), 0);
 }
+
+#[test]
+fn prepared_intrinsics_preserve_wrappers_and_text_policies() {
+    for style in [
+        "",
+        "white-space:nowrap",
+        "white-space:pre",
+        "letter-spacing:-1.75px",
+        "overflow-wrap:anywhere",
+        "word-break:break-all",
+        "hyphens:auto",
+        "font-size:1.25em",
+        "width:37.5%;font-size:1.25rem",
+        "writing-mode:vertical-rl",
+    ] {
+        let body = format!(
+            "<tr><td><div style='{style}'>office alpha אבג\t beta\n auto\u{ad}matic</div></td>\
+             <td><span style='font-size:21.25px'>gamma 中文</span> tail</td></tr>"
+        );
+        assert_eq!(tracks(&body, true), tracks(&body, false), "{style}");
+    }
+}
+
+#[test]
+fn prepared_intrinsics_preserve_empty_cells_and_percentage_wrappers() {
+    for body in [
+        "<tr><td></td><td>tail</td></tr>",
+        "<tr><td><div></div></td><td>tail</td></tr>",
+        "<tr><td style='width:37.5%;font-size:1.25em'><div style='width:23%;font-size:1.25em'>alpha beta</div></td><td>tail</td></tr>",
+    ] {
+        assert_eq!(tracks(body, true), tracks(body, false), "{body}");
+    }
+}
+
+#[test]
+fn prepared_leaf_widths_match_independent_queries_at_each_native_scale() {
+    let body = "<tr><td style='font-size:1.25em;padding:2.25px'>office alpha אבג</td></tr>";
+    let fonts = crate::test_support::registry();
+    for policy in [
+        (false, None),
+        (true, None),
+        (true, Some(1.0)),
+        (true, Some(1.25)),
+        (true, Some(2.0)),
+    ] {
+        let root = table(body);
+        root.set_html_layout_policy(policy);
+        let rows = collect_rows(items(&root));
+        let (placed, _) = build_grid(&rows);
+        super::super::flex::prepare_text_intrinsics(placed[0].lb, &fonts);
+        let actual = (
+            natural_width(placed[0].lb, &fonts),
+            super::super::flex::min_content_width(placed[0].lb, &fonts),
+        );
+        let fresh = table(body);
+        fresh.set_html_layout_policy(policy);
+        let rows = collect_rows(items(&fresh));
+        let (placed, _) = build_grid(&rows);
+        let expected = (
+            natural_width(placed[0].lb, &fonts),
+            super::super::flex::min_content_width(placed[0].lb, &fonts),
+        );
+        assert_eq!(actual.0.to_bits(), expected.0.to_bits(), "max {policy:?}");
+        assert_eq!(actual.1.to_bits(), expected.1.to_bits(), "min {policy:?}");
+    }
+}
+
+#[cfg(feature = "perf")]
+fn text_leaf(lb: &LayoutBox) -> &LayoutBox {
+    match &lb.kind {
+        BoxKind::Block(children) if children.len() == 1 => text_leaf(&children[0]),
+        BoxKind::Lines(_) => lb,
+        _ => panic!("expected a single text leaf"),
+    }
+}
+
+#[cfg(feature = "perf")]
+#[test]
+fn prepared_intrinsics_reuse_once_and_respect_partial_cache_and_policy_changes() {
+    let root = table("<tr><td>first alpha beta</td></tr>");
+    let rows = collect_rows(items(&root));
+    let (placed, _) = build_grid(&rows);
+    let fonts = crate::test_support::registry();
+    let leaf = text_leaf(placed[0].lb);
+    crate::perf::reset();
+    let first = paired_cell_intrinsics(&placed, &fonts);
+    assert_eq!(crate::perf::count("inline.intrinsic_pair_prepare"), 1);
+    assert_eq!(paired_cell_intrinsics(&placed, &fonts), first);
+    assert_eq!(crate::perf::count("inline.intrinsic_pair_prepare"), 1);
+    leaf.set_html_layout_policy((true, Some(1.25)));
+    super::super::flex::prepare_text_intrinsics(leaf, &fonts);
+    assert_eq!(crate::perf::count("inline.intrinsic_pair_prepare"), 2);
+    let expected = table("<tr><td>first alpha beta</td></tr>");
+    let rows = collect_rows(items(&expected));
+    let (expected, _) = build_grid(&rows);
+    let expected = text_leaf(expected[0].lb);
+    expected.set_html_layout_policy((true, Some(1.25)));
+    assert_eq!(
+        natural_width(leaf, &fonts).to_bits(),
+        natural_width(expected, &fonts).to_bits()
+    );
+    assert_eq!(
+        super::super::flex::min_content_width(leaf, &fonts).to_bits(),
+        super::super::flex::min_content_width(expected, &fonts).to_bits()
+    );
+
+    let fresh = table("<tr><td>first alpha beta</td></tr>");
+    let rows = collect_rows(items(&fresh));
+    let (placed, _) = build_grid(&rows);
+    let leaf = text_leaf(placed[0].lb);
+    natural_width(leaf, &fonts);
+    super::super::flex::prepare_text_intrinsics(leaf, &fonts);
+    assert_eq!(crate::perf::count("inline.intrinsic_pair_prepare"), 2);
+}
