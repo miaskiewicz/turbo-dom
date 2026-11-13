@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Canonical hyperlink activation (#510)**: let a host-owned per-context policy
+  consume uncancelled primary clicks on connected HTML links, including authored
+  `click()` and bubbling descendant clicks. A private per-dispatch receipt covers
+  policy denial and noopener-null results without double opening; guest properties
+  cannot forge admission or consumption. Existing form and invoker defaults remain.
 - **Intrinsic measurement performance (#508)**: constant-width min/max text
   queries reuse the existing wrapping and width calculations without constructing
   unobserved positioned glyphs, source maps and line metrics. Full paragraph
