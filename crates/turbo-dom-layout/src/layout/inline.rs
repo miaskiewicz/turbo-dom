@@ -1795,6 +1795,7 @@ struct Placer<'a> {
     /// so an empty line (from consecutive `<br>`) is exactly one strut tall.
     strut: f32,
     capture_sources: bool,
+    width_only: bool,
     html_font_metrics: bool,
     html_font_scale: Option<f32>,
     advance_scale: Option<f32>,
@@ -1835,6 +1836,7 @@ impl<'a> Placer<'a> {
             region,
             strut,
             capture_sources,
+            width_only: false,
             html_font_metrics,
             html_font_scale: scales.metrics,
             advance_scale: scales.advances,
@@ -1898,25 +1900,29 @@ impl<'a> Placer<'a> {
                 }
             }
         }
-        let mut line = place_line(
-            current,
-            self.lw,
-            self.align,
-            self.strut,
-            &self.open_edges,
-            (
-                strut_metrics.map(|metrics| (metrics, self.central)),
-                self.bidi,
-            ),
-            (
-                self.capture_sources,
-                self.html_font_metrics,
-                NativeScale {
-                    metrics: self.html_font_scale,
-                    advances: self.advance_scale,
-                },
-            ),
-        );
+        let mut line = if self.width_only {
+            measured_line(&current, self.advance_scale)
+        } else {
+            place_line(
+                current,
+                self.lw,
+                self.align,
+                self.strut,
+                &self.open_edges,
+                (
+                    strut_metrics.map(|metrics| (metrics, self.central)),
+                    self.bidi,
+                ),
+                (
+                    self.capture_sources,
+                    self.html_font_metrics,
+                    NativeScale {
+                        metrics: self.html_font_scale,
+                        advances: self.advance_scale,
+                    },
+                ),
+            )
+        };
         self.open_edges = next_open;
         line.line.top = self.y;
         line.line.indent = self.indent;
@@ -2162,8 +2168,20 @@ fn wrap_and_place(
     strut: f32,
     policy: (bool, bool, NativeScale),
 ) -> Vec<SourceLine> {
+    wrap_and_place_mode(paragraph, align, region, strut, policy, false)
+}
+
+fn wrap_and_place_mode(
+    paragraph: ParagraphWords,
+    align: Align,
+    region: LineRegion,
+    strut: f32,
+    policy: (bool, bool, NativeScale),
+    width_only: bool,
+) -> Vec<SourceLine> {
     let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
+    placer.width_only = width_only;
     placer.bidi = bidi;
     mark_last_word(&mut words);
     mark_closing_edges(&mut words);
@@ -3175,6 +3193,7 @@ fn place_line(
     (strut_metrics, bidi): (Option<NativeStrut>, bool),
     policy: (bool, bool, NativeScale),
 ) -> SourceLine {
+    crate::hot!("layout.inline_line.emit");
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
@@ -3189,10 +3208,7 @@ fn place_line(
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
     };
-    let width = policy.2.advances.map_or_else(
-        || line_used_width(&words),
-        |scale| inline_advances::line_width(&words, scale),
-    );
+    let width = measured_line_width(&words, policy.2.advances);
     let pen = align_offset(align, width, max_width);
     let mut placement = LinePlacement {
         pen,
@@ -3252,6 +3268,32 @@ fn place_line(
             width,
             top: 0.0,
             height: m.height,
+            indent: 0.0,
+        },
+    }
+}
+
+fn measured_line_width(words: &[Word], scale: Option<f32>) -> f32 {
+    scale.map_or_else(
+        || line_used_width(words),
+        |scale| inline_advances::line_width(words, scale),
+    )
+}
+
+fn measured_line(words: &[Word], scale: Option<f32>) -> SourceLine {
+    crate::hot!("layout.intrinsic_line.width_only");
+    SourceLine {
+        clusters: Vec::new(),
+        font_boxes: Vec::new(),
+        line: InlineLine {
+            inline_edges: Vec::new(),
+            baseline: 0.0,
+            inline_origin: 0.0,
+            runs: Vec::new(),
+            atoms: Vec::new(),
+            width: measured_line_width(words, scale),
+            top: 0.0,
+            height: 0.0,
             indent: 0.0,
         },
     }
@@ -3491,13 +3533,47 @@ pub(crate) struct NativeLineOptions<'a> {
     pub original_units: Option<&'a crate::layout_snapshot::text_units::NativeUnitMap>,
 }
 
-pub(crate) fn layout_runs_with_units(
+#[cfg(test)]
+fn layout_runs_with_units(
     runs: &[InlineRun],
     fonts: &FontRegistry,
     width: f32,
     diags: &mut Diagnostics,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
     (html_metrics, scale): (bool, Option<f32>),
+) -> ParagraphLayout {
+    layout_runs_mode(
+        runs,
+        fonts,
+        width,
+        diags,
+        original,
+        (html_metrics, scale),
+        false,
+    )
+}
+
+/// Intrinsic width queries have a constant line region and consume no line height
+/// or positioned glyph/source records. Keep their exact wrapping and advances.
+pub(crate) fn measure_runs_with_units(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    width: f32,
+    diags: &mut Diagnostics,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    policy: (bool, Option<f32>),
+) -> f32 {
+    layout_runs_mode(runs, fonts, width, diags, original, policy, true).width
+}
+
+fn layout_runs_mode(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    width: f32,
+    diags: &mut Diagnostics,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    (html_metrics, scale): (bool, Option<f32>),
+    width_only: bool,
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
     // A box measures with the advances its lines are placed with: the native HTML
@@ -3521,12 +3597,13 @@ pub(crate) fn layout_runs_with_units(
     if let Some(scale) = scales.advances {
         inline_advances::prepare(&mut words.words, scale);
     }
-    finalize(wrap_and_place(
+    finalize(wrap_and_place_mode(
         words,
         Align::Left,
         &|_| (0.0, width),
         0.0,
         (html_metrics, html_metrics, scales),
+        width_only,
     ))
     .layout
 }
@@ -4046,3 +4123,7 @@ mod tests {
         assert_eq!(crate::perf::count("layout.inline.emergency_split"), 1);
     }
 }
+
+#[cfg(test)]
+#[path = "intrinsic_width_tests.rs"]
+mod intrinsic_width_tests;

@@ -1165,6 +1165,28 @@ fn side_value(s: &ComputedStyle, prop: &str, fs: f32, basis: f32) -> Option<f32>
 /// logical sides, so a vertical layout's relabelling leaves it in place.
 pub(crate) const UA_LOGICAL_PADDING: &str = "-internal-ua-padding";
 
+const MARGIN_PROPERTIES: [&str; 8] = [
+    "margin-top",
+    "margin-right",
+    "margin-bottom",
+    "margin-left",
+    "margin-block-start",
+    "margin-block-end",
+    "margin-inline-start",
+    "margin-inline-end",
+];
+
+const PADDING_PROPERTIES: [&str; 8] = [
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "padding-block-start",
+    "padding-block-end",
+    "padding-inline-start",
+    "padding-inline-end",
+];
+
 fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
     let base = s.get(prefix).or_else(|| {
         (prefix == "padding" && !has_padding_longhand(s))
@@ -1174,18 +1196,23 @@ fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges 
     let mut e = base
         .map(|v| parse_edge_shorthand(v, fs, basis))
         .unwrap_or_default();
-    apply_side(s, prefix, "top", fs, basis, &mut e.top);
-    apply_side(s, prefix, "right", fs, basis, &mut e.right);
-    apply_side(s, prefix, "bottom", fs, basis, &mut e.bottom);
-    apply_side(s, prefix, "left", fs, basis, &mut e.left);
+    let properties = if prefix == "margin" {
+        &MARGIN_PROPERTIES
+    } else {
+        &PADDING_PROPERTIES
+    };
+    apply_side(s, properties[0], fs, basis, &mut e.top);
+    apply_side(s, properties[1], fs, basis, &mut e.right);
+    apply_side(s, properties[2], fs, basis, &mut e.bottom);
+    apply_side(s, properties[3], fs, basis, &mut e.left);
     // Flow-relative longhands map to physical sides (assuming the LTR /
     // `horizontal-tb` default): `*-inline-start` → left, `*-inline-end` → right.
     // Google's search-bar "AI Mode" label uses `margin-inline-start` to clear its
     // icon; without this it printed over the icon.
-    apply_side(s, prefix, "block-start", fs, basis, &mut e.top);
-    apply_side(s, prefix, "block-end", fs, basis, &mut e.bottom);
-    apply_side(s, prefix, "inline-start", fs, basis, &mut e.left);
-    apply_side(s, prefix, "inline-end", fs, basis, &mut e.right);
+    apply_side(s, properties[4], fs, basis, &mut e.top);
+    apply_side(s, properties[5], fs, basis, &mut e.bottom);
+    apply_side(s, properties[6], fs, basis, &mut e.left);
+    apply_side(s, properties[7], fs, basis, &mut e.right);
     if prefix == "margin" && quirks_margin_block_end(s) {
         if let Some(v) = side_value(s, UA_LOGICAL_MARGIN_BLOCK_END, fs, basis) {
             e.bottom = v;
@@ -1213,23 +1240,12 @@ fn has_block_end_margin(s: &ComputedStyle) -> bool {
 /// Whether a `padding-*` longhand is set (an author `padding` shorthand arrives as
 /// longhands): the UA's logical padding then gives way, as a shorthand would.
 fn has_padding_longhand(s: &ComputedStyle) -> bool {
-    [
-        "top",
-        "right",
-        "bottom",
-        "left",
-        "block-start",
-        "block-end",
-        "inline-start",
-        "inline-end",
-    ]
-    .iter()
-    .any(|side| s.get(&format!("padding-{side}")).is_some())
+    PADDING_PROPERTIES.iter().any(|prop| s.get(prop).is_some())
 }
 
-/// Overwrite one edge slot from `{prefix}-{name}` when that longhand is set.
-fn apply_side(s: &ComputedStyle, prefix: &str, name: &str, fs: f32, basis: f32, slot: &mut f32) {
-    if let Some(v) = side_value(s, &format!("{prefix}-{name}"), fs, basis) {
+/// Overwrite one edge slot when that longhand is set.
+fn apply_side(s: &ComputedStyle, prop: &str, fs: f32, basis: f32, slot: &mut f32) {
+    if let Some(v) = side_value(s, prop, fs, basis) {
         *slot = v;
     }
 }
@@ -1434,20 +1450,60 @@ fn parse_border_shorthand(v: Option<&str>, fs: f32) -> DeclaredSide {
     side
 }
 
+#[derive(Clone, Copy)]
+struct BorderProperties {
+    shorthand: &'static str,
+    width: &'static str,
+    color: &'static str,
+    style: &'static str,
+}
+
+const BORDER_PROPERTIES: [BorderProperties; 4] = [
+    BorderProperties {
+        shorthand: "border-top",
+        width: "border-top-width",
+        color: "border-top-color",
+        style: "border-top-style",
+    },
+    BorderProperties {
+        shorthand: "border-right",
+        width: "border-right-width",
+        color: "border-right-color",
+        style: "border-right-style",
+    },
+    BorderProperties {
+        shorthand: "border-bottom",
+        width: "border-bottom-width",
+        color: "border-bottom-color",
+        style: "border-bottom-style",
+    },
+    BorderProperties {
+        shorthand: "border-left",
+        width: "border-left-width",
+        color: "border-left-color",
+        style: "border-left-style",
+    },
+];
+
 /// Side `name`'s width and colour, `currentcolor` resolved to the box's `color`; an
 /// `inset` / `outset` side's `currentcolor` paints Chrome 156's fixed #eeeeee light /
 /// #9a9a9a dark pair instead (measured: `currentcolor-outset` / `-inset-explicit`).
 /// An inset border's physical top and left (an outset one's bottom and right) are its
 /// dark sides (miaskiewicz/turbo-dom#257); `name` is a side of the box's writing-mode
 /// space, `top_or_left` whether it is a physical top or left side.
-fn resolve_border_side(s: &ComputedStyle, name: &str, fs: f32, top_or_left: bool) -> BorderSide {
+fn resolve_border_side(
+    s: &ComputedStyle,
+    props: BorderProperties,
+    fs: f32,
+    top_or_left: bool,
+) -> BorderSide {
     // Base: the `border` shorthand, overridden by the per-side `border-<name>`.
     let mut b = parse_border_shorthand(s.get("border"), fs);
-    if let Some(v) = s.get(&format!("border-{name}")) {
+    if let Some(v) = s.get(props.shorthand) {
         b = parse_border_shorthand(Some(v), fs);
     }
-    apply_border_longhands(&mut b, s, name, fs);
-    let inset = match border_side_style(s, name) {
+    apply_border_longhands(&mut b, s, props, fs);
+    let inset = match border_side_style(s, props) {
         Some("inset") => Some(true),
         Some("outset") => Some(false),
         _ => None,
@@ -1475,7 +1531,12 @@ fn resolve_border_side(s: &ComputedStyle, name: &str, fs: f32, top_or_left: bool
 /// a side already parsed from the shorthands. Without this a
 /// `border:1px solid transparent` + `border-color:#72777d` (Codex's radio icon) kept
 /// the transparent colour and the circle outline was invisible.
-fn apply_border_longhands(b: &mut DeclaredSide, s: &ComputedStyle, name: &str, fs: f32) {
+fn apply_border_longhands(
+    b: &mut DeclaredSide,
+    s: &ComputedStyle,
+    props: BorderProperties,
+    fs: f32,
+) {
     if let Some(c) = s.get("border-color").and_then(border_colour_token) {
         b.1 = Some(c);
     }
@@ -1485,38 +1546,32 @@ fn apply_border_longhands(b: &mut DeclaredSide, s: &ComputedStyle, name: &str, f
     {
         b.0 = w;
     }
-    if let Some(w) = s
-        .get(&format!("border-{name}-width"))
-        .and_then(|v| border_width_token(v, fs))
-    {
+    if let Some(w) = s.get(props.width).and_then(|v| border_width_token(v, fs)) {
         b.0 = w;
     }
-    if let Some(c) = s
-        .get(&format!("border-{name}-color"))
-        .and_then(border_colour_token)
-    {
+    if let Some(c) = s.get(props.color).and_then(border_colour_token) {
         b.1 = Some(c);
     }
 }
 
 fn resolve_borders(s: &ComputedStyle, fs: f32) -> BorderEdges {
     let mode = super::writing::WritingMode::of(s);
-    let side = |i: usize, name| resolve_border_side(s, name, fs, mode.top_or_left(i));
+    let side = |i: usize| resolve_border_side(s, BORDER_PROPERTIES[i], fs, mode.top_or_left(i));
     BorderEdges {
-        top: side(0, "top"),
-        right: side(1, "right"),
-        bottom: side(2, "bottom"),
-        left: side(3, "left"),
+        top: side(0),
+        right: side(1),
+        bottom: side(2),
+        left: side(3),
     }
 }
 
 /// The `border-style` keyword of side `name`: the `border-<name>-style` longhand's, else
 /// `border-<name>`'s, else the `border` shorthand's.
-fn border_side_style<'a>(s: &'a ComputedStyle, name: &str) -> Option<&'a str> {
+fn border_side_style<'a>(s: &'a ComputedStyle, props: BorderProperties) -> Option<&'a str> {
     let keyword = |v: &'a str| v.split_whitespace().find(|t| BORDER_STYLES.contains(t));
-    s.get(&format!("border-{name}-style"))
+    s.get(props.style)
         .map(str::trim)
-        .or_else(|| s.get(&format!("border-{name}")).and_then(keyword))
+        .or_else(|| s.get(props.shorthand).and_then(keyword))
         .or_else(|| s.get("border").and_then(keyword))
 }
 
@@ -2925,7 +2980,7 @@ mod border_longhand_tests {
             ("border".to_string(), "1px solid #000".to_string()),
             ("border-width".to_string(), "4px".to_string()),
         ]);
-        let side = resolve_border_side(&s, "top", 16.0, true);
+        let side = resolve_border_side(&s, BORDER_PROPERTIES[0], 16.0, true);
         assert_eq!(side.width, 4);
     }
 

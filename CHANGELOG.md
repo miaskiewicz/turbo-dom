@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Intrinsic measurement performance (#508)**: constant-width min/max text
+  queries reuse the existing wrapping and width calculations without constructing
+  unobserved positioned glyphs, source maps and line metrics. Full paragraph
+  placement and native rounding remain unchanged.
+- **CSS resolution performance (#508)**: use static physical/logical edge and
+  border property names instead of allocating temporary lookup strings during
+  full box-style and narrow flow-style resolution. Parser and override order
+  semantics are unchanged.
 - **Flow inspection performance (#508)**: add `BoxFlowStyle` and
   `resolve_box_flow_style` for clients reading pagination/frame geometry. The
   projection uses the full resolver's parsers and unquantized semantics without

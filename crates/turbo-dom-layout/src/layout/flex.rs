@@ -547,15 +547,14 @@ fn line_natural(
     // wraps a word onto a second line even though it "fit" the measurement (nike's
     // "Find a Store" utility links, google's footer). A whole-pixel max-content leaves
     // room for the rounding.
-    let text = inline::layout_runs_with_units(
+    let text = inline::measure_runs_with_units(
         &runs,
         fonts,
         f32::MAX,
         &mut scratch,
         original,
         (html_metrics, scale),
-    )
-    .width;
+    );
     let text = if html_metrics { text } else { text.ceil() };
     text + atomics_natural(items, fonts) + inline_edges_natural(items, fs)
 }
@@ -805,15 +804,14 @@ fn lines_min(
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
-    let text = inline::layout_runs_with_units(
+    let text = inline::measure_runs_with_units(
         &runs,
         fonts,
         0.0,
         &mut scratch,
         original,
         (html_metrics, scale),
-    )
-    .width;
+    );
     // An atomic doesn't break, so it contributes its own min-content; the line can
     // wrap between pieces, so its min-content is the widest single piece.
     let atom = items
