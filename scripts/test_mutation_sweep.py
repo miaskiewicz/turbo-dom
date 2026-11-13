@@ -52,6 +52,10 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertLessEqual(len(jobs), 32)
         self.assertEqual(len(jobs), len({job["id"] for job in jobs}))
 
+    def test_in_place_uses_implicit_serial_execution(self):
+        self.assertIn("--in-place", ms.mutation_flags())
+        self.assertNotIn("--jobs", ms.mutation_flags())
+
     def test_partial_full_artifacts_cannot_pass(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
