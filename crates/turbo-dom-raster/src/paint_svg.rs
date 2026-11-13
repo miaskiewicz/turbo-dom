@@ -2088,6 +2088,144 @@ mod tests {
         )
     }
 
+    #[test]
+    fn clipped_svg_uses_both_relative_offsets_and_empty_axes() {
+        let f = plain(5.0, 7.0, 20.0, 30.0, Some(RED));
+        let clip = ClipRect {
+            x: 2.0,
+            y: 3.0,
+            width: 11.0,
+            height: 13.0,
+            radii: BorderRadii::ZERO,
+        };
+        let mut svg = String::new();
+        paint_clipped(&mut svg, &f, clip, &HashMap::new());
+        assert!(svg.starts_with("<clipPath id=\"clip0\"><rect x=\"7.00\" y=\"10.00\" width=\"11.00\" height=\"13.00\""), "{svg}");
+        assert!(svg.contains("<g clip-path=\"url(#clip0)\">"), "{svg}");
+        assert!(
+            svg.contains("x=\"5.00\" y=\"7.00\" width=\"20.00\" height=\"30.00\""),
+            "{svg}"
+        );
+        assert!(svg.ends_with("</g>"), "{svg}");
+        for (width, height) in [(0.0, 13.0), (11.0, 0.0)] {
+            let mut svg = String::new();
+            paint_clipped(
+                &mut svg,
+                &f,
+                ClipRect {
+                    width,
+                    height,
+                    ..clip
+                },
+                &HashMap::new(),
+            );
+            assert!(svg.is_empty(), "{width}x{height}: {svg}");
+        }
+    }
+
+    #[test]
+    fn transparent_outer_shadow_emits_no_unused_filter() {
+        let f = decorated(2.0, 3.0, 10.0, 20.0, 0.0, |s, _, _| {
+            *s = Some(shadow(1, 2, 4, 0, Rgba::new(255, 0, 0, 0), false));
+        });
+        assert_eq!(body(&f, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn rule_svg_geometry_keeps_independent_pattern_boundaries() {
+        let render = |w, h, style| body(&rule(2.0, 3.0, w, h, style, RED), &HashMap::new());
+        let short = render(2.0, 1.0, ColumnRuleStyle::Dotted);
+        assert_eq!(short.matches("<circle ").count(), 1, "{short}");
+        assert!(
+            short.contains("cx=\"3.00\" cy=\"4.00\" r=\"1.00\""),
+            "{short}"
+        );
+        let dots = render(2.0, 8.0, ColumnRuleStyle::Dotted);
+        assert_eq!(dots.matches("<circle ").count(), 2, "{dots}");
+        assert!(dots.contains("cy=\"4.00\""), "{dots}");
+        assert!(dots.contains("cy=\"8.00\""), "{dots}");
+        let subpixel = render(0.5, 3.5, ColumnRuleStyle::Dotted);
+        for expected in [
+            "x=\"2.00\" y=\"3.00\" width=\"1.00\" height=\"1.00\"",
+            "x=\"2.00\" y=\"4.00\" width=\"1.00\" height=\"1.00\"",
+            "x=\"2.00\" y=\"6.00\" width=\"1.00\" height=\"0.50\"",
+        ] {
+            assert!(subpixel.contains(expected), "{expected}: {subpixel}");
+        }
+        assert_eq!(subpixel.matches("<rect ").count(), 3, "{subpixel}");
+        let dashes = render(2.0, 15.0, ColumnRuleStyle::Dashed);
+        for expected in [
+            "y=\"3.00\" width=\"2.00\" height=\"4.00\"",
+            "y=\"9.00\" width=\"2.00\" height=\"4.00\"",
+            "y=\"15.00\" width=\"2.00\" height=\"3.00\"",
+        ] {
+            assert!(dashes.contains(expected), "{expected}: {dashes}");
+        }
+        assert_eq!(dashes.matches("<rect ").count(), 3, "{dashes}");
+        let narrow_dashes = render(1.0, 8.0, ColumnRuleStyle::Dashed);
+        assert_eq!(
+            narrow_dashes.matches("<rect ").count(),
+            3,
+            "{narrow_dashes}"
+        );
+        for y in ["3.00", "6.00", "9.00"] {
+            assert!(
+                narrow_dashes.contains(&format!("y=\"{y}\" width=\"1.00\" height=\"2.00\"")),
+                "{narrow_dashes}"
+            );
+        }
+        let double = render(3.0, 8.0, ColumnRuleStyle::Double);
+        assert_eq!(double.matches("<rect ").count(), 2, "{double}");
+        assert!(
+            double.contains("x=\"2.00\" y=\"3.00\" width=\"1.00\""),
+            "{double}"
+        );
+        assert!(
+            double.contains("x=\"4.00\" y=\"3.00\" width=\"1.00\""),
+            "{double}"
+        );
+    }
+
+    #[test]
+    fn rule_svg_helpers_reject_each_invalid_axis_independently() {
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let f = rule(2.0, 3.0, 2.0, bad, ColumnRuleStyle::Dotted, RED);
+            let mut svg = String::new();
+            paint_dotted_rule(&mut svg, &f, RED);
+            paint_dashed_rule(&mut svg, &f, RED);
+            paint_double_rule(&mut svg, &f, RED);
+            paint_shaded_rule(&mut svg, &f, ColumnRuleStyle::Groove, RED);
+            assert!(svg.is_empty(), "height {bad}: {svg}");
+        }
+        for (width, height) in [(0.0, 8.0), (2.0, 0.0), (-1.0, 8.0), (2.0, -1.0)] {
+            let f = rule(2.0, 3.0, width, height, ColumnRuleStyle::Groove, RED);
+            let mut svg = String::new();
+            paint_shaded_rule(&mut svg, &f, ColumnRuleStyle::Groove, RED);
+            assert!(svg.is_empty(), "{width}x{height}: {svg}");
+        }
+    }
+
+    #[test]
+    fn dotted_rule_origin_accounts_for_half_a_pixel_precision() {
+        let f = rule(2.0, 8_388_608.0, 1.0, 8.0, ColumnRuleStyle::Dotted, RED);
+        assert!(rule_needs_local_origin(&f, ColumnRuleStyle::Dotted));
+        let svg = body(&f, &HashMap::new());
+        assert!(
+            svg.starts_with("<g transform=\"translate(0 8388608)\">"),
+            "{svg}"
+        );
+        assert_eq!(svg.matches("<circle ").count(), 4, "{svg}");
+        let invalid = rule(
+            2.0,
+            8_388_608.0,
+            1.0,
+            f32::NAN,
+            ColumnRuleStyle::Dotted,
+            RED,
+        );
+        assert_eq!(body(&invalid, &HashMap::new()), "");
+    }
+
     /// miaskiewicz/turbo-dom#398 PR-D: the SVG painter's `paint_column_rule`
     /// must skip a transparent, zero-width or zero-height fragment — without
     /// the guard the Dotted / Dashed helpers would infinite-loop on a zero
