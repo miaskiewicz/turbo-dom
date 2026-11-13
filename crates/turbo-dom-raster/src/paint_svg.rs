@@ -281,6 +281,10 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
     {
         return;
     }
+    if rule_needs_local_origin(f, style) {
+        paint_rule_at_local_origin(svg, f, style, color);
+        return;
+    }
     match style {
         ColumnRuleStyle::Solid => rect(svg, f.x, f.y, f.width, f.height, color),
         ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
@@ -291,6 +295,31 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
         | ColumnRuleStyle::Inset
         | ColumnRuleStyle::Outset => paint_shaded_rule(svg, f, style, color),
     }
+}
+
+fn rule_needs_local_origin(f: &Fragment, style: ColumnRuleStyle) -> bool {
+    let step = match style {
+        ColumnRuleStyle::Dotted => f.width.max(1.0) / 2.0,
+        ColumnRuleStyle::Dashed => f.width,
+        _ => return false,
+    };
+    f.y.is_finite() && f.y + step <= f.y
+}
+
+fn paint_rule_at_local_origin(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    // SVG can retain the large translation while the pattern steps stay local.
+    // Dropping an offscreen rule would be wrong beneath an inverse transform.
+    let _ = write!(svg, "<g transform=\"translate(0 {})\">", f.y);
+    let local = Fragment::new(
+        f.node_id,
+        f.x,
+        0.0,
+        f.width,
+        f.height,
+        FragmentContent::ColumnRule { style, color },
+    );
+    paint_column_rule(svg, &local, style, color);
+    svg.push_str("</g>");
 }
 
 /// SVG counterpart to [`crate::paint_png::paint_dotted_rule`]: diameter is
@@ -316,20 +345,7 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let period = 2.0 * diameter;
     let end = f.y + f.height;
     if f.width < 1.0 {
-        let px_left = cx.floor();
-        // R1 L3 (SVG mirror): clamp the leading cap and each dash so a
-        // fragment shorter than `diameter` (e.g. `height = 0.3`) stays
-        // inside its box. Blink's round cap collapses with the rule.
-        if f.y < end {
-            let cap_h = (end - f.y).min(diameter);
-            rect(svg, px_left, f.y, diameter, cap_h, color);
-        }
-        let mut y = f.y + diameter;
-        while y < end {
-            let dash_h = (end - y).min(diameter);
-            rect(svg, px_left, y, diameter, dash_h, color);
-            y += 2.0 * diameter;
-        }
+        paint_subpixel_dotted_rule(svg, f, color, (cx.floor(), diameter, end));
         return;
     }
     let radius = diameter / 2.0;
@@ -340,7 +356,34 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
             "<circle cx=\"{cx:.2}\" cy=\"{cy:.2}\" r=\"{radius:.2}\" {}/>",
             fill_attrs(color)
         );
-        cy += period;
+        let next = cy + period;
+        if next <= cy {
+            break;
+        }
+        cy = next;
+    }
+}
+
+fn paint_subpixel_dotted_rule(
+    svg: &mut String,
+    f: &Fragment,
+    color: Rgba,
+    (px_left, diameter, end): (f32, f32, f32),
+) {
+    // Clamp the leading cap and last dash just as the ordinary subpixel path.
+    if f.y < end {
+        let cap_h = (end - f.y).min(diameter);
+        rect(svg, px_left, f.y, diameter, cap_h, color);
+    }
+    let mut y = f.y + diameter;
+    while y < end {
+        let dash_h = (end - y).min(diameter);
+        rect(svg, px_left, y, diameter, dash_h, color);
+        let next = y + 2.0 * diameter;
+        if next <= y {
+            break;
+        }
+        y = next;
     }
 }
 
@@ -364,7 +407,11 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
         if dash_h > 0.0 {
             rect(svg, f.x, dash_top, width, dash_h, color);
         }
-        dash_top += period;
+        let next = dash_top + period;
+        if next <= dash_top {
+            break;
+        }
+        dash_top = next;
     }
 }
 
@@ -2428,6 +2475,64 @@ mod tests {
                     "non-finite ({bad}) box coord must not serialize NaN/inf, got: {buf}"
                 );
             }
+        }
+    }
+
+    fn exercise_stalled_rule_helpers() {
+        let mut f = rule(
+            1.0,
+            1_000_000_000.0,
+            1.0,
+            128.0,
+            ColumnRuleStyle::Dotted,
+            RED,
+        );
+        let mut output = String::new();
+        paint_dotted_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<circle").count(), 1);
+        output.clear();
+        paint_dashed_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<rect").count(), 1);
+        output.clear();
+        f.width = 0.5;
+        paint_dotted_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<rect").count(), 2);
+    }
+
+    #[test]
+    fn rule_helpers_stop_when_an_advance_is_not_representable() {
+        const CHILD: &str = "TURBO_DOM_STALLED_SVG_RULE_HELPERS";
+        const MARKER: &str = "SVG_STALLED_ADVANCES_EXERCISED";
+        if std::env::var_os(CHILD).is_some() {
+            exercise_stalled_rule_helpers();
+            println!("{MARKER}");
+            return;
+        }
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "paint_svg::tests::rule_helpers_stop_when_an_advance_is_not_representable",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if child.try_wait().unwrap().is_some() {
+                let output = child.wait_with_output().unwrap();
+                assert!(output.status.success(), "{output:?}");
+                assert!(String::from_utf8(output.stdout).unwrap().contains(MARKER));
+                return;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("stalled rule helpers did not stop within three seconds");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
 }
