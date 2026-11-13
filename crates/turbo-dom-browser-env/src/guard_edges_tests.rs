@@ -385,3 +385,32 @@ fn inline_handler_repeated_source_preserves_compiled_function_and_policy_reports
     assert_eq!(value.to_rust_string_lossy(scope), "[true,2,7]");
     reset();
 }
+
+/// The host URL drives form action resolution even without an action attribute;
+/// clearing it restores about:blank instead of retaining a stale host base.
+#[test]
+fn inline_handler_host_base_is_used_by_default_form_actions() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><form id=f></form>");
+    let policy = function(scope, "(() => true)");
+    for (base, expected) in [
+        (
+            "https://example.test/path/page",
+            "https://example.test/path/page",
+        ),
+        ("", "about:blank"),
+    ] {
+        install_inline_event_handlers(scope, policy, base);
+        let code = v8::String::new(scope, "document.getElementById('f').action").unwrap();
+        let value = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        assert_eq!(value.to_rust_string_lossy(scope), expected);
+    }
+    reset();
+}

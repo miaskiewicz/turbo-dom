@@ -856,4 +856,175 @@ mod tests {
         );
         reset();
     }
+    /// Unsafe HTML union conversion preserves genuine TrustedHTML without running
+    /// a guest-replaced toString before the sink's private brand conversion.
+    #[test]
+    fn unsafe_html_sinks_preserve_genuine_trusted_values_without_guest_coercion() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body></body>");
+        let value = eval(scope,
+            "(() => { const policy = trustedTypes.createPolicy('sanitizer-brand', { createHTML: s => s }); \
+             const html = policy.createHTML('<b>ok</b>'); \
+             Object.defineProperty(html, 'toString', { value() { throw Error('guest coercion'); } }); \
+             const host = document.createElement('div'); host.setHTMLUnsafe(html); \
+             const parsed = Document.parseHTMLUnsafe(html); \
+             return JSON.stringify([host.innerHTML, parsed.body.innerHTML]); })()");
+        assert_eq!(
+            value.to_rust_string_lossy(scope),
+            r#"["<b>ok</b>","<b>ok</b>"]"#
+        );
+        reset();
+    }
+    /// TrustedHTML attribute enforcement belongs only to an HTML iframe's
+    /// unnamespaced srcdoc; nearby non-sinks must remain ordinary string inputs.
+    #[test]
+    fn trusted_html_attribute_enforcement_does_not_block_neighboring_non_sinks() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body></body>");
+        let deny =
+            v8::Local::<v8::Function>::try_from(eval(scope, "(action => action !== 'sink')"))
+                .unwrap();
+        assert!(install_trusted_types_policy(scope, deny));
+        let value = eval(scope,
+            "(() => { const attempt = (node, ns, name) => { try { \
+             if (ns === null) node.setAttribute(name, 'text'); else node.setAttributeNS(ns, name, 'text'); \
+             return 'ok'; } catch (error) { return error.name; } }; \
+             return JSON.stringify([attempt(document.createElement('div'), null, 'title'), \
+             attempt(document.createElementNS('urn:foreign', 'iframe'), null, 'srcdoc'), \
+             attempt(document.createElement('iframe'), 'urn:attribute', 'srcdoc'), \
+             attempt(document.createElement('iframe'), null, 'title'), \
+             attempt(document.createElement('iframe'), null, 'srcdoc')]); })()");
+        assert_eq!(
+            value.to_rust_string_lossy(scope),
+            r#"["ok","ok","ok","ok","TypeError"]"#
+        );
+        reset();
+    }
+    /// Host CSP authorization observes the exact native sink name, not merely
+    /// whether a nearby attribute happens to contain script-looking text.
+    #[test]
+    fn native_attribute_sink_authorization_covers_namespaces_and_owner_names() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body></body>");
+        eval(scope, "globalThis.sinkCalls = []");
+        let allow = v8::Local::<v8::Function>::try_from(eval(scope,
+            "((action, kind, sink) => { if (action === 'sink') sinkCalls.push([kind, sink]); return true; })")).unwrap();
+        assert!(install_trusted_types_policy(scope, allow));
+        let value = eval(scope,
+            "(() => { const H = 'http://www.w3.org/1999/xhtml', S = 'http://www.w3.org/2000/svg', \
+             M = 'http://www.w3.org/1998/Math/MathML', X = 'http://www.w3.org/1999/xlink'; \
+             const cases = [[H,'script',null,'src'],[H,'embed',null,'src'],[H,'object',null,'data'], \
+             [H,'object',null,'codebase'],[H,'iframe',null,'srcdoc'],[H,'div',null,'onclick'], \
+             [S,'script',null,'href'],[S,'script',X,'xlink:href'],[S,'script','urn:attr','q:href'], \
+             [S,'script',null,'src'],[S,'image',null,'href'],[S,'a',null,'href'],[S,'circle',null,'onclick'], \
+             [M,'mrow',null,'onclick'],['urn:foreign','div',null,'onclick'],[H,'script','urn:attr','q:onclick'], \
+             [H,'embed','urn:attr','q:src'],[H,'object','urn:attr','q:data'],[H,'iframe','urn:attr','q:srcdoc'], \
+             [H,'div',null,'title'],[H,'div',null,'src'],[H,'object',null,'src'],[H,'script',null,'data'], \
+             [H,'embed',null,'data'],[H,'iframe',null,'src'],['urn:foreign','iframe',null,'srcdoc'], \
+             [H,'div',null,'srcdoc'],[S,'script',X,'xlink:src'],[M,'iframe',null,'srcdoc']]; \
+             return JSON.stringify(cases.map(([ns,tag,attrNS,name]) => { sinkCalls.length = 0; \
+             const element = document.createElementNS(ns,tag); \
+             if (attrNS === null) element.setAttribute(name,'value'); else element.setAttributeNS(attrNS,name,'value'); \
+             return sinkCalls.slice(); })); })()");
+        let actual: serde_json::Value =
+            serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap();
+        let script = |owner: &str| serde_json::json!([["TrustedScript", owner]]);
+        let url = |owner: &str| serde_json::json!([["TrustedScriptURL", owner]]);
+        let none = serde_json::json!([]);
+        assert_eq!(
+            actual,
+            serde_json::json!([
+                url("HTMLScriptElement src"),
+                url("HTMLEmbedElement src"),
+                url("HTMLObjectElement data"),
+                url("HTMLObjectElement codebase"),
+                [["TrustedHTML", "HTMLIFrameElement srcdoc"]],
+                script("Element onclick"),
+                url("Element href"),
+                url("Element href"),
+                none,
+                none,
+                none,
+                none,
+                script("Element onclick"),
+                script("Element onclick"),
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none,
+                none
+            ])
+        );
+        reset();
+    }
+
+    #[test]
+    fn ordinary_text_content_avoids_trusted_script_enforcement_and_converts_null() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body></body>");
+        let deny =
+            v8::Local::<v8::Function>::try_from(eval(scope, "(action => action !== 'sink')"))
+                .unwrap();
+        assert!(install_trusted_types_policy(scope, deny));
+        let value = eval(
+            scope,
+            "(() => { const div = document.createElement('div'); div.textContent = 'ordinary'; \
+             const before = div.textContent; div.textContent = null; \
+             const script = document.createElement('script'); let error; \
+             try { script.textContent = 'run()'; } catch (caught) { error = caught.name; } \
+             return JSON.stringify([before, div.textContent, error]); })()",
+        );
+        assert_eq!(
+            value.to_rust_string_lossy(scope),
+            r#"["ordinary","","TypeError"]"#
+        );
+        reset();
+    }
+    #[test]
+    fn unsafe_html_union_converts_ordinary_objects_before_reading_options() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><body></body>");
+        let value = eval(scope,
+            "(() => { const probe = element => { const log = []; \
+             const html = { toString() { log.push('html'); return '<i>raw</i>'; } }; \
+             const options = { get sanitizer() { log.push('options'); return undefined; } }; \
+             if (!element) return [Document.parseHTMLUnsafe(html, options).body.innerHTML, log]; \
+             const host = document.createElement('div'); host.setHTMLUnsafe(html, options); return [host.innerHTML, log]; \
+             }; return JSON.stringify([probe(true), probe(false)]); })()");
+        assert_eq!(
+            value.to_rust_string_lossy(scope),
+            r#"[["<i>raw</i>",["html","options"]],["<i>raw</i>",["html","options"]]]"#
+        );
+        reset();
+    }
 }
