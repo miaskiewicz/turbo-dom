@@ -25,7 +25,7 @@ after a step timeout. A timeout is unresolved evidence, never a passing result.
 Before authorizing the full matrix, read the pilot's actual baseline times and
 per-mutant Build/Test durations from `outcomes.json`. No measured runtime is
 claimed before that pilot. The original reviewed matrix used 1,479 mutants. After the validated large-coordinate
-PNG/SVG fixes, a fresh inventory at `655404321e2ae05a93e25aad8752726800246944` is:
+PNG/SVG fixes, a fresh inventory at `7ad8b3fe1880254179e208c65491b05d2584541a` is:
 
 | Target | Current mutants | Proposed shards |
 |---|---:|---:|
@@ -33,9 +33,9 @@ PNG/SVG fixes, a fresh inventory at `655404321e2ae05a93e25aad8752726800246944` i
 | worker_scope | 11 | 1 |
 | trusted_types | 98 | 2 |
 | paint_png | 922 | 12 |
-| paint_svg | 439 | 6 |
+| paint_svg | 432 | 6 |
 
-That is **1,510 mutants** across the same 25 jobs, at most four concurrent.
+That is **1,503 mutants** across the same 25 jobs, at most four concurrent.
 The plan records the source reference and reviewed per-file counts; an actual
 inventory with extra, missing or duplicate mutants stops before any baseline or
 mutation. Re-enumerate and review after further production changes rather than
