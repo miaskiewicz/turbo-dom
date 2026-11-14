@@ -4495,6 +4495,9 @@ mod exact_tests {
     // paints over white and asserts the pixmap is unchanged.
     #[test]
     fn paint_column_rule_is_a_no_op_on_degenerate_fragments() {
+        if !rule_probe_child("paint_column_rule_is_a_no_op_on_degenerate_fragments") {
+            return;
+        }
         for style in [
             ColumnRuleStyle::Solid,
             ColumnRuleStyle::Dotted,
