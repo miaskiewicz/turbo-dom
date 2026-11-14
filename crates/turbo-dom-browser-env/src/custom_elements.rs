@@ -1413,6 +1413,11 @@ mod tests {
         for _ in 0..3 {
             isolate.low_memory_notification();
         }
+        println!(
+            "ORIGINAL_CONTEXT pending_background={} retained_before_assert={}",
+            isolate.has_pending_background_tasks(),
+            !context.is_empty()
+        );
         let assertion = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             assert!(context.is_empty());
         }));
