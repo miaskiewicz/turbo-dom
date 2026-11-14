@@ -22,26 +22,29 @@ base = os.environ.copy()
 base.pop('TURBO_DOM_SNAPSHOT_PATH', None)
 base.pop('TURBO_DOM_ATTACH_PATH', None)
 records = []
-for synchronous in [False, True]:
+for snapshot in [False, True]:
     env = base.copy()
-    env['TURBO_DOM_SNAPSHOT_PATH'] = '1'
-    flags = '--trace-concurrent-recompilation --trace-opt'
-    if synchronous:
-        flags += ' --no-concurrent-recompilation'
-    env['TURBO_DOM_DIAGNOSTIC_COMPILER_FLAGS'] = flags
-    mode = 'synchronous' if synchronous else 'concurrent'
-    for index in range(8):
-        name = f'{mode}-group-{index}'
-        env['TURBO_DOM_GC_DIAGNOSTIC_DIR'] = str((args.out / (name + '-roots')).resolve())
-        command = [binaries[0], 'browser_env::custom_elements::tests::', '--skip=context_repeated_scope_release_diagnostic', '--test-threads=8', '--nocapture']
+    if snapshot:
+        env['TURBO_DOM_SNAPSHOT_PATH'] = '1'
+    mode = 'snapshot' if snapshot else 'ordinary'
+    cases = [(f'fixed-group-{index}', 'browser_env::custom_elements::tests::', '8') for index in range(8)]
+    cases += [('fixed-full-library-default-threads', '', None)]
+    for label, test_filter, threads in cases:
+        name = mode + '-' + label
+        command = [binaries[0]]
+        if test_filter:
+            command.append(test_filter)
+        if threads:
+            command.append('--test-threads=' + threads)
+        command.append('--nocapture')
         started = time.monotonic()
         with (args.out / (name + '.log')).open('wb') as log:
             try:
-                result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=120)
+                result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=240)
                 code = result.returncode
             except subprocess.TimeoutExpired:
                 code = 'timeout'
-        records.append(dict(name=name, command=command, flags=flags, exit=code, seconds=time.monotonic()-started))
+        records.append(dict(name=name, command=command, exit=code, seconds=time.monotonic()-started))
         (args.out / 'summary.json').write_text(json.dumps(records, indent=2) + '\n')
         print(json.dumps(records[-1]), flush=True)
 raise SystemExit(1 if any(record['exit'] != 0 for record in records) else 0)

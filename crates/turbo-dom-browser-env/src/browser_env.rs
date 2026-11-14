@@ -9739,9 +9739,9 @@ mod tests {
     static INIT: Once = Once::new();
     pub(super) fn init_v8() {
         INIT.call_once(|| {
-            if let Ok(flags) = std::env::var("TURBO_DOM_DIAGNOSTIC_COMPILER_FLAGS") {
-                v8::V8::set_flags_from_string(&flags);
-            }
+            // Memory-pressure GC cancels optimizing jobs without waiting for their
+            // context handles. Keep compilation synchronous in ownership tests.
+            v8::V8::set_flags_from_string("--no-concurrent-recompilation");
             let platform = v8::new_default_platform(0, false).make_shared();
             v8::V8::initialize_platform(platform);
             v8::V8::initialize();
