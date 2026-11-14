@@ -8,12 +8,12 @@
     "paint_png": 12,
     "paint_svg": 6
   },
-  "inventory_reference_commit": "7ad8b3fe1880254179e208c65491b05d2584541a",
+  "inventory_reference_commit": "407258b4a7031be8df35fe7cfb67f674d8044fba",
   "expected_inventory_counts": {
     "event_handlers": 40,
     "worker_scope": 11,
     "trusted_types": 98,
-    "paint_png": 922,
-    "paint_svg": 432
+    "paint_png": 840,
+    "paint_svg": 415
   }
 }
