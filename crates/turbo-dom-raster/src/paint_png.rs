@@ -4741,6 +4741,27 @@ mod exact_tests {
     }
 
     #[test]
+    fn subpixel_dotted_rules_do_not_paint_before_the_fragment() {
+        if !rule_probe_child("subpixel_dotted_rules_do_not_paint_before_the_fragment") {
+            return;
+        }
+        let mut actual = white(10, 12);
+        paint_dotted_rule_stroked(&mut actual, 3.25, 3.0, 4.0, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..10 {
+                let ink = x == 3 && [3, 4, 6].contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap() {
         if !rule_probe_child("png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap") {
             return;
