@@ -448,3 +448,66 @@ fn check_transparent_shadow_allocations(inset: bool) {
     // fit below one large allocation per retained shadow.
     assert!(big < BOXES, "{big} allocations of at least 1 MiB");
 }
+
+fn positioned_image_strips(fragment: &Fragment) -> usize {
+    let selected = fragment.is_positioned && fragment.width == 256.0 && fragment.height == 12.0;
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(positioned_image_strips)
+            .sum::<usize>()
+}
+
+#[test]
+fn oversized_repeated_image_textures_use_only_visible_scratch() {
+    const BOXES: usize = 20;
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let image = image::RgbaImage::from_pixel(1024, 1024, image::Rgba([255, 0, 0, 255]));
+    let mut encoded = std::io::Cursor::new(Vec::new());
+    image
+        .write_to(&mut encoded, image::ImageFormat::Png)
+        .unwrap();
+    let assets: ImageAssets = [("budget.png".into(), encoded.into_inner())]
+        .into_iter()
+        .collect();
+    let viewport = Viewport {
+        width: 256,
+        height: 256,
+    };
+    let mut html = String::from("<body style='margin:0;background:white'>");
+    for index in 0..BOXES {
+        write!(html, "<div style='position:absolute;left:0;top:{}px;width:256px;height:12px;background:url(budget.png) -900px 0/1024px 1024px repeat'></div>", 12 * index).unwrap();
+    }
+    let layout = layout_html(
+        &html,
+        "",
+        256.0,
+        &FontRegistry::new(),
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        positioned_image_strips(&layout),
+        BOXES,
+        "all visible image strips must remain in public layout"
+    );
+    let prepared =
+        PreparedScreenshot::new(&html, "", viewport, &assets, &ScreenshotOptions::default());
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+        for index in 0..BOXES {
+            assert_eq!(
+                pixels.get_pixel(128, (index * 12 + 6) as u32).0,
+                [255, 0, 0]
+            );
+        }
+    });
+    // Decoded source pixels were prepared above. Each visible strip needs only
+    // a clipped window, not its own four-MiB copy of the whole source texture.
+    assert!(big < BOXES, "{big} allocations of at least 1 MiB");
+}

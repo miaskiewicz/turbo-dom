@@ -1968,6 +1968,11 @@ mod tests {
 
     #[test]
     fn public_large_spread_blur_preserves_rounded_visible_shadow_edge() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::public_large_spread_blur_preserves_rounded_visible_shadow_edge",
+        ) {
+            return;
+        }
         let mut group = with_box(
             plain(0.0, 0.0, 4.0, 4.0, None),
             |_, shadow, _, transform| {
@@ -3657,6 +3662,40 @@ mod tests {
                 0, 0, 255,
             ]
         );
+    }
+    #[test]
+    fn image_texture_fitting_the_pixel_budget_preserves_every_source_pixel() {
+        let rgba = vec![
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255, 255, 0, 255, 255, 0,
+            255, 255, 255,
+        ];
+        let image = crate::image_paint::DecodedImage {
+            width: 3,
+            height: 2,
+            rgba: rgba.clone(),
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(3, 2, false),
+            placeholder: false,
+        };
+        let images: DecodedAssets = [("budget".into(), image)].into_iter().collect();
+        let pattern = TilePattern {
+            tile: Box::new(FragmentContent::Image(ImagePlacement {
+                name: "budget".into(),
+                intrinsic_w: 3,
+                intrinsic_h: 2,
+                has_alpha: false,
+                tint: None,
+                orientation: Orientation::IDENTITY,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 3.0,
+            tile_height: 2.0,
+            step_x: 3.0,
+            step_y: 2.0,
+        };
+        let actual = tile_texture(&pattern, &images, 1.0, 6).expect("a bounded image texture");
+        assert_eq!((actual.width(), actual.height()), (3, 2));
+        assert_eq!(actual.data(), rgba);
     }
 }
 
