@@ -303,6 +303,78 @@ fn transparent_inset_shadows_do_not_allocate_blur_layers() {
     check_transparent_shadow_allocations(true);
 }
 
+#[test]
+fn visible_blurred_shadows_reuse_their_scratch_for_compositing() {
+    const BOXES: usize = 10;
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut html = String::from("<body style='margin:0;background:white'>");
+    for _ in 0..BOXES {
+        html.push_str("<div style='position:absolute;left:2px;top:2px;width:508px;height:508px;background:red;box-shadow:0 0 10px blue'></div>");
+    }
+    let prepared = PreparedScreenshot::new(
+        &html,
+        "",
+        Viewport {
+            width: 512,
+            height: 512,
+        },
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+        assert_eq!(pixels.get_pixel(256, 256).0, [255, 0, 0]);
+        let corner = pixels.get_pixel(0, 0).0;
+        assert!(
+            corner[2] > corner[0],
+            "a real blue blurred shadow must reach the corner"
+        );
+    });
+    // One blur scratch per box plus encoder/decoder buffers fits below two
+    // large buffers per box; copying every scratch's apron does not.
+    assert!(big < 2 * BOXES, "{big} allocations of at least 1 MiB");
+}
+
+#[test]
+fn a_huge_blurred_shadow_allocates_only_its_small_visible_region() {
+    for position in [20, -5000] {
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let html = format!("<body style='margin:0;background:white'><div style='position:absolute;left:{position}px;top:{position}px;width:20000px;height:20000px;box-shadow:0 0 10px blue'></div>");
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            Viewport {
+                width: 128,
+                height: 128,
+            },
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        drop(preparation);
+        let (_, big) = allocations(|| {
+            let png = prepared.png().unwrap();
+            let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+            assert_eq!(pixels.get_pixel(100, 100).0, [0, 0, 255]);
+            let edge = pixels.get_pixel(18, 18).0;
+            if position == 20 {
+                assert!(edge[2] > edge[0] && edge[0] > 0);
+            } else {
+                assert_eq!(edge, [0, 0, 255]);
+            }
+        });
+        assert_eq!(
+            big, 0,
+            "a 128px viewport must not require a megabyte shadow scratch"
+        );
+    }
+}
+
 fn check_transparent_shadow_allocations(inset: bool) {
     const BOXES: usize = 20;
     let viewport = Viewport {

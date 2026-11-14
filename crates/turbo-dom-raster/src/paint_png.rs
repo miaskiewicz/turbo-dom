@@ -1442,22 +1442,11 @@ fn blurred_shadow(
                 Transform::identity(),
             );
             box_blur(&mut scratch, r);
-            // Draw the tile's core from a copy with one more pixel of real neighbours, so a
-            // device pixel sampled just past a core edge (under a rotation) reads the pixel a
-            // whole scratch has there, not a padded edge.
-            let (ax0, ay0) = ((tx - 1).max(0), (ty - 1).max(0));
-            let (ax1, ay1) = ((cx1 + 1).min(tw), (cy1 + 1).min(th));
-            let apron = tiny_skia::IntRect::from_xywh(
-                ax0 - gx0,
-                ay0 - gy0,
-                (ax1 - ax0) as u32,
-                (ay1 - ay0) as u32,
-            )
-            .and_then(|rect| scratch.clone_rect(rect))
-            .expect("the apron lies inside its scratch");
+            // The existing scratch already contains every real neighbour needed
+            // by the core. Sample it directly instead of copying an apron.
             let paint = Paint {
                 shader: tiny_skia::Pattern::new(
-                    apron.as_ref(),
+                    scratch.as_ref(),
                     SpreadMode::Pad,
                     tiny_skia::FilterQuality::Nearest,
                     1.0,
@@ -1467,8 +1456,8 @@ fn blurred_shadow(
                 ..Paint::default()
             };
             let core = Rect::from_xywh(
-                (tx - ax0) as f32,
-                (ty - ay0) as f32,
+                (tx - gx0) as f32,
+                (ty - gy0) as f32,
                 (cx1 - tx) as f32,
                 (cy1 - ty) as f32,
             )
@@ -1476,8 +1465,8 @@ fn blurred_shadow(
             // `PixmapMut::draw_pixmap` is this fill over the whole pixmap: one tile covering
             // the whole padded silhouette paints exactly what drawing it in one piece did.
             let place = xf.pre_concat(Transform::from_translate(
-                (ox + ax0) as f32,
-                (oy + ay0) as f32,
+                (ox + gx0) as f32,
+                (oy + gy0) as f32,
             ));
             pm.fill_rect(core, &paint, place, None);
         }
@@ -3961,6 +3950,9 @@ mod exact_tests {
 
     #[test]
     fn blurred_shadows_equal_one_whole_scratch_on_and_off_the_canvas() {
+        if !rule_probe_child("blurred_shadows_equal_one_whole_scratch_on_and_off_the_canvas") {
+            return;
+        }
         let shadow = |x: f32, y: f32, width: f32, height: f32| Silhouette {
             x,
             y,
@@ -3975,6 +3967,11 @@ mod exact_tests {
             (shadow(-30.0, -20.0, 60.0, 50.0), Transform::identity(), 8.0),
             (shadow(50.0, 40.0, 90.0, 70.0), Transform::identity(), 6.0),
             (shadow(-80.0, 30.0, 300.0, 20.0), Transform::identity(), 4.0),
+            (
+                shadow(-180.0, -120.0, 90.0, 70.0),
+                Transform::from_translate(150.0, 100.0),
+                8.0,
+            ),
             (
                 shadow(10.0, 5.0, 30.0, 20.0),
                 Transform::from_row(1.5, 0.0, 0.0, 0.75, 3.0, -2.0),
@@ -3996,6 +3993,41 @@ mod exact_tests {
                     .filter(|&(x, y)| got.pixel(x, y) != want.pixel(x, y))
                     .count();
                 assert_eq!(diff, 0, "({}, {}) {xf:?} blur {blur} tile {tile}", s.x, s.y);
+            }
+        }
+    }
+
+    #[test]
+    fn blurred_shadows_tiled_square_aprons_keep_real_blur_neighbours() {
+        if !rule_probe_child("blurred_shadows_tiled_square_aprons_keep_real_blur_neighbours") {
+            return;
+        }
+        for (x, y, width, height) in [(3.0, 7.0, 40.0, 25.0), (-20.0, -10.0, 70.0, 40.0)] {
+            let s = Silhouette {
+                x,
+                y,
+                width,
+                height,
+                radii: BorderRadii::ZERO,
+                color: Rgba::new(0, 0, 255, 220),
+            };
+            for blur in [4.0, 8.0, 10.0] {
+                for xf in [
+                    Transform::from_translate(1.0, 2.0),
+                    Transform::from_scale(1.25, 0.75),
+                ] {
+                    let mut expected = white(100, 80);
+                    reference_shadow(&mut expected, &s, blur, xf);
+                    let mut got = white(100, 80);
+                    blurred_shadow(&mut got, &s, blur, xf, 9, 1);
+                    let diff = got
+                        .pixels()
+                        .iter()
+                        .zip(expected.pixels())
+                        .filter(|(a, b)| a != b)
+                        .count();
+                    assert_eq!(diff, 0, "x{x},y{y},blur{blur},xf{xf:?}");
+                }
             }
         }
     }
