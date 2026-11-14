@@ -7,6 +7,9 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Ownership test determinism**: use synchronous compilation in native unit-test
+  fixtures so temporary compiler handles do not invalidate context-lifetime
+  assertions. Strong-owner controls retain the original collection checks.
 - **Empty opacity groups (#487)**: avoid scratch and path allocations for empty
   opacity boxes while retaining visible descendants and transformed bounds.
   Public allocator and pixel regressions pin the resource improvement.
