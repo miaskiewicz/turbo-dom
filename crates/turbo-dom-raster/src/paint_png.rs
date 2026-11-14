@@ -4032,6 +4032,47 @@ mod exact_tests {
         }
     }
 
+    #[test]
+    fn curved_visible_shadow_spans_stay_whole_within_the_scratch_limit() {
+        for (s, size) in [
+            (
+                Silhouette {
+                    x: -50.0,
+                    y: 10.0,
+                    width: 100.0,
+                    height: 80.0,
+                    radii: BorderRadii::uniform(40.0),
+                    color: BLUE,
+                },
+                (100, 40),
+            ),
+            (
+                Silhouette {
+                    x: 10.0,
+                    y: -50.0,
+                    width: 80.0,
+                    height: 100.0,
+                    radii: BorderRadii::uniform(40.0),
+                    color: BLUE,
+                },
+                (40, 100),
+            ),
+        ] {
+            let xf = Transform::from_row(1.0, 0.01, 0.01, 1.0, 0.0, 0.0);
+            let mut expected = white(size.0, size.1);
+            reference_shadow(&mut expected, &s, 8.0, xf);
+            let mut got = white(size.0, size.1);
+            blurred_shadow(&mut got, &s, 8.0, xf, 9, 80);
+            let diff = got
+                .pixels()
+                .iter()
+                .zip(expected.pixels())
+                .filter(|(a, b)| a != b)
+                .count();
+            assert_eq!(diff, 0, "shadow {},{}; {}x{}", s.x, s.y, size.0, size.1);
+        }
+    }
+
     fn gradient_box(x: f32, y: f32, w: f32, h: f32, angle_deg: f32, radius: f32) -> Fragment {
         let mut f = boxed(x, y, w, h, radius, None);
         if let FragmentContent::Box {

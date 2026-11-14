@@ -375,6 +375,34 @@ fn a_huge_blurred_shadow_allocates_only_its_small_visible_region() {
     }
 }
 
+#[test]
+fn a_downscaled_long_shadow_keeps_both_scratch_axes_bounded() {
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let html = "<body style='margin:0;background:white'><div style='position:absolute;left:0;top:0;width:20000px;height:100px;box-shadow:0 0 10px blue;transform:scale(.01);transform-origin:0 0'></div>";
+    let prepared = PreparedScreenshot::new(
+        html,
+        "",
+        Viewport {
+            width: 128,
+            height: 16,
+        },
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let p = pixel(&png, 64, 0);
+        assert!(p[2] > p[0], "the downscaled blue shadow must really paint");
+    });
+    assert_eq!(
+        big, 0,
+        "a short downscaled shadow must not allocate a megabyte scratch"
+    );
+}
+
 fn check_transparent_shadow_allocations(inset: bool) {
     const BOXES: usize = 20;
     let viewport = Viewport {
