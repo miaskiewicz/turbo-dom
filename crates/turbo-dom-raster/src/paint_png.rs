@@ -578,10 +578,8 @@ fn paint_pixel_dots(
     // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
     let mut y = y_top + diameter;
     while fill_admitted_rect(pm, px_left, y, diameter, (end - y).min(diameter), color, xf) {
-        let Some(next) = next_column_rule_step(y, 2.0) else {
-            break;
-        };
-        y = next;
+        // Admission proved y + h > y for h <= 1; adding 2 must advance too.
+        y += 2.0;
     }
 }
 
@@ -635,10 +633,8 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
         color,
         xf,
     ) {
-        let Some(next) = next_column_rule_step(dash_top, period) else {
-            break;
-        };
-        dash_top = next;
+        // Admitted h <= dash <= period, so monotone float addition advances.
+        dash_top += period;
     }
 }
 
