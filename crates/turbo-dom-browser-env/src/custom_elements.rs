@@ -1317,6 +1317,32 @@ mod tests {
         reset();
     }
     #[test]
+    fn installed_document_strong_context_stays_live_until_released() {
+        super::super::tests::init_v8();
+        let mut isolate = crate::browser_env::tests::new_isolate();
+        let (context, retained) = {
+            v8::scope!(let scope,&mut isolate);
+            let context = v8::Context::new(scope, Default::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            install_with_html(scope, "<!doctype html><body>");
+            (
+                v8::Weak::new(scope, context),
+                v8::Global::new(scope, context),
+            )
+        };
+        for _ in 0..3 {
+            isolate.low_memory_notification();
+        }
+        assert!(!context.is_empty());
+        drop(retained);
+        for _ in 0..3 {
+            isolate.low_memory_notification();
+        }
+        assert!(context.is_empty());
+        clear_interface_records(&mut isolate);
+        reset();
+    }
+    #[test]
     fn installed_document_without_custom_definitions_releases_context() {
         super::super::tests::init_v8();
         let mut isolate = crate::browser_env::tests::new_isolate();
