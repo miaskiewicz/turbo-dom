@@ -1,3 +1,4 @@
+use crate::AccessCheckCallback;
 use crate::ConstructorBehavior;
 use crate::Context;
 use crate::Function;
@@ -125,6 +126,27 @@ unsafe extern "C" {
     setter: *const FunctionTemplate,
     attr: PropertyAttribute,
   );
+
+  // Direct exported V8 member, using the pinned v150.4.0 public POD layouts below.
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v814ObjectTemplate32SetAccessCheckCallbackAndHandlerEPFbNS_5LocalINS_7ContextEEENS1_INS_6ObjectEEENS1_INS_5ValueEEEERKNS_33NamedPropertyHandlerConfigurationERKNS_35IndexedPropertyHandlerConfigurationES7_"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?SetAccessCheckCallbackAndHandler@ObjectTemplate@v8@@QEAAXP6A_NV?$Local@VContext@v8@@@2@V?$Local@VObject@v8@@@2@V?$Local@VValue@v8@@@2@@ZAEBUNamedPropertyHandlerConfiguration@2@AEBUIndexedPropertyHandlerConfiguration@2@2@Z"
+  )]
+  fn v8__ObjectTemplate__SetAccessCheckCallbackAndHandler(
+    this: *const ObjectTemplate,
+    callback: AccessCheckCallback,
+    named: *const NativeNamedPropertyHandlerConfiguration,
+    indexed: *const NativeIndexedPropertyHandlerConfiguration,
+    data: *const Value,
+  );
+  fn v8__Isolate__GetCurrent() -> *mut crate::isolate::RealIsolate;
+  fn v8__Undefined(
+    isolate: *mut crate::isolate::RealIsolate,
+  ) -> *const crate::Primitive;
 
   fn v8__ObjectTemplate__SetNamedPropertyHandler(
     this: *const ObjectTemplate,
@@ -304,6 +326,58 @@ impl<'s> AccessorConfiguration<'s> {
     self
   }
 }
+
+// ABI mirrors of include/v8-template.h in rusty_v8's pinned V8 submodule
+// ac1e23989121713ca642f6650b34deff7b686896. Do not cast the public Rust
+// builders: their layout is unspecified and indexed handlers omit index_of.
+#[repr(C)]
+struct NativeNamedPropertyHandlerConfiguration {
+  getter: Option<NamedPropertyGetterCallback>,
+  setter: Option<NamedPropertySetterCallback>,
+  query: Option<NamedPropertyQueryCallback>,
+  deleter: Option<NamedPropertyDeleterCallback>,
+  enumerator: Option<NamedPropertyEnumeratorCallback>,
+  definer: Option<NamedPropertyDefinerCallback>,
+  descriptor: Option<NamedPropertyDescriptorCallback>,
+  data: *const Value,
+  flags: PropertyHandlerFlags,
+}
+
+#[repr(C)]
+struct NativeIndexedPropertyHandlerConfiguration {
+  getter: Option<IndexedPropertyGetterCallback>,
+  setter: Option<IndexedPropertySetterCallback>,
+  query: Option<IndexedPropertyQueryCallback>,
+  deleter: Option<IndexedPropertyDeleterCallback>,
+  enumerator: Option<IndexedPropertyEnumeratorCallback>,
+  definer: Option<IndexedPropertyDefinerCallback>,
+  descriptor: Option<IndexedPropertyDescriptorCallback>,
+  index_of: *const std::ffi::c_void,
+  data: *const Value,
+  flags: PropertyHandlerFlags,
+}
+
+const _: () = {
+  use std::mem::{offset_of, size_of};
+  let word = size_of::<usize>();
+  assert!(
+    offset_of!(NativeNamedPropertyHandlerConfiguration, data) == 7 * word
+  );
+  assert!(
+    offset_of!(NativeNamedPropertyHandlerConfiguration, flags) == 8 * word
+  );
+  assert!(size_of::<NativeNamedPropertyHandlerConfiguration>() == 9 * word);
+  assert!(
+    offset_of!(NativeIndexedPropertyHandlerConfiguration, index_of) == 7 * word
+  );
+  assert!(
+    offset_of!(NativeIndexedPropertyHandlerConfiguration, data) == 8 * word
+  );
+  assert!(
+    offset_of!(NativeIndexedPropertyHandlerConfiguration, flags) == 9 * word
+  );
+  assert!(size_of::<NativeIndexedPropertyHandlerConfiguration>() == 10 * word);
+};
 
 #[derive(Default)]
 pub struct NamedPropertyHandlerConfiguration<'s> {
@@ -986,6 +1060,55 @@ impl ObjectTemplate {
         configuration.data.map_or_else(null, |p| &*p),
         configuration.property_attribute,
       );
+    }
+  }
+
+  /// Install V8's native access check and handlers used only when it rejects.
+  /// The callbacks must explicitly deny unsupported operations. They must not
+  /// expose protected-realm functions to a different origin.
+  pub fn set_access_check_callback_and_handler(
+    &self,
+    callback: impl MapFnTo<AccessCheckCallback>,
+    named: NamedPropertyHandlerConfiguration,
+    indexed: IndexedPropertyHandlerConfiguration,
+    data: Option<Local<Value>>,
+  ) {
+    let named = NativeNamedPropertyHandlerConfiguration {
+      getter: named.getter,
+      setter: named.setter,
+      query: named.query,
+      deleter: named.deleter,
+      enumerator: named.enumerator,
+      definer: named.definer,
+      descriptor: named.descriptor,
+      data: named.data.map_or_else(null, |value| &*value),
+      flags: named.flags,
+    };
+    let indexed = NativeIndexedPropertyHandlerConfiguration {
+      getter: indexed.getter,
+      setter: indexed.setter,
+      query: indexed.query,
+      deleter: indexed.deleter,
+      enumerator: indexed.enumerator,
+      definer: indexed.definer,
+      descriptor: indexed.descriptor,
+      index_of: null(),
+      data: indexed.data.map_or_else(null, |value| &*value),
+      flags: indexed.flags,
+    };
+    // Rust's callback data is a nonempty Local, even when no data was supplied.
+    let data = data.map_or_else(
+      || unsafe { v8__Undefined(v8__Isolate__GetCurrent()).cast::<Value>() },
+      |value| &*value,
+    );
+    unsafe {
+      v8__ObjectTemplate__SetAccessCheckCallbackAndHandler(
+        self,
+        callback.map_fn_to(),
+        &named,
+        &indexed,
+        data,
+      )
     }
   }
 

@@ -38,6 +38,7 @@ mod bigint;
 mod binding;
 mod context;
 pub use context::ContextOptions;
+mod code_generation;
 pub mod cppgc;
 mod data;
 mod date;
@@ -98,6 +99,10 @@ pub mod simdutf;
 pub mod V8;
 
 pub use array_buffer::*;
+pub use code_generation::{
+  ModifyCodeGenerationFromStringsCallback,
+  ModifyCodeGenerationFromStringsResult,
+};
 pub use data::*;
 pub use exception::*;
 pub use external_references::ExternalReference;
@@ -229,6 +234,10 @@ pub const TYPED_ARRAY_MAX_SIZE_IN_HEAP: usize =
 /// accessor assert this at compile time so a stock `v8` crate cannot be
 /// substituted silently.
 pub const FORK_SHOULD_THROW_FIX: bool = true;
+
+/// Native access-check handlers and global detachment for genuine WindowProxy
+/// identities are available in this fork candidate (turbo-dom#504).
+pub const FORK_WINDOW_PROXY: bool = true;
 
 #[cfg(test)]
 #[allow(unused)]

@@ -27,6 +27,16 @@ unsafe extern "C" {
   ) -> *const Context;
   fn v8__Isolate__GetCurrent() -> *mut RealIsolate;
   fn v8__Context__Global(this: *const Context) -> *const Object;
+  // V8 exports this member in the official prebuilt SDK; no binding.cc shim is needed.
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v87Context12DetachGlobalEv"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?DetachGlobal@Context@v8@@QEAAXXZ"
+  )]
+  fn v8__Context__DetachGlobal(this: *const Context);
   fn v8__Context__GetExtrasBindingObject(this: *const Context)
   -> *const Object;
   fn v8__Context__GetNumberOfEmbedderDataFields(this: *const Context) -> u32;
@@ -125,6 +135,13 @@ impl Context {
   ) -> Local<'s, Object> {
     unsafe { scope.cast_local(|_| v8__Context__GetExtrasBindingObject(self)) }
       .unwrap()
+  }
+
+  /// Detach this context's global proxy before reusing it for a navigation.
+  /// Old objects retain their creation context; the embedder must retire that
+  /// context's native document and update its origin access policy separately.
+  pub fn detach_global(&self) {
+    unsafe { v8__Context__DetachGlobal(self) }
   }
 
   /// Returns the global proxy object.

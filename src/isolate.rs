@@ -3,6 +3,7 @@ use crate::Array;
 use crate::CallbackScope;
 use crate::Context;
 use crate::Data;
+use crate::FailedAccessCheckCallback;
 use crate::FixedArray;
 use crate::Function;
 use crate::FunctionCodeHandling;
@@ -743,6 +744,18 @@ unsafe extern "C" {
       rv: *mut *mut Context,
       initiator_context: Local<Context>,
     ) -> *mut *mut Context,
+  );
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v87Isolate36SetFailedAccessCheckCallbackFunctionEPFvNS_5LocalINS_6ObjectEEENS_10AccessTypeENS1_INS_5ValueEEEE"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?SetFailedAccessCheckCallbackFunction@Isolate@v8@@QEAAXP6AXV?$Local@VObject@v8@@@2@W4AccessType@2@V?$Local@VValue@v8@@@2@@Z@Z"
+  )]
+  fn v8__Isolate__SetFailedAccessCheckCallbackFunction(
+    isolate: *mut RealIsolate,
+    callback: FailedAccessCheckCallback,
   );
   fn v8__Isolate__SetUseCounterCallback(
     isolate: *mut RealIsolate,
@@ -1657,6 +1670,19 @@ impl Isolate {
           rust_shadow_realm_callback,
         );
       }
+    }
+  }
+
+  /// Customize the exception raised after a native object access check fails.
+  pub fn set_failed_access_check_callback(
+    &mut self,
+    callback: impl MapFnTo<FailedAccessCheckCallback>,
+  ) {
+    unsafe {
+      v8__Isolate__SetFailedAccessCheckCallbackFunction(
+        self.as_real_ptr(),
+        callback.map_fn_to(),
+      )
     }
   }
 

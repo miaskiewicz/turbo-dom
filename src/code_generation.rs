@@ -1,0 +1,196 @@
+//! Native dynamic-code authorization over the unchanged V8 150 SDK.
+use crate::support::UnitType;
+use crate::{
+  CallbackScope, Context, Isolate, Local, PinScope, RealIsolate, String, Value,
+};
+
+/// V8's decision for a dynamic compilation. An absent replacement retains the
+/// original source; a replacement is used only when compilation is allowed.
+#[derive(Default)]
+pub struct ModifyCodeGenerationFromStringsResult<'s> {
+  pub codegen_allowed: bool,
+  pub modified_source: Option<Local<'s, String>>,
+}
+
+/// Native authorization for eval and Function-family compilation. The context
+/// is supplied by V8 and may differ from the embedder's currently entered realm.
+/// `is_code_like` is V8's hint, not an eval-versus-Function sink discriminator.
+/// Non-string values must not be coerced merely to inspect them.
+///
+/// This callback must not unwind. Exceptions and execution termination remain
+/// pending in V8; the adapter never clears either condition.
+pub trait ModifyCodeGenerationFromStringsCallback:
+  UnitType
+  + for<'s, 'i> FnOnce(
+    &mut PinScope<'s, 'i>,
+    Local<'s, Context>,
+    Local<'s, Value>,
+    bool,
+  ) -> ModifyCodeGenerationFromStringsResult<'s>
+{
+  #[doc(hidden)]
+  fn to_c_fn(self) -> RawModifyCodeGenerationFromStringsCallback;
+}
+
+// include/v8-callbacks.h at SDK 150.4.0: bool followed by MaybeLocal<String>.
+// MaybeLocal is a single nullable pointer with trivial copy/destruction. In
+// particular it is not an optional Rust reference and must remain nullable.
+#[doc(hidden)]
+#[repr(C)]
+pub struct RawModifyCodeGenerationFromStringsResult {
+  codegen_allowed: bool,
+  modified_source: *const String,
+}
+
+const _: () = {
+  assert!(
+    std::mem::size_of::<RawModifyCodeGenerationFromStringsResult>()
+      == 2 * std::mem::size_of::<usize>()
+  );
+  assert!(
+    std::mem::offset_of!(
+      RawModifyCodeGenerationFromStringsResult,
+      modified_source
+    ) == std::mem::size_of::<usize>()
+  );
+};
+
+// MSVC x64 returns the 16-byte C++ aggregate through a hidden first buffer
+// and returns that buffer address in RAX, matching rusty_v8's other adapters.
+// AArch64 (including Windows) and System V x64 return it in two registers.
+#[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+#[doc(hidden)]
+pub type RawModifyCodeGenerationFromStringsCallback =
+  for<'s> unsafe extern "C" fn(
+    *mut RawModifyCodeGenerationFromStringsResult,
+    Local<'s, Context>,
+    Local<'s, Value>,
+    bool,
+  )
+    -> *mut RawModifyCodeGenerationFromStringsResult;
+#[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
+#[doc(hidden)]
+pub type RawModifyCodeGenerationFromStringsCallback =
+  for<'s> unsafe extern "C" fn(
+    Local<'s, Context>,
+    Local<'s, Value>,
+    bool,
+  ) -> RawModifyCodeGenerationFromStringsResult;
+
+impl<F> ModifyCodeGenerationFromStringsCallback for F
+where
+  F: UnitType
+    + for<'s, 'i> FnOnce(
+      &mut PinScope<'s, 'i>,
+      Local<'s, Context>,
+      Local<'s, Value>,
+      bool,
+    ) -> ModifyCodeGenerationFromStringsResult<'s>,
+{
+  fn to_c_fn(self) -> RawModifyCodeGenerationFromStringsCallback {
+    fn invoke<'s, F: ModifyCodeGenerationFromStringsCallback>(
+      context: Local<'s, Context>,
+      source: Local<'s, Value>,
+      is_code_like: bool,
+    ) -> RawModifyCodeGenerationFromStringsResult {
+      let scope = std::pin::pin!(unsafe { CallbackScope::new(context) });
+      let mut scope = scope.init();
+      let result = (F::get())(&mut scope, context, source, is_code_like);
+      RawModifyCodeGenerationFromStringsResult {
+        codegen_allowed: result.codegen_allowed,
+        modified_source: result
+          .modified_source
+          .map_or(std::ptr::null(), |s| s.as_non_null().as_ptr()),
+      }
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    unsafe extern "C" fn adapter<
+      's,
+      F: ModifyCodeGenerationFromStringsCallback,
+    >(
+      result: *mut RawModifyCodeGenerationFromStringsResult,
+      context: Local<'s, Context>,
+      source: Local<'s, Value>,
+      is_code_like: bool,
+    ) -> *mut RawModifyCodeGenerationFromStringsResult {
+      unsafe {
+        result.write(invoke::<F>(context, source, is_code_like));
+      }
+      result
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
+    unsafe extern "C" fn adapter<
+      's,
+      F: ModifyCodeGenerationFromStringsCallback,
+    >(
+      context: Local<'s, Context>,
+      source: Local<'s, Value>,
+      is_code_like: bool,
+    ) -> RawModifyCodeGenerationFromStringsResult {
+      invoke::<F>(context, source, is_code_like)
+    }
+    adapter::<F>
+  }
+}
+
+unsafe extern "C" {
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v87Isolate42SetModifyCodeGenerationFromStringsCallbackEPFNS_37ModifyCodeGenerationFromStringsResultENS_5LocalINS_7ContextEEENS2_INS_5ValueEEEbE"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?SetModifyCodeGenerationFromStringsCallback@Isolate@v8@@QEAAXP6A?AUModifyCodeGenerationFromStringsResult@2@V?$Local@VContext@v8@@@2@V?$Local@VValue@v8@@@2@_N@Z@Z"
+  )]
+  fn set_callback(
+    isolate: *mut RealIsolate,
+    callback: Option<RawModifyCodeGenerationFromStringsCallback>,
+  );
+
+  #[cfg_attr(
+    not(target_env = "msvc"),
+    link_name = "_ZN2v87Context43SetErrorMessageForCodeGenerationFromStringsENS_5LocalINS_6StringEEE"
+  )]
+  #[cfg_attr(
+    target_env = "msvc",
+    link_name = "?SetErrorMessageForCodeGenerationFromStrings@Context@v8@@QEAAXV?$Local@VString@v8@@@2@@Z"
+  )]
+  fn set_error_message(context: *const Context, message: Local<String>);
+}
+
+impl Context {
+  /// Set V8's EvalError message for rejected eval/Function compilation.
+  /// This is context-wide state, not an exception thrown by the callback.
+  pub fn set_error_message_for_code_generation_from_strings(
+    &self,
+    message: Local<String>,
+  ) {
+    unsafe {
+      set_error_message(self, message);
+    }
+  }
+}
+
+impl Isolate {
+  /// Install the isolate-wide native dynamic-compilation authorization hook.
+  /// Set each governed context's `set_allow_generation_from_strings(false)`
+  /// separately to bypass V8's allowed-string fast path and consult the hook.
+  /// Dispatch per-context policy using the actual context passed by V8.
+  /// The callback is a zero-capture function; store host state in native slots.
+  pub fn set_modify_code_generation_from_strings_callback(
+    &mut self,
+    callback: impl ModifyCodeGenerationFromStringsCallback,
+  ) {
+    unsafe {
+      set_callback(self.as_real_ptr(), Some(callback.to_c_fn()));
+    }
+  }
+
+  /// Remove the native hook. Contexts with string compilation disabled continue
+  /// to deny string compilation through V8's default path.
+  pub fn clear_modify_code_generation_from_strings_callback(&mut self) {
+    unsafe {
+      set_callback(self.as_real_ptr(), None);
+    }
+  }
+}

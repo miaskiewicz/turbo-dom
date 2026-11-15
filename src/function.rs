@@ -1209,3 +1209,88 @@ impl Function {
     code_cache
   }
 }
+
+/// Native V8 security check for access from another context.
+/// Handles belong to this callback's scope, never the interrupted caller's scope.
+pub type AccessCheckCallback = unsafe extern "C" fn(
+  SealedLocal<Context>,
+  SealedLocal<Object>,
+  SealedLocal<Value>,
+) -> bool;
+
+impl<F> MapFnFrom<F> for AccessCheckCallback
+where
+  F: UnitType
+    + for<'s, 'i> Fn(
+      &mut PinScope<'s, 'i>,
+      Local<'s, Context>,
+      Local<'s, Object>,
+      Local<'s, Value>,
+    ) -> bool,
+{
+  fn mapping() -> Self {
+    let f = |context: SealedLocal<Context>,
+             object: SealedLocal<Object>,
+             data: SealedLocal<Value>| {
+      // V8 supplies a live accessing context and nonempty embedder data.
+      let context = unsafe { Local::from_non_null(context.0) };
+      let scope = std::pin::pin!(unsafe { CallbackScope::new(context) });
+      let mut scope = scope.init();
+      let object = unsafe { scope.unseal(object) };
+      let data = unsafe { scope.unseal(data) };
+      (F::get())(&mut scope, context, object, data)
+    };
+    f.to_c_fn()
+  }
+}
+
+/// Operation rejected by a native V8 object access check.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AccessType {
+  Get,
+  Set,
+  Has,
+  Delete,
+  Keys,
+}
+
+/// Native callback customizing the exception after an object access check fails.
+pub type FailedAccessCheckCallback =
+  unsafe extern "C" fn(SealedLocal<Object>, AccessType, SealedLocal<Value>);
+
+impl<F> MapFnFrom<F> for FailedAccessCheckCallback
+where
+  F: UnitType
+    + for<'s, 'i> Fn(
+      &mut PinScope<'s, 'i>,
+      Local<'s, Object>,
+      AccessType,
+      Local<'s, Value>,
+    ),
+{
+  fn mapping() -> Self {
+    let f = |object: SealedLocal<Object>,
+             kind: AccessType,
+             data: SealedLocal<Value>| {
+      unsafe extern "C" {
+        fn v8__Isolate__GetCurrent() -> *mut crate::isolate::RealIsolate;
+        fn v8__Isolate__GetCurrentContext(
+          isolate: *mut crate::isolate::RealIsolate,
+        ) -> *const Context;
+      }
+      // V8 invokes this callback with a live current context and handle scope.
+      let context = unsafe {
+        Local::from_raw_unchecked(v8__Isolate__GetCurrentContext(
+          v8__Isolate__GetCurrent(),
+        ))
+      };
+      let scope = std::pin::pin!(unsafe { CallbackScope::new(context) });
+      let mut scope = scope.init();
+      let object = unsafe { scope.unseal(object) };
+      let data = unsafe { scope.unseal(data) };
+      (F::get())(&mut scope, object, kind, data);
+    };
+    f.to_c_fn()
+  }
+}
