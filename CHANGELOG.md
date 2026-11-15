@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Staged setup termination (#513)**: add a typed independent UTF-16 initializer
+  that reports interrupted bootstrap through the producer's sticky setup result,
+  even when V8 no longer exposes a pending termination. Preserve the existing
+  void API and defer guest init scripts as before.
 - **Ownership test determinism**: use synchronous compilation in native unit-test
   fixtures so temporary compiler handles do not invalidate context-lifetime
   assertions. Strong-owner controls retain the original collection checks.

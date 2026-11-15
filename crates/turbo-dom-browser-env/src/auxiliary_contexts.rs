@@ -203,6 +203,16 @@ pub fn initialize_utf16_source_positions(scope: &mut v8::PinScope, units: &[u16]
     );
 }
 
+/// Staged UTF-16 setup that reports an interrupted bootstrap. The host must
+/// discard an interrupted candidate; this does not roll back a replaced backing.
+pub fn try_initialize_utf16_source_positions(
+    scope: &mut v8::PinScope,
+    units: &[u16],
+) -> Result<(), super::SetupTerminated> {
+    initialize_utf16_source_positions(scope, units);
+    super::setup_result(scope)
+}
+
 /// Primary-document equivalent for a host whose root services address the
 /// binding's current main tree. It also defers guest init scripts.
 pub fn initialize_root_document(scope: &mut v8::PinScope, html: &str) {

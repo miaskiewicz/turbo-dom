@@ -38,6 +38,13 @@ an auxiliary root from its opener's main frame.
    `initialize_auxiliary_utf16_source_positions` when CSP authorization needs
    original UTF-16 token/attribute provenance; these staged variants retain the
    native parser's positions and nonce records without executing guest init.
+   For independent staged documents, prefer
+   `try_initialize_auxiliary_utf16_source_positions(scope, units)`, which returns
+   `Result<(), browser_env::SetupTerminated>`. It reports a setup interruption
+   even after an inner V8 catch or the host clears the outer termination flag.
+   Discard interrupted candidates before exposing them to guest code. This
+   result does not undo a backing replacement; navigation recovery remains
+   host-owned. The existing void initializer remains available.
 2. `OpenHost` receives the source context, an optional selected existing target,
    and the fully converted `OpenRequest`. Enforce activation, sandbox, CSP,
    navigation, isolation and popup policy here. Denial returns `None`.

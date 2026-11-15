@@ -389,3 +389,65 @@ fn install_terminated_at_any_script_does_not_panic() {
     // Every install script was a landing point.
     assert!(at > 40, "only {at} install scripts");
 }
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn staged_utf16_setup_reports_termination_after_outer_flag_clears() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let units: Vec<_> = "<!doctype html><p id=p>\u{1f600}</p>"
+        .encode_utf16()
+        .collect();
+    // The bootstrap exists, but termination precedes animations.js. Its inner
+    // TryCatch can clear the isolate flag without completing the staged setup.
+    TERMINATE_AT_RUN_JS.with(|hook| hook.set(Some(1)));
+    let result =
+        crate::host_internals::try_initialize_auxiliary_utf16_source_positions(scope, &units);
+    assert!(TERMINATE_AT_RUN_JS.with(|hook| hook.take()).is_none());
+    assert!(!scope.is_execution_terminating());
+    assert_eq!(result, Err(SetupTerminated));
+    // A separate candidate on this thread must not inherit the failed setup's
+    // sticky result. Do not reset binding state between the two installations.
+    let fresh = v8::Context::new(scope, Default::default());
+    let fresh_scope = &mut v8::ContextScope::new(scope, fresh);
+    assert_eq!(
+        crate::host_internals::try_initialize_auxiliary_utf16_source_positions(fresh_scope, &units),
+        Ok(())
+    );
+    let namespace = engine_namespace(fresh_scope).unwrap();
+    let key = v8::String::new(fresh_scope, "setAnimationPresentation").unwrap();
+    assert!(namespace
+        .get(fresh_scope, key.into())
+        .unwrap()
+        .is_function());
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn staged_utf16_setup_success_exposes_animation_policy() {
+    crate::browser_env::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::plain_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    let units: Vec<_> = "<!doctype html><p id=p>\u{1f600}</p>"
+        .encode_utf16()
+        .collect();
+    assert_eq!(
+        crate::host_internals::try_initialize_auxiliary_utf16_source_positions(scope, &units),
+        Ok(())
+    );
+    let namespace = engine_namespace(scope).unwrap();
+    let key = v8::String::new(scope, "setAnimationPresentation").unwrap();
+    assert_eq!(namespace.has_own_property(scope, key.into()), Some(true));
+    assert!(namespace.get(scope, key.into()).unwrap().is_function());
+    assert_eq!(
+        json(scope, "document.getElementById('p').textContent"),
+        "\"\u{1f600}\""
+    );
+    reset();
+}

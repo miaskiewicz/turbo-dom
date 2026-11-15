@@ -8891,6 +8891,10 @@ impl std::error::Error for SetupTerminated {}
 /// half-installed document unnoticed.
 pub fn try_install_with_html(scope: &mut v8::PinScope, html: &str) -> Result<(), SetupTerminated> {
     install_with_html(scope, html);
+    setup_result(scope)
+}
+
+fn setup_result(scope: &mut v8::PinScope) -> Result<(), SetupTerminated> {
     match SETUP_TERMINATED.with(|t| t.get()) || scope.is_execution_terminating() {
         true => Err(SetupTerminated),
         false => Ok(()),

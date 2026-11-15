@@ -49,6 +49,7 @@ pub use crate::browser_env::auxiliary_contexts::{
     open_hyperlink as open_auxiliary_hyperlink, opener as auxiliary_context_opener,
     retire as retire_auxiliary_context, run_init_scripts as run_auxiliary_init_scripts,
     set_ready_host as set_auxiliary_ready_host, sever_opener as sever_auxiliary_opener,
+    try_initialize_utf16_source_positions as try_initialize_auxiliary_utf16_source_positions,
     AuxiliaryContextId, AuxiliaryHost, AuxiliaryIdentity, CloseHost, OpenHost, OpenRequest,
     OpenSource, ReadyAction as AuxiliaryReadyAction, ReadyHost as AuxiliaryReadyHost,
 };

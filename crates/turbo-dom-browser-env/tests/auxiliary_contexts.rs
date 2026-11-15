@@ -390,7 +390,7 @@ fn closing_opener_keeps_auxiliary_documents_and_actor_usable() {
 #[test]
 fn source_positioned_staged_documents_preserve_native_csp_provenance() {
     init();
-    for primary in [true, false] {
+    for (primary, checked) in [(true, false), (false, false), (false, true)] {
         let mut isolate = v8::Isolate::new(Default::default());
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
         {
@@ -410,6 +410,11 @@ fn source_positioned_staged_documents_preserve_native_csp_provenance() {
             browser_env::add_init_script("globalThis.initRan=(globalThis.initRan||0)+1");
             if primary {
                 initialize_root_auxiliary_utf16_source_positions(scope, &units);
+            } else if checked {
+                assert_eq!(
+                    try_initialize_auxiliary_utf16_source_positions(scope, &units),
+                    Ok(())
+                );
             } else {
                 initialize_auxiliary_utf16_source_positions(scope, &units);
             }
