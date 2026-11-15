@@ -35,12 +35,16 @@ enum Mode {
 struct Policy {
   mode: Cell<Mode>,
   calls: Cell<usize>,
+  saw_direct_source: Cell<bool>,
+  saw_object_source: Cell<bool>,
 }
 impl Policy {
   fn new(mode: Mode) -> Rc<Self> {
     Rc::new(Self {
       mode: Cell::new(mode),
       calls: Cell::new(0),
+      saw_direct_source: Cell::new(false),
+      saw_object_source: Cell::new(false),
     })
   }
 }
@@ -48,12 +52,18 @@ impl Policy {
 fn authorize<'s>(
   scope: &mut v8::PinScope<'s, '_>,
   context: v8::Local<'s, v8::Context>,
-  _source: v8::Local<'s, v8::Value>,
+  source: v8::Local<'s, v8::Value>,
   _is_code_like: bool,
 ) -> v8::ModifyCodeGenerationFromStringsResult<'s> {
   assert_eq!(context, scope.get_current_context());
   let policy = context.get_slot::<Policy>().unwrap();
   policy.calls.set(policy.calls.get() + 1);
+  if source.is_string() && source.to_rust_string_lossy(scope) == "local + 1" {
+    policy.saw_direct_source.set(true);
+  }
+  if source.is_object() {
+    policy.saw_object_source.set(true);
+  }
   let mut result = v8::ModifyCodeGenerationFromStringsResult::default();
   match policy.mode.get() {
     Mode::Allow => result.codegen_allowed = true,
@@ -117,6 +127,8 @@ fn native_authorization_preserves_lexical_identity_and_context_dispatch() {
     assert!(identity.is_true());
   }
   assert!(allowed_policy.calls.get() >= 6);
+  assert!(allowed_policy.saw_direct_source.get());
+  assert!(allowed_policy.saw_object_source.get());
   {
     let scope = &mut v8::ContextScope::new(scope, denied);
     assert!(eval(scope, r#"(() => {
