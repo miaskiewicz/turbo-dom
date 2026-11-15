@@ -114,10 +114,10 @@ opt-level = 3
 inherits = "release"
 debug = true
 
-# Pre-publish only: resolve the unpublished turbo-dom-v8 150.4.1 (pins.json) from its
-# candidate branch (crates/turbo-dom-v8/scripts/push-candidate.sh prints the rev). crates.io
-# has 150.4.0; publish.yml publishes 150.4.1 first and then drops this table and re-locks
-# from crates.io (`scripts/publish-crates.py drop-v8-patch`, PUBLISHING.md). Re-point it
+# Pre-publish only: resolve the unpublished turbo-dom-v8 version in pins.json from its
+# candidate branch (crates/turbo-dom-v8/scripts/push-candidate.sh prints the rev).
+# publish.yml publishes that fork first, then drops this table and re-locks from
+# crates.io (`scripts/publish-crates.py drop-v8-patch`, PUBLISHING.md). Re-point it
 # after every reviewed fork change; check-versions.py asserts the locked version.
 [patch.crates-io]
-turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "0cfe2c3a405ce33809c23afd7dd30a05fab3f06c" }
+turbo-dom-v8 = { git = "https://github.com/miaskiewicz/turbo-dom", rev = "03839d09726f6e184d72ef83e7e73a1c2ef8d7f9" }
