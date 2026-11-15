@@ -1,27 +1,15 @@
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -38,6 +38,7 @@
- mod binding;
- mod context;
- pub use context::ContextOptions;
+@@ -40,0 +41 @@
 +mod code_generation;
- pub mod cppgc;
- mod data;
- mod date;
-@@ -98,6 +99,10 @@
- pub mod V8;
- 
- pub use array_buffer::*;
+@@ -100,0 +102,4 @@
 +pub use code_generation::{
 +  ModifyCodeGenerationFromStringsCallback,
 +  ModifyCodeGenerationFromStringsResult,
 +};
- pub use data::*;
- pub use exception::*;
- pub use external_references::ExternalReference;
 --- /dev/null
 +++ b/src/code_generation.rs
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,196 @@
 +//! Native dynamic-code authorization over the unchanged V8 150 SDK.
 +use crate::support::UnitType;
 +use crate::{
@@ -79,7 +67,8 @@
 +  );
 +};
 +
-+// MSVC x64 returns the 16-byte C++ aggregate through a hidden first buffer.
++// MSVC x64 returns the 16-byte C++ aggregate through a hidden first buffer
++// and returns that buffer address in RAX, matching rusty_v8's other adapters.
 +// AArch64 (including Windows) and System V x64 return it in two registers.
 +#[cfg(all(target_os = "windows", target_arch = "x86_64"))]
 +#[doc(hidden)]
@@ -89,7 +78,8 @@
 +    Local<'s, Context>,
 +    Local<'s, Value>,
 +    bool,
-+  );
++  )
++    -> *mut RawModifyCodeGenerationFromStringsResult;
 +#[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
 +#[doc(hidden)]
 +pub type RawModifyCodeGenerationFromStringsCallback =
@@ -134,10 +124,11 @@
 +      context: Local<'s, Context>,
 +      source: Local<'s, Value>,
 +      is_code_like: bool,
-+    ) {
++    ) -> *mut RawModifyCodeGenerationFromStringsResult {
 +      unsafe {
 +        result.write(invoke::<F>(context, source, is_code_like));
 +      }
++      result
 +    }
 +    #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
 +    unsafe extern "C" fn adapter<

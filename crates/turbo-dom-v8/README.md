@@ -93,7 +93,7 @@ The adapter creates a `CallbackScope` and never cancels termination or catches e
 without changing the archive. Its private result mirrors the public
 `ModifyCodeGenerationFromStringsResult` layout (bool plus nullable `MaybeLocal<String>`).
 System V x64 and AArch64 return that aggregate in registers; Windows x64 uses a hidden first
-result buffer. Windows AArch64 also returns it in registers. The native `code_generation`
+result buffer and returns that buffer address in RAX. Windows AArch64 also returns it in registers. The native `code_generation`
 tests run the real callback boundary, lexical identity, per-context dispatch, replacement,
 errors, termination and retired-context collection; the existing platform CI matrix must
 pass before a candidate is integrated.

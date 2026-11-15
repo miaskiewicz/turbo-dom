@@ -44,11 +44,11 @@
     "doctests.patch": "c771b47979ab2d933a0481ca851276088cd7241860fe1dbe7982afbc342d9514",
     "incumbent-context.patch": "53363d95f6cb7ef416f8c4a656d08055144efd5c8c39dd3af6fa649cee6d68ba",
     "window-proxy.patch": "de043ea43ac57a156675f91d5fe3afd972ff88594ec3d09bf991845182a9653d",
-    "code-generation.patch": "17fd5c6e98282afd9b54a6f15f4fabdef6be1fcbafd2065e3c45a9c54b9348bf"
+    "code-generation.patch": "eecf4b4f0756919c44262eb4711291aec71a16ac789071b95e3603d5a683d2c6"
   },
   "generated": {
     "files": 192,
-    "tree_sha256": "7459551d5ba0941b90d2a57864304c85969d4205ba883d9caeb2d8254b35656f",
+    "tree_sha256": "3aef59c8a7e668801ed287b7f1e36bca6a1b796971a409e8b9becbb738123434",
     "teardown_tests_sha256": "f057b3486c3d9140123bab8ecd6840cae8486e75cf79cfb8fc2ed20e05bdf63d",
     "key_files": {
       "Cargo.toml": "5659648c3c05c87762f99f21d0a799ebe1a5727a3903179ad3d6dd1e51026451",
@@ -58,7 +58,7 @@
       "src/isolate.rs": "980e44814c5b0f4ea8572b1bfa4a42b72951d31498f89936469a5148e8b827d9",
       "LICENSE": "1c6356fb751d45f0c53093ebf8a7f5e580e802f51999178e19d60f3ec39e147d",
       "tests/interceptor_should_throw.rs": "fd64854325c54d960a343780d5e7e67fff21e4f978c102043196b8705e4ed053",
-      "src/code_generation.rs": "e7de17c77a74d74c4c46f91d19547c02b90ff47bcb50b2eee0c9a31ea81c8765",
+      "src/code_generation.rs": "db52a2508ab8f840f6c073bb02b8b66b158a15f7bc8d3325bcbed94ff97cf091",
       "tests/code_generation.rs": "25f506d0d861e0e52f5a041cd44ce3531271ed2bc4b3d207b7481db037ac327a"
     }
   }
