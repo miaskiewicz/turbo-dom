@@ -66,6 +66,38 @@ and lifetime policy around its real WindowProxy identities.
 mangled symbols; these methods return void and pass pointer-sized `Local<Value>`
 arguments by value on the supported 64-bit targets.
 
+### Native dynamic-code authorization
+
+The candidate also exposes `Isolate::set_modify_code_generation_from_strings_callback()`
+and `clear_modify_code_generation_from_strings_callback()` over V8 150's native hook.
+The zero-capture Rust callback receives `&mut PinScope`, the actual compilation `Context`,
+the uncoerced `Value` source and V8's `is_code_like` hint, and returns
+`ModifyCodeGenerationFromStringsResult { codegen_allowed, modified_source }`.
+`modified_source: None` retains the original source. V8 uses a replacement only when
+compilation is allowed. This preserves intrinsic eval/Function identities and direct eval's
+lexical environment; the binding does not wrap them in guest functions.
+
+Registration is isolate-wide. Set `Context::set_allow_generation_from_strings(false)`
+on each governed context so V8 consults the hook for strings, and dispatch policy from the
+actual context argument. Non-string eval arguments need an allowed result to retain V8's
+non-coercing behavior. The callback supplies no eval-versus-Function sink enum. The host owns
+policy, TrustedScript branding, document lifetime and bounded reporting; no policy or guest
+function handles are retained by the binding.
+
+`Context::set_error_message_for_code_generation_from_strings()` sets V8's context-wide
+EvalError description for native denial. Native controls additionally verify that a callback's
+pending TypeError survives a denied result, and that execution termination is not cleared.
+The adapter creates a `CallbackScope` and never cancels termination or catches exceptions.
+
+`code-generation.patch` calls the official SDK's exported setter and error-message member
+without changing the archive. Its private result mirrors the public
+`ModifyCodeGenerationFromStringsResult` layout (bool plus nullable `MaybeLocal<String>`).
+System V x64 and AArch64 return that aggregate in registers; Windows x64 uses a hidden first
+result buffer. Windows AArch64 also returns it in registers. The native `code_generation`
+tests run the real callback boundary, lexical identity, per-context dispatch, replacement,
+errors, termination and retired-context collection; the existing platform CI matrix must
+pass before a candidate is integrated.
+
 ### Fork delta
 
 | change | where | why |
@@ -75,6 +107,7 @@ arguments by value on the supported 64-bit targets.
 | `UPSTREAM_V8_VERSION` | `build.rs` | The prebuilt archive URL and the `RUSTY_V8_MIRROR` binding URL use `const UPSTREAM_V8_VERSION: &str = "150.4.0"` instead of `CARGO_PKG_VERSION`, so fork patch releases (150.4.x) keep downloading the upstream v150.4.0 SDK. A `build.rs` unit test (`cargo test --test build`) asserts it equals the manifest's pinned `upstream-version`. |
 | Fork marker | `src/lib.rs` | `pub const FORK_SHOULD_THROW_FIX: bool = true;` Bindings that rely on the accessor write `const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);` so a stock `v8` cannot be substituted silently. |
 | Incumbent context | `src/scope.rs`, `src/scope/raw.rs` | `incumbent-context.patch` (turbo-dom#367, turbo-surf#90): the prebuilt binding has no `GetIncumbentContext` wrapper, so `get_incumbent_context()` calls V8's exported member function by its mangled name. It returns the class `Local<Context>`: in a register on Itanium (Linux, macOS), through a hidden result buffer passed after `this` on MSVC (Windows), so the Windows declaration takes that buffer. |
+| Native dynamic-code authorization | `src/code_generation.rs`, `src/lib.rs` | `code-generation.patch` adds the isolate callback, a safe scoped Rust adapter and native context denial messages over the unchanged V8 150 SDK. |
 | Native WindowProxy primitives | `src/context.rs`, `src/template.rs`, `src/function.rs`, `src/isolate.rs` | `window-proxy.patch` adds native global detachment and access-check/failed-access callbacks over the unchanged SDK, with explicit public-header layout mirrors and per-platform member symbols. |
 | Lint allows | `src/lib.rs` | `#![allow(warnings, clippy::all, clippy::pedantic)]`: upstream code is kept as-is, so consumers' lint gates do not apply to it. |
 | Release teardown tests | `tests/test_api.rs` | turbo-surf's reviewed `v8-teardown-tests.patch`: corrects upstream's contradictory slot-liveness assertion and adds weak-slot retirement controls. `test_api` is not a test target here (it needs `icudtl.dat`), so these run only in turbo-surf; `release_v8_teardown.rs` carries the same retirement controls. |

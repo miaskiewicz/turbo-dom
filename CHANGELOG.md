@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Native dynamic-code authorization**: expose V8 150's real isolate callback
+  with scoped context/source handles, allow/deny and optional replacement source,
+  plus native context EvalError messages. Preserve direct-eval lexical identity,
+  Function brands and termination over the unchanged official engine archive;
+  embedders retain ownership of CSP/Trusted Types policy and reporting.
+
 - **Staged setup termination (#513)**: add a typed independent UTF-16 initializer
   that reports interrupted bootstrap through the producer's sticky setup result,
   even when V8 no longer exposes a pending termination. Preserve the existing
