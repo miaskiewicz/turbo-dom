@@ -12197,6 +12197,9 @@ mod css_tree_counting_shape_tests;
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
 #[cfg(test)]
+#[path = "html_image_crossrealm_tests.rs"]
+mod html_image_crossrealm_tests;
+#[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;
 #[cfg(test)]
