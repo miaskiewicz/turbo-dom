@@ -495,6 +495,8 @@ OWNED="$OWNED auxiliary_window_indexes_cases.json auxiliary_window_indexes_probe
 OWNED="$OWNED auxiliary_window_names_cases.json auxiliary_window_names_probe.js auxiliary_window_names_chrome156.json"
 # turbo-dom#509 scoped shadow stylesheet lifecycle Chrome controls.
 OWNED="$OWNED css_effect_shadow_probe.js css_effect_shadow_cases.json css_effect_shadow_chrome156.json"
+# 0.8.4 cross-realm image ownership controls authored here (625472a0).
+OWNED="$OWNED html_image_adoption_chrome156.json html_image_adoption_probe.js html_image_crossrealm_tests.rs"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
