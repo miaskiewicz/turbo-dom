@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Image state across native realms**: share per-image load state and pending
+  decode settlements after document adoption. Original and borrowed getters agree,
+  and decode promises and errors retain the image creator's realm. Private state
+  does not retain an obsolete publishing realm; Chrome 156 and bounded native
+  collection controls cover the ownership contract.
+
 - **Native dynamic-code authorization**: expose V8 150's real isolate callback
   with scoped context/source handles, allow/deny and optional replacement source,
   plus native context EvalError messages. Preserve direct-eval lexical identity,
