@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Window getter receivers**: reject forged receivers for `closed`, `length` and
+  `opener` with TypeError while preserving null/undefined realm adjustment and
+  genuine live/retired windows. Return an empty `name` for retired children,
+  pinned against a Chrome 158 receiver matrix.
+
 - **Image state across native realms**: share per-image load state and pending
   decode settlements after document adoption. Original and borrowed getters agree,
   and decode promises and errors retain the image creator's realm. Private state

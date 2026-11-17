@@ -1,0 +1,827 @@
+{
+  "version": "158.0.8127.18",
+  "executablePath": "/Users/grzegorz/Library/Caches/ms-playwright/chromium-1254/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "probeSha256": "13010e1dd3e7d93893fbbba981518be95f6b1bb8d62b0e8389fd1ff2421a621f",
+  "result": {
+    "live": [
+      {
+        "realm": "root",
+        "property": "closed",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "child": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "length",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "number",
+            "value": 1
+          },
+          "child": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "number",
+            "value": 1
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "number",
+            "value": 1
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "opener",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "child": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "name",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "child": {
+            "kind": "return",
+            "type": "string",
+            "value": "child-name"
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "closed",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "child": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "length",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "number",
+            "value": 1
+          },
+          "child": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "opener",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "child": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "name",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "child": {
+            "kind": "return",
+            "type": "string",
+            "value": "child-name"
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "string",
+            "value": "child-name"
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "string",
+            "value": "child-name"
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      }
+    ],
+    "removed": [
+      {
+        "realm": "root",
+        "property": "closed",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "child": {
+            "kind": "return",
+            "type": "boolean",
+            "value": true
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "length",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "child": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "opener",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "child": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "root",
+        "property": "name",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "child": {
+            "kind": "return",
+            "type": "string",
+            "value": ""
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "closed",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "boolean",
+            "value": false
+          },
+          "child": {
+            "kind": "return",
+            "type": "boolean",
+            "value": true
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "boolean",
+            "value": true
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "boolean",
+            "value": true
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "length",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "child": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "number",
+            "value": 0
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "opener",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "child": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "object",
+            "value": null
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      },
+      {
+        "realm": "child",
+        "property": "name",
+        "receivers": {
+          "root": {
+            "kind": "return",
+            "type": "string",
+            "value": "root-name"
+          },
+          "child": {
+            "kind": "return",
+            "type": "string",
+            "value": ""
+          },
+          "object": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "null": {
+            "kind": "return",
+            "type": "string",
+            "value": ""
+          },
+          "undefined": {
+            "kind": "return",
+            "type": "string",
+            "value": ""
+          },
+          "number": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "prototype": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "forged": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          },
+          "proxy": {
+            "kind": "throw",
+            "name": "TypeError",
+            "message": "Illegal invocation"
+          }
+        }
+      }
+    ]
+  }
+}

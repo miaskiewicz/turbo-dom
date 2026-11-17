@@ -967,3 +967,68 @@ fn reflect_set_navigation_reports_native_admission_and_incumbent_source() {
         assert_js(scope, "!target.closed");
     });
 }
+
+#[test]
+fn window_getter_receivers_match_chrome158_before_and_after_retirement() {
+    const PROBE: &str = include_str!("../src/window_getter_receivers_probe.js");
+    let control: serde_json::Value = serde_json::from_str(include_str!(
+        "../src/window_getter_receivers_chrome158.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(PROBE.as_bytes()))
+    );
+    init();
+    let mut isolate = v8::Isolate::new(Default::default());
+    let host = Rc::new(Host::default());
+    isolate.set_slot(Rc::clone(&host));
+    {
+        v8::scope!(let scope, &mut isolate);
+        let bootstrap = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, bootstrap);
+        let source = root(scope, "https://target.example", true);
+        let child = nested_child(scope, source, &[]);
+        host.children
+            .borrow_mut()
+            .push(v8::Global::new(scope, child));
+        install_auxiliary_window_hooks(
+            source,
+            AuxiliaryWindowHooks {
+                children: Some(children),
+                ..Default::default()
+            },
+        );
+        let child_global = child.global(scope);
+        set(scope, source, "getterPeerForTest", child_global.into());
+        let scope = &mut v8::ContextScope::new(scope, source);
+        eval(
+            scope,
+            &format!("globalThis.getterProbeForTest=({PROBE})(getterPeerForTest)"),
+        );
+        for phase in ["live", "removed"] {
+            if phase == "removed" {
+                assert!(retire_auxiliary_context(scope, child));
+                host.children.borrow_mut().clear();
+            }
+            let expression = if phase == "live" {
+                "getterProbeForTest.live"
+            } else {
+                "getterProbeForTest.removed()"
+            };
+            let json =
+                eval(scope, &format!("JSON.stringify({expression})")).to_rust_string_lossy(scope);
+            let actual: serde_json::Value = serde_json::from_str(&json).unwrap();
+            let expected = control["result"][phase].as_array().unwrap();
+            assert_eq!(actual.as_array().unwrap().len(), expected.len());
+            for (index, row) in expected.iter().enumerate() {
+                assert_eq!(
+                    &actual[index], row,
+                    "{phase}: {} {}",
+                    row["realm"], row["property"]
+                );
+            }
+        }
+    }
+    isolate.remove_slot::<Rc<Host>>();
+}

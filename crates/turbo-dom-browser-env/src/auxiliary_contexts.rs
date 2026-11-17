@@ -611,7 +611,7 @@ fn owner<'s>(
         .then_some(context)
 }
 
-fn same_origin_owner<'s>(
+fn checked_owner<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
 ) -> Option<v8::Local<'s, v8::Context>> {
@@ -621,6 +621,14 @@ fn same_origin_owner<'s>(
         scope.throw_exception(error);
         return None;
     };
+    Some(target)
+}
+
+fn same_origin_owner<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    receiver: v8::Local<'s, v8::Object>,
+) -> Option<v8::Local<'s, v8::Context>> {
+    let target = checked_owner(scope, receiver)?;
     let incumbent = v8::Global::new(scope, scope.get_incumbent_context());
     let source = v8::Local::new(scope, &incumbent);
     if !source
@@ -638,7 +646,7 @@ fn closed_get<'s, 'i>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue<'s>,
 ) {
-    if let Some(closed) = owner(scope, args.this()).and_then(is_closed) {
+    if let Some(closed) = checked_owner(scope, args.this()).and_then(is_closed) {
         rv.set_bool(closed);
     }
 }
@@ -648,7 +656,7 @@ fn length_get<'s, 'i>(
     args: v8::FunctionCallbackArguments<'s>,
     mut rv: v8::ReturnValue<'s>,
 ) {
-    if let Some(context) = owner(scope, args.this()) {
+    if let Some(context) = checked_owner(scope, args.this()) {
         let length = super::auxiliary_window_proxy::children(scope, context).len();
         rv.set_uint32(length.min(u32::MAX as usize) as u32);
     }
@@ -660,7 +668,7 @@ fn opener_get<'s, 'i>(
     mut rv: v8::ReturnValue<'s>,
 ) {
     rv.set(v8::null(scope).into());
-    if let Some(context) = owner(scope, args.this()) {
+    if let Some(context) = checked_owner(scope, args.this()) {
         if let Some(opener) = opener(scope, context) {
             rv.set(opener.into());
         }
@@ -695,9 +703,11 @@ fn name_get<'s, 'i>(
     let Some(record) = same_origin_owner(scope, args.this()).and_then(state) else {
         return;
     };
-    if let Some(name) =
-        v8::String::new_from_two_byte(scope, &record.name.borrow(), v8::NewStringType::Normal)
-    {
+    let name = record.name.borrow();
+    // A discarded child has no active browsing-context name, even though its
+    // retained WindowProxy still carries the identity needed by `closed`.
+    let units: &[u16] = if record.closed.get() { &[] } else { &name };
+    if let Some(name) = v8::String::new_from_two_byte(scope, units, v8::NewStringType::Normal) {
         rv.set(name.into());
     };
 }
