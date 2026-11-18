@@ -10,6 +10,9 @@ use super::{
 use taffy::DetailedGridInfo;
 use taffy::DetailedLayoutInfo;
 
+#[path = "grid_frames.rs"]
+mod frames;
+
 pub(super) fn solve_grid(
     tree: &mut TaffyTree<usize>,
     root: TaffyId,
@@ -39,9 +42,10 @@ pub(super) fn solve_grid(
     };
     let info = info.clone();
     let mut root_style = tree.style(root).unwrap().clone();
-    freeze_columns(&mut root_style, &info, dimensions.1);
+    let gutters = freeze_columns(&mut root_style, &info, dimensions.1);
+    let areas = frames::Areas::new(&info.columns.sizes, &gutters, dimensions.1);
     tree.set_style(root, root_style).unwrap();
-    restore_items(tree, leaves, originals, &info);
+    restore_items(tree, leaves, originals, &info, Some(&areas));
     solve(tree, root, items, dimensions, fill, ctx);
 }
 
@@ -163,7 +167,7 @@ fn cyclic_percentage(value: Dimension) -> bool {
 
 /// Represent each already-used gutter as a fixed spacer track. This preserves
 /// collapsed auto-fit gutters, implicit tracks and distributed content alignment.
-fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) {
+fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) -> Vec<f32> {
     let sizes = &info.columns.sizes;
     let gutters = &info.columns.gutters;
     let active = active_columns(style, info);
@@ -172,6 +176,7 @@ fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) {
     let (leading, between) = alignment_spacing(style.justify_content, free, count);
     let mut seen = false;
     let mut tracks = Vec::with_capacity(sizes.len() * 2 + 1);
+    let mut positioned = Vec::with_capacity(gutters.len());
     for (i, size) in sizes.iter().enumerate() {
         let alignment = if active[i] {
             let offset = if seen { between } else { leading };
@@ -180,13 +185,16 @@ fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) {
         } else {
             0.0
         };
+        positioned.push(gutters[i] + alignment);
         tracks.push(TrackSizingFunction::from_length(gutters[i] + alignment));
         tracks.push(TrackSizingFunction::from_length(*size));
     }
+    positioned.push(*gutters.last().unwrap());
     tracks.push(TrackSizingFunction::from_length(*gutters.last().unwrap()));
     style.grid_template_columns = tracks;
     style.gap.width = LengthPercentage::length(0.0);
     style.justify_content = Some(JustifyContent::Start);
+    positioned
 }
 
 fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
@@ -243,6 +251,7 @@ fn restore_items(
     leaves: &[TaffyId],
     originals: Vec<Style>,
     info: &DetailedGridInfo,
+    areas: Option<&frames::Areas>,
 ) {
     let mut placements = info.items.iter();
     for (id, mut style) in leaves.iter().zip(originals) {
@@ -259,6 +268,10 @@ fn restore_items(
         } else if style.position == Position::Absolute {
             style.grid_column = absolute_placement(style.grid_column, &info.columns, true);
             style.grid_row = absolute_placement(style.grid_row, &info.rows, false);
+        }
+        if let Some(areas) = areas {
+            let width = areas.width(style.grid_column);
+            frames::resolve(&mut style, width);
         }
         tree.set_style(*id, style).unwrap();
     }
@@ -321,6 +334,13 @@ fn mapped_absolute_line(
         return None;
     }
     if expanded {
+        let start = if index == 0 {
+            true
+        } else if index as usize == tracks.sizes.len() {
+            false
+        } else {
+            start
+        };
         return frozen_line(index as u32, start);
     }
     // Rows retain their original explicit grid, including negative implicit rows.

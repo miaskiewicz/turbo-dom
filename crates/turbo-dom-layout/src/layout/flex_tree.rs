@@ -44,7 +44,7 @@ pub(super) fn offset_calc(token: *const (), offset: f32) -> *const () {
     calc(pct, px + offset)
 }
 
-fn resolve_calc(token: *const (), basis: f32) -> f32 {
+pub(super) fn resolve_calc(token: *const (), basis: f32) -> f32 {
     CALCS.with(|values| {
         let (pct, px, scale) = values.borrow()[token.addr() / 8 - 1];
         let value = f64::from(pct) / 100.0 * f64::from(basis) + f64::from(px);
