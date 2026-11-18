@@ -388,6 +388,7 @@ fn collect_inline(element: Subject, out: &mut Vec<Cand>) {
 /// 0), so an author stylesheet always overrides them. Old table-layout sites
 /// (Hacker News' orange header `<td bgcolor>`, sized `<img>`) depend on them.
 fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
+    collect_svg_presentational(element, out);
     // Order matters (bgcolor, width, height, then `<font color>`); each entry is
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
@@ -406,6 +407,52 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     if !decls.is_empty() {
         push_owned_decls(decls, 1, out);
     }
+}
+
+/// SVG presentation attributes participate at author specificity zero, before
+/// stylesheet rules. Namespace checking keeps HTML attributes from becoming CSS.
+fn collect_svg_presentational(element: Subject, out: &mut Vec<Cand>) {
+    let Attrs::Tree(tree, source) = element.attrs else {
+        return;
+    };
+    if tree.namespace(source) != turbo_dom::rtdom::tree::Namespace::Svg {
+        return;
+    }
+    let declarations = [
+        "color",
+        "fill",
+        "fill-opacity",
+        "fill-rule",
+        "stroke",
+        "stroke-width",
+        "stroke-opacity",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-miterlimit",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "opacity",
+        "visibility",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "text-anchor",
+        "clip-path",
+        "clip-rule",
+        "mask",
+        "filter",
+        "stop-color",
+        "stop-opacity",
+    ]
+    .into_iter()
+    .filter_map(|property| {
+        element
+            .attrs
+            .get(property)
+            .map(|value| pres_decl(property, value.to_owned()))
+    });
+    push_owned_decls(declarations, 1, out);
 }
 
 /// A `width` / `height` attribute as a presentational length, except on `<canvas>`

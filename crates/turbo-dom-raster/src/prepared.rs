@@ -39,7 +39,7 @@ impl PreparedScreenshot {
         let mut decoded = image_paint::decode_all(images);
         crate::capture_resources::add_metadata(&mut decoded, options.image_metadata);
         image_paint::add_data_uri_images(&mut decoded, external_css, html);
-        let tree = parse_document(html, &mut decoded, options);
+        let tree = parse_document(html, external_css, viewport, &mut decoded, options);
         let mut galley = options
             .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
         let background = screenshot_canvas_background(&galley, options.omit_background);

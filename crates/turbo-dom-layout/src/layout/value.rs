@@ -1395,7 +1395,7 @@ type DeclaredSide = (u16, Option<SideColour>);
 fn parse_border_shorthand(v: Option<&str>, fs: f32) -> DeclaredSide {
     let Some(text) = v else { return (0, None) };
     let mut side = (0, Some(SideColour::Current));
-    for token in text.split_whitespace() {
+    for token in css_value_tokens(text) {
         if let Some(w) = border_width_token(token, fs) {
             side.0 = w;
         } else if let Some(c) = border_colour_token(token) {

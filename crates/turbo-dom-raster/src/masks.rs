@@ -62,7 +62,14 @@ pub fn screenshot_element_rects(
             }
         }
     };
-    let tree = crate::prepare_document(tree, &mut decoded, options, Some(&mut replaced));
+    let tree = crate::prepare_document(
+        tree,
+        external_css,
+        viewport,
+        &mut decoded,
+        options,
+        Some(&mut replaced),
+    );
     let output = turbo_dom_layout::with_fractional_css_geometry(|| {
         options.with_fonts(|fonts| {
             turbo_dom_layout::set_media_viewport_height(viewport.height as f32);

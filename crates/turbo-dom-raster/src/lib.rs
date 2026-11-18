@@ -563,10 +563,12 @@ pub fn screenshot(html: &str, viewport: Viewport, format: Format) -> Result<Vec<
 /// inline `<svg>`s (and any canvas in one) are replaced.
 fn parse_document(
     html: &str,
+    css: &str,
+    viewport: Viewport,
     decoded: &mut image_paint::DecodedAssets,
     options: &ScreenshotOptions,
 ) -> Tree {
-    prepare_document(parse_html_tree(html), decoded, options, None)
+    prepare_document(parse_html_tree(html), css, viewport, decoded, options, None)
 }
 
 type SvgReplacement<'a> = &'a mut dyn FnMut(
@@ -577,6 +579,8 @@ type SvgReplacement<'a> = &'a mut dyn FnMut(
 
 fn prepare_document(
     mut tree: Tree,
+    css: &str,
+    viewport: Viewport,
     decoded: &mut image_paint::DecodedAssets,
     options: &ScreenshotOptions,
     replaced: Option<SvgReplacement<'_>>,
@@ -586,9 +590,13 @@ fn prepare_document(
     if let Some(canvases) = options.canvases {
         canvas_content::add_canvases(decoded, &tree, canvases);
     }
-    let inline_svgs = match replaced {
-        Some(replaced) => image_paint::inline_svg_to_img_with(&mut tree, replaced),
-        None => image_paint::inline_svg_to_img(&mut tree),
+    let inline_svgs = if image_paint::resolve_inline_svg_styles(&mut tree, css, viewport) {
+        match replaced {
+            Some(replaced) => image_paint::inline_svg_to_img_with(&mut tree, replaced),
+            None => image_paint::inline_svg_to_img(&mut tree),
+        }
+    } else {
+        Vec::new()
     };
     image_paint::add_inline_svg_assets(decoded, &inline_svgs);
     tree
