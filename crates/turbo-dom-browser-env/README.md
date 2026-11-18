@@ -324,6 +324,15 @@ These read canonical records and native dimensions, ignoring overwritten diagnos
 objects return `null`; snapshots are nondraining JSON. The seam is never a guest global
 or a document property.
 
+`restoreJSON(canvas, text)` accepts one complete, unpositioned RGBA8/sRGB
+`putImageData` seed matching the canvas's native dimensions. A host must flatten old
+render operations into that bitmap first. Validation and pixel allocation complete
+before commit; failure preserves the prior context, pixels and draw log. A successful
+restore preserves an existing 2D context's identity while resetting drawing defaults,
+paths and the save stack. It transfers neither earlier transforms nor JavaScript state.
+Zero-area / over-budget seeds are rejected (268,435,456 pixels and 256M JSON code units);
+foreign or unknown canvases return `null`.
+
 Bare-binding readback snapshots reject Proxy/accessor-backed draw records and use
 prototype-free copies, so guest serialization hooks are never invoked implicitly.
 Constructor support alone does not establish complete animation-player support.

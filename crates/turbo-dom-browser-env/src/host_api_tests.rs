@@ -547,3 +547,117 @@ fn canvas_host_uses_private_records_without_guest_aliases_or_hooks() {
         );
     });
 }
+
+fn canvas_host_probe(code: &str) -> String {
+    let mut answer = String::new();
+    with_page("<!doctype html><body></body>", |scope| {
+        let document = object(scope, "document");
+        let record = get_interface_record(scope, document)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+        let key = v8::String::new(scope, "canvasHost").unwrap();
+        let host = record.get(scope, key.into()).unwrap();
+        let global = scope.get_current_context().global(scope);
+        let key = v8::String::new(scope, "__canvasRestoreHost").unwrap();
+        global.set(scope, key.into(), host);
+        answer = json(scope, code);
+    });
+    answer
+}
+
+#[test]
+fn canvas_host_restores_full_pixels_with_fresh_state_and_partial_updates() {
+    let answer = canvas_host_probe(
+        r#"(() => {
+      const host=__canvasRestoreHost,cv=document.createElement('canvas');cv.width=2;cv.height=1;
+      const seed=JSON.stringify([['putImageData',[{width:2,height:1,data:[201,77,13,77,64,128,192,255],colorSpace:'srgb',pixelFormat:'rgba-unorm8'},0,0,0,0,2,1]]]);
+      if(typeof host.restoreJSON!=='function')throw Error('missing private restoreJSON');
+      const ctx=host.restoreJSON(cv,seed),image=ctx.getImageData(0,0,2,1);
+      ctx.putImageData(new ImageData(new Uint8ClampedArray([12,34,56,255]),1),1,0);
+      const partial=Array.from(ctx.getImageData(0,0,2,1).data);
+      ctx.fillStyle='red';ctx.globalAlpha=0.25;ctx.translate(5,0);ctx.save();ctx.setLineDash([1,2]);
+      const same=host.restoreJSON(cv,seed)===ctx;
+      const state=[ctx.fillStyle,ctx.globalAlpha,ctx.getLineDash(),JSON.parse(host.snapshotJSON(ctx)).map(op=>op[0])];
+      ctx.restore();ctx.fillRect(0,0,1,1);
+      const commands=JSON.parse(host.snapshotJSON(ctx));
+      cv.width=3;
+      return [image instanceof ImageData,image.data instanceof Uint8ClampedArray,Array.from(image.data),partial,same,state,commands.map(op=>op[0]),commands[2][2],Array.from(ctx.getImageData(0,0,1,1).data)];
+    })()"#,
+    );
+    assert_eq!(
+        answer,
+        r##"[true,true,[202,76,13,77,64,128,192,255],[202,76,13,77,12,34,56,255],true,["#000000",1,[],["putImageData"]],["putImageData","restore","fillRect"],"#000000",[0,0,0,0]]"##
+    );
+}
+
+#[test]
+fn canvas_host_rejects_invalid_restore_atomically() {
+    let answer = canvas_host_probe(
+        r#"(() => {
+      const host=__canvasRestoreHost,cv=document.createElement('canvas');cv.width=2;cv.height=1;
+      const ctx=cv.getContext('2d');ctx.fillStyle='red';ctx.putImageData(new ImageData(new Uint8ClampedArray([12,34,56,255]),1),0,0);
+      const before=host.snapshotJSON(ctx),make=()=>[['putImageData',[{width:2,height:1,data:[1,2,3,255,4,5,6,255],colorSpace:'srgb',pixelFormat:'rgba-unorm8'},0,0,0,0,2,1]]];
+      const bad=['{','[]','[[[[[[[[0]]]]]]]]'];
+      for(const mutate of [s=>s.push(s[0]),s=>s[0][0]='fillRect',s=>s[0][1][1]=1,s=>s[0][1][5]=1,s=>s[0][1][0].width=3,s=>s[0][1][0].data.pop(),s=>s[0][1][0].data[0]=-1,s=>s[0][1][0].data[0]=256,s=>s[0][1][0].data[0]=1.5,s=>s[0][1][0].data[0]=[[1]],s=>s[0][1][0].data[0]='1',s=>s[0][1][0].pixelFormat='rgba-float16',s=>s[0][1][0].colorSpace='display-p3',s=>s[0][1][0].extra=1]){const s=make();mutate(s);bad.push(JSON.stringify(s))}
+      let rejected=0,unchanged=true;
+      for(const text of bad){try{host.restoreJSON(cv,text)}catch(e){rejected++}unchanged=unchanged&&host.snapshotJSON(ctx)===before&&ctx.fillStyle==='#ff0000'&&ctx.getImageData(0,0,1,1).data[0]===12}
+      const fresh=document.createElement('canvas');fresh.width=2;fresh.height=1;try{host.restoreJSON(fresh,'[]')}catch(e){}
+      const foreign=document.implementation.createHTMLDocument('').createElement('canvas');
+      const huge=document.createElement('canvas');huge.width=2147483647;huge.height=2147483647;const big=make();big[0][1][0].width=huge.width;big[0][1][0].height=huge.height;big[0][1][5]=huge.width;big[0][1][6]=huge.height;
+      let budget='none';try{host.restoreJSON(huge,JSON.stringify(big))}catch(e){budget=e.name}
+      return [rejected===bad.length,unchanged,host.readContext(fresh),host.restoreJSON(foreign,JSON.stringify(make())),host.restoreJSON({},'bad'),budget,host.readContext(huge)];
+    })()"#,
+    );
+    assert_eq!(answer, "[true,true,null,null,null,\"RangeError\",null]");
+}
+
+#[test]
+fn canvas_host_restore_uses_captured_intrinsics_and_private_methods() {
+    let answer = canvas_host_probe(
+        r#"(() => {
+      const host=__canvasRestoreHost,cv=document.createElement('canvas');cv.width=2;cv.height=1;
+      const seed=JSON.stringify([['putImageData',[{width:2,height:1,data:[12,34,56,255,0,0,0,0],colorSpace:'srgb',pixelFormat:'rgba-unorm8'},0,0,0,0,2,1]]]);
+      const original={define:Object.defineProperty,keys:Object.keys,descriptor:Object.getOwnPropertyDescriptor,parse:JSON.parse,each:Array.prototype.forEach,ImageData,Uint8ClampedArray};
+      let calls=0;const fail=()=>{calls++;throw Error('guest hook')};
+      for(const name of ['getContext','__ctx2d','width','height'])original.define(cv,name,{__proto__:null,get:fail,configurable:false});
+      original.define(Array.prototype,'toJSON',{__proto__:null,get:fail,configurable:true});original.define(Object.prototype,'toJSON',{__proto__:null,get:fail,configurable:true});
+      original.define(Object.prototype,'value',{__proto__:null,get:fail,configurable:true});original.define(Object.prototype,'get',{__proto__:null,get:fail,configurable:true});original.define(Object.prototype,'letterSpacing',{__proto__:null,get:fail,configurable:true});
+      Object.keys=fail;Object.defineProperty=fail;Object.getOwnPropertyDescriptor=fail;JSON.parse=fail;Array.prototype.forEach=fail;globalThis.ImageData=fail;globalThis.Uint8ClampedArray=fail;
+      let ctx,snapshot;
+      try{ctx=host.restoreJSON(cv,seed);snapshot=host.snapshotJSON(ctx)}finally{
+        delete Object.prototype.value;delete Object.prototype.get;delete Object.prototype.letterSpacing;delete Object.prototype.toJSON;delete Array.prototype.toJSON;
+        Object.keys=original.keys;Object.defineProperty=original.define;Object.getOwnPropertyDescriptor=original.descriptor;JSON.parse=original.parse;Array.prototype.forEach=original.each;globalThis.ImageData=original.ImageData;globalThis.Uint8ClampedArray=original.Uint8ClampedArray;
+      }
+      const first=Array.from(ctx.getImageData(0,0,2,1).data),same=host.readContext(cv)===ctx;
+      const put=ctx.putImageData;original.define(ctx,'putImageData',{get:fail,configurable:false});original.define(ctx,'_ops',{get:fail,configurable:false});
+      host.restoreJSON(cv,seed);put.call(ctx,new ImageData(new Uint8ClampedArray([64,128,192,255]),1),1,0);
+      return [calls,same,first,JSON.parse(snapshot)[0][0],Array.from(ctx.getImageData(1,0,1,1).data),host.size(cv)];
+    })()"#,
+    );
+    assert_eq!(
+        answer,
+        r#"[0,true,[12,34,56,255,0,0,0,0],"putImageData",[64,128,192,255],[2,1]]"#
+    );
+}
+
+#[test]
+fn canvas_host_restore_rejects_locked_logs_without_changing_prior_state() {
+    let answer = canvas_host_probe(
+        r#"(() => {
+      const host=__canvasRestoreHost,checks=[];
+      for(const lock of [Object.freeze,Object.preventExtensions,log=>Object.defineProperty(log,'0',{configurable:false})]){
+        const cv=document.createElement('canvas');cv.width=1;cv.height=1;const ctx=cv.getContext('2d');
+        ctx.fillStyle='red';ctx.putImageData(new ImageData(new Uint8ClampedArray([12,34,56,255]),1),0,0);
+        const before=host.snapshotJSON(ctx),seed=before;lock(ctx._ops);
+        let name='none';try{host.restoreJSON(cv,seed)}catch(e){name=e.name}
+        checks.push([name,host.snapshotJSON(ctx)===before,ctx.fillStyle,Array.from(ctx.getImageData(0,0,1,1).data)]);
+      }
+      return checks;
+    })()"#,
+    );
+    assert_eq!(
+        answer,
+        r##"[["TypeError",true,"#ff0000",[12,34,56,255]],["TypeError",true,"#ff0000",[12,34,56,255]],["TypeError",true,"#ff0000",[12,34,56,255]]]"##
+    );
+}

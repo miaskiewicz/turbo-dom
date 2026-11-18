@@ -4559,7 +4559,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // stable content-derived hash reads like a real — if device-invariant — canvas. There is
     // no GPU/font rasterizer here, so the output is synthetic: honest about being computed
     // from the op log, not a specific device's pixels. Covers signature pads/charts too.
-    var __cvContexts = new WeakMap(), __cvLogs = new WeakMap(), __cvOwners = new WeakMap(), __cvIsArray = Array.isArray, __cvTypeError = TypeError;
+    var __cvContexts = new WeakMap(), __cvLogs = new WeakMap(), __cvOwners = new WeakMap(), __cvRestoreMethods = new WeakMap(), __cvParse = JSON.parse, __cvRangeError = RangeError, __cvIsArray = Array.isArray, __cvTypeError = TypeError;
     var __cvSnapshot = function(value, depth){
       if (typeof value === 'bigint') throw new __cvTypeError('Canvas draw state cannot contain BigInt values');
       if (value === null || typeof value !== 'object') return typeof value === 'function' || value === undefined ? null : value;
@@ -4625,9 +4625,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     var __cvStyles = function(ctx, canvas){
       var state = { fillStyle: '#000000', strokeStyle: '#000000', shadowColor: 'rgba(0, 0, 0, 0)' };
-      Object.keys(state).forEach(function(name){
+      $c.forEach($O.keys(state),function(name){
         var paints = name !== 'shadowColor';
-        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+        $def(ctx, name, { __proto__:null, configurable: true, enumerable: true,
           get: function(){ return state[name]; },
           set: function(value){
             if (paints && value !== null && typeof value === 'object' && $c.has(__cvPaints, value)) { state[name] = value; return; }
@@ -4674,7 +4674,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // read back lowercased with the number reserialized; the enum attributes accept only
     // their exact values. An invalid assignment is ignored. measureText passes them on.
     var __cvLength = /^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)([a-z]+)$/i;
-    var __cvEnums = {
+    var __cvEnums = { __proto__:null,
       fontKerning: ['auto', 'normal', 'none'],
       fontStretch: ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'normal',
         'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'],
@@ -4682,9 +4682,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     };
     var __cvText = function(ctx){
       var state = { letterSpacing: '0px', wordSpacing: '0px', fontKerning: 'auto', fontStretch: 'normal', textRendering: 'auto' };
-      Object.keys(state).forEach(function(name){
+      $c.forEach($O.keys(state),function(name){
         var allowed = __cvEnums[name];
-        Object.defineProperty(ctx, name, { configurable: true, enumerable: true,
+        $def(ctx, name, { __proto__:null, configurable: true, enumerable: true,
           get: function(){ return state[name]; },
           set: function(value){
             var text = String(value);
@@ -4753,7 +4753,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       }
       var record = { width: w, height: h, data: data, colorSpace: settings.colorSpace, pixelFormat: settings.pixelFormat };
       imageDataRecordNative(this, record);
-      if (settings.pixelFormat === 'rgba-unorm8') $def(this, 'data', { value: data, enumerable: true, configurable: true });
+      if (settings.pixelFormat === 'rgba-unorm8') $def(this, 'data', { __proto__:null, value: data, enumerable: true, configurable: true });
     };
     var __idProto = ImageData.prototype;
     ['width','height','colorSpace','data','pixelFormat'].forEach(function(name){
@@ -4782,11 +4782,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var log = ctx._ops;
       var context = function(value){ var record = $apply($wmGet, __idContexts, [value]); if (!record) throw new __cvTypeError('Illegal invocation'); return record; };
       var reset = function(state){ var next = __cvDimension(state.canvas, 'width') + 'x' + __cvDimension(state.canvas, 'height'); if (next !== state.size) { state.pixels = null; state.written = null; state.size = next; } };
-      ctx.createImageData = function createImageData(width){
+      $def(ctx, 'createImageData', { __proto__:null, configurable:true, enumerable:true, writable:true, value:function createImageData(width){
         context(this);
         return arguments.length === 1 ? __idCreate(width) : __idCreate(width, arguments[1], arguments[2]);
-      };
-      ctx.putImageData = function putImageData(image, dx, dy){
+      } });
+      $def(ctx, 'putImageData', { __proto__:null, configurable:true, enumerable:true, writable:true, value:function putImageData(image, dx, dy){
         var state = context(this), ctx = this;
         if (arguments.length < 3) throw new __cvTypeError('putImageData requires three arguments');
         var record = __idGet(image);
@@ -4822,8 +4822,8 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         // Mixed logs retain paths and drawing state; pure uploads can forget replaced frames.
         if (left === 0 && top === 0 && right === cw && bottom === ch && $c.every(log, function(op){ return op[0] === 'putImageData'; })) log.length = 0;
         $c.push(log, ['putImageData', [snapshot, dx, dy, dirtyX, dirtyY, dirtyW, dirtyH]]);
-      };
-      ctx.getImageData = function getImageData(x, y, width, height){
+      } });
+      $def(ctx, 'getImageData', { __proto__:null, configurable:true, enumerable:true, writable:true, value:function getImageData(x, y, width, height){
         var state = context(this), ctx = this, canvas = state.canvas;
         var cw = __cvDimension(canvas, 'width'), ch = __cvDimension(canvas, 'height');
         if (arguments.length < 4) throw new __cvTypeError('getImageData requires four arguments');
@@ -4851,11 +4851,10 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           data[to + 3] = alpha;
         }
         return image;
-      };
-      var stored = context(ctx);
-      return function(){ stored.pixels = null; stored.written = null; stored.size = ''; };
+      } });
+      return function(){ var stored=context(ctx);stored.pixels = null; stored.written = null; stored.size = ''; };
     };
-    var mkCanvasCtx = function(canvas){
+    var mkCanvasCtx = function(canvas, unpublished){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; $c.add(__cvPaints, p); return p; };
       var lineDash = [], stack = [];
@@ -4898,11 +4897,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         'bezierCurveTo','quadraticCurveTo','arc','arcTo','rect','roundRect','ellipse','fill','stroke',
         'clip','save','restore','scale','rotate','translate','transform','setTransform','resetTransform',
         'drawImage','putImageData','fillText','strokeText','drawFocusIfNeeded'];
-      recorded.forEach(function(name){
-        ctx[name] = function(){
+      $c.forEach(recorded,function(name){
+        $def(ctx, name, { __proto__:null, configurable:true, enumerable:true, writable:true, value:function(){
           var a = Array.prototype.slice.call(arguments).map(function(v){ return (v && typeof v === 'object') ? (v.tagName || v.nodeName || 'obj') : v; });
           $c.push($apply($wmGet, __cvLogs, [this]), [name, a, this.fillStyle, this.strokeStyle, this.font, this.textBaseline, this.textAlign, this.globalAlpha, this.globalCompositeOperation]);
-        };
+        } });
       });
       // The drawing-state stack (turbo-dom#110): save() snapshots every state attribute and the
       // line dash, restore() brings the last snapshot back (an empty stack is a no-op). Both
@@ -4928,19 +4927,21 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       var resetPixels = __idInstallPixels(ctx, canvas), ops = ctx._ops, defaults = [], values = $create(null);
       var dataState = function(name, value){
         values[name] = value;
-        $def(ctx, name, { configurable:true, enumerable:true, get:function(){return values[name];},set:function(next){values[name]=next;} });
+        $def(ctx, name, { __proto__:null, configurable:true, enumerable:true, get:function(){return values[name];},set:function(next){values[name]=next;} });
       };
       $apply($wmSet, __cvLogs, [ctx, ops]);
       for (var d = 0; d < drawingState.length; d++) {
         var descriptor = $gopd(ctx, drawingState[d]);
         if ($O.hasOwn(descriptor, 'value')) { $c.push(defaults, [drawingState[d], descriptor.value]); dataState(drawingState[d], descriptor.value); }
       }
-      canvasResetNative(canvas, function(){
+      var resetContext = function(){
         resetPixels(); resetStyles(); resetText(); lineDash = []; stack.length = 0; ops.length = 0;
         for (var n = 0; n < defaults.length; n++) {
           values[defaults[n][0]] = defaults[n][1];
         }
-      });
+      };
+      $apply($wmSet,__cvRestoreMethods,[ctx,{__proto__:null,reset:resetContext,put:ctx.putImageData}]);
+      if (!unpublished) canvasResetNative(canvas, resetContext);
       return ctx;
     };
     // WebGL: a COHERENT headless-Chrome SwiftShader context (ANGLE over Vulkan). Headless
@@ -5120,10 +5121,65 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // Host queries share the canonical private records, never diagnostic guest aliases.
       var ownsCanvas = function(canvas){return !!canvasResetNative(canvas) && $apply($N.ownerDocument, canvas, []) === d;};
       var readCanvas = function(context){var canvas=$apply($wmGet,__cvOwners,[context]);return canvas&&ownsCanvas(canvas)?canvas:null;};
+      var restoreField = function(object, name){var descriptor=$gopd(object,name);return descriptor&&$O.hasOwn(descriptor,'value')?descriptor.value:undefined;};
+      var restoreArray = function(value,length){return __cvIsArray(value)&&restoreField(value,'length')===length;};
+      var restoreImage = function(args,width,height){
+        var image=restoreField(args,0);
+        if(!image||typeof image!=='object'||__cvIsArray(image)||$O.keys(image).length!==5)throw new __cvTypeError('Canvas restore image has invalid fields');
+        if(restoreField(image,'width')!==width||restoreField(image,'height')!==height||restoreField(image,'colorSpace')!=='srgb'||restoreField(image,'pixelFormat')!=='rgba-unorm8')throw new __cvTypeError('Canvas restore image does not match the native bitmap');
+        return image;
+      };
+      var restoreHeader = function(seed,width,height){
+        if(!restoreArray(seed,1))throw new __cvTypeError('Canvas restore requires exactly one upload');
+        var op=restoreField(seed,0);
+        if(!restoreArray(op,2)||restoreField(op,0)!=='putImageData')throw new __cvTypeError('Canvas restore requires a pure upload');
+        var args=restoreField(op,1);
+        if(!restoreArray(args,7))throw new __cvTypeError('Canvas restore upload has invalid arguments');
+        for(var coordinate=1;coordinate<5;coordinate++)if(restoreField(args,coordinate)!==0)throw new __cvTypeError('Canvas restore requires a full unpositioned upload');
+        if(restoreField(args,5)!==width||restoreField(args,6)!==height)throw new __cvTypeError('Canvas restore requires the whole bitmap');
+        return restoreImage(args,width,height);
+      };
+      var restoreBytes = function(image,width,height){
+        var data=restoreField(image,'data'),length=width*height*4;
+        if(!restoreArray(data,length))throw new __cvTypeError('Canvas restore pixel length is invalid');
+        for(var index=0;index<length;index++){var byte=restoreField(data,index);if(typeof byte!=='number'||byte<0||byte>255||byte!==__idFloor(byte))throw new __cvTypeError('Canvas restore requires integer RGBA8 pixels');}
+        var bytes=new __idU8(length);for(index=0;index<length;index++)bytes[index]=data[index];
+        return bytes;
+      };
+      var restoreSeed = function(text,width,height){
+        if(typeof text!=='string')throw new __cvTypeError('Canvas restore requires a JSON string');
+        if(text.length>268435456||width*height>268435456)throw new __cvRangeError('Canvas restore exceeds the pixel or JSON transfer budget');
+        if(!width||!height)throw new __cvRangeError('Canvas restore requires positive bitmap dimensions');
+        var seed=$apply(__cvParse,$JSON,[text]),image=restoreHeader(seed,width,height);
+        return new ImageData(restoreBytes(image,width,height),width,height,{__proto__:null,colorSpace:'srgb',pixelFormat:'rgba-unorm8'});
+      };
+      var restoreWritableLog = function(log){
+        if(!$gopd(log,'length').writable||!$O.isExtensible(log))throw new __cvTypeError('Canvas restore cannot replace a frozen draw log');
+        var names=$O.getOwnPropertyNames(log);
+        for(var index=0;index<names.length;index++){var name=names[index];if($c.test(/^(0|[1-9][0-9]*)$/,name)&&+name<4294967295&&!$gopd(log,name).configurable)throw new __cvTypeError('Canvas restore cannot replace a locked draw operation');}
+      };
+      var restoreJSON = function(canvas,text){
+        if(!ownsCanvas(canvas))return null;
+        var image=restoreSeed(text,__cvDimension(canvas,'width'),__cvDimension(canvas,'height'));
+        var record=$apply($wmGet,__cvContexts,[canvas]),context=record&&record.two;
+        if(context)restoreWritableLog($apply($wmGet,__cvLogs,[context]));
+        // Prepare all pixel allocations through the same branded put implementation,
+        // without publishing a context or changing the canvas's existing reset hook.
+        var prepared=mkCanvasCtx(canvas,true),methods=$apply($wmGet,__cvRestoreMethods,[prepared]);
+        $apply(methods.put,prepared,[image,0,0]);
+        if(!context){
+          if(!record){record=$create(null);$apply($wmSet,__cvContexts,[canvas,record]);}
+          record.two=prepared;$apply($wmSet,__cvOwners,[prepared,canvas]);canvasResetNative(canvas,methods.reset);return prepared;
+        }
+        var existing=$apply($wmGet,__cvRestoreMethods,[context]),pixels=$apply($wmGet,__idContexts,[prepared]),operation=$apply($wmGet,__cvLogs,[prepared])[0];
+        existing.reset();$apply($wmSet,__idContexts,[context,pixels]);$c.push($apply($wmGet,__cvLogs,[context]),operation);
+        return context;
+      };
       var canvasDocumentRecord = collectionGet(d);
       canvasDocumentRecord.canvasHost = { __proto__:null,
         readContext:function(canvas){if(!ownsCanvas(canvas))return null;return activeCtx(canvas);},
         readCanvas:readCanvas,
+        restoreJSON:restoreJSON,
         snapshotJSON:function(context){if(!readCanvas(context))return null;return $jsonStringify(__cvSnapshot($apply($wmGet,__cvLogs,[context]),0));},
         size:function(canvas){if(!ownsCanvas(canvas))return null;var size=[__cvDimension(canvas,'width'),__cvDimension(canvas,'height')];$O.setPrototypeOf(size,null);return size;}
       };
