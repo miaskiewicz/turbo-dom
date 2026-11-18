@@ -1,6 +1,6 @@
 use turbo_dom_raster::{
-    screenshot_png_with_options, screenshot_svg_with_options, ImageAssets, ScreenshotOptions,
-    Viewport,
+    screenshot_png_with_options, screenshot_svg_with_options, ImageAssets, PreparedScreenshot,
+    ScreenshotOptions, Viewport,
 };
 
 #[test]
@@ -107,5 +107,55 @@ fn full_page_scroll_extent_survives_css_clip_without_painting_clipped_ink() {
             .svg()
             .unwrap()
             .contains(&format!("height=\"{height}\"")));
+    }
+}
+
+#[test]
+fn propagated_canvas_color_is_painted_once_under_body_layers() {
+    let viewport = Viewport {
+        width: 40,
+        height: 30,
+    };
+    let images = ImageAssets::new();
+    for (omit_background, body_color, inside, outside) in [
+        (true, "blue", [0, 0, 255, 255], [255, 0, 0, 128]),
+        (
+            true,
+            "rgba(0,0,255,0.5)",
+            [85, 0, 170, 192],
+            [255, 0, 0, 128],
+        ),
+        (false, "blue", [0, 0, 255, 255], [255, 127, 127, 255]),
+    ] {
+        let html = format!(
+            "<html style='background:rgba(255,0,0,0.5)'><body style='margin:0;height:10px;background:{body_color}'>"
+        );
+        let mut options = ScreenshotOptions::default();
+        options.omit_background = omit_background;
+        let scene = PreparedScreenshot::new(&html, "", viewport, &images, &options);
+        let png = image::load_from_memory(&scene.png().unwrap())
+            .unwrap()
+            .to_rgba8();
+        let svg = scene.svg().unwrap();
+        let tree = resvg::usvg::Tree::from_str(&svg, &resvg::usvg::Options::default()).unwrap();
+        let mut vector = tiny_skia::Pixmap::new(40, 30).unwrap();
+        resvg::render(
+            &tree,
+            tiny_skia::Transform::identity(),
+            &mut vector.as_mut(),
+        );
+        for (x, y, expected) in [(20, 5, inside), (20, 25, outside)] {
+            assert_eq!(
+                png.get_pixel(x, y).0,
+                expected,
+                "PNG {body_color} omit={omit_background} at{x},{y}"
+            );
+            let pixel = vector.pixel(x, y).unwrap().demultiply();
+            assert_eq!(
+                [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                expected,
+                "SVG {body_color} omit={omit_background} at{x},{y}"
+            );
+        }
     }
 }

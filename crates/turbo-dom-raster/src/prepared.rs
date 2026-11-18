@@ -1,6 +1,7 @@
 use crate::{
     image_paint, lay_out, paint_height, paint_png, paint_svg, parse_document,
-    screenshot_canvas_background, Fragment, ImageAssets, Rgba, ScreenshotOptions, Viewport,
+    screenshot_canvas_background, Fragment, FragmentContent, ImageAssets, Rgba, ScreenshotOptions,
+    Viewport,
 };
 
 /// An immutable, owned snapshot of a screenshot's layout and decoded resources.
@@ -39,10 +40,15 @@ impl PreparedScreenshot {
         crate::capture_resources::add_metadata(&mut decoded, options.image_metadata);
         image_paint::add_data_uri_images(&mut decoded, external_css, html);
         let tree = parse_document(html, &mut decoded, options);
-        let galley = options
+        let mut galley = options
             .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
         let background = screenshot_canvas_background(&galley, options.omit_background);
         let height = paint_height(&galley, viewport, options.full_page);
+        // The propagated canvas color is already the painters' initial fill. Its
+        // galley slot transports that color; painting it again composites it twice.
+        if let FragmentContent::Box { background, .. } = &mut galley.content {
+            *background = None;
+        }
         Self {
             galley,
             decoded,
