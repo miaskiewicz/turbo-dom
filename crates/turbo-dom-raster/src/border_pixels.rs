@@ -347,4 +347,157 @@ mod tests {
         assert!((pixel_coverage(&side, 2.0, 2.0) - 0.15625).abs() < f32::EPSILON);
         assert_eq!(pixel_coverage(&side, 4.0, 2.0), 0.0);
     }
+
+    fn fragment(x: f32, y: f32, w: f32, h: f32) -> Fragment {
+        Fragment::new(
+            turbo_dom_layout::NodeId(0),
+            x,
+            y,
+            w,
+            h,
+            turbo_dom_layout::FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: turbo_dom_layout::BorderRadii::ZERO,
+                shadow: None,
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn colored_edges(width: u16) -> BorderEdges {
+        let side = |color| turbo_dom_layout::layout::value::BorderSide {
+            width,
+            color: Some(color),
+        };
+        BorderEdges {
+            top: side(Rgba::new(255, 0, 0, 128)),
+            right: side(Rgba::new(0, 0, 255, 128)),
+            bottom: side(Rgba::new(0, 128, 0, 128)),
+            left: side(Rgba::new(0, 0, 0, 128)),
+        }
+    }
+
+    fn ring(f: &Fragment, b: &BorderEdges) -> Path {
+        let radii = turbo_dom_layout::BorderRadii::uniform(3.0);
+        let mut path = tiny_skia::PathBuilder::new();
+        path.push_path(
+            &crate::paint_png::rrect_path((f.x, f.y, f.width, f.height), &radii).unwrap(),
+        );
+        let (inner, radii) = rrect::padding_box(f, b, &radii);
+        if let Some(inner) = crate::paint_png::rrect_path(inner, &radii) {
+            path.push_path(&inner);
+        }
+        path.finish().unwrap()
+    }
+
+    #[test]
+    fn absent_zero_width_and_transparent_sides_preserve_the_backdrop() {
+        use turbo_dom_layout::layout::value::BorderSide;
+        let edges = BorderEdges {
+            top: BorderSide {
+                width: 1,
+                color: None,
+            },
+            right: BorderSide {
+                width: 0,
+                color: Some(Rgba::BLACK),
+            },
+            bottom: BorderSide {
+                width: 2,
+                color: Some(Rgba::new(255, 0, 0, 0)),
+            },
+            left: BorderSide::default(),
+        };
+        let f = fragment(0.0, 0.0, 8.0, 8.0);
+        let ring = ring(&f, &edges);
+        let mut pixels = Pixmap::new(8, 8).unwrap();
+        pixels.fill(tiny_skia::Color::from_rgba8(17, 31, 47, 255));
+        let before = pixels.data().to_vec();
+        paint(&mut pixels, &f, &edges, Transform::identity());
+        paint_ring(&mut pixels, &f, &edges, Transform::identity(), &ring);
+        assert_eq!(pixels.data(), before);
+    }
+
+    #[test]
+    fn a_device_crop_masks_all_four_sides_without_reusing_edge_pixels() {
+        let f = fragment(0.0, 0.0, 8.0, 8.0);
+        let edges = colored_edges(4);
+        let crop = tiny_skia::PathBuilder::from_rect(Rect::from_xywh(2.0, 2.0, 4.0, 4.0).unwrap());
+        let mut pixels = Pixmap::new(8, 8).unwrap();
+        paint_ring(&mut pixels, &f, &edges, Transform::identity(), &crop);
+        for y in 0..8 {
+            for x in 0..8 {
+                let alpha = pixels.pixel(x, y).unwrap().alpha();
+                let expected = if (2..6).contains(&x) && (2..6).contains(&y) {
+                    128
+                } else {
+                    0
+                };
+                assert_eq!(alpha, expected, "at{x},{y}");
+            }
+        }
+        assert_eq!(pixels.pixel(3, 2).unwrap().red(), 128);
+        assert_eq!(pixels.pixel(5, 4).unwrap().blue(), 128);
+        assert_eq!(pixels.pixel(4, 5).unwrap().green(), 64);
+        assert_eq!(pixels.pixel(2, 3).unwrap().red(), 0);
+    }
+
+    #[test]
+    fn collapsed_invalid_and_offscreen_transforms_do_not_touch_the_backdrop() {
+        let f = fragment(0.0, 0.0, 8.0, 8.0);
+        let edges = colored_edges(2);
+        let ring = ring(&f, &edges);
+        let mut pixels = Pixmap::new(8, 8).unwrap();
+        pixels.fill(tiny_skia::Color::from_rgba8(17, 31, 47, 255));
+        let before = pixels.data().to_vec();
+        for transform in [
+            Transform::from_scale(0.0, 1.0),
+            Transform::from_scale(1.0, 0.0),
+            Transform::from_translate(20.0, 0.0),
+            Transform::from_translate(-20.0, 0.0),
+            Transform::from_translate(0.0, 20.0),
+            Transform::from_row(1.0, 0.0, 0.0, 1.0, f32::NAN, 0.0),
+        ] {
+            paint(&mut pixels, &f, &edges, transform);
+            paint_ring(&mut pixels, &f, &edges, transform, &ring);
+            assert_eq!(pixels.data(), before, "{transform:?}");
+        }
+    }
+
+    #[test]
+    fn partially_offscreen_square_and_round_borders_equal_a_larger_capture_crop() {
+        let f = fragment(-3.0, -2.0, 8.0, 8.0);
+        let edges = colored_edges(3);
+        let ring = ring(&f, &edges);
+        for rounded in [false, true] {
+            let mut small = Pixmap::new(4, 4).unwrap();
+            let mut large = Pixmap::new(12, 12).unwrap();
+            if rounded {
+                paint_ring(&mut small, &f, &edges, Transform::identity(), &ring);
+                paint_ring(
+                    &mut large,
+                    &f,
+                    &edges,
+                    Transform::from_translate(4.0, 4.0),
+                    &ring,
+                );
+            } else {
+                paint(&mut small, &f, &edges, Transform::identity());
+                paint(&mut large, &f, &edges, Transform::from_translate(4.0, 4.0));
+            }
+            assert!(small.data().iter().any(|&value| value != 0));
+            assert_eq!(small.pixel(0, 1).unwrap().alpha(), 0);
+            for y in 0..4 {
+                for x in 0..4 {
+                    assert_eq!(
+                        small.pixel(x, y),
+                        large.pixel(x + 4, y + 4),
+                        "rounded={rounded} at{x},{y}"
+                    );
+                }
+            }
+        }
+    }
 }
