@@ -8,7 +8,6 @@ use super::{
 pub(crate) struct Parent {
     pub(crate) writing: super::super::writing::WritingMode,
     content: f32,
-    multicol: bool,
     percentage: Option<f32>,
 }
 
@@ -16,8 +15,12 @@ fn frame(bs: &BoxStyle) -> f32 {
     bs.padding.vertical() + bs.border.widths().vertical()
 }
 
+pub(super) fn document_in_flow(lb: &LayoutBox, bs: &BoxStyle) -> bool {
+    lb.document_root() && bs.float == Float::None && !bs.position.is_out_of_flow()
+}
+
 fn root_floor(lb: &LayoutBox, bs: &BoxStyle, ctx: &Ctx) -> Option<f32> {
-    if !lb.document_root() || !quirks_line_height(lb) || bs.height != LengthPct::Auto {
+    if !document_in_flow(lb, bs) || !quirks_line_height(lb) || bs.height != LengthPct::Auto {
         return None;
     }
     viewport_block(ctx).map(|viewport| (viewport - bs.margin.vertical() - frame(bs)).max(0.0))
@@ -40,14 +43,13 @@ pub(super) fn child_basis(lb: &LayoutBox, bs: &BoxStyle, ctx: &Ctx) -> Option<Pa
     Some(Parent {
         writing: ctx.writing,
         content: resolved_content_height(bs, root_floor(lb, bs, ctx).unwrap_or(0.0), ctx),
-        multicol: super::super::multicol::is_multicol_container(&lb.style),
         percentage: (bs.height == LengthPct::Auto)
             .then(|| viewport_block(ctx))
             .flatten(),
     })
 }
 
-fn eligible_body(lb: &LayoutBox, bs: &BoxStyle, parent: Parent) -> bool {
+fn eligible_body(lb: &LayoutBox, bs: &BoxStyle) -> bool {
     let inline = matches!(
         lb.display,
         super::super::value::Display::Inline
@@ -56,21 +58,15 @@ fn eligible_body(lb: &LayoutBox, bs: &BoxStyle, parent: Parent) -> bool {
             | super::super::value::Display::InlineGrid
             | super::super::value::Display::InlineTable
     );
-    let spanning = parent.multicol
-        && lb
-            .style
-            .get("column-span")
-            .is_some_and(|s| s.trim().eq_ignore_ascii_case("all"));
     lb.style.get(crate::style::QUIRKS_DOCUMENT_BODY).is_some()
         && !bs.position.is_out_of_flow()
         && bs.float == Float::None
         && !inline
-        && !spanning
 }
 
 fn body_floor(lb: &LayoutBox, bs: &BoxStyle, cw: f32, ctx: &Ctx) -> Option<f32> {
     let parent = ctx.quirks_parent?;
-    if !eligible_body(lb, bs, parent) {
+    if !eligible_body(lb, bs) {
         return None;
     }
     // An empty child's adjoining margins already escape through the leading

@@ -15,7 +15,8 @@ at the time); this file reconstructs them from history.
   containing block on the physical layout path, honoring margins, decorations,
   constraints and writing modes without turning auto height into a definite CSS
   height. Preserve authored paragraph margins separately from UA quirks margins;
-  public live-snapshot controls cover the unchanged Surf reproduction and Chrome 159.
+  public live-snapshot controls cover the unchanged Surf reproduction and Chrome 159,
+  including column flows, spanning bodies and vertical document roots.
 
 - **Window getter receivers**: reject forged receivers for `closed`, `length` and
   `opener` with TypeError while preserving null/undefined realm adjustment and

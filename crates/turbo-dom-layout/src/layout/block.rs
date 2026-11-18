@@ -3475,7 +3475,7 @@ pub(crate) fn layout_root_box(
 ) -> Fragment {
     let bs = resolve(lb, available, parent_fs);
     if orthogonal
-        && !lb.document_root()
+        && !quirks::document_in_flow(lb, &bs)
         && !lb.is_replaced()
         && bs.width.resolve(available).is_none()
     {

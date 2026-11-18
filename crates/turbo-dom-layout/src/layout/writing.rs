@@ -551,14 +551,18 @@ fn layout_root_in(
         ctx.used_metrics = Some(outer);
     }
     map_tree(&mut frag, mode, parent);
-    let origin = document_origin(
-        lb,
-        (mode, parent),
-        (bx, by, cb_width, parent_fs),
-        sized.is_none(),
-        frag.width,
-    );
-    frag.translate(origin.0, origin.1);
+    if let Some((x, y)) = document_float_origin(lb, (frag.width, frag.height), parent_fs, ctx) {
+        frag.translate(x - frag.x, y - frag.y);
+    } else {
+        let origin = document_origin(
+            lb,
+            (mode, parent),
+            (bx, by, cb_width, parent_fs),
+            sized.is_none(),
+            frag.width,
+        );
+        frag.translate(origin.0, origin.1);
+    }
     Some(frag)
 }
 
@@ -586,6 +590,42 @@ fn document_origin(
         return (x, y);
     }
     (x + width - style.margin.horizontal() - border_width, y)
+}
+
+/// A floated vertical document root packs against the initial containing
+/// block's logical inline edge, after its shrink-to-fit size is known. Ordinary
+/// child floats keep their parent formatting context's placement.
+fn document_float_origin(
+    lb: &super::boxgen::LayoutBox,
+    (width, height): (f32, f32),
+    font_size: f32,
+    ctx: &Ctx,
+) -> Option<(f32, f32)> {
+    if !lb.document_root()
+        || WritingMode::of(&lb.style) != WritingMode::VerticalRl
+        || ctx.writing != WritingMode::HorizontalTb
+    {
+        return None;
+    }
+    let style = lb.resolved(super::value::ResolveCtx {
+        parent_font_size: font_size,
+        cb_width: ctx.root_w,
+    });
+    if style.float == super::value::Float::None || style.position.is_out_of_flow() {
+        return None;
+    }
+    let viewport_height = if ctx.live_geometry {
+        ctx.root_h
+    } else {
+        ctx.icb_h
+    };
+    let x = ctx.root_w - style.margin.right - width;
+    let y = if style.float == super::value::Float::Right && viewport_height > 0.0 {
+        viewport_height - style.margin.bottom - height
+    } else {
+        style.margin.top
+    };
+    Some((x, y))
 }
 
 /// An orthogonal root's border-box width in its parent's space when its size is not

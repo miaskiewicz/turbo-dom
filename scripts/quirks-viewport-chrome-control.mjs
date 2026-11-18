@@ -31,6 +31,8 @@ const probe = () => {
 			offset: [element.offsetWidth, element.offsetHeight],
 			writingMode: style.writingMode,
 			display: style.display,
+			position: style.position,
+			float: style.float,
 		};
 	};
 	return {

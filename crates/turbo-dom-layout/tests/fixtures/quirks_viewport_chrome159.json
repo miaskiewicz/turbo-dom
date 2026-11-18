@@ -7,9 +7,9 @@
   ],
   "deviceScaleFactor": 1,
   "offline": true,
-  "casesSha256": "cb77f825afdd4f697795e997cc14b563a34bd57e65025668678012bb6ad61a93",
-  "collectorSha256": "ce3331a4ede57065dadd387859d21bb0703c1a7df10efc9284d1286b6acf1d85",
-  "probeSha256": "3c161d19a9fe2351890f9c3895cf9c9fa1c9860b1f6a344360eb6307d0b576e2",
+  "casesSha256": "33ffff652cdfddaccb881cd8038445b57b58644728c74f34a627943ac39189b2",
+  "collectorSha256": "390be785680f31450b6b28b093f572fa8c3eef6c6a447100470cb6593c7e4340",
+  "probeSha256": "e8654ad607b2443eddf620d9f183b64c98c8c77e73d63d2ca237a027ae604059",
   "rows": [
     {
       "id": "original-no-doctype",
@@ -35,7 +35,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -53,7 +55,9 @@
           464
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -72,7 +76,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -100,7 +106,9 @@
           50
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -118,7 +126,9 @@
           18
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -137,7 +147,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -165,7 +177,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -183,7 +197,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -211,7 +227,9 @@
           800
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -229,7 +247,9 @@
           800
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -248,7 +268,9 @@
             800
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -276,7 +298,9 @@
           120
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -294,7 +318,9 @@
           120
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -322,7 +348,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -340,7 +368,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -368,7 +398,9 @@
           600
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -386,7 +418,9 @@
           600
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -414,7 +448,9 @@
           100
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -432,7 +468,9 @@
           100
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -460,7 +498,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -478,7 +518,9 @@
           60
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -506,7 +548,9 @@
           446
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -524,7 +568,9 @@
           446
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -552,7 +598,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -570,7 +618,9 @@
           450
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -598,7 +648,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -616,7 +668,9 @@
           450
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -644,7 +698,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -662,7 +718,9 @@
           446
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -690,7 +748,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -708,7 +768,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -736,7 +798,9 @@
           454
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -754,7 +818,9 @@
           402
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -782,7 +848,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -800,7 +868,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "absolute",
+        "float": "none"
       },
       "children": []
     },
@@ -828,7 +898,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -846,7 +918,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "fixed",
+        "float": "none"
       },
       "children": []
     },
@@ -874,7 +948,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -892,7 +968,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "left"
       },
       "children": []
     },
@@ -920,7 +998,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -938,7 +1018,9 @@
           0
         ],
         "writingMode": "horizontal-tb",
-        "display": "inline"
+        "display": "inline",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -966,7 +1048,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -984,7 +1068,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "flex"
+        "display": "flex",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1012,7 +1098,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1030,7 +1118,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "grid"
+        "display": "grid",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1058,7 +1148,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1076,7 +1168,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1104,7 +1198,9 @@
           480
         ],
         "writingMode": "vertical-lr",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1122,7 +1218,9 @@
           480
         ],
         "writingMode": "vertical-lr",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1150,7 +1248,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1168,7 +1268,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1196,7 +1298,9 @@
           446
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1214,7 +1318,9 @@
           446
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1242,7 +1348,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1260,7 +1368,9 @@
           450
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1288,7 +1398,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1306,7 +1418,9 @@
           464
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1334,7 +1448,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1352,7 +1468,9 @@
           100
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1380,7 +1498,9 @@
           530
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1398,7 +1518,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1426,7 +1548,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1444,7 +1568,9 @@
           240
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -1472,7 +1598,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1490,7 +1618,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1509,7 +1639,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1537,7 +1669,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1555,7 +1689,9 @@
           450
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1574,7 +1710,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1602,7 +1740,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1620,7 +1760,9 @@
           460
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1639,7 +1781,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1667,7 +1811,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1685,7 +1831,9 @@
           100
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1704,7 +1852,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1732,7 +1882,9 @@
           460
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1750,7 +1902,9 @@
           444
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1769,7 +1923,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1797,7 +1953,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1815,7 +1973,9 @@
           448
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1834,7 +1994,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1862,7 +2024,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1880,7 +2044,9 @@
           464
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1899,7 +2065,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1927,7 +2095,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -1945,7 +2115,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "flex"
+        "display": "flex",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -1964,7 +2136,9 @@
             20
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -1992,7 +2166,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2010,7 +2186,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "flex"
+        "display": "flex",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2029,7 +2207,9 @@
             20
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2057,7 +2237,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2075,7 +2257,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "flex"
+        "display": "flex",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2094,7 +2278,9 @@
             20
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2122,7 +2308,9 @@
           1000
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2140,7 +2328,9 @@
           1000
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2159,7 +2349,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2187,7 +2379,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2205,7 +2399,9 @@
           10
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2224,7 +2420,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2252,7 +2450,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2270,7 +2470,9 @@
           470
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2289,7 +2491,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2317,7 +2521,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2335,7 +2541,9 @@
           464
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2354,7 +2562,9 @@
             18
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2382,7 +2592,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2400,7 +2612,9 @@
           480
         ],
         "writingMode": "vertical-rl",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2419,7 +2633,9 @@
             20
           ],
           "writingMode": "vertical-rl",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2447,7 +2663,9 @@
           480
         ],
         "writingMode": "vertical-lr",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2465,7 +2683,9 @@
           480
         ],
         "writingMode": "vertical-lr",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2484,7 +2704,9 @@
             20
           ],
           "writingMode": "vertical-lr",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2512,7 +2734,9 @@
           240
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2530,7 +2754,9 @@
           240
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -2558,7 +2784,9 @@
           960
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2576,7 +2804,9 @@
           960
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": []
     },
@@ -2604,7 +2834,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2622,7 +2854,9 @@
           480
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2641,7 +2875,9 @@
             0
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     },
@@ -2669,7 +2905,9 @@
           496
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2687,7 +2925,9 @@
           464
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [
         {
@@ -2706,7 +2946,556 @@
             0
           ],
           "writingMode": "horizontal-tb",
-          "display": "block"
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-body-auto",
+      "markup": "<style>html,body{margin:0}html{column-count:2}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          10
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          10
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            348,
+            10
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            348,
+            10
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-body-spanner",
+      "markup": "<style>html,body{margin:0}html{column-count:2}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-column-span-without-columns",
+      "markup": "<style>html,body{margin:0}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-empty",
+      "markup": "<style>html,body{margin:0}html{column-count:2}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          312,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          312,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-rl-root-float",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "left"
+      },
+      "body": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-absolute",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;position:absolute;top:0;left:0}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "absolute",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-float-right",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:right}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          460,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "right"
+      },
+      "body": {
+        "rect": [
+          620,
+          460,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            460,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-float-fixed-width",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left;width:20px}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "left"
+      },
+      "body": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
         }
       ]
     }
@@ -2744,7 +3533,9 @@
           200
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "body": {
         "rect": [
@@ -2762,7 +3553,9 @@
           200
         ],
         "writingMode": "horizontal-tb",
-        "display": "block"
+        "display": "block",
+        "position": "static",
+        "float": "none"
       },
       "children": [],
       "elements": [

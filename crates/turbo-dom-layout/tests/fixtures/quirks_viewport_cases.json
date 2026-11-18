@@ -198,5 +198,37 @@
   {
     "id": "empty-paragraph-authored-margins",
     "html": "<style>html,body{margin:0}p{margin:1em 0}</style><p></p>"
+  },
+  {
+    "id": "html-multicol-body-auto",
+    "html": "<style>html,body{margin:0}html{column-count:2}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "html-multicol-body-spanner",
+    "html": "<style>html,body{margin:0}html{column-count:2}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "body-column-span-without-columns",
+    "html": "<style>html,body{margin:0}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "html-multicol-empty",
+    "html": "<style>html,body{margin:0}html{column-count:2}</style>"
+  },
+  {
+    "id": "vertical-rl-root-float",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "vertical-rl-root-absolute",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;position:absolute;top:0;left:0}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "vertical-rl-root-float-right",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:right}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "vertical-rl-root-float-fixed-width",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left;width:20px}</style><div style=\"width:20px;height:20px\"></div>"
   }
 ]
