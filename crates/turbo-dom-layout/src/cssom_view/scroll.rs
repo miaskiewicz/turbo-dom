@@ -1282,6 +1282,17 @@ mod tests {
     }
 
     #[test]
+    fn text_sources_refuse_scroll_metrics_without_border_provenance() {
+        let case = case("range-client-rects");
+        let source = case.snapshot.text_runs()[0].source_id.unwrap();
+        assert!(case.snapshot.source(source).is_some());
+        assert_eq!(
+            scroll_metrics(&case.snapshot, &case.styles, source).unwrap_err(),
+            "native scroll requires inline border provenance",
+        );
+    }
+
+    #[test]
     fn computed_overflow_pairs_match_chrome_156() {
         assert_extents("overflow-computed-pairs");
     }

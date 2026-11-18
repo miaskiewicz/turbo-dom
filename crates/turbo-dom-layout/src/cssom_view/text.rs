@@ -428,6 +428,40 @@ mod tests {
     }
 
     #[test]
+    fn generated_and_glyphless_runs_never_create_caret_candidates() {
+        let case = case("range-client-rects");
+        let mut run = case.snapshot.text_runs()[0].clone();
+        let owner = run.source_ancestors[0];
+        let offsets = BTreeMap::new();
+        let candidate = |run: &crate::layout_snapshot::SnapshotTextRun| {
+            caret_candidate(
+                &case.snapshot,
+                &case.styles,
+                &offsets,
+                [1.0, 1.0],
+                owner,
+                None,
+                run,
+            )
+            .unwrap()
+        };
+        assert!(run_rect(&case.snapshot, &run).is_some());
+        assert!(candidate(&run).is_some());
+        let source = run.source_id.take();
+        assert!(
+            candidate(&run).is_none(),
+            "generated text has no DOM caret owner"
+        );
+        run.source_id = source;
+        run.glyphs.clear();
+        assert!(run_rect(&case.snapshot, &run).is_none());
+        assert!(
+            candidate(&run).is_none(),
+            "a glyphless run has no placed caret edge"
+        );
+    }
+
+    #[test]
     fn svg_carets_are_unsupported() {
         let (_, snapshot, styles) = crate::live::testing::layout(
             "<body style='margin:0'><svg width=50 height=50><text y=20>a</text></svg></body>",
