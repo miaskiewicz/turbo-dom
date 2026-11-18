@@ -1,7 +1,7 @@
 //! Apply declarations selected by an embedder against its actual tree scopes.
 use super::{
     collect_presentational, expand_quad_candidates, inherit, is_border_property,
-    mark_author_border, pick_winners, Attrs, Cand, Subject,
+    mark_author_border, origin_rank, pick_winners, resolve_paragraph_style, Attrs, Cand, Subject,
 };
 use super::{ComputedStyle, Declaration};
 use crate::tag::Attr;
@@ -77,6 +77,22 @@ pub fn resolve_matched_style(
     parent: &ComputedStyle,
     declarations: &[MatchedDeclaration],
 ) -> ComputedStyle {
+    resolve_matched_style_impl(parent, declarations, false)
+}
+
+/// The paragraph-only resolver keeps the winning UA margin provenance for quirks.
+pub(crate) fn resolve_matched_paragraph_style(
+    parent: &ComputedStyle,
+    declarations: &[MatchedDeclaration],
+) -> ComputedStyle {
+    resolve_matched_style_impl(parent, declarations, true)
+}
+
+fn resolve_matched_style_impl(
+    parent: &ComputedStyle,
+    declarations: &[MatchedDeclaration],
+    paragraph: bool,
+) -> ComputedStyle {
     let author_border = declarations.iter().any(|matched| {
         matched.origin != CascadeOrigin::UserAgent
             && is_border_property(&matched.declaration.property)
@@ -87,18 +103,36 @@ pub fn resolve_matched_style(
         .into_iter()
         .enumerate()
         .map(|(order, matched)| Cand {
-            key: (matched.declaration.important, 0, (0, 0, 0), order, 0),
+            key: (
+                matched.declaration.important,
+                candidate_origin(matched),
+                (0, 0, 0),
+                order,
+                0,
+            ),
             property: matched.declaration.property.clone(),
             value: matched.declaration.value.clone(),
         })
         .collect();
-    mark_author_border(
-        inherit(
-            pick_winners(expand_quad_candidates(candidates, parent)),
-            parent,
-        ),
-        author_border,
-    )
+    let candidates = expand_quad_candidates(candidates, parent);
+    let style = if paragraph {
+        resolve_paragraph_style(candidates, parent)
+    } else {
+        inherit(pick_winners(candidates), parent)
+    };
+    mark_author_border(style, author_border)
+}
+
+/// This monotonic remapping retains origin identity without changing the sorted
+/// cascade order: UA normal is 0 and UA important uses the ordinary cascade's
+/// sentinel; the other origins occupy the intervening ranks.
+fn candidate_origin(matched: &MatchedDeclaration) -> u8 {
+    let important = matched.declaration.important;
+    if matched.origin == CascadeOrigin::UserAgent {
+        origin_rank(important, 0)
+    } else {
+        matched.origin.rank(important) + 1
+    }
 }
 
 /// The same legacy attribute hints (`bgcolor`, `width`, `height`, `color`, `align`, a
@@ -206,4 +240,136 @@ fn declarations_of(subject: Subject) -> Vec<Declaration> {
             important: false,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod paragraph_origin_tests {
+    use super::*;
+    use crate::style::{parse_declarations, UA_QUIRKY_MARGIN_START};
+
+    fn declarations(origin: CascadeOrigin, css: &str) -> Vec<MatchedDeclaration> {
+        parse_declarations(css)
+            .into_iter()
+            .enumerate()
+            .map(|(order, declaration)| MatchedDeclaration {
+                declaration,
+                origin,
+                scope_depth: 0,
+                inline: origin == CascadeOrigin::Author,
+                specificity: (0, 0, 1),
+                order,
+            })
+            .collect()
+    }
+
+    fn margin_mask(style: &ComputedStyle) -> u8 {
+        style
+            .get(UA_QUIRKY_MARGIN_START)
+            .map_or(0, |value| value.parse().unwrap())
+    }
+
+    fn assert_provenance(groups: &[(CascadeOrigin, &str)], ua: bool) {
+        let declarations: Vec<_> = groups
+            .iter()
+            .flat_map(|(origin, css)| declarations(*origin, css))
+            .collect();
+        let parent = ComputedStyle::default();
+        let mut paragraph = resolve_matched_paragraph_style(&parent, &declarations);
+        assert_eq!(margin_mask(&paragraph) & 1 != 0, ua);
+        paragraph.remove(UA_QUIRKY_MARGIN_START);
+        assert_eq!(paragraph, resolve_matched_style(&parent, &declarations));
+    }
+
+    #[test]
+    fn ua_paragraph_margin_provenance_tracks_origin_not_equal_computed_values() {
+        use CascadeOrigin::{Author, User, UserAgent};
+        assert_provenance(&[(UserAgent, "margin:1em 0")], true);
+        for css in ["margin:1em 0", "margin-top:1em", "margin-block-start:1em"] {
+            assert_provenance(&[(UserAgent, "margin:1em 0"), (Author, css)], false);
+        }
+        assert_provenance(
+            &[(UserAgent, "margin:1em 0"), (Author, "margin-bottom:2em")],
+            true,
+        );
+        assert_provenance(
+            &[
+                (UserAgent, "margin:1em 0"),
+                (User, "margin-top:1em !important"),
+            ],
+            false,
+        );
+        assert_provenance(
+            &[
+                (UserAgent, "margin-top:1em !important"),
+                (Author, "margin-top:2em !important"),
+            ],
+            true,
+        );
+    }
+
+    #[test]
+    fn physical_side_origins_survive_vertical_writing_and_logical_overrides() {
+        use CascadeOrigin::{Author, UserAgent};
+        for (mode, css, expected) in [
+            ("vertical-rl", "margin-right:10px", 13),
+            ("vertical-lr", "margin-left:10px", 7),
+            ("vertical-rl", "margin-block-start:1em", 13),
+            ("vertical-lr", "margin-block-start:1em", 7),
+            (
+                "vertical-rl",
+                "writing-mode:horizontal-tb;margin-block-start:1em",
+                14,
+            ),
+            ("vertical-lr", "writing-mode:inherit;margin-left:10px", 7),
+            (
+                "vertical-rl",
+                "writing-mode:initial;margin-block-start:1em",
+                14,
+            ),
+            (
+                "vertical-rl",
+                "writing-mode:unset;margin-block-start:1em",
+                13,
+            ),
+            (
+                "vertical-rl",
+                "--flow:horizontal-tb;writing-mode:var(--flow);margin-block-start:1em",
+                14,
+            ),
+        ] {
+            let parent = ComputedStyle::from_pairs([("writing-mode", mode)]);
+            let mut matched = declarations(UserAgent, "margin:1em 0");
+            matched.extend(declarations(Author, css));
+            let style = resolve_matched_paragraph_style(&parent, &matched);
+            assert_eq!(margin_mask(&style), expected, "{mode}: {css}");
+        }
+        for direction in ["rtl", " RTL "] {
+            let parent = ComputedStyle::from_pairs([
+                ("writing-mode", "vertical-rl"),
+                ("direction", direction),
+            ]);
+            let mut matched = declarations(UserAgent, "margin:1em 0");
+            matched.extend(declarations(Author, "margin-inline-start:10px"));
+            assert_eq!(
+                margin_mask(&resolve_matched_paragraph_style(&parent, &matched)),
+                11
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_computed_author_margin_does_not_restore_ua_provenance() {
+        use CascadeOrigin::{Author, UserAgent};
+        assert_provenance(
+            &[
+                (UserAgent, "margin:1em 0"),
+                (Author, "margin:var(--missing)"),
+            ],
+            false,
+        );
+        assert_provenance(
+            &[(UserAgent, "margin:1em 0"), (Author, "margin:inherit")],
+            false,
+        );
+    }
 }

@@ -565,6 +565,82 @@ fn collect_cellpadding(element: Subject, nav: &Navigator, h: Handle, out: &mut V
     }
 }
 
+/// Preserve provenance before reducing declarations to computed values. A UA
+/// paragraph margin and an authored `1em` remain numerically identical.
+fn resolve_paragraph_style(cands: Vec<Cand>, parent: &ComputedStyle) -> ComputedStyle {
+    let origins = paragraph_margin_origins(&cands);
+    let mut style = inherit(pick_winners(cands), parent);
+    let mask = paragraph_margin_mask(origins, &style);
+    style.remove(super::UA_QUIRKY_MARGIN_START);
+    if mask != 0 {
+        style.set(super::UA_QUIRKY_MARGIN_START, mask.to_string());
+    }
+    style
+}
+
+fn physical_margin_slot(property: &str) -> Option<usize> {
+    match property {
+        "margin-top" => Some(0),
+        "margin-right" => Some(1),
+        "margin-bottom" => Some(2),
+        "margin-left" => Some(3),
+        _ => None,
+    }
+}
+
+fn logical_margin_slot(property: &str) -> Option<usize> {
+    match property {
+        "margin-block-start" => Some(4),
+        "margin-block-end" => Some(5),
+        "margin-inline-start" => Some(6),
+        "margin-inline-end" => Some(7),
+        _ => None,
+    }
+}
+
+fn paragraph_margin_origins(cands: &[Cand]) -> [Option<Key>; 8] {
+    let mut origins = [None; 8];
+    for cand in cands {
+        let slot =
+            physical_margin_slot(&cand.property).or_else(|| logical_margin_slot(&cand.property));
+        if let Some(slot) = slot {
+            if origins[slot].is_none_or(|key| cand.key >= key) {
+                origins[slot] = Some(cand.key);
+            }
+        }
+    }
+    origins
+}
+
+fn logical_margin_sides(style: &ComputedStyle) -> [usize; 4] {
+    use crate::layout::writing::WritingMode;
+    let mut sides = match WritingMode::of(style) {
+        WritingMode::HorizontalTb => [0, 2, 3, 1],
+        WritingMode::VerticalRl => [1, 3, 0, 2],
+        WritingMode::VerticalLr => [3, 1, 0, 2],
+    };
+    if style
+        .get("direction")
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("rtl"))
+    {
+        sides.swap(2, 3);
+    }
+    sides
+}
+
+fn paragraph_margin_mask(mut origins: [Option<Key>; 8], style: &ComputedStyle) -> u8 {
+    for (logical, physical) in logical_margin_sides(style).into_iter().enumerate() {
+        origins[physical] = origins[physical].max(origins[logical + 4]);
+    }
+    origins[..4]
+        .iter()
+        .enumerate()
+        .fold(0, |mask, (side, key)| {
+            let ua = key.is_some_and(|key| key.1 == origin_rank(key.0, UA_LEVEL));
+            mask | (u8::from(ua) << side)
+        })
+}
+
 fn pick_winners(cands: Vec<Cand>) -> BTreeMap<String, String> {
     let mut best: BTreeMap<String, (Key, String)> = BTreeMap::new();
     for cand in cands {
@@ -1065,10 +1141,13 @@ fn resolve_style(
     let author_border = cands.iter().any(|cand| {
         !matches!(cand.key.1, UA_LEVEL | u8::MAX) && is_border_property(&cand.property)
     });
-    mark_author_border(
-        inherit(pick_winners(expand_quad_candidates(cands, parent)), parent),
-        author_border,
-    )
+    let cands = expand_quad_candidates(cands, parent);
+    let style = if element.tag == Some("p") {
+        resolve_paragraph_style(cands, parent)
+    } else {
+        inherit(pick_winners(cands), parent)
+    };
+    mark_author_border(style, author_border)
 }
 
 /// The internal property the cascade sets on an element with an author (non-UA) border
@@ -1096,10 +1175,10 @@ mod matched;
 
 #[path = "tree_view.rs"]
 mod tree_view;
-pub(crate) use matched::presentational_declarations_of;
 pub use matched::{
     presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };
+pub(crate) use matched::{presentational_declarations_of, resolve_matched_paragraph_style};
 pub use tree_view::{
     style_input, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, TreeView,
 };

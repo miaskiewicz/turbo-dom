@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Quirks viewport layout (#516)**: size auto HTML/body boxes from the initial
+  containing block on the physical layout path, honoring margins, decorations,
+  constraints and writing modes without turning auto height into a definite CSS
+  height. Preserve authored paragraph margins separately from UA quirks margins;
+  public live-snapshot controls cover the unchanged Surf reproduction and Chrome 159.
+
 - **Window getter receivers**: reject forged receivers for `closed`, `length` and
   `opener` with TypeError while preserving null/undefined realm adjustment and
   genuine live/retired windows. Return an empty `name` for retired children,

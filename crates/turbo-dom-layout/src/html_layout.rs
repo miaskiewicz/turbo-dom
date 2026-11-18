@@ -177,9 +177,40 @@ fn style_document(
     // A BackCompat document takes the quirks-mode line height quirk, as the live style
     // pass marks it (miaskiewicz/turbo-dom#238 item 2, #190).
     if quirks {
+        mark_document_body(&mut styled);
         mark_quirks(&mut styled);
     }
     styled
+}
+
+fn html_element_named<'a>(
+    node: &'a mut StyledNode,
+    name: &str,
+) -> Option<&'a mut crate::StyledElement> {
+    match node {
+        StyledNode::Element(element) if matches!(&element.tag, Tag::Html(local) if local == name) => {
+            Some(element)
+        }
+        _ => None,
+    }
+}
+
+/// A nested or detached body-shaped element is not the document's body.
+fn mark_document_body(nodes: &mut [StyledNode]) {
+    let Some(root) = nodes
+        .iter_mut()
+        .find_map(|node| html_element_named(node, "html"))
+    else {
+        return;
+    };
+    if let Some(body) = root
+        .children
+        .iter_mut()
+        .find_map(|node| html_element_named(node, "body"))
+    {
+        body.style
+            .set(crate::style::QUIRKS_DOCUMENT_BODY, "1".to_string());
+    }
 }
 
 /// Mark every element of `nodes` (deep) with [`crate::style::QUIRKS_LINE_HEIGHT`].

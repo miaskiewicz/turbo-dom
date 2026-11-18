@@ -1,0 +1,202 @@
+[
+  {
+    "id": "original-no-doctype",
+    "html": "<style>html,body{margin:0}</style><p>viewport</p>"
+  },
+  {
+    "id": "standards-doctype",
+    "html": "<!doctype html><style>html,body{margin:0}</style><p>viewport</p>"
+  },
+  {
+    "id": "empty",
+    "html": "<style>html,body{margin:0}</style>"
+  },
+  {
+    "id": "tall-content",
+    "html": "<style>html,body{margin:0}</style><div style=\"height:800px\"></div>"
+  },
+  {
+    "id": "html-explicit-height",
+    "html": "<style>html,body{margin:0}html{height:120px}</style>"
+  },
+  {
+    "id": "html-zero-height",
+    "html": "<style>html,body{margin:0}html{height:0}</style>"
+  },
+  {
+    "id": "html-min-height",
+    "html": "<style>html,body{margin:0}html{min-height:600px}</style>"
+  },
+  {
+    "id": "html-max-height",
+    "html": "<style>html,body{margin:0}html{max-height:100px}</style>"
+  },
+  {
+    "id": "body-explicit-height",
+    "html": "<style>html,body{margin:0}body{height:60px}</style>"
+  },
+  {
+    "id": "html-margin",
+    "html": "<style>html,body{margin:0}html{margin:11px 17px 23px 19px}</style>"
+  },
+  {
+    "id": "html-padding-border",
+    "html": "<style>html,body{margin:0}html{padding:12px 17px;border:3px solid}</style>"
+  },
+  {
+    "id": "html-border-box",
+    "html": "<style>html,body{margin:0}html{box-sizing:border-box;padding:12px 17px;border:3px solid}</style>"
+  },
+  {
+    "id": "body-margin",
+    "html": "<style>html,body{margin:0}body{margin:11px 17px 23px 19px}</style>"
+  },
+  {
+    "id": "body-padding-border",
+    "html": "<style>html,body{margin:0}body{padding:12px 17px;border:3px solid}</style>"
+  },
+  {
+    "id": "both-decorated",
+    "html": "<style>html,body{margin:0}html{margin:9px 13px 17px 19px;padding:11px 7px 23px 5px;border:3px solid}body{margin:5px 0 7px;padding:4px 0 8px;border:2px solid}</style>"
+  },
+  {
+    "id": "body-absolute",
+    "html": "<style>html,body{margin:0}body{position:absolute;width:60px}</style>"
+  },
+  {
+    "id": "body-fixed",
+    "html": "<style>html,body{margin:0}body{position:fixed;width:60px}</style>"
+  },
+  {
+    "id": "body-float",
+    "html": "<style>html,body{margin:0}body{float:left;width:60px}</style>"
+  },
+  {
+    "id": "body-inline",
+    "html": "<style>html,body{margin:0}body{display:inline}</style>"
+  },
+  {
+    "id": "body-flex",
+    "html": "<style>html,body{margin:0}body{display:flex}</style>"
+  },
+  {
+    "id": "body-grid",
+    "html": "<style>html,body{margin:0}body{display:grid}</style>"
+  },
+  {
+    "id": "vertical-rl",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl}</style>"
+  },
+  {
+    "id": "vertical-lr",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-lr}</style>"
+  },
+  {
+    "id": "vertical-explicit-width",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;width:120px}</style>"
+  },
+  {
+    "id": "vertical-margins",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;margin:11px 17px 23px 19px}</style>"
+  },
+  {
+    "id": "vertical-decorated",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl;padding:12px 17px;border:3px solid}</style>"
+  },
+  {
+    "id": "default-body-margin",
+    "html": "<style></style>"
+  },
+  {
+    "id": "body-max-height",
+    "html": "<style>html,body{margin:0}body{max-height:100px}</style>"
+  },
+  {
+    "id": "visible-head",
+    "html": "<style>html,body{margin:0}head{display:block;height:50px}</style>"
+  },
+  {
+    "id": "body-percentage-height",
+    "html": "<style>html,body{margin:0}body{height:50%}</style>"
+  },
+  {
+    "id": "p-no-margins",
+    "html": "<style>html,body{margin:0}p{margin:0}</style><p>viewport</p>"
+  },
+  {
+    "id": "p-margins-10-20",
+    "html": "<style>html,body{margin:0}p{margin:10px 0 20px}</style><p>viewport</p>"
+  },
+  {
+    "id": "p-bottom-margin-20",
+    "html": "<style>html,body{margin:0}p{margin:0 0 20px}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-explicit-with-p",
+    "html": "<style>html,body{margin:0}body{height:100px}</style><p>viewport</p>"
+  },
+  {
+    "id": "html-margin-with-p",
+    "html": "<style>html,body{margin:0}html{margin:10px}</style><p>viewport</p>"
+  },
+  {
+    "id": "p-authored-default-margins",
+    "html": "<style>html,body{margin:0}p{margin:1em 0}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-min-height-with-p",
+    "html": "<style>html,body{margin:0}body{min-height:100px}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-flex-center",
+    "html": "<style>html,body{margin:0}body{display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "body-flex-center-explicit-height",
+    "html": "<style>html,body{margin:0}body{height:480px;display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "body-flex-center-min-height",
+    "html": "<style>html,body{margin:0}body{min-height:480px;display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>"
+  },
+  {
+    "id": "body-min-height-1000-with-p",
+    "html": "<style>html,body{margin:0}body{min-height:1000px}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-max-height-10-with-p",
+    "html": "<style>html,body{margin:0}body{max-height:10px}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-min-height-470-with-p",
+    "html": "<style>html,body{margin:0}body{min-height:470px}</style><p>viewport</p>"
+  },
+  {
+    "id": "body-max-height-470-with-p",
+    "html": "<style>html,body{margin:0}body{max-height:470px}</style><p>viewport</p>"
+  },
+  {
+    "id": "vertical-rl-authored-p-margin",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-rl}p{margin:0;width:20px;height:20px;margin-right:10px}</style><p></p>"
+  },
+  {
+    "id": "vertical-lr-authored-p-margin",
+    "html": "<style>html,body{margin:0}html{writing-mode:vertical-lr}p{margin:0;width:20px;height:20px;margin-left:10px}</style><p></p>"
+  },
+  {
+    "id": "html-percentage-height",
+    "html": "<style>html,body{margin:0}html{height:50%}</style>"
+  },
+  {
+    "id": "html-percentage-min-height",
+    "html": "<style>html,body{margin:0}html{min-height:200%}</style>"
+  },
+  {
+    "id": "empty-paragraph",
+    "html": "<style>html,body{margin:0}</style><p></p>"
+  },
+  {
+    "id": "empty-paragraph-authored-margins",
+    "html": "<style>html,body{margin:0}p{margin:1em 0}</style><p></p>"
+  }
+]

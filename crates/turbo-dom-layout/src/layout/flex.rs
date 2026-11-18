@@ -1095,6 +1095,7 @@ fn measure_item(
                 abs_cb_h_known: false,
                 cb_h: 0.0,
                 cb_h_known: false,
+                quirks_parent: None,
                 root_w: w,
                 root_h: crate::style::viewport_px().1,
                 icb_h: 0.0,

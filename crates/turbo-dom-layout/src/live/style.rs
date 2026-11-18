@@ -12,8 +12,8 @@ use super::{
 };
 use crate::layout_snapshot::SourceId;
 use crate::style::{
-    ensure_default_display, presentational_declarations_of, resolve_matched_style, CascadeOrigin,
-    ComputedStyle, MatchedDeclaration,
+    ensure_default_display, presentational_declarations_of, resolve_matched_paragraph_style,
+    resolve_matched_style, CascadeOrigin, ComputedStyle, MatchedDeclaration,
 };
 use crate::tag::{Attr, Tag};
 use crate::{StyledElement, StyledNode, StyledText};
@@ -186,7 +186,7 @@ impl Styler<'_, '_> {
         let local = tree.local_name(node).unwrap_or("");
         let inline = self.inline_style(node);
         let declarations = self.collect_declarations(node, local, depth, inline)?;
-        let mut style = resolve_matched_style(parent, &declarations);
+        let mut style = self.resolved_style(local, parent, &declarations);
         // Chrome's `html.css` `display: block` for known block tags
         // (miaskiewicz/turbo-dom#395): the CSS initial `display` is `inline`
         // (#375), so with no UA origin to carry the UA rule an embedder's
@@ -219,12 +219,7 @@ impl Styler<'_, '_> {
         {
             style.set("display", "none".to_string());
         }
-        if self.capture.quirks {
-            style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
-            if matches!(local, "body" | "td" | "th") {
-                style.set(crate::style::QUIRKY_CONTAINER, "1".to_string());
-            }
-        }
+        self.mark_quirks(node, local, &mut style);
         let children = self.children(node, &style)?;
         Ok(StyledElement {
             tag: Tag::Html(local.to_string()),
@@ -233,6 +228,32 @@ impl Styler<'_, '_> {
             children,
             source: Some(node),
         })
+    }
+
+    fn resolved_style(
+        &self,
+        local: &str,
+        parent: &ComputedStyle,
+        declarations: &[MatchedDeclaration],
+    ) -> ComputedStyle {
+        if self.capture.quirks && local == "p" {
+            resolve_matched_paragraph_style(parent, declarations)
+        } else {
+            resolve_matched_style(parent, declarations)
+        }
+    }
+
+    fn mark_quirks(&self, node: Handle, local: &str, style: &mut ComputedStyle) {
+        if !self.capture.quirks {
+            return;
+        }
+        style.set(crate::style::QUIRKS_LINE_HEIGHT, "1".to_string());
+        if self.capture.body == Some(self.id(node)) {
+            style.set(crate::style::QUIRKS_DOCUMENT_BODY, "1".to_string());
+        }
+        if matches!(local, "body" | "td" | "th") {
+            style.set(crate::style::QUIRKY_CONTAINER, "1".to_string());
+        }
     }
 
     /// The inline style layout sees: the CSSOM override when the element has a `style`

@@ -621,9 +621,11 @@ mod clip_tests {
         );
         let html = testing::id(&tree, "html");
         let body = testing::id(&tree, "body");
+        // The unchanged BackCompat body fills the viewport. Chrome 159's exact
+        // hit receipt is in quirks_viewport_chrome159.json: body first, HTML last.
         assert_eq!(
             elements_at_point(&snapshot, &styles, &BTreeMap::new(), [5.0, 150.0]),
-            Ok(vec![html])
+            Ok(vec![body, html])
         );
         // Another parentless (non-html) style, ordered first, is not the root.
         let other = SourceStyle {
@@ -635,7 +637,7 @@ mod clip_tests {
         styles.insert(SourceId(0), other);
         assert_eq!(
             elements_at_point(&snapshot, &styles, &BTreeMap::new(), [5.0, 150.0]),
-            Ok(vec![html])
+            Ok(vec![body, html])
         );
     }
 

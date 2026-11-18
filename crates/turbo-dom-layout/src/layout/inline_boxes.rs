@@ -1073,6 +1073,7 @@ mod defensive_contract_tests {
             abs_cb_h_known: true,
             cb_h: 100.0,
             cb_h_known: true,
+            quirks_parent: None,
             root_w: 200.0,
             root_h: 100.0,
             icb_h: 0.0,

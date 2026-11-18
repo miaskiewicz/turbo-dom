@@ -11,6 +11,9 @@
 //! Deferred in v1 (documented): some `%`/auto explicit-height edge cases and full
 //! `border-collapse` border merging (see `table.rs`).
 
+#[path = "quirks.rs"]
+mod quirks;
+
 use crate::error::Diagnostics;
 use crate::layout_snapshot::UsedBoxMetrics;
 use crate::tag::MarkerKind;
@@ -66,6 +69,9 @@ pub(crate) struct Ctx<'a> {
     pub(crate) cb_h: f32,
     /// Paired with `cb_h` so native percentage sizing retains definite zero.
     pub(crate) cb_h_known: bool,
+    /// Quirks body fill uses its parent's minimum used content size, without
+    /// making an auto CSS height definite for percentage-height resolution.
+    pub(crate) quirks_parent: Option<quirks::Parent>,
     /// The initial containing block width (page content width) — the CB for
     /// `position:fixed` boxes.
     pub(crate) root_w: f32,
@@ -1929,7 +1935,11 @@ fn leading_margin(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32) -> f32 {
 /// where the quirks.css margins of the empty boxes it collapses through are ignored,
 /// however deeply nested (Chrome 156, miaskiewicz/turbo-dom#282).
 fn leading_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, fs: f32, quirky: bool) -> f32 {
-    let mut m = bs.margin.top;
+    let mut m = if quirky && quirks::drops_start(&lb.style) {
+        0.0
+    } else {
+        bs.margin.top
+    };
     if top_margins_collapse_through(lb, bs) {
         for (child, cbs) in inflow_children(lb, cw, fs) {
             let leading = if quirky {
@@ -1956,7 +1966,9 @@ fn quirky_container(lb: &LayoutBox) -> bool {
 /// margin at the start of a quirky container (`quirky`), which Chrome 156 ignores there
 /// (miaskiewicz/turbo-dom#282).
 fn start_bottom_margin(quirky: bool, child: &LayoutBox, cbs: &BoxStyle) -> f32 {
-    if quirky && super::value::quirks_margin_block_end(&child.style) {
+    if quirky
+        && (super::value::quirks_margin_block_end(&child.style) || quirks::drops_end(&child.style))
+    {
         0.0
     } else {
         cbs.margin.bottom
@@ -2012,8 +2024,33 @@ fn trailing_margin_walk(lb: &LayoutBox, bs: &BoxStyle, cw: f32, dropped: &HashSe
     });
     last.map_or(bs.margin.bottom, |kid| {
         let used = resolve(kid, cw, bs.font_size);
-        collapse_margins(bs.margin.bottom, trailing_margin(kid, &used, cw, dropped))
+        let end = trailing_child_margin(lb, bs, kid, &used, cw, dropped);
+        collapse_margins(bs.margin.bottom, end)
     })
+}
+
+fn empty_quirky_flow(lb: &LayoutBox, bs: &BoxStyle, cw: f32) -> bool {
+    quirky_container(lb)
+        && inflow_children(lb, cw, bs.font_size)
+            .all(|(child, style)| self_collapsing(child, &style, cw))
+}
+
+/// If the whole flow is empty, its trailing margins are the same run that
+/// collapsed through the quirky start. Keep authored margins in that run.
+fn trailing_child_margin(
+    lb: &LayoutBox,
+    bs: &BoxStyle,
+    kid: &LayoutBox,
+    used: &BoxStyle,
+    cw: f32,
+    dropped: &HashSet<NodeId>,
+) -> f32 {
+    let empty_start = empty_quirky_flow(lb, bs, cw);
+    if empty_start {
+        quirky_collapsed_through(kid, used, cw, bs.font_size)
+    } else {
+        trailing_margin(kid, used, cw, dropped)
+    }
 }
 
 /// The leading top margin to feed a flow child: `0` while this container hoists its
@@ -3127,12 +3164,15 @@ fn layout_box_sized_impl(
     // A table wrapper box (a captioned table): its frame, background and heights are
     // its grid box's (miaskiewicz/turbo-dom#51).
     let bs: &BoxStyle = &super::table::own_style(lb, bs);
+    let percentage_body = quirks::percentage_body_style(lb, bs, ctx);
+    let bs = percentage_body.as_ref().unwrap_or(bs);
     let bw = bs.border.widths();
     let content_x = bx + bw.left + bs.padding.left;
     let content_y = by + bw.top + bs.padding.top;
     let content_w = (bbw - bs.padding.horizontal() - bw.horizontal()).max(0.0);
     // A positioned box establishes the containing block for its `absolute`
     // descendants (its content box). Save/restore around the child layout.
+    let child_quirks = quirks::child_basis(lb, bs, ctx);
     let saved_cb = (ctx.abs_cb_x, ctx.abs_cb_y, ctx.abs_cb_w, ctx.abs_cb_h);
     let saved_abs_known = (ctx.abs_cb_h_known, ctx.abs_cb_icb);
     let own_height = resolved_live_height(bs.height, native_height_basis(bs, ctx), 0.0);
@@ -3166,8 +3206,10 @@ fn layout_box_sized_impl(
         scroll_container(&lb.style),
         [content_x, content_y, content_x + content_w, view_bottom],
     );
+    let saved_quirks = std::mem::replace(&mut ctx.quirks_parent, child_quirks);
     let (mut children, mut content_h) =
         layout_content(lb, bs, (content_x, content_y, content_w), bfc, ctx);
+    ctx.quirks_parent = saved_quirks;
     if lb.display == super::value::Display::ListItem {
         super::list_marker::place_outside(
             lb,
@@ -3207,8 +3249,8 @@ fn layout_box_sized_impl(
         content_h
     };
     let auto_h = aspect_auto_height(bs, content_w).map_or(sized_h, |a| a.max(sized_h));
-    let fill_h = resolved_content_height(bs, auto_h, ctx);
-    record_dropped_end_margin(lb, bs, bfc, fill_h != content_h, ctx);
+    let (fill_h, resized) = quirks::used_height(lb, bs, (content_w, auto_h, content_h), ctx);
+    record_dropped_end_margin(lb, bs, bfc, resized, ctx);
     place_sticky_kids(
         &mut children,
         sticky_mark,
@@ -3432,7 +3474,11 @@ pub(crate) fn layout_root_box(
     ctx: &mut Ctx,
 ) -> Fragment {
     let bs = resolve(lb, available, parent_fs);
-    if orthogonal && !lb.is_replaced() && bs.width.resolve(available).is_none() {
+    if orthogonal
+        && !lb.document_root()
+        && !lb.is_replaced()
+        && bs.width.resolve(available).is_none()
+    {
         let (w, _) = float_width(lb, &bs, available, ctx.fonts, false);
         // Chrome's max-content is a ceiled LayoutUnit (1/64 px at the device scale).
         let w = ctx
@@ -4009,6 +4055,7 @@ fn layout_tree_policy(
         abs_cb_h_known: live_geometry,
         cb_h: viewport_height,
         cb_h_known: live_geometry,
+        quirks_parent: None,
         root_w: cb_width,
         root_h: viewport_height,
         icb_h,
