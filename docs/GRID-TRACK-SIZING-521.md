@@ -20,13 +20,17 @@ Validation on Chromium 159.0.8154.6 at widths 1440/768/390:
 - The full `resources` fixture has zero selected geometry differences at every
   width. It still has text/image rendering differences: changed pixel fractions
   are 3.14%, 8.13%, and 8.85%. This is not full screenshot parity.
-- The source-hashed focused control contains 102 independent flex/block, sizing,
-  span, implicit-track, auto-repeat and content-alignment cases. The default test
-  pins all descendants of the original full-width capped-card reduction (six
-  cases). The broader matrix also exposes two separate existing problems:
-  `auto-fit` with gaps retains one extra trailing 40px gutter at desktop/tablet;
-  explicit minimum widths can be reapplied inside a used grid item and widen its
-  descendants. Neither residual is described as passing.
+- The source-hashed focused control contains 156 independent flex/block, sizing,
+  span, implicit-track, auto-repeat, absolute placement, mixed calculations,
+  percentage minima/maxima and content-alignment cases. The default test compares
+  all descendants in 150 cases. The used-width frame floor also prevents a narrow
+  allocated item from becoming smaller than its padding and border.
+- Six additional independent `auto-fit` controls retain an existing Taffy gap
+  defect: at desktop/tablet one extra trailing 40px gutter participates in track
+  sizing. This is separate from the percentage preferred-width bug. Run
+  `TURBO_DOM_GRID_DIAGNOSTICS=1 cargo test -p turbo-dom-layout --test grid_track_contributions_chrome`
+  to reproduce its expected-red geometry without changing the oracle or the
+  normal regression scope. The 390px auto-fit controls already pass.
 
 Regenerate controls with `scripts/grid-track-contributions-chrome-control.mjs`;
 run the component harness per `tools/component-parity/README.md`. The harness

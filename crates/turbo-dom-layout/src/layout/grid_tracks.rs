@@ -18,6 +18,13 @@ pub(super) fn solve_grid(
     fill: Fill,
     ctx: &Ctx,
 ) {
+    if !leaves
+        .iter()
+        .any(|id| has_cyclic_width(tree.style(*id).unwrap()))
+    {
+        solve(tree, root, items, dimensions, fill, ctx);
+        return;
+    }
     let originals: Vec<_> = leaves
         .iter()
         .map(|id| tree.style(*id).unwrap().clone())
@@ -45,14 +52,43 @@ fn indefinite_percentages(
 ) -> bool {
     let mut changed = false;
     for (id, original) in leaves.iter().zip(styles) {
-        if original.size.width.tag() == taffy::CompactLength::PERCENT_TAG {
-            let mut intrinsic = original.clone();
-            intrinsic.size.width = Dimension::auto();
+        if let Some(intrinsic) = intrinsic_style(original) {
             tree.set_style(*id, intrinsic).unwrap();
             changed = true;
         }
     }
     changed
+}
+
+fn intrinsic_style(original: &Style) -> Option<Style> {
+    if !has_cyclic_width(original) {
+        return None;
+    }
+    let mut intrinsic = original.clone();
+    let mut changed = false;
+    for (value, indefinite) in [
+        (&mut intrinsic.size.width, Dimension::auto()),
+        (&mut intrinsic.min_size.width, Dimension::length(0.0)),
+        (&mut intrinsic.max_size.width, Dimension::auto()),
+    ] {
+        if cyclic_percentage(*value) {
+            *value = indefinite;
+            changed = true;
+        }
+    }
+    changed.then_some(intrinsic)
+}
+
+fn has_cyclic_width(style: &Style) -> bool {
+    style.position != Position::Absolute
+        && style.display != Display::None
+        && [style.size.width, style.min_size.width, style.max_size.width]
+            .into_iter()
+            .any(cyclic_percentage)
+}
+
+fn cyclic_percentage(value: Dimension) -> bool {
+    value.tag() == taffy::CompactLength::PERCENT_TAG || value.into_raw().is_calc()
 }
 
 /// Represent each already-used gutter as a fixed spacer track. This preserves
@@ -155,7 +191,39 @@ fn restore_items(
                 start: line((2 * placement.column_start) as i16),
                 end: line((2 * placement.column_end - 1) as i16),
             };
+        } else if style.position == Position::Absolute {
+            style.grid_column = Line {
+                start: absolute_boundary(style.grid_column.start, true, info),
+                end: absolute_boundary(style.grid_column.end, false, info),
+            };
         }
         tree.set_style(*id, style).unwrap();
+    }
+}
+
+fn absolute_boundary(
+    placement: super::GridPlacement,
+    start: bool,
+    info: &DetailedGridInfo,
+) -> super::GridPlacement {
+    match placement {
+        super::GridPlacement::Auto => super::GridPlacement::Auto,
+        super::GridPlacement::Span(n) => super::span(n * 2 - 1),
+        super::GridPlacement::Line(index) => {
+            let index = index.as_i16();
+            if index == 0 {
+                return super::GridPlacement::Auto;
+            }
+            let explicit = if index > 0 {
+                index - 1
+            } else {
+                info.columns.explicit_tracks as i16 + index + 1
+            };
+            let original = explicit + info.columns.negative_implicit_tracks as i16;
+            if original < 0 || original as usize > info.columns.sizes.len() {
+                return super::GridPlacement::Auto;
+            }
+            line(2 * (original + 1) - i16::from(!start))
+        }
     }
 }

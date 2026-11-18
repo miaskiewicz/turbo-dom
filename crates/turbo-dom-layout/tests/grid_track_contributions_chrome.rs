@@ -23,10 +23,12 @@ fn nested_grid_tracks_match_chromium_159() {
     let mut failures = Vec::new();
     let cases = fixture["cases"].as_array().unwrap();
     let mut compared = 0;
+    let include_auto_fit = std::env::var_os("TURBO_DOM_GRID_DIAGNOSTICS").is_some();
     for case in cases {
-        // The original #521 regression is the full-width capped card. The full
-        // independently captured matrix remains available for integration diagnostics.
-        if !case["id"].as_str().unwrap().contains("-percent-max-") {
+        // Independent auto-fit+gap controls also retain Taffy's separate trailing
+        // gutter defect. Their unchanged oracle stays available to diagnose that
+        // pre-existing issue; this test pins percentage track resolution.
+        if !include_auto_fit && case["id"].as_str().unwrap().contains("-auto-fit-") {
             continue;
         }
         compared += 1;
@@ -61,7 +63,7 @@ fn nested_grid_tracks_match_chromium_159() {
             }
         }
     }
-    assert_eq!(cases.len(), 102);
-    assert_eq!(compared, 6);
+    assert_eq!(cases.len(), 156);
+    assert_eq!(compared, if include_auto_fit { 156 } else { 150 });
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

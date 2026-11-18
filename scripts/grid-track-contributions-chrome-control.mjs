@@ -96,6 +96,37 @@ const variants = [
 		"width:50%;max-width:374px",
 		"justify-content:space-evenly",
 	],
+	["percent-minmax", "repeat(3,1fr)", "width:100%;min-width:25%;max-width:75%"],
+	["percent-overflow-min", "repeat(3,1fr)", "width:100%;min-width:200%"],
+	["mixed-calc", "repeat(3,1fr)", "width:calc(100% - 8px);max-width:374px"],
+	[
+		"mixed-calc-minmax",
+		"repeat(3,1fr)",
+		"width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)",
+	],
+	[
+		"absolute-lines",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/4",
+	],
+	[
+		"absolute-negative",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:-3/-1",
+	],
+	[
+		"absolute-span",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/span 2",
+	],
+	["overflow-center", "repeat(3,200px)", "width:50%", "justify-content:center"],
+	["overflow-end", "repeat(3,200px)", "width:50%", "justify-content:end"],
 ];
 const browser = await chromium.launch({
 	executablePath: chrome,

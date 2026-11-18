@@ -1,6 +1,6 @@
 {
   "browser": "159.0.8154.6",
-  "probe_sha256": "6d45ec7e14b50dd2fed041f7830eae8809bc8746180b1f360d7d7819ecfdd512",
+  "probe_sha256": "902e7321c1f9f0345fda88c526e09f65e4ff8f6ee68080691aa62f5e4f9bd991",
   "cases": [
     {
       "id": "flex-percent-max-1440",
@@ -1800,6 +1800,960 @@
           "x": 887,
           "y": 243,
           "width": 0,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-percent-minmax-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 267.984375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 235.984375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 235.984375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 211.984375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 267.984375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 235.984375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 235.984375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 211.984375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 268,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 236,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 236,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 212,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-percent-overflow-min-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 714.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 682.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 682.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 658.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 714.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 682.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 682.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 658.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 714.6875,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 682.6875,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 682.6875,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 658.6875,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 349.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 317.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 317.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 293.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-minmax-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 349.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 317.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 317.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 293.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-lines-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-negative-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-span-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-center-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 236,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 252,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 252,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 264,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 476,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 492,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 492,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 504,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 716,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 732,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 732,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 744,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-end-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 472,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 488,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 488,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 500,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 712,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 728,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 728,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 740,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 952,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 968,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 968,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 980,
+          "y": 243,
+          "width": 44,
           "height": 72
         }
       ]
@@ -3607,6 +4561,960 @@
       ]
     },
     {
+      "id": "block-percent-minmax-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 267.984375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 235.984375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 235.984375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 211.984375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 267.984375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 235.984375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 235.984375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 211.984375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 268,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 236,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 236,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 212,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-percent-overflow-min-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 714.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 682.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 682.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 658.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 714.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 682.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 682.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 658.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 714.6875,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 682.6875,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 682.6875,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 658.6875,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 349.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 317.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 317.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 293.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-minmax-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 397.328125,
+          "y": 0,
+          "width": 349.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 413.328125,
+          "y": 16,
+          "width": 317.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 413.328125,
+          "y": 243,
+          "width": 317.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 425.328125,
+          "y": 243,
+          "width": 293.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 794.65625,
+          "y": 0,
+          "width": 349.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 810.65625,
+          "y": 16,
+          "width": 317.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 810.65625,
+          "y": 243,
+          "width": 317.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 822.65625,
+          "y": 243,
+          "width": 293.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-lines-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-negative-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-span-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 397.328125,
+          "y": 0,
+          "width": 754.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 413.328125,
+          "y": 16,
+          "width": 722.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 413.328125,
+          "y": 243,
+          "width": 722.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 425.328125,
+          "y": 243,
+          "width": 698.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 397.328125,
+          "y": 0,
+          "width": 357.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 413.328125,
+          "y": 16,
+          "width": 325.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 413.328125,
+          "y": 243,
+          "width": 325.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 425.328125,
+          "y": 243,
+          "width": 301.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-center-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 236,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 252,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 252,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 264,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 476,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 492,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 492,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 504,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 716,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 732,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 732,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 744,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-end-1440",
+      "width": 1440,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 1152,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 472,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 488,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 488,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 500,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 712,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 728,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 728,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 740,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 952,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 968,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 968,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 980,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
       "id": "flex-percent-max-768",
       "width": 768,
       "height": 1000,
@@ -5404,6 +7312,960 @@
           "x": 599,
           "y": 243,
           "width": 0,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-percent-minmax-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-percent-overflow-min-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-minmax-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-lines-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-negative-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-span-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-center-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 44,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 60,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 60,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 72,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 284,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 300,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 300,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 312,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 524,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 540,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 540,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 552,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-end-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 88,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 104,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 104,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 116,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 328,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 344,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 344,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 356,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 568,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 584,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 584,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 596,
+          "y": 243,
+          "width": 44,
           "height": 72
         }
       ]
@@ -7211,6 +10073,960 @@
       ]
     },
     {
+      "id": "block-percent-minmax-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 171.984375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 139.984375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 139.984375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 115.984375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-percent-overflow-min-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 458.65625,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 426.65625,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 426.65625,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 402.65625,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-minmax-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 269.328125,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 285.328125,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 285.328125,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 297.328125,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 538.65625,
+          "y": 0,
+          "width": 221.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 554.65625,
+          "y": 16,
+          "width": 189.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 554.65625,
+          "y": 243,
+          "width": 189.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 566.65625,
+          "y": 243,
+          "width": 165.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-lines-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-negative-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-span-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 269.328125,
+          "y": 0,
+          "width": 498.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 285.328125,
+          "y": 16,
+          "width": 466.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 285.328125,
+          "y": 243,
+          "width": 466.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 297.328125,
+          "y": 243,
+          "width": 442.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 269.328125,
+          "y": 0,
+          "width": 229.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 285.328125,
+          "y": 16,
+          "width": 197.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 285.328125,
+          "y": 243,
+          "width": 197.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 297.328125,
+          "y": 243,
+          "width": 173.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-center-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 44,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 60,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 60,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 72,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 284,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 300,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 300,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 312,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 524,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 540,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 540,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 552,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-end-768",
+      "width": 768,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 88,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 104,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 104,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 116,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 328,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 344,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 344,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 356,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 568,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 584,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 584,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 596,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
       "id": "flex-percent-max-390",
       "width": 390,
       "height": 1000,
@@ -9013,6 +12829,960 @@
       ]
     },
     {
+      "id": "flex-percent-minmax-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 77.484375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 45.484375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 45.484375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 21.484375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 77.484375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 45.484375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 45.484375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 21.484375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 77.5,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 45.5,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 45.5,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 21.5,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-percent-overflow-min-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 206.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 174.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 174.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 150.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 206.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 174.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 174.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 150.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 206.6875,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 174.6875,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 174.6875,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 150.6875,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 95.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 63.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 63.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 39.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-mixed-calc-minmax-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 95.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 63.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 63.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 39.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-lines-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-negative-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-absolute-span-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-center-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": -145,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": -129,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": -129,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": -117,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 95,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 111,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 111,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 123,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 335,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 351,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 351,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 363,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "flex-overflow-end-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:flex;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": -290,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": -274,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": -274,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": -262,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": -50,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": -34,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": -34,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": -22,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 190,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 206,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 206,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 218,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
       "id": "block-percent-max-390",
       "width": 390,
       "height": 1000,
@@ -10810,6 +15580,960 @@
           "x": 315.5,
           "y": 243,
           "width": 0,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-percent-minmax-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:25%;max-width:75%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 77.484375,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 45.484375,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 45.484375,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 21.484375,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 77.484375,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 45.484375,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 45.484375,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 21.484375,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 77.5,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 45.5,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 45.5,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 21.5,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-percent-overflow-min-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%;min-width:200%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 206.65625,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 174.65625,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 174.65625,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 150.65625,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 206.65625,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 174.65625,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 174.65625,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 150.65625,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 206.6875,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 174.6875,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 174.6875,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 150.6875,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);max-width:374px}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 95.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 63.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 63.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 39.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-mixed-calc-minmax-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:calc(100% - 8px);min-width:calc(50% + 4px);max-width:calc(100% - 4px)}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 0,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 16,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 16,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 28,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 143.328125,
+          "y": 0,
+          "width": 95.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 159.328125,
+          "y": 16,
+          "width": 63.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 159.328125,
+          "y": 243,
+          "width": 63.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 171.328125,
+          "y": 243,
+          "width": 39.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 286.65625,
+          "y": 0,
+          "width": 95.34375,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 302.65625,
+          "y": 16,
+          "width": 63.34375,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 302.65625,
+          "y": 243,
+          "width": 63.34375,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 314.65625,
+          "y": 243,
+          "width": 39.34375,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-lines-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/4\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-negative-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:-3/-1\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-absolute-span-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,1fr);position:relative}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:100%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"position:absolute;grid-column:2/span 2\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": 143.328125,
+          "y": 0,
+          "width": 246.671875,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": 159.328125,
+          "y": 16,
+          "width": 214.671875,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": 159.328125,
+          "y": 243,
+          "width": 214.671875,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": 171.328125,
+          "y": 243,
+          "width": 190.671875,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 0,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 16,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 16,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 28,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 143.328125,
+          "y": 0,
+          "width": 103.328125,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 159.328125,
+          "y": 16,
+          "width": 71.328125,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 159.328125,
+          "y": 243,
+          "width": 71.328125,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 171.328125,
+          "y": 243,
+          "width": 47.328125,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-center-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:center}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": -145,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": -129,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": -129,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": -117,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": 95,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": 111,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": 111,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": 123,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 335,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 351,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 351,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 363,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        }
+      ]
+    },
+    {
+      "id": "block-overflow-end-390",
+      "width": 390,
+      "height": 1000,
+      "html": "<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:block;flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:repeat(3,200px);justify-content:end}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;width:50%}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class=\"stack\" data-cid=\"stack\"><div class=\"grid\" data-cid=\"grid\"><div class=\"card\" data-cid=\"card0\" style=\"\"><div class=\"image\" data-cid=\"image0\"></div><div class=\"content\" data-cid=\"content0\"><div class=\"text\" data-cid=\"text0\"></div></div></div><div class=\"card\" data-cid=\"card1\" style=\"\"><div class=\"image\" data-cid=\"image1\"></div><div class=\"content\" data-cid=\"content1\"><div class=\"text\" data-cid=\"text1\"></div></div></div><div class=\"card\" data-cid=\"card2\" style=\"\"><div class=\"image\" data-cid=\"image2\"></div><div class=\"content\" data-cid=\"content2\"><div class=\"text\" data-cid=\"text2\"></div></div></div></div></div>",
+      "boxes": [
+        {
+          "cid": "stack",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "grid",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 347
+        },
+        {
+          "cid": "card0",
+          "x": -290,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image0",
+          "x": -274,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content0",
+          "x": -274,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text0",
+          "x": -262,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card1",
+          "x": -50,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image1",
+          "x": -34,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content1",
+          "x": -34,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text1",
+          "x": -22,
+          "y": 243,
+          "width": 44,
+          "height": 72
+        },
+        {
+          "cid": "card2",
+          "x": 190,
+          "y": 0,
+          "width": 100,
+          "height": 347
+        },
+        {
+          "cid": "image2",
+          "x": 206,
+          "y": 16,
+          "width": 68,
+          "height": 195
+        },
+        {
+          "cid": "content2",
+          "x": 206,
+          "y": 243,
+          "width": 68,
+          "height": 72
+        },
+        {
+          "cid": "text2",
+          "x": 218,
+          "y": 243,
+          "width": 44,
           "height": 72
         }
       ]
