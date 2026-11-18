@@ -7,7 +7,7 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
-- **Flex row minimums**: preserve automatic content minimums for ordinary row
+- **Flex row minimums (#533)**: preserve automatic content minimums for ordinary row
   items while retaining specified-size/max-width caps and scrollable-overflow
   shrinking. Distinguish content flex bases from preferred widths and transfer
   definite ratio heights with correct content-box/border-box frames. Pin 40
@@ -18,6 +18,29 @@ at the time); this file reconstructs them from history.
   and the distinction between allocated geometry and a definite percentage-height
   basis. Pin 74 independent Chromium controls and restore partner-logo container
   geometry at desktop, tablet and mobile widths.
+
+- **Percentage item frames (#527)**: resolve flex and grid padding and margins
+  against the actual containing block or solved grid area. Retain signed offsets,
+  content-box/border-box constraints and the fixed terms of cyclic grid edge sizes
+  during intrinsic measurement; final grid frames use their solved column areas.
+- **Functional border colors (#528)**: keep parenthesized color arguments together
+  when parsing border shorthands, so spaced `rgb()` and `rgba()` values retain
+  their authored colors instead of falling back to the text color.
+- **Inline SVG presentation (#529)**: preserve cascaded root layout properties and
+  descendant presentation styles when converting inline SVGs into raster assets.
+  Honor inherited `currentColor`, custom properties, linked/media stylesheets and
+  SVG presentation-attribute precedence. Documents without SVGs need no extra
+  cascade pass. Independent Chromium controls assert pixels and public geometry.
+- **Ratio-sized overlays (#531)**: resolve the parent's constrained aspect-ratio
+  height before laying out absolute overlays and dependent percentage-height
+  descendants, preserving content growth, min/max sizes and decorated frames.
+- **Translucent border joins (#532)**: paint uniform square borders as one ring
+  in PNG and SVG, and partition mixed-color PNG joins into a single source so
+  adjacent sides do not composite alpha twice. Exact color/area controls remain
+  distinct from curve and fractional-edge antialiasing diagnostics.
+- **Raster allocation-test isolation**: serialize entire tests that share
+  process-wide allocation counters, including preparation and assertions, so
+  concurrent tests cannot contaminate another test's measurement.
 
 - **MUI calc widths (#518)**: parse typed multiplication, division and nested
   parentheses with operator precedence, and preserve case-sensitive custom-property
