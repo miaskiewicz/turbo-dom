@@ -5148,7 +5148,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       };
       var restoreSeed = function(text,width,height){
         if(typeof text!=='string')throw new __cvTypeError('Canvas restore requires a JSON string');
-        if(text.length>268435456||width*height>268435456)throw new __cvRangeError('Canvas restore exceeds the pixel or JSON transfer budget');
+        if(text.length>268436480||width*height>268435456)throw new __cvRangeError('Canvas restore exceeds the pixel or JSON transfer budget');
         if(!width||!height)throw new __cvRangeError('Canvas restore requires positive bitmap dimensions');
         var seed=$apply(__cvParse,$JSON,[text]),image=restoreHeader(seed,width,height);
         return new ImageData(restoreBytes(image,width,height),width,height,{__proto__:null,colorSpace:'srgb',pixelFormat:'rgba-unorm8'});

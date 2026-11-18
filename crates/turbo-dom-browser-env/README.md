@@ -330,7 +330,7 @@ render operations into that bitmap first. Validation and pixel allocation comple
 before commit; failure preserves the prior context, pixels and draw log. A successful
 restore preserves an existing 2D context's identity while resetting drawing defaults,
 paths and the save stack. It transfers neither earlier transforms nor JavaScript state.
-Zero-area / over-budget seeds are rejected (268,435,456 pixels and 256M JSON code units);
+Zero-area / over-budget seeds are rejected (268,435,456 pixels and 256M JSON code units plus a fixed 1 KiB envelope allowance);
 foreign or unknown canvases return `null`.
 
 Bare-binding readback snapshots reject Proxy/accessor-backed draw records and use
