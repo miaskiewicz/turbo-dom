@@ -109,11 +109,17 @@ at the time); this file reconstructs them from history.
 - **Inheritance performance**: move overriding local values into inherited-property
   slots without first copying the discarded parent values. Normalize font sizes in their
   existing string buffers without changing keyword, relative-unit or variable behavior.
-- **Performance validation**: retain allocation regressions and paired style/layout
-  benchmarks with complete output hashes. The admitted `e1516f2a` checkpoint is
-  3.04% slower for healthy definite flex and 2.17% slower for definite grid;
-  the 100-row report has no meaningful speedup. A proposed optimization remains
-  unmerged and unmeasured; isolated cascade gains are not broad layout gains.
+- **Typed frame reuse**: retain typed edge declarations from style resolution
+  for later layout instead of repeatedly looking up and parsing the same values.
+  Containing-block-dependent resolution remains deferred to its actual layout basis.
+- **Performance validation**: admit the measured `bcfce3b4` combined candidate,
+  integrated as `2ba05e87`, with modest paired gains against v0.8.4: report100
+  1.16%, report10 1.38%, cards 1.59% and article 0.86%. Healthy flex is effectively
+  flat; the small grid result does not establish a broad speedup. All 15 benchmark
+  output hashes match v0.8.4, and 24 component PNG/geometry comparisons preserve
+  the corrected pre-optimization rendering.
+  Failed `e1516f2a` and standalone `8234d47f` checkpoints remain recorded; the
+  separate sessions do not isolate gains from any individual optimization.
 
 ## [0.8.4] — 2026-11-18
 

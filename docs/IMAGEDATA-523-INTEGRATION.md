@@ -104,8 +104,23 @@ result is separate from the historical 8c artifacts above; its committed consume
 receipt is to be added after the Surf source changes are committed. Neither a
 nonempty fallback PNG nor constructor existence was used as acceptance.
 
-Full consumer workspace and final CI checks remain pending. The admitted native
-performance checkpoint for `e1516f2a` shows healthy flex/grid regressions; see
-[the checkpoint](benchmarks/cascade-v085-e1516f2a.md). Experimental optimization
-`8234` is not merged and has no timing result yet. No final-green release result,
-PR, tag or publication is claimed here.
+Surf's `019dd016` source-consumer validation also has green full Clippy. At the
+reported whole-workspace checkpoint, 1,409 cases had passed while render binaries
+were still running (160/303 reported). The workspace result remains incomplete.
+The earlier `e0a81a80` turbo-dom CI checkpoint had 21 green checks, including all
+coverage jobs, and five native jobs pending; it predates the newly integrated
+`2ba05e87` typed-edge source, which still needs CI. Local strict/no-default checks
+pass; a full all-feature rerun with host GPU access remains pending after sandbox
+Metal was unavailable. These facts do not establish final release readiness.
+
+The admitted [combined typed-edge report](benchmarks/cascade-v085-bcfce3b4.md)
+measured modest report/card/article improvements against v0.8.4, effectively flat
+healthy flex and a small grid result. All 15 benchmark output hashes match
+v0.8.4; the 24 component PNG/geometry comparisons preserve the corrected
+pre-optimization rendering. The failed [e151 checkpoint](benchmarks/cascade-v085-e1516f2a.md)
+and [standalone 8234 experiment](benchmarks/cascade-v085-8234d47f.md) remain
+recorded. The standalone experiment was not accepted by itself; its borrow/guard
+ideas joined the combined bundle admitted as `2ba05e87`. Cross-session results
+cannot isolate the gains of individual changes, and no broad speedup is claimed.
+These results do not establish that every final check has passed. No PR, tag or
+publication is claimed here.
