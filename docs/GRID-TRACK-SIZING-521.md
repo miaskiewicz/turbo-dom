@@ -35,3 +35,5 @@ Validation on Chromium 159.0.8154.6 at widths 1440/768/390:
 Regenerate controls with `scripts/grid-track-contributions-chrome-control.mjs`;
 run the component harness per `tools/component-parity/README.md`. The harness
 retains its independent oracles and assertion thresholds.
+
+The remaining collapsed-gutter defect is tracked separately in [#525](https://github.com/miaskiewicz/turbo-dom/issues/525).

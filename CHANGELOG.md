@@ -15,6 +15,21 @@ at the time); this file reconstructs them from history.
   the solver, including flex-basis, min/max sizes, content-box frames and absolute
   insets. Reuse solved widths instead of applying percentage constraints twice;
   non-stretched auto-height items keep descendant percentage heights indefinite.
+- **Fractional background painting**: snap square CSS background paint edges to
+  device pixels while preserving layout geometry. Twenty independent Chrome pixel
+  controls and the original text-free component pixel comparisons pass.
+- **Grid tracks (#521)**: size cyclic percentage constraints intrinsically before
+  restoring item sizes against their actual grid areas, preserving spans, implicit
+  columns, absolute placement and content alignment. Pin 150 Chromium cases.
+- **Logo layout (#522)**: honor constrained natural image sizes and ratio-derived
+  heights; expand flex-flow with cascade order, importance and variables. Static
+  screenshots use an explicit fractional CSS geometry policy, independent of fonts
+  and image caps, while the default paged-layout policy is retained.
+- **ImageData constructors (#523)**: support branded dimensions/data overloads,
+  typed formats, cross-realm borrowing, detached-buffer validation and Canvas
+  create/get/put behavior. RGBA8/sRGB canvas uploads are supported; unsupported
+  P3/float16 canvas conversions fail explicitly. Native real-player verification
+  remains a consumer integration check.
 - **Canvas pixel uploads (#523)**: replay RGBA ImageData uploads as clipped bitmap
   replacement independent of transforms, global alpha and composition state.
   Metal uses the software bitmap path for these uploads.
