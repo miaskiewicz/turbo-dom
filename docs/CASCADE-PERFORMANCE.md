@@ -5,6 +5,10 @@ The Rust `cascade_perf` example measures styling and full native layout for a
 It parses each document and constructs the font registry outside the timed loops.
 Each workload warms its caches before measuring; allocation, output destruction,
 cascade and layout work remain inside the relevant measured loop.
+Three additional pre-matched cascade cases override inherited CSS variables:
+one 64-byte value, one 16 KiB payload, and eight 64-byte theme values. Each sample
+iteration performs 100 resolutions; parent/declaration construction is excluded.
+These isolate allocation costs and are reported separately from full layout.
 
 Run a comparison of committed revisions from a clean or dirty checkout:
 

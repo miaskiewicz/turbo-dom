@@ -4,6 +4,9 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use sha2::{Digest, Sha256};
+use turbo_dom_layout::style::{
+    parse_declarations, resolve_matched_style, CascadeOrigin, ComputedStyle, MatchedDeclaration,
+};
 use turbo_dom_layout::{
     layout_html_tree_in_viewport, parse_html_tree, style_html_tree, Diagnostics, FontRegistry,
     HtmlOptions, ImageCtx, ImageResolver,
@@ -52,6 +55,40 @@ fn measure<T: std::fmt::Debug>(name: &str, iterations: usize, mut run: impl FnMu
     );
 }
 
+fn matched_overrides(iterations: usize) {
+    for (name, count, size) in [
+        ("matched_override_small", 1, 64),
+        ("matched_override_payload", 1, 16 * 1024),
+        ("matched_override_theme", 8, 64),
+    ] {
+        let parent = ComputedStyle::from_pairs(
+            (0..count).map(|index| (format!("--theme-{index}"), "x".repeat(size))),
+        );
+        let css: String = (0..count)
+            .map(|index| format!("--theme-{index}:blue;"))
+            .collect();
+        let declarations: Vec<_> = parse_declarations(&css)
+            .into_iter()
+            .enumerate()
+            .map(|(order, declaration)| MatchedDeclaration {
+                declaration,
+                origin: CascadeOrigin::Author,
+                scope_depth: 0,
+                inline: false,
+                specificity: (0, 0, 1),
+                order,
+            })
+            .collect();
+        measure(name, iterations, || {
+            let mut result = ComputedStyle::default();
+            for _ in 0..100 {
+                result = black_box(resolve_matched_style(&parent, &declarations));
+            }
+            result
+        });
+    }
+}
+
 fn main() {
     let iterations = std::env::args()
         .nth(1)
@@ -85,4 +122,5 @@ fn main() {
             )
         });
     }
+    matched_overrides(iterations);
 }
