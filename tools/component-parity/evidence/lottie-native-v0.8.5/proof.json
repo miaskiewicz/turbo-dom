@@ -1,0 +1,111 @@
+{
+  "domRevision": "8c7f96adf8c55fdabad9b9c0d02fba0e0ff8af05",
+  "addonSha256": "4d0c17d0090bf071d835d899d97480f350c930b4044726b21e80abf65f193b1a",
+  "exactChangedFraction": 0,
+  "threshold16ChangedFraction": 0,
+  "sourceIdentity": {
+    "surfBase": "ac0d81fbb8984cb97d836a6caddd1a11dca9801c",
+    "uncommittedHostChanges": true,
+    "packageVersion": "0.70.0",
+    "filesSha256": {
+      "turbo-surf/harness/raster-parity/run.mjs": "4d42fa1ae45029b8303bbb24f2c5d6f982b3fec720a58e42a69d69f77455e11b",
+      "turbo-surf/harness/raster-parity/provenance.json": "b6810b3bc7d6f53d43b2f51c8de3b801320b947f5c1ba24f96c4750e9231e070",
+      "turbo-surf/harness/raster-parity/parity.test.mjs": "5f2418be96f704daa920239ecdd967c85e2a9e2f0059b53bb818044f0515cc67",
+      "turbo-surf/harness/raster-parity/lottie-observed-2026-11-18.json": "c61ad4d19e7e9ac5080b3a033ed4680aed2ab707df952fb9cb48f7730a1b6077",
+      "turbo-surf/harness/raster-parity/cases.mjs": "b0f252618f19a2e0de9ebc3a39a15837176ce91737fa9019e94f41ba830eccfd",
+      "turbo-surf/harness/raster-parity/README.md": "644bcfec38bf5b314538078356d730cfe5f31d664bcb8921e0163336cb7e8901",
+      "turbo-surf/harness/raster-parity/lottie.mjs": "df7f23ce1612930b4b0fc2863caf236c62d18c22cb4797fb66b755d8087a2b4b",
+      "turbo-surf/harness/raster-parity/server.mjs": "02d3d36e4cdc08a6283b4a253bd77b4f8ae1c0bb5771ab2dc9356a9178cadec4",
+      "turbo-surf/harness/raster-parity/FINDINGS.md": "d3e9409928e04c5b9f75ff219619988a2171743600c6f5c7ddb5cb7b9b89f813",
+      "turbo-surf/harness/raster-parity/chromium-reference.json": "1741c48d94753ec0f68bccaef2041820046007807a6ce7c1bd0caa28e34dd8bf",
+      "turbo-surf/harness/raster-parity/pixels.mjs": "1fb05be19e219e7110629ec1a218e83648889c5864a91e6dfab50b33e9f88082",
+      "turbo-surf/harness/raster-parity/observed-2026-11-18.json": "c8c585d696e9cc62f5cc432e382f7c4275922b0f9d51f7dade54f122d59b2514",
+      "turbo-surf/harness/raster-parity/fixtures/partner-logos.html": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "turbo-surf/harness/raster-parity/fixtures/product-cards.html": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "turbo-surf/harness/raster-parity/fixtures/lottie-player.html": "87e93209aaa9df5a17c30df5921849b5d0ea4870b73605f48519f4c76ace43a8",
+      "turbo-surf/harness/raster-parity/fixtures/nested-flex-padding.html": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "turbo-surf/harness/raster-parity/fixtures/feature-cards.html": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "turbo-surf/harness/raster-parity/fixtures/nested-grid-tracks.html": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "turbo-surf/harness/raster-parity/fixtures/resources.html": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "turbo-surf/harness/raster-parity/fixtures/mui-width-additive.html": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "turbo-surf/harness/raster-parity/fixtures/mui-width-expression.html": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "turbo-surf/harness/raster-parity/fixtures/lottie/home-hero-placeholder.png": "b681404ae31e4ca46bdcc18328ab35d71f43ff3485a05fb2ba2f18a7b0fb759c",
+      "turbo-surf/harness/raster-parity/fixtures/lottie/home-hero.lottie": "51c691ee8cd7e003e0bfe520aaedfbb8e223c5e03495480a97f6e697057d3937",
+      "turbo-surf/harness/raster-parity/fixtures/assets/4e61e61647f031e6.svg": "4e61e61647f031e65e37f97b0cdd1c43af249c1b6277b12a13e64b7219f7c81d",
+      "turbo-surf/harness/raster-parity/fixtures/assets/9493a7c1831e2ba5.png": "9493a7c1831e2ba526b497618b9b18dcff142943beadc44762878e586460cc2f",
+      "turbo-surf/harness/raster-parity/fixtures/assets/46cb8476bc0e2152.png": "46cb8476bc0e2152e731075df5e03a8f330f0a0edc2cc50bebb26a57847f1a80",
+      "turbo-surf/harness/raster-parity/fixtures/assets/da9f4488a7db7c72.svg": "da9f4488a7db7c723791677f498c7ff80650c28772d2b1c4066370560d3444f4",
+      "turbo-surf/harness/raster-parity/fixtures/assets/f448a651682017b9.png": "f448a651682017b908ecb44d0c2c0c863a37ff3501ace31bab0f379b2155bf87",
+      "turbo-surf/harness/raster-parity/fixtures/assets/f96207d6aa0d3d51.png": "f96207d6aa0d3d511b94f29169b2a3f9090901524ab4301f10100fc6e321d33e",
+      "turbo-surf/harness/raster-parity/fixtures/assets/7a8d8a895fe35ca6.png": "7a8d8a895fe35ca62f27931ed4d3f86b7047e7d6f537a206197961fa50bb21d6",
+      "turbo-surf/harness/raster-parity/fixtures/assets/eec577c0a2486b18.png": "eec577c0a2486b1842389e9433c401fcf03c3c144cd2a8f2a38ff94c89dc53e5",
+      "turbo-surf/harness/raster-parity/fixtures/assets/1262f69064272abf.png": "1262f69064272abf4d8bdfc8b7699c15b0275b9ce8b109af798be541e0c18b8d",
+      "website-global/node_modules/@lottiefiles/dotlottie-web/package.json": "e232b2837795a7fe7e7ffd8f311cde2626605bfdaef1befba9016ba70ab0a637",
+      "website-global/node_modules/@lottiefiles/dotlottie-web/dist/index.js": "9a35aed7b41fd97bbdcd1b1a2c9d9d1fbd4150ecfb8a807ba96b9f54ca0a31da",
+      "website-global/node_modules/@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm": "3169df80d43187939d7d7ab81d27d0b6843694687f8e960e94606986544c7bcf"
+    }
+  },
+  "player": {
+    "browser": "156.0.8078.47",
+    "chromium": {
+      "state": {
+        "status": "ready",
+        "events": [
+          "load"
+        ],
+        "frame": 30,
+        "nonzeroAlpha": 544214
+      },
+      "capabilities": {
+        "imageDataType": "function",
+        "constructed": [
+          1,
+          1,
+          1,
+          2,
+          3,
+          255
+        ]
+      },
+      "errors": []
+    },
+    "turboSurf": {
+      "state": {
+        "status": "ready",
+        "events": [
+          "load"
+        ],
+        "frame": 30,
+        "nonzeroAlpha": 544214
+      },
+      "capabilities": {
+        "imageDataType": "function",
+        "constructed": [
+          1,
+          1,
+          1,
+          2,
+          3,
+          255
+        ]
+      },
+      "errors": []
+    },
+    "changedFraction": 0,
+    "vendorSha256": {
+      "index.js": "9a35aed7b41fd97bbdcd1b1a2c9d9d1fbd4150ecfb8a807ba96b9f54ca0a31da",
+      "dotlottie-player.wasm": "3169df80d43187939d7d7ab81d27d0b6843694687f8e960e94606986544c7bcf"
+    }
+  },
+  "scope": "Fresh optimized native Surf integration checkpoint; not a published Surf build. Later MCP restore work is separately tracked in turbo-surf#527.",
+  "images": {
+    "native.png": {
+      "file": "native.png",
+      "sha256": "1619f6c5e68f7abd1c0a2e468432305b01f6c8632fc63c89b1842173222c52a3"
+    },
+    "chromium.png": {
+      "file": "chromium.png",
+      "sha256": "6c4987784791aaf7782e3b58fee0f363d89a2e2bb8c137f271dacc19a300f519"
+    }
+  }
+}
