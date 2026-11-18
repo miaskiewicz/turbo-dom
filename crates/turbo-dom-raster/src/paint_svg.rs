@@ -16,6 +16,7 @@ use turbo_dom_layout::{
 use crate::image_paint::{self, DecodedAssets};
 use crate::paint_png::fragment_finite_positive;
 use crate::rrect::{self, Seg};
+use crate::shadow_layers::PaintInput;
 use crate::tile_cell::TileCell;
 
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
@@ -53,7 +54,7 @@ pub(crate) fn paint_at_size_with_masks(
     _css_size: (u32, u32),
     pixel_size: (u32, u32),
     bg: Rgba,
-    images: &DecodedAssets,
+    images: &impl PaintInput,
     scale: f64,
     masks: &[crate::ScreenshotMask],
 ) -> String {
@@ -156,7 +157,7 @@ fn preblend_class(top: u32) -> [f32; 256] {
     table
 }
 
-fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_fragment(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     // CSS `opacity` (miaskiewicz/turbo-dom#206) is a group opacity over the box and
     // its subtree; `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
@@ -171,7 +172,7 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
-fn paint_opaque(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     // A CSS `transform` wraps this box + subtree in a `<g transform>` (applied about
     // the box's absolute transform-origin), so the SVG viewer transforms them as a unit.
     let transformed = matches!(
@@ -205,7 +206,7 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52) inside a
 /// `<g clip-path>` of that region (in the box's own, possibly transformed, user space;
 /// the `clipPath` id is the document offset, unique); an empty region paints nothing.
-fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &DecodedAssets) {
+fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl PaintInput) {
     if clip.width <= 0.0 || clip.height <= 0.0 {
         return;
     }
@@ -219,26 +220,25 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &Decode
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
-fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     match &f.content {
         FragmentContent::Box {
             background,
             border,
             border_radius,
-            shadow,
             gradient,
             ..
         } => {
-            if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
-                paint_box_shadow(svg, f, border_radius, &sh);
-            }
+            paint_outer_layers(svg, f, border_radius, images);
             if let Some(bg) = background {
                 rect_r(svg, (f.x, f.y, f.width, f.height), *bg, border_radius);
             }
             if let Some(g) = gradient {
                 paint_gradient(svg, f, border_radius, g);
             }
-            paint_inset_shadow(svg, f, border, border_radius, shadow.as_ref());
+            for sh in images.shadows(f).iter().rev() {
+                paint_inset_shadow(svg, f, border, border_radius, Some(sh));
+            }
             if border_radius.is_rounded() {
                 paint_round_border(svg, f, border, border_radius);
             } else {
@@ -262,8 +262,8 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
                 (*font_size, *color),
             );
         }
-        FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
-        FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
+        FragmentContent::Image(placement) => paint_image(svg, f, placement, images.images()),
+        FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images.images()),
         FragmentContent::ColumnRule { style, color } => paint_column_rule(svg, f, *style, *color),
         FragmentContent::Marker(_) => {}
     }
@@ -580,7 +580,7 @@ fn paint_tile_texture(
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
 /// region (miaskiewicz/turbo-dom#253) when it has one and they may paint past it (an empty
 /// region paints none of them).
-fn paint_children(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     let clip = f.overflow_clip.filter(|c| {
         !f.children.is_empty()
             && (c.radii.is_rounded()
@@ -744,6 +744,31 @@ fn fill_attrs(c: Rgba) -> String {
 
 fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
     rect_r(svg, (x, y, w, h), c, &BorderRadii::ZERO);
+}
+
+fn paint_outer_layers(
+    svg: &mut String,
+    f: &Fragment,
+    radii: &BorderRadii,
+    input: &impl PaintInput,
+) {
+    let shadows = input.shadows(f);
+    let multiple = input.multiple(f);
+    if multiple {
+        let Some((x, y, w, h)) = crate::shadow_layers::outer_bounds(f, shadows) else {
+            return;
+        };
+        let id = svg.len();
+        let _ = write!(svg, "<mask id=\"outer{id}\" maskUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\"><rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"white\"/>");
+        shape(svg, (f.x, f.y, f.width, f.height), radii, "fill=\"black\"");
+        let _ = write!(svg, "</mask><g mask=\"url(#outer{id})\">");
+    }
+    for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a > 0) {
+        paint_box_shadow(svg, f, radii, sh);
+    }
+    if multiple {
+        svg.push_str("</g>");
+    }
 }
 
 /// Paint an outer `box-shadow` as a blurred rounded rect behind the box, using an

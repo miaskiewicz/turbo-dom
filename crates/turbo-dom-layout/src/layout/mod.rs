@@ -257,9 +257,33 @@ pub fn layout_recorded_in_viewport(
     options: &LayoutOptions,
     diags: &mut Diagnostics,
 ) -> LaidOut {
+    layout_recorded_with_clips(
+        styled,
+        (cb_width, viewport_height),
+        fonts,
+        images,
+        *options,
+        false,
+        diags,
+    )
+}
+
+pub(crate) fn layout_recorded_with_clips(
+    styled: &[StyledNode],
+    (cb_width, viewport_height): (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: LayoutOptions,
+    keep_zero_area_clips: bool,
+    diags: &mut Diagnostics,
+) -> LaidOut {
     let _cmyk = value::cmyk_scope(options.accept_cmyk);
     let _caps = imgsize::uncapped_scope(options.uncapped_images);
-    let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build_options(options, true));
+    let build = boxgen::BuildOptions {
+        keep_zero_area_clips,
+        ..build_options(&options, true)
+    };
+    let (tree, recorded, count) = boxgen::build_box_tree_with(styled, build);
     let (mut galley, rows) =
         block::layout_tree_recorded(&tree, (cb_width, viewport_height), fonts, images, diags);
     let first = options.first_node_id;

@@ -133,7 +133,7 @@ Images follow Blink's load decision:
 Inline `<svg>` elements and `<img src="data:…">` paint as in Chrome (turbo-dom#25, #27).
 
 Painting follows Chrome 156 for: per-corner elliptical `border-radius` on backgrounds,
-gradients, borders (each side in its own width and colour), outer and inset box shadows,
+gradients, borders (each side in its own width and colour), multiple outer and inset box-shadow layers in CSS order,
 and `overflow` clipping (turbo-dom#253, #192); background layers with size / position /
 repeat (incl. `space` / `round`) / origin / clip, tiled from one decoded image (#248);
 inline-box decorations per line fragment with `box-decoration-break` (#244; a cloned
@@ -207,3 +207,10 @@ unless `system_fonts` is set, so the tests do not depend on host fonts.
 [CHANGELOG](../../CHANGELOG.md) · `scripts/verify-copied-layout.sh` (the one-time move)
 
 License: MIT.
+
+Multiple-shadow screenshots keep layer lists in each prepared scene, mapped from
+that layout's recorded source identities. No global shadow state is retained.
+Single-shadow and shadow-free documents keep the unrecorded layout path. The public
+layout `FragmentContent::Box::shadow` field remains its first-layer compatibility
+representation; `layout::value::box_shadow_layers` exposes the full computed list
+without changing existing struct literals or exhaustive enum matches.

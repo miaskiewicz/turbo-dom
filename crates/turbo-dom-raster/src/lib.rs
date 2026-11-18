@@ -43,6 +43,7 @@ mod paint_canvas_gpu;
 mod paint_png;
 mod paint_svg;
 mod prepared;
+mod shadow_layers;
 pub use prepared::PreparedScreenshot;
 mod rrect;
 mod style_extract;
@@ -140,9 +141,8 @@ use std::collections::{HashMap, HashSet};
 use turbo_dom_layout::text::{FontRegistry, SystemFontPolicy};
 use turbo_dom_layout::turbo_dom::Tree;
 use turbo_dom_layout::{
-    layout_html_tree_capture_in_viewport_with, layout_html_tree_in_viewport_with, parse_html_tree,
-    Attr, Diagnostics, Fragment, FragmentContent, HtmlOptions, ImageCtx, Rgba, StyledNode, Tag,
-    INDETERMINATE_ATTR,
+    parse_html_tree, Attr, Diagnostics, Fragment, FragmentContent, HtmlOptions, ImageCtx, Rgba,
+    StyledNode, Tag, INDETERMINATE_ATTR,
 };
 
 /// Fetched image bytes keyed by their reference — the raw `<img src>` /
@@ -621,6 +621,25 @@ fn lay_out(
     fonts: &FontRegistry,
     screenshot_options: &ScreenshotOptions,
 ) -> Fragment {
+    lay_out_with_shadow_layers(
+        tree,
+        external_css,
+        viewport,
+        images,
+        fonts,
+        screenshot_options,
+    )
+    .0
+}
+
+fn lay_out_with_shadow_layers(
+    tree: &Tree,
+    external_css: &str,
+    viewport: Viewport,
+    images: &image_paint::DecodedAssets,
+    fonts: &FontRegistry,
+    screenshot_options: &ScreenshotOptions,
+) -> (Fragment, shadow_layers::ShadowLayers) {
     #[cfg(test)]
     LAYOUT_PASSES.with(|passes| passes.set(passes.get() + 1));
     let Viewport { width, height } = viewport;
@@ -647,23 +666,26 @@ fn lay_out(
     // height (miaskiewicz/turbo-dom#81). The post-cascade hook carries the live
     // IDL state (today: the `indeterminate` checkbox flag) a screenshot has no
     // script to set onto the matching styled boxes (miaskiewicz/turbo-dom#371).
-    let layout = if screenshot_options.full_page {
-        layout_html_tree_capture_in_viewport_with
-    } else {
-        layout_html_tree_in_viewport_with
-    };
-    turbo_dom_layout::with_fractional_css_geometry(|| {
-        layout(
+    let mut layers = shadow_layers::SourceLayers::new();
+    let (galley, sources) = turbo_dom_layout::with_fractional_css_geometry(|| {
+        turbo_dom_layout::layout_html_tree_in_viewport_with_optional_sources(
             tree,
             "",
             (width as f32, height as f32),
             fonts,
             &image_ctx,
             &options,
-            |styled: &mut [StyledNode]| apply_idl_states(styled, screenshot_options.idl_states),
+            screenshot_options.full_page,
+            |styled: &mut [StyledNode]| {
+                apply_idl_states(styled, screenshot_options.idl_states);
+                shadow_layers::collect(styled, 16.0, width as f32, &mut layers);
+                !layers.is_empty()
+            },
             &mut diags,
         )
-    })
+    });
+    let layers = shadow_layers::remap(sources.as_ref(), &layers, &galley);
+    (galley, layers)
 }
 
 /// Push [`INDETERMINATE_ATTR`] onto each `<input>` whose tree-order index among the

@@ -2335,8 +2335,9 @@ fn fill_position_gaps(positions: &mut [Option<f32>]) {
     }
 }
 
-/// The first (topmost) `box-shadow` layer: `[inset]? <ox> <oy> <blur>? <spread>?
-/// <color>?` in any color position, comma-separated layers (v1 keeps the first).
+/// The first (topmost) `box-shadow` layer for the legacy fragment field:
+/// `[inset]? <ox> <oy> <blur>? <spread>? <color>?` in any color position.
+/// Complete screenshot paint lists use [`box_shadow_layers`].
 /// `None` for `none`/absent/malformed (needs at least the two offset lengths).
 /// The color defaults to the box's `color` (CSS `currentColor`).
 fn box_shadow_of(s: &ComputedStyle, fs: f32) -> Option<super::fragment::BoxShadow> {
@@ -2345,7 +2346,29 @@ fn box_shadow_of(s: &ComputedStyle, fs: f32) -> Option<super::fragment::BoxShado
         return None;
     }
     let first = top_level_comma_split(value).next()?;
-    let parts = parse_shadow_parts(first, fs);
+    resolve_shadow_layer(first, s, fs)
+}
+
+/// Every computed `box-shadow` layer, in CSS order (the first is topmost).
+/// This additive paint seam leaves [`BoxStyle::box_shadow`] and the public
+/// fragment's single-shadow representation unchanged.
+#[must_use]
+pub fn box_shadow_layers(s: &ComputedStyle, ctx: ResolveCtx) -> Vec<super::fragment::BoxShadow> {
+    let Some(value) = s.get("box-shadow").filter(|v| !is_none_keyword(v.trim())) else {
+        return Vec::new();
+    };
+    let fs = resolve_font_size(s, ctx.parent_font_size);
+    top_level_comma_split(value)
+        .filter_map(|layer| resolve_shadow_layer(layer, s, fs))
+        .collect()
+}
+
+fn resolve_shadow_layer(
+    layer: &str,
+    s: &ComputedStyle,
+    fs: f32,
+) -> Option<super::fragment::BoxShadow> {
+    let parts = parse_shadow_parts(layer, fs);
     if parts.lengths.len() < 2 {
         return None;
     }
@@ -2682,6 +2705,58 @@ mod box_shadow_tests {
     fn shadow(value: &str) -> Option<super::super::fragment::BoxShadow> {
         let s = ComputedStyle::from_pairs([("box-shadow", value), ("color", "#123456")]);
         box_shadow_of(&s, 16.0)
+    }
+
+    #[test]
+    fn additive_layer_reader_preserves_legacy_first_shadow_and_css_order() {
+        let style = ComputedStyle::from_pairs([
+            ("color", "#123456"),
+            ("font-size", "20px"),
+            (
+                "box-shadow",
+                "1em 2em rgba(255, 0, 0, .5), inset -1px 0 currentColor, 0 0 3px 4px blue",
+            ),
+        ]);
+        let layers = box_shadow_layers(
+            &style,
+            ResolveCtx {
+                parent_font_size: 16.0,
+                cb_width: 200.0,
+            },
+        );
+        assert_eq!(layers.len(), 3);
+        assert_eq!(Some(layers[0]), box_shadow_of(&style, 20.0));
+        assert_eq!((layers[0].offset_x, layers[0].offset_y), (20, 40));
+        assert!(layers[1].inset);
+        assert_eq!(
+            layers[1].color,
+            Rgba {
+                r: 0x12,
+                g: 0x34,
+                b: 0x56,
+                a: 255
+            }
+        );
+        assert_eq!(
+            layers[2].color,
+            Rgba {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255
+            }
+        );
+        for value in ["none", "", "red"] {
+            let style = ComputedStyle::from_pairs([("box-shadow", value)]);
+            assert!(box_shadow_layers(
+                &style,
+                ResolveCtx {
+                    parent_font_size: 16.0,
+                    cb_width: 100.0
+                }
+            )
+            .is_empty());
+        }
     }
 
     #[test]

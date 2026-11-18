@@ -42,6 +42,11 @@ at the time); this file reconstructs them from history.
   process-wide allocation counters, including preparation and assertions, so
   concurrent tests cannot contaminate another test's measurement.
 
+- **Multiple box shadows**: retain every computed layer in owned screenshot paint
+  metadata without changing the public fragment or shadow structs. PNG and SVG
+  paint outer and inset layers in CSS order, preserve rounded transparent-box
+  knockouts, and include every shadow in opacity bounds. Source recording stays
+  conditional; prepared scenes retain independent layer identities.
 - **MUI calc widths (#518)**: parse typed multiplication, division and nested
   parentheses with operator precedence, and preserve case-sensitive custom-property
   names so MUI's Grid variables resolve. Reject malformed, dimensionally invalid

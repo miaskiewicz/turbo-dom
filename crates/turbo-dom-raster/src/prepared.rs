@@ -1,5 +1,5 @@
 use crate::{
-    image_paint, lay_out, paint_height, paint_png, paint_svg, parse_document,
+    image_paint, lay_out_with_shadow_layers, paint_height, paint_png, paint_svg, parse_document,
     screenshot_canvas_background, Fragment, FragmentContent, ImageAssets, Rgba, ScreenshotOptions,
     Viewport,
 };
@@ -24,6 +24,7 @@ pub struct PreparedScreenshot {
     background: Rgba,
     scale: f64,
     masks: Vec<crate::ScreenshotMask>,
+    shadow_layers: crate::shadow_layers::ShadowLayers,
 }
 
 impl PreparedScreenshot {
@@ -40,8 +41,9 @@ impl PreparedScreenshot {
         crate::capture_resources::add_metadata(&mut decoded, options.image_metadata);
         image_paint::add_data_uri_images(&mut decoded, external_css, html);
         let tree = parse_document(html, external_css, viewport, &mut decoded, options);
-        let mut galley = options
-            .with_fonts(|fonts| lay_out(&tree, external_css, viewport, &decoded, fonts, options));
+        let (mut galley, shadow_layers) = options.with_fonts(|fonts| {
+            lay_out_with_shadow_layers(&tree, external_css, viewport, &decoded, fonts, options)
+        });
         let background = screenshot_canvas_background(&galley, options.omit_background);
         let height = paint_height(&galley, viewport, options.full_page);
         // The propagated canvas color is already the painters' initial fill. Its
@@ -51,6 +53,7 @@ impl PreparedScreenshot {
         }
         Self {
             galley,
+            shadow_layers,
             decoded,
             width: viewport.width,
             height,
@@ -62,66 +65,99 @@ impl PreparedScreenshot {
 
     /// Paint the retained layout to PNG without re-reading any preparation input.
     pub fn png(&self) -> Result<Vec<u8>, String> {
-        if !self.masks.is_empty() {
-            return paint_png::paint_scaled_with_masks(
+        if self.shadow_layers.is_empty() {
+            if !self.masks.is_empty() {
+                return paint_png::paint_scaled_with_masks(
+                    &self.galley,
+                    self.width,
+                    self.height,
+                    self.background,
+                    &self.decoded,
+                    self.scale,
+                    &self.masks,
+                );
+            }
+            if self.scale == 1.0 {
+                return paint_png::paint(
+                    &self.galley,
+                    self.width,
+                    self.height,
+                    self.background,
+                    &self.decoded,
+                );
+            }
+            return paint_png::paint_scaled(
                 &self.galley,
                 self.width,
                 self.height,
                 self.background,
                 &self.decoded,
                 self.scale,
-                &self.masks,
             );
         }
-        if self.scale == 1.0 {
-            return paint_png::paint(
-                &self.galley,
-                self.width,
-                self.height,
-                self.background,
-                &self.decoded,
-            );
-        }
-        paint_png::paint_scaled(
+
+        let context = crate::shadow_layers::PaintContext {
+            images: &self.decoded,
+            layers: &self.shadow_layers,
+        };
+        paint_png::paint_scaled_with_masks(
             &self.galley,
             self.width,
             self.height,
             self.background,
-            &self.decoded,
+            &context,
             self.scale,
+            &self.masks,
         )
     }
 
     /// Paint the same retained layout to a standalone SVG.
     pub fn svg(&self) -> Result<String, String> {
-        let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
-        if !self.masks.is_empty() {
-            return Ok(paint_svg::paint_at_size_with_masks(
+        if self.shadow_layers.is_empty() {
+            let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
+            if !self.masks.is_empty() {
+                return Ok(paint_svg::paint_at_size_with_masks(
+                    &self.galley,
+                    (self.width, self.height),
+                    pixels,
+                    self.background,
+                    &self.decoded,
+                    self.scale,
+                    &self.masks,
+                ));
+            }
+            if self.scale == 1.0 {
+                return Ok(paint_svg::paint(
+                    &self.galley,
+                    self.width,
+                    self.height,
+                    self.background,
+                    &self.decoded,
+                ));
+            }
+            return Ok(paint_svg::paint_at_size(
                 &self.galley,
                 (self.width, self.height),
                 pixels,
                 self.background,
                 &self.decoded,
                 self.scale,
-                &self.masks,
             ));
         }
-        if self.scale == 1.0 {
-            return Ok(paint_svg::paint(
-                &self.galley,
-                self.width,
-                self.height,
-                self.background,
-                &self.decoded,
-            ));
-        }
-        Ok(paint_svg::paint_at_size(
+
+        let pixels = crate::screenshot_pixel_size(self.width, self.height, self.scale)?;
+        let context = crate::shadow_layers::PaintContext {
+            images: &self.decoded,
+            layers: &self.shadow_layers,
+        };
+        Ok(paint_svg::paint_at_size_with_masks(
             &self.galley,
             (self.width, self.height),
             pixels,
             self.background,
-            &self.decoded,
+            &context,
             self.scale,
+            &self.masks,
         ))
     }
 }
