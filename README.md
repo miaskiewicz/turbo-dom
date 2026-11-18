@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.4** (local unreleased candidate). turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.4**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -17,13 +17,11 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## Packages in this candidate
+## Packages in this release
 
-Version 0.8.4 is under local development; the published registry release remains
-0.8.3. Local consumers override these candidate requirements with `[patch.crates-io]`
-until the release is published.
-The V8 fork's published version remains 150.4.1; the 150.4.2 candidate below is
-consumed through the exact pre-release git pin.
+The DOM packages share version 0.8.4. The independently versioned V8 fork is
+150.4.2 and uses the official V8 150.4.0 archive. After installing the published
+release, consumers can remove their pre-release `[patch.crates-io]` overrides.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
@@ -162,9 +160,9 @@ features (for example `simdutf`).
 
 ## Status
 
-- **0.8.4 (unreleased):** bounded shaping-cache retention, shared immutable styles
+- **0.8.4:** bounded shaping-cache retention, shared immutable styles
   and font-family storage, and inline text paths that avoid unused box parsing and
-  disabled wrapping work. See the unreleased changelog and turbo-dom#508.
+  disabled wrapping work. See the changelog and turbo-dom#508.
   The host-only auxiliary browsing-context boundary (#504) adds genuine native
   WindowProxy admission and lifecycle APIs; a consumer must supply its real Page,
   network and policy integration. See the browser-env auxiliary-context guide.

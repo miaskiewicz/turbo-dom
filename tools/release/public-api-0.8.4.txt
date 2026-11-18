@@ -1,0 +1,321 @@
+# Public Rust API diff, v0.8.3 -> v0.8.4 release candidate
+# Previous: v0.8.3 annotated tag 27a2a06ecb940c38d674d5c41e100672271c4b22,
+#   peeled commit a7a820b157eed2a7dba1723715fbc1660638ed6f.
+# Candidate source: 688a1e3f4197c4fdf5ec55f3ab1c98da642e4948.
+# The audit precedes release documentation/API-receipt commits; those do not alter
+# Rust source. Re-run if the release's Rust source or Cargo feature surface changes.
+# Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02).
+# Host/target: aarch64-apple-darwin, identical toolchain at both source revisions.
+# cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
+# Commands, run in separate worktrees at both revisions (default features enabled):
+#   cargo +nightly public-api -sss --color never -p turbo-dom
+#   cargo +nightly public-api -sss --color never -p turbo-dom-parser
+#   cargo +nightly public-api -sss --color never -p turbo-dom-layout --features svg,perf,serde,test-support
+#   cargo +nightly public-api -sss --color never -p turbo-dom-raster --features avif,jxl
+#   cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# Supplemental host seam (standard rustdoc omits #[doc(hidden)] modules):
+#   RUSTDOCFLAGS=--document-hidden-items cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# RUSTY_V8_ARCHIVE uses the unchanged official V8 150.4.0 prebuilt archive;
+# RUSTY_V8_SRC_BINDING_PATH uses the matching generated aarch64-apple-darwin binding.
+# All commands completed successfully; Cargo manifests/lockfiles were not modified.
+# '+' = candidate-only public API line; '-' = previous-only public API line.
+# Re-exported public paths count as separate lines. No removals or signature changes
+# were found in either the standard outputs or the doc-hidden host seam.
+# Summary: turbo-dom 0/0, parser 0/0, layout +11/-0, raster 0/0,
+#   browser-env standard +34/-0; supplemental hidden host additions +226/-0.
+# Breaking assessment: none identified for these audited Rust surfaces. Added
+# structs/enums/traits are new types; no existing type gained a field/variant here.
+# Behavioral corrections (including quirks layout, receiver checks and image realm
+# ownership) are recorded separately in CHANGELOG.md, not inferred from signatures.
+# Native dependency requirement: browser-env now requires turbo-dom-v8 ~150.4.2;
+# consumers must retain a coherent single-V8 dependency graph.
+# Scope/limitations: this is a textual Rust signature audit, not an ABI, runtime,
+# semver-proof or consumer-execution check. It follows the prior release's CI-feature
+# matrix above; platform-only coretext/gpu-metal surfaces, simdutf, startup-snapshot,
+# split-install and native-SDK overlay feature combinations were not separately diffed.
+# The already-published turbo-dom-v8 150.4.2 generated fork is verified independently
+# by release tooling against its immutable registry archive; its 150.4.1 -> 150.4.2
+# public API is not repeated in this five-workspace-crate receipt.
+
+## turbo-dom
+
+## turbo-dom-parser
+
+## turbo-dom-layout
++ pub struct turbo_dom_layout::layout::value::BoxFlowStyle
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::border_widths: turbo_dom_layout::layout::value::Edges
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::font_size: f32
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::height: turbo_dom_layout::layout::value::LengthPct
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::inset_bottom: turbo_dom_layout::layout::value::LengthPct
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::inset_top: turbo_dom_layout::layout::value::LengthPct
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::margin: turbo_dom_layout::layout::value::Edges
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::padding: turbo_dom_layout::layout::value::Edges
++ pub turbo_dom_layout::layout::value::BoxFlowStyle::position: turbo_dom_layout::layout::value::Position
++ pub fn turbo_dom_layout::layout::value::resolve_box_flow_style(&turbo_dom_layout::ComputedStyle, turbo_dom_layout::layout::value::ResolveCtx) -> turbo_dom_layout::layout::value::BoxFlowStyle
++ pub fn turbo_dom_layout::layout::value::resolve_font_size(&turbo_dom_layout::ComputedStyle, f32) -> f32
+
+## turbo-dom-raster
+
+## turbo-dom-browser-env
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_CONTEXTS_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_CONTEXTS_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_CONTEXTS_PROBE_JS: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_INDEXES_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_INDEXES_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_INDEXES_PROBE_JS: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_LIFECYCLE_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_LIFECYCLE_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_LIFECYCLE_PROBE_JS: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_SHADOW_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_SHADOW_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::CSS_EFFECT_SHADOW_PROBE_JS: &str
++ pub enum turbo_dom_browser_env::browser_env::AnimationPresentation
++ pub turbo_dom_browser_env::browser_env::AnimationPresentation::Disabled
++ pub turbo_dom_browser_env::browser_env::AnimationPresentation::Enabled
++ pub fn turbo_dom_browser_env::browser_env::set_animation_presentation(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::AnimationPresentation) -> bool
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_CONTEXTS_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_CONTEXTS_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_CONTEXTS_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_INDEXES_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_INDEXES_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_INDEXES_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_LIFECYCLE_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_LIFECYCLE_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_LIFECYCLE_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_SHADOW_CASES_JSON: &[u8]
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_SHADOW_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::CSS_EFFECT_SHADOW_PROBE_JS: &str
+
+## turbo-dom-browser-env: supplemental doc-hidden host seam
++ pub enum turbo_dom_browser_env::browser_env::host_internals::AnimationPresentation
++ pub turbo_dom_browser_env::browser_env::host_internals::AnimationPresentation::Disabled
++ pub turbo_dom_browser_env::browser_env::host_internals::AnimationPresentation::Enabled
++ pub enum turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::Abort
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::InitializedByHost
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::RunRegisteredInitScripts
++ pub enum turbo_dom_browser_env::browser_env::host_internals::CssEffectKind
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectKind::Animation
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectKind::Script
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectKind::Transition
++ pub enum turbo_dom_browser_env::browser_env::host_internals::CssEffectPhase
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectPhase::Active
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectPhase::After
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectPhase::Before
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectPhase::Idle
++ pub enum turbo_dom_browser_env::browser_env::host_internals::OpenSource
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenSource::Hyperlink
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenSource::Script
++ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryContextId(pub u64)
++ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryHost
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryHost::close: turbo_dom_browser_env::host_internals::CloseHost
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryHost::open: turbo_dom_browser_env::host_internals::OpenHost
++ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryIdentity
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryIdentity::auxiliary: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryIdentity::closed: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryIdentity::creation_source: core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryContextId>
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryIdentity::id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks::children: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> alloc::vec::Vec<v8::handle::Local<'s, v8::data::Context>>>
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks::focus: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, bool) -> bool>
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks::location: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> core::option::Option<v8::handle::Local<'s, v8::data::Value>>>
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks::navigate: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Value>) -> bool>
++ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryWindowHooks::post_message: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Value>, v8::handle::Local<'s, v8::data::Value>, v8::handle::Local<'s, v8::data::Value>) -> bool>
++ pub struct turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::completed_non_filling: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::contributes: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::fill: alloc::string::String
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::finite: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::identity: u64
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::kind: turbo_dom_browser_env::host_internals::CssEffectKind
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::name: alloc::string::String
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::pending: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::phase: turbo_dom_browser_env::host_internals::CssEffectPhase
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::play_state: alloc::string::String
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::replaced: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectLifecycle::script_modified: bool
++ pub struct turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::animation_names: alloc::vec::Vec<alloc::string::String>
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::css_animations_enabled: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::css_transitions_enabled: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::document_id: u64
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::effects: alloc::vec::Vec<turbo_dom_browser_env::host_internals::CssEffectLifecycle>
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::element: turbo_dom::rtdom::tree::Handle
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::presentation_suppressed: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::sample_time: core::option::Option<f64>
++ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::unsupported: bool
++ impl turbo_dom_browser_env::host_internals::CssEffectSnapshot
++ pub fn turbo_dom_browser_env::host_internals::CssEffectSnapshot::allows_underlying_geometry(&self) -> bool
++ pub struct turbo_dom_browser_env::browser_env::host_internals::OpenRequest
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::features: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::navigate: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::new_context: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::noopener: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::noreferrer: bool
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::source: turbo_dom_browser_env::host_internals::OpenSource
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::source_base_url: alloc::string::String
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::source_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::target: alloc::vec::Vec<u16>
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::target_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::url: alloc::string::String
++ pub trait turbo_dom_browser_env::browser_env::host_internals::NamedMutationResult
++ pub fn turbo_dom_browser_env::browser_env::host_internals::NamedMutationResult::set_success(&mut self, bool)
++ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, ()>
++ pub fn v8::function::ReturnValue<'_, ()>::set_success(&mut self, bool)
++ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, v8::data::Boolean>
++ pub fn v8::function::ReturnValue<'_, v8::data::Boolean>::set_success(&mut self, bool)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_context_closed(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<bool>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_context_identity(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryIdentity>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_context_opener<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_document_fallback_base(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_document_url(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_window_failed_access(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, v8::function::AccessType, v8::handle::Local<'_, v8::data::Value>)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_window_template<'s>(&mut v8::scope::PinScope<'s, '_, ()>) -> v8::handle::Local<'s, v8::data::ObjectTemplate>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::capture_auxiliary_window_exception(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::commit_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::commit_isolated_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::create_auxiliary_window_context<'s>(&mut v8::scope::PinScope<'s, '_>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>) -> v8::handle::Local<'s, v8::data::Context>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::css_effect_lifecycle(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::CssEffectSnapshot>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::hyperlink_activation_handled(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::initialize_auxiliary_document(&mut v8::scope::PinScope<'_, '_>, &str)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16])
++ pub fn turbo_dom_browser_env::browser_env::host_internals::initialize_root_auxiliary_document(&mut v8::scope::PinScope<'_, '_>, &str)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::initialize_root_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16])
++ pub fn turbo_dom_browser_env::browser_env::host_internals::install_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, &str, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryHost>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::install_auxiliary_window_document_guard(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::install_auxiliary_window_hooks(v8::handle::Local<'_, v8::data::Context>, turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::install_nested_auxiliary_source(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str, &[u16], core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryHost>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::is_auxiliary_window_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::open_auxiliary_context<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::open_auxiliary_hyperlink<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Object>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::browser_env::host_internals::retire_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::run_auxiliary_init_scripts(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::set_animation_presentation(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::AnimationPresentation) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::set_auxiliary_ready_host(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryReadyHost>)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::set_hyperlink_activation_handler(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::HyperlinkActivationHandler>)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::sever_auxiliary_opener(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::browser_env::host_internals::synchronize_auxiliary_window_origins(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>)
++ pub fn turbo_dom_browser_env::browser_env::host_internals::try_initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16]) -> core::result::Result<(), turbo_dom_browser_env::browser_env::SetupTerminated>
++ pub type turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> turbo_dom_browser_env::host_internals::AuxiliaryReadyAction
++ pub type turbo_dom_browser_env::browser_env::host_internals::CloseHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> bool
++ pub type turbo_dom_browser_env::browser_env::host_internals::HyperlinkActivationHandler = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Object>) -> bool
++ pub type turbo_dom_browser_env::browser_env::host_internals::OpenHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Context>>
++ pub enum turbo_dom_browser_env::host_internals::AnimationPresentation
++ pub turbo_dom_browser_env::host_internals::AnimationPresentation::Disabled
++ pub turbo_dom_browser_env::host_internals::AnimationPresentation::Enabled
++ pub enum turbo_dom_browser_env::host_internals::AuxiliaryReadyAction
++ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::Abort
++ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::InitializedByHost
++ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::RunRegisteredInitScripts
++ pub enum turbo_dom_browser_env::host_internals::CssEffectKind
++ pub turbo_dom_browser_env::host_internals::CssEffectKind::Animation
++ pub turbo_dom_browser_env::host_internals::CssEffectKind::Script
++ pub turbo_dom_browser_env::host_internals::CssEffectKind::Transition
++ pub enum turbo_dom_browser_env::host_internals::CssEffectPhase
++ pub turbo_dom_browser_env::host_internals::CssEffectPhase::Active
++ pub turbo_dom_browser_env::host_internals::CssEffectPhase::After
++ pub turbo_dom_browser_env::host_internals::CssEffectPhase::Before
++ pub turbo_dom_browser_env::host_internals::CssEffectPhase::Idle
++ pub enum turbo_dom_browser_env::host_internals::OpenSource
++ pub turbo_dom_browser_env::host_internals::OpenSource::Hyperlink
++ pub turbo_dom_browser_env::host_internals::OpenSource::Script
++ pub struct turbo_dom_browser_env::host_internals::AuxiliaryContextId(pub u64)
++ pub struct turbo_dom_browser_env::host_internals::AuxiliaryHost
++ pub turbo_dom_browser_env::host_internals::AuxiliaryHost::close: turbo_dom_browser_env::host_internals::CloseHost
++ pub turbo_dom_browser_env::host_internals::AuxiliaryHost::open: turbo_dom_browser_env::host_internals::OpenHost
++ pub struct turbo_dom_browser_env::host_internals::AuxiliaryIdentity
++ pub turbo_dom_browser_env::host_internals::AuxiliaryIdentity::auxiliary: bool
++ pub turbo_dom_browser_env::host_internals::AuxiliaryIdentity::closed: bool
++ pub turbo_dom_browser_env::host_internals::AuxiliaryIdentity::creation_source: core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryContextId>
++ pub turbo_dom_browser_env::host_internals::AuxiliaryIdentity::id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub struct turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks
++ pub turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks::children: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> alloc::vec::Vec<v8::handle::Local<'s, v8::data::Context>>>
++ pub turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks::focus: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, bool) -> bool>
++ pub turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks::location: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> core::option::Option<v8::handle::Local<'s, v8::data::Value>>>
++ pub turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks::navigate: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Value>) -> bool>
++ pub turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks::post_message: core::option::Option<for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Value>, v8::handle::Local<'s, v8::data::Value>, v8::handle::Local<'s, v8::data::Value>) -> bool>
++ pub struct turbo_dom_browser_env::host_internals::CssEffectLifecycle
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::completed_non_filling: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::contributes: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::fill: alloc::string::String
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::finite: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::identity: u64
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::kind: turbo_dom_browser_env::host_internals::CssEffectKind
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::name: alloc::string::String
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::pending: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::phase: turbo_dom_browser_env::host_internals::CssEffectPhase
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::play_state: alloc::string::String
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::replaced: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectLifecycle::script_modified: bool
++ pub struct turbo_dom_browser_env::host_internals::CssEffectSnapshot
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::animation_names: alloc::vec::Vec<alloc::string::String>
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::css_animations_enabled: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::css_transitions_enabled: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::document_id: u64
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::effects: alloc::vec::Vec<turbo_dom_browser_env::host_internals::CssEffectLifecycle>
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::element: turbo_dom::rtdom::tree::Handle
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::presentation_suppressed: bool
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::sample_time: core::option::Option<f64>
++ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::unsupported: bool
++ impl turbo_dom_browser_env::host_internals::CssEffectSnapshot
++ pub fn turbo_dom_browser_env::host_internals::CssEffectSnapshot::allows_underlying_geometry(&self) -> bool
++ pub struct turbo_dom_browser_env::host_internals::OpenRequest
++ pub turbo_dom_browser_env::host_internals::OpenRequest::features: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
++ pub turbo_dom_browser_env::host_internals::OpenRequest::navigate: bool
++ pub turbo_dom_browser_env::host_internals::OpenRequest::new_context: bool
++ pub turbo_dom_browser_env::host_internals::OpenRequest::noopener: bool
++ pub turbo_dom_browser_env::host_internals::OpenRequest::noreferrer: bool
++ pub turbo_dom_browser_env::host_internals::OpenRequest::source: turbo_dom_browser_env::host_internals::OpenSource
++ pub turbo_dom_browser_env::host_internals::OpenRequest::source_base_url: alloc::string::String
++ pub turbo_dom_browser_env::host_internals::OpenRequest::source_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub turbo_dom_browser_env::host_internals::OpenRequest::target: alloc::vec::Vec<u16>
++ pub turbo_dom_browser_env::host_internals::OpenRequest::target_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
++ pub turbo_dom_browser_env::host_internals::OpenRequest::url: alloc::string::String
++ pub trait turbo_dom_browser_env::host_internals::NamedMutationResult
++ pub fn turbo_dom_browser_env::host_internals::NamedMutationResult::set_success(&mut self, bool)
++ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, ()>
++ pub fn v8::function::ReturnValue<'_, ()>::set_success(&mut self, bool)
++ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, v8::data::Boolean>
++ pub fn v8::function::ReturnValue<'_, v8::data::Boolean>::set_success(&mut self, bool)
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_context_closed(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<bool>
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_context_identity(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryIdentity>
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_context_opener<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_document_fallback_base(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_document_url(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_window_failed_access(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, v8::function::AccessType, v8::handle::Local<'_, v8::data::Value>)
++ pub fn turbo_dom_browser_env::host_internals::auxiliary_window_template<'s>(&mut v8::scope::PinScope<'s, '_, ()>) -> v8::handle::Local<'s, v8::data::ObjectTemplate>
++ pub fn turbo_dom_browser_env::host_internals::capture_auxiliary_window_exception(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::commit_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
++ pub fn turbo_dom_browser_env::host_internals::commit_isolated_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
++ pub fn turbo_dom_browser_env::host_internals::create_auxiliary_window_context<'s>(&mut v8::scope::PinScope<'s, '_>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>) -> v8::handle::Local<'s, v8::data::Context>
++ pub fn turbo_dom_browser_env::host_internals::css_effect_lifecycle(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::CssEffectSnapshot>
++ pub fn turbo_dom_browser_env::host_internals::hyperlink_activation_handled(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::initialize_auxiliary_document(&mut v8::scope::PinScope<'_, '_>, &str)
++ pub fn turbo_dom_browser_env::host_internals::initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16])
++ pub fn turbo_dom_browser_env::host_internals::initialize_root_auxiliary_document(&mut v8::scope::PinScope<'_, '_>, &str)
++ pub fn turbo_dom_browser_env::host_internals::initialize_root_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16])
++ pub fn turbo_dom_browser_env::host_internals::install_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, &str, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryHost>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::install_auxiliary_window_document_guard(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::install_auxiliary_window_hooks(v8::handle::Local<'_, v8::data::Context>, turbo_dom_browser_env::host_internals::AuxiliaryWindowHooks)
++ pub fn turbo_dom_browser_env::host_internals::install_nested_auxiliary_source(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str, &[u16], core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryHost>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::is_auxiliary_window_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::open_auxiliary_context<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::host_internals::open_auxiliary_hyperlink<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Object>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++ pub fn turbo_dom_browser_env::host_internals::retire_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::run_auxiliary_init_scripts(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::set_animation_presentation(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::AnimationPresentation) -> bool
++ pub fn turbo_dom_browser_env::host_internals::set_auxiliary_ready_host(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryReadyHost>)
++ pub fn turbo_dom_browser_env::host_internals::set_hyperlink_activation_handler(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::HyperlinkActivationHandler>)
++ pub fn turbo_dom_browser_env::host_internals::sever_auxiliary_opener(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++ pub fn turbo_dom_browser_env::host_internals::synchronize_auxiliary_window_origins(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>)
++ pub fn turbo_dom_browser_env::host_internals::try_initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16]) -> core::result::Result<(), turbo_dom_browser_env::browser_env::SetupTerminated>
++ pub type turbo_dom_browser_env::host_internals::AuxiliaryReadyHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> turbo_dom_browser_env::host_internals::AuxiliaryReadyAction
++ pub type turbo_dom_browser_env::host_internals::CloseHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>) -> bool
++ pub type turbo_dom_browser_env::host_internals::HyperlinkActivationHandler = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Object>) -> bool
++ pub type turbo_dom_browser_env::host_internals::OpenHost = for<'s, 'i> fn(&mut v8::scope::PinScope<'s, 'i>, v8::handle::Local<'s, v8::data::Context>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Context>>

@@ -5,7 +5,11 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.4] — Unreleased
+## [0.8.4] — 2026-11-18
+
+Breaking changes: no removed or changed public Rust API items relative to 0.8.3,
+including the hidden host integration surface. The generated API comparison is
+recorded in `tools/release/public-api-0.8.4.txt`.
 
 - **Screenshot canvas backgrounds**: composite the propagated canvas color once,
   preserving transparent captures and separately painted body backgrounds in PNG
@@ -108,7 +112,7 @@ at the time); this file reconstructs them from history.
   ready hook. Native origin guards protect retained lexical callbacks across
   navigation; isolated commits sever old proxy access without closing another
   Page's actor. The consumer owns network/sandbox policy and real Page events.
-- **V8 integration (#504)**: require the 150.4.2 fork candidate for native access
+- **V8 integration (#504)**: require the published 150.4.2 fork for native access
   checks and stable global-proxy backing changes, using the unchanged official
   V8 archive. Independent Chrome 156 controls pin popup creation, named noopener,
   reserved targets, referrer policy, cross-origin access and sandbox denial.
