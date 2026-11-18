@@ -4,6 +4,8 @@
 //! boxes/borders as `<rect>`, and images as base64 PNG `data:` URI `<image>`s
 //! (any decoded source format; unknown formats fall back to a placeholder rect).
 
+mod border_opacity;
+
 use std::fmt::Write;
 
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
@@ -951,6 +953,10 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) -> 
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     if !fragment_finite_positive(f) {
+        return;
+    }
+    if border_opacity::needed(b) {
+        border_opacity::paint(svg, f, b);
         return;
     }
     let side = |s: &BorderSide| {

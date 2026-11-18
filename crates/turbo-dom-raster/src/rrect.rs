@@ -191,7 +191,7 @@ pub(crate) fn side_region((x, y, w, h): Rect, widths: [f32; 4], side: usize) -> 
 
 /// The part of convex polygon `points` on `reference`'s side of the line through
 /// `origin` along `dir` (Sutherland–Hodgman against one half-plane).
-fn keep_side(
+pub(crate) fn keep_side(
     points: &[(f32, f32)],
     (origin, dir): ((f32, f32), (f32, f32)),
     reference: (f32, f32),
