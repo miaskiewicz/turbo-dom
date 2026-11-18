@@ -420,7 +420,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 paint_round_border(pm, f, border, border_radius, xf);
             } else {
                 if let Some(bg) = background {
-                    fill_rect(pm, f.x, f.y, f.width, f.height, *bg, xf);
+                    fill_background(pm, f, *bg, xf);
                 }
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, &BorderRadii::ZERO, g, xf);
@@ -1086,6 +1086,24 @@ fn solid(c: Rgba) -> Paint<'static> {
     paint.set_color_rgba8(c.r, c.g, c.b, c.a);
     paint.anti_alias = true;
     paint
+}
+
+/// Axis-aligned CSS backgrounds snap their paint edges to device pixels. Keep
+/// layout fractional; transformed shapes retain their antialiased coverage.
+fn fill_background(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let (x, y, width, height) = if xf.is_identity() {
+        let x = f.x.round();
+        let y = f.y.round();
+        (
+            x,
+            y,
+            (f.x + f.width).round() - x,
+            (f.y + f.height).round() - y,
+        )
+    } else {
+        (f.x, f.y, f.width, f.height)
+    };
+    fill_rect(pm, x, y, width, height, color, xf);
 }
 
 fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Transform) {

@@ -107,6 +107,7 @@ avif = ["dep:rav1d", "dep:libc"]
 jxl = ["dep:jxl-oxide"]
 
 [dev-dependencies]
+sha2 = "0.10"
 # Screenshot tests build a fixture PNG and decode the rendered output to sample
 # pixels (verifying an image was painted, not a placeholder).
 tiny-skia = "0.11"

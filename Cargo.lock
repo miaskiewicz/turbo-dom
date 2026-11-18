@@ -2880,6 +2880,7 @@ dependencies = [
  "rav1d",
  "resvg",
  "serde_json",
+ "sha2",
  "tiny-skia",
  "ttf-parser",
  "turbo-dom-layout",
