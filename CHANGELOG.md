@@ -5,6 +5,19 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.5] — Unreleased
+
+- **Cascade allocation performance**: move freshly parsed inline/token/hint strings
+  into candidates instead of cloning them again. Computed results remain owned
+  and independent of their inputs.
+- **Cascade winner selection**: use one B-tree lookup per candidate instead of
+  searching again when inserting or replacing a winning declaration.
+- **Inheritance performance**: move overriding local values into inherited-property
+  slots without first copying the discarded parent values. Normalize font sizes in their
+  existing string buffers without changing keyword, relative-unit or variable behavior.
+- **Performance validation**: add allocation regressions and paired style/layout
+  benchmarks with complete output hashes for reports, cards and articles.
+
 ## [0.8.4] — 2026-11-18
 
 Breaking changes: no removed or changed public Rust API items relative to 0.8.3,

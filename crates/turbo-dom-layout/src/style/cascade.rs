@@ -3,7 +3,8 @@
 //! node styles, and folding in inheritance. Cascade order (low→high):
 //! UA < author sheets < tokens < node styles < inline < `!important` (AC-4.9).
 
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
+use std::fmt::Write;
 use std::sync::Arc;
 
 use super::parser::{parse_declarations, Declaration, Rule};
@@ -343,6 +344,22 @@ fn push_decls(
     }
 }
 
+fn push_owned_decls(decls: impl IntoIterator<Item = Declaration>, level: u8, out: &mut Vec<Cand>) {
+    for (i, d) in decls.into_iter().enumerate() {
+        out.push(Cand {
+            key: (
+                d.important,
+                origin_rank(d.important, level),
+                (0, 0, 0),
+                0,
+                i,
+            ),
+            property: d.property,
+            value: d.value,
+        });
+    }
+}
+
 fn collect_rules(cascade: &Cascade, nav: &Navigator, h: Handle, out: &mut Vec<Cand>) {
     for lr in &cascade.rules {
         if let Some(spec) = lr.rule.selectors.best_match(nav, h) {
@@ -354,14 +371,14 @@ fn collect_rules(cascade: &Cascade, nav: &Navigator, h: Handle, out: &mut Vec<Ca
 fn collect_tokens(element: Subject, cascade: &Cascade, out: &mut Vec<Cand>) {
     if let Some(t_style) = element.attrs.get("t:style") {
         let decls = resolve_tokens(t_style, &cascade.tokens);
-        push_decls(&decls, 2, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 2, out);
     }
 }
 
 fn collect_inline(element: Subject, out: &mut Vec<Cand>) {
     if let Some(style) = element.attrs.get("style") {
         let decls = parse_declarations(style);
-        push_decls(&decls, 4, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 4, out);
     }
 }
 
@@ -387,7 +404,7 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     .flatten()
     .collect();
     if !decls.is_empty() {
-        push_decls(&decls, 1, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 1, out);
     }
 }
 
@@ -561,7 +578,7 @@ fn collect_cellpadding(element: Subject, nav: &Navigator, h: Handle, out: &mut V
             value: format!("{pad}px"),
             important: false,
         };
-        push_decls(&[decl], 1, (0, 0, 0), 0, out);
+        push_owned_decls([decl], 1, out);
     }
 }
 
@@ -644,9 +661,15 @@ fn paragraph_margin_mask(mut origins: [Option<Key>; 8], style: &ComputedStyle) -
 fn pick_winners(cands: Vec<Cand>) -> BTreeMap<String, String> {
     let mut best: BTreeMap<String, (Key, String)> = BTreeMap::new();
     for cand in cands {
-        let beats = best.get(&cand.property).is_none_or(|(k, _)| cand.key >= *k);
-        if beats {
-            best.insert(cand.property, (cand.key, cand.value));
+        match best.entry(cand.property) {
+            Entry::Vacant(entry) => {
+                entry.insert((cand.key, cand.value));
+            }
+            Entry::Occupied(mut entry) => {
+                if cand.key >= entry.get().0 {
+                    entry.insert((cand.key, cand.value));
+                }
+            }
         }
     }
     best.into_iter().map(|(k, (_, v))| (k, v)).collect()
@@ -667,11 +690,13 @@ fn resolve_font_size(map: &mut BTreeMap<String, String>, parent: &ComputedStyle)
         .get("font-size")
         .and_then(parse_abs_px)
         .unwrap_or(ROOT_FONT_PX);
-    let Some(raw) = map.get("font-size") else {
+    let Some(raw) = map.get_mut("font-size") else {
         return;
     };
     let px = font_size_px(raw, parent_px);
-    map.insert("font-size".to_string(), format!("{px}px"));
+    // Reuse the inherited/declaration string's allocation for its computed value.
+    raw.clear();
+    write!(raw, "{px}px").expect("writing to a String is infallible");
 }
 
 /// An element's computed `font-size` in px (the cascade stores it absolute), or the
@@ -731,17 +756,17 @@ fn font_size_px(value: &str, parent_px: f32) -> f32 {
     }
 }
 
-fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedStyle {
+fn inherit(mut own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedStyle {
     let mut map = BTreeMap::new();
     for prop in INHERITED {
         if let Some(v) = parent.get(prop) {
-            map.insert((*prop).to_string(), v.to_string());
+            inherit_value(&mut map, &mut own, prop, v);
         }
     }
     // Custom properties (`--*`) inherit by default (they're how `var()` cascades).
     for (k, v) in parent.map.iter() {
         if k.starts_with("--") {
-            map.insert(k.clone(), v.clone());
+            inherit_value(&mut map, &mut own, k, v);
         }
     }
     map.extend(own);
@@ -750,6 +775,20 @@ fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedSty
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
     ComputedStyle { map: Arc::new(map) }
+}
+
+fn inherit_value(
+    map: &mut BTreeMap<String, String>,
+    own: &mut BTreeMap<String, String>,
+    property: &str,
+    inherited: &str,
+) {
+    // Keep inherited-property insertion order, while moving an overriding local
+    // value directly into its slot instead of first cloning a discarded parent.
+    let (key, value) = own
+        .remove_entry(property)
+        .unwrap_or_else(|| (property.to_string(), inherited.to_string()));
+    map.insert(key, value);
 }
 
 /// The initial value of each inherited property (and of `display`, whose absence
