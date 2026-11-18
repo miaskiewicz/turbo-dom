@@ -355,5 +355,151 @@
       "expectedSha256": "3723ddb14d01f1af81eef8252c4ddcbdc24e967e3c9bd729f187513efaad315b",
       "actualSha256": "f8a2306dd624ef310ef74273792675cd72a77f71fa117e9c7b5e4485f07ca064"
     }
-  ]
+  ],
+  "integratedPerformanceCandidateEquivalence": {
+    "accuracySourceCommit": "bcfce3b4f31824e8b18293d7c795c4d11f8605a9",
+    "measuredPerformanceCandidateCommit": "bcfce3b4f31824e8b18293d7c795c4d11f8605a9",
+    "performanceReceipt": "docs/benchmarks/cascade-v085-bcfce3b4.json",
+    "integrationCommit": "2ba05e87ec46dc0d0c565bbaddf3dece6b5f2671",
+    "releaseSourceVerifiedAt": "449483fce5a3182cf47839844d133daada872fc8",
+    "sourceEquivalenceCommand": "git diff bcfce3b4f31824e8b18293d7c795c4d11f8605a9 449483fce5a3182cf47839844d133daada872fc8 -- crates/turbo-dom-layout/src crates/turbo-dom-raster/src",
+    "sourceEquivalenceDiffEmpty": true,
+    "sourceEquivalenceScope": [
+      "crates/turbo-dom-layout/src",
+      "crates/turbo-dom-raster/src"
+    ],
+    "accuracyBinarySha256": "5481b36175b215c45f337b5f2c4a66c328e6cecc6324c0f0615af16788400557",
+    "acceptedE151BinarySha256": "3082f60d3063b3d396124ca8088eaa395845c363c7d2e700d036934a182426e5",
+    "binaryProvenance": "This is the actual pre-integration candidate accuracy binary, not a new build of the release commit or the separately measured performance binary.",
+    "caseViewports": 24,
+    "exactNativeGeometryArrayMatches": 24,
+    "exactNativePngByteMatches": 24,
+    "fixturesAndThresholdsUnchanged": true,
+    "acceptedE151MetricsUnchanged": true,
+    "experimentalReceiptSha256": "1f88e49ef681f90ac17ff56e84e94f8c5468dcafca6049fd8f7fba83c2e6bec5",
+    "privateExperimentalReceipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/component-final-audit-085/.perf-evidence/experiment-bcfce3b4.json",
+    "privateCandidateArtifactDirectory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/component-final-audit-085/.perf-evidence/native-bcfce3b4",
+    "outputSha256": [
+      {
+        "name": "feature-cards",
+        "width": 1440,
+        "pngSha256": "7f7dc0b7da61fac1d11250584a10ed1c44cfa6e02cf79c103f68e94d41afbfba"
+      },
+      {
+        "name": "feature-cards",
+        "width": 768,
+        "pngSha256": "96e579853def6ee7a49bf8382fdd2376d3f3ed99a2c49fd0abe10dac909e562a"
+      },
+      {
+        "name": "feature-cards",
+        "width": 390,
+        "pngSha256": "48f2ca14548bd1981aeefd5600f13cc638805e24b2f2a0be1155506a77f6329c"
+      },
+      {
+        "name": "product-cards",
+        "width": 1440,
+        "pngSha256": "05465be98591ce44e24c82dad73723238d3d95b73d80d36a24146b24b6d744f1"
+      },
+      {
+        "name": "product-cards",
+        "width": 768,
+        "pngSha256": "b79e5f11bf87359db2b5fb9c130aae63ce2b4226caaea5ecbe180ca28618601d"
+      },
+      {
+        "name": "product-cards",
+        "width": 390,
+        "pngSha256": "e10f51f55259bbce253c2a5a43754666e3eb20e2988291fd45194df7a2cef46e"
+      },
+      {
+        "name": "partner-logos",
+        "width": 1440,
+        "pngSha256": "162ffd2fd2d7e7ecae77d029da85b069bbc4783b906d1cb60382ed349ab8d4bd"
+      },
+      {
+        "name": "partner-logos",
+        "width": 768,
+        "pngSha256": "ce9e5cb669fb87edf3c79f21e938c50fccf2d9c8a82a9c23f1d9d5e1fc2946a7"
+      },
+      {
+        "name": "partner-logos",
+        "width": 390,
+        "pngSha256": "2f71d33acd0766bdb2b2b8087318863e73edcd4c89a246b17dc3251b7dbc15f7"
+      },
+      {
+        "name": "resources",
+        "width": 1440,
+        "pngSha256": "65cde75213f648f5680834e700f2641e789d188cdd2745886148ab61bf251aef"
+      },
+      {
+        "name": "resources",
+        "width": 768,
+        "pngSha256": "727c3d01cece0a19c6cdf0fcedf665e6fecb18c406b01abf748d408b4da13c5c"
+      },
+      {
+        "name": "resources",
+        "width": 390,
+        "pngSha256": "72ec5bfa02d86ec1a8839ee098f8765a15e15a14107bec43a75c51df493bc8c3"
+      },
+      {
+        "name": "mui-width-expression",
+        "width": 1440,
+        "pngSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+      },
+      {
+        "name": "mui-width-expression",
+        "width": 768,
+        "pngSha256": "2ff887e925b4ba05f5083808c686a217a53d43e090bb17b310a77883c8544342"
+      },
+      {
+        "name": "mui-width-expression",
+        "width": 390,
+        "pngSha256": "69a5250efd9fb1150e43246d974a09307bd694700be7edb82c7ad89f70d52ae7"
+      },
+      {
+        "name": "nested-grid-tracks",
+        "width": 1440,
+        "pngSha256": "836276845d2dabfa68fafde87ab3f9fee2d11685f73f077fbf4535a95a22d14f"
+      },
+      {
+        "name": "nested-grid-tracks",
+        "width": 768,
+        "pngSha256": "12124184edad9cb953f1438ac39d653ef30cc7dd9d0d63826a5cc830ed36b7f0"
+      },
+      {
+        "name": "nested-grid-tracks",
+        "width": 390,
+        "pngSha256": "884ab7395139ac897ac1f7102796342a7b7e6466e14e3756120c9ff0633c3fa8"
+      },
+      {
+        "name": "mui-width-additive",
+        "width": 1440,
+        "pngSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+      },
+      {
+        "name": "mui-width-additive",
+        "width": 768,
+        "pngSha256": "2ff887e925b4ba05f5083808c686a217a53d43e090bb17b310a77883c8544342"
+      },
+      {
+        "name": "mui-width-additive",
+        "width": 390,
+        "pngSha256": "69a5250efd9fb1150e43246d974a09307bd694700be7edb82c7ad89f70d52ae7"
+      },
+      {
+        "name": "nested-flex-padding",
+        "width": 1440,
+        "pngSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+      },
+      {
+        "name": "nested-flex-padding",
+        "width": 768,
+        "pngSha256": "da35cbc72825b3cded211478249543091548994ffbb83e3eb22ab69014d02254"
+      },
+      {
+        "name": "nested-flex-padding",
+        "width": 390,
+        "pngSha256": "f8a2306dd624ef310ef74273792675cd72a77f71fa117e9c7b5e4485f07ca064"
+      }
+    ]
+  }
 }
