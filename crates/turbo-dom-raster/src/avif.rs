@@ -376,7 +376,11 @@ mod tests {
 
     fn fuzz_container(label: &str, avif: &[u8]) -> (usize, usize) {
         let (mut decoded, mut rejected) = (0, 0);
-        for v in byte_flip_variants(avif, 3) {
+        for (index, v) in byte_flip_variants(avif, 3).into_iter().enumerate() {
+            eprintln!(
+                "FUZZ-CASE container {label} variant={index} bytes={}",
+                v.len()
+            );
             match super::decode(&v) {
                 Some(img) => {
                     assert_eq!(
@@ -399,7 +403,8 @@ mod tests {
         let mut ones = stream;
         ones[n / 2..].fill(0xff);
         variants.push(ones);
-        for v in variants {
+        for (index, v) in variants.into_iter().enumerate() {
+            eprintln!("FUZZ-CASE stream {label} variant={index} bytes={}", v.len());
             match av1::decode(&v) {
                 Some(frame) => {
                     assert_eq!(frame.planes[0].len(), frame.width * frame.height, "{label}");
@@ -426,8 +431,11 @@ mod tests {
             let Some(payload) = turbo_dom_layout::image::avif_payload(&avif) else {
                 continue;
             };
-            for stream in std::iter::once(payload.color).chain(payload.alpha) {
-                let (d, r) = fuzz_stream(&label, stream);
+            for (index, stream) in std::iter::once(payload.color)
+                .chain(payload.alpha)
+                .enumerate()
+            {
+                let (d, r) = fuzz_stream(&format!("{label} plane={index}"), stream);
                 decoded += d;
                 rejected += r;
             }
@@ -441,6 +449,7 @@ mod tests {
     #[test]
     fn corrupt_avifs_are_broken_images_never_a_process_abort() {
         let out = std::process::Command::new(std::env::current_exe().unwrap())
+            .env("RUST_BACKTRACE", "1")
             .args([
                 "--exact",
                 "avif::tests::corrupt_avif_fuzz_child",
@@ -451,16 +460,47 @@ mod tests {
             .output()
             .unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
-        assert!(
-            out.status.success() && stdout.contains("FUZZ-DONE"),
-            "child {:?}\n{stdout}\n{}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-                .lines()
-                .take(12)
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
+        if !out.status.success() || !stdout.contains("FUZZ-DONE") {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../target/avif-fuzz.stderr.log");
+            let saved = std::fs::create_dir_all(path.parent().unwrap())
+                .and_then(|()| std::fs::write(&path, &out.stderr));
+            panic!(
+                "child {:?}\n{stdout}\nfull stderr: {} ({saved:?})\n{}",
+                out.status,
+                path.display(),
+                fuzz_failure_details(&stderr)
+            );
+        }
+    }
+
+    fn fuzz_failure_details(stderr: &str) -> String {
+        let case = stderr
+            .lines()
+            .rev()
+            .find(|line| line.starts_with("FUZZ-CASE"))
+            .unwrap_or("FUZZ-CASE unavailable");
+        let panic = stderr
+            .lines()
+            .find(|line| line.contains("panicked at") || line.contains("memory allocation"))
+            .unwrap_or("no Rust panic/allocation message");
+        let tail: Vec<_> = stderr.lines().rev().take(120).collect();
+        format!(
+            "last mutation: {case}\nfirst failure: {panic}\nstderr tail:\n{}",
+            tail.into_iter().rev().collect::<Vec<_>>().join("\n")
+        )
+    }
+
+    #[test]
+    fn fuzz_failure_diagnostics_preserve_the_case_and_late_panic() {
+        let noise = "irrelevant decoder output\n".repeat(500);
+        let stderr = format!("{noise}FUZZ-CASE stream fixture plane=0 variant=37 bytes=50\nthread worker panicked at decoder.rs:4997\nstack end");
+        let details = fuzz_failure_details(&stderr);
+        assert!(details.contains("variant=37"));
+        assert!(details.contains("panicked at decoder.rs:4997"));
+        assert!(details.ends_with("stack end"));
+        assert!(details.len() < stderr.len());
     }
 
     /// The colour (and alpha) streams of an AVIF fixture of this crate or turbo-dom-layout.
