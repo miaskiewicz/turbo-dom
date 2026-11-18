@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.4] — Unreleased
 
+- **Screenshot canvas backgrounds**: composite the propagated canvas color once,
+  preserving transparent captures and separately painted body backgrounds in PNG
+  and SVG output.
+
 - **Quirks viewport layout (#516)**: size auto HTML/body boxes from the initial
   containing block on the physical layout path, honoring margins, decorations,
   constraints and writing modes without turning auto height into a definite CSS

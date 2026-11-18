@@ -159,3 +159,97 @@ fn propagated_canvas_color_is_painted_once_under_body_layers() {
         }
     }
 }
+
+fn assert_prepared_pixels(
+    scene: &PreparedScreenshot,
+    size: (u32, u32),
+    samples: &[(u32, u32, [u8; 4])],
+) {
+    let png = image::load_from_memory(&scene.png().unwrap())
+        .unwrap()
+        .to_rgba8();
+    assert_eq!(png.dimensions(), size);
+    let svg = scene.svg().unwrap();
+    let tree = resvg::usvg::Tree::from_str(&svg, &resvg::usvg::Options::default()).unwrap();
+    let mut vector = tiny_skia::Pixmap::new(size.0, size.1).unwrap();
+    resvg::render(
+        &tree,
+        tiny_skia::Transform::identity(),
+        &mut vector.as_mut(),
+    );
+    for &(x, y, expected) in samples {
+        assert_eq!(png.get_pixel(x, y).0, expected, "PNG at {x},{y}");
+        let pixel = vector.pixel(x, y).unwrap().demultiply();
+        assert_eq!(
+            [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+            expected,
+            "SVG at {x},{y}"
+        );
+    }
+}
+
+#[test]
+fn transparent_root_propagates_body_color_beyond_the_body_box() {
+    let viewport = Viewport {
+        width: 40,
+        height: 30,
+    };
+    let images = ImageAssets::new();
+    for doctype in ["", "<!doctype html>"] {
+        for (omit_background, expected) in [(true, [255, 0, 0, 128]), (false, [255, 127, 127, 255])]
+        {
+            let html = format!(
+                "{doctype}<html style='background:transparent'><body style='margin:0;height:10px;background:rgba(255,0,0,0.5)'>"
+            );
+            let mut options = ScreenshotOptions::default();
+            options.omit_background = omit_background;
+            let scene = PreparedScreenshot::new(&html, "", viewport, &images, &options);
+            assert_prepared_pixels(&scene, (40, 30), &[(5, 5, expected), (35, 25, expected)]);
+        }
+    }
+}
+
+#[test]
+fn prepared_translucent_canvas_survives_svg_first_and_repeated_capture_order() {
+    let viewport = Viewport {
+        width: 40,
+        height: 30,
+    };
+    let html = "<html style='background:rgba(255,0,0,0.5)'><body style='margin:0;height:10px;background:blue'>";
+    let mut options = ScreenshotOptions::default();
+    options.omit_background = true;
+    let scene = PreparedScreenshot::new(html, "", viewport, &ImageAssets::new(), &options);
+    let svg = scene.svg().unwrap();
+    let png = scene.png().unwrap();
+    for _ in 0..3 {
+        assert_eq!(scene.svg().unwrap(), svg);
+        assert_eq!(scene.png().unwrap(), png);
+    }
+    assert_prepared_pixels(
+        &scene,
+        (40, 30),
+        &[(20, 5, [0, 0, 255, 255]), (20, 25, [255, 0, 0, 128])],
+    );
+}
+
+#[test]
+fn body_canvas_color_reaches_full_page_overflow_without_repainting_the_viewport() {
+    let viewport = Viewport {
+        width: 40,
+        height: 30,
+    };
+    let html = "<html style='background:transparent'><body style='margin:0;height:10px;background:rgba(255,0,0,0.5)'><div style='position:absolute;left:0;top:80px;width:10px;height:10px;background:blue'></div>";
+    let mut options = ScreenshotOptions::default();
+    options.omit_background = true;
+    options.full_page = true;
+    let scene = PreparedScreenshot::new(html, "", viewport, &ImageAssets::new(), &options);
+    assert_prepared_pixels(
+        &scene,
+        (40, 90),
+        &[
+            (35, 25, [255, 0, 0, 128]),
+            (39, 89, [255, 0, 0, 128]),
+            (5, 85, [0, 0, 255, 255]),
+        ],
+    );
+}
