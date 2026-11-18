@@ -20,7 +20,7 @@ at the time); this file reconstructs them from history.
   controls and the original text-free component pixel comparisons pass.
 - **Grid tracks (#521)**: size cyclic percentage constraints intrinsically before
   restoring item sizes against their actual grid areas, preserving spans, implicit
-  columns, absolute placement and content alignment. Pin 150 Chromium cases.
+  columns, absolute placement and content alignment. Pin 260 Chromium cases.
 - **Logo layout (#522)**: honor constrained natural image sizes and ratio-derived
   heights; expand flex-flow with cascade order, importance and variables. Static
   screenshots use an explicit fractional CSS geometry policy, independent of fonts
