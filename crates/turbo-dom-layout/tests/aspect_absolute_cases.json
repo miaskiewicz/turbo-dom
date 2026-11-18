@@ -34,5 +34,9 @@
   {
     "name": "growth",
     "html": "<!doctype html><body style=\"margin:0\"><div id=\"parent\" style=\"position:relative;width:200px;aspect-ratio:2;background:#00ff00;\"><div style=\"height:200px\"></div><div id=\"child\" style=\"position:absolute;inset:0;height:100%;width:100%;background:#ff0000\"></div></div>"
+  },
+  {
+    "name": "flow-content-growth",
+    "html": "<!doctype html><body style=\"margin:0\"><div id=\"parent\" style=\"position:relative;width:200px;aspect-ratio:2;background:#00ff00\"><div style=\"height:200px\"></div><div id=\"child\" style=\"height:50%;width:100%;background:#ff0000\"></div></div>"
   }
 ]

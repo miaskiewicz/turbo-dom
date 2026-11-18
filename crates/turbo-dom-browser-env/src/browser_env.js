@@ -4752,9 +4752,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       return new ImageData(__idAbs(__idInt(width)), __idAbs(__idInt(height)), settings);
     };
     var __idInstallPixels = function(ctx, canvas){
-      $apply($wmSet, __idContexts, [ctx, { canvas: canvas, writes: [], size: '' }]);
+      $apply($wmSet, __idContexts, [ctx, { canvas: canvas, pixels: null, written: null, size: '' }]);
       var context = function(value){ var record = $apply($wmGet, __idContexts, [value]); if (!record) throw new TypeError('Illegal invocation'); return record; };
-      var reset = function(state){ var next = state.canvas.width + 'x' + state.canvas.height; if (next !== state.size) { state.writes = []; state.size = next; } };
+      var reset = function(state){ var next = state.canvas.width + 'x' + state.canvas.height; if (next !== state.size) { state.pixels = null; state.written = null; state.size = next; } };
       ctx.createImageData = function createImageData(width){
         context(this);
         return arguments.length === 1 ? __idCreate(width) : __idCreate(width, arguments[1], arguments[2]);
@@ -4778,11 +4778,27 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if (dirtyW <= 0 || dirtyH <= 0) return;
         var bytes = []; for (var i = 0; i < record.width * record.height * 4; i++) $c.push(bytes, record.data[i]);
         var snapshot = { width: record.width, height: record.height, data: bytes, colorSpace: 'srgb', pixelFormat: 'rgba-unorm8' };
-        reset(state); $c.push(state.writes, { image: snapshot, x: dx, y: dy, left: dirtyX, top: dirtyY, width: dirtyW, height: dirtyH });
+        reset(state);
+        var cw = state.canvas.width == null ? 300 : state.canvas.width, ch = state.canvas.height == null ? 150 : state.canvas.height;
+        var left = __idMax(0, dx + dirtyX), top = __idMax(0, dy + dirtyY);
+        var right = $Mmin(cw, dx + endX), bottom = $Mmin(ch, dy + endY);
+        // One bitmap bounds retained readback storage by canvas area, not frame count.
+        // The mask preserves the approximation for pixels untouched by uploads.
+        if (left < right && top < bottom) {
+          if (!state.pixels) { state.pixels = new __idU8(cw * ch * 4); state.written = new __idU8(cw * ch); }
+          for (var py = top; py < bottom; py++) for (var px = left; px < right; px++) {
+            var to = (py * cw + px) * 4, from = ((py - dy) * record.width + px - dx) * 4;
+            for (var channel = 0; channel < 4; channel++) state.pixels[to + channel] = bytes[from + channel];
+            state.written[py * cw + px] = 1;
+          }
+        }
+        // Mixed logs retain paths and drawing state; pure uploads can forget replaced frames.
+        if (left === 0 && top === 0 && right === cw && bottom === ch && $c.every(ctx._ops, function(op){ return op[0] === 'putImageData'; })) ctx._ops.length = 0;
         $c.push(ctx._ops, ['putImageData', [snapshot, dx, dy, dirtyX, dirtyY, dirtyW, dirtyH]]);
       };
       ctx.getImageData = function getImageData(x, y, width, height){
         var state = context(this), ctx = this, canvas = state.canvas;
+        var cw = canvas.width == null ? 300 : canvas.width, ch = canvas.height == null ? 150 : canvas.height;
         if (arguments.length < 4) throw new TypeError('getImageData requires four arguments');
         x = __idInt(x); y = __idInt(y); width = __idInt(width); height = __idInt(height);
         if (width < 0) { x += width; width = -width; } if (height < 0) { y += height; height = -height; }
@@ -4795,20 +4811,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           var stream = __cvBytes(__cvSeed(canvas, ctx, 'getImageData:'+x+','+y+','+width+','+height), $Mmin(data.length, 4096));
           for (var i = 0; i < data.length; i++) data[i] = stream[i % stream.length];
         }
-        for (var n = 0; n < state.writes.length; n++) {
-          var write = state.writes[n];
-          for (var row = 0; row < height; row++) for (var col = 0; col < width; col++) {
-            var px = x + col, py = y + row, sx = px - write.x, sy = py - write.y;
-            if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height || sx < write.left || sy < write.top || sx >= write.left + write.width || sy >= write.top + write.height) continue;
-            var to = (row * width + col) * 4, from = (sy * write.image.width + sx) * 4;
-            var alpha = write.image.data[from + 3];
-            for (var c = 0; c < 3; c++) {
-              var premultiplied = __idFloor((write.image.data[from + c] * alpha + 127) / 255);
-              var value = alpha ? premultiplied * 255 / alpha : 0, floor = __idFloor(value);
-              data[to + c] = value - floor === 0.5 ? floor + floor % 2 : $Mround(value);
-            }
-            data[to + 3] = alpha;
+        if (state.pixels) for (var row = 0; row < height; row++) for (var col = 0; col < width; col++) {
+          var px = x + col, py = y + row;
+          if (px < 0 || py < 0 || px >= cw || py >= ch || !state.written[py * cw + px]) continue;
+          var to = (row * width + col) * 4, from = (py * cw + px) * 4;
+          var alpha = state.pixels[from + 3];
+          for (var c = 0; c < 3; c++) {
+            var premultiplied = __idFloor((state.pixels[from + c] * alpha + 127) / 255);
+            var value = alpha ? premultiplied * 255 / alpha : 0, floor = __idFloor(value);
+            data[to + c] = value - floor === 0.5 ? floor + floor % 2 : $Mround(value);
           }
+          data[to + 3] = alpha;
         }
         return image;
       };

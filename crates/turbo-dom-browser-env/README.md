@@ -304,7 +304,10 @@ views and detached buffers are rejected. The Chromium control is
 
 Canvas `createImageData` returns genuine instances. RGBA8/sRGB `putImageData` records an
 immutable pixel snapshot and dirty rectangle for native raster replay; readback of those
-uploads preserves clipping and premultiplied-alpha quantization. Other bare-binding paint
+uploads preserves clipping and premultiplied-alpha quantization. Private readback storage
+is bounded by canvas area, including dirty updates after the host drains upload logs.
+A full-canvas upload replaces earlier upload-only log entries; mixed drawing/path logs
+remain available for host replay. Other bare-binding paint
 readback remains the existing op-log approximation unless the host supplies a raster
 backend. Canvas pixel conversion for display-P3 and float16 currently throws
 `NotSupportedError`; constructing and inspecting those ImageData formats is supported.

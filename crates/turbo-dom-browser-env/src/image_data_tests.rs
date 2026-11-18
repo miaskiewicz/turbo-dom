@@ -98,11 +98,18 @@ fn image_data_accepts_foreign_views_and_rejects_detached_buffers() {
         ),
         "[1,1,4]"
     );
-    run_js(scope, "globalThis.pixelBytes = new Uint8ClampedArray(4); globalThis.pixelBuffer = pixelBytes.buffer; globalThis.detachedImage = new ImageData(pixelBytes,1);");
+    run_js(scope, "globalThis.pixelBytes = new Uint8ClampedArray([12,34,56,255]); globalThis.pixelBuffer = pixelBytes.buffer; globalThis.detachedImage = new ImageData(pixelBytes,1);globalThis.uploadBeforeDetach=document.createElement('canvas').getContext('2d');uploadBeforeDetach.putImageData(detachedImage,0,0);uploadBeforeDetach._ops.length=0;");
     let key = v8::String::new(scope, "pixelBuffer").unwrap();
     let value = global.get(scope, key.into()).unwrap();
     let buffer = v8::Local::<v8::ArrayBuffer>::try_from(value).unwrap();
     assert_eq!(buffer.detach(None), Some(true));
+    assert_eq!(
+        eval(
+            scope,
+            "JSON.stringify(Array.from(uploadBeforeDetach.getImageData(0,0,1,1).data))"
+        ),
+        "[12,34,56,255]"
+    );
     assert_eq!(
         eval(
             scope,
@@ -153,4 +160,53 @@ fn image_data_allocates_float16_without_a_global_constructor_at_install() {
     let key = v8::String::new(scope, "data").unwrap();
     assert!(image.get(scope, key.into()).unwrap().is_float16_array());
     reset();
+}
+
+#[test]
+fn image_data_partial_readback_storage_is_bounded_after_uploads_drain() {
+    use super::*;
+    super::tests::init_v8();
+    let isolate = &mut super::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<body></body>");
+    run_js(scope, "globalThis.cv=document.createElement('canvas');cv.width=128;cv.height=128;globalThis.cx=cv.getContext('2d');globalThis.im=new ImageData(128,128);im.data.fill(255);cx.putImageData(im,0,0);cx._ops.length=0;");
+    scope.low_memory_notification();
+    let before = scope.get_heap_statistics().used_heap_size();
+    run_js(scope, "for(let n=0;n<160;n++){im.data[0]=n;cx.putImageData(im,0,0,0,0,1,1);cx._ops.length=0;}if(cx.getImageData(0,0,1,1).data[0]!==159||cx.getImageData(127,127,1,1).data[3]!==255)throw Error('lost latest or untouched pixels');");
+    scope.low_memory_notification();
+    let after = scope.get_heap_statistics().used_heap_size();
+    eprintln!("retained readback heap: {before} -> {after}");
+    assert!(
+        after.saturating_sub(before) < 8 * 1024 * 1024,
+        "retained upload history grew heap: {before} -> {after}"
+    );
+}
+
+#[test]
+fn image_data_backing_preserves_partial_transparent_pixels_and_resize() {
+    let actual = run(r#"(() => {
+      const cv=document.createElement('canvas');cv.width=3;cv.height=2;
+      const ctx=cv.getContext('2d'), im=new ImageData(new Uint8ClampedArray([10,20,30,255,40,50,60,255]),2);
+      ctx.putImageData(im,0,0);ctx._ops.length=0;im.data.fill(99);
+      const partial=new ImageData(new Uint8ClampedArray([0,0,0,0,70,80,90,255]),2);
+      ctx.putImageData(partial,0,0,0,0,1,1);ctx._ops.length=0;
+      const first=Array.from(ctx.getImageData(0,0,3,1).data);
+      const independent=ctx.getImageData(0,0,3,1);independent.data.fill(88);
+      const second=Array.from(ctx.getImageData(1,0,1,1).data);
+      cv.width=4;ctx._ops.length=0;
+      const resized=Array.from(ctx.getImageData(0,0,2,1).data);
+      ctx.putImageData(new ImageData(4,2),0,0);ctx.putImageData(new ImageData(4,2),0,0);
+      return [first,second,resized,ctx._ops.length];
+    })()"#);
+    assert_eq!(
+        actual,
+        serde_json::json!([
+            [0, 0, 0, 0, 40, 50, 60, 255, 0, 0, 0, 0],
+            [40, 50, 60, 255],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            1
+        ])
+    );
 }
