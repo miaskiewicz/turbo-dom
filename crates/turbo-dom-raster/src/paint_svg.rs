@@ -131,12 +131,18 @@ fn luminance_class(r: u8, g: u8, b: u8) -> u32 {
     ((from_linear(lum) * 255.0).round() as u32) >> 5
 }
 
+/// Replicate a three-bit class (0..=7) across an eight-bit luminance value.
+fn class_luminance(top: u32) -> u32 {
+    // For the three-bit input, disjoint copies sum to 32*top + 4*top + top/2.
+    top * 36 + top / 2
+}
+
 /// Skia's mask pre-blend table (`SkTMaskGamma_build_correcting_lut`) of luminance class
 /// `top` ([`luminance_class`], replicated back to 8 bits): the coverage is boosted by the
 /// contrast where the assumed backdrop (the opposite luminance) is light, and the table
 /// undoes the sRGB blend so the result is a blend at [`GAMMA`].
 fn preblend_class(top: u32) -> [f32; 256] {
-    let src = ((top << 5) | (top << 2) | (top >> 1)) as f32 / 255.0;
+    let src = class_luminance(top) as f32 / 255.0;
     let dst = 1.0 - src;
     let (lin_src, lin_dst) = (to_linear(src), to_linear(dst));
     let contrast = CONTRAST * lin_dst;
@@ -281,6 +287,10 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
     {
         return;
     }
+    if rule_needs_local_origin(f, style) {
+        paint_rule_at_local_origin(svg, f, style, color);
+        return;
+    }
     match style {
         ColumnRuleStyle::Solid => rect(svg, f.x, f.y, f.width, f.height, color),
         ColumnRuleStyle::Dotted => paint_dotted_rule(svg, f, color),
@@ -291,6 +301,31 @@ fn paint_column_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, col
         | ColumnRuleStyle::Inset
         | ColumnRuleStyle::Outset => paint_shaded_rule(svg, f, style, color),
     }
+}
+
+fn rule_needs_local_origin(f: &Fragment, style: ColumnRuleStyle) -> bool {
+    let step = match style {
+        ColumnRuleStyle::Dotted => f.width.max(1.0) / 2.0,
+        ColumnRuleStyle::Dashed => f.width,
+        _ => return false,
+    };
+    f.y.is_finite() && f.y + step <= f.y
+}
+
+fn paint_rule_at_local_origin(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
+    // SVG can retain the large translation while the pattern steps stay local.
+    // Dropping an offscreen rule would be wrong beneath an inverse transform.
+    let _ = write!(svg, "<g transform=\"translate(0 {})\">", f.y);
+    let local = Fragment::new(
+        f.node_id,
+        f.x,
+        0.0,
+        f.width,
+        f.height,
+        FragmentContent::ColumnRule { style, color },
+    );
+    paint_column_rule(svg, &local, style, color);
+    svg.push_str("</g>");
 }
 
 /// SVG counterpart to [`crate::paint_png::paint_dotted_rule`]: diameter is
@@ -316,20 +351,7 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     let period = 2.0 * diameter;
     let end = f.y + f.height;
     if f.width < 1.0 {
-        let px_left = cx.floor();
-        // R1 L3 (SVG mirror): clamp the leading cap and each dash so a
-        // fragment shorter than `diameter` (e.g. `height = 0.3`) stays
-        // inside its box. Blink's round cap collapses with the rule.
-        if f.y < end {
-            let cap_h = (end - f.y).min(diameter);
-            rect(svg, px_left, f.y, diameter, cap_h, color);
-        }
-        let mut y = f.y + diameter;
-        while y < end {
-            let dash_h = (end - y).min(diameter);
-            rect(svg, px_left, y, diameter, dash_h, color);
-            y += 2.0 * diameter;
-        }
+        paint_subpixel_dotted_rule(svg, f, color, (cx.floor(), end));
         return;
     }
     let radius = diameter / 2.0;
@@ -340,7 +362,38 @@ fn paint_dotted_rule(svg: &mut String, f: &Fragment, color: Rgba) {
             "<circle cx=\"{cx:.2}\" cy=\"{cy:.2}\" r=\"{radius:.2}\" {}/>",
             fill_attrs(color)
         );
-        cy += period;
+        let next = cy + period;
+        if next <= cy {
+            break;
+        }
+        cy = next;
+    }
+}
+
+fn paint_subpixel_dotted_rule(
+    svg: &mut String,
+    f: &Fragment,
+    color: Rgba,
+    (px_left, end): (f32, f32),
+) {
+    // The sole caller selects a positive width below one pixel, floored to one.
+    let diameter = 1.0;
+    // rect_r also rejects empty/reversed caps and non-finite origins.
+    let cap_h = (end - f.y).min(diameter);
+    rect(svg, px_left, f.y, diameter, cap_h, color);
+    let mut y = f.y + diameter;
+    // Rectangle admission owns the empty end-cap check as well as emission.
+    while rect_r(
+        svg,
+        (px_left, y, diameter, (end - y).min(diameter)),
+        color,
+        &BorderRadii::ZERO,
+    ) {
+        let next = y + 2.0;
+        if next <= y {
+            break;
+        }
+        y = next;
     }
 }
 
@@ -359,22 +412,24 @@ fn paint_dashed_rule(svg: &mut String, f: &Fragment, color: Rgba) {
     }
     let end = f.y + f.height;
     let mut dash_top = f.y;
-    while dash_top < end {
-        let dash_h = dash.min(end - dash_top);
-        if dash_h > 0.0 {
-            rect(svg, f.x, dash_top, width, dash_h, color);
+    // Rectangle admission owns the empty end-cap check as well as emission.
+    while rect_r(
+        svg,
+        (f.x, dash_top, width, dash.min(end - dash_top)),
+        color,
+        &BorderRadii::ZERO,
+    ) {
+        let next = dash_top + period;
+        if next <= dash_top {
+            break;
         }
-        dash_top += period;
+        dash_top = next;
     }
 }
 
 fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
-    // R1 M1 + L1: reject non-finite sizes. R1 L2: after the `< 3.0`
-    // short-circuit `f.width >= 3.0` forces `(f.width / 3.0).floor() >= 1.0`,
-    // so the trailing `.max(1.0)` is unreachable — dropped.
-    if !f.width.is_finite() || !f.height.is_finite() {
-        return;
-    }
+    // Finite widths at least three give bands at least one pixel wide.
+    // rect_r validates both emitted bands, including all non-finite bounds.
     if f.width < 3.0 {
         rect(svg, f.x, f.y, f.width, f.height, color);
         return;
@@ -390,9 +445,7 @@ fn paint_double_rule(svg: &mut String, f: &Fragment, color: Rgba) {
 /// and the right half light; `ridge` / `inset` swap them. The rule is
 /// vertical, so "left" and "right" are the two vertical bands.
 fn paint_shaded_rule(svg: &mut String, f: &Fragment, style: ColumnRuleStyle, color: Rgba) {
-    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
-        return;
-    }
+    // Both halves pass through rect_r, which rejects invalid or empty bounds.
     let left_dark = matches!(style, ColumnRuleStyle::Groove | ColumnRuleStyle::Outset);
     let left_color = border_style_colour(color, left_dark);
     let right_color = border_style_colour(color, !left_dark);
@@ -764,7 +817,7 @@ fn paint_inset_shadow(
     );
     if hw >= 0.5 && hh >= 0.5 {
         let blur = crate::paint_png::shadow_blur(sh);
-        let filter = if blur < 0.5 {
+        let filter = if sh.blur == 0 {
             String::new()
         } else {
             let _ = write!(
@@ -845,7 +898,8 @@ fn paint_gradient(svg: &mut String, f: &Fragment, border_radius: &BorderRadii, g
 }
 
 /// A filled box `rect` with corner radii `radii` (square unless rounded).
-fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
+/// Returns whether a finite, nonempty, visible rectangle was emitted.
+fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) -> bool {
     // R3 H1: `rect.2 <= 0.0 || rect.3 <= 0.0` is false for `NaN` (every
     // comparison with NaN is false) and for `Infinity` (strictly positive),
     // so a non-finite rect would reach `shape` and serialize `width="NaN"` /
@@ -858,7 +912,7 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
         || rect.3 <= 0.0
         || c.a == 0
     {
-        return;
+        return false;
     }
     let radii = if radii.is_rounded() {
         *radii
@@ -867,6 +921,7 @@ fn rect_r(svg: &mut String, rect: rrect::Rect, c: Rgba, radii: &BorderRadii) {
     };
     shape(svg, rect, &radii, &fill_attrs(c));
     svg.push('\n');
+    true
 }
 
 fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
@@ -1158,6 +1213,16 @@ mod tests {
         assert!(
             row.contains("<rect x=\"0\" y=\"2\" width=\"10\" height=\"3\""),
             "{row}"
+        );
+        // A lone column must keep its snapped width instead of filling the box.
+        let column = body(&tiles((2.25, 0.0), (3.0, 1.5), (0.0, 1.5)), &HashMap::new());
+        assert!(
+            column.contains("width=\"3\" height=\"66\"><image"),
+            "{column}"
+        );
+        assert!(
+            column.contains("<rect x=\"2\" y=\"0\" width=\"3\" height=\"10\""),
+            "{column}"
         );
         // No tile meets the box: nothing.
         assert_eq!(
@@ -1866,6 +1931,16 @@ mod tests {
     }
 
     #[test]
+    fn preblend_classes_keep_the_fixed_three_bit_luminances() {
+        // abc expands to abcabcab; this fixed reference is independent of the
+        // production packing expression and its derived pre-blend tables.
+        let expected = [0, 36, 73, 109, 146, 182, 219, 255];
+        for (class, luminance) in expected.into_iter().enumerate() {
+            assert_eq!(class_luminance(class as u32), luminance);
+        }
+    }
+
+    #[test]
     fn glyph_runs_share_one_pre_blend_filter_per_luminance_class() {
         // miaskiewicz/turbo-dom#294: each run's coverage goes through its text colour's
         // pre-blend table, one filter per luminance class the document uses.
@@ -2017,6 +2092,340 @@ mod tests {
             h,
             FragmentContent::ColumnRule { style, color },
         )
+    }
+
+    #[test]
+    fn outer_shadow_keeps_independent_minimum_axes_and_one_pixel_blur() {
+        for (width, height) in [(0.25, 8.0), (8.0, 0.25)] {
+            let f = decorated(2.0, 3.0, width, height, 0.0, |s, _, _| {
+                *s = Some(shadow(0, 0, 4, 0, RED, false));
+            });
+            assert_eq!(body(&f, &HashMap::new()), "");
+        }
+        let f = decorated(2.0, 3.0, 8.0, 9.0, 0.0, |s, _, _| {
+            *s = Some(shadow(0, 0, 1, 0, RED, false));
+        });
+        let svg = body(&f, &HashMap::new());
+        assert!(
+            svg.contains("<feGaussianBlur stdDeviation=\"0.50\"/>"),
+            "{svg}"
+        );
+        assert!(svg.contains("filter=\"url(#sh"), "{svg}");
+    }
+
+    #[test]
+    fn inset_shadow_keeps_each_empty_padding_axis_and_positive_offset() {
+        let f = plain(5.0, 7.0, 20.0, 30.0, None);
+        let sh = shadow(2, 3, 0, 1, RED, true);
+        let side = BorderSide {
+            width: 0,
+            color: Some(RED),
+        };
+        for (left, top) in [(20, 0), (0, 30)] {
+            let b = BorderEdges {
+                left: BorderSide {
+                    width: left,
+                    ..side
+                },
+                top: BorderSide { width: top, ..side },
+                right: side,
+                bottom: side,
+            };
+            let mut svg = String::new();
+            paint_inset_shadow(&mut svg, &f, &b, &BorderRadii::ZERO, Some(&sh));
+            assert!(svg.is_empty(), "{left},{top}: {svg}");
+        }
+        let b = BorderEdges {
+            left: BorderSide { width: 1, ..side },
+            top: BorderSide { width: 2, ..side },
+            right: side,
+            bottom: side,
+        };
+        let mut svg = String::new();
+        paint_inset_shadow(&mut svg, &f, &b, &BorderRadii::ZERO, Some(&sh));
+        assert!(
+            svg.contains(
+                "x=\"9.00\" y=\"13.00\" width=\"17.00\" height=\"26.00\" fill=\"#000000\""
+            ),
+            "{svg}"
+        );
+    }
+
+    #[test]
+    fn gradient_keeps_its_independent_minimum_height() {
+        let f = decorated(2.0, 3.0, 8.0, 0.25, 0.0, |_, g, _| {
+            *g = Some(CssGradient {
+                angle_deg: 90.0,
+                stops: vec![
+                    GradientStop {
+                        color: RED,
+                        pos: 0.0,
+                    },
+                    GradientStop {
+                        color: WHITE,
+                        pos: 1.0,
+                    },
+                ],
+            });
+        });
+        assert_eq!(body(&f, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn square_border_does_not_emit_a_zero_width_mitred_top() {
+        let side = |width, color| BorderSide {
+            width,
+            color: Some(color),
+        };
+        let b = BorderEdges {
+            top: side(0, RED),
+            right: side(1, Rgba::new(0, 255, 0, 255)),
+            bottom: side(1, RED),
+            left: side(1, Rgba::new(0, 0, 255, 255)),
+        };
+        let f = plain(2.0, 3.0, 20.0, 10.0, None);
+        let mut svg = String::new();
+        paint_border(&mut svg, &f, &b);
+        assert_eq!(svg.matches("<rect ").count(), 2, "{svg}");
+        assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(svg.contains("L22.00 13.00 L2.00 13.00"), "{svg}");
+    }
+
+    #[test]
+    fn rounded_border_omits_each_collapsed_inner_axis_and_absent_side() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let f = plain(2.0, 3.0, 20.0, 10.0, None);
+        for (left, right, top, bottom) in
+            [(10, 10, 1, 1), (1, 1, 5, 5), (11, 10, 1, 1), (1, 1, 6, 5)]
+        {
+            let b = BorderEdges {
+                left: side(left),
+                right: side(right),
+                top: side(top),
+                bottom: side(bottom),
+            };
+            let mut svg = String::new();
+            paint_round_border(&mut svg, &f, &b, &4.0.into());
+            assert_eq!(
+                svg.matches(" M").count(),
+                0,
+                "{left},{right},{top},{bottom}: {svg}"
+            );
+            assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        }
+        let b = BorderEdges {
+            left: side(1),
+            right: side(1),
+            top: side(0),
+            bottom: side(1),
+        };
+        let mut svg = String::new();
+        paint_round_border(&mut svg, &f, &b, &4.0.into());
+        assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(!svg.contains("<clipPath"), "{svg}");
+    }
+
+    fn bounded_rule_test(name: &str, run: impl FnOnce()) {
+        const ENV: &str = "TURBO_SVG_ADMISSION_CHILD";
+        const MARKER: &str = "SVG_ADMISSION_CHILD_COMPLETED";
+        if std::env::var(ENV).ok().as_deref() == Some(name) {
+            run();
+            println!("{MARKER}");
+            return;
+        }
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", name, "--nocapture"])
+            .env(ENV, name)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if child.try_wait().unwrap().is_some() {
+                let result = child.wait_with_output().unwrap();
+                assert!(result.status.success(), "{result:?}");
+                assert!(String::from_utf8(result.stdout).unwrap().contains(MARKER));
+                return;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("SVG rectangle admission failed to terminate: {name}");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn rectangle_emission_reports_only_finite_nonempty_visible_shapes() {
+        let mut svg = String::new();
+        assert!(rect_r(
+            &mut svg,
+            (2.0, 3.0, 4.0, 5.0),
+            RED,
+            &BorderRadii::ZERO
+        ));
+        assert!(svg.contains("x=\"2.00\" y=\"3.00\" width=\"4.00\" height=\"5.00\""));
+        for (bounds, color) in [
+            ((2.0, 3.0, 4.0, 0.0), RED),
+            ((2.0, 3.0, 4.0, -1.0), RED),
+            ((2.0, 3.0, 0.0, 5.0), RED),
+            ((2.0, f32::NAN, 4.0, 5.0), RED),
+            ((2.0, 3.0, 4.0, f32::INFINITY), RED),
+            ((2.0, 3.0, 4.0, 5.0), Rgba::new(255, 0, 0, 0)),
+        ] {
+            let before = svg.clone();
+            assert!(!rect_r(&mut svg, bounds, color, &BorderRadii::ZERO));
+            assert_eq!(svg, before);
+        }
+    }
+
+    #[test]
+    fn clipped_svg_uses_both_relative_offsets_and_empty_axes() {
+        let f = plain(5.0, 7.0, 20.0, 30.0, Some(RED));
+        let clip = ClipRect {
+            x: 2.0,
+            y: 3.0,
+            width: 11.0,
+            height: 13.0,
+            radii: BorderRadii::ZERO,
+        };
+        let mut svg = String::new();
+        paint_clipped(&mut svg, &f, clip, &HashMap::new());
+        assert!(svg.starts_with("<clipPath id=\"clip0\"><rect x=\"7.00\" y=\"10.00\" width=\"11.00\" height=\"13.00\""), "{svg}");
+        assert!(svg.contains("<g clip-path=\"url(#clip0)\">"), "{svg}");
+        assert!(
+            svg.contains("x=\"5.00\" y=\"7.00\" width=\"20.00\" height=\"30.00\""),
+            "{svg}"
+        );
+        assert!(svg.ends_with("</g>"), "{svg}");
+        for (width, height) in [(0.0, 13.0), (11.0, 0.0)] {
+            let mut svg = String::new();
+            paint_clipped(
+                &mut svg,
+                &f,
+                ClipRect {
+                    width,
+                    height,
+                    ..clip
+                },
+                &HashMap::new(),
+            );
+            assert!(svg.is_empty(), "{width}x{height}: {svg}");
+        }
+    }
+
+    #[test]
+    fn transparent_outer_shadow_emits_no_unused_filter() {
+        let f = decorated(2.0, 3.0, 10.0, 20.0, 0.0, |s, _, _| {
+            *s = Some(shadow(1, 2, 4, 0, Rgba::new(255, 0, 0, 0), false));
+        });
+        assert_eq!(body(&f, &HashMap::new()), "");
+    }
+
+    #[test]
+    fn rule_svg_geometry_keeps_independent_pattern_boundaries() {
+        bounded_rule_test(
+            "paint_svg::tests::rule_svg_geometry_keeps_independent_pattern_boundaries",
+            || {
+                let render = |w, h, style| body(&rule(2.0, 3.0, w, h, style, RED), &HashMap::new());
+                let short = render(2.0, 1.0, ColumnRuleStyle::Dotted);
+                assert_eq!(short.matches("<circle ").count(), 1, "{short}");
+                assert!(
+                    short.contains("cx=\"3.00\" cy=\"4.00\" r=\"1.00\""),
+                    "{short}"
+                );
+                let dots = render(2.0, 8.0, ColumnRuleStyle::Dotted);
+                assert_eq!(dots.matches("<circle ").count(), 2, "{dots}");
+                assert!(dots.contains("cy=\"4.00\""), "{dots}");
+                assert!(dots.contains("cy=\"8.00\""), "{dots}");
+                let subpixel = render(0.5, 3.5, ColumnRuleStyle::Dotted);
+                for expected in [
+                    "x=\"2.00\" y=\"3.00\" width=\"1.00\" height=\"1.00\"",
+                    "x=\"2.00\" y=\"4.00\" width=\"1.00\" height=\"1.00\"",
+                    "x=\"2.00\" y=\"6.00\" width=\"1.00\" height=\"0.50\"",
+                ] {
+                    assert!(subpixel.contains(expected), "{expected}: {subpixel}");
+                }
+                assert_eq!(subpixel.matches("<rect ").count(), 3, "{subpixel}");
+                let dashes = render(2.0, 15.0, ColumnRuleStyle::Dashed);
+                for expected in [
+                    "y=\"3.00\" width=\"2.00\" height=\"4.00\"",
+                    "y=\"9.00\" width=\"2.00\" height=\"4.00\"",
+                    "y=\"15.00\" width=\"2.00\" height=\"3.00\"",
+                ] {
+                    assert!(dashes.contains(expected), "{expected}: {dashes}");
+                }
+                assert_eq!(dashes.matches("<rect ").count(), 3, "{dashes}");
+                let narrow_dashes = render(1.0, 8.0, ColumnRuleStyle::Dashed);
+                assert_eq!(
+                    narrow_dashes.matches("<rect ").count(),
+                    3,
+                    "{narrow_dashes}"
+                );
+                for y in ["3.00", "6.00", "9.00"] {
+                    assert!(
+                        narrow_dashes
+                            .contains(&format!("y=\"{y}\" width=\"1.00\" height=\"2.00\"")),
+                        "{narrow_dashes}"
+                    );
+                }
+                let double = render(3.0, 8.0, ColumnRuleStyle::Double);
+                assert_eq!(double.matches("<rect ").count(), 2, "{double}");
+                assert!(
+                    double.contains("x=\"2.00\" y=\"3.00\" width=\"1.00\""),
+                    "{double}"
+                );
+                assert!(
+                    double.contains("x=\"4.00\" y=\"3.00\" width=\"1.00\""),
+                    "{double}"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn rule_svg_helpers_reject_each_invalid_axis_independently() {
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let f = rule(2.0, 3.0, 2.0, bad, ColumnRuleStyle::Dotted, RED);
+            let mut svg = String::new();
+            paint_dotted_rule(&mut svg, &f, RED);
+            paint_dashed_rule(&mut svg, &f, RED);
+            paint_double_rule(&mut svg, &f, RED);
+            paint_shaded_rule(&mut svg, &f, ColumnRuleStyle::Groove, RED);
+            assert!(svg.is_empty(), "height {bad}: {svg}");
+        }
+        for (width, height) in [(0.0, 8.0), (2.0, 0.0), (-1.0, 8.0), (2.0, -1.0)] {
+            let f = rule(2.0, 3.0, width, height, ColumnRuleStyle::Groove, RED);
+            let mut svg = String::new();
+            paint_shaded_rule(&mut svg, &f, ColumnRuleStyle::Groove, RED);
+            assert!(svg.is_empty(), "{width}x{height}: {svg}");
+        }
+    }
+
+    #[test]
+    fn dotted_rule_origin_accounts_for_half_a_pixel_precision() {
+        let f = rule(2.0, 8_388_608.0, 1.0, 8.0, ColumnRuleStyle::Dotted, RED);
+        assert!(rule_needs_local_origin(&f, ColumnRuleStyle::Dotted));
+        let svg = body(&f, &HashMap::new());
+        assert!(
+            svg.starts_with("<g transform=\"translate(0 8388608)\">"),
+            "{svg}"
+        );
+        assert_eq!(svg.matches("<circle ").count(), 4, "{svg}");
+        let invalid = rule(
+            2.0,
+            8_388_608.0,
+            1.0,
+            f32::NAN,
+            ColumnRuleStyle::Dotted,
+            RED,
+        );
+        assert_eq!(body(&invalid, &HashMap::new()), "");
     }
 
     /// miaskiewicz/turbo-dom#398 PR-D: the SVG painter's `paint_column_rule`
@@ -2427,6 +2836,108 @@ mod tests {
                     !buf.contains("NaN") && !buf.contains("inf"),
                     "non-finite ({bad}) box coord must not serialize NaN/inf, got: {buf}"
                 );
+            }
+        }
+    }
+
+    fn exercise_stalled_rule_helpers() {
+        let mut f = rule(
+            1.0,
+            1_000_000_000.0,
+            1.0,
+            128.0,
+            ColumnRuleStyle::Dotted,
+            RED,
+        );
+        let mut output = String::new();
+        paint_dotted_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<circle").count(), 1);
+        output.clear();
+        paint_dashed_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<rect").count(), 1);
+        output.clear();
+        f.width = 0.5;
+        paint_dotted_rule(&mut output, &f, RED);
+        assert_eq!(output.matches("<rect").count(), 2);
+    }
+
+    #[test]
+    fn rule_helpers_stop_when_an_advance_is_not_representable() {
+        const CHILD: &str = "TURBO_DOM_STALLED_SVG_RULE_HELPERS";
+        const MARKER: &str = "SVG_STALLED_ADVANCES_EXERCISED";
+        if std::env::var_os(CHILD).is_some() {
+            exercise_stalled_rule_helpers();
+            println!("{MARKER}");
+            return;
+        }
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "paint_svg::tests::rule_helpers_stop_when_an_advance_is_not_representable",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if child.try_wait().unwrap().is_some() {
+                let output = child.wait_with_output().unwrap();
+                assert!(output.status.success(), "{output:?}");
+                assert!(String::from_utf8(output.stdout).unwrap().contains(MARKER));
+                return;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("stalled rule helpers did not stop within three seconds");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins() {
+        bounded_rule_test(
+            "paint_svg::tests::subpixel_dotted_caps_reject_empty_reversed_and_non_finite_origins",
+            || {
+                for height in [0.0, -1.0] {
+                    for y in [
+                        0.0,
+                        1_000_000_000.0,
+                        f32::NAN,
+                        f32::INFINITY,
+                        f32::NEG_INFINITY,
+                    ] {
+                        let f = rule(1.0, y, 0.5, height, ColumnRuleStyle::Dotted, RED);
+                        let mut output = String::new();
+                        paint_dotted_rule(&mut output, &f, RED);
+                        assert!(output.is_empty(), "height={height}, y={y}: {output}");
+                    }
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn inset_shadow_integer_blur_boundaries_keep_filter_semantics() {
+        let mut capped = None;
+        for blur in [0, 1, 256, u32::MAX] {
+            let f = decorated(1.0, 2.0, 10.0, 10.0, 0.0, |slot, _, _| {
+                *slot = Some(shadow(1, 2, blur, 0, RED, true));
+            });
+            let output = body(&f, &HashMap::new());
+            assert_eq!(output.contains("<filter id=\"insetblur"), blur != 0);
+            if blur == 1 {
+                assert!(output.contains("stdDeviation=\"0.50\""));
+            }
+            if blur == 256 {
+                capped = Some(output.clone());
+            }
+            if blur == u32::MAX {
+                assert_eq!(output, capped.as_ref().unwrap().as_str());
             }
         }
     }

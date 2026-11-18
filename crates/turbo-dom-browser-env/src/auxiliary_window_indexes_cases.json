@@ -1,0 +1,5 @@
+[
+  { "id": "no-children", "count": 0 },
+  { "id": "one-child", "count": 1 },
+  { "id": "two-children", "count": 2 }
+]

@@ -1,0 +1,58 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "6731b5f22ea82ac19213d1dcdb7c636808d2757408a294cbbfaf1af9ff407f13",
+  "probeSha256": "1ee8b231344d260d0205abdf5b221446c1207e02294d7e3e7e20eaac9ee5b3ee",
+  "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "scoped-shadow-style-and-adopted-lifecycle",
+      "result": {
+        "rows": [
+          {
+            "mode": "open",
+            "count": 1,
+            "name": "local",
+            "duration": 20,
+            "finished": "finished",
+            "remaining": 0
+          },
+          {
+            "mode": "closed",
+            "count": 1,
+            "name": "local",
+            "duration": 20,
+            "finished": "finished",
+            "remaining": 0
+          }
+        ],
+        "adopted": {
+          "name": "local",
+          "firstOpacity": "0.5",
+          "duration": 20,
+          "remaining": 0,
+          "inlineWins": false,
+          "changedDuration": 30,
+          "completed": "finished"
+        },
+        "ancestorScope": {
+          "count": 0,
+          "remaining": 0
+        }
+      }
+    }
+  ]
+}

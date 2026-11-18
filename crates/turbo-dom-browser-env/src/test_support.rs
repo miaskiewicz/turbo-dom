@@ -40,6 +40,45 @@ pub const ANIMATIONS_FRAMES_CASES_JSON: &[u8] = include_bytes!("animations_frame
 pub const ANIMATIONS_FRAMES_CHROME156_JSON: &str = include_str!("animations_frames_chrome156.json");
 /// `src/animations_frames_probe.js`.
 pub const ANIMATIONS_FRAMES_PROBE_JS: &str = include_str!("animations_frames_probe.js");
+/// `src/css_effect_lifecycle_cases.json` (#507's finite fadeInUp repro).
+pub const CSS_EFFECT_LIFECYCLE_CASES_JSON: &[u8] =
+    include_bytes!("css_effect_lifecycle_cases.json");
+/// `src/css_effect_lifecycle_chrome156.json`.
+pub const CSS_EFFECT_LIFECYCLE_CHROME156_JSON: &str =
+    include_str!("css_effect_lifecycle_chrome156.json");
+/// `src/css_effect_lifecycle_probe.js`.
+pub const CSS_EFFECT_LIFECYCLE_PROBE_JS: &str = include_str!("css_effect_lifecycle_probe.js");
+/// `src/auxiliary_contexts_cases.json` (turbo-dom#504).
+pub const AUXILIARY_CONTEXTS_CASES_JSON: &[u8] = include_bytes!("auxiliary_contexts_cases.json");
+/// Independent real-window Chrome 156 observations and host target evidence.
+pub const AUXILIARY_CONTEXTS_CHROME156_JSON: &str =
+    include_str!("auxiliary_contexts_chrome156.json");
+/// Shared page probe; consumers drive their real Page/network/actor host.
+pub const AUXILIARY_CONTEXTS_PROBE_JS: &str = include_str!("auxiliary_contexts_probe.js");
+/// Cross-origin child-window indexed-property controls (turbo-dom#504).
+pub const AUXILIARY_WINDOW_INDEXES_CASES_JSON: &[u8] =
+    include_bytes!("auxiliary_window_indexes_cases.json");
+/// Recorded descriptors, membership, and enumeration from pinned Chrome 156.
+pub const AUXILIARY_WINDOW_INDEXES_CHROME156_JSON: &str =
+    include_str!("auxiliary_window_indexes_chrome156.json");
+/// Shared cross-origin child-window index observation probe.
+pub const AUXILIARY_WINDOW_INDEXES_PROBE_JS: &str =
+    include_str!("auxiliary_window_indexes_probe.js");
+/// Cross-origin child-window name and precedence controls (turbo-dom#504).
+pub const AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8] =
+    include_bytes!("auxiliary_window_names_cases.json");
+/// Recorded UTF-16 name lookup and membership from pinned Chrome 156.
+pub const AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str =
+    include_str!("auxiliary_window_names_chrome156.json");
+/// Shared cross-origin child-window name observation probe.
+pub const AUXILIARY_WINDOW_NAMES_PROBE_JS: &str = include_str!("auxiliary_window_names_probe.js");
+
+/// `src/css_effect_shadow_cases.json` (#509 scoped stylesheet ownership).
+pub const CSS_EFFECT_SHADOW_CASES_JSON: &[u8] = include_bytes!("css_effect_shadow_cases.json");
+/// `src/css_effect_shadow_chrome156.json`.
+pub const CSS_EFFECT_SHADOW_CHROME156_JSON: &str = include_str!("css_effect_shadow_chrome156.json");
+/// `src/css_effect_shadow_probe.js`.
+pub const CSS_EFFECT_SHADOW_PROBE_JS: &str = include_str!("css_effect_shadow_probe.js");
 /// `src/computed_defaults_cases.json` (turbo-surf#36: UA display / position / visibility
 /// defaults, and documents without a parsed `<title>`).
 pub const COMPUTED_DEFAULTS_CASES_JSON: &[u8] = include_bytes!("computed_defaults_cases.json");
@@ -278,6 +317,42 @@ pub const FILES: &[(&str, &[u8])] = &[
         "animations_frames_probe.js",
         ANIMATIONS_FRAMES_PROBE_JS.as_bytes(),
     ),
+    (
+        "auxiliary_contexts_cases.json",
+        AUXILIARY_CONTEXTS_CASES_JSON,
+    ),
+    (
+        "auxiliary_contexts_chrome156.json",
+        AUXILIARY_CONTEXTS_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "auxiliary_contexts_probe.js",
+        AUXILIARY_CONTEXTS_PROBE_JS.as_bytes(),
+    ),
+    (
+        "auxiliary_window_indexes_cases.json",
+        AUXILIARY_WINDOW_INDEXES_CASES_JSON,
+    ),
+    (
+        "auxiliary_window_indexes_chrome156.json",
+        AUXILIARY_WINDOW_INDEXES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "auxiliary_window_indexes_probe.js",
+        AUXILIARY_WINDOW_INDEXES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "auxiliary_window_names_cases.json",
+        AUXILIARY_WINDOW_NAMES_CASES_JSON,
+    ),
+    (
+        "auxiliary_window_names_chrome156.json",
+        AUXILIARY_WINDOW_NAMES_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "auxiliary_window_names_probe.js",
+        AUXILIARY_WINDOW_NAMES_PROBE_JS.as_bytes(),
+    ),
     ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
     (
         "computed_defaults_chrome156.json",
@@ -332,6 +407,27 @@ pub const FILES: &[(&str, &[u8])] = &[
         CSS_ADOPTION_OWNERSHIP_PROBE_JS.as_bytes(),
     ),
     ("css_adoption_probe.js", CSS_ADOPTION_PROBE_JS.as_bytes()),
+    (
+        "css_effect_lifecycle_cases.json",
+        CSS_EFFECT_LIFECYCLE_CASES_JSON,
+    ),
+    (
+        "css_effect_lifecycle_chrome156.json",
+        CSS_EFFECT_LIFECYCLE_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "css_effect_lifecycle_probe.js",
+        CSS_EFFECT_LIFECYCLE_PROBE_JS.as_bytes(),
+    ),
+    ("css_effect_shadow_cases.json", CSS_EFFECT_SHADOW_CASES_JSON),
+    (
+        "css_effect_shadow_chrome156.json",
+        CSS_EFFECT_SHADOW_CHROME156_JSON.as_bytes(),
+    ),
+    (
+        "css_effect_shadow_probe.js",
+        CSS_EFFECT_SHADOW_PROBE_JS.as_bytes(),
+    ),
     (
         "custom_elements_callbacks_chrome155.json",
         CUSTOM_ELEMENTS_CALLBACKS_CHROME155_JSON.as_bytes(),

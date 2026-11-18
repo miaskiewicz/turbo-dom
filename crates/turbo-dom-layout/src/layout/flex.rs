@@ -547,15 +547,14 @@ fn line_natural(
     // wraps a word onto a second line even though it "fit" the measurement (nike's
     // "Find a Store" utility links, google's footer). A whole-pixel max-content leaves
     // room for the rounding.
-    let text = inline::layout_runs_with_units(
+    let text = inline::measure_runs_with_units(
         &runs,
         fonts,
         f32::MAX,
         &mut scratch,
         original,
         (html_metrics, scale),
-    )
-    .width;
+    );
     let text = if html_metrics { text } else { text.ceil() };
     text + atomics_natural(items, fonts) + inline_edges_natural(items, fs)
 }
@@ -729,6 +728,58 @@ fn caption_floored(lb: &LayoutBox, w: f32, fonts: &FontRegistry) -> f32 {
     }
 }
 
+/// Seed only a text leaf's existing numeric caches. Wrappers retain their own
+/// ordinary sizing arithmetic; no prepared data survives a query or policy change.
+pub(crate) fn prepare_text_intrinsics(lb: &LayoutBox, fonts: &FontRegistry) {
+    if !lb.intrinsic_widths_uncached() || lb.out_of_flow() {
+        return;
+    }
+    let bs = lb.resolved(ResolveCtx {
+        parent_font_size: DEFAULT_FONT_SIZE,
+        cb_width: 0.0,
+    });
+    if matches!(bs.width, LengthPct::Px(_)) || lb.containment().width {
+        return;
+    }
+    if lb.is_replaced() || (lb.orthogonal_root && lb.writing_root) {
+        return;
+    }
+    match &lb.kind {
+        BoxKind::Block(children) if children.len() == 1 => {
+            prepare_text_intrinsics(&children[0], fonts);
+        }
+        BoxKind::Lines(items) if items.iter().all(|i| matches!(i, InlineItem::Text { .. })) => {
+            prepare_lines_intrinsics(
+                lb,
+                items,
+                bs.font_size,
+                fonts,
+                bs.padding.horizontal() + bs.border.widths().horizontal(),
+            );
+        }
+        _ => {}
+    }
+}
+
+fn prepare_lines_intrinsics(
+    lb: &LayoutBox,
+    items: &[InlineItem],
+    font_size: f32,
+    fonts: &FontRegistry,
+    frame: f32,
+) {
+    let runs = block::build_runs(items, font_size, 0.0, fonts);
+    let html = lb.uses_html_font_metrics();
+    let (max, min) = inline::measure_intrinsic_pair(
+        &runs,
+        fonts,
+        lb.original_units().as_deref(),
+        (html, lb.native_scale()),
+    );
+    let max = if html { max } else { max.ceil() };
+    lb.seed_intrinsic_widths(max.max(0.0) + frame, min.max(0.0) + frame);
+}
+
 pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     crate::hot!("layout.natural_width");
     lb.natural_cached(|| {
@@ -805,15 +856,14 @@ fn lines_min(
 ) -> f32 {
     let runs = block::build_runs(items, fs, 0.0, fonts);
     let mut scratch = Diagnostics::default();
-    let text = inline::layout_runs_with_units(
+    let text = inline::measure_runs_with_units(
         &runs,
         fonts,
         0.0,
         &mut scratch,
         original,
         (html_metrics, scale),
-    )
-    .width;
+    );
     // An atomic doesn't break, so it contributes its own min-content; the line can
     // wrap between pieces, so its min-content is the widest single piece.
     let atom = items
@@ -1045,6 +1095,7 @@ fn measure_item(
                 abs_cb_h_known: false,
                 cb_h: 0.0,
                 cb_h_known: false,
+                quirks_parent: None,
                 root_w: w,
                 root_h: crate::style::viewport_px().1,
                 icb_h: 0.0,

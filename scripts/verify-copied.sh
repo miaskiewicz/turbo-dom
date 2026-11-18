@@ -483,6 +483,21 @@ OWNED="$OWNED worker_scope.rs worker_scope.js dedicated_worker_global_scope_prob
 OWNED="$OWNED init_script_tests.rs"
 # turbo-dom#488 AbortSignal.timeout/.any polyfill split into its own crate-owned run_js call.
 OWNED="$OWNED abort_signal_polyfill.js"
+# turbo-dom#507 host-only CSS effect lifecycle API and Chrome control fixtures.
+OWNED="$OWNED css_effect_lifecycle.rs css_effect_lifecycle_probe.js css_effect_lifecycle_cases.json css_effect_lifecycle_chrome156.json"
+# turbo-dom#504 canonical auxiliary contexts and independent browser controls.
+OWNED="$OWNED auxiliary_contexts.rs auxiliary_window_proxy.rs auxiliary_contexts_probe.js auxiliary_contexts_cases.json auxiliary_contexts_chrome156.json"
+# Canonical host hyperlink activation is owned by turbo-dom (turbo-dom#510).
+OWNED="$OWNED hyperlink_activation.rs"
+# turbo-dom#512 shared typed setter result bridge (default void / native SDK Boolean).
+OWNED="$OWNED mutation_result.rs"
+OWNED="$OWNED auxiliary_window_indexes_cases.json auxiliary_window_indexes_probe.js auxiliary_window_indexes_chrome156.json"
+OWNED="$OWNED auxiliary_window_names_cases.json auxiliary_window_names_probe.js auxiliary_window_names_chrome156.json"
+# turbo-dom#509 scoped shadow stylesheet lifecycle Chrome controls.
+OWNED="$OWNED css_effect_shadow_probe.js css_effect_shadow_cases.json css_effect_shadow_chrome156.json"
+# 0.8.4 cross-realm image ownership controls authored here (625472a0).
+OWNED="$OWNED html_image_adoption_chrome156.json html_image_adoption_probe.js html_image_crossrealm_tests.rs"
+OWNED="$OWNED window_getter_receivers_probe.js window_getter_receivers_chrome158.json"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}

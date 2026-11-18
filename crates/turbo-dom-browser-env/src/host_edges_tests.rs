@@ -240,12 +240,12 @@ mod frame_read {
         static SEEN: RefCell<Vec<(bool, bool)>> = const { RefCell::new(Vec::new()) };
     }
 
-    fn setter<'s>(
+    fn setter<'s, T>(
         scope: &mut v8::PinScope<'s, '_>,
         _: v8::Local<'s, v8::Name>,
         _: v8::Local<'s, v8::Value>,
         args: v8::PropertyCallbackArguments<'s>,
-        _: v8::ReturnValue<()>,
+        _: v8::ReturnValue<T>,
     ) -> v8::Intercepted {
         let frame = crate::test_support::frame_read_should_throw(scope, &args);
         SEEN.with(|seen| {

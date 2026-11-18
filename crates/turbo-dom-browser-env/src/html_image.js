@@ -24,26 +24,38 @@
     make = ns.makeNativeFunction,
     accessor = ns.domAccessor;
   const getRecord = g.__getCollectionRecord,
-    setRecord = g.__setCollectionRecord;
+    setRecord = g.__setCollectionRecord,
+    creationService = g.__getImageCreationService;
+  delete g.__getImageCreationService;
   const P = g.HTMLImageElement.prototype,
     apply = Reflect.apply,
     define = Object.defineProperty,
+    own = Object.hasOwn,
     ErrorType = TypeError,
     StringValue = String,
     NumberValue = Number;
   const imageBrand = accessor("nodeType", false, "HTML:img");
   const getAttribute = g.Element.prototype.getAttribute,
     setAttribute = g.Element.prototype.setAttribute;
-  const states = new WeakMap(),
-    stateOf = WeakMap.prototype.get,
-    storeState = WeakMap.prototype.set,
-    dropState = WeakMap.prototype.delete;
+  // State follows the image's native private record across realms and adoption.
+  const imageRecord = (image) => {
+    let record = getRecord(image);
+    if (!record) {
+      record = { __proto__: null, kind: "HTMLImageElement" };
+      setRecord(image, record);
+      if (getRecord(image) !== record) throw new ErrorType("Image state unavailable");
+    }
+    return record;
+  };
   const check = (receiver) => {
     if (receiver === null || (typeof receiver !== "object" && typeof receiver !== "function"))
       throw new ErrorType("Illegal invocation");
     apply(imageBrand, receiver, []);
   };
-  const current = (image) => apply(stateOf, states, [image]);
+  const current = (image) => {
+    const record = getRecord(image);
+    return record && own(record, "imageState") ? record.imageState : undefined;
+  };
   // Without host state: the source a browser selects (srcset / sizes / <picture>, below), "" without one.
   const defaultSource = (image) => {
     const chosen = select(image, undefined);
@@ -70,8 +82,7 @@
   // not loading); a call while the host reports a load in progress settles at the host's next
   // state. A bad receiver rejects with a TypeError.
   const PromiseValue = Promise,
-    rejected = (error) => apply(Promise.reject, PromiseValue, [error]),
-    pendingDecodes = new WeakMap();
+    rejected = (error) => apply(Promise.reject, PromiseValue, [error]);
   const DOMExceptionValue = __tsNs.DOMException;
   const decodeError = () => new DOMExceptionValue("The source image cannot be decoded.", "EncodingError");
   const settleDecode = (state, resolve, reject) => {
@@ -79,13 +90,25 @@
     else reject(decodeError());
   };
   const flushDecodes = (image) => {
-    const waiting = apply(stateOf, pendingDecodes, [image]);
+    const record = getRecord(image);
+    const waiting = record && own(record, "imagePendingDecodes") ? record.imagePendingDecodes : undefined;
     if (!waiting) return;
     const state = current(image);
     if (state && !state.complete) return;
-    apply(dropState, pendingDecodes, [image]);
-    for (let i = 0; i < waiting.length; i++) settleDecode(state, waiting[i][0], waiting[i][1]);
+    delete record.imagePendingDecodes;
+    for (let i = 0; i < waiting.length; i++) waiting[i](state);
   };
+  const decodeImage = (image) => new PromiseValue((resolve, reject) => {
+    const state = current(image);
+    if (state && !state.complete) {
+      const record = imageRecord(image);
+      const waiting = own(record, "imagePendingDecodes") ? record.imagePendingDecodes : [];
+      // Completion may come from another realm's host. The image creator owns
+      // its decode promises, their rejection constructors and these settlers.
+      define(waiting, waiting.length, { __proto__: null, value: (state) => settleDecode(state, resolve, reject), writable: true, configurable: true });
+      define(record, "imagePendingDecodes", { __proto__: null, value: waiting, writable: true, configurable: true });
+    } else settleDecode(state, resolve, reject);
+  });
   define(P, "decode", {
     value: make(
       function decode() {
@@ -94,15 +117,7 @@
         } catch {
           return rejected(new ErrorType("Failed to execute 'decode' on 'HTMLImageElement': Illegal invocation"));
         }
-        const image = this;
-        return new PromiseValue((resolve, reject) => {
-          const state = current(image);
-          if (state && !state.complete) {
-            const waiting = apply(stateOf, pendingDecodes, [image]) || [];
-            waiting[waiting.length] = [resolve, reject];
-            apply(storeState, pendingDecodes, [image, waiting]);
-          } else settleDecode(state, resolve, reject);
-        });
+        return creationService(this).decode(this);
       },
       "decode",
       0,
@@ -799,6 +814,25 @@
   // The natural size of a w x h resource selected at `density` (Blink: the size scaled by the
   // float reciprocal of the density, floored).
   const densityCorrected = (size, density) => MathFloor(MathFround(size * MathFround(1 / MathFround(density))));
+  const publishState = (image, state) => {
+    if (state === null || state === undefined) {
+      const record = getRecord(image);
+      if (record) delete record.imageState;
+      flushDecodes(image);
+      return;
+    }
+    if (typeof state !== "object" && typeof state !== "function") throw new ErrorType("Image state must be an object or null");
+    const source = state.currentSrc;
+    const copy = {
+      __proto__: null,
+      complete: !!state.complete,
+      naturalWidth: unsigned(state.naturalWidth),
+      naturalHeight: unsigned(state.naturalHeight),
+      currentSrc: source === null || source === undefined ? "" : StringValue(source),
+    };
+    define(imageRecord(image), "imageState", { __proto__: null, value: copy, writable: true, configurable: true });
+    flushDecodes(image);
+  };
   const imageHost = {
     __proto__: null,
     // The source to load for an image (turbo-dom#71): {url, density} — the absolute URL the
@@ -826,22 +860,7 @@
     },
     setState(image, state) {
       check(image);
-      if (state === null || state === undefined) {
-        apply(dropState, states, [image]);
-        flushDecodes(image);
-        return;
-      }
-      if (typeof state !== "object" && typeof state !== "function") throw new ErrorType("Image state must be an object or null");
-      const source = state.currentSrc;
-      const copy = {
-        __proto__: null,
-        complete: !!state.complete,
-        naturalWidth: unsigned(state.naturalWidth),
-        naturalHeight: unsigned(state.naturalHeight),
-        currentSrc: source === null || source === undefined ? "" : StringValue(source),
-      };
-      apply(storeState, states, [image, copy]);
-      flushDecodes(image);
+      return creationService(image).publish(image, state);
     },
   };
   // The legacy factory function Image(width, height) (HTML 4.8.4.1, Web IDL
@@ -892,6 +911,9 @@
   );
   define(ImageFactory, "prototype", { value: P, writable: false, enumerable: false, configurable: false });
   define(g, "Image", { value: ImageFactory, writable: true, enumerable: false, configurable: true });
+  define(ns, "imageStateService", { __proto__: null, value: {
+    __proto__: null, decode: decodeImage, publish: publishState,
+  }, configurable: true });
   const documentRecord = getRecord(g.document) || { kind: "Document" };
   documentRecord.imageHost = imageHost;
   setRecord(g.document, documentRecord);

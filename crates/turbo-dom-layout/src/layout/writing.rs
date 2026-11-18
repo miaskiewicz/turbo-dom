@@ -174,6 +174,7 @@ impl Relabel {
                 }
             }
         }
+        self.relabel_quirky_margins(style, &mut out);
         self.relabel_radii(style, &mut out);
         if self.swap {
             for (a, b) in AXIS_PAIRS {
@@ -191,6 +192,22 @@ impl Relabel {
 }
 
 impl Relabel {
+    fn relabel_quirky_margins(self, style: &ComputedStyle, out: &mut ComputedStyle) {
+        if let Some(mask) = style
+            .get(crate::style::UA_QUIRKY_MARGIN_START)
+            .and_then(|mask| mask.parse::<u8>().ok())
+        {
+            let mapped = self
+                .sides
+                .iter()
+                .enumerate()
+                .fold(0_u8, |bits, (target, source)| {
+                    bits | (((mask >> source) & 1) << target)
+                });
+            out.set(crate::style::UA_QUIRKY_MARGIN_START, mapped.to_string());
+        }
+    }
+
     /// Move `style`'s corner radii (shorthand, physical and flow-relative longhands, the
     /// latter mapped through `style`'s own writing mode and direction) into `out` as the
     /// physical longhands of the target space, their two radii trading places when the
@@ -519,7 +536,10 @@ fn layout_root_in(
     if orthogonal {
         (ctx.cb_h, ctx.cb_h_known) = (cb_width, true);
     }
+    let parent_quirks = ctx.quirks_parent.take();
+    ctx.quirks_parent = parent_quirks.filter(|parent| parent.writing == mode);
     let mut frag = super::block::layout_root_box(&root, available, parent_fs, orthogonal, ctx);
+    ctx.quirks_parent = parent_quirks;
     ctx.writing = saved.writing;
     ctx.floats = saved.floats;
     (ctx.cb_h, ctx.cb_h_known) = saved.cb;
@@ -531,8 +551,81 @@ fn layout_root_in(
         ctx.used_metrics = Some(outer);
     }
     map_tree(&mut frag, mode, parent);
-    frag.translate(bx, by);
+    if let Some((x, y)) = document_float_origin(lb, (frag.width, frag.height), parent_fs, ctx) {
+        frag.translate(x - frag.x, y - frag.y);
+    } else {
+        let origin = document_origin(
+            lb,
+            (mode, parent),
+            (bx, by, cb_width, parent_fs),
+            sized.is_none(),
+            frag.width,
+        );
+        frag.translate(origin.0, origin.1);
+    }
     Some(frag)
+}
+
+/// The document's vertical-rl block flow starts at the initial containing
+/// block's right edge; ordinary orthogonal children keep their caller's origin.
+fn document_origin(
+    lb: &super::boxgen::LayoutBox,
+    (mode, parent): (WritingMode, WritingMode),
+    (x, y, width, font_size): (f32, f32, f32, f32),
+    auto_placement: bool,
+    border_width: f32,
+) -> (f32, f32) {
+    if !lb.document_root()
+        || mode != WritingMode::VerticalRl
+        || parent != WritingMode::HorizontalTb
+        || !auto_placement
+    {
+        return (x, y);
+    }
+    let style = lb.resolved(super::value::ResolveCtx {
+        parent_font_size: font_size,
+        cb_width: width,
+    });
+    if style.position.is_out_of_flow() || style.float != super::value::Float::None {
+        return (x, y);
+    }
+    (x + width - style.margin.horizontal() - border_width, y)
+}
+
+/// A floated vertical document root packs against the initial containing
+/// block's logical inline edge, after its shrink-to-fit size is known. Ordinary
+/// child floats keep their parent formatting context's placement.
+fn document_float_origin(
+    lb: &super::boxgen::LayoutBox,
+    (width, height): (f32, f32),
+    font_size: f32,
+    ctx: &Ctx,
+) -> Option<(f32, f32)> {
+    if !lb.document_root()
+        || WritingMode::of(&lb.style) != WritingMode::VerticalRl
+        || ctx.writing != WritingMode::HorizontalTb
+    {
+        return None;
+    }
+    let style = lb.resolved(super::value::ResolveCtx {
+        parent_font_size: font_size,
+        cb_width: ctx.root_w,
+    });
+    if style.float == super::value::Float::None || style.position.is_out_of_flow() {
+        return None;
+    }
+    let viewport_height = if ctx.live_geometry {
+        ctx.root_h
+    } else {
+        ctx.icb_h
+    };
+    let x = ctx.root_w - style.margin.right - width;
+    let y = if style.float == super::value::Float::Right && viewport_height > 0.0 {
+        viewport_height - style.margin.bottom - height
+    } else {
+        style.margin.top
+    };
+    Some((x, y))
 }
 
 /// An orthogonal root's border-box width in its parent's space when its size is not
@@ -573,6 +666,7 @@ fn measure_orthogonal_extent(lb: &super::boxgen::LayoutBox, fonts: &crate::FontR
         abs_cb_h_known: false,
         cb_h: 0.0,
         cb_h_known: false,
+        quirks_parent: None,
         root_w: width,
         root_h: height,
         icb_h: height,

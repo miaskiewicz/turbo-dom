@@ -1,0 +1,53 @@
+{
+  "browser": "Chrome/156.0.8078.4",
+  "version": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/156.0.8078.4",
+    "revision": "@f842f52ef39fd97b449eb27cff414bf05a98ddce",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "jsVersion": "15.6.75"
+  },
+  "probeSha256": "c52d82a80c8e9634ccef745f84789ff58658737fc28ac5fe0990903d4a6b46a5",
+  "result": {
+    "owner": true,
+    "originalPrototype": true,
+    "root": [
+      true,
+      3,
+      2
+    ],
+    "child": [
+      true,
+      3,
+      2
+    ],
+    "currentSrcEqual": true,
+    "ownState": false,
+    "promises": [
+      [
+        false,
+        true
+      ],
+      [
+        false,
+        true
+      ]
+    ],
+    "errors": [
+      [
+        "EncodingError",
+        false,
+        true,
+        false,
+        true
+      ],
+      [
+        "EncodingError",
+        false,
+        true,
+        false,
+        true
+      ]
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "61ddf624065a0ee011cfae80c441564f4e6d1d41615205270a49d6a88ffb140d",
+  "probeSha256": "282c723e32dc0e48386ed2e86c2467abba84b3c23386768003e63532a7e097f2",
+  "collectorSha256": "5d8c7e0c3a6f4cf612c01cf05f99bd46e708b4b538e6183ebca4d4c2bf9aac87",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "finite-fadeInUp-and-guarded-states",
+      "result": {
+        "finite": {
+          "name": "fadeInUp",
+          "state": "finished",
+          "progress": null,
+          "count": 0,
+          "width": 32
+        },
+        "states": [
+          {
+            "declaration": "fadeInUp .3s infinite",
+            "state": "running",
+            "fills": true,
+            "finite": false
+          },
+          {
+            "declaration": "fadeInUp .3s paused",
+            "state": "paused",
+            "fills": true,
+            "finite": true
+          },
+          {
+            "declaration": "fadeInUp .3s forwards",
+            "state": "finished",
+            "fills": true,
+            "finite": true
+          },
+          {
+            "declaration": "fadeInUp .3s both",
+            "state": "finished",
+            "fills": true,
+            "finite": true
+          }
+        ]
+      }
+    }
+  ]
+}

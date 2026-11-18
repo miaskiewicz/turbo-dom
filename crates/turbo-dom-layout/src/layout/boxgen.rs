@@ -476,6 +476,15 @@ impl LayoutBox {
         }
     }
 
+    pub(crate) fn intrinsic_widths_uncached(&self) -> bool {
+        self.natural_cache.get().is_none() && self.min_content_cache.get().is_none()
+    }
+
+    pub(crate) fn seed_intrinsic_widths(&self, max: f32, min: f32) {
+        self.natural_cache.set(Some(max));
+        self.min_content_cache.set(Some(min));
+    }
+
     /// The memoized max-content width, computing it once via `f` on a miss.
     pub(crate) fn natural_cached(&self, f: impl FnOnce() -> f32) -> f32 {
         if let Some(w) = self.natural_cache.get() {

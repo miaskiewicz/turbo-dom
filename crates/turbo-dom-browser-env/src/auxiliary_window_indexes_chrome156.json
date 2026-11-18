@@ -1,0 +1,697 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "c06e326d38d13af3ec14c4429a90e6231ccfde28c90d96b17e08826fa9daed33",
+  "probeSha256": "3df920db999c2b20dc78697d0ab3d3a9d41b58a44c85bcc06bf0a890e3fe3a16",
+  "collectorSha256": "340e499709d81b56c8c44e7d6c31b030b443520c46217fc962dc13a7dfa5b72c",
+  "flags": [
+    "--headless=new",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "about:blank"
+  ],
+  "errors": [],
+  "rows": [
+    {
+      "count": 0,
+      "result": {
+        "length": 0,
+        "properties": [
+          {
+            "key": "0",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "1",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "2",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "00",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "01",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "-1",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967294",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967295",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "NamedChild0",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "missing",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": []
+        }
+      }
+    },
+    {
+      "count": 1,
+      "result": {
+        "length": 1,
+        "properties": [
+          {
+            "key": "0",
+            "read": {
+              "ok": true,
+              "value": true
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "writable": false,
+                "enumerable": true,
+                "configurable": true,
+                "getType": "undefined",
+                "setType": "undefined",
+                "valueMatchesIndex": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "key": "1",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "2",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "00",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "01",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "-1",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967294",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967295",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "NamedChild0",
+            "read": {
+              "ok": true,
+              "value": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "getType": "undefined",
+                "setType": "undefined",
+                "valueMatchesIndex": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "key": "missing",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0"
+          ]
+        }
+      }
+    },
+    {
+      "count": 2,
+      "result": {
+        "length": 2,
+        "properties": [
+          {
+            "key": "0",
+            "read": {
+              "ok": true,
+              "value": true
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "writable": false,
+                "enumerable": true,
+                "configurable": true,
+                "getType": "undefined",
+                "setType": "undefined",
+                "valueMatchesIndex": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "key": "1",
+            "read": {
+              "ok": true,
+              "value": true
+            },
+            "has": {
+              "ok": true,
+              "value": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "writable": false,
+                "enumerable": true,
+                "configurable": true,
+                "getType": "undefined",
+                "setType": "undefined",
+                "valueMatchesIndex": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "key": "2",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "00",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "01",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "-1",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967294",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "4294967295",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          },
+          {
+            "key": "NamedChild0",
+            "read": {
+              "ok": true,
+              "value": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": true,
+              "value": {
+                "writable": false,
+                "enumerable": false,
+                "configurable": true,
+                "getType": "undefined",
+                "setType": "undefined",
+                "valueMatchesIndex": true,
+                "accessingRealm": true
+              }
+            }
+          },
+          {
+            "key": "missing",
+            "read": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "has": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            },
+            "descriptor": {
+              "ok": false,
+              "name": "SecurityError",
+              "accessingRealm": true
+            }
+          }
+        ],
+        "ownKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1",
+            "window",
+            "self",
+            "location",
+            "closed",
+            "frames",
+            "length",
+            "top",
+            "opener",
+            "parent",
+            "blur",
+            "close",
+            "focus",
+            "postMessage",
+            "then",
+            "Symbol(Symbol.toStringTag)",
+            "Symbol(Symbol.hasInstance)",
+            "Symbol(Symbol.isConcatSpreadable)"
+          ]
+        },
+        "objectKeys": {
+          "ok": true,
+          "value": [
+            "0",
+            "1"
+          ]
+        }
+      }
+    }
+  ]
+}

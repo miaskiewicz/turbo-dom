@@ -1,0 +1,3567 @@
+{
+  "browser": "159.0.8154.6",
+  "executablePath": "/Users/grzegorz/Library/Caches/ms-playwright/chromium_headless_shell-1255/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+  "viewport": [
+    640,
+    480
+  ],
+  "deviceScaleFactor": 1,
+  "offline": true,
+  "casesSha256": "33ffff652cdfddaccb881cd8038445b57b58644728c74f34a627943ac39189b2",
+  "collectorSha256": "390be785680f31450b6b28b093f572fa8c3eef6c6a447100470cb6593c7e4340",
+  "probeSha256": "e8654ad607b2443eddf620d9f183b64c98c8c77e73d63d2ca237a027ae604059",
+  "rows": [
+    {
+      "id": "original-no-doctype",
+      "markup": "<style>html,body{margin:0}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          464
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          464
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "standards-doctype",
+      "markup": "<!doctype html><style>html,body{margin:0}</style><p>viewport</p>",
+      "compatMode": "CSS1Compat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          50
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          50
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          16,
+          640,
+          18
+        ],
+        "client": [
+          640,
+          18
+        ],
+        "offset": [
+          640,
+          18
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            16,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "markup": "<style>html,body{margin:0}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "tall-content",
+      "markup": "<style>html,body{margin:0}</style><div style=\"height:800px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          800
+        ],
+        "client": [
+          640,
+          800
+        ],
+        "offset": [
+          640,
+          800
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          800
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          800
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            800
+          ],
+          "client": [
+            640,
+            800
+          ],
+          "offset": [
+            640,
+            800
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-explicit-height",
+      "markup": "<style>html,body{margin:0}html{height:120px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          120
+        ],
+        "client": [
+          640,
+          120
+        ],
+        "offset": [
+          640,
+          120
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          120
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          120
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-zero-height",
+      "markup": "<style>html,body{margin:0}html{height:0}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          0
+        ],
+        "client": [
+          640,
+          0
+        ],
+        "offset": [
+          640,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-min-height",
+      "markup": "<style>html,body{margin:0}html{min-height:600px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          600
+        ],
+        "client": [
+          640,
+          600
+        ],
+        "offset": [
+          640,
+          600
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          600
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          600
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-max-height",
+      "markup": "<style>html,body{margin:0}html{max-height:100px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          100
+        ],
+        "client": [
+          640,
+          100
+        ],
+        "offset": [
+          640,
+          100
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          100
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          100
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-explicit-height",
+      "markup": "<style>html,body{margin:0}body{height:60px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          60
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          60
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-margin",
+      "markup": "<style>html,body{margin:0}html{margin:11px 17px 23px 19px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          19,
+          11,
+          604,
+          446
+        ],
+        "client": [
+          604,
+          446
+        ],
+        "offset": [
+          604,
+          446
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          19,
+          11,
+          604,
+          446
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          604,
+          446
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-padding-border",
+      "markup": "<style>html,body{margin:0}html{padding:12px 17px;border:3px solid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          634,
+          474
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          20,
+          15,
+          600,
+          450
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          600,
+          450
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-border-box",
+      "markup": "<style>html,body{margin:0}html{box-sizing:border-box;padding:12px 17px;border:3px solid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          634,
+          474
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          20,
+          15,
+          600,
+          450
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          600,
+          450
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-margin",
+      "markup": "<style>html,body{margin:0}body{margin:11px 17px 23px 19px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          19,
+          11,
+          604,
+          446
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          604,
+          446
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-padding-border",
+      "markup": "<style>html,body{margin:0}body{padding:12px 17px;border:3px solid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "both-decorated",
+      "markup": "<style>html,body{margin:0}html{margin:9px 13px 17px 19px;padding:11px 7px 23px 5px;border:3px solid}body{margin:5px 0 7px;padding:4px 0 8px;border:2px solid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          19,
+          9,
+          608,
+          454
+        ],
+        "client": [
+          602,
+          448
+        ],
+        "offset": [
+          608,
+          454
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          27,
+          28,
+          590,
+          402
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          590,
+          402
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-absolute",
+      "markup": "<style>html,body{margin:0}body{position:absolute;width:60px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          60,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          60,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "absolute",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-fixed",
+      "markup": "<style>html,body{margin:0}body{position:fixed;width:60px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          60,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          60,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "fixed",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-float",
+      "markup": "<style>html,body{margin:0}body{float:left;width:60px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          60,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          60,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "left"
+      },
+      "children": []
+    },
+    {
+      "id": "body-inline",
+      "markup": "<style>html,body{margin:0}body{display:inline}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "inline",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-flex",
+      "markup": "<style>html,body{margin:0}body{display:flex}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "flex",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-grid",
+      "markup": "<style>html,body{margin:0}body{display:grid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "grid",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-rl",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-lr",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-lr}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-lr",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-lr",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-explicit-width",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;width:120px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          520,
+          0,
+          120,
+          480
+        ],
+        "client": [
+          120,
+          480
+        ],
+        "offset": [
+          120,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          520,
+          0,
+          120,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          120,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-margins",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;margin:11px 17px 23px 19px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          19,
+          11,
+          604,
+          446
+        ],
+        "client": [
+          604,
+          446
+        ],
+        "offset": [
+          604,
+          446
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          19,
+          11,
+          604,
+          446
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          604,
+          446
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-decorated",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;padding:12px 17px;border:3px solid}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          634,
+          474
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          20,
+          15,
+          600,
+          450
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          600,
+          450
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "default-body-margin",
+      "markup": "<style></style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          8,
+          8,
+          624,
+          464
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          624,
+          464
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-max-height",
+      "markup": "<style>html,body{margin:0}body{max-height:100px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          100
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          100
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "visible-head",
+      "markup": "<style>html,body{margin:0}head{display:block;height:50px}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          530
+        ],
+        "client": [
+          640,
+          530
+        ],
+        "offset": [
+          640,
+          530
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          50,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "body-percentage-height",
+      "markup": "<style>html,body{margin:0}body{height:50%}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          240
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          240
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "p-no-margins",
+      "markup": "<style>html,body{margin:0}p{margin:0}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "p-margins-10-20",
+      "markup": "<style>html,body{margin:0}p{margin:10px 0 20px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          10,
+          640,
+          450
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          450
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            10,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "p-bottom-margin-20",
+      "markup": "<style>html,body{margin:0}p{margin:0 0 20px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          460
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          460
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-explicit-with-p",
+      "markup": "<style>html,body{margin:0}body{height:100px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          100
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          100
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-margin-with-p",
+      "markup": "<style>html,body{margin:0}html{margin:10px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          10,
+          10,
+          620,
+          460
+        ],
+        "client": [
+          620,
+          460
+        ],
+        "offset": [
+          620,
+          460
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          10,
+          10,
+          620,
+          444
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          620,
+          444
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            10,
+            10,
+            620,
+            18
+          ],
+          "client": [
+            620,
+            18
+          ],
+          "offset": [
+            620,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "p-authored-default-margins",
+      "markup": "<style>html,body{margin:0}p{margin:1em 0}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          16,
+          640,
+          448
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          448
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            16,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-min-height-with-p",
+      "markup": "<style>html,body{margin:0}body{min-height:100px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          464
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          464
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-flex-center",
+      "markup": "<style>html,body{margin:0}body{display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "flex",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-flex-center-explicit-height",
+      "markup": "<style>html,body{margin:0}body{height:480px;display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "flex",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            230,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-flex-center-min-height",
+      "markup": "<style>html,body{margin:0}body{min-height:480px;display:flex;flex-direction:column;justify-content:center}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "flex",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            230,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-min-height-1000-with-p",
+      "markup": "<style>html,body{margin:0}body{min-height:1000px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          1000
+        ],
+        "client": [
+          640,
+          1000
+        ],
+        "offset": [
+          640,
+          1000
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          1000
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          1000
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-max-height-10-with-p",
+      "markup": "<style>html,body{margin:0}body{max-height:10px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          10
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          10
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-min-height-470-with-p",
+      "markup": "<style>html,body{margin:0}body{min-height:470px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          470
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          470
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-max-height-470-with-p",
+      "markup": "<style>html,body{margin:0}body{max-height:470px}</style><p>viewport</p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          464
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          464
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            18
+          ],
+          "client": [
+            640,
+            18
+          ],
+          "offset": [
+            640,
+            18
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-authored-p-margin",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl}p{margin:0;width:20px;height:20px;margin-right:10px}</style><p></p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          630,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          630,
+          480
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            610,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-lr-authored-p-margin",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-lr}p{margin:0;width:20px;height:20px;margin-left:10px}</style><p></p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "vertical-lr",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          10,
+          0,
+          630,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          630,
+          480
+        ],
+        "writingMode": "vertical-lr",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            10,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-lr",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-percentage-height",
+      "markup": "<style>html,body{margin:0}html{height:50%}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          240
+        ],
+        "client": [
+          640,
+          240
+        ],
+        "offset": [
+          640,
+          240
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          240
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          240
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "html-percentage-min-height",
+      "markup": "<style>html,body{margin:0}html{min-height:200%}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          960
+        ],
+        "client": [
+          640,
+          960
+        ],
+        "offset": [
+          640,
+          960
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          960
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          960
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "empty-paragraph",
+      "markup": "<style>html,body{margin:0}</style><p></p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            640,
+            0
+          ],
+          "client": [
+            640,
+            0
+          ],
+          "offset": [
+            640,
+            0
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "empty-paragraph-authored-margins",
+      "markup": "<style>html,body{margin:0}p{margin:1em 0}</style><p></p>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          496
+        ],
+        "client": [
+          640,
+          496
+        ],
+        "offset": [
+          640,
+          496
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          16,
+          640,
+          464
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          464
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            16,
+            640,
+            0
+          ],
+          "client": [
+            640,
+            0
+          ],
+          "offset": [
+            640,
+            0
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-body-auto",
+      "markup": "<style>html,body{margin:0}html{column-count:2}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          10
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          10
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            348,
+            10
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            348,
+            10
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-body-spanner",
+      "markup": "<style>html,body{margin:0}html{column-count:2}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "body-column-span-without-columns",
+      "markup": "<style>html,body{margin:0}body{column-span:all}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "horizontal-tb",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "html-multicol-empty",
+      "markup": "<style>html,body{margin:0}html{column-count:2}</style>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          640,
+          480
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          312,
+          0
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          312,
+          0
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": []
+    },
+    {
+      "id": "vertical-rl-root-float",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "left"
+      },
+      "body": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-absolute",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;position:absolute;top:0;left:0}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "absolute",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            0,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-float-right",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:right}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          460,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "right"
+      },
+      "body": {
+        "rect": [
+          620,
+          460,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            460,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    },
+    {
+      "id": "vertical-rl-root-float-fixed-width",
+      "markup": "<style>html,body{margin:0}html{writing-mode:vertical-rl;float:left;width:20px}</style><div style=\"width:20px;height:20px\"></div>",
+      "compatMode": "BackCompat",
+      "inner": [
+        640,
+        480
+      ],
+      "html": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          20,
+          20
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "left"
+      },
+      "body": {
+        "rect": [
+          620,
+          0,
+          20,
+          20
+        ],
+        "client": [
+          640,
+          480
+        ],
+        "offset": [
+          20,
+          20
+        ],
+        "writingMode": "vertical-rl",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [
+        {
+          "rect": [
+            620,
+            0,
+            20,
+            20
+          ],
+          "client": [
+            20,
+            20
+          ],
+          "offset": [
+            20,
+            20
+          ],
+          "writingMode": "vertical-rl",
+          "display": "block",
+          "position": "static",
+          "float": "none"
+        }
+      ]
+    }
+  ],
+  "hitReceipts": [
+    {
+      "id": "quirks-root-last-hit",
+      "markup": "<body style='margin:0'></body>",
+      "viewport": [
+        200,
+        200
+      ],
+      "point": [
+        5,
+        150
+      ],
+      "compatMode": "BackCompat",
+      "inner": [
+        200,
+        200
+      ],
+      "html": {
+        "rect": [
+          0,
+          0,
+          200,
+          200
+        ],
+        "client": [
+          200,
+          200
+        ],
+        "offset": [
+          200,
+          200
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "body": {
+        "rect": [
+          0,
+          0,
+          200,
+          200
+        ],
+        "client": [
+          200,
+          200
+        ],
+        "offset": [
+          200,
+          200
+        ],
+        "writingMode": "horizontal-tb",
+        "display": "block",
+        "position": "static",
+        "float": "none"
+      },
+      "children": [],
+      "elements": [
+        "body",
+        "html"
+      ]
+    }
+  ]
+}

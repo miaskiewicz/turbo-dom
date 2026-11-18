@@ -1,0 +1,19 @@
+{
+  "mode": "full",
+  "pilot_mutants_per_target": 5,
+  "full_shards": {
+    "event_handlers": 4,
+    "worker_scope": 1,
+    "trusted_types": 2,
+    "paint_png": 12,
+    "paint_svg": 6
+  },
+  "inventory_reference_commit": "407258b4a7031be8df35fe7cfb67f674d8044fba",
+  "expected_inventory_counts": {
+    "event_handlers": 40,
+    "worker_scope": 11,
+    "trusted_types": 98,
+    "paint_png": 840,
+    "paint_svg": 415
+  }
+}

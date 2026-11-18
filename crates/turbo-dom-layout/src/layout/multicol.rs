@@ -466,9 +466,8 @@ enum Segment {
     Span { index: usize },
 }
 
-/// Split `kids` into alternating sub-flow and span-all segments. A span-all
-/// kid at the very start or end still spawns a zero-width sub-flow around
-/// it — [`lay_out_segment`] short-circuits on an empty range.
+/// Split `kids` into alternating sub-flow and span-all segments. Only nonempty
+/// runs become sub-flows: leading/trailing or adjacent spans need no empty run.
 fn partition_segments(flags: &[KidFlags]) -> Vec<Segment> {
     let mut out: Vec<Segment> = Vec::new();
     let mut start = 0usize;
@@ -582,16 +581,15 @@ fn lay_out_subflow(
     col_h_cap: Option<f32>,
     ctx: &mut Ctx,
 ) -> SegmentOut {
-    if kids.is_empty() {
-        return SegmentOut {
-            fragments: Vec::new(),
-            advance_y: 0.0,
-        };
-    }
+    // Ordinary column content is measured inside the column flow, not against
+    // the document's outer fill basis. A span-all segment remains outside that
+    // flow and retains the parent's basis in `lay_out_span_all`.
+    let quirks_parent = ctx.quirks_parent.take();
     let measured: Vec<Fragment> = kids
         .iter()
         .map(|k| measure_kid(k, used_width, fs, ctx))
         .collect();
+    ctx.quirks_parent = quirks_parent;
     let col_h = capped(section_col_h(&measured, flags, used_count), col_h_cap);
     // Review R2 layout M3: Chrome places the last column at `container_end -
     // used_width` (end-aligned), not at `(used_count - 1) * stride`. With

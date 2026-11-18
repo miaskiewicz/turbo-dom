@@ -93,7 +93,7 @@ def main(argv=None):
         if value != version:
             errors.append(f"{where} is {value}, package.json is {version}")
     pins = json.loads((REPO / "crates/turbo-dom-v8/pins.json").read_text())
-    v8_req = "~" + ".".join(pins["version"].split(".")[:2])
+    v8_req = "~" + pins["version"]
     env_v8 = dict(dependencies(manifest("crates/turbo-dom-browser-env/Cargo.toml")))["v8"]
     if env_v8.get("package") != "turbo-dom-v8" or env_v8.get("version") != v8_req:
         errors.append(f"turbo-dom-browser-env must depend on turbo-dom-v8 {v8_req} (has {env_v8})")

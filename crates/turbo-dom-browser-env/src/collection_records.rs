@@ -90,6 +90,48 @@ fn set_callback<'s>(
         set(scope, object, args.get(1));
     }
 }
+fn image_creation_service_callback<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
+    if scope.is_execution_terminating() {
+        return;
+    }
+    let Ok(image) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let _owner = DomScope::for_object(scope, image);
+    let Some(handle) = handle_of(scope, image) else {
+        return;
+    };
+    if with_tree(|tree| tree.namespace_id(handle) == 0 && tree.local_name(handle) == Some("img"))
+        != Some(true)
+    {
+        return;
+    }
+    let Some(context) = image.get_creation_context(scope) else {
+        return;
+    };
+    let global = context.global(scope);
+    let Some(namespace) = crate_surface::engine_namespace_of(scope, global) else {
+        return;
+    };
+    let key = v8::String::new(scope, "imageStateService").unwrap();
+    let Some(descriptor) = namespace.get_own_property_descriptor(scope, key.into()) else {
+        return;
+    };
+    let Ok(descriptor) = v8::Local::<v8::Object>::try_from(descriptor) else {
+        return;
+    };
+    let key = v8::String::new(scope, "value").unwrap();
+    if descriptor.has_own_property(scope, key.into()) == Some(true) {
+        if let Some(service) = descriptor.get(scope, key.into()) {
+            rv.set(service);
+        }
+    }
+}
+
 pub fn clear(isolate: &mut v8::Isolate) {
     isolate.remove_slot::<Rc<Records>>();
 }
@@ -98,6 +140,12 @@ pub fn register(scope: &mut v8::PinScope) {
     initialize(scope);
     bind_method(scope, global, "__getCollectionRecord", get_callback);
     bind_method(scope, global, "__setCollectionRecord", set_callback);
+    bind_method(
+        scope,
+        global,
+        "__getImageCreationService",
+        image_creation_service_callback,
+    );
 }
 
 #[cfg(test)]

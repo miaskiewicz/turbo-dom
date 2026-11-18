@@ -245,9 +245,9 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
         FragmentContent::Image(_) => (l, t, r, b) = (l - 1.0, t - 1.0, r + 1.0, b + 1.0),
         _ => {}
     }
-    let mut ink = PathBuilder::from_rect(Rect::from_ltrb(l, t, r.max(l + 1.0), b.max(t + 1.0))?)
-        .transform(xf)?
-        .bounds();
+    // Zero-sized boxes have no ink of their own. Keep their valid empty bounds
+    // while unioning descendants, rather than allocating a one-pixel opacity layer.
+    let mut ink = Rect::from_ltrb(l, t, r.max(l), b.max(t))?.transform(xf)?;
     for c in &f.children {
         let cb = ink_bounds(c, xf)?;
         ink = Rect::from_ltrb(
@@ -467,17 +467,9 @@ fn paint_column_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    // v0.8.2 R1 M1 + L1: reject non-finite sizes too — `f.width <= 0.0`
-    // alone is false for `NaN` (every comparison with NaN is false) and
-    // `f.width <= 0.0` is false for `Infinity`, so a NaN would cascade
-    // into `cx = NaN / 2.0 = NaN` and `period = 2 * NaN = NaN`, feeding
-    // tiny-skia NaN coordinates.
-    if color.a == 0
-        || !f.width.is_finite()
-        || !f.height.is_finite()
-        || f.width <= 0.0
-        || f.height <= 0.0
-    {
+    // Geometry admission belongs to each style's primitive; alpha admission
+    // also avoids walking a long, wholly invisible dotted or dashed rule.
+    if color.a == 0 {
         return;
     }
     match style {
@@ -521,17 +513,21 @@ fn paint_dotted_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     let cx = f.x + f.width / 2.0;
     let period = 2.0 * diameter;
     if f.width < 1.0 {
-        paint_dotted_rule_stroked(pm, cx, f.y, f.height, diameter, color, xf);
+        paint_dotted_rule_stroked(pm, cx, f.y, f.height, color, xf);
         return;
     }
     let radius = diameter / 2.0;
-    let mut cy = f.y + radius;
-    let end = f.y + f.height;
+    let (top, xf) = column_rule_space(f.y, period, xf);
+    let mut cy = top + radius;
+    let end = top + f.height;
     while cy - radius < end {
         if let Some(path) = circle_path(cx, cy, radius) {
             pm.fill_path(&path, &solid(color), FillRule::Winding, xf, None);
         }
-        cy += period;
+        let Some(next) = next_column_rule_step(cy, period) else {
+            break;
+        };
+        cy = next;
     }
 }
 
@@ -549,40 +545,41 @@ fn paint_dotted_rule_stroked(
     cx: f32,
     y_top: f32,
     height: f32,
-    diameter: f32,
     color: Rgba,
     xf: Transform,
 ) {
-    // R1 M1: non-finite inputs (NaN / Infinity) escape every `<`/`<=`
-    // comparison — reject them so `y_top + height = NaN` never leaks
-    // into the loop and `end = y_top + Infinity = Infinity` never runs
-    // the dash loop forever.
-    if !cx.is_finite()
-        || !y_top.is_finite()
-        || !height.is_finite()
-        || !diameter.is_finite()
-        || height <= 0.0
-        || diameter <= 0.0
-    {
+    paint_pixel_dots(pm, cx.floor(), (y_top, height), color, xf);
+}
+
+fn paint_pixel_dots(
+    pm: &mut Pixmap,
+    px_left: f32,
+    (y_top, height): (f32, f32),
+    color: Rgba,
+    xf: Transform,
+) {
+    // The sole production caller selects the one-pixel subpixel-width fallback.
+    let diameter = 1.0;
+    let (y_top, xf) = column_rule_space(y_top, 2.0, xf);
+    // Use the rasterizer's actual rectangle admission once for the whole
+    // series. Localize first: a large finite origin can swallow a short height.
+    let Some(bounds) = tiny_skia::NonZeroRect::from_xywh(px_left, y_top, diameter, height) else {
         return;
-    }
-    let px_left = cx.floor();
-    let end = y_top + height;
+    };
+    let end = bounds.bottom();
     // Leading cap: one px above the first dash (Blink's round line-cap).
     // R1 L3: clamp the cap height to `(end - y_top).min(diameter)` so a
     // fragment shorter than `diameter` (e.g. `height = 0.3`) does not
     // leak past `end` — Blink's round cap collapses with the rule
     // height, and the probe on a 0.3 px rule never paints a full pixel.
-    if y_top < end {
-        let cap_h = (end - y_top).min(diameter);
-        fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
-    }
+    // NonZeroRect admission guarantees end > y_top, including after localization.
+    let cap_h = (end - y_top).min(diameter);
+    fill_rect(pm, px_left, y_top, diameter, cap_h, color, xf);
     // Dash series: `[dash=diameter, gap=diameter]` starting at `y_top + 1`.
     let mut y = y_top + diameter;
-    while y < end {
-        let dash_h = (end - y).min(diameter);
-        fill_rect(pm, px_left, y, diameter, dash_h, color, xf);
-        y += 2.0 * diameter;
+    while fill_admitted_rect(pm, px_left, y, diameter, (end - y).min(diameter), color, xf) {
+        // Admission proved y + h > y for h <= 1; adding 2 must advance too.
+        y += 2.0;
     }
 }
 
@@ -624,14 +621,37 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
     if period <= 0.0 {
         return;
     }
-    let end = f.y + f.height;
-    let mut dash_top = f.y;
-    while dash_top < end {
-        let dash_h = dash.min(end - dash_top);
-        if dash_h > 0.0 {
-            fill_rect(pm, f.x, dash_top, width, dash_h, color, xf);
-        }
+    let (top, xf) = column_rule_space(f.y, period, xf);
+    let end = top + f.height;
+    let mut dash_top = top;
+    while fill_admitted_rect(
+        pm,
+        f.x,
+        dash_top,
+        width,
+        dash.min(end - dash_top),
+        color,
+        xf,
+    ) {
+        // Admitted h <= dash <= period, so monotone float addition advances.
         dash_top += period;
+    }
+}
+
+/// A rule cursor must move strictly forward; a swallowed period cannot spin.
+fn next_column_rule_step(cursor: f32, period: f32) -> Option<f32> {
+    let next = cursor + period;
+    (next > cursor).then_some(next)
+}
+
+/// Keep ordinary coordinates unchanged, but iterate locally when a finite
+/// origin swallows the rule's period. Composing that origin into the transform
+/// preserves the full visible pattern when an ancestor translates it onscreen.
+fn column_rule_space(y: f32, period: f32, xf: Transform) -> (f32, Transform) {
+    if !y.is_finite() || y + period > y {
+        (y, xf)
+    } else {
+        (0.0, xf.pre_concat(Transform::from_translate(0.0, y)))
     }
 }
 
@@ -639,19 +659,8 @@ fn paint_dashed_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) 
 /// the CSS `double` border style (CSS Backgrounds 3 §4.2). Below 3 px the
 /// painter falls back to one solid band so a thin double rule still shows.
 fn paint_double_rule(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
-    // R1 M1 + L1: reject `NaN` / `Infinity` — `f.width < 3.0` is false
-    // for either, so without this guard an `Infinity` width would run
-    // the two-band path with Inf band widths, and a NaN would make
-    // `f.width - band = NaN`.
-    if !f.width.is_finite() || !f.height.is_finite() {
-        return;
-    }
-    // R1 L2: the thin-double fallback below handles every `f.width < 3.0`
-    // case, so from here on `f.width >= 3.0`, which forces
-    // `(f.width / 3.0).floor() >= 1.0` — the earlier `.max(1.0)` was a
-    // dead branch unreachable after the short-circuit. Computing `band`
-    // AFTER the fallback also avoids a wasted divide + floor on the
-    // thin path. Proof: f.width >= 3.0 && floor(x) <= x => floor(f.width / 3.0) >= 1.0.
+    // Finite widths at least three give bands at least one pixel wide.
+    // Rectangle admission rejects all invalid derived bounds before painting.
     if f.width < 3.0 {
         fill_rect(pm, f.x, f.y, f.width, f.height, color, xf);
         return;
@@ -675,13 +684,7 @@ fn paint_shaded_rule(
     color: Rgba,
     xf: Transform,
 ) {
-    // The outer `paint_column_rule` already rejects non-finite / non-positive
-    // sizes; the helper's direct contract keeps a future caller from feeding
-    // it NaN / Infinity (`is_finite` rejects both) or a zero-area fragment
-    // (nothing to paint — `fill_rect` would early-return anyway).
-    if !f.width.is_finite() || !f.height.is_finite() || f.width <= 0.0 || f.height <= 0.0 {
-        return;
-    }
+    // Rectangle admission rejects non-finite and nonpositive derived halves.
     // Chrome 156: left band = darker shade for `groove` / `outset`, lighter
     // shade for `ridge` / `inset`; right band is the other. Split at the
     // rule's inline midpoint (`f.width / 2.0`); the right band takes the
@@ -724,7 +727,8 @@ fn paint_tiles(
     let Some(first) = tiles.next() else {
         return;
     };
-    let canvas = u64::from(pm.width()) * u64::from(pm.height());
+    // The scratch budget is the authoritative number of pixels in the canvas.
+    let canvas = pm.pixels().len() as u64;
     if tiles.next().is_some() {
         if repeats_tiles(pattern) {
             if let Some(texture) = tile_texture(pattern, images, cell_scale(xf), canvas) {
@@ -1085,34 +1089,49 @@ fn solid(c: Rgba) -> Paint<'static> {
 }
 
 fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Transform) {
-    if w <= 0.0 || h <= 0.0 || c.a == 0 {
-        return;
+    fill_admitted_rect(pm, x, y, w, h, c, xf);
+}
+
+/// Paint a finite nonempty rectangle and report whether it was admitted.
+fn fill_admitted_rect(
+    pm: &mut Pixmap,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    c: Rgba,
+    xf: Transform,
+) -> bool {
+    if c.a == 0 {
+        return false;
     }
-    if let Some(rect) = Rect::from_xywh(x, y, w, h) {
-        // The optimized AA rectangle scan assumes a full interior pixel between
-        // fractional edges. A narrow border can cover two partial columns with
-        // none between them; use the general path scan for that valid geometry.
-        if xf.is_identity() && rect.width() < 2.0 {
-            pm.fill_path(
-                &PathBuilder::from_rect(rect),
-                &solid(c),
-                FillRule::Winding,
-                xf,
-                None,
-            );
-        } else {
-            pm.fill_rect(rect, &solid(c), xf, None);
-        }
+    let Some(bounds) = tiny_skia::NonZeroRect::from_xywh(x, y, w, h) else {
+        return false;
+    };
+    let rect = bounds.to_rect();
+    // The optimized AA rectangle scan assumes a full interior pixel between
+    // fractional edges. A narrow border can cover two partial columns with
+    // none between them; use the general path scan for that valid geometry.
+    if xf.is_identity() && rect.width() < 2.0 {
+        pm.fill_path(
+            &PathBuilder::from_rect(rect),
+            &solid(c),
+            FillRule::Winding,
+            xf,
+            None,
+        );
+    } else {
+        pm.fill_rect(rect, &solid(c), xf, None);
     }
+    true
 }
 
 /// Paint each border side as a filled edge band (no line styles — width + colour only).
 /// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
 /// right bands first, then the top and bottom ones mitred on the corner diagonals.
 fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
-    s.color
-        .filter(|_| s.width > 0)
-        .map(|c| (f32::from(s.width), c))
+    let width = std::num::NonZeroU16::new(s.width)?;
+    Some((f32::from(width.get()), s.color?))
 }
 
 fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
@@ -1223,7 +1242,8 @@ fn paint_box_shadow(
     }
     let radii = rrect::shadow_radii(border_radius, spread);
     let blur = shadow_blur(sh);
-    if blur < 0.5 {
+    // shadow_blur is a capped integer radius; only zero is a hard shadow.
+    if blur == 0.0 {
         fill_rrect(pm, (sx, sy, sw, sh_h), &radii, sh.color, xf);
         return;
     }
@@ -1281,7 +1301,7 @@ fn paint_inset_shadow(
     if hole.width >= 0.5 && hole.height >= 0.5 {
         let mut cut = Pixmap::new(w, h).expect("a layer within the canvas");
         let blur = shadow_blur(sh);
-        if blur < 0.5 {
+        if blur == 0.0 {
             fill_rrect(
                 &mut cut,
                 (hole.x, hole.y, hole.width, hole.height),
@@ -1418,22 +1438,11 @@ fn blurred_shadow(
                 Transform::identity(),
             );
             box_blur(&mut scratch, r);
-            // Draw the tile's core from a copy with one more pixel of real neighbours, so a
-            // device pixel sampled just past a core edge (under a rotation) reads the pixel a
-            // whole scratch has there, not a padded edge.
-            let (ax0, ay0) = ((tx - 1).max(0), (ty - 1).max(0));
-            let (ax1, ay1) = ((cx1 + 1).min(tw), (cy1 + 1).min(th));
-            let apron = tiny_skia::IntRect::from_xywh(
-                ax0 - gx0,
-                ay0 - gy0,
-                (ax1 - ax0) as u32,
-                (ay1 - ay0) as u32,
-            )
-            .and_then(|rect| scratch.clone_rect(rect))
-            .expect("the apron lies inside its scratch");
+            // The existing scratch already contains every real neighbour needed
+            // by the core. Sample it directly instead of copying an apron.
             let paint = Paint {
                 shader: tiny_skia::Pattern::new(
-                    apron.as_ref(),
+                    scratch.as_ref(),
                     SpreadMode::Pad,
                     tiny_skia::FilterQuality::Nearest,
                     1.0,
@@ -1443,8 +1452,8 @@ fn blurred_shadow(
                 ..Paint::default()
             };
             let core = Rect::from_xywh(
-                (tx - ax0) as f32,
-                (ty - ay0) as f32,
+                (tx - gx0) as f32,
+                (ty - gy0) as f32,
                 (cx1 - tx) as f32,
                 (cy1 - ty) as f32,
             )
@@ -1452,8 +1461,8 @@ fn blurred_shadow(
             // `PixmapMut::draw_pixmap` is this fill over the whole pixmap: one tile covering
             // the whole padded silhouette paints exactly what drawing it in one piece did.
             let place = xf.pre_concat(Transform::from_translate(
-                (ox + ax0) as f32,
-                (oy + ay0) as f32,
+                (ox + gx0) as f32,
+                (oy + gy0) as f32,
             ));
             pm.fill_rect(core, &paint, place, None);
         }
@@ -1504,7 +1513,6 @@ fn paint_gradient(
     };
     let paint = Paint {
         shader,
-        anti_alias: true,
         ..Paint::default()
     };
     if border_radius.is_rounded() {
@@ -1588,7 +1596,9 @@ fn paint_round_border(
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut ring = PathBuilder::new();
     trace(&mut ring, &rrect::outline(rect, radii));
-    if inner.2 > 0.0 && inner.3 > 0.0 {
+    // Only a positive representable area cuts a hole. Keep the original tuple
+    // for its radii and outline: rebuilding widths from bounds would round again.
+    if tiny_skia::NonZeroRect::from_xywh(inner.0, inner.1, inner.2, inner.3).is_some() {
         trace(&mut ring, &rrect::outline(inner, &inner_radii));
     }
     let Some(ring) = ring.finish() else {
@@ -1837,6 +1847,362 @@ mod tests {
     }
 
     #[test]
+    fn column_rule_steps_require_strictly_forward_coordinates() {
+        for (cursor, period, expected) in [
+            (0.0, 3.0, Some(3.0)),
+            (-3.0, 2.0, Some(-1.0)),
+            (1_000_000_000.0, 3.0, None),
+            (1.0, 0.0, None),
+            (1.0, -1.0, None),
+            (f32::NAN, 1.0, None),
+            (f32::INFINITY, 1.0, None),
+            (1.0, f32::NAN, None),
+        ] {
+            assert_eq!(next_column_rule_step(cursor, period), expected);
+        }
+        let transform = Transform::from_translate(7.0, 11.0);
+        assert_eq!(column_rule_space(5.0, 3.0, transform), (5.0, transform));
+        let (top, local) = column_rule_space(
+            1_000_000_000.0,
+            3.0,
+            Transform::from_translate(0.0, -1_000_000_000.0),
+        );
+        assert_eq!(top, 0.0);
+        assert_eq!(local, Transform::identity());
+    }
+
+    #[test]
+    fn an_image_touching_the_canvas_edge_has_no_visible_resampling_window() {
+        for (x, y) in [
+            (12.0, 0.0),
+            (0.0, 12.0),
+            (12.0, 12.0),
+            (-4.0, 0.0),
+            (0.0, -4.0),
+        ] {
+            assert_eq!(
+                visible_window(Transform::from_translate(x, y), (4, 4), (12, 12)),
+                None,
+                "an edge-only intersection at ({x}, {y}) contains no image pixels",
+            );
+        }
+    }
+
+    #[test]
+    fn opacity_groups_keep_hard_shadow_spread_at_fractional_scaled_edges() {
+        let mut groups = Vec::new();
+        for (dx, dy) in [(6, 6), (-6, 6), (6, -6), (-6, -6)] {
+            groups.push(with_box(
+                plain(6.0, 6.0, 5.0, 5.0, None),
+                |_, shadow, _, _| {
+                    *shadow = Some(BoxShadow {
+                        offset_x: dx,
+                        offset_y: dy,
+                        blur: 0,
+                        spread: 4,
+                        color: RED,
+                        inset: false,
+                    });
+                },
+            ));
+        }
+        // The silhouette width rounds up when its large spread is added. Its
+        // actual right edge reaches device x=4; summing the box's right edge and
+        // spread separately only reaches x=3. The conservative margin must keep
+        // that real shadow pixel rather than trusting associative f32 addition.
+        groups.push(with_box(
+            plain(0.0, 0.0, 3.0 / 32.0, 1.0, None),
+            |_, shadow, _, transform| {
+                *shadow = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 0,
+                    blur: 0,
+                    spread: 262_144,
+                    color: RED,
+                    inset: false,
+                });
+                *transform = Some(BoxTransform {
+                    matrix: [32.0, 0.0, 0.0, 32.0, -8_388_608.0, 0.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            },
+        ));
+        for (index, mut group) in groups.into_iter().enumerate() {
+            group.opacity = 0.5;
+            let expected = full_layer_reference(&group, 24, 24, &HashMap::new());
+            assert!(
+                !all_white(&expected),
+                "reference case {index} must actually paint"
+            );
+            if index == 4 {
+                assert_ne!(
+                    rgb(&expected, 3, 8),
+                    [255; 3],
+                    "the rounded shadow edge paints x=3"
+                );
+            }
+            let actual = render(&group, 24, 24, &HashMap::new());
+            assert_eq!(actual.data(), expected.data(), "shadow group {index}");
+        }
+    }
+
+    fn check_opacity_ink(mut group: Fragment, images: &DecodedAssets, label: &str) {
+        group.opacity = 0.5;
+        let expected = full_layer_reference(&group, 256, 256, images);
+        assert!(
+            !all_white(&expected),
+            "{label}: the independent reference paints"
+        );
+        let actual = render(&group, 256, 256, images);
+        let first_difference = actual
+            .pixels()
+            .iter()
+            .zip(expected.pixels())
+            .position(|(a, b)| a != b);
+        assert!(
+            first_difference.is_none(),
+            "{label}: first differing pixel {first_difference:?}"
+        );
+    }
+
+    #[test]
+    fn public_large_spread_blur_preserves_rounded_visible_shadow_edge() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::public_large_spread_blur_preserves_rounded_visible_shadow_edge",
+        ) {
+            return;
+        }
+        let mut group = with_box(
+            plain(0.0, 0.0, 4.0, 4.0, None),
+            |_, shadow, _, transform| {
+                *shadow = Some(BoxShadow {
+                    offset_x: 0,
+                    offset_y: 0,
+                    blur: 3,
+                    spread: 67_108_860,
+                    color: RED,
+                    inset: false,
+                });
+                *transform = Some(BoxTransform {
+                    matrix: [1.0, 0.0, 0.0, 1.0, -67_108_832.0, 0.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            },
+        );
+        group.opacity = 0.5;
+        let expected = full_layer_reference(&group, 128, 64, &HashMap::new());
+        assert_ne!(
+            rgb(&expected, 35, 16),
+            [255; 3],
+            "real blurred shadow ink reaches beyond x=32"
+        );
+        let html = "<!doctype html><body style='margin:0;background:white'><div style='position:absolute;left:0;top:0;width:4px;height:4px;opacity:0.5;box-shadow:0 0 3px 67108860px red;transform:translateX(-67108832px);transform-origin:0 0'></div>";
+        let png = crate::screenshot_png_with_opts(
+            html,
+            "",
+            crate::Viewport {
+                width: 128,
+                height: 64,
+            },
+            &HashMap::new(),
+            false,
+            false,
+        )
+        .unwrap();
+        let actual = Pixmap::decode_png(&png).unwrap();
+        let first_difference = actual
+            .pixels()
+            .iter()
+            .zip(expected.pixels())
+            .position(|(a, b)| a != b);
+        assert!(
+            first_difference.is_none(),
+            "public shadow edge differs from independent full-canvas paint at {first_difference:?}"
+        );
+    }
+
+    #[test]
+    fn opacity_groups_keep_signed_shadow_offsets_and_spreads() {
+        for position in [-8.0, 0.0, 6.0] {
+            for dx in [-6, 0, 6] {
+                for dy in [-6, 0, 6] {
+                    for spread in [0, 4, 10] {
+                        let group = with_box(
+                            plain(position, position, 5.0, 5.0, None),
+                            |_, shadow, _, transform| {
+                                *shadow = Some(BoxShadow {
+                                    offset_x: dx,
+                                    offset_y: dy,
+                                    blur: 0,
+                                    spread,
+                                    color: RED,
+                                    inset: false,
+                                });
+                                *transform = Some(BoxTransform {
+                                    matrix: [1.0, 0.0, 0.0, 1.0, 32.0, 32.0],
+                                    origin_x: 0.0,
+                                    origin_y: 0.0,
+                                });
+                            },
+                        );
+                        check_opacity_ink(
+                            group,
+                            &HashMap::new(),
+                            &format!("shadow {position}/{dx}/{dy}/{spread}"),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn ink_test_line(
+        face: &FontFace,
+        character: char,
+        origin: (f32, f32),
+        pen: (f32, f32),
+        font_size: f32,
+    ) -> Fragment {
+        Fragment::new(
+            NodeId(0),
+            origin.0,
+            origin.1,
+            1.0,
+            1.0,
+            FragmentContent::TextLine {
+                glyphs: vec![PositionedGlyph {
+                    glyph_id: face.glyph_index(character).unwrap(),
+                    x: pen.0,
+                    y: pen.1,
+                    text_start: 0,
+                    text_end: 0,
+                }],
+                text: character.to_string(),
+                face: face.clone(),
+                font_size,
+                color: RED,
+                vertical: false,
+                upright: false,
+            },
+        )
+    }
+
+    #[test]
+    fn opacity_groups_keep_real_mark_overhangs_and_remote_glyph_pens() {
+        let arabic = FontFace::from_bytes(
+            include_bytes!(
+                "../../turbo-dom-layout/assets/fonts/noto-sans-arabic/NotoSansArabic-Regular.ttf"
+            )
+            .to_vec(),
+            "Noto Sans Arabic",
+            400,
+            false,
+        )
+        .unwrap();
+        let italic = FontFace::from_bytes(
+            include_bytes!("../../turbo-dom-layout/assets/fonts/inter/Inter-Italic.otf").to_vec(),
+            "Inter",
+            400,
+            true,
+        )
+        .unwrap();
+        let mark = '\u{0898}';
+        assert_eq!(
+            arabic.glyph_advance(arabic.glyph_index(mark).unwrap()),
+            0,
+            "a real combining mark has no advance width"
+        );
+        check_opacity_ink(
+            ink_test_line(&arabic, mark, (80.0, 80.0), (0.0, 0.0), 64.0),
+            &HashMap::new(),
+            "high Arabic mark",
+        );
+        check_opacity_ink(
+            ink_test_line(&italic, 'M', (0.0, 0.0), (80.0, 80.0), 16.0),
+            &HashMap::new(),
+            "remote glyph pen",
+        );
+        let mut translated = with_box(plain(-80.0, -80.0, 1.0, 1.0, None), |_, _, _, transform| {
+            *transform = Some(BoxTransform {
+                matrix: [1.0, 0.0, 0.0, 1.0, 100.0, 100.0],
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        translated.children.push(ink_test_line(
+            &italic,
+            'j',
+            (-80.0, -80.0),
+            (0.0, 0.0),
+            32.0,
+        ));
+        check_opacity_ink(
+            translated,
+            &HashMap::new(),
+            "negative pen with real italic overhang and descender",
+        );
+        let mut translated_mark =
+            with_box(plain(80.0, -80.0, 1.0, 1.0, None), |_, _, _, transform| {
+                *transform = Some(BoxTransform {
+                    matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 100.0],
+                    origin_x: 0.0,
+                    origin_y: 0.0,
+                });
+            });
+        translated_mark.children.push(ink_test_line(
+            &arabic,
+            mark,
+            (80.0, -80.0),
+            (0.0, 0.0),
+            16.0,
+        ));
+        check_opacity_ink(translated_mark, &HashMap::new(), "negative mark baseline");
+    }
+
+    #[test]
+    fn nonpositive_opacity_ancestors_keep_visible_descendant_ink() {
+        for (width, height) in [(0.0, 4.0), (4.0, 0.0), (0.0, 0.0), (-4.0, 4.0), (4.0, -4.0)] {
+            let mut group = plain(7.0, 9.0, width, height, None);
+            group.children.push(plain(11.0, 13.0, 8.0, 6.0, Some(RED)));
+            check_opacity_ink(group, &HashMap::new(), "nonpositive opacity ancestor");
+        }
+    }
+
+    #[test]
+    fn opacity_groups_keep_image_pixels_rounded_before_scaled_placement() {
+        let mut images = HashMap::new();
+        images.insert(
+            "pic".to_string(),
+            crate::image_paint::DecodedImage {
+                width: 1,
+                height: 1,
+                rgba: vec![255, 0, 0, 255],
+                intrinsic: turbo_dom_layout::image::Intrinsic::new(1, 1, false),
+                placeholder: false,
+            },
+        );
+        for (position, size) in [(7.0, 6.0), (7.25, 6.25), (7.75, 6.75)] {
+            let mut group = with_box(
+                plain(position, position, 1.0, 1.0, None),
+                |_, _, _, transform| {
+                    *transform = Some(BoxTransform {
+                        matrix: [4.0, 0.0, 0.0, 4.0, 0.0, 0.0],
+                        origin_x: 0.0,
+                        origin_y: 0.0,
+                    });
+                },
+            );
+            let mut picture = image("pic", None);
+            (picture.x, picture.y, picture.width, picture.height) =
+                (position, position, size, size);
+            group.children.push(picture);
+            check_opacity_ink(group, &images, &format!("rounded image {position}/{size}"));
+        }
+    }
+
+    #[test]
     fn an_opacity_layer_covers_only_its_subtree_ink() {
         // miaskiewicz/turbo-dom#206 follow-up: a canvas-sized layer per opacity box made
         // 2000 one-pixel `opacity:.5` divs take 14 s at 1280x800.
@@ -2030,7 +2396,38 @@ mod tests {
     }
 
     #[test]
+    fn png45_fractional_texture_budget_preserves_an_opaque_repeated_fill() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::png45_fractional_texture_budget_preserves_an_opaque_repeated_fill",
+        ) {
+            return;
+        }
+        let f = tiles(
+            (0.0, 0.0, 12.0, 12.0),
+            RED,
+            (0.25, 0.25),
+            (8.5, 8.5),
+            (8.5, 8.5),
+        );
+        let pm = render(&f, 12, 12, &HashMap::new());
+        for y in 0..12 {
+            for x in 0..12 {
+                assert_eq!(
+                    rgb(&pm, x, y),
+                    [255, 0, 0],
+                    "opaque repeated tile at{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn fractional_tiles_too_big_for_a_texture_paint_tile_by_tile() {
+        if !super::exact_tests::rule_probe_child(
+            "paint_png::tests::fractional_tiles_too_big_for_a_texture_paint_tile_by_tile",
+        ) {
+            return;
+        }
         // 250.5px tiles under scale(0.5) on a 200px canvas: two tiles show, a 251px
         // texture would outgrow the canvas, so the tiles are walked.
         let grid = tiles(
@@ -2081,6 +2478,217 @@ mod tests {
         let pm = render(&marker, 10, 10, &HashMap::new());
         assert_eq!(rgb(&pm, 2, 5), [255, 255, 255], "the marker itself");
         assert_eq!(rgb(&pm, 7, 5), [255, 0, 0], "its child");
+    }
+
+    fn four_color_texture() -> Pixmap {
+        let mut texture = Pixmap::new(4, 6).unwrap();
+        for y in 0..6 {
+            for x in 0..4 {
+                let color = Rgba::new((x * 70) as u8, (y * 40) as u8, 180, 255);
+                fill_rect(
+                    &mut texture,
+                    x as f32,
+                    y as f32,
+                    1.0,
+                    1.0,
+                    color,
+                    Transform::identity(),
+                );
+            }
+        }
+        texture
+    }
+
+    #[test]
+    fn fractional_texture_sampling_keeps_phase_repeat_axes_and_transformed_edges() {
+        let texture = four_color_texture();
+        for (steps, expected_rect) in [
+            ((0.0, 0.0), (5.25, 7.25, 8.0, 12.0)),
+            ((8.0, 0.0), (2.25, 7.25, 24.5, 12.0)),
+            ((0.0, 12.0), (5.25, 3.5, 8.0, 24.25)),
+            ((8.0, 12.0), (2.25, 3.5, 24.5, 24.25)),
+        ] {
+            let f = tiles(
+                (2.25, 3.5, 24.5, 24.25),
+                RED,
+                (5.25, 7.25),
+                (8.0, 12.0),
+                steps,
+            );
+            let FragmentContent::Tiles(pattern) = &f.content else {
+                unreachable!()
+            };
+            for (xf, antialias) in [
+                (Transform::identity(), false),
+                (Transform::from_row(1.25, 0.0, 0.25, 1.5, 0.25, 0.5), true),
+            ] {
+                let mut got = Pixmap::new(48, 48).unwrap();
+                fill_texture(
+                    &mut got,
+                    &texture,
+                    pattern,
+                    ((2.25, 3.5, 24.5, 24.25), (5.25, 7.25, 8.0, 12.0)),
+                    xf,
+                );
+                let mut expected = Pixmap::new(48, 48).unwrap();
+                let paint = Paint {
+                    shader: tiny_skia::Pattern::new(
+                        texture.as_ref(),
+                        SpreadMode::Repeat,
+                        tiny_skia::FilterQuality::Bilinear,
+                        1.0,
+                        Transform::from_row(2.0, 0.0, 0.0, 2.0, 5.25, 7.25),
+                    ),
+                    anti_alias: antialias,
+                    ..Paint::default()
+                };
+                expected.fill_rect(
+                    Rect::from_xywh(
+                        expected_rect.0,
+                        expected_rect.1,
+                        expected_rect.2,
+                        expected_rect.3,
+                    )
+                    .unwrap(),
+                    &paint,
+                    xf,
+                    None,
+                );
+                assert!(expected.pixels().iter().any(|p| p.alpha() > 0));
+                assert_eq!(got.data(), expected.data(), "steps={steps:?}, xf={xf:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn embedded_texture_cells_move_their_positive_origin_to_zero() {
+        let f = tiles(
+            (0.0, 0.0, 100.0, 100.0),
+            RED,
+            (5.25, 7.25),
+            (8.0, 12.0),
+            (0.0, 0.0),
+        );
+        let FragmentContent::Tiles(pattern) = &f.content else {
+            unreachable!()
+        };
+        let (cell, origin) =
+            texture_cell(pattern, &HashMap::new(), (5.0, 7.0, 8.0, 12.0), 1000).unwrap();
+        assert_eq!(origin, (5.0, 7.0));
+        assert_eq!((cell.width(), cell.height()), (8, 12));
+        assert!(cell
+            .pixels()
+            .iter()
+            .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn tile_textures_scale_box_borders_to_their_device_pixel_size() {
+        let mut tile = plain(0.0, 0.0, 8.0, 12.0, Some(RED));
+        if let FragmentContent::Box { border, .. } = &mut tile.content {
+            border.top.width = 1;
+            border.top.color = Some(Rgba::new(0, 0, 255, 255));
+            let side = border.top;
+            *border = BorderEdges {
+                top: side,
+                right: side,
+                bottom: side,
+                left: side,
+            };
+        }
+        let pattern = TilePattern {
+            tile: Box::new(tile.content.clone()),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 8.0,
+            tile_height: 12.0,
+            step_x: 8.0,
+            step_y: 12.0,
+        };
+        let got = tile_texture(&pattern, &HashMap::new(), 2.0, 384).unwrap();
+        let mut expected = Pixmap::new(16, 24).unwrap();
+        paint_subtree(
+            &mut expected,
+            &tile,
+            &HashMap::new(),
+            Transform::from_scale(2.0, 2.0),
+        );
+        assert_eq!((got.width(), got.height()), (16, 24));
+        assert_eq!(rgb(&expected, 1, 1), [0, 0, 255]);
+        assert_eq!(rgb(&expected, 8, 12), [255, 0, 0]);
+        assert_eq!(got.data(), expected.data());
+    }
+
+    #[test]
+    fn translation_classification_excludes_each_linear_transform_component() {
+        assert!(only_translates(Transform::identity()));
+        assert!(only_translates(Transform::from_translate(3.5, -7.25)));
+        for xf in [
+            Transform::from_row(2.0, 0.0, 0.0, 1.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.0, 0.0, 2.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.5, 0.0, 1.0, 3.0, 4.0),
+            Transform::from_row(1.0, 0.0, 0.5, 1.0, 3.0, 4.0),
+        ] {
+            assert!(!only_translates(xf), "{xf:?}");
+        }
+    }
+
+    #[test]
+    fn visible_tile_regions_exclude_empty_and_disjoint_intersections() {
+        for (x, y, w, h) in [
+            (10.0, 2.0, 1.0, 3.0),
+            (2.0, 10.0, 3.0, 1.0),
+            (11.0, 11.0, 2.0, 2.0),
+        ] {
+            assert_eq!(
+                visible_region(&plain(x, y, w, h, None), Transform::identity(), (10, 10)),
+                None
+            );
+        }
+        assert_eq!(
+            visible_region(
+                &plain(9.0, 8.0, 4.0, 5.0, None),
+                Transform::identity(),
+                (10, 10)
+            ),
+            Some((9.0, 8.0, 1.0, 2.0))
+        );
+    }
+
+    #[test]
+    fn cell_pixmaps_use_device_resolution_only_within_the_pixel_budget() {
+        let f = tiles(
+            (0.0, 0.0, 30.0, 30.0),
+            RED,
+            (0.0, 0.0),
+            (3.0, 5.0),
+            (3.0, 5.0),
+        );
+        let FragmentContent::Tiles(pattern) = &f.content else {
+            unreachable!()
+        };
+        let cell = TileCell::new(pattern, (0.0, 0.0, 3.0, 5.0));
+        let images = HashMap::new();
+        let xf = Transform::from_scale(3.0, 3.0);
+        for (budget, expected) in [
+            (135, Some((9, 15))),
+            (134, Some((3, 5))),
+            (15, Some((3, 5))),
+            (14, None),
+        ] {
+            let got = cell_pixmap(pattern, &cell, &images, (xf, budget));
+            assert_eq!(
+                got.as_ref().map(|p| (p.width(), p.height())),
+                expected,
+                "budget {budget}"
+            );
+            if let Some(p) = got {
+                assert!(p
+                    .pixels()
+                    .iter()
+                    .all(|p| [p.red(), p.green(), p.blue(), p.alpha()] == [255, 0, 0, 255]));
+            }
+        }
     }
 
     /// A tile pattern fragment over `(x, y, w, h)`: solid `colour` tiles of
@@ -2792,6 +3400,303 @@ mod tests {
         let painted = render(&boxed(10.0, 90.0, 2), 10, 10, &images);
         assert!(rgb(&painted, 0, 5)[0] > 200 && rgb(&painted, 9, 5)[2] > 200);
     }
+    #[test]
+    fn rectangle_admission_reports_nonempty_paint_requests() {
+        let mut pm = Pixmap::new(8, 8).unwrap();
+        pm.fill(tiny_skia::Color::WHITE);
+        for (width, height) in [
+            (0.0, 2.0),
+            (-1.0, 2.0),
+            (2.0, 0.0),
+            (2.0, -1.0),
+            (f32::NAN, 2.0),
+            (2.0, f32::INFINITY),
+        ] {
+            assert!(!fill_admitted_rect(
+                &mut pm,
+                2.0,
+                2.0,
+                width,
+                height,
+                RED,
+                Transform::identity()
+            ));
+        }
+        assert!(all_white(&pm));
+        assert!(fill_admitted_rect(
+            &mut pm,
+            2.0,
+            2.0,
+            3.0,
+            2.0,
+            RED,
+            Transform::identity()
+        ));
+        assert_eq!(rgb(&pm, 2, 2), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 4, 3), [255, 0, 0]);
+        assert_eq!(rgb(&pm, 5, 3), [255, 255, 255]);
+        assert!(!fill_admitted_rect(
+            &mut pm,
+            2.0,
+            2.0,
+            3.0,
+            2.0,
+            Rgba::new(0, 0, 255, 0),
+            Transform::identity()
+        ));
+        assert_eq!(rgb(&pm, 2, 2), [255, 0, 0]);
+    }
+    #[test]
+    fn scaled_tile_cells_keep_both_device_axes_and_edge_pixels() {
+        let grid = tiles(
+            (0.0, 0.0, 2.0, 3.0),
+            RED,
+            (0.0, 0.0),
+            (2.0, 3.0),
+            (2.0, 3.0),
+        );
+        let FragmentContent::Tiles(pattern) = grid.content else {
+            panic!("tile fixture");
+        };
+        let cell = TileCell::new(&pattern, (0.0, 0.0, 2.0, 3.0));
+        let pixels = cell_pixmap(
+            &pattern,
+            &cell,
+            &HashMap::new(),
+            (Transform::from_scale(4.0, 4.0), 1000),
+        )
+        .unwrap();
+        assert_eq!((pixels.width(), pixels.height()), (8, 12));
+        assert_eq!(rgb(&pixels, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&pixels, 7, 11), [255, 0, 0]);
+    }
+
+    #[test]
+    fn mask_tint_combines_source_and_colour_opacity() {
+        let mut source = Pixmap::new(1, 1).unwrap();
+        source.pixels_mut()[0] = tiny_skia::PremultipliedColorU8::from_rgba(0, 0, 0, 128).unwrap();
+        let actual = tint_pixmap(&source, Rgba::new(255, 128, 64, 128));
+        assert_eq!(actual.data(), &[64, 32, 16, 64]);
+    }
+
+    #[test]
+    fn unequal_square_border_widths_keep_the_declared_outer_edges() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let border = BorderEdges {
+            top: side(1),
+            right: side(4),
+            bottom: side(3),
+            left: side(2),
+        };
+        let f = plain(5.0, 4.0, 12.0, 13.0, None);
+        let mut actual = Pixmap::new(24, 24).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        paint_border(&mut actual, &f, &border, Transform::identity());
+        let mut expected = Pixmap::new(24, 24).unwrap();
+        expected.fill(tiny_skia::Color::WHITE);
+        for (x, y, width, height) in [
+            (5.0, 4.0, 12.0, 1.0),
+            (5.0, 14.0, 12.0, 3.0),
+            (5.0, 4.0, 2.0, 13.0),
+            (13.0, 4.0, 4.0, 13.0),
+        ] {
+            expected.fill_rect(
+                Rect::from_xywh(x, y, width, height).unwrap(),
+                &solid(RED),
+                Transform::identity(),
+                None,
+            );
+        }
+        assert_eq!(actual.data(), expected.data());
+    }
+
+    #[test]
+    fn mixed_border_colours_keep_top_bottom_and_vertical_bands() {
+        let blue = Rgba::new(0, 0, 255, 255);
+        let green = Rgba::new(0, 255, 0, 255);
+        let yellow = Rgba::new(255, 255, 0, 255);
+        let side = |width, color| BorderSide {
+            width,
+            color: Some(color),
+        };
+        let border = BorderEdges {
+            top: side(1, RED),
+            right: side(4, green),
+            bottom: side(3, yellow),
+            left: side(2, blue),
+        };
+        let f = plain(5.0, 4.0, 12.0, 13.0, None);
+        let mut actual = Pixmap::new(24, 24).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        paint_border(&mut actual, &f, &border, Transform::identity());
+        assert_eq!(rgb(&actual, 11, 4), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 11, 16), [255, 255, 0]);
+        assert_eq!(rgb(&actual, 5, 10), [0, 0, 255]);
+        assert_eq!(rgb(&actual, 16, 10), [0, 255, 0]);
+        assert_eq!(rgb(&actual, 11, 10), [255, 255, 255]);
+    }
+
+    #[test]
+    fn untranslated_tile_edges_keep_nearest_pixel_coverage() {
+        let mut tile = Pixmap::new(2, 2).unwrap();
+        tile.fill(tiny_skia::Color::from_rgba8(255, 0, 0, 255));
+        let cell = TileCell {
+            origin: (0.0, 0.0),
+            size: (2.0, 2.0),
+            repeats: (true, true),
+        };
+        let rect = (0.25, 0.25, 2.0, 2.0);
+        let mut actual = Pixmap::new(4, 4).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        fill_pattern(
+            &mut actual,
+            &tile,
+            (rect, rect, &cell),
+            Transform::identity(),
+        );
+        assert_eq!(rgb(&actual, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 1, 1), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 2, 1), [255, 255, 255]);
+        assert_eq!(rgb(&actual, 1, 2), [255, 255, 255]);
+    }
+
+    fn sampled_square_image(pixels: Vec<u8>, matrix: [f32; 6]) -> (Fragment, DecodedAssets) {
+        let decoded = crate::image_paint::DecodedImage {
+            width: 2,
+            height: 2,
+            rgba: pixels,
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(2, 2, false),
+            placeholder: false,
+        };
+        let mut picture = image("samples", None);
+        (picture.x, picture.y, picture.width, picture.height) = (0.0, 0.0, 2.0, 2.0);
+        let mut group = with_box(plain(0.0, 0.0, 8.0, 8.0, None), |_, _, _, transform| {
+            *transform = Some(Transform2D {
+                matrix,
+                origin_x: 0.0,
+                origin_y: 0.0,
+            });
+        });
+        group.children.push(picture);
+        (group, [("samples".into(), decoded)].into_iter().collect())
+    }
+
+    #[test]
+    fn zoomed_images_cover_the_full_device_resolution() {
+        let (group, images) =
+            sampled_square_image([255, 0, 0, 255].repeat(4), [3.0, 0.0, 0.0, 3.0, 0.0, 0.0]);
+        let actual = render(&group, 10, 10, &images);
+        assert_eq!(rgb(&actual, 0, 0), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 5, 5), [255, 0, 0]);
+        assert_eq!(rgb(&actual, 6, 5), [255, 255, 255]);
+        assert_eq!(rgb(&actual, 5, 6), [255, 255, 255]);
+    }
+
+    #[test]
+    fn shrunk_images_use_bilinear_filtering_at_fractional_placement() {
+        let rgba = vec![
+            255, 0, 0, 255, 0, 0, 255, 255, 0, 255, 0, 255, 255, 255, 255, 255,
+        ];
+        let matrix = [0.6, 0.4, -0.4, 0.6, 3.0, 2.0];
+        let (group, images) = sampled_square_image(rgba.clone(), matrix);
+        let actual = render(&group, 8, 8, &images);
+        let mut source = Pixmap::new(2, 2).unwrap();
+        source.data_mut().copy_from_slice(&rgba);
+        let xf = Transform::from_row(0.6, 0.4, -0.4, 0.6, 3.0, 2.0);
+        let expected = |quality| {
+            let mut result = Pixmap::new(8, 8).unwrap();
+            result.fill(tiny_skia::Color::WHITE);
+            result.draw_pixmap(
+                0,
+                0,
+                source.as_ref(),
+                &PixmapPaint {
+                    quality,
+                    ..PixmapPaint::default()
+                },
+                xf,
+                None,
+            );
+            result
+        };
+        let bilinear = expected(tiny_skia::FilterQuality::Bilinear);
+        let nearest = expected(tiny_skia::FilterQuality::Nearest);
+        assert_ne!(
+            bilinear.data(),
+            nearest.data(),
+            "fixture must observe filtering"
+        );
+        assert_eq!(actual.data(), bilinear.data());
+    }
+
+    #[test]
+    fn reversed_rounded_rectangles_paint_no_reflected_pixels() {
+        for bounds in [(6.0, 4.0, -3.0, 5.0), (3.0, 8.0, 4.0, -3.0)] {
+            let mut actual = Pixmap::new(12, 12).unwrap();
+            actual.fill(tiny_skia::Color::WHITE);
+            fill_rrect(
+                &mut actual,
+                bounds,
+                &BorderRadii::uniform(1.0),
+                RED,
+                Transform::identity(),
+            );
+            assert!(all_white(&actual), "reversed bounds {bounds:?}");
+        }
+    }
+    #[test]
+    fn vertical_blur_averages_columns_and_repeats_edge_samples() {
+        let mut pixels = vec![
+            0, 0, 0, 255, 60, 0, 0, 255, 90, 0, 0, 255, 150, 0, 0, 255, 240, 0, 0, 255, 240, 0, 0,
+            255,
+        ];
+        box_blur_vertical(&mut pixels, 2, 3, 1);
+        // Each column's three-sample window repeats its nearest edge pixel.
+        assert_eq!(
+            pixels,
+            [
+                30, 0, 0, 255, 90, 0, 0, 255, 110, 0, 0, 255, 150, 0, 0, 255, 190, 0, 0, 255, 210,
+                0, 0, 255,
+            ]
+        );
+    }
+    #[test]
+    fn image_texture_fitting_the_pixel_budget_preserves_every_source_pixel() {
+        let rgba = vec![
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255, 255, 0, 255, 255, 0,
+            255, 255, 255,
+        ];
+        let image = crate::image_paint::DecodedImage {
+            width: 3,
+            height: 2,
+            rgba: rgba.clone(),
+            intrinsic: turbo_dom_layout::image::Intrinsic::new(3, 2, false),
+            placeholder: false,
+        };
+        let images: DecodedAssets = [("budget".into(), image)].into_iter().collect();
+        let pattern = TilePattern {
+            tile: Box::new(FragmentContent::Image(ImagePlacement {
+                name: "budget".into(),
+                intrinsic_w: 3,
+                intrinsic_h: 2,
+                has_alpha: false,
+                tint: None,
+                orientation: Orientation::IDENTITY,
+            })),
+            x: 0.0,
+            y: 0.0,
+            tile_width: 3.0,
+            tile_height: 2.0,
+            step_x: 3.0,
+            step_y: 2.0,
+        };
+        let actual = tile_texture(&pattern, &images, 1.0, 6).expect("a bounded image texture");
+        assert_eq!((actual.width(), actual.height()), (3, 2));
+        assert_eq!(actual.data(), rgba);
+    }
 }
 
 /// Exact-output checks of the painters against independent references (P5-cov mutation
@@ -2946,7 +3851,143 @@ mod exact_tests {
     }
 
     #[test]
+    fn inset_shadow_holes_follow_offsets_spread_and_opaque_cut_alpha() {
+        let f = boxed(10.0, 12.0, 20.0, 24.0, 0.0, None);
+        let color = Rgba::new(0, 0, 255, 128);
+        for (offset_x, offset_y, spread, hole, radius) in [
+            (3, 5, 2, (5.0, 7.0, 16.0, 20.0), 0.0),
+            (-3, -5, 2, (-1.0, -3.0, 16.0, 20.0), 0.0),
+            (3, 5, -2, (1.0, 3.0, 24.0, 28.0), 2.0),
+        ] {
+            for blur in [0, 1, 3] {
+                let sh = BoxShadow {
+                    offset_x,
+                    offset_y,
+                    spread,
+                    blur,
+                    color,
+                    inset: true,
+                };
+                let mut got = white(50, 50);
+                paint_inset_shadow(
+                    &mut got,
+                    &f,
+                    &BorderEdges::default(),
+                    &BorderRadii::ZERO,
+                    Some(&sh),
+                    Transform::identity(),
+                );
+                let mut layer = Pixmap::new(20, 24).unwrap();
+                layer.fill(tiny_skia::Color::from_rgba8(0, 0, 255, 128));
+                let mut cut = Pixmap::new(20, 24).unwrap();
+                if blur == 0 {
+                    fill_round_rect(
+                        &mut cut,
+                        hole.0,
+                        hole.1,
+                        hole.2,
+                        hole.3,
+                        radius,
+                        BLUE,
+                        Transform::identity(),
+                    );
+                } else {
+                    reference_shadow(
+                        &mut cut,
+                        &Silhouette {
+                            x: hole.0,
+                            y: hole.1,
+                            width: hole.2,
+                            height: hole.3,
+                            radii: BorderRadii::uniform(radius),
+                            color: BLUE,
+                        },
+                        blur as f32,
+                        Transform::identity(),
+                    );
+                }
+                layer.draw_pixmap(
+                    0,
+                    0,
+                    cut.as_ref(),
+                    &PixmapPaint {
+                        blend_mode: tiny_skia::BlendMode::DestinationOut,
+                        ..PixmapPaint::default()
+                    },
+                    Transform::identity(),
+                    None,
+                );
+                let mut expected = white(50, 50);
+                expected.draw_pixmap(
+                    10,
+                    12,
+                    layer.as_ref(),
+                    &PixmapPaint::default(),
+                    Transform::identity(),
+                    None,
+                );
+                assert!(!is_blank(&expected));
+                assert_eq!(
+                    got.data(),
+                    expected.data(),
+                    "offset={offset_x},{offset_y},spread={spread},blur={blur}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_shadow_silhouette_or_inset_hole_below_half_a_pixel_on_one_axis_is_empty() {
+        for (width, height) in [(0.25, 8.0), (8.0, 0.25)] {
+            let f = boxed(5.0, 7.0, width, height, 0.0, None);
+            let mut got = white(40, 40);
+            paint_box_shadow(
+                &mut got,
+                &f,
+                &BorderRadii::ZERO,
+                &hard(0, 0, 0),
+                Transform::identity(),
+            );
+            assert!(is_blank(&got));
+        }
+        for (width, height) in [(20.25, 24.0), (24.0, 20.25)] {
+            let f = boxed(5.0, 7.0, width, height, 0.0, None);
+            let sh = BoxShadow {
+                offset_x: -10,
+                offset_y: -10,
+                spread: 10,
+                blur: 0,
+                color: BLUE,
+                inset: true,
+            };
+            let mut got = white(40, 40);
+            paint_inset_shadow(
+                &mut got,
+                &f,
+                &BorderEdges::default(),
+                &BorderRadii::ZERO,
+                Some(&sh),
+                Transform::identity(),
+            );
+            let mut expected = white(40, 40);
+            fill_rect(
+                &mut expected,
+                5.0,
+                7.0,
+                width,
+                height,
+                BLUE,
+                Transform::identity(),
+            );
+            assert_eq!(got.data(), expected.data());
+        }
+    }
+
+    #[test]
     fn blurred_shadows_equal_one_whole_scratch_on_and_off_the_canvas() {
+        if !rule_probe_child("blurred_shadows_equal_one_whole_scratch_on_and_off_the_canvas") {
+            return;
+        }
         let shadow = |x: f32, y: f32, width: f32, height: f32| Silhouette {
             x,
             y,
@@ -2961,6 +4002,11 @@ mod exact_tests {
             (shadow(-30.0, -20.0, 60.0, 50.0), Transform::identity(), 8.0),
             (shadow(50.0, 40.0, 90.0, 70.0), Transform::identity(), 6.0),
             (shadow(-80.0, 30.0, 300.0, 20.0), Transform::identity(), 4.0),
+            (
+                shadow(-180.0, -120.0, 90.0, 70.0),
+                Transform::from_translate(150.0, 100.0),
+                8.0,
+            ),
             (
                 shadow(10.0, 5.0, 30.0, 20.0),
                 Transform::from_row(1.5, 0.0, 0.0, 0.75, 3.0, -2.0),
@@ -2983,6 +4029,82 @@ mod exact_tests {
                     .count();
                 assert_eq!(diff, 0, "({}, {}) {xf:?} blur {blur} tile {tile}", s.x, s.y);
             }
+        }
+    }
+
+    #[test]
+    fn blurred_shadows_tiled_square_aprons_keep_real_blur_neighbours() {
+        if !rule_probe_child("blurred_shadows_tiled_square_aprons_keep_real_blur_neighbours") {
+            return;
+        }
+        for (x, y, width, height) in [(3.0, 7.0, 40.0, 25.0), (-20.0, -10.0, 70.0, 40.0)] {
+            let s = Silhouette {
+                x,
+                y,
+                width,
+                height,
+                radii: BorderRadii::ZERO,
+                color: Rgba::new(0, 0, 255, 220),
+            };
+            for blur in [4.0, 8.0, 10.0] {
+                for xf in [
+                    Transform::from_translate(1.0, 2.0),
+                    Transform::from_scale(1.25, 0.75),
+                ] {
+                    let mut expected = white(100, 80);
+                    reference_shadow(&mut expected, &s, blur, xf);
+                    let mut got = white(100, 80);
+                    blurred_shadow(&mut got, &s, blur, xf, 9, 1);
+                    let diff = got
+                        .pixels()
+                        .iter()
+                        .zip(expected.pixels())
+                        .filter(|(a, b)| a != b)
+                        .count();
+                    assert_eq!(diff, 0, "x{x},y{y},blur{blur},xf{xf:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn curved_visible_shadow_spans_stay_whole_within_the_scratch_limit() {
+        for (s, size) in [
+            (
+                Silhouette {
+                    x: -50.0,
+                    y: 10.0,
+                    width: 100.0,
+                    height: 80.0,
+                    radii: BorderRadii::uniform(40.0),
+                    color: BLUE,
+                },
+                (100, 40),
+            ),
+            (
+                Silhouette {
+                    x: 10.0,
+                    y: -50.0,
+                    width: 80.0,
+                    height: 100.0,
+                    radii: BorderRadii::uniform(40.0),
+                    color: BLUE,
+                },
+                (40, 100),
+            ),
+        ] {
+            let xf = Transform::from_row(1.0, 0.01, 0.01, 1.0, 0.0, 0.0);
+            let mut expected = white(size.0, size.1);
+            reference_shadow(&mut expected, &s, 8.0, xf);
+            let mut got = white(size.0, size.1);
+            blurred_shadow(&mut got, &s, 8.0, xf, 9, 80);
+            let diff = got
+                .pixels()
+                .iter()
+                .zip(expected.pixels())
+                .filter(|(a, b)| a != b)
+                .count();
+            assert_eq!(diff, 0, "shadow {},{}; {}x{}", s.x, s.y, size.0, size.1);
         }
     }
 
@@ -3373,6 +4495,9 @@ mod exact_tests {
     // paints over white and asserts the pixmap is unchanged.
     #[test]
     fn paint_column_rule_is_a_no_op_on_degenerate_fragments() {
+        if !rule_probe_child("paint_column_rule_is_a_no_op_on_degenerate_fragments") {
+            return;
+        }
         for style in [
             ColumnRuleStyle::Solid,
             ColumnRuleStyle::Dotted,
@@ -3443,10 +4568,442 @@ mod exact_tests {
     // The direct test keeps the contract pinned without touching the raster
     // walk.
     #[test]
+    fn png11_unrepresentable_inner_area_preserves_outer_border_pixels() {
+        let red = Rgba::new(255, 0, 0, 128);
+        let side = |width| BorderSide {
+            width,
+            color: Some(red),
+        };
+        for (x, width, height, left, right, top, bottom, xf) in [
+            (2.0, 20.0, 10.0, 10, 10, 1, 1, Transform::identity()),
+            (2.0, 20.0, 10.0, 1, 1, 5, 5, Transform::identity()),
+            (
+                16_777_216.0,
+                6.0,
+                14.0,
+                3,
+                2,
+                1,
+                1,
+                Transform::from_translate(-16_777_216.0, 0.0),
+            ),
+        ] {
+            let f = boxed(x, 3.0, width, height, 0.0, None);
+            let b = BorderEdges {
+                left: side(left),
+                right: side(right),
+                top: side(top),
+                bottom: side(bottom),
+            };
+            let radii = 4.0.into();
+            let mut actual = white(30, 20);
+            let mut expected = white(30, 20);
+            paint_round_border(&mut actual, &f, &b, &radii, xf);
+            fill_rrect(&mut expected, (x, 3.0, width, height), &radii, red, xf);
+            assert!(!is_blank(&expected), "outer silhouette must paint");
+            assert_eq!(actual.data(), expected.data(), "collapsed inner area at{x}");
+        }
+        let b = BorderEdges {
+            left: side(1),
+            right: side(1),
+            top: side(1),
+            bottom: side(1),
+        };
+        for f in [
+            boxed(f32::MAX, 3.0, f32::MAX, 14.0, 0.0, None),
+            boxed(2.0, f32::MAX, 20.0, f32::MAX, 0.0, None),
+        ] {
+            let mut actual = white(30, 20);
+            paint_round_border(&mut actual, &f, &b, &4.0.into(), Transform::identity());
+            assert!(is_blank(&actual), "overflowing outline must not paint");
+        }
+    }
+
+    #[test]
+    fn png11_uniform_translucent_border_has_no_diagonal_seam() {
+        let red = Rgba::new(255, 0, 0, 128);
+        let side = |width| BorderSide {
+            width,
+            color: Some(red),
+        };
+        let borders = BorderEdges {
+            top: side(0),
+            right: side(3),
+            bottom: side(3),
+            left: side(3),
+        };
+        let f = boxed(2.0, 3.0, 20.0, 10.0, 0.0, None);
+        let mut pm = white(26, 17);
+        paint_round_border(&mut pm, &f, &borders, &4.0.into(), Transform::identity());
+        // This pixel lies wholly within the bottom-left ring, where the two
+        // side regions meet. A uniform border composites its color only once.
+        let pixel = pm.pixel(4, 10).unwrap();
+        assert_eq!(
+            [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+            [255, 127, 127, 255]
+        );
+        let hole = pm.pixel(12, 6).unwrap();
+        assert_eq!(
+            [hole.red(), hole.green(), hole.blue(), hole.alpha()],
+            [255; 4]
+        );
+    }
+
+    #[test]
+    fn png11_collapsed_single_padding_axis_does_not_punch_an_inverted_hole() {
+        let side = |width| BorderSide {
+            width,
+            color: Some(RED),
+        };
+        let f = boxed(2.0, 3.0, 20.0, 10.0, 0.0, None);
+        for (left, right, top, bottom, x, y) in [(11, 10, 1, 1, 12, 7), (1, 1, 6, 5, 12, 8)] {
+            let borders = BorderEdges {
+                top: side(top),
+                right: side(right),
+                bottom: side(bottom),
+                left: side(left),
+            };
+            let mut pm = white(26, 17);
+            paint_round_border(&mut pm, &f, &borders, &4.0.into(), Transform::identity());
+            let pixel = pm.pixel(x, y).unwrap();
+            assert_eq!(
+                [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                [255, 0, 0, 255],
+                "inner collapse {left},{right},{top},{bottom}"
+            );
+        }
+    }
+
+    #[test]
+    fn png45_circle_paths_keep_analytic_interior_and_exterior_pixels() {
+        for (cx, cy, radius) in [(43.5, 51.25, 27.25), (51.25, 43.5, 31.0)] {
+            let path = circle_path(cx, cy, radius).unwrap();
+            let mut actual = white(104, 104);
+            actual.fill_path(
+                &path,
+                &solid(RED),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+            let mut checked = 0;
+            for y in 0..104 {
+                for x in 0..104 {
+                    let dx = (x as f32 + 0.5 - cx).abs();
+                    let dy = (y as f32 + 0.5 - cy).abs();
+                    let far = (dx + 0.5).hypot(dy + 0.5);
+                    let near = (dx - 0.5).max(0.0).hypot((dy - 0.5).max(0.0));
+                    // Ignore boundary pixels: the circle's cubic approximation and
+                    // the rasterizer's AA can legitimately differ there. Entire
+                    // pixel squares safely inside/outside the analytic disk agree.
+                    let expected = if far < radius - 0.25 {
+                        Some([255, 0, 0, 255])
+                    } else if near > radius + 0.25 {
+                        Some([255; 4])
+                    } else {
+                        None
+                    };
+                    if let Some(expected) = expected {
+                        let pixel = actual.pixel(x, y).unwrap();
+                        assert_eq!(
+                            [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                            expected,
+                            "circle {cx},{cy},r{radius}, pixel{x},{y}"
+                        );
+                        checked += 1;
+                    }
+                }
+            }
+            assert!(checked > 10_000, "circle oracle must inspect most pixels");
+        }
+    }
+
+    #[test]
+    fn png45_subpixel_dots_keep_cap_spacing_and_partial_last_pixel() {
+        if !rule_probe_child("png45_subpixel_dots_keep_cap_spacing_and_partial_last_pixel") {
+            return;
+        }
+        let mut expected = white(12, 12);
+        for (top, height) in [(0.0, 1.0), (1.0, 1.0), (3.0, 0.5)] {
+            expected.fill_path(
+                &PathBuilder::from_rect(Rect::from_xywh(3.0, top, 1.0, height).unwrap()),
+                &solid(RED),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+        }
+        for (top, xf) in [
+            (0.0, Transform::identity()),
+            (33_554_432.0, Transform::from_translate(0.0, -33_554_432.0)),
+        ] {
+            let mut actual = white(12, 12);
+            paint_dotted_rule_stroked(&mut actual, 3.25, top, 3.5, RED, xf);
+            assert_eq!(actual.data(), expected.data(), "origin {top}");
+        }
+    }
+
+    #[test]
+    fn subpixel_dotted_rules_do_not_paint_before_the_fragment() {
+        if !rule_probe_child("subpixel_dotted_rules_do_not_paint_before_the_fragment") {
+            return;
+        }
+        let mut actual = white(10, 12);
+        paint_dotted_rule_stroked(&mut actual, 3.25, 3.0, 4.0, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..10 {
+                let ink = x == 3 && [3, 4, 6].contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap() {
+        if !rule_probe_child("png45_one_pixel_dashes_keep_two_ink_rows_and_one_gap") {
+            return;
+        }
+        let f = rule(3.0, 1.0, 1.0, 8.0, ColumnRuleStyle::Dashed, RED);
+        let mut actual = white(10, 12);
+        paint_dashed_rule(&mut actual, &f, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..10 {
+                let ink = x == 3 && [1, 2, 4, 5, 7, 8].contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn png45_double_boundary_keeps_a_visible_middle_gap() {
+        let mut actual = white(12, 12);
+        let f = rule(3.0, 2.0, 3.0, 7.0, ColumnRuleStyle::Double, RED);
+        paint_double_rule(&mut actual, &f, RED, Transform::identity());
+        for y in 0..12 {
+            for x in 0..12 {
+                let ink = (x == 3 || x == 5) && (2..9).contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = actual.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "{x},{y}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn circle_path_is_none_for_a_non_positive_radius() {
         assert!(circle_path(5.0, 5.0, 0.0).is_none(), "r = 0");
         assert!(circle_path(5.0, 5.0, -0.5).is_none(), "r < 0");
         assert!(circle_path(5.0, 5.0, 0.5).is_some(), "r > 0");
+    }
+
+    // Invalid-size mutations must fail a bounded test, not leave the whole
+    // mutation runner waiting on a painter loop in the test process.
+    pub(super) fn rule_probe_child(name: &str) -> bool {
+        const CHILD: &str = "TURBO_DOM_PNG_INVALID_RULE_CHILD";
+        if std::env::var(CHILD).ok().as_deref() == Some(name) {
+            return true;
+        }
+        let filter = if name.starts_with("paint_png::") {
+            name.to_owned()
+        } else {
+            format!("paint_png::exact_tests::{name}")
+        };
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", &filter, "--nocapture"])
+            .env(CHILD, name)
+            .stdin(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                assert!(
+                    status.success(),
+                    "invalid-rule child failed: {name}: {status}"
+                );
+                return false;
+            }
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                child.wait().unwrap();
+                panic!("invalid-rule helper did not finish within three seconds: {name}");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn an_overflow_clip_with_children_limits_their_ink() {
+        let f = clipping(
+            region(3.0, 5.0, 7.0, 9.0, 0.0),
+            vec![boxed(0.0, 0.0, 40.0, 40.0, 0.0, None)],
+        );
+        let got = drawn(&f, 40, 40);
+        for y in 0..40 {
+            for x in 0..40 {
+                let expected = if (13..20).contains(&x) && (15..24).contains(&y) {
+                    [255, 0, 0, 255]
+                } else {
+                    [255; 4]
+                };
+                let p = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [p.red(), p.green(), p.blue(), p.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn clip_offsets_are_relative_to_the_fragment_origin() {
+        let mut f = boxed(10.0, 11.0, 24.0, 24.0, 0.0, None);
+        f.clip = Some(ClipRect {
+            x: 3.0,
+            y: 5.0,
+            width: 7.0,
+            height: 9.0,
+            radii: BorderRadii::ZERO,
+        });
+        let got = drawn(&f, 40, 40);
+        for y in 0..40 {
+            for x in 0..40 {
+                let ink = (13..20).contains(&x) && (16..25).contains(&y);
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let p = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [p.red(), p.green(), p.blue(), p.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dotted_rules_keep_circle_spacing_and_exclude_a_dot_starting_at_the_end() {
+        if !rule_probe_child(
+            "dotted_rules_keep_circle_spacing_and_exclude_a_dot_starting_at_the_end",
+        ) {
+            return;
+        }
+        for (width, height, centers) in [
+            (1.0, 4.0, vec![1.5, 3.5]),
+            (2.0, 8.0, vec![2.0, 6.0]),
+            (3.0, 14.0, vec![2.5, 8.5, 14.5]),
+        ] {
+            let mut got = white(10, 20);
+            let f = Fragment::new(
+                NodeId(0),
+                3.0,
+                1.0,
+                width,
+                height,
+                FragmentContent::ColumnRule {
+                    style: ColumnRuleStyle::Dotted,
+                    color: RED,
+                },
+            );
+            paint_dotted_rule(&mut got, &f, RED, Transform::identity());
+            let mut expected = white(10, 20);
+            for center in centers {
+                let path =
+                    PathBuilder::from_circle(3.0 + width / 2.0, center, width / 2.0).unwrap();
+                expected.fill_path(
+                    &path,
+                    &solid(RED),
+                    FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
+            }
+            assert_eq!(
+                got.data(),
+                expected.data(),
+                "width={width}, height={height}"
+            );
+        }
+    }
+
+    #[test]
+    fn containment_accounts_for_both_origins_and_both_far_edges() {
+        let region = (5.0, 10.0, 10.0, 10.0);
+        for (x, y, w, h, expected) in [
+            (7.0, 13.0, 3.0, 4.0, true),
+            (5.0, 10.0, 10.0, 10.0, true),
+            (7.0, 13.0, 9.0, 4.0, false),
+            (7.0, 13.0, 3.0, 8.0, false),
+            (4.0, 13.0, 3.0, 4.0, false),
+            (7.0, 9.0, 3.0, 4.0, false),
+            (17.0, 13.0, 3.0, 4.0, false),
+            (7.0, 23.0, 3.0, 4.0, false),
+        ] {
+            let f = boxed(x, y, w, h, 0.0, None);
+            assert_eq!(within(&f, region), expected, "box {x},{y},{w},{h}");
+        }
+    }
+
+    #[test]
+    fn device_span_excludes_exact_canvas_edges() {
+        for (x, y, w, h) in [(10.0, 2.0, 1.0, 3.0), (2.0, 10.0, 3.0, 1.0)] {
+            assert_eq!(
+                device_span(Rect::from_xywh(x, y, w, h).unwrap(), 10, 10),
+                None
+            );
+        }
+        assert_eq!(
+            device_span(Rect::from_xywh(9.0, 9.0, 2.0, 2.0).unwrap(), 10, 10),
+            Some((9, 9, 1, 1))
+        );
+    }
+
+    #[test]
+    fn dashed_rules_repeat_two_width_ink_and_one_width_gap() {
+        if !rule_probe_child("dashed_rules_repeat_two_width_ink_and_one_width_gap") {
+            return;
+        }
+        let mut pm = white(8, 22);
+        let f = Fragment::new(
+            NodeId(0),
+            2.0,
+            1.0,
+            2.0,
+            20.0,
+            FragmentContent::ColumnRule {
+                style: ColumnRuleStyle::Dashed,
+                color: RED,
+            },
+        );
+        paint_dashed_rule(&mut pm, &f, RED, Transform::identity());
+        for y in 0..22 {
+            for x in 0..8 {
+                let ink = (2..4).contains(&x) && (1..21).contains(&y) && (y - 1) % 6 < 4;
+                let expected = if ink { [255, 0, 0, 255] } else { [255; 4] };
+                let pixel = pm.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
     }
 
     // The `paint_dotted_rule` and `paint_dashed_rule` helpers both guard
@@ -3459,6 +5016,9 @@ mod exact_tests {
     // flipped the guard's `<=` to `<`.
     #[test]
     fn dotted_and_dashed_helpers_return_on_zero_width_fragments() {
+        if !rule_probe_child("dotted_and_dashed_helpers_return_on_zero_width_fragments") {
+            return;
+        }
         let mut pm = white(10, 10);
         let id = Transform::identity();
         let f = Fragment::new(
@@ -3488,6 +5048,9 @@ mod exact_tests {
     // guard must reject both.
     #[test]
     fn paint_column_rule_is_a_no_op_on_non_finite_fragments() {
+        if !rule_probe_child("paint_column_rule_is_a_no_op_on_non_finite_fragments") {
+            return;
+        }
         for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
             for style in [
                 ColumnRuleStyle::Solid,
@@ -3514,6 +5077,9 @@ mod exact_tests {
     // a `NaN` / `Infinity` width to pin that contract.
     #[test]
     fn rule_helpers_are_a_no_op_on_non_finite_fragments() {
+        if !rule_probe_child("rule_helpers_are_a_no_op_on_non_finite_fragments") {
+            return;
+        }
         let id = Transform::identity();
         for &bad in &[f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
             let mut pm = white(10, 10);
@@ -3532,8 +5098,7 @@ mod exact_tests {
             paint_dashed_rule(&mut pm, &f, RED, id);
             paint_double_rule(&mut pm, &f, RED, id);
             paint_shaded_rule(&mut pm, &f, ColumnRuleStyle::Groove, RED, id);
-            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, 1.0, RED, id);
-            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, 8.0, bad, RED, id);
+            paint_dotted_rule_stroked(&mut pm, 5.0, 1.0, bad, RED, id);
             assert!(
                 is_blank(&pm),
                 "non-finite width/height helpers must not paint or loop ({bad})"
@@ -3551,10 +5116,15 @@ mod exact_tests {
     // mostly white rather than full red.
     #[test]
     fn paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments() {
+        if !rule_probe_child(
+            "paint_dotted_rule_stroked_leading_cap_does_not_overpaint_short_fragments",
+        ) {
+            return;
+        }
         let mut pm = white(10, 10);
         let id = Transform::identity();
         // cx=5.5, y_top=1.0, height=0.3, diameter=1.0.
-        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, 1.0, RED, id);
+        paint_dotted_rule_stroked(&mut pm, 5.5, 1.0, 0.3, RED, id);
         let c = pm.pixel(5, 1).unwrap();
         assert!(
             c.green() > 100 && c.blue() > 100,
@@ -3899,5 +5469,81 @@ mod exact_tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn invalid_rule_geometry_never_paints_or_stalls() {
+        if !rule_probe_child("invalid_rule_geometry_never_paints_or_stalls") {
+            return;
+        }
+        let styles = [
+            ColumnRuleStyle::Solid,
+            ColumnRuleStyle::Dotted,
+            ColumnRuleStyle::Dashed,
+            ColumnRuleStyle::Double,
+            ColumnRuleStyle::Groove,
+            ColumnRuleStyle::Ridge,
+            ColumnRuleStyle::Inset,
+            ColumnRuleStyle::Outset,
+        ];
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -1.0] {
+            for style in styles {
+                for (width, height) in [(bad, 8.0), (4.0, bad)] {
+                    let f = rule(1.0, 1.0, width, height, style, RED);
+                    assert!(is_blank(&drawn(&f, 10, 10)), "{style:?}: {width}x{height}");
+                }
+            }
+            let mut pm = white(10, 10);
+            let f = rule(1.0, 1.0, 1.0, bad, ColumnRuleStyle::Dotted, RED);
+            paint_dotted_rule(&mut pm, &f, RED, Transform::identity());
+            assert!(is_blank(&pm), "direct dotted height {bad}");
+        }
+    }
+
+    fn assert_stroked_rule_blank(cx: f32, top: f32, height: f32) {
+        let mut pm = white(10, 10);
+        paint_dotted_rule_stroked(&mut pm, cx, top, height, RED, Transform::identity());
+        assert!(is_blank(&pm), "stroked input {cx},{top},{height}");
+    }
+
+    #[test]
+    fn invalid_stroked_geometry_never_paints_or_stalls() {
+        if !rule_probe_child("invalid_stroked_geometry_never_paints_or_stalls") {
+            return;
+        }
+        // An invalid center must reject even a long off-canvas series without
+        // walking millions of individually rejected rectangles.
+        assert_stroked_rule_blank(f32::INFINITY, 1.0, 1.0e9);
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert_stroked_rule_blank(bad, 1.0, 8.0);
+            assert_stroked_rule_blank(5.0, bad, 8.0);
+        }
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 0.0, -1.0] {
+            assert_stroked_rule_blank(5.0, 1.0, bad);
+            let f = rule(1.0, 1.0, bad, 8.0, ColumnRuleStyle::Dotted, RED);
+            let mut pm = white(10, 10);
+            paint_dotted_rule(&mut pm, &f, RED, Transform::identity());
+            assert!(is_blank(&pm), "invalid declared dotted width {bad}");
+        }
+    }
+
+    #[test]
+    fn short_subpixel_dots_survive_large_origin_localization() {
+        if !rule_probe_child("short_subpixel_dots_survive_large_origin_localization") {
+            return;
+        }
+        let mut expected = white(10, 10);
+        paint_dotted_rule_stroked(&mut expected, 5.0, 0.0, 0.3, RED, Transform::identity());
+        assert!(!is_blank(&expected), "the short cap must remain visible");
+        let mut actual = white(10, 10);
+        paint_dotted_rule_stroked(
+            &mut actual,
+            5.0,
+            1.0e9,
+            0.3,
+            RED,
+            Transform::from_translate(0.0, -1.0e9),
+        );
+        assert_eq!(actual.data(), expected.data());
     }
 }

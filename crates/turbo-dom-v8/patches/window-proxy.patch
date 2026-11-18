@@ -1,0 +1,336 @@
+--- a/src/context.rs
++++ b/src/context.rs
+@@ -27,6 +27,16 @@
+   ) -> *const Context;
+   fn v8__Isolate__GetCurrent() -> *mut RealIsolate;
+   fn v8__Context__Global(this: *const Context) -> *const Object;
++  // V8 exports this member in the official prebuilt SDK; no binding.cc shim is needed.
++  #[cfg_attr(
++    not(target_env = "msvc"),
++    link_name = "_ZN2v87Context12DetachGlobalEv"
++  )]
++  #[cfg_attr(
++    target_env = "msvc",
++    link_name = "?DetachGlobal@Context@v8@@QEAAXXZ"
++  )]
++  fn v8__Context__DetachGlobal(this: *const Context);
+   fn v8__Context__GetExtrasBindingObject(this: *const Context)
+   -> *const Object;
+   fn v8__Context__GetNumberOfEmbedderDataFields(this: *const Context) -> u32;
+@@ -127,6 +137,13 @@
+       .unwrap()
+   }
+ 
++  /// Detach this context's global proxy before reusing it for a navigation.
++  /// Old objects retain their creation context; the embedder must retire that
++  /// context's native document and update its origin access policy separately.
++  pub fn detach_global(&self) {
++    unsafe { v8__Context__DetachGlobal(self) }
++  }
++
+   /// Returns the global proxy object.
+   ///
+   /// Global proxy object is a thin wrapper whose prototype points to actual
+--- a/src/function.rs
++++ b/src/function.rs
+@@ -1209,3 +1209,88 @@
+     code_cache
+   }
+ }
++
++/// Native V8 security check for access from another context.
++/// Handles belong to this callback's scope, never the interrupted caller's scope.
++pub type AccessCheckCallback = unsafe extern "C" fn(
++  SealedLocal<Context>,
++  SealedLocal<Object>,
++  SealedLocal<Value>,
++) -> bool;
++
++impl<F> MapFnFrom<F> for AccessCheckCallback
++where
++  F: UnitType
++    + for<'s, 'i> Fn(
++      &mut PinScope<'s, 'i>,
++      Local<'s, Context>,
++      Local<'s, Object>,
++      Local<'s, Value>,
++    ) -> bool,
++{
++  fn mapping() -> Self {
++    let f = |context: SealedLocal<Context>,
++             object: SealedLocal<Object>,
++             data: SealedLocal<Value>| {
++      // V8 supplies a live accessing context and nonempty embedder data.
++      let context = unsafe { Local::from_non_null(context.0) };
++      let scope = std::pin::pin!(unsafe { CallbackScope::new(context) });
++      let mut scope = scope.init();
++      let object = unsafe { scope.unseal(object) };
++      let data = unsafe { scope.unseal(data) };
++      (F::get())(&mut scope, context, object, data)
++    };
++    f.to_c_fn()
++  }
++}
++
++/// Operation rejected by a native V8 object access check.
++#[repr(C)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum AccessType {
++  Get,
++  Set,
++  Has,
++  Delete,
++  Keys,
++}
++
++/// Native callback customizing the exception after an object access check fails.
++pub type FailedAccessCheckCallback =
++  unsafe extern "C" fn(SealedLocal<Object>, AccessType, SealedLocal<Value>);
++
++impl<F> MapFnFrom<F> for FailedAccessCheckCallback
++where
++  F: UnitType
++    + for<'s, 'i> Fn(
++      &mut PinScope<'s, 'i>,
++      Local<'s, Object>,
++      AccessType,
++      Local<'s, Value>,
++    ),
++{
++  fn mapping() -> Self {
++    let f = |object: SealedLocal<Object>,
++             kind: AccessType,
++             data: SealedLocal<Value>| {
++      unsafe extern "C" {
++        fn v8__Isolate__GetCurrent() -> *mut crate::isolate::RealIsolate;
++        fn v8__Isolate__GetCurrentContext(
++          isolate: *mut crate::isolate::RealIsolate,
++        ) -> *const Context;
++      }
++      // V8 invokes this callback with a live current context and handle scope.
++      let context = unsafe {
++        Local::from_raw_unchecked(v8__Isolate__GetCurrentContext(
++          v8__Isolate__GetCurrent(),
++        ))
++      };
++      let scope = std::pin::pin!(unsafe { CallbackScope::new(context) });
++      let mut scope = scope.init();
++      let object = unsafe { scope.unseal(object) };
++      let data = unsafe { scope.unseal(data) };
++      (F::get())(&mut scope, object, kind, data);
++    };
++    f.to_c_fn()
++  }
++}
+--- a/src/isolate.rs
++++ b/src/isolate.rs
+@@ -3,6 +3,7 @@
+ use crate::CallbackScope;
+ use crate::Context;
+ use crate::Data;
++use crate::FailedAccessCheckCallback;
+ use crate::FixedArray;
+ use crate::Function;
+ use crate::FunctionCodeHandling;
+@@ -744,6 +745,18 @@
+       initiator_context: Local<Context>,
+     ) -> *mut *mut Context,
+   );
++  #[cfg_attr(
++    not(target_env = "msvc"),
++    link_name = "_ZN2v87Isolate36SetFailedAccessCheckCallbackFunctionEPFvNS_5LocalINS_6ObjectEEENS_10AccessTypeENS1_INS_5ValueEEEE"
++  )]
++  #[cfg_attr(
++    target_env = "msvc",
++    link_name = "?SetFailedAccessCheckCallbackFunction@Isolate@v8@@QEAAXP6AXV?$Local@VObject@v8@@@2@W4AccessType@2@V?$Local@VValue@v8@@@2@@Z@Z"
++  )]
++  fn v8__Isolate__SetFailedAccessCheckCallbackFunction(
++    isolate: *mut RealIsolate,
++    callback: FailedAccessCheckCallback,
++  );
+   fn v8__Isolate__SetUseCounterCallback(
+     isolate: *mut RealIsolate,
+     callback: UseCounterCallback,
+@@ -1657,6 +1670,19 @@
+           rust_shadow_realm_callback,
+         );
+       }
++    }
++  }
++
++  /// Customize the exception raised after a native object access check fails.
++  pub fn set_failed_access_check_callback(
++    &mut self,
++    callback: impl MapFnTo<FailedAccessCheckCallback>,
++  ) {
++    unsafe {
++      v8__Isolate__SetFailedAccessCheckCallbackFunction(
++        self.as_real_ptr(),
++        callback.map_fn_to(),
++      )
+     }
+   }
+ 
+--- a/src/template.rs
++++ b/src/template.rs
+@@ -1,3 +1,4 @@
++use crate::AccessCheckCallback;
+ use crate::ConstructorBehavior;
+ use crate::Context;
+ use crate::Function;
+@@ -126,6 +127,27 @@
+     attr: PropertyAttribute,
+   );
+ 
++  // Direct exported V8 member, using the pinned v150.4.0 public POD layouts below.
++  #[cfg_attr(
++    not(target_env = "msvc"),
++    link_name = "_ZN2v814ObjectTemplate32SetAccessCheckCallbackAndHandlerEPFbNS_5LocalINS_7ContextEEENS1_INS_6ObjectEEENS1_INS_5ValueEEEERKNS_33NamedPropertyHandlerConfigurationERKNS_35IndexedPropertyHandlerConfigurationES7_"
++  )]
++  #[cfg_attr(
++    target_env = "msvc",
++    link_name = "?SetAccessCheckCallbackAndHandler@ObjectTemplate@v8@@QEAAXP6A_NV?$Local@VContext@v8@@@2@V?$Local@VObject@v8@@@2@V?$Local@VValue@v8@@@2@@ZAEBUNamedPropertyHandlerConfiguration@2@AEBUIndexedPropertyHandlerConfiguration@2@2@Z"
++  )]
++  fn v8__ObjectTemplate__SetAccessCheckCallbackAndHandler(
++    this: *const ObjectTemplate,
++    callback: AccessCheckCallback,
++    named: *const NativeNamedPropertyHandlerConfiguration,
++    indexed: *const NativeIndexedPropertyHandlerConfiguration,
++    data: *const Value,
++  );
++  fn v8__Isolate__GetCurrent() -> *mut crate::isolate::RealIsolate;
++  fn v8__Undefined(
++    isolate: *mut crate::isolate::RealIsolate,
++  ) -> *const crate::Primitive;
++
+   fn v8__ObjectTemplate__SetNamedPropertyHandler(
+     this: *const ObjectTemplate,
+     getter: Option<NamedPropertyGetterCallback>,
+@@ -304,6 +326,58 @@
+     self
+   }
+ }
++
++// ABI mirrors of include/v8-template.h in rusty_v8's pinned V8 submodule
++// ac1e23989121713ca642f6650b34deff7b686896. Do not cast the public Rust
++// builders: their layout is unspecified and indexed handlers omit index_of.
++#[repr(C)]
++struct NativeNamedPropertyHandlerConfiguration {
++  getter: Option<NamedPropertyGetterCallback>,
++  setter: Option<NamedPropertySetterCallback>,
++  query: Option<NamedPropertyQueryCallback>,
++  deleter: Option<NamedPropertyDeleterCallback>,
++  enumerator: Option<NamedPropertyEnumeratorCallback>,
++  definer: Option<NamedPropertyDefinerCallback>,
++  descriptor: Option<NamedPropertyDescriptorCallback>,
++  data: *const Value,
++  flags: PropertyHandlerFlags,
++}
++
++#[repr(C)]
++struct NativeIndexedPropertyHandlerConfiguration {
++  getter: Option<IndexedPropertyGetterCallback>,
++  setter: Option<IndexedPropertySetterCallback>,
++  query: Option<IndexedPropertyQueryCallback>,
++  deleter: Option<IndexedPropertyDeleterCallback>,
++  enumerator: Option<IndexedPropertyEnumeratorCallback>,
++  definer: Option<IndexedPropertyDefinerCallback>,
++  descriptor: Option<IndexedPropertyDescriptorCallback>,
++  index_of: *const std::ffi::c_void,
++  data: *const Value,
++  flags: PropertyHandlerFlags,
++}
++
++const _: () = {
++  use std::mem::{offset_of, size_of};
++  let word = size_of::<usize>();
++  assert!(
++    offset_of!(NativeNamedPropertyHandlerConfiguration, data) == 7 * word
++  );
++  assert!(
++    offset_of!(NativeNamedPropertyHandlerConfiguration, flags) == 8 * word
++  );
++  assert!(size_of::<NativeNamedPropertyHandlerConfiguration>() == 9 * word);
++  assert!(
++    offset_of!(NativeIndexedPropertyHandlerConfiguration, index_of) == 7 * word
++  );
++  assert!(
++    offset_of!(NativeIndexedPropertyHandlerConfiguration, data) == 8 * word
++  );
++  assert!(
++    offset_of!(NativeIndexedPropertyHandlerConfiguration, flags) == 9 * word
++  );
++  assert!(size_of::<NativeIndexedPropertyHandlerConfiguration>() == 10 * word);
++};
+ 
+ #[derive(Default)]
+ pub struct NamedPropertyHandlerConfiguration<'s> {
+@@ -989,6 +1063,55 @@
+     }
+   }
+ 
++  /// Install V8's native access check and handlers used only when it rejects.
++  /// The callbacks must explicitly deny unsupported operations. They must not
++  /// expose protected-realm functions to a different origin.
++  pub fn set_access_check_callback_and_handler(
++    &self,
++    callback: impl MapFnTo<AccessCheckCallback>,
++    named: NamedPropertyHandlerConfiguration,
++    indexed: IndexedPropertyHandlerConfiguration,
++    data: Option<Local<Value>>,
++  ) {
++    let named = NativeNamedPropertyHandlerConfiguration {
++      getter: named.getter,
++      setter: named.setter,
++      query: named.query,
++      deleter: named.deleter,
++      enumerator: named.enumerator,
++      definer: named.definer,
++      descriptor: named.descriptor,
++      data: named.data.map_or_else(null, |value| &*value),
++      flags: named.flags,
++    };
++    let indexed = NativeIndexedPropertyHandlerConfiguration {
++      getter: indexed.getter,
++      setter: indexed.setter,
++      query: indexed.query,
++      deleter: indexed.deleter,
++      enumerator: indexed.enumerator,
++      definer: indexed.definer,
++      descriptor: indexed.descriptor,
++      index_of: null(),
++      data: indexed.data.map_or_else(null, |value| &*value),
++      flags: indexed.flags,
++    };
++    // Rust's callback data is a nonempty Local, even when no data was supplied.
++    let data = data.map_or_else(
++      || unsafe { v8__Undefined(v8__Isolate__GetCurrent()).cast::<Value>() },
++      |value| &*value,
++    );
++    unsafe {
++      v8__ObjectTemplate__SetAccessCheckCallbackAndHandler(
++        self,
++        callback.map_fn_to(),
++        &named,
++        &indexed,
++        data,
++      )
++    }
++  }
++
+   //Re uses the AccessorNameGetterCallback to avoid implementation conflicts since the declaration for
+   //GenericNamedPropertyGetterCallback and  AccessorNameGetterCallback are the same
+   pub fn set_named_property_handler(
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -230,6 +230,10 @@
+ /// substituted silently.
+ pub const FORK_SHOULD_THROW_FIX: bool = true;
+ 
++/// Native access-check handlers and global detachment for genuine WindowProxy
++/// identities are available in this fork candidate (turbo-dom#504).
++pub const FORK_WINDOW_PROXY: bool = true;
++
+ #[cfg(test)]
+ #[allow(unused)]
+ pub(crate) fn initialize_v8() {

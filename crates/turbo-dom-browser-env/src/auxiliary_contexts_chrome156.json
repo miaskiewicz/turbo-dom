@@ -1,0 +1,573 @@
+{
+  "browser": "HeadlessChrome/156.0.8078.47",
+  "v8": "15.6.75.19",
+  "casesSha256": "e8a28bd0e09f0d11b68c19ece9dc4f72c9defb3f448ebba5018a8a5a35ff0a5a",
+  "probeSha256": "b8ecea6581f2f20d6d5e2a267bd3d7c52ee962c6934bb8dd5bad87677e3b28d1",
+  "collectorSha256": "99a0e7a3161fee86e8d894df7d53aba3f526f1bd3ff6f0accc566be1345055fc",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-popup-blocking",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "about-blank-identities",
+      "result": {
+        "admitted": true,
+        "window": true,
+        "self": true,
+        "top": true,
+        "parent": true,
+        "frames": true,
+        "opener": true,
+        "closed": false,
+        "frameElement": true,
+        "documentView": true,
+        "distinctDocument": true,
+        "length": 0,
+        "href": "about:blank"
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    },
+    {
+      "id": "same-origin-document",
+      "result": {
+        "admitted": true,
+        "window": true,
+        "self": true,
+        "top": true,
+        "parent": true,
+        "frames": true,
+        "opener": true,
+        "closed": false,
+        "frameElement": true,
+        "documentView": true,
+        "distinctDocument": true,
+        "length": 0,
+        "text": "native popup",
+        "nodeOwner": true,
+        "sharedObject": true,
+        "openerDocument": true
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    },
+    {
+      "id": "named-target-reuse",
+      "result": {
+        "reused": true,
+        "caseSensitive": true,
+        "name": "Report",
+        "otherName": "report",
+        "opener": true
+      },
+      "host": {
+        "created": 2,
+        "live": [
+          {
+            "name": "Report",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          },
+          {
+            "name": "report",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    },
+    {
+      "id": "blank-keyword-case-insensitive",
+      "result": {
+        "distinct": true,
+        "firstName": "",
+        "secondName": ""
+      },
+      "host": {
+        "created": 2,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          },
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    },
+    {
+      "id": "existing-target-keywords",
+      "result": {
+        "self": true,
+        "parent": true,
+        "top": true,
+        "selfNull": false,
+        "parentNull": false,
+        "topNull": false,
+        "openerIsSelf": false
+      },
+      "host": {
+        "created": 0,
+        "live": [],
+        "network": []
+      }
+    },
+    {
+      "id": "existing-target-keywords-noopener",
+      "result": {
+        "self": true,
+        "parent": true,
+        "top": true,
+        "selfNull": false,
+        "parentNull": false,
+        "topNull": false,
+        "openerIsSelf": false
+      },
+      "host": {
+        "created": 0,
+        "live": [],
+        "network": []
+      }
+    },
+    {
+      "id": "close-retained-proxy",
+      "result": {
+        "retainedClosed": true,
+        "replacementDistinct": true,
+        "replacementOpen": true,
+        "openerOpen": true
+      },
+      "host": {
+        "created": 2,
+        "live": [
+          {
+            "name": "Closable",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    },
+    {
+      "id": "noopener-bare",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-spaced-yes",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-true",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-zero",
+      "result": {
+        "returnedNull": false,
+        "opener": true
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-negative-integer",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-last-value",
+      "result": {
+        "returnedNull": false,
+        "opener": true
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-named-new",
+      "result": {
+        "returnedNull": true,
+        "reused": null,
+        "previousName": null,
+        "previousClosed": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "Named",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noopener-named-existing",
+      "result": {
+        "returnedNull": true,
+        "reused": null,
+        "previousName": "Named",
+        "previousClosed": false
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "Named",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "noreferrer-implies-noopener",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": true,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "hyperlink-blank-default-noopener",
+      "result": {
+        "defaultPrevented": false
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "hyperlink-blank-explicit-opener",
+      "result": {
+        "defaultPrevented": false
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "hyperlink-noreferrer",
+      "result": {
+        "defaultPrevented": false
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": true,
+            "urlKind": "/popup",
+            "originKind": "same"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "cross-origin-window-boundary",
+      "result": {
+        "document": "SecurityError",
+        "name": "SecurityError",
+        "closed": false,
+        "self": true,
+        "window": true,
+        "opener": true
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": false,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "/popup",
+            "originKind": "cross"
+          }
+        ],
+        "network": [
+          {
+            "referrerEmpty": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "sandbox-popup-denied",
+      "result": {
+        "returnedNull": true,
+        "opener": null
+      },
+      "host": {
+        "created": 0,
+        "live": [],
+        "network": []
+      }
+    },
+    {
+      "id": "sandbox-popup-admitted",
+      "result": {
+        "returnedNull": false,
+        "opener": true
+      },
+      "host": {
+        "created": 1,
+        "live": [
+          {
+            "name": "",
+            "openerNull": true,
+            "closed": false,
+            "referrerEmpty": false,
+            "urlKind": "about:blank",
+            "originKind": "opaque"
+          }
+        ],
+        "network": []
+      }
+    }
+  ]
+}

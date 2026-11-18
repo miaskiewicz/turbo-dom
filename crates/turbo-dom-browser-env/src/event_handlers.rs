@@ -348,6 +348,7 @@ pub(super) fn refresh(scope: &mut v8::PinScope, node: Handle, name: &str) {
             v8::script_compiler::CompileOptions::NoCompileOptions,
             v8::script_compiler::NoCacheReason::NoReason,
         );
+        termination_checkpoint(scope, "handler:compile");
         if function.is_none() && !scope.has_terminated() {
             if let Some(error) = scope.exception() {
                 let error = v8::Global::new(scope, error);
@@ -482,4 +483,58 @@ pub(super) fn document_url() -> String {
             .filter(|url| !url.is_empty())
             .unwrap_or_else(|| "about:blank".to_owned())
     })
+}
+
+#[cfg(test)]
+mod mutation_tests {
+    use super::*;
+
+    #[test]
+    fn handler_storage_sweep_forgets_reclaimed_nodes_and_preserves_live_entries() {
+        use turbo_dom_parser::rtdom::tree::CollectionBudget;
+
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let mut tree = Tree::parse("<body></body>");
+        let body = tree.query_selector("body").unwrap();
+        let live = tree.create_element("div");
+        let dead = tree.create_element("div");
+        tree.append_child(body, live);
+        tree.collect_unreachable(
+            &[],
+            CollectionBudget {
+                max_nodes: 1 << 20,
+                max_edges: 1 << 20,
+                max_payload_bytes: 1 << 30,
+            },
+        )
+        .unwrap();
+        assert!(tree.is_live(live) && !tree.is_live(dead));
+        let live_key = (live, "onclick".to_owned());
+        let dead_key = (dead, "onclick".to_owned());
+        let mut state = State::default();
+        for key in [&live_key, &dead_key] {
+            state.sources.insert(key.clone(), Some(vec![0xd800, 65]));
+            state.compiled.insert(key.clone());
+            let error: v8::Local<v8::Value> = v8::Integer::new(scope, 7).into();
+            state
+                .errors
+                .insert(key.clone(), v8::Global::new(scope, error));
+        }
+        state.sweep_storage(&tree);
+        assert_eq!(
+            state.sources,
+            HashMap::from([(live_key.clone(), Some(vec![0xd800, 65]))])
+        );
+        assert_eq!(
+            state.compiled,
+            std::collections::HashSet::from([live_key.clone()])
+        );
+        assert_eq!(state.errors.len(), 1);
+        let error = v8::Local::new(scope, state.errors.get(&live_key).unwrap());
+        assert_eq!(error.int32_value(scope), Some(7));
+    }
 }

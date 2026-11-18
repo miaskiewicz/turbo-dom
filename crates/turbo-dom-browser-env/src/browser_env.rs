@@ -38,6 +38,12 @@ pub use dom_isolation::{activate_isolate, reset_isolate, NativeDomScope};
 mod storage_ownership;
 pub use storage_ownership::{collect_native_storage, NativeNodePin, NativeStorageReport};
 
+#[cfg(feature = "host-internals")]
+#[path = "auxiliary_contexts.rs"]
+pub(super) mod auxiliary_contexts;
+#[cfg(feature = "host-internals")]
+#[path = "auxiliary_window_proxy.rs"]
+pub(super) mod auxiliary_window_proxy;
 #[path = "collection_records.rs"]
 mod collection_records;
 #[path = "control_labels.rs"]
@@ -102,6 +108,8 @@ pub fn clear_context_capabilities(scope: &mut v8::PinScope) {
             context.remove_slot::<HostEventDispatcher>();
             context.remove_slot::<InlineHandlerSetter>();
             context.remove_slot::<EngineTaskScope>();
+            #[cfg(feature = "host-internals")]
+            hyperlink_activation::set_hyperlink_activation_handler(context, None);
             event_listeners::clear_context(context);
             range_contents::clear_context(context);
         }
@@ -171,6 +179,12 @@ mod html_invokers;
 mod html_media;
 #[path = "html_popover.rs"]
 mod html_popover;
+#[cfg(feature = "host-internals")]
+#[path = "hyperlink_activation.rs"]
+pub(super) mod hyperlink_activation;
+#[path = "mutation_result.rs"]
+pub(super) mod mutation_result;
+use mutation_result::NamedMutationResult;
 #[path = "pointer_events.rs"]
 mod pointer_events;
 #[path = "typed_om.rs"]
@@ -759,6 +773,16 @@ pub fn install_independent_utf16_source_positions(scope: &mut v8::PinScope, unit
     );
 }
 fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
+    install_independent_tree_mode(scope, tree, true);
+}
+#[cfg(feature = "host-internals")]
+pub(super) fn install_independent_tree_without_init(scope: &mut v8::PinScope, tree: Tree) {
+    install_independent_tree_mode(scope, tree, false);
+}
+fn install_independent_tree_mode(scope: &mut v8::PinScope, tree: Tree, init_scripts: bool) {
+    if !init_scripts && is_worker_context(scope.get_current_context()) {
+        return;
+    }
     dom_isolation::install(scope);
     let context = scope.get_current_context();
     let id = context
@@ -774,7 +798,11 @@ fn install_independent_tree(scope: &mut v8::PinScope, tree: Tree) {
             id
         });
     let _dom = DomScope::enter(id);
-    install_with_tree(scope, tree);
+    if init_scripts {
+        install_with_tree(scope, tree);
+    } else {
+        install_document_body(scope, tree);
+    }
 }
 
 fn dom_id_of(scope: &mut v8::PinScope, object: v8::Local<v8::Object>) -> u64 {
@@ -2188,6 +2216,63 @@ pub fn set_css_transitions(scope: &mut v8::PinScope, enabled: bool) {
 /// Web Animations surface jsdom lacks is hidden (see [`set_css_transitions`]).
 pub fn set_css_animations(scope: &mut v8::PinScope, enabled: bool) {
     set_css_switch(scope, "setCssAnimations", enabled);
+}
+
+/// Host-owned effect presentation policy for one installed Window. Timing, events,
+/// promises and Web Animations interfaces are independent of this policy.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AnimationPresentation {
+    Enabled,
+    Disabled,
+}
+
+/// Configure the current genuine Window's animation presentation. Install this
+/// before guest scripts when configuring a session; independently installed child
+/// Windows start enabled and require their own host setup. Disabled presentation
+/// exposes underlying computed styles for CSS and script effects without changing
+/// their canonical records or clock. This does not disable ordinary transforms.
+/// Returns false when the private installed capability is unavailable.
+pub fn set_animation_presentation(scope: &mut v8::PinScope, policy: AnimationPresentation) -> bool {
+    let context = scope.get_current_context();
+    let id = context.get_slot::<DomContextId>().map_or(0, |id| id.0);
+    let owner = DOM_CONTEXTS.with(|contexts| {
+        contexts
+            .borrow()
+            .get(&id)
+            .and_then(|context| context.to_local(scope))
+    });
+    if owner != Some(context) {
+        return false;
+    }
+    let _dom = DomScope::enter(id);
+    if !DOM.with(|state| {
+        state
+            .borrow()
+            .as_ref()
+            .is_some_and(|state| state.browsing_context)
+    }) {
+        return false;
+    }
+    v8::tc_scope!(let scope, scope);
+    let Some(namespace) = crate_surface::engine_namespace(scope) else {
+        return false;
+    };
+    let Some(name) = v8::String::new(scope, "setAnimationPresentation") else {
+        return false;
+    };
+    if namespace.has_own_property(scope, name.into()) != Some(true) {
+        return false;
+    }
+    let Some(value) = namespace.get(scope, name.into()) else {
+        return false;
+    };
+    let Ok(function) = v8::Local::<v8::Function>::try_from(value) else {
+        return false;
+    };
+    let enabled = v8::Boolean::new(scope, policy == AnimationPresentation::Enabled);
+    function
+        .call(scope, namespace.into(), &[enabled.into()])
+        .is_some()
 }
 
 /// Run one of animations.js's CSS switches in the current window's DOM.
@@ -5340,6 +5425,8 @@ fn finalize_dispatch_targets(
 
 struct ClickActivation {
     activation_target: Option<Handle>,
+    #[cfg(feature = "host-internals")]
+    hyperlink_target: Option<Handle>,
     checked_target: Handle,
     click_check: Option<CheckKind>,
     check_snapshot: Option<Vec<(Handle, bool)>>,
@@ -5363,6 +5450,8 @@ fn begin_click_activation(
     } else {
         None
     };
+    #[cfg(feature = "host-internals")]
+    let hyperlink_target = hyperlink_activation::target(scope, event_obj, activation_target);
     let checked_target = activation_target.unwrap_or(target);
     let click_check = activation_target.and_then(checkable_kind);
     let check_snapshot = click_check.map(|_| form_checked_state::snapshot(checked_target));
@@ -5375,6 +5464,8 @@ fn begin_click_activation(
     }
     ClickActivation {
         activation_target,
+        #[cfg(feature = "host-internals")]
+        hyperlink_target,
         checked_target,
         click_check,
         check_snapshot,
@@ -5466,6 +5557,8 @@ fn el_dispatch_event<'s>(
     let Some((event_obj, record, ty)) = validate_dispatch_event(scope, event) else {
         return;
     };
+    #[cfg(feature = "host-internals")]
+    hyperlink_activation::reset(scope, event_obj);
     event_handlers::refresh(scope, target, &format!("on{ty}"));
     let bubbles = get_bool_prop(scope, record, "bubbles");
     let trusted = args.data().is_true();
@@ -5482,6 +5575,8 @@ fn el_dispatch_event<'s>(
 
     let ClickActivation {
         activation_target,
+        #[cfg(feature = "host-internals")]
+        hyperlink_target,
         checked_target,
         click_check,
         check_snapshot,
@@ -5664,6 +5759,8 @@ fn el_dispatch_event<'s>(
         return;
     }
 
+    #[cfg(feature = "host-internals")]
+    hyperlink_activation::dispatch(scope, event_obj, hyperlink_target, not_prevented);
     dispatch_default_submission(scope, not_prevented, activation_target);
 
     if let (true, Some(activation)) = (not_prevented, activation_target) {
@@ -7686,19 +7783,6 @@ fn named_enumerator<'s, 'i>(
         rv.set(value);
     }
 }
-trait NamedMutationResult {
-    fn set_success(&mut self, success: bool);
-}
-impl NamedMutationResult for v8::ReturnValue<'_, ()> {
-    fn set_success(&mut self, success: bool) {
-        self.set_bool(success);
-    }
-}
-impl NamedMutationResult for v8::ReturnValue<'_, v8::Boolean> {
-    fn set_success(&mut self, success: bool) {
-        self.set_bool(success);
-    }
-}
 fn named_setter<'s, 'i, T: 'static>(
     scope: &mut v8::PinScope<'s, 'i>,
     name: v8::Local<'s, v8::Name>,
@@ -8807,6 +8891,10 @@ impl std::error::Error for SetupTerminated {}
 /// half-installed document unnoticed.
 pub fn try_install_with_html(scope: &mut v8::PinScope, html: &str) -> Result<(), SetupTerminated> {
     install_with_html(scope, html);
+    setup_result(scope)
+}
+
+fn setup_result(scope: &mut v8::PinScope) -> Result<(), SetupTerminated> {
     match SETUP_TERMINATED.with(|t| t.get()) || scope.is_execution_terminating() {
         true => Err(SetupTerminated),
         false => Ok(()),
@@ -9655,6 +9743,9 @@ mod tests {
     static INIT: Once = Once::new();
     pub(super) fn init_v8() {
         INIT.call_once(|| {
+            // Memory-pressure GC cancels optimizing jobs without waiting for their
+            // context handles. Keep compilation synchronous in ownership tests.
+            v8::V8::set_flags_from_string("--no-concurrent-recompilation");
             let platform = v8::new_default_platform(0, false).make_shared();
             v8::V8::initialize_platform(platform);
             v8::V8::initialize();
@@ -12105,6 +12196,9 @@ mod css_tree_counting_shape_tests;
 #[cfg(test)]
 #[path = "dom_reactions_tests.rs"]
 mod dom_reactions_tests;
+#[cfg(test)]
+#[path = "html_image_crossrealm_tests.rs"]
+mod html_image_crossrealm_tests;
 #[cfg(test)]
 #[path = "html_image_tests.rs"]
 mod html_image_tests;

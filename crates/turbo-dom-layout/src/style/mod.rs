@@ -23,7 +23,9 @@ pub use cascade::{
     ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput,
     StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
 };
-pub(crate) use cascade::{presentational_declarations_of, AUTHOR_BORDER};
+pub(crate) use cascade::{
+    presentational_declarations_of, resolve_matched_paragraph_style, AUTHOR_BORDER,
+};
 pub use parser::{
     parse_declarations, parse_stylesheet, AtRule, Declaration, Rule, RuleSelectors, Stylesheet,
 };
@@ -294,6 +296,14 @@ const QUIRKS_UA_CSS: &str = "form { -internal-ua-margin-block-end: 1em }";
 /// `<td>` and `<th>` (Blink's "quirky containers"): a quirks.css margin collapsing
 /// through an empty box (nested ones too) at the start of its content is ignored there, like Chrome 156 (miaskiewicz/turbo-dom#282).
 pub const QUIRKY_CONTAINER: &str = "-internal-quirky-container";
+
+/// The actual document body's identity, independent of anonymous formatting boxes.
+pub(crate) const QUIRKS_DOCUMENT_BODY: &str = "-internal-quirks-document-body";
+
+/// Physical-side bits (top/right/bottom/left = 1/2/4/8) whose winning paragraph
+/// margins came from UA rules, not identical-valued author declarations. Writing
+/// relabels permute these with the margins; a quirky container consults bit 0.
+pub(crate) const UA_QUIRKY_MARGIN_START: &str = "-internal-ua-quirky-margin-start";
 
 static QUIRKS_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(QUIRKS_UA_CSS));

@@ -4,10 +4,14 @@
 //! image tile, a canvas-sized layer per inset shadow on a tall page) fails here.
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-use turbo_dom_raster::{screenshot_png_with_opts, ImageAssets, Viewport};
+use turbo_dom_layout::{layout_html, Diagnostics, FontRegistry, Fragment, FragmentContent};
+use turbo_dom_raster::{
+    screenshot_png_with_opts, ImageAssets, PreparedScreenshot, ScreenshotOptions, Viewport,
+};
 
 struct Peak;
 
@@ -172,4 +176,338 @@ fn millions_of_fractional_tiles_paint_the_whole_box_in_bounded_work() {
     assert_eq!(pixel(&png, 100, 199), [255, 0, 0]);
     // 800 x 800 / 1.5^2 = 284444 tiles; walking them allocates at least once per tile.
     assert!(count < 20_000, "{count} allocations");
+}
+
+fn full_opacity_boxes(fragment: &Fragment, opacity: f32) -> usize {
+    let selected = fragment.width == 1024.0
+        && fragment.height == 1024.0
+        && fragment.opacity == opacity
+        && fragment.is_positioned;
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(|child| full_opacity_boxes(child, opacity))
+            .sum::<usize>()
+}
+
+#[test]
+fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
+    const BOXES: usize = 20;
+    let viewport = Viewport {
+        width: 1024,
+        height: 1024,
+    };
+    for opacity in [0.0, 1.0] {
+        // Preparation allocates too: keep it out of other tests' measurements.
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut html = String::from("<body style='margin:0;background:#fff'>");
+        for _ in 0..BOXES {
+            write!(html, "<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;opacity:{opacity}'></div>").unwrap();
+        }
+        let galley = layout_html(
+            &html,
+            "",
+            1024.0,
+            &FontRegistry::new(),
+            &mut Diagnostics::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            full_opacity_boxes(&galley, opacity),
+            BOXES,
+            "the public layout must retain all target boxes"
+        );
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            viewport,
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        drop(preparation);
+        let (_, big) = allocations(|| {
+            let png = prepared.png().unwrap();
+            let image = image::load_from_memory(&png).unwrap().to_rgb8();
+            let expected = if opacity == 0.0 {
+                [255; 3]
+            } else {
+                [255, 0, 0]
+            };
+            assert_eq!(image.get_pixel(512, 512).0, expected);
+            assert_eq!(image.get_pixel(1023, 1023).0, expected);
+        });
+        // The canvas, PNG encoder and verification decoder need only a handful
+        // of large buffers. One 4-MiB group per target box would exceed this
+        // budget even though the redundant groups leave every output pixel equal.
+        assert!(
+            big < BOXES,
+            "opacity {opacity}: {big} allocations of at least 1 MiB"
+        );
+    }
+}
+
+#[test]
+fn empty_opacity_boxes_do_not_allocate_scratch_layers() {
+    let mut counts = [0; 2];
+    for (i, opacity) in [1.0, 0.5].into_iter().enumerate() {
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut html = String::from("<body style='margin:0;background:white'>");
+        for _ in 0..200 {
+            write!(html, "<div style='position:absolute;left:10px;top:10px;width:0;height:0;opacity:{opacity}'></div>").unwrap();
+        }
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            VIEWPORT,
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        drop(preparation);
+        counts[i] = allocation_count(|| {
+            let png = prepared.png().unwrap();
+            assert_eq!(pixel(&png, 10, 10), [255; 3]);
+        });
+    }
+    assert_eq!(
+        counts[0], counts[1],
+        "empty boxes must not create opacity scratch layers: {counts:?}"
+    );
+}
+
+fn transparent_shadows(fragment: &Fragment, inset: bool) -> usize {
+    let selected = matches!(
+        &fragment.content,
+        FragmentContent::Box { shadow: Some(shadow), .. }
+            if shadow.inset == inset && shadow.color.a == 0 && shadow.blur > 0
+    );
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(|child| transparent_shadows(child, inset))
+            .sum::<usize>()
+}
+
+#[test]
+fn transparent_outer_shadows_do_not_allocate_blur_layers() {
+    check_transparent_shadow_allocations(false);
+}
+
+#[test]
+fn transparent_inset_shadows_do_not_allocate_blur_layers() {
+    check_transparent_shadow_allocations(true);
+}
+
+#[test]
+fn visible_blurred_shadows_reuse_their_scratch_for_compositing() {
+    const BOXES: usize = 10;
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut html = String::from("<body style='margin:0;background:white'>");
+    for _ in 0..BOXES {
+        html.push_str("<div style='position:absolute;left:2px;top:2px;width:508px;height:508px;background:red;box-shadow:0 0 10px blue'></div>");
+    }
+    let prepared = PreparedScreenshot::new(
+        &html,
+        "",
+        Viewport {
+            width: 512,
+            height: 512,
+        },
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+        assert_eq!(pixels.get_pixel(256, 256).0, [255, 0, 0]);
+        let corner = pixels.get_pixel(0, 0).0;
+        assert!(
+            corner[2] > corner[0],
+            "a real blue blurred shadow must reach the corner"
+        );
+    });
+    // One blur scratch per box plus encoder/decoder buffers fits below two
+    // large buffers per box; copying every scratch's apron does not.
+    assert!(big < 2 * BOXES, "{big} allocations of at least 1 MiB");
+}
+
+#[test]
+fn a_huge_blurred_shadow_allocates_only_its_small_visible_region() {
+    for position in [20, -5000] {
+        let preparation = SERIAL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let html = format!("<body style='margin:0;background:white'><div style='position:absolute;left:{position}px;top:{position}px;width:20000px;height:20000px;box-shadow:0 0 10px blue'></div>");
+        let prepared = PreparedScreenshot::new(
+            &html,
+            "",
+            Viewport {
+                width: 128,
+                height: 128,
+            },
+            &HashMap::new(),
+            &ScreenshotOptions::default(),
+        );
+        drop(preparation);
+        let (_, big) = allocations(|| {
+            let png = prepared.png().unwrap();
+            let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+            assert_eq!(pixels.get_pixel(100, 100).0, [0, 0, 255]);
+            let edge = pixels.get_pixel(18, 18).0;
+            if position == 20 {
+                assert!(edge[2] > edge[0] && edge[0] > 0);
+            } else {
+                assert_eq!(edge, [0, 0, 255]);
+            }
+        });
+        assert_eq!(
+            big, 0,
+            "a 128px viewport must not require a megabyte shadow scratch"
+        );
+    }
+}
+
+#[test]
+fn a_downscaled_long_shadow_keeps_both_scratch_axes_bounded() {
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let html = "<body style='margin:0;background:white'><div style='position:absolute;left:0;top:0;width:20000px;height:100px;box-shadow:0 0 10px blue;transform:scale(.01);transform-origin:0 0'></div>";
+    let prepared = PreparedScreenshot::new(
+        html,
+        "",
+        Viewport {
+            width: 128,
+            height: 16,
+        },
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let p = pixel(&png, 64, 0);
+        assert!(p[2] > p[0], "the downscaled blue shadow must really paint");
+    });
+    assert_eq!(
+        big, 0,
+        "a short downscaled shadow must not allocate a megabyte scratch"
+    );
+}
+
+fn check_transparent_shadow_allocations(inset: bool) {
+    const BOXES: usize = 20;
+    let viewport = Viewport {
+        width: 1024,
+        height: 1024,
+    };
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut html = String::from("<body style='margin:0;background:#fff'>");
+    let keyword = if inset { " inset" } else { "" };
+    for _ in 0..BOXES {
+        write!(html, "<div style='position:absolute;left:0;top:0;width:1024px;height:1024px;background:#f00;box-shadow:0 0 10px rgba(0,0,0,0){keyword}'></div>").unwrap();
+    }
+    let galley = layout_html(
+        &html,
+        "",
+        1024.0,
+        &FontRegistry::new(),
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        transparent_shadows(&galley, inset),
+        BOXES,
+        "public layout must retain every transparent shadow"
+    );
+    let prepared = PreparedScreenshot::new(
+        &html,
+        "",
+        viewport,
+        &HashMap::new(),
+        &ScreenshotOptions::default(),
+    );
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let image = image::load_from_memory(&png).unwrap().to_rgb8();
+        assert_eq!(image.get_pixel(512, 512).0, [255, 0, 0]);
+        assert_eq!(image.get_pixel(1023, 1023).0, [255, 0, 0]);
+    });
+    // Invisible shadows need no blur scratch. Raster/encoder/decoder buffers
+    // fit below one large allocation per retained shadow.
+    assert!(big < BOXES, "{big} allocations of at least 1 MiB");
+}
+
+fn positioned_image_strips(fragment: &Fragment) -> usize {
+    let selected = fragment.is_positioned && fragment.width == 256.0 && fragment.height == 12.0;
+    usize::from(selected)
+        + fragment
+            .children
+            .iter()
+            .map(positioned_image_strips)
+            .sum::<usize>()
+}
+
+#[test]
+fn oversized_repeated_image_textures_use_only_visible_scratch() {
+    const BOXES: usize = 20;
+    let preparation = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let image = image::RgbaImage::from_pixel(1024, 1024, image::Rgba([255, 0, 0, 255]));
+    let mut encoded = std::io::Cursor::new(Vec::new());
+    image
+        .write_to(&mut encoded, image::ImageFormat::Png)
+        .unwrap();
+    let assets: ImageAssets = [("budget.png".into(), encoded.into_inner())]
+        .into_iter()
+        .collect();
+    let viewport = Viewport {
+        width: 256,
+        height: 256,
+    };
+    let mut html = String::from("<body style='margin:0;background:white'>");
+    for index in 0..BOXES {
+        write!(html, "<div style='position:absolute;left:0;top:{}px;width:256px;height:12px;background:url(budget.png) -900px 0/1024px 1024px repeat'></div>", 12 * index).unwrap();
+    }
+    let layout = layout_html(
+        &html,
+        "",
+        256.0,
+        &FontRegistry::new(),
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        positioned_image_strips(&layout),
+        BOXES,
+        "all visible image strips must remain in public layout"
+    );
+    let prepared =
+        PreparedScreenshot::new(&html, "", viewport, &assets, &ScreenshotOptions::default());
+    drop(preparation);
+    let (_, big) = allocations(|| {
+        let png = prepared.png().unwrap();
+        let pixels = image::load_from_memory(&png).unwrap().to_rgb8();
+        for index in 0..BOXES {
+            assert_eq!(
+                pixels.get_pixel(128, (index * 12 + 6) as u32).0,
+                [255, 0, 0]
+            );
+        }
+    });
+    // Decoded source pixels were prepared above. Each visible strip needs only
+    // a clipped window, not its own four-MiB copy of the whole source texture.
+    assert!(big < BOXES, "{big} allocations of at least 1 MiB");
 }

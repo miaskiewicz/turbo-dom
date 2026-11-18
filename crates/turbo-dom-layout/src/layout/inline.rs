@@ -713,6 +713,7 @@ fn character_face(
 // words & segments
 // --------------------------------------------------------------------------
 
+#[derive(Clone)]
 struct Seg {
     baseline_shift: Option<f32>,
     source_bytes: usize,
@@ -748,6 +749,7 @@ struct Seg {
     upright: bool,
 }
 
+#[derive(Clone)]
 struct Word {
     atom_shift: f32,
     spaces: Vec<Seg>,
@@ -787,10 +789,10 @@ struct Word {
     atom_level: u8,
 }
 
-fn seg_key(c: &CharInfo) -> (usize, String, u16, bool, bool, u8) {
+fn seg_key(c: &CharInfo) -> (usize, &str, u16, bool, bool, u8) {
     (
         c.run,
-        c.face.family().to_string(),
+        c.face.family(),
         c.face.weight(),
         c.face.is_italic(),
         c.upright,
@@ -1046,6 +1048,7 @@ struct SourcePolicy {
 /// remains unbreakable. Native advance metadata is kept out of PDF callers.
 /// A paragraph's words and whether its lines reorder
 /// ([`bidi::ParagraphLevels::active`]).
+#[derive(Clone)]
 struct ParagraphWords {
     words: Vec<Word>,
     bidi: bool,
@@ -1449,6 +1452,10 @@ fn split_items(
 /// a break never falls at an inline edge. A word with a soft hyphen breaks only at
 /// its soft hyphens (as in Blink).
 fn auto_breaks(items: &[SourceItem], runs: &[InlineRun]) -> Vec<bool> {
+    if !item_breaking(items, runs).any(|breaking| breaking.auto.is_some()) {
+        return Vec::new();
+    }
+    crate::hot!("layout.inline.auto_breaks");
     let chars: Vec<&CharInfo> = items
         .iter()
         .filter_map(|item| match item {
@@ -1558,6 +1565,7 @@ fn char_count(items: &[SourceItem]) -> usize {
 /// The last part takes `space_after`.
 fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Vec<Word> {
     let auto = auto_breaks(&items, runs);
+    let allow_emergency = item_breaking(&items, runs).any(|breaking| breaking.emergency);
     let parts = split_items(items, runs, Opportunity::Normal, &auto);
     let count = parts.len();
     let mut words = Vec::with_capacity(count);
@@ -1577,7 +1585,7 @@ fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32)
         };
         let hyphenates = soft || dictionary;
         let hyphen = hyphenates.then(|| draw(part.clone()));
-        let emergency = split_items(part.clone(), runs, Opportunity::Emergency, &[]);
+        let emergency = emergency_parts(&part, runs, allow_emergency);
         let mut word = marked_word(part, runs, if last { space_after } else { 0.0 });
         word.hyphen = hyphen;
         word.dictionary_break = dictionary;
@@ -1602,6 +1610,30 @@ fn breakable_words(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32)
         words.push(word);
     }
     words
+}
+
+// Inspect this word's runs only; scanning the paragraph's full run list for
+// every word would become quadratic for documents with many styled spans.
+fn item_breaking<'a>(
+    items: &'a [SourceItem],
+    runs: &'a [InlineRun],
+) -> impl Iterator<Item = WordBreaking> + 'a {
+    items.iter().filter_map(|item| match item {
+        SourceItem::Character(c) => Some(runs[c.run].word_breaking),
+        SourceItem::Edge(_) => None,
+    })
+}
+
+fn emergency_parts(
+    items: &[SourceItem],
+    runs: &[InlineRun],
+    enabled: bool,
+) -> Vec<Vec<SourceItem>> {
+    if !enabled {
+        return Vec::new();
+    }
+    crate::hot!("layout.inline.emergency_split");
+    split_items(items.to_vec(), runs, Opportunity::Emergency, &[])
 }
 
 fn marked_word(items: Vec<SourceItem>, runs: &[InlineRun], space_after: f32) -> Word {
@@ -1766,6 +1798,7 @@ struct Placer<'a> {
     /// so an empty line (from consecutive `<br>`) is exactly one strut tall.
     strut: f32,
     capture_sources: bool,
+    width_only: bool,
     html_font_metrics: bool,
     html_font_scale: Option<f32>,
     advance_scale: Option<f32>,
@@ -1806,6 +1839,7 @@ impl<'a> Placer<'a> {
             region,
             strut,
             capture_sources,
+            width_only: false,
             html_font_metrics,
             html_font_scale: scales.metrics,
             advance_scale: scales.advances,
@@ -1869,25 +1903,29 @@ impl<'a> Placer<'a> {
                 }
             }
         }
-        let mut line = place_line(
-            current,
-            self.lw,
-            self.align,
-            self.strut,
-            &self.open_edges,
-            (
-                strut_metrics.map(|metrics| (metrics, self.central)),
-                self.bidi,
-            ),
-            (
-                self.capture_sources,
-                self.html_font_metrics,
-                NativeScale {
-                    metrics: self.html_font_scale,
-                    advances: self.advance_scale,
-                },
-            ),
-        );
+        let mut line = if self.width_only {
+            measured_line(&current, self.advance_scale)
+        } else {
+            place_line(
+                current,
+                self.lw,
+                self.align,
+                self.strut,
+                &self.open_edges,
+                (
+                    strut_metrics.map(|metrics| (metrics, self.central)),
+                    self.bidi,
+                ),
+                (
+                    self.capture_sources,
+                    self.html_font_metrics,
+                    NativeScale {
+                        metrics: self.html_font_scale,
+                        advances: self.advance_scale,
+                    },
+                ),
+            )
+        };
         self.open_edges = next_open;
         line.line.top = self.y;
         line.line.indent = self.indent;
@@ -2133,8 +2171,20 @@ fn wrap_and_place(
     strut: f32,
     policy: (bool, bool, NativeScale),
 ) -> Vec<SourceLine> {
+    wrap_and_place_mode(paragraph, align, region, strut, policy, false)
+}
+
+fn wrap_and_place_mode(
+    paragraph: ParagraphWords,
+    align: Align,
+    region: LineRegion,
+    strut: f32,
+    policy: (bool, bool, NativeScale),
+    width_only: bool,
+) -> Vec<SourceLine> {
     let ParagraphWords { mut words, bidi } = paragraph;
     let mut placer = Placer::new(align, region, strut, policy);
+    placer.width_only = width_only;
     placer.bidi = bidi;
     mark_last_word(&mut words);
     mark_closing_edges(&mut words);
@@ -3146,6 +3196,7 @@ fn place_line(
     (strut_metrics, bidi): (Option<NativeStrut>, bool),
     policy: (bool, bool, NativeScale),
 ) -> SourceLine {
+    crate::hot!("layout.inline_line.emit");
     let m = line_box_metrics(&words, open_edges, (strut, strut_metrics), policy);
     let half_leading = (m.height - m.ascent - m.descent) / 2.0;
     let leading = policy
@@ -3160,10 +3211,7 @@ fn place_line(
         (None, Some(_)) => m.ascent + leading,
         (None, None) => (m.ascent + leading).round(),
     };
-    let width = policy.2.advances.map_or_else(
-        || line_used_width(&words),
-        |scale| inline_advances::line_width(&words, scale),
-    );
+    let width = measured_line_width(&words, policy.2.advances);
     let pen = align_offset(align, width, max_width);
     let mut placement = LinePlacement {
         pen,
@@ -3223,6 +3271,32 @@ fn place_line(
             width,
             top: 0.0,
             height: m.height,
+            indent: 0.0,
+        },
+    }
+}
+
+fn measured_line_width(words: &[Word], scale: Option<f32>) -> f32 {
+    scale.map_or_else(
+        || line_used_width(words),
+        |scale| inline_advances::line_width(words, scale),
+    )
+}
+
+fn measured_line(words: &[Word], scale: Option<f32>) -> SourceLine {
+    crate::hot!("layout.intrinsic_line.width_only");
+    SourceLine {
+        clusters: Vec::new(),
+        font_boxes: Vec::new(),
+        line: InlineLine {
+            inline_edges: Vec::new(),
+            baseline: 0.0,
+            inline_origin: 0.0,
+            runs: Vec::new(),
+            atoms: Vec::new(),
+            width: measured_line_width(words, scale),
+            top: 0.0,
+            height: 0.0,
             indent: 0.0,
         },
     }
@@ -3462,13 +3536,90 @@ pub(crate) struct NativeLineOptions<'a> {
     pub original_units: Option<&'a crate::layout_snapshot::text_units::NativeUnitMap>,
 }
 
-pub(crate) fn layout_runs_with_units(
+#[cfg(test)]
+fn layout_runs_with_units(
     runs: &[InlineRun],
     fonts: &FontRegistry,
     width: f32,
     diags: &mut Diagnostics,
     original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
     (html_metrics, scale): (bool, Option<f32>),
+) -> ParagraphLayout {
+    layout_runs_mode(
+        runs,
+        fonts,
+        width,
+        diags,
+        original,
+        (html_metrics, scale),
+        false,
+    )
+}
+
+/// Intrinsic width queries have a constant line region and consume no line height
+/// or positioned glyph/source records. Keep their exact wrapping and advances.
+pub(crate) fn measure_runs_with_units(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    width: f32,
+    diags: &mut Diagnostics,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    policy: (bool, Option<f32>),
+) -> f32 {
+    layout_runs_mode(runs, fonts, width, diags, original, policy, true).width
+}
+
+/// Prepare text once for the two intrinsic widths; placement still consumes an
+/// independent word stream, preserving emergency splitting and bidi mutation.
+pub(crate) fn measure_intrinsic_pair(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    (html_metrics, scale): (bool, Option<f32>),
+) -> (f32, f32) {
+    crate::hot!("inline.intrinsic_pair_prepare");
+    let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
+    let scales = if html_metrics {
+        NativeScale::both(scale)
+    } else {
+        NativeScale::STATIC
+    };
+    let mut words = build_pieces(
+        &pieces,
+        fonts,
+        &mut Diagnostics::default(),
+        SourcePolicy {
+            capture: html_metrics,
+            advances: scales.advances.is_some(),
+        },
+        original,
+    );
+    if let Some(scale) = scales.advances {
+        inline_advances::prepare(&mut words.words, scale);
+    }
+    let measure = |words, width| {
+        finalize(wrap_and_place_mode(
+            words,
+            Align::Left,
+            &|_| (0.0, width),
+            0.0,
+            (html_metrics, html_metrics, scales),
+            true,
+        ))
+        .layout
+        .width
+    };
+    (measure(words.clone(), f32::MAX), measure(words, 0.0))
+}
+
+fn layout_runs_mode(
+    runs: &[InlineRun],
+    fonts: &FontRegistry,
+    width: f32,
+    diags: &mut Diagnostics,
+    original: Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
+    (html_metrics, scale): (bool, Option<f32>),
+    width_only: bool,
 ) -> ParagraphLayout {
     let pieces: Vec<_> = runs.iter().cloned().map(Piece::Run).collect();
     // A box measures with the advances its lines are placed with: the native HTML
@@ -3492,12 +3643,13 @@ pub(crate) fn layout_runs_with_units(
     if let Some(scale) = scales.advances {
         inline_advances::prepare(&mut words.words, scale);
     }
-    finalize(wrap_and_place(
+    finalize(wrap_and_place_mode(
         words,
         Align::Left,
         &|_| (0.0, width),
         0.0,
         (html_metrics, html_metrics, scales),
+        width_only,
     ))
     .layout
 }
@@ -3874,4 +4026,150 @@ mod tests {
         recorder.push((12.0, 12.0), recorder.level, 0..0, None);
         assert_eq!(recorder.items[1].level, recorder.items[0].level);
     }
+
+    fn allocation_runs(texts: &[&str]) -> (FontRegistry, Vec<InlineRun>) {
+        let mut reg = FontRegistry::new();
+        reg.add(FontFace::collection_fixture_faces()[0].clone());
+        let runs = texts
+            .iter()
+            .map(|text| match run(text, &reg, None) {
+                Piece::Run(run) => run,
+                _ => unreachable!("run constructs a text piece"),
+            })
+            .collect();
+        (reg, runs)
+    }
+
+    fn allocation_items(runs: &[InlineRun], reg: &FontRegistry) -> Vec<SourceItem> {
+        flatten_chars(runs, reg, &mut Diagnostics::default(), false, None)
+            .into_iter()
+            .map(SourceItem::Character)
+            .collect()
+    }
+
+    #[test]
+    fn disabled_word_breaking_keeps_one_word_without_optional_work() {
+        let (reg, runs) = allocation_runs(&["alphabet"]);
+        let items = allocation_items(&runs, &reg);
+        assert!(auto_breaks(&items, &runs).is_empty());
+        assert!(emergency_parts(&items, &runs, false).is_empty());
+        let words = breakable_words(items, &runs, 7.0);
+        assert_eq!(words.len(), 1);
+        assert_eq!(
+            words[0]
+                .segs
+                .iter()
+                .map(|seg| seg.text.as_str())
+                .collect::<String>(),
+            "alphabet"
+        );
+        assert!(words[0].emergency.is_none());
+        assert_eq!(words[0].space_after, 7.0);
+    }
+
+    #[test]
+    fn emergency_breaks_in_a_later_run_keep_the_original_boundaries() {
+        let (reg, mut runs) = allocation_runs(&["ab", "cd"]);
+        runs[1].word_breaking.emergency = true;
+        let items = allocation_items(&runs, &reg);
+        let words = breakable_words(items, &runs, 0.0);
+        assert_eq!(words.len(), 1);
+        let emergency = words[0]
+            .emergency
+            .as_ref()
+            .expect("later run enables emergency breaks");
+        let texts: Vec<String> = emergency
+            .iter()
+            .map(|word| word.segs.iter().map(|seg| seg.text.as_str()).collect())
+            .collect();
+        assert_eq!(texts, ["ab", "c", "d"]);
+    }
+
+    #[cfg(feature = "hyphenation")]
+    #[test]
+    fn dictionary_hyphenation_only_marks_the_enabled_run() {
+        let (reg, mut runs) = allocation_runs(&["hyphenation", "hyphenation"]);
+        let limits = AutoHyphens::from_computed(Some("auto"), Some("en"), None).unwrap();
+        runs[1].word_breaking.auto = Some(limits);
+        let items = allocation_items(&runs, &reg);
+        let flags = auto_breaks(&items, &runs);
+        let expected = hyphenate::word_breaks(&"hyphenation".chars().collect::<Vec<_>>(), limits);
+        assert!(!expected.is_empty());
+        let actual: Vec<usize> = flags
+            .iter()
+            .enumerate()
+            .filter_map(|(at, flag)| flag.then_some(at))
+            .collect();
+        assert_eq!(
+            actual,
+            expected
+                .into_iter()
+                .map(|at| at + "hyphenation".len())
+                .collect::<Vec<_>>()
+        );
+        assert!(flags[.."hyphenation".len()].iter().all(|flag| !flag));
+    }
+
+    #[test]
+    fn optional_work_guards_keep_soft_hyphen_and_break_all_opportunities() {
+        let (reg, runs) = allocation_runs(&["ab\u{ad}cd"]);
+        let words = breakable_words(allocation_items(&runs, &reg), &runs, 0.0);
+        assert_eq!(words.len(), 2);
+        assert!(words[0].hyphen.is_some());
+        assert!(!words[0].dictionary_break);
+        assert_eq!(
+            words[1]
+                .segs
+                .iter()
+                .map(|seg| seg.text.as_str())
+                .collect::<String>(),
+            "cd"
+        );
+        let (_, mut runs) = allocation_runs(&["abcd"]);
+        runs[0].word_breaking.break_all = true;
+        let words = breakable_words(allocation_items(&runs, &reg), &runs, 0.0);
+        let text: Vec<String> = words
+            .iter()
+            .map(|word| word.segs.iter().map(|seg| seg.text.as_str()).collect())
+            .collect();
+        assert_eq!(text, ["a", "b", "c", "d"]);
+    }
+
+    #[test]
+    fn segment_comparison_borrows_font_family_identity_without_copying() {
+        let (reg, runs) = allocation_runs(&["ab"]);
+        let items = allocation_items(&runs, &reg);
+        let SourceItem::Character(first) = &items[0] else {
+            unreachable!()
+        };
+        let SourceItem::Character(second) = &items[1] else {
+            unreachable!()
+        };
+        assert_eq!(seg_key(first), seg_key(second));
+        assert!(std::ptr::eq(
+            seg_key(first).1.as_ptr(),
+            first.face.family().as_ptr()
+        ));
+    }
+
+    #[cfg(feature = "perf")]
+    #[test]
+    fn default_text_avoids_dictionary_and_emergency_processing() {
+        let (reg, mut runs) = allocation_runs(&["alphabet"]);
+        let items = allocation_items(&runs, &reg);
+        let mut unrelated = runs[0].clone();
+        unrelated.word_breaking.emergency = true;
+        runs.push(unrelated);
+        crate::perf::reset();
+        breakable_words(items.clone(), &runs, 0.0);
+        assert_eq!(crate::perf::count("layout.inline.auto_breaks"), 0);
+        assert_eq!(crate::perf::count("layout.inline.emergency_split"), 0);
+        runs[0].word_breaking.emergency = true;
+        breakable_words(items, &runs, 0.0);
+        assert_eq!(crate::perf::count("layout.inline.emergency_split"), 1);
+    }
 }
+
+#[cfg(test)]
+#[path = "intrinsic_width_tests.rs"]
+mod intrinsic_width_tests;

@@ -5,6 +5,147 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.4] — 2026-11-18
+
+Breaking changes: no removed or changed public Rust API items relative to 0.8.3,
+including the hidden host integration surface. The generated API comparison is
+recorded in `tools/release/public-api-0.8.4.txt`.
+
+- **Screenshot canvas backgrounds**: composite the propagated canvas color once,
+  preserving transparent captures and separately painted body backgrounds in PNG
+  and SVG output.
+
+- **Quirks viewport layout (#516)**: size auto HTML/body boxes from the initial
+  containing block on the physical layout path, honoring margins, decorations,
+  constraints and writing modes without turning auto height into a definite CSS
+  height. Preserve authored paragraph margins separately from UA quirks margins;
+  public live-snapshot controls cover the unchanged Surf reproduction and Chrome 159,
+  including column flows, spanning bodies and vertical document roots.
+
+- **Window getter receivers**: reject forged receivers for `closed`, `length` and
+  `opener` with TypeError while preserving null/undefined realm adjustment and
+  genuine live/retired windows. Return an empty `name` for retired children,
+  pinned against a Chrome 158 receiver matrix.
+
+- **Image state across native realms**: share per-image load state and pending
+  decode settlements after document adoption. Original and borrowed getters agree,
+  and decode promises and errors retain the image creator's realm. Private state
+  does not retain an obsolete publishing realm; Chrome 156 and bounded native
+  collection controls cover the ownership contract.
+
+- **Native dynamic-code authorization**: expose V8 150's real isolate callback
+  with scoped context/source handles, allow/deny and optional replacement source,
+  plus native context EvalError messages. Preserve direct-eval lexical identity,
+  Function brands and termination over the unchanged official engine archive;
+  embedders retain ownership of CSP/Trusted Types policy and reporting.
+
+- **Staged setup termination (#513)**: add a typed independent UTF-16 initializer
+  that reports interrupted bootstrap through the producer's sticky setup result,
+  even when V8 no longer exposes a pending termination. Preserve the existing
+  void API and defer guest init scripts as before.
+- **Ownership test determinism**: use synchronous compilation in native unit-test
+  fixtures so temporary compiler handles do not invalidate context-lifetime
+  assertions. Strong-owner controls retain the original collection checks.
+- **Empty opacity groups (#487)**: avoid scratch and path allocations for empty
+  opacity boxes while retaining visible descendants and transformed bounds.
+  Public allocator and pixel regressions pin the resource improvement.
+- **Raster geometry admission (#487)**: share rectangle validation with PNG/SVG
+  rule painting and strip iteration, retaining finite/positive geometry and loop
+  progress checks. Independent pixel, allocation and output-parity controls cover
+  the consolidated paths without exempting mutation cases.
+- **Raster mutation regressions (#487)**: cover repeated dash spacing, precise
+  shadow edges and allocator-test isolation. Remove proven redundant SVG
+  predicates while preserving ordinary SVG output; bound invalid-rule test probes
+  so rendering regressions fail assertions instead of hanging the test process.
+- **Raster rendering progress (#487)**: prevent PNG and SVG column-rule painting
+  from hanging when a large coordinate makes a dotted or dashed cursor step round
+  back to its starting value. Precision-sensitive rules use a local coordinate
+  frame, preserving ordinary output and transformed visible patterns.
+- **Typed native mutation callbacks (#512)**: share the existing typed result
+  writer with auxiliary navigation setters and host integrations. Callback
+  mappings select the default void or SDK Boolean result type without ABI casts
+  or engine-version guesses. Actual SDK154/155 linking/runtime gates remain separate.
+- **ASCII shaping preparation (#508)**: skip Unicode direction-buffer creation
+  for ASCII text, whose inferred direction is always left-to-right. Non-ASCII
+  inference and explicit shaping directions retain their existing paths.
+- **Paired intrinsic text preparation (#508)**: prepare eligible table-cell text
+  once for minimum and maximum width queries, retaining independent placement
+  passes and the existing sizing arithmetic. Numeric caches remain local to the
+  layout tree and are invalidated by the existing layout policies.
+- **Cross-origin named child windows (#504)**: resolve only genuine live child
+  names through native parent/document records, including lossless UTF-16 names.
+  Preserve Chrome's fixed-property and `then` fallback precedence, descriptor
+  metadata and strict membership checks without calling guest name getters.
+- **Cross-origin child-window indexes (#504)**: expose native read-only,
+  enumerable child-index descriptors and membership alongside indexed reads.
+  `Object.keys()` now enumerates actual child indexes; absent indexes keep the
+  cross-origin access guard. Independent Chrome 156 controls pin the metadata.
+- **Scoped animation lifecycle (#509)**: discover open and closed shadow-root
+  stylesheets and adopted sheets when inspecting canonical effects. Keyframe
+  lookup follows the actual root, reflects CSSOM changes and preserves strict
+  handling of missing rules, isolated roots and foreign documents.
+- **Host animation presentation policy (#511)**: let each genuine Window's host
+  suppress CSS and script effect presentation while retaining animation APIs,
+  canonical timing, events, promises, timers and animation-frame callbacks.
+  Trusted per-element snapshots expose suppression proof for underlying geometry;
+  existing CSS/jsdom compatibility switches remain independent.
+- **Canonical hyperlink activation (#510)**: let a host-owned per-context policy
+  consume uncancelled primary clicks on connected HTML links, including authored
+  `click()` and bubbling descendant clicks. A private per-dispatch receipt covers
+  policy denial and noopener-null results without double opening; guest properties
+  cannot forge admission or consumption. Existing form and invoker defaults remain.
+- **Intrinsic measurement performance (#508)**: constant-width min/max text
+  queries reuse the existing wrapping and width calculations without constructing
+  unobserved positioned glyphs, source maps and line metrics. Full paragraph
+  placement and native rounding remain unchanged.
+- **CSS resolution performance (#508)**: use static physical/logical edge and
+  border property names instead of allocating temporary lookup strings during
+  full box-style and narrow flow-style resolution. Parser and override order
+  semantics are unchanged.
+- **Flow inspection performance (#508)**: add `BoxFlowStyle` and
+  `resolve_box_flow_style` for clients reading pagination/frame geometry. The
+  projection uses the full resolver's parsers and unquantized semantics without
+  resolving unused text and paint properties.
+- **Auxiliary browsing contexts (#504)**: add host-only synchronous admission
+  over genuine same-isolate WindowProxy identities, native named-target/opener/
+  closed records, staged source-positioned documents and a reentrant pre-return
+  ready hook. Native origin guards protect retained lexical callbacks across
+  navigation; isolated commits sever old proxy access without closing another
+  Page's actor. The consumer owns network/sandbox policy and real Page events.
+- **V8 integration (#504)**: require the published 150.4.2 fork for native access
+  checks and stable global-proxy backing changes, using the unchanged official
+  V8 archive. Independent Chrome 156 controls pin popup creation, named noopener,
+  reserved targets, referrer policy, cross-origin access and sandbox denial.
+- **Shaping plans (#508)**: reuse up to eight Rustybuzz shaping plans per font
+  face, keyed by the resolved direction, script and language, instead of rebuilding
+  the same plan for each distinct string. Glyph results and cache budgets are unchanged.
+- **Table layout (#508)**: measure each eligible cell's intrinsic minimum and
+  maximum widths together before final automatic table layout, retaining the existing
+  sizing arithmetic while avoiding repeated style and text preparation.
+- **Native animation lifecycle (#507)**: add host-only per-element CSS effect snapshots
+  for geometry consumers. Canonical completed finite animations without fill can be
+  distinguished from active, paused, infinite, filling or script-modified effects,
+  without a document-wide style flush, interpolation or native-layout reentry.
+  Chrome's normal animation behavior and guest isolation remain unchanged.
+  Inspection-created cancellation events use the pinned animation clock, supporting
+  trusted Date adapters without consulting page-replaceable Date/performance clocks.
+
+- **Layout performance (#508)**: retain recently used UTF-8 and original UTF-16
+  shaping results under churn with shared least-recently-used eviction. The
+  per-face 128-entry and 8 MiB payload budgets are unchanged.
+- **Inline performance (#508)**: share cloned font-family storage, compare segment
+  family names without allocating, and skip disabled automatic-hyphenation and
+  emergency-wrapping preparation. Inline text resolves its font/text facts through
+  the existing parsers without also resolving unused box geometry and paint.
+- **Style reuse (#508)**: computed-style clones share immutable property maps and
+  detach on mutation, preserving property iteration and independent style updates.
+- **Text correctness (#508)**: keep raw UTF-8 text and forced-direction shaping
+  in separate cache domains, so authored LRM/RLM characters cannot reuse another
+  run's glyph order or byte clusters. All domains share the same cache budgets.
+- **Layout API (#508)**: expose the existing `layout::value::resolve_font_size`
+  helper so consumers can resolve inherited font sizes without resolving full
+  box styles a second time. Resolution semantics are unchanged.
+
 ## [0.8.3] — 2026-11-13
 
 Native browser binding fixes and additive screenshot APIs for turbo-surf integration.

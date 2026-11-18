@@ -2,7 +2,7 @@
 
 turbo-dom's fork of [rusty_v8](https://github.com/denoland/rusty_v8): crates.io `v8` 150.4.0
 (upstream revision `5c15a6995c9bb4bacd3e341b59fff32c909c80bf`) plus a small set of reviewed
-Rust-only fixes and one addition. It links the **official prebuilt** rusty_v8 v150.4.0 static library and
+Rust-only fixes and additions. It links the **official prebuilt** rusty_v8 v150.4.0 static library and
 generated bindings unchanged. The library name stays `v8` (`use v8::...`).
 
 The crate is **generated, not vendored**: this directory holds only pins, patches, tests and
@@ -27,7 +27,7 @@ stay on crates.io untouched. Part of the [turbo-dom](https://github.com/miaskiew
 
 ```toml
 [dependencies]
-v8 = { package = "turbo-dom-v8", version = "~150.4" }
+v8 = { package = "turbo-dom-v8", version = "~150.4.2" }
 ```
 
 MSRV 1.91. Set `RUSTY_V8_ARCHIVE` to a prebuilt `librusty_v8[_simdutf]_release_<target>.a`
@@ -41,13 +41,62 @@ adds no features.
 
 ## API
 
-Upstream rusty_v8 150.4.0's API, plus two items:
+Upstream rusty_v8 150.4.0's API, plus the following additions:
 
 - `pub const FORK_SHOULD_THROW_FIX: bool = true`. Bindings that rely on the fixed interceptor
   accessor assert it at compile time (`const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);`), so
   stock `v8` cannot be substituted silently.
 - `PinScope::get_incumbent_context()` (since 150.4.1): HTML's incumbent realm, V8's
   `v8::Isolate::GetIncumbentContext()` (`MessageEvent.source` on cross-realm `postMessage`).
+
+The unreleased 150.4.2 candidate (#504) additionally exposes `Context::detach_global()`,
+`ObjectTemplate::set_access_check_callback_and_handler()` and
+`Isolate::set_failed_access_check_callback()`, with typed `AccessCheckCallback`,
+`FailedAccessCheckCallback` and `AccessType`. `FORK_WINDOW_PROXY` marks this additive
+API; it is absent from the published 150.4.1 package. These primitives do not grant
+browser navigation permissions: the embedder must enforce origin, sandbox, opener
+and lifetime policy around its real WindowProxy identities.
+
+`window-proxy.patch` calls the official SDK's exported C++ members directly, like
+`incumbent-context.patch`; no new C++ shim or archive is required. Its private
+`repr(C)` handler records mirror `include/v8-template.h` at V8 submodule revision
+`ac1e23989121713ca642f6650b34deff7b686896`, including the indexed `index_of` slot
+(the Rust public builder omits it). Compile-time offsets and the native
+`window_proxy` tests guard that ABI boundary. Itanium and MSVC use their respective
+mangled symbols; these methods return void and pass pointer-sized `Local<Value>`
+arguments by value on the supported 64-bit targets.
+
+### Native dynamic-code authorization
+
+The candidate also exposes `Isolate::set_modify_code_generation_from_strings_callback()`
+and `clear_modify_code_generation_from_strings_callback()` over V8 150's native hook.
+The zero-capture Rust callback receives `&mut PinScope`, the actual compilation `Context`,
+the uncoerced `Value` source and V8's `is_code_like` hint, and returns
+`ModifyCodeGenerationFromStringsResult { codegen_allowed, modified_source }`.
+`modified_source: None` retains the original source. V8 uses a replacement only when
+compilation is allowed. This preserves intrinsic eval/Function identities and direct eval's
+lexical environment; the binding does not wrap them in guest functions.
+
+Registration is isolate-wide. Set `Context::set_allow_generation_from_strings(false)`
+on each governed context so V8 consults the hook for strings, and dispatch policy from the
+actual context argument. Non-string eval arguments need an allowed result to retain V8's
+non-coercing behavior. The callback supplies no eval-versus-Function sink enum. The host owns
+policy, TrustedScript branding, document lifetime and bounded reporting; no policy or guest
+function handles are retained by the binding.
+
+`Context::set_error_message_for_code_generation_from_strings()` sets V8's context-wide
+EvalError description for native denial. Native controls additionally verify that a callback's
+pending TypeError survives a denied result, and that execution termination is not cleared.
+The adapter creates a `CallbackScope` and never cancels termination or catches exceptions.
+
+`code-generation.patch` calls the official SDK's exported setter and error-message member
+without changing the archive. Its private result mirrors the public
+`ModifyCodeGenerationFromStringsResult` layout (bool plus nullable `MaybeLocal<String>`).
+System V x64 and AArch64 return that aggregate in registers; Windows x64 uses a hidden first
+result buffer and returns that buffer address in RAX. Windows AArch64 also returns it in registers. The native `code_generation`
+tests run the real callback boundary, lexical identity, per-context dispatch, replacement,
+errors, termination and retired-context collection; the existing platform CI matrix must
+pass before a candidate is integrated.
 
 ### Fork delta
 
@@ -58,12 +107,14 @@ Upstream rusty_v8 150.4.0's API, plus two items:
 | `UPSTREAM_V8_VERSION` | `build.rs` | The prebuilt archive URL and the `RUSTY_V8_MIRROR` binding URL use `const UPSTREAM_V8_VERSION: &str = "150.4.0"` instead of `CARGO_PKG_VERSION`, so fork patch releases (150.4.x) keep downloading the upstream v150.4.0 SDK. A `build.rs` unit test (`cargo test --test build`) asserts it equals the manifest's pinned `upstream-version`. |
 | Fork marker | `src/lib.rs` | `pub const FORK_SHOULD_THROW_FIX: bool = true;` Bindings that rely on the accessor write `const _: () = assert!(v8::FORK_SHOULD_THROW_FIX);` so a stock `v8` cannot be substituted silently. |
 | Incumbent context | `src/scope.rs`, `src/scope/raw.rs` | `incumbent-context.patch` (turbo-dom#367, turbo-surf#90): the prebuilt binding has no `GetIncumbentContext` wrapper, so `get_incumbent_context()` calls V8's exported member function by its mangled name. It returns the class `Local<Context>`: in a register on Itanium (Linux, macOS), through a hidden result buffer passed after `this` on MSVC (Windows), so the Windows declaration takes that buffer. |
+| Native dynamic-code authorization | `src/code_generation.rs`, `src/lib.rs` | `code-generation.patch` adds the isolate callback, a safe scoped Rust adapter and native context denial messages over the unchanged V8 150 SDK. |
+| Native WindowProxy primitives | `src/context.rs`, `src/template.rs`, `src/function.rs`, `src/isolate.rs` | `window-proxy.patch` adds native global detachment and access-check/failed-access callbacks over the unchanged SDK, with explicit public-header layout mirrors and per-platform member symbols. |
 | Lint allows | `src/lib.rs` | `#![allow(warnings, clippy::all, clippy::pedantic)]`: upstream code is kept as-is, so consumers' lint gates do not apply to it. |
 | Release teardown tests | `tests/test_api.rs` | turbo-surf's reviewed `v8-teardown-tests.patch`: corrects upstream's contradictory slot-liveness assertion and adds weak-slot retirement controls. `test_api` is not a test target here (it needs `icudtl.dat`), so these run only in turbo-surf; `release_v8_teardown.rs` carries the same retirement controls. |
 | Lib test init | `src/array_buffer.rs` (test only) | Upstream's `test_default_allocator` initialized V8 itself, so whichever other lib test initialized second panicked; it now shares the crate's `Once`. |
 | Doc examples | `src/scope.rs` (docs only) | `doctests.patch` (turbo-dom#182): upstream never runs its doctests and 6 of the 12 in `scope.rs` do not compile (duplicate `Object` import, no `isolate` in scope, `Number::new(scope, 42)`, a `;` dropping a return value). They now set up V8 (hidden `#` lines) and run; `cargo test --doc` is a CI step. |
 | Manifest | `Cargo.toml` | Renamed `turbo-dom-v8`; `links = "rusty_v8"`; `rust-version = "1.91"`; `LICENSE` kept in the package; repository/description name the fork; `[package.metadata.turbo-dom-v8]` records the upstream package, version, revision and repository; the `test_api`, `test_cppgc` (need `third_party/icu/common/icudtl.dat`, not shipped) and `test_ui` (trybuild) targets and their only dev-dependencies (`align-data`, `rustversion`, `trybuild`) removed; explicit `[[test]]` targets for our tests (upstream sets `autotests = false`). `Cargo.toml.orig`, `Cargo.lock`, `.cargo_vcs_info.json` and `rust-toolchain.toml` are dropped. |
-| Regression tests | `tests/` | `interceptor_should_throw.rs` (4 tests: setters, definers, deleters, getters), `release_v8_teardown.rs` (2), `weak_teardown.rs` (1), `fork_marker.rs` (1), `incumbent_context.rs` (1). On stock function.rs three interceptor tests fail. |
+| Regression tests | `tests/` | `interceptor_should_throw.rs` (4 tests: setters, definers, deleters, getters), `release_v8_teardown.rs` (2), `weak_teardown.rs` (1), `fork_marker.rs` (1), `incumbent_context.rs` (1), `window_proxy.rs` (3). On stock function.rs three interceptor tests fail. |
 
 ## Generate
 
@@ -80,7 +131,7 @@ Generation has three checked stages:
    byte-identical to the tree turbo-surf vendored at that commit (`--compare DIR` checks this
    against such a tree).
 3. **turbo-dom deltas**: the remaining patches, the manifest transform, reserved-file
-   removal, our tests and rustfmt.toml; the 188-file result is pinned.
+   removal, our tests and rustfmt.toml; the resulting tree is pinned.
 
 ```sh
 python3 crates/turbo-dom-v8/scripts/generate.py --download --write   # -> crates/turbo-dom-v8/crate/
@@ -135,8 +186,8 @@ does. `V8_FROM_SOURCE` is unsupported: the crate ships no C++ sources.
 `[patch.crates-io]` until the crate is on crates.io.
 
 `scripts/release.py --out DIR` packages and checks the crate; with `--publish` (only on a
-`v<turbo-dom version>` tag of miaskiewicz/turbo-dom) it publishes `turbo-dom-v8 150.4.1` once.
-An existing 150.4.1 must match the fresh package apart from Cargo's lock/VCS records, and then
+`v<turbo-dom version>` tag of miaskiewicz/turbo-dom) it publishes `turbo-dom-v8 150.4.2` once.
+An existing 150.4.2 must match the fresh package apart from Cargo's lock/VCS records, and then
 nothing is uploaded. It publishes first in the chain ([PUBLISHING.md](../../PUBLISHING.md)).
 A fork-only change bumps the patch version in `pins.json`; `UPSTREAM_V8_VERSION` keeps the
 SDK download at 150.4.0.
