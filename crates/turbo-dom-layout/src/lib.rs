@@ -50,7 +50,8 @@ pub use layout::fragment::{
 pub use layout::value::{border_style_colour, BreakRule, Rgba};
 pub use layout::{
     layout, layout_in_viewport, layout_recorded, layout_recorded_in_viewport, layout_with_images,
-    layout_with_options, ImageCtx, LaidOut, LayoutOptions, NodeSources, INDETERMINATE_ATTR,
+    layout_with_options, with_fractional_css_geometry, ImageCtx, LaidOut, LayoutOptions,
+    NodeSources, INDETERMINATE_ATTR,
 };
 pub use style::{
     build_cascade, build_cascade_with_width, document_root_font_px, root_font_px, root_font_scope,

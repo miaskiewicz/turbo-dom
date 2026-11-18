@@ -643,16 +643,18 @@ fn lay_out(
     } else {
         layout_html_tree_in_viewport_with
     };
-    layout(
-        tree,
-        "",
-        (width as f32, height as f32),
-        fonts,
-        &image_ctx,
-        &options,
-        |styled: &mut [StyledNode]| apply_idl_states(styled, screenshot_options.idl_states),
-        &mut diags,
-    )
+    turbo_dom_layout::with_fractional_css_geometry(|| {
+        layout(
+            tree,
+            "",
+            (width as f32, height as f32),
+            fonts,
+            &image_ctx,
+            &options,
+            |styled: &mut [StyledNode]| apply_idl_states(styled, screenshot_options.idl_states),
+            &mut diags,
+        )
+    })
 }
 
 /// Push [`INDETERMINATE_ATTR`] onto each `<input>` whose tree-order index among the

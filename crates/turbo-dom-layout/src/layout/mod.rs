@@ -11,6 +11,8 @@ pub(crate) mod contents;
 pub mod flex;
 pub(crate) mod form_controls;
 mod form_paint;
+mod geometry_policy;
+pub use geometry_policy::with_fractional_css_geometry;
 pub mod fragment;
 pub mod imgsize;
 pub mod inline;

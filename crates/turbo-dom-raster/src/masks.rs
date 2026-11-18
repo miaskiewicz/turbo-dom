@@ -63,25 +63,27 @@ pub fn screenshot_element_rects(
         }
     };
     let tree = crate::prepare_document(tree, &mut decoded, options, Some(&mut replaced));
-    let output = options.with_fonts(|fonts| {
-        turbo_dom_layout::set_media_viewport_height(viewport.height as f32);
-        turbo_dom_layout::layout_html_tree_recorded_in_viewport_with(
-            &tree,
-            "",
-            (viewport.width as f32, viewport.height as f32),
-            fonts,
-            &ImageCtx {
-                resolver: &crate::image_paint::AssetResolver(&decoded),
-                body_height: None,
-            },
-            &HtmlOptions {
-                linked_css: external_css,
-                uncapped_images: true,
-                ..HtmlOptions::default()
-            },
-            |styled| crate::apply_idl_states(styled, options.idl_states),
-            &mut turbo_dom_layout::Diagnostics::default(),
-        )
+    let output = turbo_dom_layout::with_fractional_css_geometry(|| {
+        options.with_fonts(|fonts| {
+            turbo_dom_layout::set_media_viewport_height(viewport.height as f32);
+            turbo_dom_layout::layout_html_tree_recorded_in_viewport_with(
+                &tree,
+                "",
+                (viewport.width as f32, viewport.height as f32),
+                fonts,
+                &ImageCtx {
+                    resolver: &crate::image_paint::AssetResolver(&decoded),
+                    body_height: None,
+                },
+                &HtmlOptions {
+                    linked_css: external_css,
+                    uncapped_images: true,
+                    ..HtmlOptions::default()
+                },
+                |styled| crate::apply_idl_states(styled, options.idl_states),
+                &mut turbo_dom_layout::Diagnostics::default(),
+            )
+        })
     });
     Ok(resolve(&elements, &output, element_indices))
 }

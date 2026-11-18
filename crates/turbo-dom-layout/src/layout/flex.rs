@@ -1289,7 +1289,7 @@ fn solve(
 ) {
     // Browser CSS geometry preserves fractional advances; whole-pixel rounding
     // belongs only to the legacy PDF layout policy.
-    if ctx.html_font_metrics {
+    if ctx.html_font_metrics || ctx.live_geometry || super::geometry_policy::fractional() {
         tree.disable_rounding();
     }
     let avail = Size {
