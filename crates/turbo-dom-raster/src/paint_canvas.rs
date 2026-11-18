@@ -109,9 +109,8 @@ impl CanvasBackend for SkiaCanvas {
     }
 
     fn replace_pixel(&mut self, x: i64, y: i64, color: Rgba) {
-        if x < 0 || y < 0 || x >= i64::from(self.pm.width()) || y >= i64::from(self.pm.height()) {
-            return;
-        }
+        // ImageData::paint intersects both source and destination bounds before
+        // visiting pixels, so this device coordinate is already in the bitmap.
         let at = ((y as u64 * u64::from(self.pm.width()) + x as u64) * 4) as usize;
         // SkMulDiv255Round, the same byte premultiplication used by Chrome's Skia.
         let channel = |c: u8| ((u16::from(c) * u16::from(color.a) + 127) / 255) as u8;

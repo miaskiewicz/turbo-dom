@@ -399,6 +399,7 @@ pub(crate) trait CanvasBackend {
     /// compositing — the covered pixels (`ctx.clearRect`).
     fn clear(&mut self, quad: &[(f32, f32); 4]);
     /// Replace one device pixel, including transparent pixels, without canvas state.
+    /// `ImageData` clips coordinates to `bitmap_size` before calling this method.
     fn replace_pixel(&mut self, x: i64, y: i64, color: Rgba);
     /// Bitmap bounds for clipping pixel uploads before visiting source pixels.
     fn bitmap_size(&self) -> (u32, u32);

@@ -1007,7 +1007,7 @@ fn replaced_probe(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<Probe>
     });
     let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
     if let LengthPct::Px(w) = bs.width {
-        return Some(Probe::Fixed(w + frame));
+        return Some(Probe::Fixed(block::to_border(w, bs.box_sizing, frame)));
     }
     let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
     Some(match intrinsic.natural_ratio {
@@ -2475,6 +2475,56 @@ mod coverage_tests {
             assert_eq!(shrunk.width, 54.0);
             assert!(shrunk.height < auto.height);
             assert_eq!(measure(None), auto);
+        }
+    }
+
+    #[test]
+    fn image_frames_preserve_border_box_width_and_explicit_known_dimensions() {
+        let images = ImageCtx {
+            resolver: &LogoImages,
+            body_height: None,
+        };
+        for (sizing, expected_width) in [("border-box", 100.0), ("content-box", 120.0)] {
+            let img = StyledNode::Element(StyledElement {
+                tag: Tag::Html("img".into()),
+                attrs: vec![Attr {
+                    name: "src".into(),
+                    value: "wide".into(),
+                }],
+                style: cs(&[
+                    ("width", "100px"),
+                    ("padding", "10px"),
+                    ("box-sizing", sizing),
+                ]),
+                children: vec![],
+                source: None,
+            });
+            let tree = build_box_tree(&[el(
+                "div",
+                &[("display", "flex"), ("flex-direction", "column")],
+                vec![img],
+            )]);
+            let BoxKind::Block(rows) = &tree.kind else {
+                unreachable!()
+            };
+            let BoxKind::Flex(items) = &rows[0].kind else {
+                unreachable!()
+            };
+            assert_eq!(
+                replaced_probe(&items[0], &images, 16.0),
+                Some(Probe::Fixed(expected_width))
+            );
+            let known = Size {
+                width: Some(100.0),
+                height: Some(80.0),
+            };
+            assert_eq!(
+                measure_natural_image(&items[0], &images, known, (16.0, 200.0)),
+                Some(Size {
+                    width: 100.0,
+                    height: 80.0
+                })
+            );
         }
     }
 
