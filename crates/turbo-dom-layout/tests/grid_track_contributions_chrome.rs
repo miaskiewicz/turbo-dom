@@ -1,4 +1,4 @@
-//! Independent Chromium 159 controls for #521 percentage grid track contributions.
+//! Independent Chromium 159 controls for #521 percentage sizing and #525 auto-fit gutters.
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use turbo_dom_layout::{layout_boxes, Diagnostics};
@@ -19,21 +19,20 @@ fn nested_grid_tracks_match_chromium_159() {
             ))
         )
     );
+    assert_eq!(
+        fixture["font_sha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!(
+                "../assets/fonts/liberation-serif/LiberationSerif-Regular.ttf"
+            ))
+        )
+    );
     let fonts = turbo_dom_layout::test_support::fixture_fonts();
     let mut failures = Vec::new();
     let cases = fixture["cases"].as_array().unwrap();
     let mut compared = 0;
-    let include_auto_fit = std::env::var_os("TURBO_DOM_GRID_DIAGNOSTICS").is_some();
     for case in cases {
-        // Independent auto-fit+gap controls also retain Taffy's separate trailing
-        // gutter defect. Their unchanged oracle stays available to diagnose that
-        // pre-existing issue; this test pins percentage track resolution.
-        if !include_auto_fit
-            && case["id"].as_str().unwrap().contains("-auto-fit-")
-            && case["width"] != 390
-        {
-            continue;
-        }
         compared += 1;
         let id = case["id"].as_str().unwrap();
         let got = layout_boxes(
@@ -66,7 +65,7 @@ fn nested_grid_tracks_match_chromium_159() {
             }
         }
     }
-    assert_eq!(cases.len(), 264);
-    assert_eq!(compared, if include_auto_fit { 264 } else { 260 });
+    assert_eq!(cases.len(), 630);
+    assert_eq!(compared, 630);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

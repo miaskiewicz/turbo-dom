@@ -12,6 +12,8 @@ use taffy::DetailedLayoutInfo;
 
 #[path = "grid_frames.rs"]
 mod frames;
+#[path = "grid_repeat.rs"]
+mod repeat;
 
 pub(super) fn solve_grid(
     tree: &mut TaffyTree<usize>,
@@ -22,30 +24,49 @@ pub(super) fn solve_grid(
     fill: Fill,
     ctx: &Ctx,
 ) {
-    if !leaves
-        .iter()
-        .any(|id| needs_intrinsic_style(tree.style(*id).unwrap()))
+    let auto_repeat = repeat::has_auto_repeat(tree.style(root).unwrap());
+    if !auto_repeat
+        && !leaves
+            .iter()
+            .any(|id| needs_intrinsic_style(tree.style(*id).unwrap()))
     {
         solve(tree, root, items, dimensions, fill, ctx);
         return;
     }
+    let mut root_style = tree.style(root).unwrap().clone();
     let originals: Vec<_> = leaves
         .iter()
         .map(|id| tree.style(*id).unwrap().clone())
         .collect();
-    // The unchanged styles passed the same needs_intrinsic_style predicate,
-    // so at least one declaration necessarily becomes deferred in this pass.
     defer_intrinsic_styles(tree, leaves, &originals);
+    if auto_repeat {
+        tree.set_style(root, repeat::probe_style(root_style.clone(), dimensions.1))
+            .unwrap();
+    }
     solve(tree, root, items, dimensions, fill, ctx);
     let DetailedLayoutInfo::Grid(info) = tree.detailed_layout_info(root) else {
         unreachable!("a solved grid records its tracks");
     };
-    let info = info.clone();
-    let mut root_style = tree.style(root).unwrap().clone();
-    let gutters = freeze_columns(&mut root_style, &info, dimensions.1);
+    let mut info = info.clone();
+    let mut offsets = info.columns.gutters.clone();
+    if let Some(plan) = repeat::collapse_plan(&root_style, &info) {
+        let deferred = leaves
+            .iter()
+            .map(|id| tree.style(*id).unwrap().clone())
+            .collect();
+        tree.set_style(root, plan.style).unwrap();
+        restore_items(tree, leaves, deferred, &info, None, None);
+        solve(tree, root, items, dimensions, fill, ctx);
+        let DetailedLayoutInfo::Grid(sized) = tree.detailed_layout_info(root) else {
+            unreachable!("the expanded grid records its tracks");
+        };
+        repeat::project(&mut info, sized, plan.gutters);
+        offsets = plan.offsets;
+    }
+    let (gutters, trailing) = freeze_columns(&mut root_style, &info, &offsets, dimensions.1);
     let areas = frames::Areas::new(&info.columns.sizes, &gutters, dimensions.1);
     tree.set_style(root, root_style).unwrap();
-    restore_items(tree, leaves, originals, &info, Some(&areas));
+    restore_items(tree, leaves, originals, &info, Some(&areas), trailing);
     solve(tree, root, items, dimensions, fill, ctx);
 }
 
@@ -167,39 +188,64 @@ fn cyclic_percentage(value: Dimension) -> bool {
 
 /// Represent each already-used gutter as a fixed spacer track. This preserves
 /// collapsed auto-fit gutters, implicit tracks and distributed content alignment.
-fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) -> Vec<f32> {
+fn freeze_columns(
+    style: &mut Style,
+    info: &DetailedGridInfo,
+    offsets: &[f32],
+    width: f32,
+) -> (Vec<f32>, Option<super::GridPlacement>) {
     let sizes = &info.columns.sizes;
     let gutters = &info.columns.gutters;
     let active = active_columns(style, info);
     let count = active.iter().filter(|v| **v).count();
     let free = width - sizes.iter().sum::<f32>() - gutters.iter().sum::<f32>();
     let (leading, between) = alignment_spacing(style.justify_content, free, count);
-    let mut seen = false;
-    let mut tracks = Vec::with_capacity(sizes.len() * 2 + 1);
-    let mut positioned = Vec::with_capacity(gutters.len());
-    for (i, size) in sizes.iter().enumerate() {
-        let alignment = if active[i] {
-            let offset = if seen { between } else { leading };
-            seen = true;
-            offset
-        } else {
-            0.0
-        };
-        positioned.push(gutters[i] + alignment);
-        tracks.push(TrackSizingFunction::from_length(gutters[i] + alignment));
-        tracks.push(TrackSizingFunction::from_length(*size));
-    }
-    positioned.push(*gutters.last().unwrap());
-    tracks.push(TrackSizingFunction::from_length(*gutters.last().unwrap()));
+    let gutters = aligned_gutters(offsets, &active, leading, between);
+    let tracks = repeat::interleave(
+        sizes
+            .iter()
+            .map(|size| TrackSizingFunction::from_length(*size)),
+        &gutters,
+    );
+
     style.grid_template_columns = tracks;
     style.gap.width = LengthPercentage::length(0.0);
     style.justify_content = Some(JustifyContent::Start);
-    positioned
+    let trailing = active.iter().rposition(|present| *present).map_or_else(
+        || frozen_line(0, true),
+        |last| frozen_line(last as u32 + 1, false),
+    );
+    (gutters, trailing)
+}
+
+fn aligned_gutters(base: &[f32], active: &[bool], leading: f32, between: f32) -> Vec<f32> {
+    let mut gutters = base.to_vec();
+    gutters[0] += leading;
+    let mut previous = None;
+    for (i, present) in active.iter().enumerate() {
+        if *present {
+            if let Some(previous) = previous {
+                gutters[previous + 1] += between;
+            }
+            previous = Some(i);
+        }
+    }
+    // Chromium's collapsed trailing line anchors continue the last overlapped
+    // gutter, although that gutter does not consume track-sizing free space.
+    if let Some(previous) = previous {
+        if previous + 1 < active.len() {
+            gutters[previous + 1] += between;
+        }
+    }
+    gutters
 }
 
 fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
     let mut active = vec![true; info.columns.sizes.len()];
     let total = usize::from(info.columns.explicit_tracks);
+    if total == 0 {
+        return active;
+    }
     // parse_repeat expands every counted repetition into Single tracks. Only
     // auto-fit/auto-fill repetitions reach grid_container_style and this adapter.
     let fixed = style
@@ -217,11 +263,10 @@ fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
                     .skip(start)
                     .take(total - fixed)
                 {
-                    *value = info.columns.sizes[i] != 0.0
-                        || info.items.iter().any(|item| {
-                            usize::from(item.column_start) <= i + 1
-                                && i + 1 < usize::from(item.column_end)
-                        });
+                    *value = info.items.iter().any(|item| {
+                        usize::from(item.column_start) <= i + 1
+                            && i + 1 < usize::from(item.column_end)
+                    });
                 }
                 start += total - fixed;
             }
@@ -233,11 +278,13 @@ fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
 }
 
 fn alignment_spacing(alignment: Option<JustifyContent>, free: f32, count: usize) -> (f32, f32) {
-    let n = count.max(1) as f32;
+    let n = count as f32;
     match alignment {
         Some(JustifyContent::End | JustifyContent::FlexEnd) => (free, 0.0),
         Some(JustifyContent::SpaceBetween) if count > 1 && free > 0.0 => (0.0, free / (n - 1.0)),
-        Some(JustifyContent::SpaceAround) if free > 0.0 => (free / (2.0 * n), free / n),
+        Some(JustifyContent::SpaceAround) if free > 0.0 && count > 0 => {
+            (free / (2.0 * n), free / n)
+        }
         Some(JustifyContent::SpaceEvenly) if free > 0.0 => (free / (n + 1.0), free / (n + 1.0)),
         Some(
             JustifyContent::Center | JustifyContent::SpaceAround | JustifyContent::SpaceEvenly,
@@ -252,6 +299,7 @@ fn restore_items(
     originals: Vec<Style>,
     info: &DetailedGridInfo,
     areas: Option<&frames::Areas>,
+    trailing: Option<super::GridPlacement>,
 ) {
     let mut placements = info.items.iter();
     for (id, mut style) in leaves.iter().zip(originals) {
@@ -265,9 +313,20 @@ fn restore_items(
                 end: frozen_line(u32::from(placement.column_end.saturating_sub(1)), false)
                     .unwrap_or(super::GridPlacement::Auto),
             };
+            let row = |boundary: u16, start| {
+                let original =
+                    i32::from(boundary) - 1 - i32::from(info.rows.negative_implicit_tracks);
+                mapped_absolute_line(original, &info.rows, false, start)
+                    .unwrap_or(super::GridPlacement::Auto)
+            };
+            style.grid_row = Line {
+                start: row(placement.row_start, true),
+                end: row(placement.row_end, false),
+            };
         } else if style.position == Position::Absolute {
-            style.grid_column = absolute_placement(style.grid_column, &info.columns, true);
-            style.grid_row = absolute_placement(style.grid_row, &info.rows, false);
+            style.grid_column =
+                absolute_placement(style.grid_column, &info.columns, true, trailing);
+            style.grid_row = absolute_placement(style.grid_row, &info.rows, false, None);
         }
         if let Some(areas) = areas {
             let width = areas.width(style.grid_column);
@@ -283,6 +342,7 @@ fn absolute_placement(
     placement: Line<super::GridPlacement>,
     tracks: &taffy::DetailedGridTracksInfo,
     expanded: bool,
+    trailing: Option<super::GridPlacement>,
 ) -> Line<super::GridPlacement> {
     let start = explicit_line(placement.start, tracks.explicit_tracks);
     let end = explicit_line(placement.end, tracks.explicit_tracks);
@@ -295,13 +355,29 @@ fn absolute_placement(
     };
     let map = |value: Option<i32>, start: bool| {
         value
-            .and_then(|value| mapped_absolute_line(value, tracks, expanded, start))
+            .and_then(|value| {
+                if expanded
+                    && value + i32::from(tracks.negative_implicit_tracks)
+                        == tracks.sizes.len() as i32
+                {
+                    return trailing
+                        .or_else(|| mapped_absolute_line(value, tracks, expanded, start));
+                }
+                mapped_absolute_line(value, tracks, expanded, start)
+            })
             .unwrap_or(super::GridPlacement::Auto)
     };
-    Line {
-        start: map(start, true),
-        end: map(end, false),
+    let start = map(start, true);
+    let mut end = map(end, false);
+    // Logical indices were normalized above. A collapsed trailing internal line
+    // may lie beyond the outer end line; its area remains zero at that start,
+    // rather than letting Taffy sort the transformed physical indices again.
+    if let (super::GridPlacement::Line(a), super::GridPlacement::Line(b)) = (start, end) {
+        if a.as_i16() > b.as_i16() {
+            end = start;
+        }
     }
+    Line { start, end }
 }
 
 fn explicit_line(placement: super::GridPlacement, explicit: u16) -> Option<i32> {

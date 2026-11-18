@@ -1386,10 +1386,18 @@ fn solve(
         width: AvailableSpace::Definite(cw),
         height: AvailableSpace::MaxContent,
     };
-    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, style, parent| {
-        let idx = *ctx_idx.expect("leaf context");
-        frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
-    });
+    let grid = tree.style(root).unwrap().display == Display::Grid;
+    tree.compute_layout_with_measure(
+        root,
+        avail,
+        |mut known, av, _node, ctx_idx, style, parent| {
+            let idx = *ctx_idx.expect("leaf context");
+            if grid && known.width.is_none() && matches!(av.width, AvailableSpace::MinContent) {
+                known.width = Some(min_content_width(&items[idx], ctx.fonts));
+            }
+            frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
+        },
+    );
 }
 
 /// Lay out one placed item; `axis`: `Some(column)` for a flex item, `None` for a grid
@@ -1879,6 +1887,13 @@ fn build_grid_leaves(
             }));
             // Taffy owns the typed frame and the content-/border-box conversion.
             let mut style = frames::style(style, it, fs);
+            if it
+                .style
+                .get("min-width")
+                .is_none_or(|value| value.trim() == "auto")
+            {
+                style.min_size.width = Dimension::auto();
+            }
             // taffy's track sizing reads the preferred size unclamped: a `px` size
             // reaches it already within its `px` min / max, like Chrome's used size.
             style.size = Size {
