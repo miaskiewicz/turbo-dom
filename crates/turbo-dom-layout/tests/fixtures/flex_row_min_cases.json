@@ -198,5 +198,10 @@
     "id": "content-percent-borderbox",
     "width": 390,
     "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:5%;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "audit-two-atoms",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:150px;line-height:20px;vertical-align:top}.i span{display:inline-block;width:100px;height:20px;vertical-align:top}</style><div class=r data-cid=r><div class=i data-cid=i><span data-cid=a></span> <span data-cid=b></span></div></div>"
   }
 ]

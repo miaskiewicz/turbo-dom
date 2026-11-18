@@ -3,7 +3,7 @@
   "viewportHeight": 1000,
   "deviceScale": 1,
   "offline": true,
-  "casesSha256": "0156ca3f206a5aa44c0c04c610fc3a559cbedb1caa692b46634e4f41aceecbbc",
+  "casesSha256": "81be96ddb67132d2e337a3c0c6f773f581b386b60bdececca3b2b9f0e46ac294",
   "collectorSha256": "a416912b8e1080f43ec54c44540efe8c17030ca7f0e4f670f81e33169c69a391",
   "rows": [
     {
@@ -1315,6 +1315,49 @@
           "rect": [
             3,
             3,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audit-two-atoms",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:150px;line-height:20px;vertical-align:top}.i span{display:inline-block;width:100px;height:20px;vertical-align:top}</style><div class=r data-cid=r><div class=i data-cid=i><span data-cid=a></span> <span data-cid=b></span></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            150,
+            40
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            150,
+            40
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            0,
+            20,
             100,
             20
           ]

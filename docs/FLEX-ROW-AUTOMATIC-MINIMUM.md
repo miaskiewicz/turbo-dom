@@ -16,9 +16,13 @@ replaced-image intrinsic dimensions. A definite height can transfer through an
 aspect ratio; the content minimum still applies to a non-replaced item. Numeric
 and percentage bases retain their existing semantics.
 
-Forty offline, text-free Chromium159.0.8154.6 controls pin visible/clip/scrollable
+Forty-one offline, text-free Chromium159.0.8154.6 controls pin visible/clip/scrollable
 overflow, explicit minimums, preferred/max-width caps, content basis, percentages,
-frames, ratio transfer, reverse/wrap and an embedded PNG image. The same public
+frames, ratio transfer, reverse/wrap and an embedded PNG image. A pair of
+100px inline-block atoms separated by a wrapping opportunity must shrink to a
+150px row: min-content measurement uses the widest atom instead of the sum.
+The common measurement callback now distinguishes min-content from max-content,
+including grids, while replaced items retain their separate sizing policy. The same public
 layout test passes without default features. Restoring the old row-minimum policy
 causes16 geometry mismatches; restoring the fix passes.
 

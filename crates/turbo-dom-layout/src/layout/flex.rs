@@ -888,6 +888,7 @@ fn measure_width(
         // (returning the offer made an align-items:center item fill and never center
         // — a logo column left-aligned; taffy stretches for align:stretch itself).
         (None, AvailableSpace::Definite(w)) => natural_width(item, fonts).min(w),
+        (None, AvailableSpace::MinContent) => min_content_width(item, fonts),
         (None, _) => natural_width(item, fonts),
     }
 }
@@ -1386,18 +1387,10 @@ fn solve(
         width: AvailableSpace::Definite(cw),
         height: AvailableSpace::MaxContent,
     };
-    let grid = tree.style(root).unwrap().display == Display::Grid;
-    tree.compute_layout_with_measure(
-        root,
-        avail,
-        |mut known, av, _node, ctx_idx, style, parent| {
-            let idx = *ctx_idx.expect("leaf context");
-            if grid && known.width.is_none() && matches!(av.width, AvailableSpace::MinContent) {
-                known.width = Some(min_content_width(&items[idx], ctx.fonts));
-            }
-            frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
-        },
-    );
+    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, style, parent| {
+        let idx = *ctx_idx.expect("leaf context");
+        frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
+    });
 }
 
 /// Lay out one placed item; `axis`: `Some(column)` for a flex item, `None` for a grid
