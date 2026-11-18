@@ -835,10 +835,16 @@ fn lines_min(
     text.max(atom)
 }
 
-/// The **min-content** width of a box: the least width it can take without its
-/// content overflowing. Text wraps to its widest word; a fixed/`%`-width box and a
-/// replaced image keep their declared size; a container is the widest child's
-/// min-content. Used so a table never shrinks a column below its content.
+fn cyclic_length(value: LengthPct) -> bool {
+    match value {
+        LengthPct::Pct(_) => true,
+        LengthPct::Calc { pct, .. } => pct != 0.0,
+        _ => false,
+    }
+}
+
+/// The min-content contribution: text wraps to its widest word; cyclic
+/// replaced percentages compress; containers use their widest child's minimum.
 pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     lb.min_content_cached(|| {
         let bs = lb.resolved(ResolveCtx {
@@ -846,6 +852,9 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             cb_width: 0.0,
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+        if let Some(width) = cyclic_replaced_minimum(lb, &bs, fonts) {
+            return width;
+        }
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
@@ -874,6 +883,43 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         };
         inner + frame
     })
+}
+
+/// Cyclic preferred/max percentages compress a replaced min-content contribution
+/// (CSS Sizing §5.2.1), while its max-content size keeps the natural dimensions.
+fn cyclic_replaced_minimum(lb: &LayoutBox, bs: &BoxStyle, fonts: &FontRegistry) -> Option<f32> {
+    if !lb.is_replaced() || !(cyclic_length(bs.width) || cyclic_length(bs.max_width)) {
+        return None;
+    }
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    let border = |value| block::to_border(value, bs.box_sizing, frame).max(frame);
+    let mut width = if cyclic_length(bs.width) {
+        border(bs.width.resolve(0.0).unwrap())
+    } else {
+        natural_width(lb, fonts)
+    };
+    if cyclic_length(bs.max_width) {
+        width = width.min(border(bs.max_width.resolve(0.0).unwrap()));
+    }
+    let minimum = border(bs.min_width.resolve(0.0).unwrap_or(0.0));
+    Some(
+        width
+            .max(minimum)
+            .max(transferred_replaced_minimum(lb, bs, frame)),
+    )
+}
+
+fn transferred_replaced_minimum(lb: &LayoutBox, bs: &BoxStyle, frame: f32) -> f32 {
+    let ratio = bs.aspect_ratio.or_else(|| {
+        let (width, height) = (lb.intrinsic_w()?, lb.intrinsic_h()?);
+        (height > 0.0).then_some(width / height)
+    });
+    let height = bs.min_height.resolve(0.0).unwrap_or(0.0);
+    let content = match bs.box_sizing {
+        BoxSizing::BorderBox => height - bs.padding.vertical() - bs.border.widths().vertical(),
+        BoxSizing::ContentBox => height,
+    };
+    content.max(0.0) * ratio.unwrap_or(0.0) + frame
 }
 
 fn measure_width(
@@ -2665,6 +2711,60 @@ mod coverage_tests {
                 })
             );
         }
+    }
+
+    #[test]
+    fn cyclic_replaced_minimum_preserves_calc_frames_and_minimum_floors() {
+        let image = StyledNode::Element(StyledElement {
+            tag: Tag::Html("img".into()),
+            attrs: vec![Attr {
+                name: "src".into(),
+                value: "x.png".into(),
+            }],
+            style: cs(&[]),
+            children: vec![],
+            source: None,
+        });
+        let tree = build_box_tree(&[el("div", &[("display", "flex")], vec![image])]);
+        let BoxKind::Block(rows) = &tree.kind else {
+            unreachable!()
+        };
+        let BoxKind::Flex(items) = &rows[0].kind else {
+            unreachable!()
+        };
+        let image = &items[0];
+        image.set_intrinsic(1000.0, Some(200.0));
+        let fonts = FontRegistry::new();
+        let mut style = image.resolved(ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: 0.0,
+        });
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), None);
+        assert_eq!(cyclic_replaced_minimum(&rows[0], &style, &fonts), None);
+        style.width = LengthPct::Calc {
+            pct: 50.0,
+            px: 30.0,
+        };
+        style.padding.left = 3.0;
+        style.padding.right = 5.0;
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(38.0));
+        style.min_width = LengthPct::Px(50.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(58.0));
+        style.min_height = LengthPct::Px(20.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(108.0));
+        style.box_sizing = BoxSizing::BorderBox;
+        style.padding.top = 2.0;
+        style.padding.bottom = 2.0;
+        style.aspect_ratio = Some(2.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(50.0));
+        style.min_width = LengthPct::Px(0.0);
+        style.width = LengthPct::Px(500.0);
+        style.max_width = LengthPct::Pct(100.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(40.0));
+        style.min_height = LengthPct::Pct(100.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(8.0));
+        assert!(!cyclic_length(LengthPct::Calc { pct: 0.0, px: 30.0 }));
+        assert_eq!(natural_width(image, &fonts), 1000.0);
     }
 
     // --- min_content_width: replaced image path + marker (zero) path ---

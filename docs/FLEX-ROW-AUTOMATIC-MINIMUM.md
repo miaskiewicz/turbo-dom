@@ -16,7 +16,7 @@ replaced-image intrinsic dimensions. A definite height can transfer through an
 aspect ratio; the content minimum still applies to a non-replaced item. Numeric
 and percentage bases retain their existing semantics.
 
-Forty-one offline, text-free Chromium159.0.8154.6 controls pin visible/clip/scrollable
+Forty-two offline, text-free Chromium159.0.8154.6 controls pin visible/clip/scrollable
 overflow, explicit minimums, preferred/max-width caps, content basis, percentages,
 frames, ratio transfer, reverse/wrap and an embedded PNG image. A pair of
 100px inline-block atoms separated by a wrapping opportunity must shrink to a
@@ -28,3 +28,10 @@ causes16 geometry mismatches; restoring the fix passes.
 
 Validation also includes the full layout suite with svg/perf/test-support,
 strict all-target Clippy, formatting and changed-source complexity <=9.
+
+The resource-card regression is pinned by a font-free responsive-grid reduction
+with intrinsic 1000×200 images. Cyclic percentage image width/max-width compress
+the min-content contribution against zero, as CSS Sizing §5.2.1 requires; fixed
+calc offsets, box frames and same/opposite-axis minimums remain floors. Natural
+max-content dimensions remain unchanged. This allows the three fr tracks to fit
+1152px instead of each card incorrectly taking its 374px maximum.
