@@ -69,3 +69,17 @@ Measured checkpoints:
 - [v0.8.5 e1516f2a: healthy flex/grid regressions, retained for investigation](benchmarks/cascade-v085-e1516f2a.md).
 
 The [8234d47f experimental checkpoint](benchmarks/cascade-v085-8234d47f.md) retains the subsequent failed healthy-layout measurement; it does not establish the proposed optimization as faster.
+
+For focused CPU sampling, the example accepts an optional exact workload selector:
+
+```sh
+cargo run -p turbo-dom-layout --example cascade_perf --release -- \
+  100000 --only layout_definite_flex100
+```
+
+Use `layout_definite_grid100` for the healthy grid workload. The selector keeps the
+same output digest and warmup policy; omitted selection still runs all 15 cases.
+Unknown names or incomplete arguments fail. Sample the spawned process after
+warmup (for example, macOS `sample PID 10 1 -file profile.txt`), then terminate the
+long profiling loop. Profile samples collected alongside builds identify CPU
+stacks; their incidental elapsed times are not admitted benchmark comparisons.

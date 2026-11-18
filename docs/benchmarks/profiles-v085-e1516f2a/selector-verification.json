@@ -1,0 +1,22 @@
+{
+  "default_digests": {
+    "style_report100": "e960cb3805f13f7ead5a26823d54d00b4983f2d47413946fc38ae6cfd24897c7",
+    "layout_report100": "372757faaf40e79ccc3cc08e8aee76ade90696cc98e5088469a7f3f2976e4fa2",
+    "style_report10": "f850a0790d2560f32c1891acbe9c9906cc2befe97c8f4c8d1f093d522d0eda4a",
+    "layout_report10": "b14017ecb55d9fec08d137e9a6526590daa1fac8f93ec1a4ee803592f2ad4162",
+    "style_cards100": "45558ae8b06f5197b9d9f101fec6407bfbe459954619494322d4bfd6363edf03",
+    "layout_cards100": "ea28e770a0dc3a3bdfc2fe1cd59180aee417b1076090f4f97a5b2e9e849b2bf2",
+    "style_article100": "c0e5e745dbf991a8e8efd0c37c5be9f680c84052bd3a5a8b923a64c1e4b11b90",
+    "layout_article100": "a04168da816217572a6eeec9ef1a84804669ad04427e003d5133f12df8f8b7b0",
+    "style_definite_flex100": "1f6e860777038e98bb97a1b0458f14b26769e24f1d5f6466d1eca4b00adbca82",
+    "layout_definite_flex100": "e77bcc55714e5df6bec3c3e24ae3cb834b865c24f31a9fc95364fa1d465a2c21",
+    "style_definite_grid100": "2324bc56e6638e80e3e51b1ca4498b3d1ba7090986ab1b7224457f49e7f7e269",
+    "layout_definite_grid100": "e77bcc55714e5df6bec3c3e24ae3cb834b865c24f31a9fc95364fa1d465a2c21",
+    "matched_override_small": "587b5e40ac639e3035a16965717dcd43bf98ba489bc05a21da813db20ff413c4",
+    "matched_override_payload": "587b5e40ac639e3035a16965717dcd43bf98ba489bc05a21da813db20ff413c4",
+    "matched_override_theme": "c7ba361eb69626dbdc555ad02c1edf2283f0360c323d412bd02a6f4e4789a96e"
+  },
+  "all_15_selectors_match_both_refs": true,
+  "invalid_inputs_rejected": true,
+  "timing_samples_admitted": false
+}

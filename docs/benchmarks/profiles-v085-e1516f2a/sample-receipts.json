@@ -1,0 +1,34 @@
+[
+  {
+    "label": "baseline",
+    "workload": "layout_definite_flex100",
+    "pid": 53480,
+    "sample_returncode": 0,
+    "sample_stderr": "Sampling process 53480 for 10 seconds with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 53480 written to file /Users/grzegorz/github-flux/turbo-dom/.worktrees/healthy-flex-grid-perf/target/paired-085-profile/baseline-layout_definite_flex100.sample.txt\n",
+    "utc": "2026-11-18T22:26:27.030521+00:00"
+  },
+  {
+    "label": "baseline",
+    "workload": "layout_definite_grid100",
+    "pid": 53513,
+    "sample_returncode": 0,
+    "sample_stderr": "Sampling process 53513 for 10 seconds with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 53513 written to file /Users/grzegorz/github-flux/turbo-dom/.worktrees/healthy-flex-grid-perf/target/paired-085-profile/baseline-layout_definite_grid100.sample.txt\n",
+    "utc": "2026-11-18T22:26:38.207699+00:00"
+  },
+  {
+    "label": "candidate",
+    "workload": "layout_definite_flex100",
+    "pid": 53557,
+    "sample_returncode": 0,
+    "sample_stderr": "Sampling process 53557 for 10 seconds with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 53557 written to file /Users/grzegorz/github-flux/turbo-dom/.worktrees/healthy-flex-grid-perf/target/paired-085-profile/candidate-layout_definite_flex100.sample.txt\n",
+    "utc": "2026-11-18T22:26:49.389472+00:00"
+  },
+  {
+    "label": "candidate",
+    "workload": "layout_definite_grid100",
+    "pid": 53598,
+    "sample_returncode": 0,
+    "sample_stderr": "Sampling process 53598 for 10 seconds with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 53598 written to file /Users/grzegorz/github-flux/turbo-dom/.worktrees/healthy-flex-grid-perf/target/paired-085-profile/candidate-layout_definite_grid100.sample.txt\n",
+    "utc": "2026-11-18T22:27:00.571126+00:00"
+  }
+]

@@ -56,7 +56,15 @@ fn definite_items(display: &str) -> String {
     html
 }
 
-fn measure<T: std::fmt::Debug>(name: &str, iterations: usize, mut run: impl FnMut() -> T) {
+fn measure<T: std::fmt::Debug>(
+    name: &str,
+    iterations: usize,
+    only: Option<&str>,
+    mut run: impl FnMut() -> T,
+) -> usize {
+    if only.is_some_and(|selected| selected != name) {
+        return 0;
+    }
     let digest = format!("{:x}", Sha256::digest(format!("{:?}", run())));
     for _ in 0..3 {
         black_box(run());
@@ -69,9 +77,11 @@ fn measure<T: std::fmt::Debug>(name: &str, iterations: usize, mut run: impl FnMu
         "{{\"name\":\"{name}\",\"ns\":{},\"iterations\":{iterations},\"digest\":\"{digest}\"}}",
         started.elapsed().as_nanos()
     );
+    1
 }
 
-fn matched_overrides(iterations: usize) {
+fn matched_overrides(iterations: usize, only: Option<&str>) -> usize {
+    let mut measured = 0;
     for (name, count, size) in [
         ("matched_override_small", 1, 64),
         ("matched_override_payload", 1, 16 * 1024),
@@ -96,7 +106,7 @@ fn matched_overrides(iterations: usize) {
                 order,
             })
             .collect();
-        measure(name, iterations, || {
+        measured += measure(name, iterations, only, || {
             let mut result = ComputedStyle::default();
             for _ in 0..100 {
                 result = black_box(resolve_matched_style(&parent, &declarations));
@@ -104,12 +114,19 @@ fn matched_overrides(iterations: usize) {
             result
         });
     }
+    measured
 }
 
 fn main() {
-    let iterations = std::env::args()
-        .nth(1)
-        .map_or(20, |v| v.parse::<usize>().unwrap());
+    let mut args = std::env::args().skip(1);
+    let iterations = args.next().map_or(20, |v| v.parse::<usize>().unwrap());
+    let only = args.next().map(|flag| {
+        assert_eq!(flag, "--only", "expected optional --only WORKLOAD");
+        args.next().expect("--only requires a workload name")
+    });
+    assert!(args.next().is_none(), "unexpected extra arguments");
+    let only = only.as_deref();
+    let mut measured = 0;
     assert!(iterations > 0);
     let fonts = FontRegistry::new();
     let images = ImageCtx {
@@ -126,10 +143,10 @@ fn main() {
         ("definite_grid100", definite_items("grid")),
     ] {
         let tree = parse_html_tree(&html);
-        measure(&format!("style_{name}"), iterations, || {
+        measured += measure(&format!("style_{name}"), iterations, only, || {
             style_html_tree(&tree, "", 800.0, &options)
         });
-        measure(&format!("layout_{name}"), iterations, || {
+        measured += measure(&format!("layout_{name}"), iterations, only, || {
             layout_html_tree_in_viewport(
                 &tree,
                 "",
@@ -141,5 +158,6 @@ fn main() {
             )
         });
     }
-    matched_overrides(iterations);
+    measured += matched_overrides(iterations, only);
+    assert!(measured > 0, "unknown workload selection");
 }
