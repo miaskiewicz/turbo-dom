@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **Flex row minimums**: preserve automatic content minimums for ordinary row
+  items while retaining specified-size/max-width caps and scrollable-overflow
+  shrinking. Distinguish content flex bases from preferred widths and transfer
+  definite ratio heights with correct content-box/border-box frames. Pin 40
+  independent Chromium controls, including embedded images and no-default builds.
+
 - **Signed column margins (#526)**: include negative margins in automatic flex
   column intrinsic heights, preserving grow/shrink, wrapping, min/max constraints
   and the distinction between allocated geometry and a definite percentage-height

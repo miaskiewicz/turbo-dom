@@ -348,8 +348,15 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
         // A flex item's own `min/max` sizes and explicit cross-axis size (`height` in a
         // row, `width` in a column) must reach taffy — else an item whose height is only
         // a `min-height` collapses, and a column item stretches over its `width`.
-        // The main axis stays driven by `flex_basis`.
-        size: cross_size(&bs, column),
+        // Preferred width also caps the automatic minimum; flex-basis still drives flexing.
+        size: Size {
+            width: dim(bs.width),
+            height: if column {
+                Dimension::auto()
+            } else {
+                dim(bs.height)
+            },
+        },
         min_size: Size {
             width: dim(bs.min_width),
             height: dim(bs.min_height),
@@ -359,21 +366,6 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
             height: dim(bs.max_height),
         },
         ..Default::default()
-    }
-}
-
-/// A flex item's taffy `size`: only its cross-axis size (the main axis is the basis).
-fn cross_size(bs: &BoxStyle, column: bool) -> Size<Dimension> {
-    if column {
-        Size {
-            width: dim(bs.width),
-            height: Dimension::auto(),
-        }
-    } else {
-        Size {
-            width: Dimension::auto(),
-            height: dim(bs.height),
-        }
     }
 }
 
@@ -751,36 +743,41 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
-        if lb.containment().width {
-            // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
-            return frame;
-        }
-        if lb.orthogonal_root && lb.writing_root {
-            return super::writing::orthogonal_extent(lb, fonts);
-        }
-        // A replaced `<img>`: its intrinsic width (stamped from the resolver before
-        // layout) â so a `<div>` wrapping a logo measures the image, not 0.
-        if let Some(iw) = lb.intrinsic_w() {
-            return replaced_natural(lb, &bs, iw) + frame;
-        }
-        let inner = match &lb.kind {
-            BoxKind::Lines(items) => lines_natural(
-                items,
-                bs.font_size,
-                fonts,
-                lb.original_units().as_deref(),
-                (lb.uses_html_font_metrics(), lb.native_scale()),
-            ),
-            BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
-            // A table's max-content: its columns side by side plus border-spacing
-            // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
-            BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
-            BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
-            BoxKind::Block(k) => block_natural(k, fonts),
-            BoxKind::Marker(_) => 0.0,
-        };
-        inner + frame
+        intrinsic_natural_width(lb, &bs, fonts)
     })
+}
+
+fn intrinsic_natural_width(lb: &LayoutBox, bs: &BoxStyle, fonts: &FontRegistry) -> f32 {
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    if lb.containment().width {
+        // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
+        return frame;
+    }
+    if lb.orthogonal_root && lb.writing_root {
+        return super::writing::orthogonal_extent(lb, fonts);
+    }
+    // A replaced `<img>`: its intrinsic width (stamped from the resolver before
+    // layout) â so a `<div>` wrapping a logo measures the image, not 0.
+    if let Some(iw) = lb.intrinsic_w() {
+        return replaced_natural(lb, bs, iw) + frame;
+    }
+    let inner = match &lb.kind {
+        BoxKind::Lines(items) => lines_natural(
+            items,
+            bs.font_size,
+            fonts,
+            lb.original_units().as_deref(),
+            (lb.uses_html_font_metrics(), lb.native_scale()),
+        ),
+        BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
+        // A table's max-content: its columns side by side plus border-spacing
+        // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
+        BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
+        BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
+        BoxKind::Block(k) => block_natural(k, fonts),
+        BoxKind::Marker(_) => 0.0,
+    };
+    inner + frame
 }
 
 /// A replaced box's max-content (content-box) width from its intrinsic width `iw`: a
@@ -1044,18 +1041,20 @@ fn measure_natural_image(
     })
 }
 
+fn explicit_content_basis(style: &ComputedStyle) -> bool {
+    style
+        .get("flex-basis")
+        .is_some_and(|value| value.trim() == "content")
+        || style
+            .get("flex")
+            .is_some_and(|value| basis_tokens(value).contains(&"content"))
+}
+
 fn content_column_basis(item: &LayoutBox, fs: f32, fill: Fill) -> bool {
     let Some(definite) = fill.column_height else {
         return false;
     };
-    let explicit = item
-        .style
-        .get("flex-basis")
-        .is_some_and(|value| value.trim() == "content")
-        || item
-            .style
-            .get("flex")
-            .is_some_and(|value| basis_tokens(value).contains(&"content"));
+    let explicit = explicit_content_basis(&item.style);
     let style = item.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: fill.width,
@@ -1243,25 +1242,92 @@ fn measure_item(
 fn build_leaves(
     tree: &mut TaffyTree<usize>,
     items: &[LayoutBox],
-    (fs, column): (f32, bool),
+    (fs, column, width): (f32, bool, f32),
     images: &ImageCtx,
+    fonts: &FontRegistry,
 ) -> Vec<TaffyId> {
     items
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = frames::style(item_style(it, fs, column), it, fs);
+            let mut original = item_style(it, fs, column);
+            row_content_basis(&mut original, it, (fs, column, width), fonts, images);
+            let mut style = frames::style(original, it, fs);
             auto_min_main(&mut style, it, column, images);
             tree.new_leaf_with_context(style, i)
         })
         .collect()
 }
 
-/// A ratio-only image item (an SVG with only a `viewBox`) whose main-axis `min-width` /
-/// `min-height` is `auto` gets taffy's automatic minimum size, its content size
-/// suggestion (miaskiewicz/turbo-dom#326): Chrome 156 will not shrink it below the
-/// width it fills (a `flex-basis:100px` one still lays out 400 wide in a 400px row).
-/// Other items keep `min-width: auto` as 0.
+fn row_content_basis(
+    style: &mut Style,
+    item: &LayoutBox,
+    (fs, column, width): (f32, bool, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+) {
+    if column {
+        return;
+    }
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: width,
+    });
+    let content = explicit_content_basis(&item.style);
+    let transferred = match (bs.aspect_ratio, bs.height) {
+        (Some(ratio), LengthPct::Px(height)) => Some(height * ratio),
+        _ => None,
+    };
+    if !(content
+        || (style.flex_basis.is_auto() && bs.width == LengthPct::Auto && transferred.is_some()))
+    {
+        return;
+    }
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    let border = transferred.map_or_else(
+        || row_intrinsic_width(item, &bs, fonts, images),
+        |width| match bs.box_sizing {
+            BoxSizing::BorderBox => width,
+            BoxSizing::ContentBox => width + frame,
+        },
+    );
+    style.flex_basis = Dimension::length(match bs.box_sizing {
+        BoxSizing::BorderBox => border,
+        BoxSizing::ContentBox => (border - frame).max(0.0),
+    });
+}
+
+fn row_intrinsic_width(
+    item: &LayoutBox,
+    bs: &BoxStyle,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+) -> f32 {
+    let intrinsic = item
+        .image
+        .as_ref()
+        .filter(|src| src.replaced)
+        .and_then(|src| super::imgsize::replaced_intrinsic(images.resolver, src, &item.style));
+    let Some((intrinsic, _)) = intrinsic else {
+        return intrinsic_natural_width(item, bs, fonts);
+    };
+    let mut style = bs.clone();
+    style.width = LengthPct::Auto;
+    let sized = super::imgsize::size_replaced_live(
+        String::new(),
+        intrinsic,
+        &super::imgsize::SizeCtx {
+            style: &style,
+            cb_width: 0.0,
+            cb_height: None,
+            body_height: images.body_height,
+        },
+        1.0,
+    );
+    sized.width + bs.padding.horizontal() + bs.border.widths().horizontal()
+}
+
+/// Scrollable overflow uses a zero automatic minimum; visible/clip retain content.
 fn scrollable_overflow(style: &ComputedStyle) -> bool {
     let mut parts = style
         .get("overflow")
@@ -1279,10 +1345,10 @@ fn scrollable_overflow(style: &ComputedStyle) -> bool {
         })
 }
 
-fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, images: &ImageCtx) {
+fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, _images: &ImageCtx) {
     let prop = if column { "min-height" } else { "min-width" };
     let auto = item.style.get(prop).is_none_or(|v| v.trim() == "auto");
-    if auto && !scrollable_overflow(&item.style) && (column || is_ratio_only(item, images)) {
+    if auto && !scrollable_overflow(&item.style) {
         if column {
             style.min_size.height = Dimension::auto();
         } else {
@@ -1935,7 +2001,7 @@ pub(crate) fn layout_flex(
         flex_direction(&container.style),
         FlexDirection::Column | FlexDirection::ColumnReverse
     );
-    let leaves = build_leaves(&mut tree, items, (fs, column), ctx.images);
+    let leaves = build_leaves(&mut tree, items, (fs, column, cw), ctx.images, ctx.fonts);
     let root = tree.new_with_children(
         container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
         &leaves,

@@ -1,0 +1,202 @@
+[
+  {
+    "id": "auto",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "clip",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:clip}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "hidden",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "auto-overflow",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:auto}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "scroll",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:scroll}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "min0",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "width40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "max40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{max-width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "basis20",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-width40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "basis200-width40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:200px;width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "min120",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:120px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "nowrap",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{white-space:nowrap}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "overflow-pair",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:visible hidden}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "overflow-override",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden;overflow-x:visible;overflow-y:visible}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "basis0",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "flex1",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex:1}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "auto-explicit",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:auto}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "minpct",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:50%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "widthpct",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:50%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-max40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;max-width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-min0",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-frame",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-borderbox",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:4px;border:2px solid;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "frame",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "ratio-height",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "ratio-min0",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-ratio",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;aspect-ratio:2;height:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "visible-x-scroll-y",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow-x:visible;overflow-y:scroll}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "reverse",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px;flex-direction:row-reverse}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "wrap",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px;flex-wrap:wrap}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "image",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>"
+  },
+  {
+    "id": "image-min0",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:0}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>"
+  },
+  {
+    "id": "image-hidden",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>"
+  },
+  {
+    "id": "image-width40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:40px}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>"
+  },
+  {
+    "id": "image-content-width40",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>"
+  },
+  {
+    "id": "ratio-content-frame",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0;padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "ratio-borderbox-frame",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0;padding:4px;border:2px solid;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-percent-padding",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:5%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  },
+  {
+    "id": "content-percent-borderbox",
+    "width": 390,
+    "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:5%;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>"
+  }
+]
