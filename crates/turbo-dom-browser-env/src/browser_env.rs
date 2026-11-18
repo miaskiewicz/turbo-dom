@@ -3062,11 +3062,18 @@ fn el_remove_attribute_ns<'s, 'i>(
     if namespace.is_none() && local == "popover".encode_utf16().collect::<Vec<_>>() {
         html_popover::attribute_change(scope, node, None);
     }
+    let existed = with_tree(|tree| {
+        tree.get_attribute_ns_units(node, namespace.as_deref(), &local)
+            .is_some()
+    })
+    .unwrap_or(false);
     with_tree_mut(|tree| tree.remove_attribute_ns_units(node, namespace.as_deref(), &local));
     let local = String::from_utf16_lossy(&local);
     if namespace.is_none() {
         event_handlers::changed(scope, node, &local);
-        element_relations::attribute_changed(scope, args.this(), &local);
+        if existed {
+            element_relations::attribute_changed(scope, args.this(), &local);
+        }
     }
     if namespace.is_none() && local == "style" {
         css_policy::attribute_changed(scope, node);
@@ -3142,7 +3149,9 @@ fn el_set_attribute<'s>(
     }
     with_tree_mut(|t| t.set_attribute_units(h, &name, &units));
     event_handlers::changed(scope, h, &key);
-    element_relations::attribute_changed(scope, args.this(), &key);
+    if image_data::qualified_dimension_mutation(h, &name) {
+        element_relations::attribute_changed(scope, args.this(), &key);
+    }
     if key == "style" {
         css_policy::attribute_changed(scope, h);
     }
@@ -3646,11 +3655,15 @@ fn el_remove_attribute<'s>(
     if lower == "popover" {
         html_popover::attribute_change(scope, h, None);
     }
+    let existed = with_tree(|tree| tree.get_attribute_units(h, &name).is_some()).unwrap_or(false)
+        && image_data::qualified_dimension_mutation(h, &name);
     with_tree_mut(|t| {
         t.remove_attribute_units(h, &name);
     });
     event_handlers::changed(scope, h, &lower);
-    element_relations::attribute_changed(scope, args.this(), &lower);
+    if existed {
+        element_relations::attribute_changed(scope, args.this(), &lower);
+    }
     if lower == "style" {
         css_policy::attribute_changed(scope, h);
     }
@@ -8168,6 +8181,13 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         normalize_computed_color,
     );
     bind_method(scope, global, "__canvasColorNative", canvas_color_native);
+    bind_method(
+        scope,
+        global,
+        "__canvasResetNative",
+        image_data::canvas_reset,
+    );
+    bind_method(scope, global, "__canvasProxyNative", image_data::is_proxy);
     bind_method(scope, global, "__imageDataRecordNative", image_data::record);
     bind_method(
         scope,

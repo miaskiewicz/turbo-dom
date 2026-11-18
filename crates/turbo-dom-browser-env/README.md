@@ -311,6 +311,14 @@ remain available for host replay. Other bare-binding paint
 readback remains the existing op-log approximation unless the host supplies a raster
 backend. Canvas pixel conversion for display-P3 and float16 currently throws
 `NotSupportedError`; constructing and inspecting those ImageData formats is supported.
+Canvas `width` / `height` reflect their null-namespace content attributes (300 x 150
+by default). Setting a dimension, including its current value, or changing/removing an
+existing dimension attribute resets the 2D drawing state, path log and bitmap. Missing
+attribute removals and unrelated namespaces preserve them. Native attribute and Attr-node
+mutation routes notify an engine-private reset callback synchronously.
+
+Bare-binding readback snapshots reject Proxy/accessor-backed draw records and use
+prototype-free copies, so guest serialization hooks are never invoked implicitly.
 Constructor support alone does not establish complete animation-player support.
 
 ## Links

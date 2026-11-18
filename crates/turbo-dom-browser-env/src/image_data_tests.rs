@@ -210,3 +210,71 @@ fn image_data_backing_preserves_partial_transparent_pixels_and_resize() {
         ])
     );
 }
+
+#[test]
+fn canvas_dimensions_and_reset_match_chromium156() {
+    const PROBE: &str = include_str!("../tests/fixtures/canvas_dimensions_probe.js");
+    let control: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/canvas_dimensions_chrome156.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        format!("{:x}", Sha256::digest(PROBE.as_bytes())),
+        control["probeSha256"].as_str().unwrap()
+    );
+    let actual = run(PROBE);
+    let mut out = Vec::new();
+    differences("result", &actual, &control["result"], &mut out);
+    assert!(out.is_empty(), "{}", out.join("\n"));
+}
+
+#[test]
+fn canvas_readback_does_not_invoke_prototype_serialization_hooks() {
+    let actual = run(r#"(() => {
+      const cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.fillRect(0,0,1,1);
+      let hits=0;const array=Object.getOwnPropertyDescriptor(Array.prototype,'toJSON'),object=Object.getOwnPropertyDescriptor(Object.prototype,'toJSON');
+      Object.defineProperty(Array.prototype,'toJSON',{configurable:true,get(){hits++;throw Error('array hook')}});
+      Object.defineProperty(Object.prototype,'toJSON',{configurable:true,get(){hits++;throw Error('object hook')}});
+      Object.defineProperty(ctx,'_ops',{configurable:true,get(){hits++;throw Error('ops getter')}});
+      Object.defineProperty(cv,'__ctx2d',{configurable:true,get(){hits++;throw Error('ctx getter')}});
+      let status='ok';try{cv.toDataURL();ctx.getImageData(0,0,1,1);}catch(e){status=e.message;}
+      if(array)Object.defineProperty(Array.prototype,'toJSON',array);else delete Array.prototype.toJSON;
+      if(object)Object.defineProperty(Object.prototype,'toJSON',object);else delete Object.prototype.toJSON;
+      return [status,hits];
+    })()"#);
+    assert_eq!(actual, serde_json::json!(["ok", 0]));
+}
+
+#[test]
+fn canvas_readback_rejects_accessors_and_proxies_without_running_them() {
+    let actual = run(r#"(() => {
+      let calls=0;const outcomes=[];
+      for(const kind of ['accessor','proxy']) {
+        const cv=document.createElement('canvas'),ctx=cv.getContext('2d');
+        const row=kind==='proxy'?new Proxy([],{get(){calls++;throw Error('proxy')},ownKeys(){calls++;throw Error('proxy')}}):[];
+        if(kind==='accessor')Object.defineProperty(row,0,{get(){calls++;throw Error('getter')}});
+        ctx._ops.push(row);
+        for(const read of [()=>cv.toDataURL(),()=>ctx.getImageData(0,0,1,1)]) {
+          try{read();outcomes.push('no error')}catch(e){outcomes.push(e.name)}
+        }
+      }
+      return [outcomes,calls];
+    })()"#);
+    assert_eq!(
+        actual,
+        serde_json::json!([["TypeError", "TypeError", "TypeError", "TypeError"], 0])
+    );
+}
+
+#[test]
+fn canvas_readback_rejects_bigint_without_its_serialization_hook() {
+    let actual = run(r#"(() => {
+      const cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx._ops.push(['fillRect',[1n,0,1,1]]);
+      let calls=0;const descriptor=Object.getOwnPropertyDescriptor(BigInt.prototype,'toJSON');
+      Object.defineProperty(BigInt.prototype,'toJSON',{configurable:true,get(){calls++;throw Error('bigint hook')}});
+      let error='none';try{cv.toDataURL()}catch(e){error=e.name}
+      if(descriptor)Object.defineProperty(BigInt.prototype,'toJSON',descriptor);else delete BigInt.prototype.toJSON;
+      return [error,calls];
+    })()"#);
+    assert_eq!(actual, serde_json::json!(["TypeError", 0]));
+}
