@@ -956,10 +956,8 @@ enum Probe {
 /// an `<img>` with `width:auto` measured 0 in a flex row â its `max-width:100%` clamps
 /// against a 0-width containing block in the scratch measurement â and the item (a
 /// logo / hero image) collapsed to nothing.
+/// Inline SVG viewports are measured by `frames::measure` before this resource probe.
 fn replaced_probe(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<Probe> {
-    if let Some(viewport) = &item.svg_viewport {
-        return Some(Probe::Fixed(svg_probe_width(item, viewport, fs)));
-    }
     let src = item.image.as_ref().filter(|s| s.replaced)?;
     let bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
@@ -1023,22 +1021,6 @@ fn ratio_only_row_width(
     free.then(|| (cb_width - bs.margin.horizontal()).max(0.0))
 }
 
-fn svg_probe_width(
-    item: &LayoutBox,
-    viewport: &super::svg_viewport::SvgViewport,
-    font_size: f32,
-) -> f32 {
-    let style = item.resolved(ResolveCtx {
-        parent_font_size: font_size,
-        cb_width: 0.0,
-    });
-    let frame = style.padding.horizontal() + style.border.widths().horizontal();
-    match style.width {
-        LengthPct::Px(width) => width + frame,
-        _ => viewport.natural_width(style.font_size) + frame,
-    }
-}
-
 /// Natural-size replaced items keep their aspect ratio when flex constraints
 /// supply a used width. Resolve percentages against the container, not the
 /// item's own scratch width, and avoid mixing auto/known sizes in its cache.
@@ -1048,9 +1030,6 @@ fn measure_natural_image(
     known: Size<Option<f32>>,
     (fs, cb_width): (f32, f32),
 ) -> Option<Size<f32>> {
-    if item.svg_viewport.is_some() {
-        return None;
-    }
     let src = item.image.as_ref().filter(|src| src.replaced)?;
     let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
     if intrinsic.natural_ratio.is_some() {
@@ -1112,17 +1091,10 @@ fn content_column_basis(item: &LayoutBox, fs: f32, fill: Fill) -> bool {
             && (basis.tag() == taffy::CompactLength::PERCENT_TAG || basis.into_raw().is_calc()))
 }
 
-fn specified_content_minimum(
-    style: Option<&BoxStyle>,
-    avail: AvailableSpace,
-    content: bool,
-) -> f32 {
+fn specified_content_minimum(style: &BoxStyle, avail: AvailableSpace, content: bool) -> f32 {
     if !content || avail != AvailableSpace::MinContent {
         return f32::INFINITY;
     }
-    let Some(style) = style else {
-        return f32::INFINITY;
-    };
     match style.height {
         LengthPct::Px(height) => block::to_border(
             height,
@@ -1146,7 +1118,7 @@ fn measure_item(
         Option<f32>,
         Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
         Fill,
-        Option<&BoxStyle>,
+        &BoxStyle,
     ),
 ) -> Size<f32> {
     let (live_geometry, html_font_metrics, html_font_scale, original_units, fill, measured_style) =
@@ -1182,16 +1154,7 @@ fn measure_item(
     // exponential without this. `fs` (the flex container's font size) is stable per
     // item. Percentage frames also depend on the current containing-block basis.
     let probe = || {
-        let padding = measured_style.map_or_else(
-            || {
-                item.resolved(ResolveCtx {
-                    parent_font_size: fs,
-                    cb_width: w,
-                })
-                .padding
-            },
-            |style| style.padding,
-        );
+        let padding = measured_style.padding;
         let key = [
             w.to_bits(),
             padding.top.to_bits(),
@@ -1201,12 +1164,7 @@ fn measure_item(
             u32::from(content_basis),
         ];
         item.measure_cached(key, || {
-            let mut bs = measured_style.cloned().unwrap_or_else(|| {
-                item.resolved(ResolveCtx {
-                    parent_font_size: fs,
-                    cb_width: w,
-                })
-            });
+            let mut bs = measured_style.clone();
             if content_basis {
                 bs.height = LengthPct::Auto;
             }
@@ -1256,10 +1214,10 @@ fn measure_item(
             u64::from(w.to_bits()),
             u64::from(fs.to_bits()),
             u64::from(content_basis),
-            measured_style.map_or(0, |style| u64::from(style.padding.top.to_bits())),
-            measured_style.map_or(0, |style| u64::from(style.padding.right.to_bits())),
-            measured_style.map_or(0, |style| u64::from(style.padding.bottom.to_bits())),
-            measured_style.map_or(0, |style| u64::from(style.padding.left.to_bits())),
+            u64::from(measured_style.padding.top.to_bits()),
+            u64::from(measured_style.padding.right.to_bits()),
+            u64::from(measured_style.padding.bottom.to_bits()),
+            u64::from(measured_style.padding.left.to_bits()),
             std::ptr::from_ref(images.resolver).cast::<()>() as usize as u64,
             u64::from(images.body_height.unwrap_or(-1.0).to_bits()),
             u64::from(live_geometry),
@@ -2539,7 +2497,10 @@ mod coverage_tests {
                         row: false,
                         column_height: None,
                     },
-                    None,
+                    &copy.resolved(ResolveCtx {
+                        parent_font_size: 16.0,
+                        cb_width: w,
+                    }),
                 ),
             )
             .height
@@ -2646,7 +2607,10 @@ mod coverage_tests {
                             row: true,
                             column_height: None,
                         },
-                        None,
+                        &items[0].resolved(ResolveCtx {
+                            parent_font_size: 16.0,
+                            cb_width: 135.0,
+                        }),
                     ),
                 )
             };

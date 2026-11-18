@@ -1,7 +1,7 @@
 {
   "browser": "159.0.8154.6",
   "offline": true,
-  "casesSha256": "1308f196d6c4c973a3ca8b38fa06208e12f1c6afd0d9a5bbf414f794d53f118c",
+  "casesSha256": "ee7f97610e3cd26fc2cbb4f8faf0a1cdf9a820479e028af2f0aab33360646d7b",
   "collectorSha256": "ce99a40b78cb744a04ea8d5bd84801f984008b9674857332c11e88613b5cdb6b",
   "rows": [
     {
@@ -1748,6 +1748,141 @@
           "key": ".next",
           "rect": [
             120,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "flex_invalid_auto_padding",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            44
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            84,
+            44
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            2,
+            2,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            84,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_negative_with_absolute_percentage",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            60
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            -10,
+            80,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            -10,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            100,
+            0,
+            40,
+            30
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex_borderbox_known_height",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            76,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            76,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            76,
             0,
             40,
             20

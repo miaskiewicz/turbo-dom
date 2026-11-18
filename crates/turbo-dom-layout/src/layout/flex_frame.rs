@@ -200,7 +200,7 @@ pub(super) fn measure(
     };
     let measured = if item.svg_viewport.is_some() {
         let minimum = super::specified_content_minimum(
-            Some(&bs),
+            &bs,
             avail.height,
             super::content_column_basis(item, fs, fill),
         );
@@ -245,7 +245,7 @@ pub(super) fn measure(
                 ctx.html_font_scale,
                 ctx.original_units,
                 fill,
-                Some(&bs),
+                &bs,
             ),
         )
     };

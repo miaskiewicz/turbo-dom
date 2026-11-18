@@ -154,5 +154,17 @@
   {
     "id": "svg_flex_content_height",
     "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;flex:0 0 content;height:20px;min-width:0}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "flex_invalid_auto_padding",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;width:400px;align-items:flex-start}.item{flex:none;width:80px;height:40px;padding:auto;border:2px solid}.inner{width:100%;height:10px}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_negative_with_absolute_percentage",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;position:relative;width:400px}.item{flex:none;width:80px;height:80px;margin:-10px 0}.inner{width:100%;height:10px}.next{position:absolute;top:0;left:100px;width:40px;height:50%}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "svg_flex_borderbox_known_height",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:60px;box-sizing:border-box;padding:5%;border:2px solid}.next{flex:none;width:40px;height:20px}.inner{width:100%;height:10px}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
   }
 ]
