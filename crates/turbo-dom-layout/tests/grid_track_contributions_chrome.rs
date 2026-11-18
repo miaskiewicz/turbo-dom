@@ -28,7 +28,10 @@ fn nested_grid_tracks_match_chromium_159() {
         // Independent auto-fit+gap controls also retain Taffy's separate trailing
         // gutter defect. Their unchanged oracle stays available to diagnose that
         // pre-existing issue; this test pins percentage track resolution.
-        if !include_auto_fit && case["id"].as_str().unwrap().contains("-auto-fit-") {
+        if !include_auto_fit
+            && case["id"].as_str().unwrap().contains("-auto-fit-")
+            && case["width"] != 390
+        {
             continue;
         }
         compared += 1;
@@ -63,7 +66,7 @@ fn nested_grid_tracks_match_chromium_159() {
             }
         }
     }
-    assert_eq!(cases.len(), 156);
-    assert_eq!(compared, if include_auto_fit { 156 } else { 150 });
+    assert_eq!(cases.len(), 264);
+    assert_eq!(compared, if include_auto_fit { 264 } else { 260 });
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

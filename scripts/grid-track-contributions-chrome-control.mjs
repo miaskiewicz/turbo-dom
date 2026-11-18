@@ -127,6 +127,132 @@ const variants = [
 	],
 	["overflow-center", "repeat(3,200px)", "width:50%", "justify-content:center"],
 	["overflow-end", "repeat(3,200px)", "width:50%", "justify-content:end"],
+	[
+		"gapless-fit",
+		"repeat(auto-fit,minmax(100px,1fr))",
+		"width:100%;max-width:374px",
+		"column-gap:0",
+	],
+	[
+		"absolute-auto",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute",
+	],
+	[
+		"absolute-zero",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:0/0",
+	],
+	[
+		"absolute-outside",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:9/11",
+	],
+	[
+		"absolute-before",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:-9/-7",
+	],
+	[
+		"absolute-fixed-inflow",
+		"repeat(3,1fr)",
+		"width:100px",
+		"position:relative",
+		"position:absolute;grid-column:9/11",
+	],
+	[
+		"absolute-row-outside",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/3;grid-row:9/11",
+	],
+	[
+		"absolute-row-before",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/3;grid-row:-9/-7",
+	],
+	[
+		"absolute-row-lines",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/3;grid-row:1/2",
+	],
+	[
+		"absolute-row-zero",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/3;grid-row:0/0",
+	],
+	[
+		"absolute-large-span",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/span 65535",
+	],
+	[
+		"absolute-large-lines",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:32767/span 65535",
+	],
+	[
+		"absolute-minimum-line",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:-32768/-32767",
+	],
+	[
+		"absolute-large-start-span",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:span 65535/-1",
+	],
+	[
+		"absolute-reversed-lines",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:3/1",
+	],
+	[
+		"absolute-same-line",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/2",
+	],
+	[
+		"absolute-large-row-span",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative",
+		"position:absolute;grid-column:2/3;grid-row:1/span 65535",
+	],
+	[
+		"absolute-negative-implicit-row",
+		"repeat(3,1fr)",
+		"width:100%",
+		"position:relative;grid-template-rows:100px",
+		"position:absolute;grid-column:2/3;grid-row:-3/-2",
+		"grid-row:-3",
+	],
 ];
 const browser = await chromium.launch({
 	executablePath: chrome,
@@ -141,11 +267,18 @@ try {
 			deviceScaleFactor: 1,
 		});
 		for (const parent of ["flex", "block"]) {
-			for (const [name, tracks, item, extra = "", first = ""] of variants) {
+			for (const [
+				name,
+				tracks,
+				item,
+				extra = "",
+				first = "",
+				second = "",
+			] of variants) {
 				const cards = [0, 1, 2]
 					.map(
 						(i) =>
-							`<div class="card" data-cid="card${i}" style="${i === 0 ? first : ""}"><div class="image" data-cid="image${i}"></div><div class="content" data-cid="content${i}"><div class="text" data-cid="text${i}"></div></div></div>`,
+							`<div class="card" data-cid="card${i}" style="${i === 0 ? first : i === 1 ? second : ""}"><div class="image" data-cid="image${i}"></div><div class="content" data-cid="content${i}"><div class="text" data-cid="text${i}"></div></div></div>`,
 					)
 					.join("");
 				const html = `<!doctype html><style>*{box-sizing:border-box;margin:0;padding:0}.stack{display:${parent};flex-direction:column;align-items:center;width:1152px;max-width:100%}.grid{display:grid;width:100%;gap:40px;grid-template-columns:${tracks};${extra}}.card{display:flex;flex-direction:column;gap:32px;padding:16px 16px 32px;${item}}.image{width:100%;height:195px}.content{display:flex;flex-direction:column;flex:1 1 0%;padding:0 12px;gap:24px}.text{width:100%;height:72px}</style><div class="stack" data-cid="stack"><div class="grid" data-cid="grid">${cards}</div></div>`;

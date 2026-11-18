@@ -339,4 +339,67 @@ mod tests {
         tree.disable_rounding();
         assert_eq!(tree.layout(root).unwrap().size.width, 20.4);
     }
+    #[test]
+    fn hiding_an_ancestor_clears_and_restores_descendant_geometry() {
+        let mut tree: Tree<usize> = Tree::new();
+        let leaf = tree.new_leaf_with_context(
+            Style {
+                size: Size {
+                    width: taffy::Dimension::length(20.0),
+                    height: taffy::Dimension::length(10.0),
+                },
+                ..Style::default()
+            },
+            0,
+        );
+        let inner = tree.new_with_children(
+            Style {
+                size: Size {
+                    width: taffy::Dimension::length(60.0),
+                    height: taffy::Dimension::length(40.0),
+                },
+                ..Style::default()
+            },
+            &[leaf],
+        );
+        let visible = Style {
+            justify_content: Some(taffy::JustifyContent::End),
+            size: Size {
+                width: taffy::Dimension::length(100.0),
+                height: taffy::Dimension::length(80.0),
+            },
+            ..Style::default()
+        };
+        let root = tree.new_with_children(visible.clone(), &[inner]);
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| Size::ZERO);
+        let before = *tree.layout(leaf).unwrap();
+        assert_eq!(
+            before.size,
+            Size {
+                width: 20.0,
+                height: 10.0
+            }
+        );
+        assert_eq!(tree.layout(inner).unwrap().location.x, 40.0);
+        tree.set_style(
+            root,
+            Style {
+                display: taffy::Display::None,
+                ..visible.clone()
+            },
+        )
+        .unwrap();
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| {
+            panic!("a hidden ancestor must not measure its visible descendants")
+        });
+        for id in [root, inner, leaf] {
+            let layout = tree.layout(id).unwrap();
+            assert_eq!(layout.size, Size::ZERO);
+            assert_eq!(layout.location, taffy::Point::ZERO);
+        }
+        tree.set_style(root, visible).unwrap();
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| Size::ZERO);
+        assert_eq!(*tree.layout(leaf).unwrap(), before);
+        assert_eq!(tree.layout(inner).unwrap().location.x, 40.0);
+    }
 }

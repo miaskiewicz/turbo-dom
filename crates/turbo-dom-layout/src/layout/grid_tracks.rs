@@ -20,7 +20,7 @@ pub(super) fn solve_grid(
 ) {
     if !leaves
         .iter()
-        .any(|id| has_cyclic_width(tree.style(*id).unwrap()))
+        .any(|id| needs_intrinsic_style(tree.style(*id).unwrap()))
     {
         solve(tree, root, items, dimensions, fill, ctx);
         return;
@@ -29,11 +29,10 @@ pub(super) fn solve_grid(
         .iter()
         .map(|id| tree.style(*id).unwrap().clone())
         .collect();
-    let changed = indefinite_percentages(tree, leaves, &originals);
+    // The unchanged styles passed the same needs_intrinsic_style predicate,
+    // so at least one declaration necessarily becomes deferred in this pass.
+    defer_intrinsic_styles(tree, leaves, &originals);
     solve(tree, root, items, dimensions, fill, ctx);
-    if !changed {
-        return;
-    }
     let DetailedLayoutInfo::Grid(info) = tree.detailed_layout_info(root) else {
         unreachable!("a solved grid records its tracks");
     };
@@ -45,27 +44,28 @@ pub(super) fn solve_grid(
     solve(tree, root, items, dimensions, fill, ctx);
 }
 
-fn indefinite_percentages(
-    tree: &mut TaffyTree<usize>,
-    leaves: &[TaffyId],
-    styles: &[Style],
-) -> bool {
-    let mut changed = false;
+fn defer_intrinsic_styles(tree: &mut TaffyTree<usize>, leaves: &[TaffyId], styles: &[Style]) {
     for (id, original) in leaves.iter().zip(styles) {
         if let Some(intrinsic) = intrinsic_style(original) {
             tree.set_style(*id, intrinsic).unwrap();
-            changed = true;
         }
     }
-    changed
 }
 
 fn intrinsic_style(original: &Style) -> Option<Style> {
+    // Absolutely positioned children do not create tracks. Taffy includes their
+    // lines in its initial implicit-grid estimate, so defer those declarations
+    // until restore_items can resolve them against the actual in-flow grid.
+    if has_deferred_placement(original) {
+        let mut intrinsic = original.clone();
+        intrinsic.grid_column = Line::default();
+        intrinsic.grid_row = Line::default();
+        return Some(intrinsic);
+    }
     if !has_cyclic_width(original) {
         return None;
     }
     let mut intrinsic = original.clone();
-    let mut changed = false;
     for (value, indefinite) in [
         (&mut intrinsic.size.width, Dimension::auto()),
         (&mut intrinsic.min_size.width, Dimension::length(0.0)),
@@ -73,10 +73,18 @@ fn intrinsic_style(original: &Style) -> Option<Style> {
     ] {
         if cyclic_percentage(*value) {
             *value = indefinite;
-            changed = true;
         }
     }
-    changed.then_some(intrinsic)
+    Some(intrinsic)
+}
+
+fn needs_intrinsic_style(style: &Style) -> bool {
+    has_cyclic_width(style) || has_deferred_placement(style)
+}
+
+fn has_deferred_placement(style: &Style) -> bool {
+    style.position == Position::Absolute
+        && (style.grid_column != Line::default() || style.grid_row != Line::default())
 }
 
 fn has_cyclic_width(style: &Style) -> bool {
@@ -122,17 +130,13 @@ fn freeze_columns(style: &mut Style, info: &DetailedGridInfo, width: f32) {
 fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
     let mut active = vec![true; info.columns.sizes.len()];
     let total = usize::from(info.columns.explicit_tracks);
-    let fixed: usize = style
+    // parse_repeat expands every counted repetition into Single tracks. Only
+    // auto-fit/auto-fill repetitions reach grid_container_style and this adapter.
+    let fixed = style
         .grid_template_columns
         .iter()
-        .map(|track| match track {
-            TrackSizingFunction::Single(_) => 1,
-            TrackSizingFunction::Repeat(GridTrackRepetition::Count(n), tracks) => {
-                usize::from(*n) * tracks.len()
-            }
-            TrackSizingFunction::Repeat(_, _) => 0,
-        })
-        .sum();
+        .filter(|track| matches!(track, TrackSizingFunction::Single(_)))
+        .count();
     let mut start = usize::from(info.columns.negative_implicit_tracks);
     for track in &style.grid_template_columns {
         match track {
@@ -151,10 +155,7 @@ fn active_columns(style: &Style, info: &DetailedGridInfo) -> Vec<bool> {
                 }
                 start += total - fixed;
             }
-            TrackSizingFunction::Repeat(GridTrackRepetition::AutoFill, _) => start += total - fixed,
-            TrackSizingFunction::Repeat(GridTrackRepetition::Count(n), tracks) => {
-                start += usize::from(*n) * tracks.len();
-            }
+            TrackSizingFunction::Repeat(_, _) => start += total - fixed,
             TrackSizingFunction::Single(_) => start += 1,
         }
     }
@@ -188,42 +189,122 @@ fn restore_items(
                 .next()
                 .expect("every in-flow grid item has a placement");
             style.grid_column = Line {
-                start: line((2 * placement.column_start) as i16),
-                end: line((2 * placement.column_end - 1) as i16),
+                start: frozen_line(u32::from(placement.column_start.saturating_sub(1)), true)
+                    .unwrap_or(super::GridPlacement::Auto),
+                end: frozen_line(u32::from(placement.column_end.saturating_sub(1)), false)
+                    .unwrap_or(super::GridPlacement::Auto),
             };
         } else if style.position == Position::Absolute {
-            style.grid_column = Line {
-                start: absolute_boundary(style.grid_column.start, true, info),
-                end: absolute_boundary(style.grid_column.end, false, info),
-            };
+            style.grid_column = absolute_placement(style.grid_column, &info.columns, true);
+            style.grid_row = absolute_placement(style.grid_row, &info.rows, false);
         }
         tree.set_style(*id, style).unwrap();
     }
 }
 
-fn absolute_boundary(
-    placement: super::GridPlacement,
-    start: bool,
-    info: &DetailedGridInfo,
-) -> super::GridPlacement {
+/// Resolve spans before converting grid coordinates. Doing this in i32 prevents
+/// Taffy's i16 origin-line arithmetic from overflowing on valid large CSS spans.
+fn absolute_placement(
+    placement: Line<super::GridPlacement>,
+    tracks: &taffy::DetailedGridTracksInfo,
+    expanded: bool,
+) -> Line<super::GridPlacement> {
+    let start = explicit_line(placement.start, tracks.explicit_tracks);
+    let end = explicit_line(placement.end, tracks.explicit_tracks);
+    let (start, end) = match (start, end) {
+        (Some(a), Some(b)) if a == b => (Some(a), Some(a + 1)),
+        (Some(a), Some(b)) => (Some(a.min(b)), Some(a.max(b))),
+        (Some(a), None) => (Some(a), span_line(placement.end, a, 1)),
+        (None, Some(b)) => (span_line(placement.start, b, -1), Some(b)),
+        (None, None) => (None, None),
+    };
+    let map = |value: Option<i32>, start: bool| {
+        value
+            .and_then(|value| mapped_absolute_line(value, tracks, expanded, start))
+            .unwrap_or(super::GridPlacement::Auto)
+    };
+    Line {
+        start: map(start, true),
+        end: map(end, false),
+    }
+}
+
+fn explicit_line(placement: super::GridPlacement, explicit: u16) -> Option<i32> {
+    let super::GridPlacement::Line(index) = placement else {
+        return None;
+    };
+    let index = i32::from(index.as_i16());
+    match index {
+        0 => None,
+        1.. => Some(index - 1),
+        _ => Some(i32::from(explicit) + index + 1),
+    }
+}
+
+fn span_line(placement: super::GridPlacement, base: i32, sign: i32) -> Option<i32> {
     match placement {
-        super::GridPlacement::Auto => super::GridPlacement::Auto,
-        super::GridPlacement::Span(n) => super::span(n * 2 - 1),
-        super::GridPlacement::Line(index) => {
-            let index = index.as_i16();
-            if index == 0 {
-                return super::GridPlacement::Auto;
-            }
-            let explicit = if index > 0 {
-                index - 1
-            } else {
-                info.columns.explicit_tracks as i16 + index + 1
-            };
-            let original = explicit + info.columns.negative_implicit_tracks as i16;
-            if original < 0 || original as usize > info.columns.sizes.len() {
-                return super::GridPlacement::Auto;
-            }
-            line(2 * (original + 1) - i16::from(!start))
-        }
+        super::GridPlacement::Span(n) if n > 0 => Some(base + sign * i32::from(n)),
+        _ => None,
+    }
+}
+
+fn mapped_absolute_line(
+    original: i32,
+    tracks: &taffy::DetailedGridTracksInfo,
+    expanded: bool,
+    start: bool,
+) -> Option<super::GridPlacement> {
+    let index = original + i32::from(tracks.negative_implicit_tracks);
+    if index < 0 || index as usize > tracks.sizes.len() {
+        return None;
+    }
+    if expanded {
+        return frozen_line(index as u32, start);
+    }
+    // Rows retain their original explicit grid, including negative implicit rows.
+    let css_line = if original >= 0 {
+        i64::from(original) + 1
+    } else {
+        i64::from(original) - i64::from(tracks.explicit_tracks) - 1
+    };
+    i16::try_from(css_line).ok().map(line)
+}
+
+fn frozen_line(original: u32, start: bool) -> Option<super::GridPlacement> {
+    let mapped = 2 * (i64::from(original) + 1) - i64::from(!start);
+    i16::try_from(mapped).ok().map(line)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn counted_repetitions_are_expanded_before_grid_track_adapter() {
+        let parsed = super::super::grid_tracks(Some("20px repeat(2, 1fr 50px) 10px"));
+        assert_eq!(
+            parsed,
+            vec![
+                TrackSizingFunction::from_length(20.0_f32),
+                super::super::fr(1.0_f32),
+                TrackSizingFunction::from_length(50.0_f32),
+                super::super::fr(1.0_f32),
+                TrackSizingFunction::from_length(50.0_f32),
+                TrackSizingFunction::from_length(10.0_f32),
+            ]
+        );
+    }
+
+    #[test]
+    fn spacer_grid_lines_use_checked_representation_limits() {
+        assert_eq!(frozen_line(16_382, true), Some(line(32_766)));
+        assert_eq!(frozen_line(16_383, false), Some(line(i16::MAX)));
+        assert_eq!(frozen_line(16_383, true), None);
+        assert_eq!(frozen_line(u32::MAX, true), None);
+        assert_eq!(frozen_line(u32::MAX, false), None);
+        assert_eq!(explicit_line(line(0), 3), None);
+        assert_eq!(explicit_line(line(1), 3), Some(0));
+        assert_eq!(explicit_line(line(-1), 3), Some(3));
+        assert_eq!(span_line(super::super::span(0), 1, 1), None);
     }
 }
