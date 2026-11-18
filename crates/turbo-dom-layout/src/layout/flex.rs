@@ -14,6 +14,9 @@ use std::collections::HashMap;
 mod native_tree;
 use native_tree::Tree as TaffyTree;
 
+#[path = "grid_tracks.rs"]
+mod grid_tracks;
+
 use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyMinContent};
 use taffy::style_helpers::{fr, line, minmax, percent, span};
 use taffy::{
@@ -1846,7 +1849,7 @@ pub(crate) fn layout_grid(
         width: cw,
         row: false,
     };
-    solve(&mut tree, root, items, (fs, cw), fill, ctx);
+    grid_tracks::solve_grid(&mut tree, root, &leaves, items, (fs, cw), fill, ctx);
     let frags = place_items(&tree, &leaves, items, (cx, cy, fs), None, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
