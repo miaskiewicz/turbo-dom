@@ -1,5 +1,7 @@
 //! Flat native-measured leaves over Taffy's low-level API. Its high-level tree
 //! hardcodes calc resolution to zero, including in leaf sizing.
+#[path = "flex_column_intrinsic.rs"]
+mod column_intrinsic;
 use std::cell::{Cell, RefCell};
 #[path = "flex_column_padding.rs"]
 mod column_padding;
@@ -110,6 +112,16 @@ impl<C> Tree<C> {
     pub fn detailed_layout_info(&self, id: NodeId) -> &taffy::DetailedLayoutInfo {
         &self.nodes[usize::from(id)].details
     }
+    pub fn resolve_indefinite_column_percentages(&mut self, root: NodeId) {
+        for child in self.nodes[usize::from(root)].children.clone() {
+            let node = &mut self.nodes[usize::from(child)];
+            if node.style.position != taffy::Position::Absolute {
+                node.style = column_intrinsic::indefinite_style(node.style.clone());
+            }
+        }
+        self.dirty = true;
+    }
+
     pub fn disable_rounding(&mut self) {
         self.rounding = false;
     }
@@ -222,7 +234,8 @@ impl<C> View<'_, C> {
                 taffy::compute_grid_layout(self, id, inputs)
             } else {
                 let padding = column_padding::resolve(self, id, inputs);
-                let result = taffy::compute_flexbox_layout(self, id, inputs);
+                let result = column_intrinsic::compute(self, id, inputs)
+                    .unwrap_or_else(|| taffy::compute_flexbox_layout(self, id, inputs));
                 column_padding::restore(self, padding);
                 result
             };

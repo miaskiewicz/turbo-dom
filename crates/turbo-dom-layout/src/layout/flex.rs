@@ -279,7 +279,7 @@ fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
         }
     }
     // A numbers-only shorthand (`flex: 1`, `flex: 2 0`) has an implied `0` basis.
-    saw_token.then(|| Dimension::length(0.0))
+    saw_token.then(|| Dimension::percent(0.0))
 }
 
 /// One `flex`-shorthand token's role in basis resolution.
@@ -947,6 +947,7 @@ fn is_ratio_only(item: &LayoutBox, images: &ImageCtx) -> bool {
 struct Fill {
     width: f32,
     row: bool,
+    column_height: Option<bool>,
 }
 
 /// The border-box width a ratio-only image item takes as a row flex item's base size
@@ -1043,6 +1044,49 @@ fn measure_natural_image(
     })
 }
 
+fn content_column_basis(item: &LayoutBox, fs: f32, fill: Fill) -> bool {
+    let Some(definite) = fill.column_height else {
+        return false;
+    };
+    let explicit = item
+        .style
+        .get("flex-basis")
+        .is_some_and(|value| value.trim() == "content")
+        || item
+            .style
+            .get("flex")
+            .is_some_and(|value| basis_tokens(value).contains(&"content"));
+    let style = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: fill.width,
+    });
+    let basis = item_basis(&item.style, style.height, fs);
+    explicit
+        || (!definite
+            && (basis.tag() == taffy::CompactLength::PERCENT_TAG || basis.into_raw().is_calc()))
+}
+
+fn specified_content_minimum(
+    style: Option<&BoxStyle>,
+    avail: AvailableSpace,
+    content: bool,
+) -> f32 {
+    if !content || avail != AvailableSpace::MinContent {
+        return f32::INFINITY;
+    }
+    let Some(style) = style else {
+        return f32::INFINITY;
+    };
+    match style.height {
+        LengthPct::Px(height) => block::to_border(
+            height,
+            style.box_sizing,
+            style.padding.vertical() + style.border.widths().vertical(),
+        ),
+        _ => f32::INFINITY,
+    }
+}
+
 fn measure_item(
     known: Size<Option<f32>>,
     avail: Size<AvailableSpace>,
@@ -1061,6 +1105,7 @@ fn measure_item(
 ) -> Size<f32> {
     let (live_geometry, html_font_metrics, html_font_scale, original_units, fill, measured_style) =
         policy;
+    let content_basis = content_column_basis(item, fs, fill);
     if fill.row {
         if let Some(size) = measure_natural_image(item, images, known, (fs, fill.width)) {
             return size;
@@ -1107,14 +1152,18 @@ fn measure_item(
             padding.right.to_bits(),
             padding.bottom.to_bits(),
             padding.left.to_bits(),
+            u32::from(content_basis),
         ];
         item.measure_cached(key, || {
-            let bs = measured_style.cloned().unwrap_or_else(|| {
+            let mut bs = measured_style.cloned().unwrap_or_else(|| {
                 item.resolved(ResolveCtx {
                     parent_font_size: fs,
                     cb_width: w,
                 })
             });
+            if content_basis {
+                bs.height = LengthPct::Auto;
+            }
             let mut sd = Diagnostics::default();
             let mut mctx = Ctx {
                 fonts,
@@ -1160,6 +1209,7 @@ fn measure_item(
         inputs.extend([
             u64::from(w.to_bits()),
             u64::from(fs.to_bits()),
+            u64::from(content_basis),
             measured_style.map_or(0, |style| u64::from(style.padding.top.to_bits())),
             measured_style.map_or(0, |style| u64::from(style.padding.right.to_bits())),
             measured_style.map_or(0, |style| u64::from(style.padding.bottom.to_bits())),
@@ -1178,7 +1228,11 @@ fn measure_item(
     };
     Size {
         width: known.width.or(exact_width).unwrap_or(cw),
-        height: known.height.unwrap_or(ch),
+        height: known.height.unwrap_or(ch.min(specified_content_minimum(
+            measured_style,
+            avail.height,
+            content_basis,
+        ))),
     }
 }
 
@@ -1208,10 +1262,27 @@ fn build_leaves(
 /// suggestion (miaskiewicz/turbo-dom#326): Chrome 156 will not shrink it below the
 /// width it fills (a `flex-basis:100px` one still lays out 400 wide in a 400px row).
 /// Other items keep `min-width: auto` as 0.
+fn scrollable_overflow(style: &ComputedStyle) -> bool {
+    let mut parts = style
+        .get("overflow")
+        .unwrap_or("visible")
+        .split_whitespace();
+    let x = parts.next().unwrap_or("visible");
+    let y = parts.next().unwrap_or(x);
+    [("overflow-x", x), ("overflow-y", y)]
+        .into_iter()
+        .any(|(axis, fallback)| {
+            matches!(
+                style.get(axis).unwrap_or(fallback).trim(),
+                "hidden" | "scroll" | "auto"
+            )
+        })
+}
+
 fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, images: &ImageCtx) {
     let prop = if column { "min-height" } else { "min-width" };
     let auto = item.style.get(prop).is_none_or(|v| v.trim() == "auto");
-    if auto && is_ratio_only(item, images) {
+    if auto && !scrollable_overflow(&item.style) && (column || is_ratio_only(item, images)) {
         if column {
             style.min_size.height = Dimension::auto();
         } else {
@@ -1250,17 +1321,19 @@ fn place_one(
     layout: &Layout,
     parent_width: f32,
     (cx, cy, fs): (f32, f32, f32),
-    axis: Option<(bool, AlignItems)>,
+    axis: Option<(bool, AlignItems, bool)>,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let column = axis.is_some_and(|(column, _)| column);
-    let stretch = axis
-        .is_none_or(|(_, parent)| align_self(&item.style).unwrap_or(parent) == AlignItems::Stretch);
+    let column = axis.is_some_and(|(column, _, _)| column);
+    let stretch = axis.is_none_or(|(_, parent, _)| {
+        align_self(&item.style).unwrap_or(parent) == AlignItems::Stretch
+    });
     let mut bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: parent_width,
     });
     bs.padding = frames::edges(layout.padding);
+    let mut height_basis = block::ContentHeightBasis::Declared;
     // taffy has resolved this item's main-axis size (column `flex-basis`/`grow`)
     // and cross-axis size (row `align-items:stretch`). Force that border-box height
     // onto the item's own layout as a definite content-box height, so it drives the
@@ -1273,6 +1346,12 @@ fn place_one(
     if column || stretch || matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
+        height_basis = item_height_basis(
+            axis,
+            item,
+            bs.font_size,
+            (layout.size.height - inset_v).max(0.0),
+        );
         if bs.box_sizing == BoxSizing::BorderBox {
             // The item's own border-box `min-height` / `max-height` become content-box
             // lengths with it, so they don't add the frame twice (0.7.0 review R3 #2).
@@ -1292,9 +1371,39 @@ fn place_one(
         .size
         .width
         .max(bs.padding.horizontal() + bs.border.widths().horizontal());
-    let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, width, ctx);
+    let mut frag = block::layout_box_sized_isolated_with_height_basis(
+        item,
+        &bs,
+        (0.0, 0.0),
+        width,
+        height_basis,
+        ctx,
+    );
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
+}
+
+fn item_height_basis(
+    axis: Option<(bool, AlignItems, bool)>,
+    item: &LayoutBox,
+    fs: f32,
+    height: f32,
+) -> block::ContentHeightBasis {
+    match axis {
+        Some((true, _, false)) if !definite_item_basis(item, fs) => {
+            block::ContentHeightBasis::Indefinite
+        }
+        _ => block::ContentHeightBasis::Definite(height),
+    }
+}
+
+fn definite_item_basis(item: &LayoutBox, fs: f32) -> bool {
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    bs.aspect_ratio.is_some()
+        || item_basis(&item.style, bs.height, fs).tag() == taffy::CompactLength::LENGTH_TAG
 }
 
 fn used_width(bs: &mut BoxStyle, width: f32) {
@@ -1324,7 +1433,7 @@ fn place_items(
     leaves: &[TaffyId],
     items: &[LayoutBox],
     origin: (f32, f32, f32),
-    axis: Option<(bool, AlignItems)>,
+    axis: Option<(bool, AlignItems, bool)>,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
@@ -1798,6 +1907,7 @@ pub(crate) fn layout_grid(
     let fill = Fill {
         width: cw,
         row: false,
+        column_height: None,
     };
     grid_tracks::solve_grid(&mut tree, root, &leaves, items, (fs, cw), fill, ctx);
     let frags = place_items(&tree, &leaves, items, (cx, cy, fs), None, ctx);
@@ -1830,9 +1940,13 @@ pub(crate) fn layout_flex(
         container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
         &leaves,
     );
+    if column && !ctx.cb_h_known {
+        tree.resolve_indefinite_column_percentages(root);
+    }
     let fill = Fill {
         width: cw,
         row: !column,
+        column_height: column.then_some(ctx.cb_h_known),
     };
     solve(&mut tree, root, items, (fs, cw), fill, ctx);
     let frags = place_items(
@@ -1843,6 +1957,7 @@ pub(crate) fn layout_flex(
         Some((
             column,
             align_items(&container.style).unwrap_or(AlignItems::Stretch),
+            ctx.cb_h_known,
         )),
         ctx,
     );
@@ -2084,12 +2199,12 @@ mod coverage_tests {
         // a numbers-only shorthand carries an implied `0` basis (CSS `flex:1` == 1 1 0%).
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "2 0")]), 16.0),
-            Some(Dimension::length(0.0))
+            Some(Dimension::percent(0.0))
         );
         // an unparsable trailing token is skipped, leaving the implied `0` basis.
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "1 garbage")]), 16.0),
-            Some(Dimension::length(0.0))
+            Some(Dimension::percent(0.0))
         );
         // no `flex` at all -> None (caller falls back to `width`).
         assert_eq!(flex_shorthand_basis(&cs(&[]), 16.0), None);
@@ -2288,6 +2403,7 @@ mod coverage_tests {
                     Fill {
                         width: 0.0,
                         row: false,
+                        column_height: None,
                     },
                     None,
                 ),
@@ -2394,6 +2510,7 @@ mod coverage_tests {
                         Fill {
                             width: 135.0,
                             row: true,
+                            column_height: None,
                         },
                         None,
                     ),

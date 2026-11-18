@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **Signed column margins (#526)**: include negative margins in automatic flex
+  column intrinsic heights, preserving grow/shrink, wrapping, min/max constraints
+  and the distinction between allocated geometry and a definite percentage-height
+  basis. Pin 74 independent Chromium controls and restore partner-logo container
+  geometry at desktop, tablet and mobile widths.
+
 - **MUI calc widths (#518)**: parse typed multiplication, division and nested
   parentheses with operator precedence, and preserve case-sensitive custom-property
   names so MUI's Grid variables resolve. Reject malformed, dimensionally invalid
