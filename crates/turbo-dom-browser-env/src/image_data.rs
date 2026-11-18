@@ -30,3 +30,22 @@ pub(super) fn record(
         rv.set(value);
     }
 }
+
+/// Allocate the native view independently of when (or whether) the embedding exposes
+/// the JavaScript Float16Array constructor. The captured JS ArrayBuffer allocator
+/// performs the allocation and its normal range checks before entering this bridge.
+pub(super) fn float16(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let Ok(buffer) = v8::Local::<v8::ArrayBuffer>::try_from(args.get(0)) else {
+        return;
+    };
+    let length = buffer.byte_length() / 2;
+    if let Some(view) = v8::Float16Array::new(scope, buffer, 0, length) {
+        // SAFETY: V8 created a genuine typed-array object, which is a Value.
+        // The binding's Float16Array type lacks the usual direct From upcast.
+        rv.set(unsafe { v8::Local::<v8::Value>::cast_unchecked(view) });
+    }
+}

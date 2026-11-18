@@ -8172,6 +8172,12 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(
         scope,
         global,
+        "__imageDataFloat16Native",
+        image_data::float16,
+    );
+    bind_method(
+        scope,
+        global,
         "__canvasMeasureTextNative",
         canvas_text::measure_text_native,
     );

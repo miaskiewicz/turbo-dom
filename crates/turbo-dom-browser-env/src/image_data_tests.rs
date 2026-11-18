@@ -27,12 +27,15 @@ fn image_data_keeps_slots_and_captured_intrinsics_private() {
       const fail = () => { throw new Error('page patched intrinsic reached'); };
       Object.defineProperty = fail; WeakMap.prototype.get = fail; WeakMap.prototype.set = fail;
       Array.prototype.push = fail; Reflect.apply = fail; globalThis.Uint8ClampedArray = fail;
+      globalThis.Float16Array = fail; globalThis.ArrayBuffer = fail;
       ctx.putImageData(image, 0, 0); bytes[0] = 99;
       const read = ctx.getImageData(0, 0, 1, 1);
       const allocated = ctx.createImageData(1, 1);
-      return [read.data[0],read.data[1],read.data[2],allocated.width,allocated.data.length];
+      const floating = new ImageData(1,1,{pixelFormat:'rgba-float16'});
+      floating.data[0] = 0.5;
+      return [read.data[0],read.data[1],read.data[2],allocated.width,allocated.data.length,floating.data[0],floating.data.BYTES_PER_ELEMENT];
     })()"#);
-    assert_eq!(result, serde_json::json!([12, 34, 56, 1, 4]));
+    assert_eq!(result, serde_json::json!([12, 34, 56, 1, 4, 0.5, 2]));
 }
 
 #[test]
@@ -107,5 +110,47 @@ fn image_data_accepts_foreign_views_and_rejects_detached_buffers() {
         ),
         r#"["InvalidStateError","InvalidStateError"]"#
     );
+    reset();
+}
+
+#[test]
+fn image_data_allocates_float16_without_a_global_constructor_at_install() {
+    use super::*;
+    super::tests::init_v8();
+    let isolate = &mut super::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    run_js(scope, "delete globalThis.Float16Array;");
+    install_with_html(scope, "<body></body>");
+    let source = v8::String::new(scope, r#"JSON.stringify((()=>{
+      try {
+        const image = new ImageData(1, 1, {pixelFormat:'rgba-float16'});
+        image.data[0] = 0.5;
+        const clone = document.createElement('canvas').getContext('2d').createImageData(image);
+        globalThis.createdFloat = image;
+        const view = image.data;
+        const borrowed = new ImageData(view,1,1,{pixelFormat:'rgba-float16'});
+        return [ArrayBuffer.isView(image.data),image.data.BYTES_PER_ELEMENT,image.data[0],clone.pixelFormat,clone.data[0],borrowed.data===view,Object.prototype.toString.call(image.data)];
+      } catch(e) { return e.name; }
+    })())"#).unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+    assert_eq!(
+        result,
+        r#"[true,2,0.5,"rgba-float16",0,true,"[object Float16Array]"]"#
+    );
+    let global = context.global(scope);
+    let key = v8::String::new(scope, "createdFloat").unwrap();
+    let image = global
+        .get(scope, key.into())
+        .unwrap()
+        .to_object(scope)
+        .unwrap();
+    let key = v8::String::new(scope, "data").unwrap();
+    assert!(image.get(scope, key.into()).unwrap().is_float16_array());
     reset();
 }

@@ -130,6 +130,7 @@
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
   var imageDataRecordNative=g.__imageDataRecordNative;delete g.__imageDataRecordNative;
+  var imageDataFloat16Native=g.__imageDataFloat16Native;delete g.__imageDataFloat16Native;
   var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
   var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
@@ -4672,7 +4673,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // captured typed-array intrinsics, so foreign views work and tags cannot forge it.
     var __idAbs = Math.abs, __idMax = Math.max, __idFloor = Math.floor, __idTrunc = Math.trunc, __idFinite = Number.isFinite;
     var __idContexts = new WeakMap(), __idU8 = Uint8ClampedArray;
-    var __idF16 = typeof Float16Array === 'function' ? Float16Array : null;
+    var __idArrayBuffer = ArrayBuffer;
     var __idTyped = Object.getPrototypeOf(Uint8Array.prototype);
     var __idTag = Object.getOwnPropertyDescriptor(__idTyped, Symbol.toStringTag).get;
     var __idLength = Object.getOwnPropertyDescriptor(__idTyped, 'length').get;
@@ -4718,10 +4719,11 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         w = +width >>> 0; h = +height >>> 0;
         settings = __idOptions(arguments[2]);
         if (!w || !h) __idError('IndexSizeError');
-        var Type = settings.pixelFormat === 'rgba-float16' ? __idF16 : __idU8;
-        if (!Type) throw new TypeError('Float16Array is unavailable');
         if (w * h * 4 > 0x7fffffff) throw new RangeError('ImageData allocation exceeds the supported buffer size');
-        data = new Type(w * h * 4);
+        data = settings.pixelFormat === 'rgba-float16'
+          ? imageDataFloat16Native(new __idArrayBuffer(w * h * 8))
+          : new __idU8(w * h * 4);
+        if (!data) throw new RangeError('ImageData pixel allocation failed');
       }
       var record = { width: w, height: h, data: data, colorSpace: settings.colorSpace, pixelFormat: settings.pixelFormat };
       imageDataRecordNative(this, record);
