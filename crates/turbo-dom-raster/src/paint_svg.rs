@@ -994,6 +994,10 @@ fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &B
     if !fragment_finite_positive(f) {
         return;
     }
+    if border_opacity::needed(b) {
+        border_opacity::paint_round(svg, f, b, radii);
+        return;
+    }
     let rect = (f.x, f.y, f.width, f.height);
     let (inner, inner_radii) = rrect::padding_box(f, b, radii);
     let mut d = path_data(&rrect::outline(rect, radii));

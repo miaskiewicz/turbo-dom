@@ -1,0 +1,136 @@
+{
+  "chrome": "159.0.8154.6",
+  "grid": {
+    "width": 16,
+    "height": 16,
+    "dpr": 1,
+    "caseCount": 11
+  },
+  "primarySource": "https://chromium.googlesource.com/chromium/src/+/159.0.8154.6/third_party/blink/renderer/core/paint/box_border_painter.cc",
+  "clipSource": "https://chromium.googlesource.com/chromium/src/+/159.0.8154.6/third_party/blink/renderer/platform/graphics/graphics_context.cc",
+  "rendererOperationGap": {
+    "css": "Native ClipRRect intersection and SkClipOp::kDifference, with nested opacity groups",
+    "svg": "Existing cubic rounded outlines represented as an even-odd coverage mask, with nested opacity groups",
+    "nativeOracle": "resvg0.45.1/tiny-skia0.11.4 differs from Chrome SVG diagonal antialiasing: common-rounded (2,2) green167 vs159, while both have alpha128",
+    "scope": "Seven square cases compare every RGB and premultipliedRGBA channel; four rounded cases compare nine corner/interior RGB probes and every pixel opacity ceiling/color-scale relation. Rounded fringe differences are measured below; they are not a replacement threshold for existing controls."
+  },
+  "independentAreaProof": {
+    "untransformedCornerPixel": [
+      2,
+      2,
+      1,
+      1
+    ],
+    "outerCornerCenter": [
+      5,
+      5
+    ],
+    "outerRadius": 5,
+    "furthestCornerDistanceSquared": 18,
+    "innerCornerCenter": [
+      5,
+      5
+    ],
+    "innerRadius": 2,
+    "nearestCornerDistanceSquared": 8,
+    "conclusion": "18<25 and8>4: the entire pixel lies inside the true border ring; its three reflected pixels obey the same proof. Straight-band probes and an empty center additionally detect missing sides/interior fill."
+  },
+  "roundedDiagnostics": [
+    {
+      "id": "common-rounded",
+      "fullGridMaxChannelDelta": 34,
+      "fullGridChannelsAboveOne": 92,
+      "coreMaxChannelDelta": 0,
+      "coreProbeCount": 9,
+      "allPixelsAlphaCeilingPass": true,
+      "allPixelsMaxColorScaleDelta": 0,
+      "worstPixel": {
+        "x": 10,
+        "y": 0,
+        "actual": [
+          255,
+          191,
+          191
+        ],
+        "expected": [
+          255,
+          157,
+          157
+        ],
+        "delta": 34
+      }
+    },
+    {
+      "id": "differing-rounded",
+      "fullGridMaxChannelDelta": 67,
+      "fullGridChannelsAboveOne": 91,
+      "coreMaxChannelDelta": 1,
+      "coreProbeCount": 9,
+      "allPixelsAlphaCeilingPass": true,
+      "allPixelsMaxColorScaleDelta": 0,
+      "worstPixel": {
+        "x": 0,
+        "y": 3,
+        "actual": [
+          255,
+          191,
+          127
+        ],
+        "expected": [
+          255,
+          158,
+          60
+        ],
+        "delta": 67
+      }
+    },
+    {
+      "id": "common-rounded-translated",
+      "fullGridMaxChannelDelta": 40,
+      "fullGridChannelsAboveOne": 99,
+      "coreMaxChannelDelta": 0,
+      "coreProbeCount": 9,
+      "allPixelsAlphaCeilingPass": true,
+      "allPixelsMaxColorScaleDelta": 0,
+      "worstPixel": {
+        "x": 3,
+        "y": 13,
+        "actual": [
+          191,
+          191,
+          255
+        ],
+        "expected": [
+          151,
+          151,
+          255
+        ],
+        "delta": 40
+      }
+    },
+    {
+      "id": "differing-rounded-rotated",
+      "fullGridMaxChannelDelta": 60,
+      "fullGridChannelsAboveOne": 101,
+      "coreMaxChannelDelta": 0,
+      "coreProbeCount": 9,
+      "allPixelsAlphaCeilingPass": true,
+      "allPixelsMaxColorScaleDelta": 0,
+      "worstPixel": {
+        "x": 3,
+        "y": 4,
+        "actual": [
+          255,
+          191,
+          127
+        ],
+        "expected": [
+          255,
+          221,
+          187
+        ],
+        "delta": 60
+      }
+    }
+  ]
+}
