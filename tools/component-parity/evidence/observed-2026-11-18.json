@@ -1,0 +1,3102 @@
+{
+	"browser": "159.0.8154.6",
+	"nativeOnly": false,
+	"nativeSha256": "2e9f932b3a3afcfa5027b2d44d25b6953588ed596a099564dde8f7ba6c9750f9",
+	"cargoLockSha256": "392dfb957eea5af5044acb2e32b7280f988c5b67fa0b9d119a921c1648f424e2",
+	"deviceScale": 1,
+	"viewportHeight": 1000,
+	"results": [
+		{
+			"name": "feature-cards",
+			"width": 1440,
+			"fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [144, 0, 1152, 270]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [144, 0, 362.65625, 270]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [538.65625, 0, 362.65625, 270]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [933.3125, 0, 362.65625, 270]
+				},
+				{
+					"key": "h4:0",
+					"rect": [176, 92, 298.65625, 24]
+				},
+				{
+					"key": "h4:1",
+					"rect": [570.65625, 92, 298.65625, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [965.3125, 92, 298.65625, 24]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [144, 0, 1152, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [144, 0, 310, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [454, 0, 428, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [882, 0, 414, 294]
+				},
+				{
+					"key": "h4:0",
+					"rect": [176, 92, 246, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [486, 92, 364, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [914, 92, 350, 24]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container:0",
+					"chromium": [144, 0, 1152, 270],
+					"native": [144, 0, 1152, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [144, 0, 362.65625, 270],
+					"native": [144, 0, 310, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [538.65625, 0, 362.65625, 270],
+					"native": [454, 0, 428, 294]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"chromium": [933.3125, 0, 362.65625, 270],
+					"native": [882, 0, 414, 294]
+				},
+				{
+					"key": "h4:0",
+					"chromium": [176, 92, 298.65625, 24],
+					"native": [176, 92, 246, 48]
+				},
+				{
+					"key": "h4:1",
+					"chromium": [570.65625, 92, 298.65625, 24],
+					"native": [486, 92, 364, 24]
+				},
+				{
+					"key": "h4:2",
+					"chromium": [965.3125, 92, 298.65625, 24],
+					"native": [914, 92, 350, 24]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.053336805555555554,
+			"meanChannelError": 3.009644907407407
+		},
+		{
+			"name": "feature-cards",
+			"width": 768,
+			"fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [24, 0, 720, 561]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [24, 0, 344, 275]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [400, 0, 344, 275]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [24, 291, 344, 270]
+				},
+				{
+					"key": "h4:0",
+					"rect": [56, 92, 280, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [432, 92, 280, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [56, 383, 280, 24]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [24, 0, 720, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [24, 0, 194, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [218, 0, 267, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [485, 0, 259, 375]
+				},
+				{
+					"key": "h4:0",
+					"rect": [56, 92, 130, 72]
+				},
+				{
+					"key": "h4:1",
+					"rect": [250, 92, 203, 48]
+				},
+				{
+					"key": "h4:2",
+					"rect": [517, 92, 195, 48]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container:0",
+					"chromium": [24, 0, 720, 561],
+					"native": [24, 0, 720, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [24, 0, 344, 275],
+					"native": [24, 0, 194, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [400, 0, 344, 275],
+					"native": [218, 0, 267, 375]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"chromium": [24, 291, 344, 270],
+					"native": [485, 0, 259, 375]
+				},
+				{
+					"key": "h4:0",
+					"chromium": [56, 92, 280, 48],
+					"native": [56, 92, 130, 72]
+				},
+				{
+					"key": "h4:1",
+					"chromium": [432, 92, 280, 24],
+					"native": [250, 92, 203, 48]
+				},
+				{
+					"key": "h4:2",
+					"chromium": [56, 383, 280, 24],
+					"native": [517, 92, 195, 48]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.18809114583333333,
+			"meanChannelError": 7.292966145833334
+		},
+		{
+			"name": "feature-cards",
+			"width": 390,
+			"fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [16, 0, 358, 823]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [16, 0, 358, 251]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [16, 267, 358, 270]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [16, 553, 358, 270]
+				},
+				{
+					"key": "h4:0",
+					"rect": [48, 92, 294, 24]
+				},
+				{
+					"key": "h4:1",
+					"rect": [48, 359, 294, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [48, 645, 294, 24]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [16, 0, 358, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [16, 0, 96, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [112, 0, 133, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"rect": [245, 0, 129, 641]
+				},
+				{
+					"key": "h4:0",
+					"rect": [48, 92, 32, 72]
+				},
+				{
+					"key": "h4:1",
+					"rect": [144, 92, 69, 96]
+				},
+				{
+					"key": "h4:2",
+					"rect": [277, 92, 65, 96]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container:0",
+					"chromium": [16, 0, 358, 823],
+					"native": [16, 0, 358, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [16, 0, 358, 251],
+					"native": [16, 0, 96, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [16, 267, 358, 270],
+					"native": [112, 0, 133, 641]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:2",
+					"chromium": [16, 553, 358, 270],
+					"native": [245, 0, 129, 641]
+				},
+				{
+					"key": "h4:0",
+					"chromium": [48, 92, 294, 24],
+					"native": [48, 92, 32, 72]
+				},
+				{
+					"key": "h4:1",
+					"chromium": [48, 359, 294, 24],
+					"native": [144, 92, 69, 96]
+				},
+				{
+					"key": "h4:2",
+					"chromium": [48, 645, 294, 24],
+					"native": [277, 92, 65, 96]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.27366410256410256,
+			"meanChannelError": 12.822968376068376
+		},
+		{
+			"name": "product-cards",
+			"width": 1440,
+			"fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [144, 121, 1152, 464]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [144, 121, 560, 464]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [736, 121, 560, 464]
+				},
+				{
+					"key": "h3:0",
+					"rect": [193, 234, 462, 34]
+				},
+				{
+					"key": "h3:1",
+					"rect": [785, 234, 462, 34]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [144, 122, 1152, 464]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [144, 122, 681, 464]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [825, 122, 471, 464]
+				},
+				{
+					"key": "h3:0",
+					"rect": [193, 235, 583, 34]
+				},
+				{
+					"key": "h3:1",
+					"rect": [874, 235, 373, 34]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [144, 121, 560, 464],
+					"native": [144, 122, 681, 464]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [736, 121, 560, 464],
+					"native": [825, 122, 471, 464]
+				},
+				{
+					"key": "h3:0",
+					"chromium": [193, 234, 462, 34],
+					"native": [193, 235, 583, 34]
+				},
+				{
+					"key": "h3:1",
+					"chromium": [785, 234, 462, 34],
+					"native": [874, 235, 373, 34]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.03228472222222222,
+			"meanChannelError": 3.762715046296296
+		},
+		{
+			"name": "product-cards",
+			"width": 768,
+			"fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [24, 117, 720, 916]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [24, 117, 720, 442]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [24, 591, 720, 442]
+				},
+				{
+					"key": "h3:0",
+					"rect": [73, 230, 622, 34]
+				},
+				{
+					"key": "h3:1",
+					"rect": [73, 704, 622, 34]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [24, 118, 720, 586]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [24, 118, 425, 586]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [449, 118, 295, 586]
+				},
+				{
+					"key": "h3:0",
+					"rect": [73, 231, 327, 34]
+				},
+				{
+					"key": "h3:1",
+					"rect": [498, 231, 197, 68]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container:0",
+					"chromium": [24, 117, 720, 916],
+					"native": [24, 118, 720, 586]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [24, 117, 720, 442],
+					"native": [24, 118, 425, 586]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [24, 591, 720, 442],
+					"native": [449, 118, 295, 586]
+				},
+				{
+					"key": "h3:0",
+					"chromium": [73, 230, 622, 34],
+					"native": [73, 231, 327, 34]
+				},
+				{
+					"key": "h3:1",
+					"chromium": [73, 704, 622, 34],
+					"native": [498, 231, 197, 68]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.06888020833333333,
+			"meanChannelError": 8.691527777777777
+		},
+		{
+			"name": "product-cards",
+			"width": 390,
+			"fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+			"chromium": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [16, 129, 358, 1048]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [16, 129, 358, 508]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [16, 669, 358, 508]
+				},
+				{
+					"key": "h3:0",
+					"rect": [65, 242, 260, 34]
+				},
+				{
+					"key": "h3:1",
+					"rect": [65, 782, 260, 34]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiGrid-container:0",
+					"rect": [16, 129, 358, 1026]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"rect": [16, 129, 212, 1026]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"rect": [228, 129, 146, 1026]
+				},
+				{
+					"key": "h3:0",
+					"rect": [65, 242, 114, 68]
+				},
+				{
+					"key": "h3:1",
+					"rect": [277, 242, 48, 68]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiGrid-container:0",
+					"chromium": [16, 129, 358, 1048],
+					"native": [16, 129, 358, 1026]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:0",
+					"chromium": [16, 129, 358, 508],
+					"native": [16, 129, 212, 1026]
+				},
+				{
+					"key": ".MuiGrid-container > .MuiGrid-root:1",
+					"chromium": [16, 669, 358, 508],
+					"native": [228, 129, 146, 1026]
+				},
+				{
+					"key": "h3:0",
+					"chromium": [65, 242, 260, 34],
+					"native": [65, 242, 114, 68]
+				},
+				{
+					"key": "h3:1",
+					"chromium": [65, 782, 260, 34],
+					"native": [277, 242, 48, 68]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.12226410256410257,
+			"meanChannelError": 16.169636752136753
+		},
+		{
+			"name": "partner-logos",
+			"width": 1440,
+			"fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [120, 0, 1200, 617]
+				},
+				{
+					"key": "img:0",
+					"rect": [364.921875, 314, 86.796875, 61.984375]
+				},
+				{
+					"key": "img:1",
+					"rect": [621.953125, 314, 196.0625, 61.984375]
+				},
+				{
+					"key": "img:2",
+					"rect": [942.875, 314, 177.53125, 61.984375]
+				},
+				{
+					"key": "img:3",
+					"rect": [353.40625, 454, 109.84375, 61.984375]
+				},
+				{
+					"key": "img:4",
+					"rect": [672.328125, 454, 95.296875, 61.984375]
+				},
+				{
+					"key": "img:5",
+					"rect": [1000.640625, 454, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [651.265625, 575, 137.46875, 42]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [120, 0, 1200, 628]
+				},
+				{
+					"key": "img:0",
+					"rect": [301, 325, 86.79998779296875, 62]
+				},
+				{
+					"key": "img:1",
+					"rect": [487, 325, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"rect": [594, 325, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"rect": [822, 325, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"rect": [928, 325, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"rect": [1078, 325, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [651, 436, 138, 42]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiContainer-root:0",
+					"chromium": [120, 0, 1200, 617],
+					"native": [120, 0, 1200, 628]
+				},
+				{
+					"key": "img:0",
+					"chromium": [364.921875, 314, 86.796875, 61.984375],
+					"native": [301, 325, 86.79998779296875, 62]
+				},
+				{
+					"key": "img:1",
+					"chromium": [621.953125, 314, 196.0625, 61.984375],
+					"native": [487, 325, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"chromium": [942.875, 314, 177.53125, 61.984375],
+					"native": [594, 325, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"chromium": [353.40625, 454, 109.84375, 61.984375],
+					"native": [822, 325, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"chromium": [672.328125, 454, 95.296875, 61.984375],
+					"native": [928, 325, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"chromium": [1000.640625, 454, 62, 62],
+					"native": [1078, 325, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"chromium": [651.265625, 575, 137.46875, 42],
+					"native": [651, 436, 138, 42]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.09004791666666667,
+			"meanChannelError": 4.798914814814815
+		},
+		{
+			"name": "partner-logos",
+			"width": 768,
+			"fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 768, 725]
+				},
+				{
+					"key": "img:0",
+					"rect": [156.59375, 346, 86.796875, 61.984375]
+				},
+				{
+					"key": "img:1",
+					"rect": [469.96875, 346, 196.0625, 61.984375]
+				},
+				{
+					"key": "img:2",
+					"rect": [111.234375, 462, 177.53125, 61.984375]
+				},
+				{
+					"key": "img:3",
+					"rect": [513.078125, 462, 109.84375, 61.984375]
+				},
+				{
+					"key": "img:4",
+					"rect": [152.34375, 578, 95.296875, 61.984375]
+				},
+				{
+					"key": "img:5",
+					"rect": [537, 578, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [315.265625, 679, 137.46875, 42]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 768, 652]
+				},
+				{
+					"key": "img:0",
+					"rect": [48, 357, 86.80000305175781, 62]
+				},
+				{
+					"key": "img:1",
+					"rect": [198, 357, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"rect": [284, 357, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"rect": [467, 357, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"rect": [553, 357, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"rect": [674, 357, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [315, 448, 138, 42]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiContainer-root:0",
+					"chromium": [0, 0, 768, 725],
+					"native": [0, 0, 768, 652]
+				},
+				{
+					"key": "img:0",
+					"chromium": [156.59375, 346, 86.796875, 61.984375],
+					"native": [48, 357, 86.80000305175781, 62]
+				},
+				{
+					"key": "img:1",
+					"chromium": [469.96875, 346, 196.0625, 61.984375],
+					"native": [198, 357, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"chromium": [111.234375, 462, 177.53125, 61.984375],
+					"native": [284, 357, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"chromium": [513.078125, 462, 109.84375, 61.984375],
+					"native": [467, 357, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"chromium": [152.34375, 578, 95.296875, 61.984375],
+					"native": [553, 357, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"chromium": [537, 578, 62, 62],
+					"native": [674, 357, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"chromium": [315.265625, 679, 137.46875, 42],
+					"native": [315, 448, 138, 42]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.2346640625,
+			"meanChannelError": 9.733465277777778
+		},
+		{
+			"name": "partner-logos",
+			"width": 390,
+			"fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 390, 765]
+				},
+				{
+					"key": "img:0",
+					"rect": [58.09375, 386, 86.796875, 61.984375]
+				},
+				{
+					"key": "img:1",
+					"rect": [228.09375, 397.90625, 120.796875, 38.1875]
+				},
+				{
+					"key": "img:2",
+					"rect": [41.09375, 511.90625, 120.796875, 42.171875]
+				},
+				{
+					"key": "img:3",
+					"rect": [233.578125, 502, 109.84375, 61.984375]
+				},
+				{
+					"key": "img:4",
+					"rect": [53.84375, 618, 95.296875, 61.984375]
+				},
+				{
+					"key": "img:5",
+					"rect": [257.5, 618, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [126.265625, 719, 137.46875, 42]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 390, 691]
+				},
+				{
+					"key": "img:0",
+					"rect": [32, 396, 86.80000305175781, 62]
+				},
+				{
+					"key": "img:1",
+					"rect": [107, 396, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"rect": [150, 396, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"rect": [241, 396, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"rect": [283, 396, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"rect": [343, 396, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"rect": [126, 487, 138, 42]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiContainer-root:0",
+					"chromium": [0, 0, 390, 765],
+					"native": [0, 0, 390, 691]
+				},
+				{
+					"key": "img:0",
+					"chromium": [58.09375, 386, 86.796875, 61.984375],
+					"native": [32, 396, 86.80000305175781, 62]
+				},
+				{
+					"key": "img:1",
+					"chromium": [228.09375, 397.90625, 120.796875, 38.1875],
+					"native": [107, 396, 196.07501220703125, 62]
+				},
+				{
+					"key": "img:2",
+					"chromium": [41.09375, 511.90625, 120.796875, 42.171875],
+					"native": [150, 396, 177.54547119140625, 62]
+				},
+				{
+					"key": "img:3",
+					"chromium": [233.578125, 502, 109.84375, 61.984375],
+					"native": [241, 396, 109.3885498046875, 62]
+				},
+				{
+					"key": "img:4",
+					"chromium": [53.84375, 618, 95.296875, 61.984375],
+					"native": [283, 396, 95.30035400390625, 62]
+				},
+				{
+					"key": "img:5",
+					"chromium": [257.5, 618, 62, 62],
+					"native": [343, 396, 62, 62]
+				},
+				{
+					"key": "button:0",
+					"chromium": [126.265625, 719, 137.46875, 42],
+					"native": [126, 487, 138, 42]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.2396102564102564,
+			"meanChannelError": 12.002923931623931
+		},
+		{
+			"name": "resources",
+			"width": 1440,
+			"fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [120, 0, 1200, 583]
+				},
+				{
+					"key": "h2:0",
+					"rect": [414.25, 0, 611.484375, 42]
+				},
+				{
+					"key": "h4:0",
+					"rect": [172, 381, 301.328125, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [569.328125, 381, 301.328125, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [966.65625, 381, 301.34375, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [160, 154, 325.328125, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [557.328125, 154, 325.328125, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [954.65625, 154, 325.34375, 195]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [120, 0, 1200, 583]
+				},
+				{
+					"key": "h2:0",
+					"rect": [414, 0, 612, 42]
+				},
+				{
+					"key": "h4:0",
+					"rect": [172, 381, 318, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [1364, 381, 318, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [2556, 381, 318, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [160, 154, 342, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [1352, 154, 342, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [2544, 154, 342, 195]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": "h4:0",
+					"chromium": [172, 381, 301.328125, 48],
+					"native": [172, 381, 318, 48]
+				},
+				{
+					"key": "h4:1",
+					"chromium": [569.328125, 381, 301.328125, 24],
+					"native": [1364, 381, 318, 24]
+				},
+				{
+					"key": "h4:2",
+					"chromium": [966.65625, 381, 301.34375, 24],
+					"native": [2556, 381, 318, 24]
+				},
+				{
+					"key": "img:0",
+					"chromium": [160, 154, 325.328125, 195],
+					"native": [160, 154, 342, 195]
+				},
+				{
+					"key": "img:1",
+					"chromium": [557.328125, 154, 325.328125, 195],
+					"native": [1352, 154, 342, 195]
+				},
+				{
+					"key": "img:2",
+					"chromium": [954.65625, 154, 325.34375, 195],
+					"native": [2544, 154, 342, 195]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.2789041666666667,
+			"meanChannelError": 16.502877314814814
+		},
+		{
+			"name": "resources",
+			"width": 768,
+			"fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 768, 1040]
+				},
+				{
+					"key": "h2:0",
+					"rect": [97.359375, 0, 573.265625, 38]
+				},
+				{
+					"key": "h4:0",
+					"rect": [52, 377, 284, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [432, 377, 284, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [52, 862, 284, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [40, 150, 308, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [420, 150, 308, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [40, 635, 308, 195]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 768, 1021]
+				},
+				{
+					"key": "h2:0",
+					"rect": [97, 0, 574, 38]
+				},
+				{
+					"key": "h4:0",
+					"rect": [52, 377, 318, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [812, 377, 318, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [52, 862, 318, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [40, 150, 342, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [800, 150, 342, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [40, 635, 342, 195]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".MuiContainer-root:0",
+					"chromium": [0, 0, 768, 1040],
+					"native": [0, 0, 768, 1021]
+				},
+				{
+					"key": "h4:0",
+					"chromium": [52, 377, 284, 48],
+					"native": [52, 377, 318, 48]
+				},
+				{
+					"key": "h4:1",
+					"chromium": [432, 377, 284, 24],
+					"native": [812, 377, 318, 24]
+				},
+				{
+					"key": "h4:2",
+					"chromium": [52, 862, 284, 24],
+					"native": [52, 862, 318, 24]
+				},
+				{
+					"key": "img:0",
+					"chromium": [40, 150, 308, 195],
+					"native": [40, 150, 342, 195]
+				},
+				{
+					"key": "img:1",
+					"chromium": [420, 150, 308, 195],
+					"native": [800, 150, 342, 195]
+				},
+				{
+					"key": "img:2",
+					"chromium": [40, 635, 308, 195],
+					"native": [40, 635, 342, 195]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.34384895833333334,
+			"meanChannelError": 23.541116753472224
+		},
+		{
+			"name": "resources",
+			"width": 390,
+			"fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+			"chromium": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 390, 1540]
+				},
+				{
+					"key": "h2:0",
+					"rect": [16, 0, 358, 52]
+				},
+				{
+					"key": "h4:0",
+					"rect": [44, 435, 302, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [44, 920, 302, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [44, 1362, 302, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [32, 208, 326, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [32, 693, 326, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [32, 1135, 326, 195]
+				}
+			],
+			"native": [
+				{
+					"key": ".MuiContainer-root:0",
+					"rect": [0, 0, 390, 1540]
+				},
+				{
+					"key": "h2:0",
+					"rect": [16, 0, 358, 52]
+				},
+				{
+					"key": "h4:0",
+					"rect": [44, 435, 302, 48]
+				},
+				{
+					"key": "h4:1",
+					"rect": [44, 920, 302, 24]
+				},
+				{
+					"key": "h4:2",
+					"rect": [44, 1362, 302, 24]
+				},
+				{
+					"key": "img:0",
+					"rect": [32, 208, 326, 195]
+				},
+				{
+					"key": "img:1",
+					"rect": [32, 693, 326, 195]
+				},
+				{
+					"key": "img:2",
+					"rect": [32, 1135, 326, 195]
+				}
+			],
+			"geometryDifferences": [],
+			"chromiumErrors": [],
+			"changedFraction": 0.08851025641025641,
+			"meanChannelError": 4.1210555555555555
+		},
+		{
+			"name": "mui-width-expression",
+			"width": 1440,
+			"fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [426.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [821.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [426.65625, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [821.3125, 92, 298.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [304, 92, 40, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 362.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [394.65625, 0, 362.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [789.3125, 0, 362.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 362.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [394.65625, 0, 362.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [789.3125, 0, 362.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [426.65625, 32, 40, 40],
+					"native": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [821.3125, 32, 40, 40],
+					"native": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 298.65625, 56],
+					"native": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [426.65625, 92, 298.65625, 56],
+					"native": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [821.3125, 92, 298.65625, 56],
+					"native": [304, 92, 40, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.11328888888888888,
+			"meanChannelError": 2.263211111111111
+		},
+		{
+			"name": "mui-width-expression",
+			"width": 768,
+			"fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 234.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [266.65625, 0, 234.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [533.3125, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [266.65625, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [533.3125, 0, 234.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [298.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [565.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 170.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [298.65625, 92, 170.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [565.3125, 92, 170.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [304, 92, 40, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 234.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [266.65625, 0, 234.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [533.3125, 0, 234.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 234.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [266.65625, 0, 234.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [533.3125, 0, 234.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [298.65625, 32, 40, 40],
+					"native": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [565.3125, 32, 40, 40],
+					"native": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 170.65625, 56],
+					"native": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [298.65625, 92, 170.65625, 56],
+					"native": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [565.3125, 92, 170.65625, 56],
+					"native": [304, 92, 40, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.11455208333333333,
+			"meanChannelError": 2.3889027777777776
+		},
+		{
+			"name": "mui-width-expression",
+			"width": 390,
+			"fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 108.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [140.65625, 0, 108.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [281.3125, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [140.65625, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [281.3125, 0, 108.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [172.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [313.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 44.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [172.65625, 92, 44.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [313.3125, 92, 44.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [304, 92, 40, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 108.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [140.65625, 0, 108.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [281.3125, 0, 108.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 108.65625, 180],
+					"native": [0, 0, 104, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [140.65625, 0, 108.65625, 180],
+					"native": [136, 0, 104, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [281.3125, 0, 108.65625, 180],
+					"native": [272, 0, 104, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [172.65625, 32, 40, 40],
+					"native": [168, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [313.3125, 32, 40, 40],
+					"native": [304, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 44.65625, 56],
+					"native": [32, 92, 40, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [172.65625, 92, 44.65625, 56],
+					"native": [168, 92, 40, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [313.3125, 92, 44.65625, 56],
+					"native": [304, 92, 40, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.047979487179487176,
+			"meanChannelError": 1.3423726495726496
+		},
+		{
+			"name": "nested-grid-tracks",
+			"width": 1440,
+			"fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+			"chromium": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 1152, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 357.328125, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [397.328125, 0, 357.328125, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [794.65625, 0, 357.34375, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 325.328125, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [413.328125, 16, 325.328125, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [810.65625, 16, 325.34375, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 325.328125, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [413.328125, 243, 325.328125, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [810.65625, 243, 325.34375, 72]
+				}
+			],
+			"native": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 1152, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [1192, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [2384, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [1208, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [2400, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [1208, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [2400, 243, 342, 72]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 357.328125, 347],
+					"native": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [397.328125, 0, 357.328125, 347],
+					"native": [1192, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [794.65625, 0, 357.34375, 347],
+					"native": [2384, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"chromium": [16, 16, 325.328125, 195],
+					"native": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"chromium": [413.328125, 16, 325.328125, 195],
+					"native": [1208, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"chromium": [810.65625, 16, 325.34375, 195],
+					"native": [2400, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"chromium": [16, 243, 325.328125, 72],
+					"native": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"chromium": [413.328125, 243, 325.328125, 72],
+					"native": [1208, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"chromium": [810.65625, 243, 325.34375, 72],
+					"native": [2400, 243, 342, 72]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.23901319444444444,
+			"meanChannelError": 19.197649537037037
+		},
+		{
+			"name": "nested-grid-tracks",
+			"width": 768,
+			"fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+			"chromium": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 768, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 229.328125, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [269.328125, 0, 229.328125, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [538.65625, 0, 229.328125, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 197.328125, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [285.328125, 16, 197.328125, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [554.65625, 16, 197.328125, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 197.328125, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [285.328125, 243, 197.328125, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [554.65625, 243, 197.328125, 72]
+				}
+			],
+			"native": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 768, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [808, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [1616, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [824, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [1632, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [824, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [1632, 243, 342, 72]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 229.328125, 347],
+					"native": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [269.328125, 0, 229.328125, 347],
+					"native": [808, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [538.65625, 0, 229.328125, 347],
+					"native": [1616, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"chromium": [16, 16, 197.328125, 195],
+					"native": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"chromium": [285.328125, 16, 197.328125, 195],
+					"native": [824, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"chromium": [554.65625, 16, 197.328125, 195],
+					"native": [1632, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"chromium": [16, 243, 197.328125, 72],
+					"native": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"chromium": [285.328125, 243, 197.328125, 72],
+					"native": [824, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"chromium": [554.65625, 243, 197.328125, 72],
+					"native": [1632, 243, 342, 72]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.19798958333333333,
+			"meanChannelError": 15.989145833333334
+		},
+		{
+			"name": "nested-grid-tracks",
+			"width": 390,
+			"fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+			"chromium": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 390, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 103.328125, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [143.328125, 0, 103.328125, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [286.65625, 0, 103.34375, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 71.328125, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [159.328125, 16, 71.328125, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [302.65625, 16, 71.34375, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 71.328125, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [159.328125, 243, 71.328125, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [302.65625, 243, 71.34375, 72]
+				}
+			],
+			"native": [
+				{
+					"key": ".stack:0",
+					"rect": [0, 0, 390, 347]
+				},
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 347]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"rect": [430, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"rect": [860, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"rect": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"rect": [446, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"rect": [876, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"rect": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"rect": [446, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"rect": [876, 243, 342, 72]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 103.328125, 347],
+					"native": [0, 0, 374, 347]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [143.328125, 0, 103.328125, 347],
+					"native": [430, 0, 374, 347]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [286.65625, 0, 103.34375, 347],
+					"native": [860, 0, 374, 347]
+				},
+				{
+					"key": ".image:0",
+					"chromium": [16, 16, 71.328125, 195],
+					"native": [16, 16, 342, 195]
+				},
+				{
+					"key": ".image:1",
+					"chromium": [159.328125, 16, 71.328125, 195],
+					"native": [446, 16, 342, 195]
+				},
+				{
+					"key": ".image:2",
+					"chromium": [302.65625, 16, 71.34375, 195],
+					"native": [876, 16, 342, 195]
+				},
+				{
+					"key": ".content:0",
+					"chromium": [16, 243, 71.328125, 72],
+					"native": [16, 243, 342, 72]
+				},
+				{
+					"key": ".content:1",
+					"chromium": [159.328125, 243, 71.328125, 72],
+					"native": [446, 243, 342, 72]
+				},
+				{
+					"key": ".content:2",
+					"chromium": [302.65625, 243, 71.34375, 72],
+					"native": [876, 243, 342, 72]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.14917948717948717,
+			"meanChannelError": 13.282908547008548
+		},
+		{
+			"name": "mui-width-additive",
+			"width": 1440,
+			"fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [426.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [821.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [426.65625, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [821.3125, 92, 298.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 376]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 384, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [416, 0, 384, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 196, 384, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 384, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [416, 0, 384, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 196, 384, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [448, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 320, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [448, 92, 320, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 288, 320, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".grid:0",
+					"chromium": [0, 0, 1152, 180],
+					"native": [0, 0, 1152, 376]
+				},
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 362.65625, 180],
+					"native": [0, 0, 384, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [394.65625, 0, 362.65625, 180],
+					"native": [416, 0, 384, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [789.3125, 0, 362.65625, 180],
+					"native": [0, 196, 384, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 362.65625, 180],
+					"native": [0, 0, 384, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [394.65625, 0, 362.65625, 180],
+					"native": [416, 0, 384, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [789.3125, 0, 362.65625, 180],
+					"native": [0, 196, 384, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [426.65625, 32, 40, 40],
+					"native": [448, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [821.3125, 32, 40, 40],
+					"native": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 298.65625, 56],
+					"native": [32, 92, 320, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [426.65625, 92, 298.65625, 56],
+					"native": [448, 92, 320, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [821.3125, 92, 298.65625, 56],
+					"native": [32, 288, 320, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.13705,
+			"meanChannelError": 2.747551851851852
+		},
+		{
+			"name": "mui-width-additive",
+			"width": 768,
+			"fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 234.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [266.65625, 0, 234.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [533.3125, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [266.65625, 0, 234.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [533.3125, 0, 234.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [298.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [565.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 170.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [298.65625, 92, 170.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [565.3125, 92, 170.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 376]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 256, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [288, 0, 256, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 196, 256, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 256, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [288, 0, 256, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 196, 256, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [320, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 192, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [320, 92, 192, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 288, 192, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".grid:0",
+					"chromium": [0, 0, 768, 180],
+					"native": [0, 0, 768, 376]
+				},
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 234.65625, 180],
+					"native": [0, 0, 256, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [266.65625, 0, 234.65625, 180],
+					"native": [288, 0, 256, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [533.3125, 0, 234.65625, 180],
+					"native": [0, 196, 256, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 234.65625, 180],
+					"native": [0, 0, 256, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [266.65625, 0, 234.65625, 180],
+					"native": [288, 0, 256, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [533.3125, 0, 234.65625, 180],
+					"native": [0, 196, 256, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [298.65625, 32, 40, 40],
+					"native": [320, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [565.3125, 32, 40, 40],
+					"native": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 170.65625, 56],
+					"native": [32, 92, 192, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [298.65625, 92, 170.65625, 56],
+					"native": [320, 92, 192, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [565.3125, 92, 170.65625, 56],
+					"native": [32, 288, 192, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.17296875,
+			"meanChannelError": 3.6778819444444446
+		},
+		{
+			"name": "mui-width-additive",
+			"width": 390,
+			"fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 108.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [140.65625, 0, 108.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [281.3125, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [140.65625, 0, 108.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [281.3125, 0, 108.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [172.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [313.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 44.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [172.65625, 92, 44.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [313.3125, 92, 44.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 376]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 130, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [162, 0, 130, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 196, 130, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 130, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [162, 0, 130, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 196, 130, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [194, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 66, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [194, 92, 66, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 288, 66, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".grid:0",
+					"chromium": [0, 0, 390, 180],
+					"native": [0, 0, 390, 376]
+				},
+				{
+					"key": ".item:0",
+					"chromium": [0, 0, 108.65625, 180],
+					"native": [0, 0, 130, 180]
+				},
+				{
+					"key": ".item:1",
+					"chromium": [140.65625, 0, 108.65625, 180],
+					"native": [162, 0, 130, 180]
+				},
+				{
+					"key": ".item:2",
+					"chromium": [281.3125, 0, 108.65625, 180],
+					"native": [0, 196, 130, 180]
+				},
+				{
+					"key": ".card:0",
+					"chromium": [0, 0, 108.65625, 180],
+					"native": [0, 0, 130, 180]
+				},
+				{
+					"key": ".card:1",
+					"chromium": [140.65625, 0, 108.65625, 180],
+					"native": [162, 0, 130, 180]
+				},
+				{
+					"key": ".card:2",
+					"chromium": [281.3125, 0, 108.65625, 180],
+					"native": [0, 196, 130, 180]
+				},
+				{
+					"key": ".badge:1",
+					"chromium": [172.65625, 32, 40, 40],
+					"native": [194, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"chromium": [313.3125, 32, 40, 40],
+					"native": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 44.65625, 56],
+					"native": [32, 92, 66, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [172.65625, 92, 44.65625, 56],
+					"native": [194, 92, 66, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [313.3125, 92, 44.65625, 56],
+					"native": [32, 288, 66, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.17778461538461537,
+			"meanChannelError": 4.3857367521367525
+		},
+		{
+			"name": "nested-flex-padding",
+			"width": 1440,
+			"fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [789.3125, 0, 362.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [426.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [821.3125, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [426.65625, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [821.3125, 92, 298.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 1152, 180]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [395, 0, 362, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [789, 0, 363, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [395, 0, 362, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [789, 0, 363, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [427, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [821, 32, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [427, 92, 298, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [821, 92, 299, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 298.65625, 56],
+					"native": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [426.65625, 92, 298.65625, 56],
+					"native": [427, 92, 298, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [821.3125, 92, 298.65625, 56],
+					"native": [821, 92, 299, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.039822222222222224,
+			"meanChannelError": 1.0221037037037037
+		},
+		{
+			"name": "nested-flex-padding",
+			"width": 768,
+			"fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 376]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 196, 362.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [394.65625, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 196, 362.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [426.65625, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [426.65625, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 288, 298.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 768, 376]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [395, 0, 362, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 196, 363, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [395, 0, 362, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 196, 363, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [427, 32, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [427, 92, 298, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 288, 299, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 298.65625, 56],
+					"native": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [426.65625, 92, 298.65625, 56],
+					"native": [427, 92, 298, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [32, 288, 298.65625, 56],
+					"native": [32, 288, 299, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.0684375,
+			"meanChannelError": 1.7897847222222223
+		},
+		{
+			"name": "nested-flex-padding",
+			"width": 390,
+			"fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+			"chromium": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 572]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [0, 196, 362.65625, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 392, 362.65625, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 362.65625, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [0, 196, 362.65625, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 392, 362.65625, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 424, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 298.65625, 56]
+				},
+				{
+					"key": ".body:1",
+					"rect": [32, 288, 298.65625, 56]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 484, 298.65625, 56]
+				}
+			],
+			"native": [
+				{
+					"key": ".grid:0",
+					"rect": [0, 0, 390, 572]
+				},
+				{
+					"key": ".item:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".item:1",
+					"rect": [0, 196, 363, 180]
+				},
+				{
+					"key": ".item:2",
+					"rect": [0, 392, 363, 180]
+				},
+				{
+					"key": ".card:0",
+					"rect": [0, 0, 363, 180]
+				},
+				{
+					"key": ".card:1",
+					"rect": [0, 196, 363, 180]
+				},
+				{
+					"key": ".card:2",
+					"rect": [0, 392, 363, 180]
+				},
+				{
+					"key": ".badge:0",
+					"rect": [32, 32, 40, 40]
+				},
+				{
+					"key": ".badge:1",
+					"rect": [32, 228, 40, 40]
+				},
+				{
+					"key": ".badge:2",
+					"rect": [32, 424, 40, 40]
+				},
+				{
+					"key": ".body:0",
+					"rect": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"rect": [32, 288, 299, 120]
+				},
+				{
+					"key": ".body:2",
+					"rect": [32, 484, 299, 120]
+				}
+			],
+			"geometryDifferences": [
+				{
+					"key": ".body:0",
+					"chromium": [32, 92, 298.65625, 56],
+					"native": [32, 92, 299, 120]
+				},
+				{
+					"key": ".body:1",
+					"chromium": [32, 288, 298.65625, 56],
+					"native": [32, 288, 299, 120]
+				},
+				{
+					"key": ".body:2",
+					"chromium": [32, 484, 298.65625, 56],
+					"native": [32, 484, 299, 120]
+				}
+			],
+			"chromiumErrors": [],
+			"changedFraction": 0.12266666666666666,
+			"meanChannelError": 3.279288888888889
+		}
+	]
+}
