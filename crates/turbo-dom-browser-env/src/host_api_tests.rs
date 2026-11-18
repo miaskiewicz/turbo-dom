@@ -505,3 +505,45 @@ fn throwing_submission_handler_is_reported() {
         },
     );
 }
+
+#[test]
+fn canvas_host_uses_private_records_without_guest_aliases_or_hooks() {
+    with_page("<!doctype html><body></body>", |scope| {
+        assert_eq!(json(scope,"[document.canvasHost,globalThis.__canvasResetNative,globalThis.__canvasProxyNative]"),"[null,null,null]");
+        let document = object(scope, "document");
+        let record = get_interface_record(scope, document)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+        let name = v8::String::new(scope, "canvasHost").unwrap();
+        let host = record.get(scope, name.into()).unwrap();
+        assert!(
+            host.is_object(),
+            "host-only canonical canvas seam is missing"
+        );
+        let global = scope.get_current_context().global(scope);
+        let key = v8::String::new(scope, "__canvasTestHost").unwrap();
+        global.set(scope, key.into(), host);
+        let actual = json(
+            scope,
+            r#"(() => {
+          const host=__canvasTestHost,cv=document.createElement('canvas');cv.width=2;cv.height=1;
+          const ctx=cv.getContext('2d');ctx.putImageData(new ImageData(new Uint8ClampedArray([12,34,56,255]),1),0,0);
+          let calls=0;const fail=()=>{calls++;throw Error('guest hook')};
+          for(const [target,name] of [[cv,'__ctx2d'],[cv,'width'],[cv,'height'],[ctx,'_ops'],[ctx,'canvas']])Object.defineProperty(target,name,{get:fail,configurable:true});
+          Object.defineProperty(Array.prototype,'toJSON',{get:fail,configurable:true});Object.defineProperty(Object.prototype,'toJSON',{get:fail,configurable:true});
+          let answer;try{
+            const ops=JSON.parse(host.snapshotJSON(ctx));
+            answer=[host.readContext(cv)===ctx,host.readCanvas(ctx)===cv,host.size(cv),ops[0][0],ops[0][1][0].data[0],cv.getContext('2d')===ctx,calls];
+          }finally{delete Array.prototype.toJSON;delete Object.prototype.toJSON}
+          const fresh=document.createElement('canvas'),other=document.implementation.createHTMLDocument('').createElement('canvas');other.getContext('2d');
+          answer.push(host.readContext(fresh),host.size(fresh),host.readContext(other),host.size(other),host.readContext({}),host.readCanvas({}),host.snapshotJSON({}),host.size({}));
+          return answer;
+        })()"#,
+        );
+        assert_eq!(
+            actual,
+            r#"[true,true,[2,1],"putImageData",12,true,0,null,[300,150],null,null,null,null,null,null]"#
+        );
+    });
+}

@@ -1,6 +1,6 @@
 {
   "browser": "156.0.8078.47",
-  "probeSha256": "7ea0083e73b23d1777d03adba6ea4ddfed02025f512872bed407c7822e8cc119",
+  "probeSha256": "53bfc4a90922fbd0520b6650c6c0fb82f7e0d9daa24a0a8fda67155d070ab2e4",
   "result": {
     "defaults": [
       300,
@@ -302,6 +302,20 @@
           56,
           255
         ]
+      ]
+    ],
+    "ownOverrides": [
+      [
+        "lineWidth",
+        17
+      ],
+      [
+        "globalAlpha",
+        0.25
+      ],
+      [
+        "font",
+        "23px serif"
       ]
     ],
     "descriptors": [

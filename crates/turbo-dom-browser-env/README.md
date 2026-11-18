@@ -317,6 +317,13 @@ existing dimension attribute resets the 2D drawing state, path log and bitmap. M
 attribute removals and unrelated namespaces preserve them. Native attribute and Attr-node
 mutation routes notify an engine-private reset callback synchronously.
 
+Embedders obtain `canvasHost` from the document's private `get_interface_record`:
+`readContext(canvas)`, `readCanvas(context)`, `snapshotJSON(context)` and `size(canvas)`.
+These read canonical records and native dimensions, ignoring overwritten diagnostic
+`__ctx2d`, `_ops`, `canvas`, `width` or `height` properties. Unknown or foreign-document
+objects return `null`; snapshots are nondraining JSON. The seam is never a guest global
+or a document property.
+
 Bare-binding readback snapshots reject Proxy/accessor-backed draw records and use
 prototype-free copies, so guest serialization hooks are never invoked implicitly.
 Constructor support alone does not establish complete animation-player support.

@@ -278,3 +278,66 @@ fn canvas_readback_rejects_bigint_without_its_serialization_hook() {
     })()"#);
     assert_eq!(actual, serde_json::json!(["TypeError", 0]));
 }
+
+#[test]
+fn canvas_drawing_ignores_overwritten_diagnostic_log_alias() {
+    let actual = run(r#"(() => {
+      const cv=document.createElement('canvas'),ctx=cv.getContext('2d'),log=ctx._ops;
+      let calls=0;Object.defineProperty(ctx,'_ops',{get(){calls++;throw Error('diagnostic getter')},configurable:true});
+      let error='none';try{ctx.fillRect(0,0,1,1);ctx.measureText('x');ctx.putImageData(new ImageData(1,1),0,0)}catch(e){error=e.message}
+      return [error,calls,log.map(op=>op[0])];
+    })()"#);
+    assert_eq!(
+        actual,
+        serde_json::json!(["none", 0, ["fillRect", "measureText", "putImageData"]])
+    );
+}
+
+#[test]
+fn canvas_idl_errors_preserve_pixels_without_page_error_constructors() {
+    let actual = run(r#"(() => {
+      const cv=document.createElement('canvas');cv.width=2;cv.height=2;const ctx=cv.getContext('2d');
+      ctx.putImageData(new ImageData(new Uint8ClampedArray([12,34,56,255]),1),0,0);
+      const descriptor=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,'width'),OriginalTypeError=TypeError;
+      let calls=0;globalThis.TypeError=function(){calls++;throw Error('page constructor')};
+      const errors=[];
+      try{for(const action of [()=>descriptor.get.call({}),()=>descriptor.set.call(document.body,3),()=>cv.getContext.call({},'2d'),()=>{cv.width=1n},()=>{cv.width=Symbol('x')}]){try{action();errors.push('none')}catch(e){errors.push(e.name)}}}finally{globalThis.TypeError=OriginalTypeError}
+      return [errors,calls,cv.width,Array.from(ctx.getImageData(0,0,1,1).data),cv.getContext('unknown'),cv.getContext('2d')===ctx];
+    })()"#);
+    assert_eq!(
+        actual,
+        serde_json::json!([
+            [
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError"
+            ],
+            0,
+            2,
+            [12, 34, 56, 255],
+            null,
+            true
+        ])
+    );
+}
+
+#[test]
+fn canvas_snapshot_rejects_cyclic_or_deep_logs_and_handles_holes() {
+    let actual = run(r#"(() => {
+      const results=[];
+      for(const mode of ['cycle','deep','holes']) {
+        const cv=document.createElement('canvas'),ctx=cv.getContext('2d');
+        if(mode==='cycle'){const row=[];row.push(row);ctx._ops.push(row)}
+        else if(mode==='deep'){let row=[];for(let n=0;n<70;n++)row=[row];ctx._ops.push(row)}
+        else ctx._ops.push(['fillRect',new Array(4)]);
+        try{results.push(typeof cv.toDataURL())}catch(e){results.push(e.name)}
+      }
+      return results;
+    })()"#);
+    assert_eq!(
+        actual,
+        serde_json::json!(["TypeError", "TypeError", "string"])
+    );
+}

@@ -4559,7 +4559,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // stable content-derived hash reads like a real — if device-invariant — canvas. There is
     // no GPU/font rasterizer here, so the output is synthetic: honest about being computed
     // from the op log, not a specific device's pixels. Covers signature pads/charts too.
-    var __cvContexts = new WeakMap(), __cvLogs = new WeakMap(), __cvIsArray = Array.isArray, __cvTypeError = TypeError;
+    var __cvContexts = new WeakMap(), __cvLogs = new WeakMap(), __cvOwners = new WeakMap(), __cvIsArray = Array.isArray, __cvTypeError = TypeError;
     var __cvSnapshot = function(value, depth){
       if (typeof value === 'bigint') throw new __cvTypeError('Canvas draw state cannot contain BigInt values');
       if (value === null || typeof value !== 'object') return typeof value === 'function' || value === undefined ? null : value;
@@ -4878,7 +4878,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         // emHeight* fields undefined.
         measureText: function(s){
           var text = String(s);
-          this._ops.push(['measureText', text, this.font]);
+          $c.push($apply($wmGet, __cvLogs, [this]), ['measureText', text, this.font]);
           var m = canvasMeasureTextNative(text, String(this.font), String(this.textAlign), String(this.textBaseline), String(this.direction),
             this.letterSpacing, this.wordSpacing, this.fontKerning, this.textRendering);
           // Native order -> the TextMetrics field order.
@@ -4901,7 +4901,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       recorded.forEach(function(name){
         ctx[name] = function(){
           var a = Array.prototype.slice.call(arguments).map(function(v){ return (v && typeof v === 'object') ? (v.tagName || v.nodeName || 'obj') : v; });
-          this._ops.push([name, a, this.fillStyle, this.strokeStyle, this.font, this.textBaseline, this.textAlign, this.globalAlpha, this.globalCompositeOperation]);
+          $c.push($apply($wmGet, __cvLogs, [this]), [name, a, this.fillStyle, this.strokeStyle, this.font, this.textBaseline, this.textAlign, this.globalAlpha, this.globalCompositeOperation]);
         };
       });
       // The drawing-state stack (turbo-dom#110): save() snapshots every state attribute and the
@@ -4925,19 +4925,20 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         for (var i = 0; i < drawingState.length; i++) ctx[drawingState[i]] = saved[drawingState[i]];
         lineDash = saved.lineDash;
       };
-      var resetPixels = __idInstallPixels(ctx, canvas), ops = ctx._ops, defaults = [];
+      var resetPixels = __idInstallPixels(ctx, canvas), ops = ctx._ops, defaults = [], values = $create(null);
+      var dataState = function(name, value){
+        values[name] = value;
+        $def(ctx, name, { configurable:true, enumerable:true, get:function(){return values[name];},set:function(next){values[name]=next;} });
+      };
       $apply($wmSet, __cvLogs, [ctx, ops]);
       for (var d = 0; d < drawingState.length; d++) {
         var descriptor = $gopd(ctx, drawingState[d]);
-        if ($O.hasOwn(descriptor, 'value')) $c.push(defaults, [drawingState[d], descriptor.value]);
+        if ($O.hasOwn(descriptor, 'value')) { $c.push(defaults, [drawingState[d], descriptor.value]); dataState(drawingState[d], descriptor.value); }
       }
       canvasResetNative(canvas, function(){
         resetPixels(); resetStyles(); resetText(); lineDash = []; stack.length = 0; ops.length = 0;
         for (var n = 0; n < defaults.length; n++) {
-          var name = defaults[n][0], descriptor = $gopd(ctx, name);
-          if (descriptor && (descriptor.configurable || ($O.hasOwn(descriptor, 'value') && descriptor.writable))) {
-            $def(ctx, name, { __proto__: null, value: defaults[n][1] });
-          }
+          values[defaults[n][0]] = defaults[n][1];
         }
       });
       return ctx;
@@ -5094,6 +5095,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         if (!name) return null;
         if (!record[name]) {
           record[name] = name === 'two' ? mkCanvasCtx(this) : mkWebGLCtx(this, name === 'gl2');
+          $apply($wmSet, __cvOwners, [record[name], this]);
           $def(this, name === 'two' ? '__ctx2d' : name === 'gl2' ? '__ctxgl2' : '__ctxgl', {configurable:true,writable:true,value:record[name]});
         }
         return record[name];
@@ -5115,6 +5117,17 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         cb(null);
       };
       cp.getBoundingClientRect = function(){ return { x:0, y:0, top:0, left:0, right:0, bottom:0, width:0, height:0, toJSON:function(){ return this; } }; };
+      // Host queries share the canonical private records, never diagnostic guest aliases.
+      var ownsCanvas = function(canvas){return !!canvasResetNative(canvas) && $apply($N.ownerDocument, canvas, []) === d;};
+      var readCanvas = function(context){var canvas=$apply($wmGet,__cvOwners,[context]);return canvas&&ownsCanvas(canvas)?canvas:null;};
+      var canvasDocumentRecord = collectionGet(d);
+      canvasDocumentRecord.canvasHost = { __proto__:null,
+        readContext:function(canvas){if(!ownsCanvas(canvas))return null;return activeCtx(canvas);},
+        readCanvas:readCanvas,
+        snapshotJSON:function(context){if(!readCanvas(context))return null;return $jsonStringify(__cvSnapshot($apply($wmGet,__cvLogs,[context]),0));},
+        size:function(canvas){if(!ownsCanvas(canvas))return null;var size=[__cvDimension(canvas,'width'),__cvDimension(canvas,'height')];$O.setPrototypeOf(size,null);return size;}
+      };
+      collectionSet(d, canvasDocumentRecord);
     })();
     d.createElement = ({ createElement(tag){
       var el = $apply(orig,this,arguments); var t = $call($lower, String($call(createdLocalName, el)));

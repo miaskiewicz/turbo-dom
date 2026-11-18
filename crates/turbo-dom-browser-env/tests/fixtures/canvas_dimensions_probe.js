@@ -124,6 +124,22 @@
 			Array.from(ctx.getImageData(0, 0, 1, 1).data),
 		]);
 	}
+	output.ownOverrides = [];
+	for (const [name, value] of [
+		["lineWidth", 17],
+		["globalAlpha", 0.25],
+		["font", "23px serif"],
+	]) {
+		const cv = document.createElement("canvas");
+		const ctx = cv.getContext("2d");
+		Object.defineProperty(ctx, name, {
+			value,
+			writable: true,
+			configurable: true,
+		});
+		cv.width = 300;
+		output.ownOverrides.push([name, ctx[name]]);
+	}
 	output.descriptors = ["width", "height"].map((name) => {
 		const d = Object.getOwnPropertyDescriptor(
 			HTMLCanvasElement.prototype,
