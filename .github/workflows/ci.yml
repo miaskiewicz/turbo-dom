@@ -287,6 +287,13 @@ jobs:
       - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
         if: runner.os == 'Linux'
         run: cargo check -p turbo-dom-raster --features coretext,gpu-metal
+      - name: Retain AVIF decoder failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avif-fuzz-${{ matrix.os }}
+          path: target/avif-fuzz.stderr.log
+          if-no-files-found: ignore
 
   # ---- turbo-dom-v8 (generated fork) + turbo-dom-browser-env ----
   v8:
