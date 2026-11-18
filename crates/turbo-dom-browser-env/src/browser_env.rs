@@ -198,6 +198,11 @@ mod canvas_measure_text_tests;
 mod canvas_style_tests;
 #[path = "canvas_text.rs"]
 mod canvas_text;
+#[path = "image_data.rs"]
+mod image_data;
+#[cfg(test)]
+#[path = "image_data_tests.rs"]
+mod image_data_tests;
 pub use canvas_text::set_canvas_fonts;
 #[path = "form_pseudo.rs"]
 mod form_pseudo;
@@ -8163,6 +8168,7 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         normalize_computed_color,
     );
     bind_method(scope, global, "__canvasColorNative", canvas_color_native);
+    bind_method(scope, global, "__imageDataRecordNative", image_data::record);
     bind_method(
         scope,
         global,

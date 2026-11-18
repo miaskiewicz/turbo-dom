@@ -129,6 +129,7 @@
   var computedStyleNativeDocumentQueryAll,compatibilityElementPrototype,computedStyleNativeMatches,computedStyleNativeGetAttribute,computedStyleNativeOwner,computedStyleNativeTag,computedStyleNativeNamespace,computedStyleNativeConnected,computedStyleNativeRoot,computedStyleNativeQueryAll;
   var normalizeComputedColor=g.__normalizeComputedColor;delete g.__normalizeComputedColor;
   var canvasColorNative=g.__canvasColorNative;delete g.__canvasColorNative;
+  var imageDataRecordNative=g.__imageDataRecordNative;delete g.__imageDataRecordNative;
   var canvasMeasureTextNative=g.__canvasMeasureTextNative;delete g.__canvasMeasureTextNative;
   var canvasLengthUnitNative=g.__canvasLengthUnitNative;delete g.__canvasLengthUnitNative;
   var computedFontContext=g.__computedFontContext;delete g.__computedFontContext;
@@ -4667,6 +4668,149 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
           } });
       });
     };
+    // ImageData owns a typed view, not a copied pixel buffer. Brand checks use
+    // captured typed-array intrinsics, so foreign views work and tags cannot forge it.
+    var __idAbs = Math.abs, __idMax = Math.max, __idFloor = Math.floor, __idTrunc = Math.trunc, __idFinite = Number.isFinite;
+    var __idContexts = new WeakMap(), __idU8 = Uint8ClampedArray;
+    var __idF16 = typeof Float16Array === 'function' ? Float16Array : null;
+    var __idTyped = Object.getPrototypeOf(Uint8Array.prototype);
+    var __idTag = Object.getOwnPropertyDescriptor(__idTyped, Symbol.toStringTag).get;
+    var __idLength = Object.getOwnPropertyDescriptor(__idTyped, 'length').get;
+    var __idBuffer = Object.getOwnPropertyDescriptor(__idTyped, 'buffer').get;
+    var __idBufferLength = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'byteLength').get;
+    var __idResizable = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'resizable');
+    var __idKind = function(value){ try { return $apply(__idTag, value, []); } catch(e) { return undefined; } };
+    var __idGet = function(value){
+      var record = imageDataRecordNative(value);
+      if (!record) throw new TypeError('Illegal invocation');
+      return record;
+    };
+    var __idError = function(name){ throw new __ns.DOMException('Invalid ImageData dimensions or pixel buffer', name); };
+    var __idOptions = function(value){
+      if (value != null && typeof value !== 'object' && typeof value !== 'function') throw new TypeError('ImageDataSettings is not a dictionary');
+      var color = value == null ? undefined : value.colorSpace;
+      color = color === undefined ? 'srgb' : '' + color;
+      if (color !== 'srgb' && color !== 'display-p3') throw new TypeError('Invalid colorSpace');
+      var format = value == null ? undefined : value.pixelFormat;
+      format = format === undefined ? 'rgba-unorm8' : '' + format;
+      if (format !== 'rgba-unorm8' && format !== 'rgba-float16') throw new TypeError('Invalid pixelFormat');
+      return { colorSpace: color, pixelFormat: format };
+    };
+    var ImageData = function ImageData(width, height){
+      if (!new.target || arguments.length < 2) throw new TypeError('ImageData requires new and two arguments');
+      var kind = __idKind(width), supplied = kind === 'Uint8ClampedArray' || kind === 'Float16Array';
+      var data, w, h, settings, length;
+      if (supplied) {
+        data = width;
+        var buffer = $apply(__idBuffer, data, []);
+        $apply(__idBufferLength, buffer, []); // Shared buffers are not an allowed IDL view.
+        if (__idResizable && $apply(__idResizable.get, buffer, [])) throw new TypeError('ImageData does not accept a resizable buffer');
+        w = +height >>> 0;
+        h = arguments[2] === undefined ? undefined : +arguments[2] >>> 0;
+        settings = __idOptions(arguments[3]);
+        length = $apply(__idLength, data, []);
+        if (!length || length % 4) __idError('InvalidStateError');
+        if (!w || length % (4 * w)) __idError('IndexSizeError');
+        if (h === undefined) h = length / (4 * w);
+        if (!h || length !== w * h * 4) __idError('IndexSizeError');
+        if ((kind === 'Float16Array') !== (settings.pixelFormat === 'rgba-float16')) __idError('InvalidStateError');
+      } else {
+        w = +width >>> 0; h = +height >>> 0;
+        settings = __idOptions(arguments[2]);
+        if (!w || !h) __idError('IndexSizeError');
+        var Type = settings.pixelFormat === 'rgba-float16' ? __idF16 : __idU8;
+        if (!Type) throw new TypeError('Float16Array is unavailable');
+        if (w * h * 4 > 0x7fffffff) throw new RangeError('ImageData allocation exceeds the supported buffer size');
+        data = new Type(w * h * 4);
+      }
+      var record = { width: w, height: h, data: data, colorSpace: settings.colorSpace, pixelFormat: settings.pixelFormat };
+      imageDataRecordNative(this, record);
+      if (settings.pixelFormat === 'rgba-unorm8') $def(this, 'data', { value: data, enumerable: true, configurable: true });
+    };
+    var __idProto = ImageData.prototype;
+    ['width','height','colorSpace','data','pixelFormat'].forEach(function(name){
+      var getter = function(){ return __idGet(this)[name]; };
+      $def(getter, 'name', { value: 'get ' + name });
+      $def(__idProto, name, { configurable: true, enumerable: true, get: getter });
+    });
+    $def(__idProto, Symbol.toStringTag, { value: 'ImageData', configurable: true });
+    $def(ImageData, 'prototype', { writable: false });
+    $def(g, 'ImageData', { value: ImageData, writable: true, configurable: true });
+    var __idInt = function(value){
+      var number = __idTrunc(+value);
+      if (!__idFinite(number) || number < -2147483648 || number > 2147483647) throw new TypeError('Canvas pixel coordinate is outside the signed long range');
+      return number;
+    };
+    var __idCreate = function(width, height, settings){
+      if (arguments.length === 1) {
+        var record = __idGet(width);
+        return new ImageData(record.width, record.height, { colorSpace: record.colorSpace, pixelFormat: record.pixelFormat });
+      }
+      if (arguments.length < 2) throw new TypeError('createImageData requires two dimensions');
+      return new ImageData(__idAbs(__idInt(width)), __idAbs(__idInt(height)), settings);
+    };
+    var __idInstallPixels = function(ctx, canvas){
+      $apply($wmSet, __idContexts, [ctx, { canvas: canvas, writes: [], size: '' }]);
+      var context = function(value){ var record = $apply($wmGet, __idContexts, [value]); if (!record) throw new TypeError('Illegal invocation'); return record; };
+      var reset = function(state){ var next = state.canvas.width + 'x' + state.canvas.height; if (next !== state.size) { state.writes = []; state.size = next; } };
+      ctx.createImageData = function createImageData(width){
+        context(this);
+        return arguments.length === 1 ? __idCreate(width) : __idCreate(width, arguments[1], arguments[2]);
+      };
+      ctx.putImageData = function putImageData(image, dx, dy){
+        var state = context(this), ctx = this;
+        if (arguments.length < 3) throw new TypeError('putImageData requires three arguments');
+        var record = __idGet(image);
+        dx = __idInt(dx); dy = __idInt(dy);
+        var dirtyX = 0, dirtyY = 0, dirtyW = record.width, dirtyH = record.height;
+        if (arguments.length > 3) {
+          if (arguments.length < 7) throw new TypeError('putImageData requires seven arguments');
+          dirtyX = __idInt(arguments[3]); dirtyY = __idInt(arguments[4]); dirtyW = __idInt(arguments[5]); dirtyH = __idInt(arguments[6]);
+        }
+        if (!$apply(__idLength, record.data, [])) __idError('InvalidStateError');
+        if (record.colorSpace !== 'srgb' || record.pixelFormat !== 'rgba-unorm8') throw new __ns.DOMException('Canvas pixel conversion is not supported for this ImageData format', 'NotSupportedError');
+        if (dirtyW < 0) { dirtyX += dirtyW; dirtyW = -dirtyW; }
+        if (dirtyH < 0) { dirtyY += dirtyH; dirtyH = -dirtyH; }
+        var endX = $Mmin(record.width, dirtyX + dirtyW), endY = $Mmin(record.height, dirtyY + dirtyH);
+        dirtyX = __idMax(0, dirtyX); dirtyY = __idMax(0, dirtyY); dirtyW = endX - dirtyX; dirtyH = endY - dirtyY;
+        if (dirtyW <= 0 || dirtyH <= 0) return;
+        var bytes = []; for (var i = 0; i < record.width * record.height * 4; i++) $c.push(bytes, record.data[i]);
+        var snapshot = { width: record.width, height: record.height, data: bytes, colorSpace: 'srgb', pixelFormat: 'rgba-unorm8' };
+        reset(state); $c.push(state.writes, { image: snapshot, x: dx, y: dy, left: dirtyX, top: dirtyY, width: dirtyW, height: dirtyH });
+        $c.push(ctx._ops, ['putImageData', [snapshot, dx, dy, dirtyX, dirtyY, dirtyW, dirtyH]]);
+      };
+      ctx.getImageData = function getImageData(x, y, width, height){
+        var state = context(this), ctx = this, canvas = state.canvas;
+        if (arguments.length < 4) throw new TypeError('getImageData requires four arguments');
+        x = __idInt(x); y = __idInt(y); width = __idInt(width); height = __idInt(height);
+        if (width < 0) { x += width; width = -width; } if (height < 0) { y += height; height = -height; }
+        var settings = __idOptions(arguments[4]);
+        if (settings.colorSpace !== 'srgb' || settings.pixelFormat !== 'rgba-unorm8') throw new __ns.DOMException('Canvas pixel conversion is not supported for this ImageData format', 'NotSupportedError');
+        var image = new ImageData(width, height), data = image.data;
+        reset(state);
+        // Other canvas drawing remains the existing deterministic op-log approximation.
+        if ($c.some(ctx._ops, function(op){ return op[0] !== 'putImageData'; })) {
+          var stream = __cvBytes(__cvSeed(canvas, ctx, 'getImageData:'+x+','+y+','+width+','+height), $Mmin(data.length, 4096));
+          for (var i = 0; i < data.length; i++) data[i] = stream[i % stream.length];
+        }
+        for (var n = 0; n < state.writes.length; n++) {
+          var write = state.writes[n];
+          for (var row = 0; row < height; row++) for (var col = 0; col < width; col++) {
+            var px = x + col, py = y + row, sx = px - write.x, sy = py - write.y;
+            if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height || sx < write.left || sy < write.top || sx >= write.left + write.width || sy >= write.top + write.height) continue;
+            var to = (row * width + col) * 4, from = (sy * write.image.width + sx) * 4;
+            var alpha = write.image.data[from + 3];
+            for (var c = 0; c < 3; c++) {
+              var premultiplied = __idFloor((write.image.data[from + c] * alpha + 127) / 255);
+              var value = alpha ? premultiplied * 255 / alpha : 0, floor = __idFloor(value);
+              data[to + c] = value - floor === 0.5 ? floor + floor % 2 : $Mround(value);
+            }
+            data[to + 3] = alpha;
+          }
+        }
+        return image;
+      };
+    };
     var mkCanvasCtx = function(canvas){
       var noop = function(){};
       var paint = function(){ var p = { addColorStop: noop }; $c.add(__cvPaints, p); return p; };
@@ -4685,17 +4829,6 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         createRadialGradient: paint,
         createConicGradient: paint,
         createPattern: function(){ var p = {}; $c.add(__cvPaints, p); return p; },
-        getImageData: function(x,y,w,h){
-          w = w||0; h = h||0;
-          var data = new Uint8ClampedArray(Math.max(0, w*h*4));
-          // Content-dependent, deterministic pixels derived from the op log — not all-zero.
-          if (data.length) {
-            var src = __cvBytes(__cvSeed(canvas, ctx, 'getImageData:'+x+','+y+','+w+','+h), Math.min(data.length, 4096));
-            for (var i = 0; i < data.length; i++) data[i] = src[i % src.length];
-          }
-          return { data: data, width: w, height: h, colorSpace: 'srgb' };
-        },
-        createImageData: function(w,h){ if (w && w.width != null) { h = w.height; w = w.width; } return { data: new Uint8ClampedArray(Math.max(0,(w||0)*(h||0)*4)), width: w||0, height: h||0, colorSpace: 'srgb' }; },
         // measureText (turbo-dom#237, canvas_measure_text_chrome156.json): turbo-dom-layout
         // measures the run in the host's fonts like Chrome 156; Chrome 156 leaves the
         // emHeight* fields undefined.
@@ -4748,6 +4881,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
         for (var i = 0; i < drawingState.length; i++) ctx[drawingState[i]] = saved[drawingState[i]];
         lineDash = saved.lineDash;
       };
+      __idInstallPixels(ctx, canvas);
       return ctx;
     };
     // WebGL: a COHERENT headless-Chrome SwiftShader context (ANGLE over Vulkan). Headless

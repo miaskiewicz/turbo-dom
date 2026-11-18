@@ -233,6 +233,10 @@ pub const HTML_IMAGE_CASES_JSON: &[u8] = include_bytes!("html_image_cases.json")
 pub const HTML_IMAGE_CHROME156_JSON: &str = include_str!("html_image_chrome156.json");
 /// `src/html_image_probe.js` (HTMLImageElement image-state and width / height / x / y accessors; async).
 pub const HTML_IMAGE_PROBE_JS: &str = include_str!("html_image_probe.js");
+/// ImageData constructor and canvas API controls (turbo-dom#523).
+pub const IMAGE_DATA_PROBE_JS: &str = include_str!("image_data_probe.js");
+/// Independent Chromium 156 ImageData observations.
+pub const IMAGE_DATA_CHROME156_JSON: &str = include_str!("image_data_chrome156.json");
 /// `src/html_image_srcset_cases.json` (turbo-dom#71: the srcset / sizes / `<picture>` page,
 /// viewport 1024x768; image URLs `/img/<W>x<H>/<name>.png`).
 pub const HTML_IMAGE_SRCSET_CASES_JSON: &[u8] = include_bytes!("html_image_srcset_cases.json");
@@ -619,6 +623,11 @@ pub const FILES: &[(&str, &[u8])] = &[
         HTML_TRACK_CHROME156_JSON.as_bytes(),
     ),
     ("html_track_probe.js", HTML_TRACK_PROBE_JS.as_bytes()),
+    (
+        "image_data_chrome156.json",
+        IMAGE_DATA_CHROME156_JSON.as_bytes(),
+    ),
+    ("image_data_probe.js", IMAGE_DATA_PROBE_JS.as_bytes()),
     (
         "key_order_chrome156.json",
         KEY_ORDER_CHROME156_JSON.as_bytes(),
