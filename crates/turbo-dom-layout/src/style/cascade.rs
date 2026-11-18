@@ -818,6 +818,8 @@ const INITIAL: &[(&str, &str)] = &[
     ("caption-side", "top"),
     ("border-spacing", "0px"),
     ("display", "inline"),
+    ("flex-direction", "row"),
+    ("flex-wrap", "nowrap"),
     // Multi-column + fragmentation (CSS Multicol 1, CSS Fragmentation 3; turbo-dom#398).
     ("column-count", "auto"),
     ("column-width", "auto"),
@@ -998,7 +1000,13 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
         super::quad_shorthand::is_quad(&cand.property)
             || matches!(
                 cand.property.as_str(),
-                "font" | "list-style" | "border-radius" | "background" | "columns",
+                "font"
+                    | "list-style"
+                    | "border-radius"
+                    | "background"
+                    | "columns"
+                    | "flex-flow"
+                    | "-webkit-flex-flow",
             )
     }) {
         return cands;
@@ -1087,7 +1095,8 @@ fn take_longhand(longhands: &mut Vec<Cand>, name: &str) -> Option<String> {
 }
 
 /// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128), `border-radius`
-/// (#253), `columns` (#398 PR-C1) and `column-rule` (#398 PR-D) shorthands'
+/// (#253), `columns` (#398 PR-C1), `column-rule` (#398 PR-D) and `flex-flow`
+/// (#522) shorthands'
 /// longhands, parsed by turbo-dom's shorthand grammar, at the shorthand's
 /// cascade position. An invalid value (or a system-font keyword, which has no
 /// longhand values here) contributes nothing; one whose `var()` fails is
@@ -1096,7 +1105,13 @@ fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand>
     let name = cand.property.as_str();
     if !matches!(
         name,
-        "font" | "list-style" | "border-radius" | "columns" | "column-rule"
+        "font"
+            | "list-style"
+            | "border-radius"
+            | "columns"
+            | "column-rule"
+            | "flex-flow"
+            | "-webkit-flex-flow"
     ) {
         return Vec::new();
     }

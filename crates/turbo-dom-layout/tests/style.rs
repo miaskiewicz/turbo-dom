@@ -449,3 +449,70 @@ fn rule_selector_validity() {
     assert!(!RuleSelectors::parse("div >>> p").is_valid());
     assert_eq!(RuleSelectors::parse("div >>> p").prelude(), "div >>> p");
 }
+
+#[test]
+fn flex_flow_expands_at_its_cascade_position() {
+    let cases = [
+        ("flex-flow:wrap", "row", "wrap"),
+        ("flex-flow:row-reverse", "row-reverse", "nowrap"),
+        ("flex-flow:wrap-reverse column", "column", "wrap-reverse"),
+        ("flex-direction:column;flex-flow:wrap", "row", "wrap"),
+        ("flex-flow:wrap;flex-direction:column", "column", "wrap"),
+        ("flex-flow:wrap!important;flex-wrap:nowrap", "row", "wrap"),
+        ("flex-wrap:nowrap!important;flex-flow:wrap", "row", "nowrap"),
+        (
+            "--Flow:column wrap-reverse;flex-flow:var(--Flow)",
+            "column",
+            "wrap-reverse",
+        ),
+        (
+            "flex-direction:column;flex-wrap:wrap;flex-flow:var(--missing)",
+            "row",
+            "nowrap",
+        ),
+        (
+            "flex-direction:column;flex-wrap:wrap;flex-flow:invalid",
+            "column",
+            "wrap",
+        ),
+        (
+            "flex-direction:column;flex-wrap:wrap;flex-flow:wrap wrap",
+            "column",
+            "wrap",
+        ),
+        (
+            "flex-direction:column;flex-wrap:wrap;flex-flow:initial",
+            "row",
+            "nowrap",
+        ),
+        (
+            "flex-direction:column;flex-wrap:wrap;flex-flow:unset",
+            "row",
+            "nowrap",
+        ),
+        ("-webkit-flex-flow:column wrap", "column", "wrap"),
+    ];
+    let cascade = build_cascade("", "", TokenSet::default());
+    let inherited = styled_html("<div style='flex-flow:column wrap-reverse'><div id=target style='flex-flow:inherit'></div></div>", &cascade);
+    assert_eq!(
+        prop(&inherited, "target", "flex-direction").as_deref(),
+        Some("column")
+    );
+    assert_eq!(
+        prop(&inherited, "target", "flex-wrap").as_deref(),
+        Some("wrap-reverse")
+    );
+    for (css, direction, wrap) in cases {
+        let styled = styled_html(&format!("<div id=target style='{css}'></div>"), &cascade);
+        assert_eq!(
+            prop(&styled, "target", "flex-direction").as_deref(),
+            Some(direction),
+            "{css}"
+        );
+        assert_eq!(
+            prop(&styled, "target", "flex-wrap").as_deref(),
+            Some(wrap),
+            "{css}"
+        );
+    }
+}
