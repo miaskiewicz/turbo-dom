@@ -10,6 +10,9 @@
 //! are handed to taffy. Per-item `align-self`/`order` are deferred (documented).
 
 use std::collections::HashMap;
+#[path = "flex_tree.rs"]
+mod native_tree;
+use native_tree::Tree as TaffyTree;
 
 use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyMinContent};
 use taffy::style_helpers::{fr, line, minmax, percent, span};
@@ -17,7 +20,7 @@ use taffy::{
     AlignItems, AvailableSpace, Dimension, Display, FlexDirection, FlexWrap, GridPlacement,
     GridTrackRepetition, JustifyContent, Layout, LengthPercentage, LengthPercentageAuto, Line,
     MaxTrackSizingFunction, MinTrackSizingFunction, NodeId as TaffyId,
-    NonRepeatedTrackSizingFunction, Position, Rect, Size, Style, TaffyTree, TrackSizingFunction,
+    NonRepeatedTrackSizingFunction, Position, Rect, Size, Style, TrackSizingFunction,
 };
 
 use crate::error::Diagnostics;
@@ -186,11 +189,11 @@ fn container_style(container: &LayoutBox, cw: f32, fs: f32, known_height: Option
             height: container_h,
         },
         min_size: Size {
-            width: dim(bs.min_width),
+            width: Dimension::auto(),
             height: dim(content_height(bs.min_height, inset)),
         },
         max_size: Size {
-            width: dim(bs.max_width),
+            width: Dimension::auto(),
             height: dim(content_height(bs.max_height, inset)),
         },
         ..Default::default()
@@ -218,8 +221,8 @@ fn flex_grow_shrink(s: &ComputedStyle) -> (f32, f32) {
         // `<grow> [<shrink>] [<basis>]`: the leading unitless numbers are grow/shrink
         // (a `<basis>` length/% carries a unit and is skipped by the number parse).
         rest => {
-            let nums: Vec<f32> = rest
-                .split_whitespace()
+            let nums: Vec<f32> = basis_tokens(rest)
+                .into_iter()
                 .filter_map(|t| t.parse().ok())
                 .collect();
             (
@@ -257,7 +260,7 @@ fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
         return Some(Dimension::auto());
     }
     let mut saw_token = false;
-    for tok in v.split_whitespace() {
+    for tok in basis_tokens(v) {
         saw_token = true;
         match token_basis(tok, fs) {
             TokenBasis::DeferToWidth => return None,
@@ -267,6 +270,30 @@ fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
     }
     // A numbers-only shorthand (`flex: 1`, `flex: 2 0`) has an implied `0` basis.
     saw_token.then(|| Dimension::length(0.0))
+}
+
+/// Whitespace inside calc belongs to its basis, not to grow/shrink tokens.
+fn basis_tokens(value: &str) -> Vec<&str> {
+    let mut depth = 0_u32;
+    let mut start = 0;
+    let mut tokens = Vec::new();
+    for (index, ch) in value.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if ch.is_ascii_whitespace() && depth == 0 {
+            if start < index {
+                tokens.push(&value[start..index]);
+            }
+            start = index + ch.len_utf8();
+        }
+    }
+    if start < value.len() {
+        tokens.push(&value[start..]);
+    }
+    tokens
 }
 
 /// One `flex`-shorthand token's role in basis resolution.
@@ -301,9 +328,7 @@ fn parse_basis(b: &str, fs: f32) -> Option<Dimension> {
     if let Some(px) = parse_px(b, fs) {
         return Some(Dimension::length(px));
     }
-    b.strip_suffix('%')
-        .and_then(|n| n.trim().parse::<f32>().ok())
-        .map(|p| Dimension::percent(p / 100.0))
+    super::value::parse_length_pct(b, fs).map(dim)
 }
 
 fn item_margins(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
@@ -385,16 +410,25 @@ fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -
     style.max_size = grow(style.max_size);
     let main = if column { frame.height } else { frame.width };
     style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
+
     style
 }
 
 /// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
 /// padding and border on that axis; percentages and `auto` are left as they are.
 fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
-    if d.tag() == taffy::CompactLength::LENGTH_TAG {
-        Dimension::length(block::to_border(d.value(), sizing, frame))
-    } else {
-        d
+    if sizing == BoxSizing::BorderBox {
+        return d;
+    }
+    match d.tag() {
+        taffy::CompactLength::LENGTH_TAG => Dimension::length(d.value() + frame),
+        taffy::CompactLength::PERCENT_TAG => {
+            Dimension::calc(native_tree::calc(d.value() * 100.0, frame))
+        }
+        _ if d.into_raw().is_calc() => {
+            Dimension::calc(native_tree::offset_calc(d.into_raw().calc_value(), frame))
+        }
+        _ => d,
     }
 }
 
@@ -418,9 +452,7 @@ fn dim(lp: LengthPct) -> Dimension {
     match lp {
         LengthPct::Px(v) => Dimension::length(v),
         LengthPct::Pct(p) => Dimension::percent(p / 100.0),
-        // taffy has no mixed `%`+px length; approximate a `calc(% ± px)` flex-item
-        // size by its percentage (the block path resolves the offset exactly).
-        LengthPct::Calc { pct, .. } => Dimension::percent(pct / 100.0),
+        LengthPct::Calc { pct, px } => Dimension::calc(native_tree::calc(pct, px)),
         LengthPct::Auto => Dimension::auto(),
     }
 }
@@ -439,8 +471,7 @@ fn item_inset(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
     let edge = |lp: LengthPct| match lp {
         LengthPct::Px(v) => LengthPercentageAuto::length(v),
         LengthPct::Pct(p) => LengthPercentageAuto::percent(p / 100.0),
-        // No mixed `%`+px inset in taffy; approximate by the percentage.
-        LengthPct::Calc { pct, .. } => LengthPercentageAuto::percent(pct / 100.0),
+        LengthPct::Calc { pct, px } => LengthPercentageAuto::calc(native_tree::calc(pct, px)),
         LengthPct::Auto => LengthPercentageAuto::auto(),
     };
     Rect {
@@ -1158,7 +1189,7 @@ fn build_leaves(
         .map(|(i, it)| {
             let mut style = border_box_sizes(item_style(it, fs, column), it, fs, column);
             auto_min_main(&mut style, it, column, images);
-            tree.new_leaf_with_context(style, i).expect("flex leaf")
+            tree.new_leaf_with_context(style, i)
         })
         .collect()
 }
@@ -1214,8 +1245,7 @@ fn solve(
                 fill,
             ),
         )
-    })
-    .expect("flex layout");
+    });
 }
 
 /// Lay out one placed item; `axis`: `Some(column)` for a flex item, `None` for a grid
@@ -1224,15 +1254,16 @@ fn place_one(
     item: &LayoutBox,
     layout: &Layout,
     (cx, cy, fs): (f32, f32, f32),
-    axis: Option<bool>,
+    axis: Option<(bool, AlignItems)>,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let column = axis == Some(true);
+    let column = axis.is_some_and(|(column, _)| column);
+    let stretch = axis
+        .is_none_or(|(_, parent)| align_self(&item.style).unwrap_or(parent) == AlignItems::Stretch);
     let mut bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: layout.size.width,
     });
-    let was_border_box = bs.box_sizing == BoxSizing::BorderBox;
     // taffy has resolved this item's main-axis size (column `flex-basis`/`grow`)
     // and cross-axis size (row `align-items:stretch`). Force that border-box height
     // onto the item's own layout as a definite content-box height, so it drives the
@@ -1242,7 +1273,7 @@ fn place_one(
     // whose height taffy left at auto keeps its content height (basis == content). In a
     // column the height is the main size, so taffy's always wins over a `px` `height`
     // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
-    if column || !matches!(bs.height, LengthPct::Px(_)) {
+    if column || (stretch && !matches!(bs.height, LengthPct::Px(_))) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         if bs.box_sizing == BoxSizing::BorderBox {
@@ -1253,30 +1284,29 @@ fn place_one(
         }
         bs.box_sizing = BoxSizing::ContentBox;
     }
-    if axis.is_some() && matches!(bs.width, LengthPct::Auto) && is_ratio_only(item, ctx.images) {
-        flexed_width(&mut bs, layout.size.width, was_border_box);
+    // An auto-width ratio-only grid image derives its width back from the
+    // quantized height; flex items instead retain their allocated width.
+    let ratio_grid =
+        axis.is_none() && bs.width == LengthPct::Auto && is_ratio_only(item, ctx.images);
+    if !ratio_grid {
+        used_width(&mut bs, layout.size.width);
     }
     let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, layout.size.width, ctx);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
 }
 
-/// Give a ratio-only image flex item the border-box `width` taffy resolved for it as a
-/// definite width, as Chrome 156 does a flex item's used size: left `auto`, its width
-/// would be derived back from the layout-unit height (miaskiewicz/turbo-dom#326).
-/// `was_border_box`: the item's own `box-sizing` before [`place_one`] made it
-/// `content-box`, whose `min-width` / `max-width` become content-box lengths with it.
-fn flexed_width(bs: &mut BoxStyle, width: f32, was_border_box: bool) {
-    if bs.box_sizing == BoxSizing::BorderBox {
-        bs.width = LengthPct::Px(width);
-        return;
-    }
-    let inset_h = bs.padding.horizontal() + bs.border.widths().horizontal();
-    bs.width = LengthPct::Px((width - inset_h).max(0.0));
-    if was_border_box {
-        bs.min_width = content_height(bs.min_width, inset_h);
-        bs.max_width = content_height(bs.max_width, inset_h);
-    }
+fn used_width(bs: &mut BoxStyle, width: f32) {
+    // The solver already applied preferred and min/max widths against the
+    // containing block. Reapplying percentages against the allocated item width
+    // would constrain it a second time and give its descendants the wrong width.
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    bs.width = match bs.box_sizing {
+        BoxSizing::BorderBox => LengthPct::Px(width),
+        BoxSizing::ContentBox => LengthPct::Px((width - frame).max(0.0)),
+    };
+    bs.min_width = LengthPct::Auto;
+    bs.max_width = LengthPct::Auto;
 }
 
 /// A border-box `px` length as a content-box one (`inset`: padding and border on that
@@ -1293,7 +1323,7 @@ fn place_items(
     leaves: &[TaffyId],
     items: &[LayoutBox],
     origin: (f32, f32, f32),
-    axis: Option<bool>,
+    axis: Option<(bool, AlignItems)>,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
@@ -1685,7 +1715,7 @@ fn build_grid_leaves(
                     style.grid_row = row;
                 }
             }
-            tree.new_leaf_with_context(style, i).expect("grid leaf")
+            tree.new_leaf_with_context(style, i)
         })
         .collect()
 }
@@ -1754,11 +1784,10 @@ pub(crate) fn layout_grid(
         .get("grid-template-areas")
         .map(grid_areas)
         .unwrap_or_default();
+    let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     let leaves = build_grid_leaves(&mut tree, items, fs, &areas);
-    let root = tree
-        .new_with_children(grid_container_style(container, cw, &areas), &leaves)
-        .expect("grid root");
+    let root = tree.new_with_children(grid_container_style(container, cw, &areas), &leaves);
     let fill = Fill {
         width: cw,
         row: false,
@@ -1783,24 +1812,33 @@ pub(crate) fn layout_flex(
     if items.is_empty() {
         return (Vec::new(), 0.0);
     }
+    let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     let column = matches!(
         flex_direction(&container.style),
         FlexDirection::Column | FlexDirection::ColumnReverse
     );
     let leaves = build_leaves(&mut tree, items, (fs, column), ctx.images);
-    let root = tree
-        .new_with_children(
-            container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
-            &leaves,
-        )
-        .expect("flex root");
+    let root = tree.new_with_children(
+        container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
+        &leaves,
+    );
     let fill = Fill {
         width: cw,
         row: !column,
     };
     solve(&mut tree, root, items, (fs, cw), fill, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), Some(column), ctx);
+    let frags = place_items(
+        &tree,
+        &leaves,
+        items,
+        (cx, cy, fs),
+        Some((
+            column,
+            align_items(&container.style).unwrap_or(AlignItems::Stretch),
+        )),
+        ctx,
+    );
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1842,25 +1880,17 @@ mod coverage_tests {
     }
 
     #[test]
-    fn dim_and_edge_approximate_calc_by_its_percentage() {
-        use crate::layout::value::{resolve_box_style, ResolveCtx};
-        // taffy has no mixed `%`+px length; a `calc(% ± px)` size/inset uses the `%`.
+    fn mixed_calc_keeps_its_pixel_offset() {
+        use taffy::ResolveOrZero;
+        let _scope = native_tree::CalcScope::new(None);
+        let d = dim(LengthPct::Calc {
+            pct: 50.0,
+            px: -20.0,
+        });
         assert_eq!(
-            dim(LengthPct::Calc {
-                pct: 50.0,
-                px: -20.0
-            }),
-            Dimension::percent(0.5)
+            d.resolve_or_zero(Some(400.0), native_tree::resolve_for_test),
+            180.0
         );
-        let bs = resolve_box_style(
-            &cs(&[("left", "calc(25% + 8px)")]),
-            ResolveCtx {
-                parent_font_size: 16.0,
-                cb_width: 400.0,
-            },
-        );
-        assert_eq!(bs.inset_left, LengthPct::Calc { pct: 25.0, px: 8.0 });
-        assert_eq!(item_inset(&bs).left, LengthPercentageAuto::percent(0.25));
     }
 
     #[test]

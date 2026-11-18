@@ -1,0 +1,116 @@
+[
+  {
+    "id": "mui-width-expression-1440",
+    "fixture": "mui-width-expression",
+    "width": 1440,
+    "css": ""
+  },
+  {
+    "id": "mui-width-expression-768",
+    "fixture": "mui-width-expression",
+    "width": 768,
+    "css": ""
+  },
+  {
+    "id": "mui-width-expression-390",
+    "fixture": "mui-width-expression",
+    "width": 390,
+    "css": ""
+  },
+  {
+    "id": "mui-width-additive-1440",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ""
+  },
+  {
+    "id": "mui-width-additive-768",
+    "fixture": "mui-width-additive",
+    "width": 768,
+    "css": ""
+  },
+  {
+    "id": "mui-width-additive-390",
+    "fixture": "mui-width-additive",
+    "width": 390,
+    "css": ""
+  },
+  {
+    "id": "positive",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:calc(20% + 30px)}"
+  },
+  {
+    "id": "negative",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:calc(40% - 40px)}"
+  },
+  {
+    "id": "basis",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:auto;flex-basis:calc(33.3333333333% - 21.3333333333px)}"
+  },
+  {
+    "id": "shorthand",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:auto;flex:0 0 calc(33.3333333333% - 21.3333333333px)}"
+  },
+  {
+    "id": "min",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:10px;min-width:calc(30% - 20px)}"
+  },
+  {
+    "id": "max",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:100%;max-width:calc(30% + 20px)}"
+  },
+  {
+    "id": "column",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{flex-direction:column;flex-wrap:nowrap;height:600px}.grid>.item{width:100px;height:calc(40% - 60px);flex-shrink:0}.card{height:100%;padding:0}"
+  },
+  {
+    "id": "column-basis",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{flex-direction:column;flex-wrap:nowrap;height:600px}.grid>.item{width:100px;flex:0 0 calc(40% - 60px)}.card{height:100%;padding:0}"
+  },
+  {
+    "id": "indefinite",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{flex-direction:column;flex-wrap:nowrap}.grid>.item{height:calc(40% - 60px);width:100px}.card{height:120px;padding:0}"
+  },
+  {
+    "id": "content-box",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{box-sizing:content-box;padding:10px;border:2px solid;width:calc(30% - 20px)}"
+  },
+  {
+    "id": "percent",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:25%}"
+  },
+  {
+    "id": "pixels",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid>.item{width:150px}"
+  },
+  {
+    "id": "inset",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{position:relative;height:400px}.grid>.item{position:absolute;left:calc(25% + 10px);top:calc(50% - 20px);width:100px;height:100px}.card{padding:0;height:100%}"
+  }
+]

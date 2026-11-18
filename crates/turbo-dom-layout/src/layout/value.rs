@@ -8,6 +8,8 @@
 
 #[path = "value_affine.rs"]
 mod affine;
+#[path = "value_calc.rs"]
+mod calc;
 pub(crate) use affine::{native_transform, NativeTransform};
 
 #[path = "value_flow.rs"]
@@ -319,46 +321,12 @@ fn raw_to_px(raw: RawLength, font_size: f32, basis: f32) -> f32 {
     }
 }
 
-/// Evaluate an additive `calc(A ± B ± …)` of non-`%` length terms to px. CSS
-/// mandates spaces around `+`/`-`, so the body tokenizes on whitespace. Real
-/// stylesheets lean on this for component sizing — Codex's radio label offset
-/// `padding-left: calc(1rem + 10px)`, breakpoints like `calc(1120px - 1px)`, etc.
-/// (`var()` is already substituted by the cascade.) Multiplicative or `%` terms
-/// aren't handled here and yield `None` (the caller falls back to its default).
+/// Evaluate typed arithmetic, accepting only a length without percentages here.
 fn eval_calc_px(s: &str, font_size: f32) -> Option<f32> {
-    let toks: Vec<&str> = strip_calc(s)?.split_whitespace().collect();
-    sum_calc_terms(&toks, font_size)
-}
-
-/// The inside of a `calc( … )` / `CALC( … )` wrapper, or `None` if `s` isn't one.
-fn strip_calc(s: &str) -> Option<&str> {
-    let t = s.trim();
-    t.strip_prefix("calc(")
-        .or_else(|| t.strip_prefix("CALC("))?
-        .strip_suffix(')')
-}
-
-/// One `calc()` term as px — an absolute/font-relative length (never a `%`).
-fn calc_term_px(t: &str, font_size: f32) -> Option<f32> {
-    match parse_raw(t)? {
-        RawLength::Pct(_) => None,
-        raw => Some(raw_to_px(raw, font_size, 0.0)),
+    match calc::parse(s, font_size)? {
+        LengthPct::Px(px) => Some(px),
+        _ => None,
     }
-}
-
-/// Left-fold `term (± term)*` (only `+`/`-` supported), or `None` on any bad token.
-fn sum_calc_terms(toks: &[&str], font_size: f32) -> Option<f32> {
-    let (first, rest) = toks.split_first()?;
-    let init = calc_term_px(first, font_size)?;
-    let (pairs, _) = rest.as_chunks::<2>();
-    pairs.iter().try_fold(init, |total, pair| {
-        let v = calc_term_px(pair[1], font_size)?;
-        match pair[0] {
-            "+" => Some(total + v),
-            "-" => Some(total - v),
-            _ => None,
-        }
-    })
 }
 
 /// Parse an absolute/`em` length (or `calc()` thereof) to px (no `%`); used for
@@ -374,38 +342,8 @@ pub fn parse_px(s: &str, font_size: f32) -> Option<f32> {
     }
 }
 
-/// Evaluate an additive `calc(A ± B ± …)` that may MIX `%` and absolute terms into a
-/// [`LengthPct`]: `%` terms sum into the percentage, absolute/font-relative terms into
-/// the px offset. `calc(100% - 616px)` → `Calc{100,-616}`; a pure-px calc stays `Px`,
-/// a pure-`%` calc `Pct`. Only `+`/`-` (CSS mandates surrounding spaces).
 fn eval_calc_length(s: &str, font_size: f32) -> Option<LengthPct> {
-    let toks: Vec<&str> = strip_calc(s)?.split_whitespace().collect();
-    let (first, rest) = toks.split_first()?;
-    let init = calc_term_parts(first, font_size)?;
-    let (pairs, _) = rest.as_chunks::<2>();
-    let (pct, px) = pairs.iter().try_fold(init, |(pct, px), pair| {
-        let sign = calc_sign(pair[0])?;
-        let (tp, tx) = calc_term_parts(pair[1], font_size)?;
-        Some((pct + sign * tp, px + sign * tx))
-    })?;
-    Some(length_pct_from_parts(pct, px))
-}
-
-/// One `calc()` term split into its (`%`, px) contributions — a `%` term is
-/// `(value, 0)`, any absolute/font-relative length `(0, px)`.
-fn calc_term_parts(t: &str, font_size: f32) -> Option<(f32, f32)> {
-    match parse_raw(t)? {
-        RawLength::Pct(p) => Some((p, 0.0)),
-        raw => Some((0.0, raw_to_px(raw, font_size, 0.0))),
-    }
-}
-
-fn calc_sign(op: &str) -> Option<f32> {
-    match op {
-        "+" => Some(1.0),
-        "-" => Some(-1.0),
-        _ => None,
-    }
+    calc::parse(s, font_size)
 }
 
 /// Collapse summed (`%`, px) parts to the narrowest [`LengthPct`]: pure-px → `Px`,
@@ -2700,7 +2638,10 @@ mod calc_aspect_tests {
 
     #[test]
     fn calc_with_unsupported_operator_or_bad_term_is_none() {
-        assert_eq!(parse_length_pct("calc(100% * 2)", 16.0), None); // `*` unsupported
+        assert_eq!(
+            parse_length_pct("calc(100% * 2)", 16.0),
+            Some(LengthPct::Pct(200.0))
+        );
         assert_eq!(parse_length_pct("calc(100% - foo)", 16.0), None); // bad term
         assert_eq!(parse_length_pct("calc()", 16.0), None); // empty
     }

@@ -86,8 +86,8 @@ fn parse_calc_additive_lengths() {
         parse_length_pct("calc(1rem + 4px)", 16.0),
         Some(LengthPct::Px(20.0))
     );
-    // Multiplicative / percentage calc isn't handled here → None (caller defaults).
-    assert_eq!(parse_px("calc(2 * 10px)", 16.0), None);
+    // Scalar multiplication resolves lengths; percentages still need a basis.
+    assert_eq!(parse_px("calc(2 * 10px)", 16.0), Some(20.0));
     assert_eq!(parse_px("calc(100% - 20px)", 16.0), None);
 }
 
@@ -626,4 +626,21 @@ fn parse_viewport_units_resolve_against_layout_viewport() {
     approx(parse_px("10vmin", 16.0).unwrap(), 90.0); // min(1000,900)=900 → 90
     approx(parse_px("10vmax", 16.0).unwrap(), 100.0); // max(1000,900)=1000 → 100
     set_media_viewport_height(800.0); // restore the default for other tests
+}
+
+#[test]
+fn custom_properties_keep_case_and_calc_arithmetic() {
+    use turbo_dom_layout::style::parse_declarations;
+    let declarations =
+        parse_declarations("--Grid-columns:12; --grid-columns:6; WIDTH:calc(100% / 3)");
+    assert_eq!(declarations[0].property, "--Grid-columns");
+    assert_eq!(declarations[1].property, "--grid-columns");
+    assert_eq!(declarations[2].property, "width");
+    approx(
+        parse_length_pct(&declarations[2].value, 16.0)
+            .unwrap()
+            .resolve(300.0)
+            .unwrap(),
+        100.0,
+    );
 }

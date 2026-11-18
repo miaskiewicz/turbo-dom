@@ -7,6 +7,18 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **MUI calc widths (#518)**: parse typed multiplication, division and nested
+  parentheses with operator precedence, and preserve case-sensitive custom-property
+  names so MUI's Grid variables resolve. Reject malformed, dimensionally invalid
+  and non-finite arithmetic instead of accepting an incomplete expression.
+- **Mixed flex lengths (#519)**: preserve both percentage and pixel terms through
+  the solver, including flex-basis, min/max sizes, content-box frames and absolute
+  insets. Reuse solved widths instead of applying percentage constraints twice;
+  non-stretched auto-height items keep descendant percentage heights indefinite.
+- **Canvas pixel uploads (#523)**: replay RGBA ImageData uploads as clipped bitmap
+  replacement independent of transforms, global alpha and composition state.
+  Metal uses the software bitmap path for these uploads.
+
 - **Nested flex heights (#520)**: pass the native content height to the
   padding-free flex solver and convert border-box height constraints into that
   same coordinate space. Borders, min/max heights, resolved percentages, row

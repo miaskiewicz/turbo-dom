@@ -73,5 +73,10 @@
     "id": "column-shrink",
     "width": 1440,
     "css": ".badge{height:140px;min-height:0}"
+  },
+  {
+    "id": "percentage-indefinite",
+    "width": 1440,
+    "css": ".item{align-self:flex-start}.card{height:75%}"
   }
 ]

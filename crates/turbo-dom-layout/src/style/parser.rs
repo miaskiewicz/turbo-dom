@@ -140,7 +140,12 @@ pub fn strip_comments(css: &str) -> String {
 /// Parse a single declaration like `font-weight: 700 !important`.
 fn parse_declaration(text: &str) -> Option<Declaration> {
     let (raw_prop, raw_val) = text.split_once(':')?;
-    let property = raw_prop.trim().to_ascii_lowercase();
+    let name = raw_prop.trim();
+    let property = if name.starts_with("--") {
+        name.to_owned()
+    } else {
+        name.to_ascii_lowercase()
+    };
     if property.is_empty() {
         return None;
     }
