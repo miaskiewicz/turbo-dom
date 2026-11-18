@@ -512,6 +512,24 @@ mod tests {
     }
 
     #[test]
+    fn volume_threshold_reflows_the_timeline_without_overlapping_the_menu() {
+        // The retained Chrome audio-panel-142 control has no volume button.
+        // At the measured 143px threshold, its arrival leaves the minimum track.
+        let (before, _) = audio("width:142px");
+        assert!(before.iter().all(|part| !part.6));
+        assert!(before
+            .iter()
+            .any(|part| close(part, (42.0, 25.0, 68.0, 4.0)) && part.4 == Some(TIMELINE)));
+        let (after, _) = audio("width:143px");
+        assert!(after.iter().any(|part| part.6));
+        assert!(after
+            .iter()
+            .any(|part| close(part, (42.0, 25.0, 32.0, 4.0)) && part.4 == Some(TIMELINE)));
+        assert_eq!(panel_texts("width:142px"), Vec::<String>::new());
+        assert_eq!(panel_texts("width:143px"), Vec::<String>::new());
+    }
+
+    #[test]
     fn without_a_face_the_time_display_is_left_out() {
         let mut frag = Fragment::new(
             super::NodeId(0),

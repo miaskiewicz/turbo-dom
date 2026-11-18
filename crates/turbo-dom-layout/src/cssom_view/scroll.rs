@@ -1635,6 +1635,34 @@ mod tests {
     }
 
     #[test]
+    fn generic_snapshots_do_not_fabricate_native_scroll_provenance() {
+        let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            "<body><div id=b style='width:60px;height:30px'><span id=i>text</span></div><span id=bg style='background:red'>text</span><span id=frame style='border:1px solid'>text</span></body>",
+            "",
+            (200.0, 100.0),
+            None,
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let inline = crate::live::testing::id(&tree, "#i");
+        assert_eq!(
+            scroll_metrics(&snapshot, &styles, inline).unwrap_err(),
+            "native scroll requires inline border provenance"
+        );
+        for selector in ["#bg", "#frame"] {
+            let source = crate::live::testing::id(&tree, selector);
+            assert_eq!(
+                scroll_metrics(&snapshot, &styles, source).unwrap(),
+                zero_scroll_metrics(),
+                "{selector}"
+            );
+        }
+        let block = crate::live::testing::id(&tree, "#b");
+        let metrics = scroll_metrics(&snapshot, &styles, block).unwrap();
+        assert_eq!((metrics.width, metrics.height), (60, 30));
+    }
+
+    #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
             "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",

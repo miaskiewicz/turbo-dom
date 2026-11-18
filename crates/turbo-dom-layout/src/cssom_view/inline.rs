@@ -260,6 +260,68 @@ mod tests {
         );
     }
 
+    fn generic_text_layout(html: &str) -> (turbo_dom::Tree, LayoutSnapshot, SourceStyles) {
+        let tree = turbo_dom::Tree::parse(html);
+        let document_nodes =
+            crate::style_html_tree(&tree, "", 400.0, &crate::HtmlOptions::default());
+        let captured = testing::capture_light(&tree, &testing::light_children(&tree));
+        let styles = testing::collect(&document_nodes);
+        let fonts = crate::test_support::fixture_fonts();
+        let images = crate::ImageCtx::none();
+        let snapshot = crate::layout_snapshot::snapshot_styled_tree_with_text(
+            &document_nodes,
+            &captured.identities,
+            &crate::layout_snapshot::SnapshotInputs {
+                width: 400.0,
+                height: 300.0,
+                fonts: &fonts,
+                images: &images,
+            },
+            &mut crate::Diagnostics::default(),
+        )
+        .unwrap();
+        (tree, snapshot, styles)
+    }
+
+    #[test]
+    fn fallback_font_boxes_are_an_explicit_inline_geometry_gap() {
+        let (tree, snapshot, styles) = generic_text_layout(
+            "<body><span id=t style='font-family:Inter,Noto Sans Hebrew'>aא</span></body>",
+        );
+        // The family list itself is supported when every run uses the first face.
+        let (latin_tree, latin, latin_styles) = generic_text_layout(
+            "<body><span id=t style='font-family:Inter,Noto Sans Hebrew'>ab</span></body>",
+        );
+        assert_eq!(
+            geometry(&latin, &latin_styles, testing::id(&latin_tree, "#t"))
+                .unwrap()
+                .rects
+                .len(),
+            1
+        );
+        let got = geometry(&snapshot, &styles, testing::id(&tree, "#t"));
+        assert_eq!(
+            got.unwrap_err(),
+            "native fallback-font inline border production is pending"
+        );
+    }
+
+    #[test]
+    fn same_direction_bidi_wrappers_preserve_inline_rects() {
+        let read = |direction| {
+            let html = format!(
+                "<body style='font-family:Liberation Serif'><p>ab<span id=t \
+                 style='unicode-bidi:{direction}'>cd</span>ef</p></body>"
+            );
+            let (tree, snapshot, styles) = generic_text_layout(&html);
+            let id = testing::id(&tree, "#t");
+            geometry(&snapshot, &styles, id).unwrap()
+        };
+        let plain = read("normal");
+        assert_eq!(read("isolate"), plain);
+        assert_eq!(read("embed"), plain);
+    }
+
     #[test]
     fn a_receiver_without_a_style_is_an_error() {
         let html = "<body><p id=t>text</p></body>";
