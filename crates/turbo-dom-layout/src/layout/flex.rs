@@ -14,6 +14,8 @@ use std::collections::HashMap;
 #[path = "flex_tree.rs"]
 mod native_tree;
 use native_tree::Tree as TaffyTree;
+#[path = "grid_capacity.rs"]
+mod grid_capacity;
 
 #[path = "grid_tracks.rs"]
 mod grid_tracks;
@@ -1658,8 +1660,16 @@ type AreaMap = HashMap<String, (i16, i16, i16, i16)>;
 /// space-separated cell names; `.` is an empty cell) into an [`AreaMap`].
 fn grid_areas(value: &str) -> AreaMap {
     let mut map: AreaMap = HashMap::new();
-    for (r, row) in quoted_rows(value).into_iter().enumerate() {
-        for (c, name) in row.split_whitespace().enumerate() {
+    for (r, row) in quoted_rows(value)
+        .into_iter()
+        .take(grid_capacity::MAX_TRACKS)
+        .enumerate()
+    {
+        for (c, name) in row
+            .split_whitespace()
+            .take(grid_capacity::MAX_TRACKS)
+            .enumerate()
+        {
             if name == "." {
                 continue;
             }
@@ -1714,7 +1724,7 @@ fn area_rows(areas: &AreaMap) -> usize {
 /// grid declared only via `grid-template-areas` still has tracks to place into.
 fn fill_tracks(tracks: Vec<TrackSizingFunction>, n: usize) -> Vec<TrackSizingFunction> {
     if tracks.is_empty() {
-        vec![TrackSizingFunction::AUTO; n]
+        vec![TrackSizingFunction::AUTO; n.min(grid_capacity::MAX_TRACKS)]
     } else {
         tracks
     }
@@ -1752,18 +1762,30 @@ fn parse_repeat(tok: &str) -> Option<Vec<TrackSizingFunction>> {
         "auto-fill" => GridTrackRepetition::AutoFill,
         "auto-fit" => GridTrackRepetition::AutoFit,
         n => {
-            let count: usize = n.parse().ok()?;
-            let one: Vec<TrackSizingFunction> = tokens.into_iter().map(track_of).collect();
+            let count = grid_capacity::decimal(n, grid_capacity::MAX_TRACKS)?;
+            let one: Vec<TrackSizingFunction> = tokens
+                .into_iter()
+                .take(grid_capacity::MAX_TRACKS)
+                .map(track_of)
+                .collect();
             return Some(
                 one.iter()
                     .cloned()
                     .cycle()
-                    .take(count * one.len())
+                    .take(
+                        count
+                            .saturating_mul(one.len())
+                            .min(grid_capacity::MAX_TRACKS),
+                    )
                     .collect(),
             );
         }
     };
-    let singles = tokens.into_iter().map(single_track).collect();
+    let singles = tokens
+        .into_iter()
+        .take(grid_capacity::MAX_TRACKS)
+        .map(single_track)
+        .collect();
     Some(vec![TrackSizingFunction::Repeat(auto, singles)])
 }
 
@@ -1778,8 +1800,11 @@ fn grid_tracks(spec: Option<&str>) -> Vec<TrackSizingFunction> {
     };
     let mut out = Vec::new();
     for tok in super::value::css_value_tokens(spec) {
+        if out.len() == grid_capacity::MAX_TRACKS {
+            break;
+        }
         match parse_repeat(tok) {
-            Some(rep) => out.extend(rep),
+            Some(rep) => out.extend(rep.into_iter().take(grid_capacity::MAX_TRACKS - out.len())),
             None => out.push(track_of(tok)),
         }
     }
@@ -1833,8 +1858,53 @@ fn strip_quoted(value: &str) -> String {
     out
 }
 
-fn grid_container_style(container: &LayoutBox, cw: f32, areas: &AreaMap) -> Style {
+fn grid_align_content(style: &ComputedStyle) -> Option<JustifyContent> {
+    match style.get("align-content").map(str::trim) {
+        None | Some("normal") => None,
+        Some("stretch") => Some(JustifyContent::Stretch),
+        Some(value) => Some(justify_content_value(value)),
+    }
+}
+
+fn grid_flow_token(token: &str) -> Option<u8> {
+    [("row", 1_u8), ("column", 2), ("dense", 4)]
+        .into_iter()
+        .find_map(|(name, flag)| token.eq_ignore_ascii_case(name).then_some(flag))
+}
+
+fn grid_auto_flow(style: &ComputedStyle) -> taffy::GridAutoFlow {
+    let mut flags = 0;
+    for token in style
+        .get("grid-auto-flow")
+        .unwrap_or("row")
+        .split_whitespace()
+    {
+        let Some(flag) = grid_flow_token(token) else {
+            return taffy::GridAutoFlow::Row;
+        };
+        if flags & flag != 0 {
+            return taffy::GridAutoFlow::Row;
+        }
+        flags |= flag;
+    }
+    match flags {
+        2 => taffy::GridAutoFlow::Column,
+        4 | 5 => taffy::GridAutoFlow::RowDense,
+        6 => taffy::GridAutoFlow::ColumnDense,
+        _ => taffy::GridAutoFlow::Row,
+    }
+}
+
+fn grid_container_style(
+    container: &LayoutBox,
+    cw: f32,
+    areas: &AreaMap,
+    fs: f32,
+    known_height: Option<f32>,
+) -> Style {
     let s = &container.style;
+    // Both formatting contexts share the block-owned content-height boundary.
+    let dimensions = container_style(container, cw, fs, known_height);
     // Explicit tracks (longhand or the `grid-template` shorthand), else â when only
     // `grid-template-areas` is given â one AUTO track per area column/row so named
     // placement still has a grid to land in.
@@ -1846,17 +1916,18 @@ fn grid_container_style(container: &LayoutBox, cw: f32, areas: &AreaMap) -> Styl
         display: Display::Grid,
         grid_template_columns: cols.into_iter().collect(),
         grid_template_rows: rows.into_iter().collect(),
+        grid_auto_flow: grid_auto_flow(s),
         gap: Size {
             width: gap_axis(s, "column-gap"),
             height: gap_axis(s, "row-gap"),
         },
         justify_content: justify_content_grid(s),
+        align_content: grid_align_content(s),
         justify_items: justify_items(s),
         align_items: align_items(s),
-        size: Size {
-            width: Dimension::length(cw),
-            height: Dimension::auto(),
-        },
+        size: dimensions.size,
+        min_size: dimensions.min_size,
+        max_size: dimensions.max_size,
         ..Default::default()
     }
 }
@@ -1964,11 +2035,21 @@ fn grid_line(value: Option<&str>) -> Option<Line<GridPlacement>> {
 fn grid_placement(tok: &str) -> GridPlacement {
     if let Some(n) = tok
         .strip_prefix("span")
-        .and_then(|r| r.trim().parse::<u16>().ok())
+        .and_then(|r| grid_capacity::decimal(r.trim(), grid_capacity::MAX_TRACKS))
     {
-        return span(n);
+        return if n == 0 {
+            GridPlacement::Auto
+        } else {
+            span(n as u16)
+        };
     }
-    tok.parse::<i16>().map_or(GridPlacement::Auto, line)
+    let (negative, digits) = tok
+        .strip_prefix('-')
+        .map_or((false, tok), |digits| (true, digits));
+    grid_capacity::decimal(digits, grid_capacity::MAX_TRACKS * 2 + 1)
+        .map_or(GridPlacement::Auto, |n| {
+            line(if negative { -(n as i16) } else { n as i16 })
+        })
 }
 
 /// Lay out a grid container's items into the content box at `(cx, cy)` of width
@@ -1995,7 +2076,16 @@ pub(crate) fn layout_grid(
     let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     let leaves = build_grid_leaves(&mut tree, items, fs, &areas, &container.style);
-    let root = tree.new_with_children(grid_container_style(container, cw, &areas), &leaves);
+    let root = tree.new_with_children(
+        grid_container_style(
+            container,
+            cw,
+            &areas,
+            fs,
+            ctx.cb_h_known.then_some(ctx.cb_h),
+        ),
+        &leaves,
+    );
     let fill = Fill {
         width: cw,
         row: false,
@@ -2067,6 +2157,23 @@ mod coverage_tests {
 
     fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
         ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
+    }
+
+    #[test]
+    fn grid_flow_keywords_are_case_insensitive_and_reject_invalid_combinations() {
+        for (value, expected) in [
+            ("ROW", taffy::GridAutoFlow::Row),
+            ("COLUMN", taffy::GridAutoFlow::Column),
+            ("dense", taffy::GridAutoFlow::RowDense),
+            ("ROW DENSE", taffy::GridAutoFlow::RowDense),
+            ("dense COLUMN", taffy::GridAutoFlow::ColumnDense),
+            ("column row", taffy::GridAutoFlow::Row),
+            ("foo dense", taffy::GridAutoFlow::Row),
+            ("column column", taffy::GridAutoFlow::Row),
+            ("column dense dense", taffy::GridAutoFlow::Row),
+        ] {
+            assert_eq!(grid_auto_flow(&cs(&[("grid-auto-flow", value)])), expected);
+        }
     }
 
     #[test]

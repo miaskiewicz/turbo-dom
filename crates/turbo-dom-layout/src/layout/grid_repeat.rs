@@ -6,6 +6,7 @@ use super::{
     TrackSizingFunction,
 };
 use taffy::prelude::{FromLength, TaffyAuto};
+use taffy::util::ResolveOrZero;
 use taffy::{DetailedGridInfo, NonRepeatedTrackSizingFunction};
 
 pub(super) fn has_auto_repeat(style: &Style) -> bool {
@@ -38,14 +39,110 @@ pub(super) fn probe_style(mut style: Style, width: f32) -> Style {
             }
         }
     }
+    style.grid_template_columns = counted_tracks(
+        &style.grid_template_columns,
+        Some(width),
+        style
+            .gap
+            .width
+            .resolve_or_zero(Some(width), super::super::native_tree::resolve_calc),
+    );
     style
 }
 
-fn counting_function(
+/// Compute auto-repeat counts before Taffy sees them: its u16 arithmetic must
+/// never receive an infinite quotient or an unbounded repeated list.
+pub(super) fn counted_tracks(
+    template: &[TrackSizingFunction],
+    width: Option<f32>,
+    gap: f32,
+) -> Vec<TrackSizingFunction> {
+    counted_tracks_mode(template, width, gap, false)
+}
+
+pub(super) fn counted_tracks_mode(
+    template: &[TrackSizingFunction],
+    width: Option<f32>,
+    gap: f32,
+    minimum: bool,
+) -> Vec<TrackSizingFunction> {
+    let limit = super::super::grid_capacity::MAX_TRACKS;
+    let fixed = template
+        .iter()
+        .filter(|t| matches!(t, TrackSizingFunction::Single(_)))
+        .count();
+    let repeated: Vec<_> = template
+        .iter()
+        .filter_map(|t| match t {
+            TrackSizingFunction::Repeat(_, members) => Some(members),
+            TrackSizingFunction::Single(_) => None,
+        })
+        .collect();
+    if repeated.is_empty() {
+        return template.iter().take(limit).cloned().collect();
+    }
+    if repeated.len() != 1 || repeated[0].is_empty() {
+        return Vec::new();
+    }
+    let basis = width.unwrap_or(0.0);
+    let values: Option<Vec<f64>> = template
+        .iter()
+        .map(|track| match track {
+            TrackSizingFunction::Single(f) => counting_value(*f, basis, false),
+            TrackSizingFunction::Repeat(_, members) => members
+                .iter()
+                .map(|f| counting_value(*f, basis, true))
+                .sum(),
+        })
+        .collect();
+    let Some(values) = values else {
+        return Vec::new();
+    };
+    let fixed_space = template
+        .iter()
+        .zip(&values)
+        .filter(|(t, _)| matches!(t, TrackSizingFunction::Single(_)))
+        .map(|(_, v)| *v)
+        .sum();
+    let member_space = template
+        .iter()
+        .zip(&values)
+        .find_map(|(t, v)| matches!(t, TrackSizingFunction::Repeat(_, _)).then_some(*v))
+        .unwrap();
+    let count = repeat_members(
+        (width, minimum),
+        fixed,
+        fixed_space,
+        repeated[0].len(),
+        member_space,
+        gap,
+        limit.saturating_sub(fixed),
+    );
+    let mut output = Vec::with_capacity((fixed + count).min(limit));
+    for track in template {
+        match track {
+            TrackSizingFunction::Single(_) => {
+                if output.len() < limit {
+                    output.push(track.clone());
+                }
+            }
+            TrackSizingFunction::Repeat(_, members) => output.extend(
+                members
+                    .iter()
+                    .copied()
+                    .cycle()
+                    .take(count.min(limit - output.len()))
+                    .map(TrackSizingFunction::Single),
+            ),
+        }
+    }
+    output
+}
+fn counting_value(
     function: NonRepeatedTrackSizingFunction,
     width: f32,
     repeated: bool,
-) -> NonRepeatedTrackSizingFunction {
+) -> Option<f64> {
     let min = function
         .min
         .definite_value(Some(width), super::super::native_tree::resolve_calc);
@@ -53,12 +150,53 @@ fn counting_function(
         .max
         .definite_value(Some(width), super::super::native_tree::resolve_calc);
     let value = match (min, max) {
-        (Some(min), Some(max)) => max.max(min),
-        (Some(value), None) | (None, Some(value)) => value,
-        (None, None) => return function,
+        (Some(a), Some(b)) => a.max(b),
+        (Some(a), None) | (None, Some(a)) => a,
+        _ => return None,
     };
-    // CSS floors auto-repeated zero tracks for counting, not fixed zero prefixes.
-    NonRepeatedTrackSizingFunction::from_length(if repeated { value.max(1.0) } else { value })
+    Some(f64::from(if repeated {
+        value.max(1.0)
+    } else {
+        value.max(0.0)
+    }))
+}
+fn repeat_members(
+    counting: (Option<f32>, bool),
+    fixed: usize,
+    fixed_space: f64,
+    members: usize,
+    space: f64,
+    gap: f32,
+    remaining: usize,
+) -> usize {
+    if remaining == 0 {
+        return 0;
+    }
+    let first =
+        fixed_space + space + (fixed + members).saturating_sub(1) as f64 * f64::from(gap.max(0.0));
+    let step = space + members as f64 * f64::from(gap.max(0.0));
+    let repetitions = counting.0.map_or(1.0, |w| {
+        let quotient = (f64::from(w) - first) / step;
+        let rounded = if counting.1 {
+            quotient.ceil()
+        } else {
+            quotient.floor()
+        };
+        rounded.max(0.0) + 1.0
+    });
+    (repetitions.min(remaining as f64) as usize)
+        .saturating_mul(members)
+        .min(remaining)
+}
+
+fn counting_function(
+    function: NonRepeatedTrackSizingFunction,
+    width: f32,
+    repeated: bool,
+) -> NonRepeatedTrackSizingFunction {
+    counting_value(function, width, repeated).map_or(function, |value| {
+        NonRepeatedTrackSizingFunction::from_length(value as f32)
+    })
 }
 
 pub(super) struct CollapsePlan {
@@ -97,6 +235,49 @@ pub(super) fn collapse_plan(style: &Style, info: &DetailedGridInfo) -> Option<Co
         gutters,
         offsets,
     })
+}
+
+/// Reuse the same track solver in the block axis; logical track indices and
+/// content alignment exchange axes, while item dimensions remain untouched.
+pub(super) fn transpose_style(style: &mut Style) {
+    std::mem::swap(
+        &mut style.grid_template_columns,
+        &mut style.grid_template_rows,
+    );
+    std::mem::swap(&mut style.grid_auto_columns, &mut style.grid_auto_rows);
+    std::mem::swap(&mut style.gap.width, &mut style.gap.height);
+    std::mem::swap(&mut style.justify_content, &mut style.align_content);
+}
+pub(super) fn transpose_info(info: &mut DetailedGridInfo) {
+    std::mem::swap(&mut info.columns, &mut info.rows);
+    for item in &mut info.items {
+        std::mem::swap(&mut item.column_start, &mut item.row_start);
+        std::mem::swap(&mut item.column_end, &mut item.row_end);
+    }
+}
+pub(super) fn row_plan(style: &Style, info: &DetailedGridInfo) -> Option<CollapsePlan> {
+    let mut transposed_style = style.clone();
+    let mut transposed_info = info.clone();
+    transpose_style(&mut transposed_style);
+    transpose_info(&mut transposed_info);
+    let mut plan = collapse_plan(&transposed_style, &transposed_info)?;
+    transpose_style(&mut plan.style);
+    Some(plan)
+}
+pub(super) fn project_rows(
+    info: &mut DetailedGridInfo,
+    sized: &DetailedGridInfo,
+    gutters: Vec<f32>,
+) {
+    info.rows.sizes = sized
+        .rows
+        .sizes
+        .iter()
+        .skip(1)
+        .step_by(2)
+        .copied()
+        .collect();
+    info.rows.gutters = gutters;
 }
 
 fn collapsed_gutters(base: &[f32], active: &[bool]) -> (Vec<f32>, Vec<f32>) {
@@ -231,6 +412,39 @@ mod tests {
         assert_eq!(
             trailing,
             [40.0_f32, 60.0, 40.0].map(TrackSizingFunction::from_length)
+        );
+    }
+    #[test]
+    fn counting_is_bounded_before_expanding_extreme_values() {
+        let zero = NonRepeatedTrackSizingFunction::from_length(0.0_f32);
+        let repeated = TrackSizingFunction::Repeat(GridTrackRepetition::AutoFill, vec![zero]);
+        assert_eq!(
+            counted_tracks(std::slice::from_ref(&repeated), Some(f32::INFINITY), 0.0).len(),
+            super::super::super::grid_capacity::MAX_TRACKS
+        );
+        assert_eq!(
+            counted_tracks(std::slice::from_ref(&repeated), Some(120.0), 0.0).len(),
+            120
+        );
+        assert_eq!(
+            counted_tracks(std::slice::from_ref(&repeated), None, 0.0).len(),
+            1
+        );
+        assert_eq!(
+            counted_tracks(
+                &[TrackSizingFunction::from_length(0.0_f32), repeated.clone()],
+                Some(120.0),
+                0.0
+            )
+            .len(),
+            121
+        );
+        assert!(counted_tracks(&[repeated.clone(), repeated], Some(120.0), 0.0).is_empty());
+        let empty = TrackSizingFunction::Repeat(GridTrackRepetition::AutoFit, Vec::new());
+        assert!(counted_tracks(&[empty], Some(120.0), 0.0).is_empty());
+        assert_eq!(
+            repeat_members((Some(400.0), false), 1000, 1000.0, 1, 1.0, 0.0, 0),
+            0
         );
     }
 }

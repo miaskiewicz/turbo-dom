@@ -43,3 +43,50 @@ run the component harness per `tools/component-parity/README.md`. The harness
 retains its independent oracles and assertion thresholds.
 
 The auto-fit gutter correction is tracked in [#525](https://github.com/miaskiewicz/turbo-dom/issues/525); its original six controls now pass in the default gate.
+
+## Native grid capacity
+
+The native adapter supports at most **1000 logical tracks per axis**. This is an
+explicit memory limit of this implementation, not a claim about Chromium's much
+larger grid limit. [CSS Grid §5.4](https://www.w3.org/TR/css-grid-1/#overlarge-grids)
+permits a UA-defined limited grid and specifies how to truncate or reposition
+areas outside it. Its suggested `[-10000, 10000]` line range exceeds this native
+budget; the specification itself also illustrates a 1000-track implementation.
+
+Counted and automatic repetitions are bounded before allocation or conversion to
+Taffy's narrower coordinates. An axis retains its explicit tracks, reserves only
+the required negative implicit space within the limit, and uses the remaining
+capacity for positive implicit tracks. An area crossing the boundary is clipped;
+an area wholly outside is moved to the last track on that side with a span of
+one. Children remain in the layout, including when automatic placement fills the
+limited grid. Ordinary grids within the capacity retain the existing placement
+path. Oversized automatic placements use a bounded occupancy prepass instead of
+letting their spans grow Taffy's matrix unchecked.
+
+The overflow prepass uses a 128 kB (125 KiB) bitset. Taffy's logical placement matrix is at
+most 1000×1000 cells; the internal gutter-expanded solve has at most 2001 columns
+and 2001 rows when both axes require gutter expansion. This bounds both native coordinates and the per-grid occupancy
+allocation, including zero-sized auto repeats and extreme author counts/spans.
+Native tests exercise large repeated spans, signed out-of-range lines, saturated
+counted repetitions, and more automatic items than available rows. These stress
+checks test the documented native capacity; the existing Chromium controls keep
+their original expected geometry and tolerance.
+
+## Grid height and automatic flow (#534)
+
+The capacity review exposed a separate public mapping omission: the native root
+previously discarded definite grid height and `grid-auto-flow`. Additional
+offline Chromium controls pin content-box and border-box 100px heights with
+padding/borders and auto-fill row gaps, plus sparse/dense row and column flow
+(including either keyword order). They join the existing intrinsic-size control
+corpus without changing previous expectations.
+
+Grid roots now reuse the flex root's block-owned content-height boundary,
+including an actual known containing-block height and converted min/max-height
+constraints. Row auto-repeat minimum constraints round upward; definite and
+maximum constraints round downward. Row auto-fit collapse and content alignment
+reuse the original track functions after column areas and frames are resolved.
+The root's frame stays owned by native block layout; it is not
+subtracted twice. Automatic-flow keywords reach Taffy's corresponding row,
+column, row-dense, or column-dense enum. Oversized column placement transposes
+the bounded prepass and restores the original axes afterward.

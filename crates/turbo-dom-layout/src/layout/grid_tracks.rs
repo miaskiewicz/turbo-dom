@@ -7,6 +7,7 @@ use super::{
     LayoutBox, LengthPercentage, LengthPercentageAuto, Line, Position, Style, TaffyId, TaffyTree,
     TrackSizingFunction,
 };
+use taffy::util::{MaybeResolve, ResolveOrZero};
 use taffy::DetailedGridInfo;
 use taffy::DetailedLayoutInfo;
 
@@ -25,37 +26,57 @@ pub(super) fn solve_grid(
     ctx: &Ctx,
 ) {
     let auto_repeat = repeat::has_auto_repeat(tree.style(root).unwrap());
-    if !auto_repeat
-        && !leaves
-            .iter()
-            .any(|id| needs_intrinsic_style(tree.style(*id).unwrap()))
-    {
+    let root_input = tree.style(root).unwrap();
+    let row_repeat = has_row_repeat(root_input);
+    if !requires_probe(tree, root, leaves) {
         solve(tree, root, items, dimensions, fill, ctx);
         return;
     }
     let mut root_style = tree.style(root).unwrap().clone();
-    let originals: Vec<_> = leaves
+    let (row_count, row_basis) = capacity_rows(&root_style);
+    let mut probe = if auto_repeat {
+        repeat::probe_style(root_style.clone(), dimensions.1)
+    } else {
+        root_style.clone()
+    };
+    if row_repeat {
+        probe.grid_template_rows = counted_rows(&root_style, row_basis);
+    }
+    let mut originals: Vec<_> = leaves
         .iter()
         .map(|id| tree.style(*id).unwrap().clone())
         .collect();
-    defer_intrinsic_styles(tree, leaves, &originals);
-    if auto_repeat {
-        tree.set_style(root, repeat::probe_style(root_style.clone(), dimensions.1))
-            .unwrap();
+    if super::grid_capacity::needed(
+        originals.iter(),
+        probe.grid_template_columns.len(),
+        row_count,
+    ) {
+        super::grid_capacity::prepare(
+            &mut originals,
+            probe.grid_template_columns.len(),
+            row_count,
+            root_style.grid_auto_flow,
+        );
+        for (id, style) in leaves.iter().zip(&originals) {
+            tree.set_style(*id, style.clone()).unwrap();
+        }
     }
+    defer_intrinsic_styles(tree, leaves, &originals);
+    tree.set_style(root, probe).unwrap();
     solve(tree, root, items, dimensions, fill, ctx);
     let DetailedLayoutInfo::Grid(info) = tree.detailed_layout_info(root) else {
         unreachable!("a solved grid records its tracks");
     };
     let mut info = info.clone();
     let mut offsets = info.columns.gutters.clone();
-    if let Some(plan) = repeat::collapse_plan(&root_style, &info) {
+    if let Some(mut plan) = repeat::collapse_plan(&root_style, &info) {
+        plan.style.grid_template_rows = counted_rows(&root_style, row_basis);
         let deferred = leaves
             .iter()
             .map(|id| tree.style(*id).unwrap().clone())
             .collect();
         tree.set_style(root, plan.style).unwrap();
-        restore_items(tree, leaves, deferred, &info, None, None);
+        restore_items(tree, leaves, deferred, &info, None, (None, false, None));
         solve(tree, root, items, dimensions, fill, ctx);
         let DetailedLayoutInfo::Grid(sized) = tree.detailed_layout_info(root) else {
             unreachable!("the expanded grid records its tracks");
@@ -65,9 +86,183 @@ pub(super) fn solve_grid(
     }
     let (gutters, trailing) = freeze_columns(&mut root_style, &info, &offsets, dimensions.1);
     let areas = frames::Areas::new(&info.columns.sizes, &gutters, dimensions.1);
-    tree.set_style(root, root_style).unwrap();
-    restore_items(tree, leaves, originals, &info, Some(&areas), trailing);
+    let authored_rows = root_style.grid_template_rows.clone();
+    root_style.grid_template_rows = counted_rows(&root_style, row_basis);
+    tree.set_style(root, root_style.clone()).unwrap();
+    restore_items(
+        tree,
+        leaves,
+        originals.clone(),
+        &info,
+        Some(&areas),
+        (trailing, false, None),
+    );
     solve(tree, root, items, dimensions, fill, ctx);
+    if !row_repeat {
+        return;
+    }
+    // Resolve percentage frames and actual inline widths before row intrinsic
+    // sizing: deferred column-probe frames are not valid block contributions.
+    let DetailedLayoutInfo::Grid(actual) = tree.detailed_layout_info(root) else {
+        unreachable!("resolved grid records its row topology");
+    };
+    info.rows = actual.rows.clone();
+    for (original, actual) in info.items.iter_mut().zip(&actual.items) {
+        original.row_start = actual.row_start;
+        original.row_end = actual.row_end;
+    }
+    root_style.grid_template_rows = authored_rows;
+    let row_offsets = collapse_rows(
+        tree,
+        (root, leaves, items),
+        dimensions,
+        fill,
+        ctx,
+        &root_style,
+        &mut info,
+    );
+    let row_trailing = final_row_tracks(&mut root_style, &info, row_offsets.as_deref(), row_basis);
+    tree.set_style(root, root_style).unwrap();
+    restore_items(
+        tree,
+        leaves,
+        originals,
+        &info,
+        Some(&areas),
+        (trailing, row_offsets.is_some(), row_trailing),
+    );
+    solve(tree, root, items, dimensions, fill, ctx);
+}
+
+fn has_row_repeat(style: &Style) -> bool {
+    style
+        .grid_template_rows
+        .iter()
+        .any(|track| matches!(track, TrackSizingFunction::Repeat(_, _)))
+}
+fn requires_probe(tree: &TaffyTree<usize>, root: TaffyId, leaves: &[TaffyId]) -> bool {
+    let style = tree.style(root).unwrap();
+    repeat::has_auto_repeat(style)
+        || has_row_repeat(style)
+        || super::grid_capacity::needed(
+            leaves.iter().map(|id| tree.style(*id).unwrap()),
+            style.grid_template_columns.len(),
+            style.grid_template_rows.len(),
+        )
+        || leaves
+            .iter()
+            .any(|id| needs_intrinsic_style(tree.style(*id).unwrap()))
+}
+
+fn capacity_rows(style: &Style) -> (usize, Option<f32>) {
+    let resolve = super::native_tree::resolve_calc;
+    let preferred = style.size.height.maybe_resolve(None, resolve);
+    let maximum = style.max_size.height.maybe_resolve(None, resolve);
+    let minimum = style.min_size.height.maybe_resolve(None, resolve);
+    let basis = preferred
+        .or(maximum)
+        .map(|value| {
+            maximum
+                .map_or(value, |max| value.min(max))
+                .max(minimum.unwrap_or(0.0))
+        })
+        .or(minimum);
+    (counted_rows(style, basis).len(), basis)
+}
+fn counted_rows(style: &Style, basis: Option<f32>) -> Vec<TrackSizingFunction> {
+    let gap = style
+        .gap
+        .height
+        .resolve_or_zero(basis, super::native_tree::resolve_calc);
+    repeat::counted_tracks_mode(&style.grid_template_rows, basis, gap, minimum_only(style))
+}
+
+fn minimum_only(style: &Style) -> bool {
+    let resolve = super::native_tree::resolve_calc;
+    style.size.height.maybe_resolve(None, resolve).is_none()
+        && style.max_size.height.maybe_resolve(None, resolve).is_none()
+}
+
+fn collapse_rows(
+    tree: &mut TaffyTree<usize>,
+    nodes: (TaffyId, &[TaffyId], &[LayoutBox]),
+    dimensions: (f32, f32),
+    fill: Fill,
+    ctx: &Ctx,
+    style: &Style,
+    info: &mut DetailedGridInfo,
+) -> Option<Vec<f32>> {
+    let (root, leaves, items) = nodes;
+    let mut plan = repeat::row_plan(style, info)?;
+    // The column phase has already solved its original track functions. Keep
+    // that exact horizontal topology while solving original row functions.
+    let current = tree.style(root).unwrap();
+    plan.style
+        .grid_template_columns
+        .clone_from(&current.grid_template_columns);
+    plan.style.gap.width = current.gap.width;
+    plan.style.justify_content = current.justify_content;
+    tree.set_style(root, plan.style).unwrap();
+    restore_rows(tree, leaves, info);
+    solve(tree, root, items, dimensions, fill, ctx);
+    let DetailedLayoutInfo::Grid(sized) = tree.detailed_layout_info(root) else {
+        unreachable!("expanded row tracks record their sizes");
+    };
+    repeat::project_rows(info, sized, plan.gutters);
+    Some(plan.offsets)
+}
+fn restore_rows(tree: &mut TaffyTree<usize>, leaves: &[TaffyId], info: &DetailedGridInfo) {
+    let mut placements = info.items.iter();
+    for id in leaves {
+        let mut style = tree.style(*id).unwrap().clone();
+        if style.position != Position::Absolute && style.display != Display::None {
+            let placement = placements.next().expect("every in-flow item has an area");
+            style.grid_row = Line {
+                start: frozen_line(u32::from(placement.row_start.saturating_sub(1)), true).unwrap(),
+                end: frozen_line(u32::from(placement.row_end.saturating_sub(1)), false).unwrap(),
+            };
+        } else if style.position == Position::Absolute {
+            style.grid_row = absolute_placement(style.grid_row, &info.rows, true, None);
+        }
+        tree.set_style(*id, style).unwrap();
+    }
+}
+
+fn final_row_tracks(
+    style: &mut Style,
+    info: &DetailedGridInfo,
+    offsets: Option<&[f32]>,
+    basis: Option<f32>,
+) -> Option<super::GridPlacement> {
+    if let Some(offsets) = offsets {
+        return freeze_rows(style, info, offsets, basis);
+    }
+    // An invalid repeat yields no explicit tracks and no collapse plan. Keep
+    // the validated bounded probe, never reinstall the authored repeat AST.
+    style.grid_template_rows = counted_rows(style, basis);
+    None
+}
+
+fn freeze_rows(
+    style: &mut Style,
+    info: &DetailedGridInfo,
+    offsets: &[f32],
+    basis: Option<f32>,
+) -> Option<super::GridPlacement> {
+    let intrinsic: f32 = info.rows.sizes.iter().chain(&info.rows.gutters).sum();
+    let size = basis.map_or(intrinsic, |basis| {
+        if minimum_only(style) {
+            basis.max(intrinsic)
+        } else {
+            basis
+        }
+    });
+    let mut transposed = info.clone();
+    repeat::transpose_info(&mut transposed);
+    repeat::transpose_style(style);
+    let (_, trailing) = freeze_columns(style, &transposed, offsets, size);
+    repeat::transpose_style(style);
+    trailing
 }
 
 fn defer_intrinsic_styles(tree: &mut TaffyTree<usize>, leaves: &[TaffyId], styles: &[Style]) {
@@ -299,8 +494,13 @@ fn restore_items(
     originals: Vec<Style>,
     info: &DetailedGridInfo,
     areas: Option<&frames::Areas>,
-    trailing: Option<super::GridPlacement>,
+    mapping: (
+        Option<super::GridPlacement>,
+        bool,
+        Option<super::GridPlacement>,
+    ),
 ) {
+    let (trailing, expanded_rows, row_trailing) = mapping;
     let mut placements = info.items.iter();
     for (id, mut style) in leaves.iter().zip(originals) {
         if style.position != Position::Absolute && style.display != Display::None {
@@ -316,7 +516,7 @@ fn restore_items(
             let row = |boundary: u16, start| {
                 let original =
                     i32::from(boundary) - 1 - i32::from(info.rows.negative_implicit_tracks);
-                mapped_absolute_line(original, &info.rows, false, start)
+                mapped_absolute_line(original, &info.rows, expanded_rows, start)
                     .unwrap_or(super::GridPlacement::Auto)
             };
             style.grid_row = Line {
@@ -326,7 +526,8 @@ fn restore_items(
         } else if style.position == Position::Absolute {
             style.grid_column =
                 absolute_placement(style.grid_column, &info.columns, true, trailing);
-            style.grid_row = absolute_placement(style.grid_row, &info.rows, false, None);
+            style.grid_row =
+                absolute_placement(style.grid_row, &info.rows, expanded_rows, row_trailing);
         }
         if let Some(areas) = areas {
             let width = areas.width(style.grid_column);
@@ -495,6 +696,32 @@ mod tests {
     }
 
     #[test]
+    fn rejected_row_repeat_never_reinstalls_the_unbounded_authored_ast() {
+        let tracks = taffy::DetailedGridTracksInfo {
+            negative_implicit_tracks: 0,
+            explicit_tracks: 0,
+            positive_implicit_tracks: 0,
+            sizes: Vec::new(),
+            gutters: vec![0.0],
+        };
+        let info = DetailedGridInfo {
+            columns: tracks.clone(),
+            rows: tracks,
+            items: Vec::new(),
+        };
+        let mut style = Style {
+            grid_template_rows: vec![TrackSizingFunction::Repeat(
+                GridTrackRepetition::AutoFit,
+                Vec::new(),
+            )],
+            ..Style::default()
+        };
+        assert!(repeat::row_plan(&style, &info).is_none());
+        assert!(final_row_tracks(&mut style, &info, None, Some(1_000_000.0)).is_none());
+        assert!(style.grid_template_rows.is_empty());
+    }
+
+    #[test]
     fn spacer_grid_lines_use_checked_representation_limits() {
         assert_eq!(frozen_line(16_382, true), Some(line(32_766)));
         assert_eq!(frozen_line(16_383, false), Some(line(i16::MAX)));
@@ -505,5 +732,14 @@ mod tests {
         assert_eq!(explicit_line(line(1), 3), Some(0));
         assert_eq!(explicit_line(line(-1), 3), Some(3));
         assert_eq!(span_line(super::super::span(0), 1, 1), None);
+        let tracks = taffy::DetailedGridTracksInfo {
+            negative_implicit_tracks: 0,
+            explicit_tracks: 3,
+            positive_implicit_tracks: 0,
+            sizes: vec![100.0; 3],
+            gutters: vec![0.0; 4],
+        };
+        assert_eq!(mapped_absolute_line(3, &tracks, true, true), Some(line(7)));
+        assert_eq!(mapped_absolute_line(3, &tracks, true, false), Some(line(7)));
     }
 }

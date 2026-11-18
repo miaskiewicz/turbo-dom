@@ -35,3 +35,8 @@ the min-content contribution against zero, as CSS Sizing §5.2.1 requires; fixed
 calc offsets, box frames and same/opposite-axis minimums remain floors. Natural
 max-content dimensions remain unchanged. This allows the three fr tracks to fit
 1152px instead of each card incorrectly taking its 374px maximum.
+
+The shared control file also contains fifteen grid height, auto-repeat and
+row/column dense-flow boundary cases for #534, bringing the complete file to
+57 controls. Their mapping and native capacity are documented in
+[GRID-TRACK-SIZING-521.md](GRID-TRACK-SIZING-521.md).
