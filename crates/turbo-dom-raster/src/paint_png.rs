@@ -7,7 +7,9 @@ use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
     Point, Rect, SpreadMode, Transform,
 };
-use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::layout::value::BorderEdges;
+#[cfg(test)]
+use turbo_dom_layout::layout::value::BorderSide;
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
@@ -1144,46 +1146,15 @@ fn fill_admitted_rect(
     true
 }
 
-/// Paint each border side as a filled edge band (no line styles — width + colour only).
-/// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
-/// right bands first, then the top and bottom ones mitred on the corner diagonals.
-fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
-    let width = std::num::NonZeroU16::new(s.width)?;
-    Some((f32::from(width.get()), s.color?))
-}
-
-fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
-    for (top, s) in [(true, &b.top), (false, &b.bottom)] {
-        let Some((_, c)) = border_side(*s) else {
-            continue;
-        };
-        let band = rrect::mitred_band((f.x, f.y, f.width, f.height), rrect::widths(b), top);
-        let mut path = PathBuilder::new();
-        trace(&mut path, &rrect::polygon(&band));
-        if let Some(path) = path.finish() {
-            pm.fill_path(&path, &solid(c), FillRule::Winding, xf, None);
-        }
-    }
-}
-
+/// Paint one border ring; differently coloured square sides share pixel coverage.
 fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     if !fragment_finite_positive(f) {
         return;
     }
-    let mitred = rrect::mixed_colours(b);
-    if !mitred {
-        // One ring keeps adjacent translucent sides from compositing twice.
+    if rrect::mixed_colours(b) {
+        crate::border_pixels::paint(pm, f, b, xf);
+    } else {
         paint_round_border(pm, f, b, &BorderRadii::ZERO, xf);
-        return;
-    }
-    if let Some((w, c)) = border_side(b.left) {
-        fill_rect(pm, f.x, f.y, w, f.height, c, xf);
-    }
-    if let Some((w, c)) = border_side(b.right) {
-        fill_rect(pm, f.x + f.width - w, f.y, w, f.height, c, xf);
-    }
-    if mitred {
-        paint_mitred_bands(pm, f, b, xf);
     }
 }
 
@@ -1634,16 +1605,7 @@ fn paint_round_border(
         }
         return;
     }
-    for (side, c) in painted {
-        let region = rrect::side_region(rect, widths, side);
-        let mut clip = PathBuilder::new();
-        trace(&mut clip, &rrect::polygon(&region));
-        if let Some(clip) = clip.finish() {
-            paint_masked(pm, &clip, xf, |layer, local| {
-                layer.fill_path(&ring, &solid(c), FillRule::EvenOdd, local, None);
-            });
-        }
-    }
+    crate::border_pixels::paint_ring(pm, f, b, xf, &ring);
 }
 
 /// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
