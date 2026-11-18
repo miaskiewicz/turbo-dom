@@ -209,10 +209,10 @@ fn full_opacity_boxes(fragment: &Fragment, opacity: f32) -> usize {
 
 #[test]
 fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
+    const BOXES: usize = 20;
     let _test = TEST_SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    const BOXES: usize = 20;
     let viewport = Viewport {
         width: 1024,
         height: 1024,
@@ -333,10 +333,10 @@ fn transparent_inset_shadows_do_not_allocate_blur_layers() {
 
 #[test]
 fn visible_blurred_shadows_reuse_their_scratch_for_compositing() {
+    const BOXES: usize = 10;
     let _test = TEST_SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    const BOXES: usize = 10;
     let preparation = SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -498,10 +498,10 @@ fn positioned_image_strips(fragment: &Fragment) -> usize {
 
 #[test]
 fn oversized_repeated_image_textures_use_only_visible_scratch() {
+    const BOXES: usize = 20;
     let _test = TEST_SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    const BOXES: usize = 20;
     let preparation = SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
