@@ -35,6 +35,10 @@ pub(super) fn calc(pct: f32, px: f32) -> *const () {
     })
 }
 
+pub(super) fn calc_fixed(token: *const ()) -> f32 {
+    CALCS.with(|values| values.borrow()[token.addr() / 8 - 1].1)
+}
+
 pub(super) fn offset_calc(token: *const (), offset: f32) -> *const () {
     let (pct, px, _) = CALCS.with(|values| values.borrow()[token.addr() / 8 - 1]);
     calc(pct, px + offset)

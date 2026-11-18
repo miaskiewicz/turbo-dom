@@ -4,7 +4,8 @@
 //! retain those tracks while restoring area-relative sizes for final placement.
 use super::{
     line, solve, Ctx, Dimension, Display, Fill, FromLength, GridTrackRepetition, JustifyContent,
-    LayoutBox, LengthPercentage, Line, Position, Style, TaffyId, TaffyTree, TrackSizingFunction,
+    LayoutBox, LengthPercentage, LengthPercentageAuto, Line, Position, Style, TaffyId, TaffyTree,
+    TrackSizingFunction,
 };
 use taffy::DetailedGridInfo;
 use taffy::DetailedLayoutInfo;
@@ -68,14 +69,58 @@ fn intrinsic_style(original: &Style) -> Option<Style> {
     let mut intrinsic = original.clone();
     for (value, indefinite) in [
         (&mut intrinsic.size.width, Dimension::auto()),
-        (&mut intrinsic.min_size.width, Dimension::length(0.0)),
         (&mut intrinsic.max_size.width, Dimension::auto()),
     ] {
         if cyclic_percentage(*value) {
             *value = indefinite;
         }
     }
+    if cyclic_percentage(intrinsic.min_size.width) {
+        let raw = intrinsic.min_size.width.into_raw();
+        intrinsic.min_size.width = if raw.is_calc() {
+            Dimension::calc(fixed_calc(raw.calc_value(), true))
+        } else {
+            Dimension::length(0.0)
+        };
+    }
+    defer_edges(&mut intrinsic);
     Some(intrinsic)
+}
+
+fn fixed_calc(token: *const (), nonnegative: bool) -> *const () {
+    let px = super::native_tree::calc_fixed(token);
+    super::native_tree::calc(0.0, if nonnegative { px.max(0.0) } else { px })
+}
+
+// CSS Sizing §5.2.1 resolves cyclic frame percentages against zero, retaining
+// fixed calc terms and the same LayoutUnit quantization used in final placement.
+fn defer_edges(style: &mut Style) {
+    for value in [
+        &mut style.padding.left,
+        &mut style.padding.right,
+        &mut style.padding.top,
+        &mut style.padding.bottom,
+    ] {
+        let raw = value.into_raw();
+        if raw.is_calc() {
+            *value = LengthPercentage::calc(fixed_calc(raw.calc_value(), true));
+        } else if raw.tag() == taffy::CompactLength::PERCENT_TAG {
+            *value = LengthPercentage::length(0.0);
+        }
+    }
+    for value in [
+        &mut style.margin.left,
+        &mut style.margin.right,
+        &mut style.margin.top,
+        &mut style.margin.bottom,
+    ] {
+        let raw = value.into_raw();
+        if raw.is_calc() {
+            *value = LengthPercentageAuto::calc(fixed_calc(raw.calc_value(), false));
+        } else if raw.tag() == taffy::CompactLength::PERCENT_TAG {
+            *value = LengthPercentageAuto::length(0.0);
+        }
+    }
 }
 
 fn needs_intrinsic_style(style: &Style) -> bool {
@@ -88,11 +133,28 @@ fn has_deferred_placement(style: &Style) -> bool {
 }
 
 fn has_cyclic_width(style: &Style) -> bool {
-    style.position != Position::Absolute
-        && style.display != Display::None
-        && [style.size.width, style.min_size.width, style.max_size.width]
-            .into_iter()
-            .any(cyclic_percentage)
+    if style.position == Position::Absolute || style.display == Display::None {
+        return false;
+    }
+    [style.size.width, style.min_size.width, style.max_size.width]
+        .into_iter()
+        .any(cyclic_percentage)
+        || cyclic_edges(style)
+}
+
+fn cyclic_edges(style: &Style) -> bool {
+    [
+        style.padding.left.into_raw(),
+        style.padding.right.into_raw(),
+        style.padding.top.into_raw(),
+        style.padding.bottom.into_raw(),
+        style.margin.left.into_raw(),
+        style.margin.right.into_raw(),
+        style.margin.top.into_raw(),
+        style.margin.bottom.into_raw(),
+    ]
+    .into_iter()
+    .any(|value| value.is_calc() || value.tag() == taffy::CompactLength::PERCENT_TAG)
 }
 
 fn cyclic_percentage(value: Dimension) -> bool {
@@ -278,6 +340,47 @@ fn frozen_line(original: u32, start: bool) -> Option<super::GridPlacement> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cyclic_edges_keep_fixed_calc_terms_and_restore_original_declarations() {
+        let _scope = super::super::native_tree::CalcScope::new(None);
+        let token = super::super::native_tree::calc(10.0, 4.1);
+        let negative = super::super::native_tree::calc(25.0, -3.0);
+        let mut original = Style::default();
+        original.padding.left = LengthPercentage::calc(token);
+        original.padding.right = LengthPercentage::percent(0.1);
+        original.padding.top = LengthPercentage::length(5.0);
+        original.margin.left = LengthPercentageAuto::calc(negative);
+        original.margin.right = LengthPercentageAuto::percent(0.05);
+        original.margin.top = LengthPercentageAuto::auto();
+        original.min_size.width = Dimension::calc(token);
+        let before = original.clone();
+        let intrinsic =
+            intrinsic_style(&original).expect("percentage edges participate in intrinsic sizing");
+        let resolve = |raw: taffy::CompactLength| {
+            super::super::native_tree::resolve_for_test(raw.calc_value(), 1000.0)
+        };
+        assert_eq!(resolve(intrinsic.padding.left.into_raw()), 4.09375);
+        assert_eq!(intrinsic.padding.right, LengthPercentage::length(0.0));
+        assert_eq!(intrinsic.padding.top, original.padding.top);
+        assert_eq!(resolve(intrinsic.margin.left.into_raw()), -3.0);
+        assert_eq!(intrinsic.margin.right, LengthPercentageAuto::length(0.0));
+        assert_eq!(intrinsic.margin.top, LengthPercentageAuto::auto());
+        assert_eq!(resolve(intrinsic.min_size.width.into_raw()), 4.09375);
+        assert_eq!(
+            original, before,
+            "final placement retains the complete declared style"
+        );
+        let only_edge = Style {
+            padding: taffy::Rect {
+                bottom: LengthPercentage::percent(0.1),
+                ..Style::default().padding
+            },
+            ..Style::default()
+        };
+        assert!(needs_intrinsic_style(&only_edge));
+        assert!(intrinsic_style(&only_edge).is_some());
+    }
 
     #[test]
     fn counted_repetitions_are_expanded_before_grid_track_adapter() {
