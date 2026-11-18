@@ -83,10 +83,7 @@ pub(crate) fn for_fragment<'a>(
         return layers;
     }
     match &f.content {
-        FragmentContent::Box {
-            shadow: Some(shadow),
-            ..
-        } => std::slice::from_ref(shadow),
+        FragmentContent::Box { shadow, .. } => shadow.as_slice(),
         _ => &[],
     }
 }

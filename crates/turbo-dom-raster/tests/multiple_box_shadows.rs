@@ -193,3 +193,26 @@ fn multi_layer_snapshots_do_not_leak_into_single_or_unshadowed_fast_paths() {
         assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], [0, 0, 255, 255]);
     }
 }
+
+#[test]
+fn single_shadow_fallback_survives_mixed_runtime_fragment_content() {
+    for (offset, shadow, expected) in [
+        (8, "8px 8px red", [255, 0, 0, 255]),
+        (10, "10px 10px blue", [0, 0, 255, 255]),
+        (10, "none", [255; 4]),
+    ] {
+        let html = format!("<!doctype html><body style='margin:0;background:white'><div style='position:absolute;left:30px;top:30px;width:40px;height:40px;background:white;box-shadow:{shadow}'><span>text</span><img src='missing.png' style='width:5px;height:5px'></div>");
+        let capture = scene(&html);
+        let png = tiny_skia::Pixmap::decode_png(&capture.png().unwrap()).unwrap();
+        let svg = svg_pixels(&capture.svg().unwrap());
+        for pixels in [&png, &svg] {
+            let p = pixels
+                .pixel(70 + offset - 2, 70 + offset - 2)
+                .unwrap()
+                .demultiply();
+            assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], expected);
+            let p = pixels.pixel(90, 90).unwrap().demultiply();
+            assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], [255; 4]);
+        }
+    }
+}
