@@ -259,7 +259,7 @@ fn memoized<T: Copy>(
 #[derive(Debug, Clone)]
 struct MeasuredSizes {
     original_units: Option<std::sync::Arc<crate::layout_snapshot::text_units::NativeUnitMap>>,
-    values: Vec<(u32, (f32, f32))>,
+    values: Vec<([u32; 5], (f32, f32))>,
 }
 
 /// Per-box cache of the resolved style and its context-independence verdict.
@@ -507,10 +507,13 @@ impl LayoutBox {
         }
     }
 
-    /// The memoized measured content size at proposed width `w`, computing it once
-    /// per distinct exact width via `f` (a rounded key shared probes that wrap differently, 0.7.0 review R3 #6).
-    pub(crate) fn measure_cached(&self, w: f32, f: impl FnOnce() -> (f32, f32)) -> (f32, f32) {
-        let key = w.to_bits();
+    /// Memoize each exact proposed width and resolved padding tuple. Intrinsic
+    /// grid probes and final area-relative probes can share a width but not a frame.
+    pub(crate) fn measure_cached(
+        &self,
+        key: [u32; 5],
+        f: impl FnOnce() -> (f32, f32),
+    ) -> (f32, f32) {
         // Scope the immutable borrow to this `let` so it is dropped before `f()` (a
         // recursive sub-layout) or the `borrow_mut` below can run.
         let hit = self.measure_cache.borrow().as_ref().and_then(|cache| {

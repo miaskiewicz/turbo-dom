@@ -6,8 +6,9 @@
 //! Content sizing: an item's main size comes from its `flex-basis`/`width` when
 //! set, otherwise from a max-content measurement of its content (`natural_width`);
 //! the cross size comes from laying the content out at the proposed width. The
-//! item's padding/border are folded into the measured border-box, and its margins
-//! are handed to taffy. Per-item `align-self`/`order` are deferred (documented).
+//! item's typed padding, borders and margins remain with taffy until their containing
+//! block is known. The measurement bridge converts native border boxes to taffy
+//! content measurements without applying the frame twice.
 
 use std::collections::HashMap;
 #[path = "flex_tree.rs"]
@@ -16,6 +17,9 @@ use native_tree::Tree as TaffyTree;
 
 #[path = "grid_tracks.rs"]
 mod grid_tracks;
+
+#[path = "flex_frame.rs"]
+mod frames;
 
 use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyMinContent};
 use taffy::style_helpers::{fr, line, minmax, percent, span};
@@ -34,7 +38,10 @@ use super::block::{self, Ctx};
 use super::boxgen::{BoxKind, InlineItem, LayoutBox};
 use super::fragment::Fragment;
 use super::inline;
-use super::value::{parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, DEFAULT_FONT_SIZE};
+use super::value::{
+    component_tokens as basis_tokens, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx,
+    DEFAULT_FONT_SIZE,
+};
 use super::ImageCtx;
 
 // --------------------------------------------------------------------------
@@ -260,7 +267,7 @@ fn item_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
 fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
     let v = s.get("flex").map(str::trim)?;
     if matches!(v, "none" | "initial") {
-        return Some(Dimension::auto());
+        return None;
     }
     let mut saw_token = false;
     for tok in basis_tokens(v) {
@@ -273,30 +280,6 @@ fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
     }
     // A numbers-only shorthand (`flex: 1`, `flex: 2 0`) has an implied `0` basis.
     saw_token.then(|| Dimension::length(0.0))
-}
-
-/// Whitespace inside calc belongs to its basis, not to grow/shrink tokens.
-fn basis_tokens(value: &str) -> Vec<&str> {
-    let mut depth = 0_u32;
-    let mut start = 0;
-    let mut tokens = Vec::new();
-    for (index, ch) in value.char_indices() {
-        match ch {
-            '(' => depth += 1,
-            ')' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-        if ch.is_ascii_whitespace() && depth == 0 {
-            if start < index {
-                tokens.push(&value[start..index]);
-            }
-            start = index + ch.len_utf8();
-        }
-    }
-    if start < value.len() {
-        tokens.push(&value[start..]);
-    }
-    tokens
 }
 
 /// One `flex`-shorthand token's role in basis resolution.
@@ -334,15 +317,6 @@ fn parse_basis(b: &str, fs: f32) -> Option<Dimension> {
     super::value::parse_length_pct(b, fs).map(dim)
 }
 
-fn item_margins(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
-    Rect {
-        left: LengthPercentageAuto::length(bs.margin.left),
-        right: LengthPercentageAuto::length(bs.margin.right),
-        top: LengthPercentageAuto::length(bs.margin.top),
-        bottom: LengthPercentageAuto::length(bs.margin.bottom),
-    }
-}
-
 /// A flex (or grid: `column` false) item's taffy style; `column`: the container's main
 /// axis is vertical.
 fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
@@ -361,7 +335,6 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
             position: Position::Absolute,
             inset: abs_item_inset(&bs),
             size: item_size(&bs),
-            margin: item_margins(&bs),
             ..Default::default()
         };
     }
@@ -372,7 +345,6 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
         flex_shrink: num(s, "flex-shrink", shrink),
         flex_basis: item_basis(s, main, fs),
         align_self: align_self(s),
-        margin: item_margins(&bs),
         // A flex item's own `min/max` sizes and explicit cross-axis size (`height` in a
         // row, `width` in a column) must reach taffy — else an item whose height is only
         // a `min-height` collapses, and a column item stretches over its `width`.
@@ -387,62 +359,6 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
             height: dim(bs.max_height),
         },
         ..Default::default()
-    }
-}
-
-/// A flex item's style with its `size`, `min_size`, `max_size` and `flex_basis` lengths
-/// as border-box lengths, which is what taffy lays out: under `box-sizing: content-box`
-/// each grows by the item's padding and border on that axis (`column`: the basis is
-/// vertical; miaskiewicz/turbo-dom#93).
-fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -> Style {
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
-    let border = bs.border.widths();
-    let frame = Size {
-        width: bs.padding.horizontal() + border.horizontal(),
-        height: bs.padding.vertical() + border.vertical(),
-    };
-    let grow = |size: Size<Dimension>| Size {
-        width: border_box(size.width, bs.box_sizing, frame.width),
-        height: border_box(size.height, bs.box_sizing, frame.height),
-    };
-    style.size = grow(style.size);
-    style.min_size = grow(style.min_size);
-    style.min_size.width = frame_minimum(style.min_size.width, frame.width);
-    style.min_size.height = frame_minimum(style.min_size.height, frame.height);
-    style.max_size = grow(style.max_size);
-    let main = if column { frame.height } else { frame.width };
-    style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
-
-    style
-}
-
-/// A border box cannot shrink below its padding and borders, even with min:0.
-fn frame_minimum(value: Dimension, frame: f32) -> Dimension {
-    match value.tag() {
-        taffy::CompactLength::LENGTH_TAG => Dimension::length(value.value().max(frame)),
-        taffy::CompactLength::AUTO_TAG => Dimension::length(frame),
-        _ => value,
-    }
-}
-
-/// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
-/// padding and border on that axis; percentages and `auto` are left as they are.
-fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
-    if sizing == BoxSizing::BorderBox {
-        return d;
-    }
-    match d.tag() {
-        taffy::CompactLength::LENGTH_TAG => Dimension::length(d.value() + frame),
-        taffy::CompactLength::PERCENT_TAG => {
-            Dimension::calc(native_tree::calc(d.value() * 100.0, frame))
-        }
-        _ if d.into_raw().is_calc() => {
-            Dimension::calc(native_tree::offset_calc(d.into_raw().calc_value(), frame))
-        }
-        _ => d,
     }
 }
 
@@ -1140,9 +1056,11 @@ fn measure_item(
         Option<f32>,
         Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
         Fill,
+        Option<&BoxStyle>,
     ),
 ) -> Size<f32> {
-    let (live_geometry, html_font_metrics, html_font_scale, original_units, fill) = policy;
+    let (live_geometry, html_font_metrics, html_font_scale, original_units, fill, measured_style) =
+        policy;
     if fill.row {
         if let Some(size) = measure_natural_image(item, images, known, (fs, fill.width)) {
             return size;
@@ -1171,12 +1089,31 @@ fn measure_item(
     // Memoize the full sub-layout by proposed width: taffy probes each item several
     // times per solve, and each probe recurses a full layout, so nested flex is
     // exponential without this. `fs` (the flex container's font size) is stable per
-    // item, so width alone keys the cache.
+    // item. Percentage frames also depend on the current containing-block basis.
     let probe = || {
-        item.measure_cached(w, || {
-            let bs = item.resolved(ResolveCtx {
-                parent_font_size: fs,
-                cb_width: w,
+        let padding = measured_style.map_or_else(
+            || {
+                item.resolved(ResolveCtx {
+                    parent_font_size: fs,
+                    cb_width: w,
+                })
+                .padding
+            },
+            |style| style.padding,
+        );
+        let key = [
+            w.to_bits(),
+            padding.top.to_bits(),
+            padding.right.to_bits(),
+            padding.bottom.to_bits(),
+            padding.left.to_bits(),
+        ];
+        item.measure_cached(key, || {
+            let bs = measured_style.cloned().unwrap_or_else(|| {
+                item.resolved(ResolveCtx {
+                    parent_font_size: fs,
+                    cb_width: w,
+                })
             });
             let mut sd = Diagnostics::default();
             let mut mctx = Ctx {
@@ -1223,6 +1160,10 @@ fn measure_item(
         inputs.extend([
             u64::from(w.to_bits()),
             u64::from(fs.to_bits()),
+            measured_style.map_or(0, |style| u64::from(style.padding.top.to_bits())),
+            measured_style.map_or(0, |style| u64::from(style.padding.right.to_bits())),
+            measured_style.map_or(0, |style| u64::from(style.padding.bottom.to_bits())),
+            measured_style.map_or(0, |style| u64::from(style.padding.left.to_bits())),
             std::ptr::from_ref(images.resolver).cast::<()>() as usize as u64,
             u64::from(images.body_height.unwrap_or(-1.0).to_bits()),
             u64::from(live_geometry),
@@ -1255,7 +1196,7 @@ fn build_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = border_box_sizes(item_style(it, fs, column), it, fs, column);
+            let mut style = frames::style(item_style(it, fs, column), it, fs);
             auto_min_main(&mut style, it, column, images);
             tree.new_leaf_with_context(style, i)
         })
@@ -1296,23 +1237,9 @@ fn solve(
         width: AvailableSpace::Definite(cw),
         height: AvailableSpace::MaxContent,
     };
-    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, _style| {
+    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, style, parent| {
         let idx = *ctx_idx.expect("leaf context");
-        measure_item(
-            known,
-            av,
-            &items[idx],
-            fs,
-            ctx.fonts,
-            ctx.images,
-            (
-                ctx.live_geometry,
-                ctx.html_font_metrics,
-                ctx.html_font_scale,
-                ctx.original_units,
-                fill,
-            ),
-        )
+        frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
     });
 }
 
@@ -1321,6 +1248,7 @@ fn solve(
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
+    parent_width: f32,
     (cx, cy, fs): (f32, f32, f32),
     axis: Option<(bool, AlignItems)>,
     ctx: &mut Ctx,
@@ -1330,8 +1258,9 @@ fn place_one(
         .is_none_or(|(_, parent)| align_self(&item.style).unwrap_or(parent) == AlignItems::Stretch);
     let mut bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
-        cb_width: layout.size.width,
+        cb_width: parent_width,
     });
+    bs.padding = frames::edges(layout.padding);
     // taffy has resolved this item's main-axis size (column `flex-basis`/`grow`)
     // and cross-axis size (row `align-items:stretch`). Force that border-box height
     // onto the item's own layout as a definite content-box height, so it drives the
@@ -1401,7 +1330,14 @@ fn place_items(
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, origin, axis, ctx));
+        frags.push(place_one(
+            &items[i],
+            layout,
+            tree.parent_size(*leaf).width.unwrap_or(0.0),
+            origin,
+            axis,
+            ctx,
+        ));
     }
     frags
 }
@@ -1753,9 +1689,8 @@ fn build_grid_leaves(
                 parent_font_size: fs,
                 cb_width: 0.0,
             }));
-            // taffy sizes border boxes: content-box lengths grow by the padding and
-            // border (0.7.0 review R3 #2).
-            let mut style = border_box_sizes(style, it, fs, false);
+            // Taffy owns the typed frame and the content-/border-box conversion.
+            let mut style = frames::style(style, it, fs);
             // taffy's track sizing reads the preferred size unclamped: a `px` size
             // reaches it already within its `px` min / max, like Chrome's used size.
             style.size = Size {
@@ -2129,11 +2064,8 @@ mod coverage_tests {
 
     #[test]
     fn flex_shorthand_basis_resolves_every_form() {
-        // `none`/`initial` -> the shorthand's `auto` basis.
-        assert_eq!(
-            flex_shorthand_basis(&cs(&[("flex", "none")]), 16.0),
-            Some(Dimension::auto())
-        );
+        // `none`/`initial` use `auto`, which defers to the declared main size.
+        assert_eq!(flex_shorthand_basis(&cs(&[("flex", "none")]), 16.0), None);
         // a length `<basis>` token wins (`1 1 60px` -> 60px).
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "1 1 60px")]), 16.0),
@@ -2357,6 +2289,7 @@ mod coverage_tests {
                         width: 0.0,
                         row: false,
                     },
+                    None,
                 ),
             )
             .height
@@ -2462,6 +2395,7 @@ mod coverage_tests {
                             width: 135.0,
                             row: true,
                         },
+                        None,
                     ),
                 )
             };

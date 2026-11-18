@@ -1,6 +1,8 @@
 //! Flat native-measured leaves over Taffy's low-level API. Its high-level tree
 //! hardcodes calc resolution to zero, including in leaf sizing.
 use std::cell::{Cell, RefCell};
+#[path = "flex_column_padding.rs"]
+mod column_padding;
 use taffy::{
     AvailableSpace, Cache, CacheTree, Layout, LayoutFlexboxContainer, LayoutGridContainer,
     LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, RoundTree, RunMode, Size, Style,
@@ -39,11 +41,6 @@ pub(super) fn calc_fixed(token: *const ()) -> f32 {
     CALCS.with(|values| values.borrow()[token.addr() / 8 - 1].1)
 }
 
-pub(super) fn offset_calc(token: *const (), offset: f32) -> *const () {
-    let (pct, px, _) = CALCS.with(|values| values.borrow()[token.addr() / 8 - 1]);
-    calc(pct, px + offset)
-}
-
 pub(super) fn resolve_calc(token: *const (), basis: f32) -> f32 {
     CALCS.with(|values| {
         let (pct, px, scale) = values.borrow()[token.addr() / 8 - 1];
@@ -63,6 +60,7 @@ struct Node<C> {
     rounded: Layout,
     cache: Cache,
     details: taffy::DetailedLayoutInfo,
+    parent_size: Size<Option<f32>>,
 }
 
 pub(super) struct Tree<C> {
@@ -88,6 +86,7 @@ impl<C> Tree<C> {
             rounded: Layout::default(),
             cache: Cache::new(),
             details: taffy::DetailedLayoutInfo::None,
+            parent_size: Size::NONE,
         });
         id
     }
@@ -104,6 +103,9 @@ impl<C> Tree<C> {
         self.nodes.get_mut(usize::from(id))?.style = style;
         self.dirty = true;
         Some(())
+    }
+    pub fn parent_size(&self, id: NodeId) -> Size<Option<f32>> {
+        self.nodes[usize::from(id)].parent_size
     }
     pub fn detailed_layout_info(&self, id: NodeId) -> &taffy::DetailedLayoutInfo {
         &self.nodes[usize::from(id)].details
@@ -131,6 +133,7 @@ impl<C> Tree<C> {
             NodeId,
             Option<&mut C>,
             &Style,
+            Size<Option<f32>>,
         ) -> Size<f32>,
     {
         // A batch of changed leaf styles invalidates the arena once, avoiding
@@ -152,7 +155,14 @@ impl<C> Tree<C> {
     }
 }
 
-type Measure<'a, C> = dyn FnMut(Size<Option<f32>>, Size<AvailableSpace>, NodeId, Option<&mut C>, &Style) -> Size<f32>
+type Measure<'a, C> = dyn FnMut(
+        Size<Option<f32>>,
+        Size<AvailableSpace>,
+        NodeId,
+        Option<&mut C>,
+        &Style,
+        Size<Option<f32>>,
+    ) -> Size<f32>
     + 'a;
 struct View<'a, C> {
     tree: &'a mut Tree<C>,
@@ -190,6 +200,9 @@ impl<C> LayoutPartialTree for View<'_, C> {
         resolve_calc(token, basis)
     }
     fn compute_child_layout(&mut self, id: NodeId, inputs: LayoutInput) -> LayoutOutput {
+        if inputs.run_mode == RunMode::PerformLayout {
+            self.tree.nodes[usize::from(id)].parent_size = inputs.parent_size;
+        }
         if inputs.run_mode == RunMode::PerformHiddenLayout {
             return taffy::compute_hidden_layout(self, id);
         }
@@ -205,13 +218,24 @@ impl<C> View<'_, C> {
             return taffy::compute_hidden_layout(self, id);
         }
         if !node.children.is_empty() {
-            return match node.style.display {
-                taffy::Display::Grid => taffy::compute_grid_layout(self, id, inputs),
-                _ => taffy::compute_flexbox_layout(self, id, inputs),
+            return if node.style.display == taffy::Display::Grid {
+                taffy::compute_grid_layout(self, id, inputs)
+            } else {
+                let padding = column_padding::resolve(self, id, inputs);
+                let result = taffy::compute_flexbox_layout(self, id, inputs);
+                column_padding::restore(self, padding);
+                result
             };
         }
         taffy::compute_leaf_layout(inputs, &node.style, resolve_calc, |known, avail| {
-            (self.measure)(known, avail, id, node.context.as_mut(), &node.style)
+            (self.measure)(
+                known,
+                avail,
+                id,
+                node.context.as_mut(),
+                &node.style,
+                inputs.parent_size,
+            )
         })
     }
 }
@@ -309,8 +333,6 @@ mod tests {
             assert_eq!(resolve_calc(nested, 10.0), 2.5);
             assert_eq!(resolve_calc(token, 10.0), expected);
         }
-        let offset = offset_calc(token, 2.0);
-        assert_eq!(resolve_calc(offset, 10.0), 6.992_187_5);
         drop(outer);
     }
 
@@ -334,7 +356,7 @@ mod tests {
             },
             &[hidden],
         );
-        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| {
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _, _| {
             panic!("hidden leaf measured")
         });
         assert_eq!(tree.layout(hidden).unwrap().size, Size::ZERO);
@@ -375,7 +397,7 @@ mod tests {
             ..Style::default()
         };
         let root = tree.new_with_children(visible.clone(), &[inner]);
-        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| Size::ZERO);
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _, _| Size::ZERO);
         let before = *tree.layout(leaf).unwrap();
         assert_eq!(
             before.size,
@@ -393,7 +415,7 @@ mod tests {
             },
         )
         .unwrap();
-        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| {
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _, _| {
             panic!("a hidden ancestor must not measure its visible descendants")
         });
         for id in [root, inner, leaf] {
@@ -402,7 +424,7 @@ mod tests {
             assert_eq!(layout.location, taffy::Point::ZERO);
         }
         tree.set_style(root, visible).unwrap();
-        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _| Size::ZERO);
+        tree.compute_layout_with_measure(root, Size::MAX_CONTENT, |_, _, _, _, _, _| Size::ZERO);
         assert_eq!(*tree.layout(leaf).unwrap(), before);
         assert_eq!(tree.layout(inner).unwrap().location.x, 40.0);
     }

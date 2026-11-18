@@ -1054,49 +1054,6 @@ pub fn float_of(s: &ComputedStyle) -> Float {
     }
 }
 
-fn edge_px(token: &str, fs: f32, basis: f32) -> f32 {
-    parse_length_pct(token, fs)
-        .and_then(|l| l.resolve(basis))
-        .unwrap_or(0.0)
-}
-
-fn edges_from_slice(v: &[f32]) -> Edges {
-    match v {
-        [a] => Edges::all(*a),
-        [a, b] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *a,
-            left: *b,
-        },
-        [a, b, c] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *c,
-            left: *b,
-        },
-        [a, b, c, d] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *c,
-            left: *d,
-        },
-        _ => Edges::default(),
-    }
-}
-
-fn parse_edge_shorthand(v: &str, fs: f32, basis: f32) -> Edges {
-    let vals: Vec<f32> = v
-        .split_whitespace()
-        .map(|t| edge_px(t, fs, basis))
-        .collect();
-    edges_from_slice(&vals)
-}
-
-fn side_value(s: &ComputedStyle, prop: &str, fs: f32, basis: f32) -> Option<f32> {
-    s.get(prop).map(|v| edge_px(v, fs, basis))
-}
-
 /// The UA sheet's flow-relative padding of the text fields and buttons (Chrome 156's
 /// `padding-block` / `padding-inline`, miaskiewicz/turbo-dom#239): `<block> <inline>`
 /// in the box's own writing mode, under any `padding` the author sets. It names
@@ -1125,38 +1082,105 @@ const PADDING_PROPERTIES: [&str; 8] = [
     "padding-inline-end",
 ];
 
-fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
+/// Split top-level CSS components without separating whitespace inside `calc()`.
+pub(crate) fn component_tokens(value: &str) -> Vec<&str> {
+    let mut depth = 0_u32;
+    let mut start = 0;
+    let mut tokens = Vec::new();
+    for (index, ch) in value.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if ch.is_ascii_whitespace() && depth == 0 {
+            if start < index {
+                tokens.push(&value[start..index]);
+            }
+            start = index + ch.len_utf8();
+        }
+    }
+    if start < value.len() {
+        tokens.push(&value[start..]);
+    }
+    tokens
+}
+
+fn edge_tokens<'a>(s: &'a ComputedStyle, prefix: &str) -> [Option<&'a str>; 4] {
     let base = s.get(prefix).or_else(|| {
         (prefix == "padding" && !has_padding_longhand(s))
             .then(|| s.get(UA_LOGICAL_PADDING))
             .flatten()
     });
-    let mut e = base
-        .map(|v| parse_edge_shorthand(v, fs, basis))
-        .unwrap_or_default();
+    let tokens = component_tokens(base.unwrap_or(""));
+    let mut edges = match tokens.as_slice() {
+        [a] => [Some(*a); 4],
+        [a, b] => [Some(*a), Some(*b), Some(*a), Some(*b)],
+        [a, b, c] => [Some(*a), Some(*b), Some(*c), Some(*b)],
+        [a, b, c, d] => [Some(*a), Some(*b), Some(*c), Some(*d)],
+        _ => [None; 4],
+    };
+    logical_edge_pairs(s, prefix, &mut edges);
     let properties = if prefix == "margin" {
         &MARGIN_PROPERTIES
     } else {
         &PADDING_PROPERTIES
     };
-    apply_side(s, properties[0], fs, basis, &mut e.top);
-    apply_side(s, properties[1], fs, basis, &mut e.right);
-    apply_side(s, properties[2], fs, basis, &mut e.bottom);
-    apply_side(s, properties[3], fs, basis, &mut e.left);
-    // Flow-relative longhands map to physical sides (assuming the LTR /
-    // `horizontal-tb` default): `*-inline-start` → left, `*-inline-end` → right.
-    // Google's search-bar "AI Mode" label uses `margin-inline-start` to clear its
-    // icon; without this it printed over the icon.
-    apply_side(s, properties[4], fs, basis, &mut e.top);
-    apply_side(s, properties[5], fs, basis, &mut e.bottom);
-    apply_side(s, properties[6], fs, basis, &mut e.left);
-    apply_side(s, properties[7], fs, basis, &mut e.right);
-    if prefix == "margin" && quirks_margin_block_end(s) {
-        if let Some(v) = side_value(s, UA_LOGICAL_MARGIN_BLOCK_END, fs, basis) {
-            e.bottom = v;
+    for (prop, side) in properties.iter().zip([0, 1, 2, 3, 0, 2, 3, 1]) {
+        if let Some(value) = s.get(prop) {
+            edges[side] = Some(value);
         }
     }
-    e
+    if prefix == "margin" && quirks_margin_block_end(s) {
+        if let Some(value) = s.get(UA_LOGICAL_MARGIN_BLOCK_END) {
+            edges[2] = Some(value);
+        }
+    }
+    edges
+}
+
+fn logical_edge_pairs<'a>(s: &'a ComputedStyle, prefix: &str, edges: &mut [Option<&'a str>; 4]) {
+    let names = if prefix == "margin" {
+        ["margin-block", "margin-inline"]
+    } else {
+        ["padding-block", "padding-inline"]
+    };
+    for (name, [start, end]) in names.into_iter().zip([[0, 2], [3, 1]]) {
+        if let Some(value) = s.get(name) {
+            let tokens = component_tokens(value);
+            match tokens.as_slice() {
+                [one] => {
+                    edges[start] = Some(*one);
+                    edges[end] = Some(*one);
+                }
+                [one, two] => {
+                    edges[start] = Some(*one);
+                    edges[end] = Some(*two);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// Preserve percentage edges until a layout solver knows their containing block.
+pub(crate) fn edge_lengths(s: &ComputedStyle, prefix: &str, fs: f32) -> [LengthPct; 4] {
+    edge_tokens(s, prefix).map(|token| {
+        token
+            .and_then(|value| parse_length_pct(value, fs))
+            .unwrap_or(LengthPct::Px(0.0))
+    })
+}
+
+fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
+    let [top, right, bottom, left] =
+        edge_lengths(s, prefix, fs).map(|value| value.resolve(basis).unwrap_or(0.0));
+    Edges {
+        top,
+        right,
+        bottom,
+        left,
+    }
 }
 
 /// Whether the box's block-end margin is the UA quirks.css one (no author block-end
@@ -1179,13 +1203,6 @@ fn has_block_end_margin(s: &ComputedStyle) -> bool {
 /// longhands): the UA's logical padding then gives way, as a shorthand would.
 fn has_padding_longhand(s: &ComputedStyle) -> bool {
     PADDING_PROPERTIES.iter().any(|prop| s.get(prop).is_some())
-}
-
-/// Overwrite one edge slot when that longhand is set.
-fn apply_side(s: &ComputedStyle, prop: &str, fs: f32, basis: f32, slot: &mut f32) {
-    if let Some(v) = side_value(s, prop, fs, basis) {
-        *slot = v;
-    }
 }
 
 fn length_prop(s: &ComputedStyle, prop: &str, fs: f32, default: LengthPct) -> LengthPct {

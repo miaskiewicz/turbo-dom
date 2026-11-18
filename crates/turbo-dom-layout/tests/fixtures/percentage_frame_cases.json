@@ -1,0 +1,110 @@
+[
+  {
+    "id": "flex_padding_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_padding_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_margin_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:5% 10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_margin_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:-5% -10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_constrained_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_constrained_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_frame_floor",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:0;min-width:0;height:0;min-height:0;padding:10%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_logical",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding-inline:5%;padding-block:2.5%;margin-inline-start:-5%;margin-block-start:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_auto_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin-left:auto;margin-right:auto}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_padding_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_padding_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_margin_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:5% 10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_margin_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:-5% -10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_constrained_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_constrained_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_frame_floor",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:0;min-width:0;height:0;min-height:0;padding:10%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_logical",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding-inline:5%;padding-block:2.5%;margin-inline-start:-5%;margin-block-start:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_auto_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin-left:auto;margin-right:auto}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_intrinsic_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;padding:10%;margin:5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_intrinsic_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;padding:10%;margin:-5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_span",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:100px 200px;gap:20px;align-items:start}.item{grid-column:1/3;width:80px;padding:5%;margin:-5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_calc_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;height:40px;padding:calc(10% + 4px);margin:calc(5% + 3px)}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_calc_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;height:40px;padding:calc(10% + 4px);margin:calc(-5% - 3px)}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_signed_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin:-5% 10%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_percent_basis",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;flex-basis:25%;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  }
+]
