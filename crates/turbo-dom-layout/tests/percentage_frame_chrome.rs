@@ -1,13 +1,87 @@
 //! Percentage edges resolve against the flex containing block or grid area.
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
+use turbo_dom_layout::layout_snapshot::{
+    snapshot_html_styled_tree_with_svg_viewports, GeometryKind, SnapshotInputs, SourceId,
+    SourceIdentity,
+};
 use turbo_dom_layout::{
-    layout_boxes_tree, parse_html_tree, with_fractional_css_geometry, Diagnostics, FontRegistry,
-    HtmlOptions,
+    layout_boxes_tree, parse_html_tree, style_html_tree, with_fractional_css_geometry, Diagnostics,
+    FontRegistry, HtmlOptions, ImageCtx, NoImages, StyledNode, Tag,
 };
 
 const CASES: &str = include_str!("fixtures/percentage_frame_cases.json");
 const CONTROL: &str = include_str!("fixtures/percentage_frame_chrome159.json");
+
+fn identify(
+    nodes: &[StyledNode],
+    parent: &[usize],
+    identities: &mut Vec<SourceIdentity>,
+    viewports: &mut Vec<SourceId>,
+    keys: &mut BTreeMap<String, SourceId>,
+) {
+    for (index, node) in nodes.iter().enumerate() {
+        let mut path = parent.to_vec();
+        path.push(index);
+        let id = SourceId(identities.len() as u64 + 1);
+        identities.push(SourceIdentity {
+            id,
+            path: path.clone(),
+        });
+        if let StyledNode::Element(element) = node {
+            if matches!(&element.tag, Tag::Html(name) if name == "svg") {
+                viewports.push(id);
+            }
+            for attr in &element.attrs {
+                if attr.name == "data-cid" {
+                    keys.insert(attr.value.clone(), id);
+                }
+            }
+            identify(&element.children, &path, identities, viewports, keys);
+        }
+    }
+}
+
+fn svg_rects(tree: &turbo_dom::Tree, fonts: &FontRegistry) -> BTreeMap<String, [f32; 4]> {
+    let styled = style_html_tree(tree, "", 600.0, &HtmlOptions::default());
+    let mut identities = Vec::new();
+    let mut viewports = Vec::new();
+    let mut keys = BTreeMap::new();
+    identify(&styled, &[], &mut identities, &mut viewports, &mut keys);
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    let snapshot = snapshot_html_styled_tree_with_svg_viewports(
+        &styled,
+        &identities,
+        &viewports,
+        1.0,
+        &SnapshotInputs {
+            width: 600.0,
+            height: 1000.0,
+            fonts,
+            images: &images,
+        },
+        &mut Diagnostics::default(),
+    )
+    .unwrap();
+    keys.into_iter()
+        .map(|(key, id)| {
+            let source = snapshot.source(id).unwrap();
+            let boxes: Vec<_> = source
+                .fragment_indices
+                .iter()
+                .map(|index| &snapshot.fragments()[*index])
+                .filter(|f| f.kind == GeometryKind::BorderBox)
+                .collect();
+            assert_eq!(boxes.len(), 1, "{key}");
+            let r = boxes[0].transformed_bounds;
+            (key, [r.x, r.y, r.width, r.height])
+        })
+        .collect()
+}
 
 #[test]
 fn percentage_frames_match_chromium_159() {
@@ -50,13 +124,21 @@ fn percentage_frames_match_chromium_159() {
                 &mut Diagnostics::default(),
             )
         });
+        let svg = input["id"]
+            .as_str()
+            .unwrap()
+            .starts_with("svg_")
+            .then(|| svg_rects(&tree, &fonts));
         for wanted in expected["boxes"].as_array().unwrap() {
             let key = wanted["key"].as_str().unwrap();
-            let actual = boxes.iter().find(|item| item.cid == key).unwrap();
-            for (axis, value) in [actual.x, actual.y, actual.width, actual.height]
-                .into_iter()
-                .enumerate()
-            {
+            let actual = svg.as_ref().map_or_else(
+                || {
+                    let b = boxes.iter().find(|item| item.cid == key).unwrap();
+                    [b.x, b.y, b.width, b.height]
+                },
+                |boxes| boxes[key],
+            );
+            for (axis, value) in actual.into_iter().enumerate() {
                 let expected = wanted["rect"][axis].as_f64().unwrap();
                 if (f64::from(value) - expected).abs() > 0.05 {
                     failures.push(format!(

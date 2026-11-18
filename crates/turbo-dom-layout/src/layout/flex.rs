@@ -1285,7 +1285,7 @@ fn row_content_basis(
     }
     let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
     let border = transferred.map_or_else(
-        || row_intrinsic_width(item, &bs, fonts, images),
+        || row_intrinsic_width(item, &bs, fonts, images, width),
         |width| match bs.box_sizing {
             BoxSizing::BorderBox => width,
             BoxSizing::ContentBox => width + frame,
@@ -1302,7 +1302,19 @@ fn row_intrinsic_width(
     bs: &BoxStyle,
     fonts: &FontRegistry,
     images: &ImageCtx,
+    width: f32,
 ) -> f32 {
+    if let Some(viewport) = &item.svg_viewport {
+        let mut style = bs.clone();
+        style.width = LengthPct::Auto;
+        let (width, _) = viewport.size(&super::imgsize::SizeCtx {
+            style: &style,
+            cb_width: width,
+            cb_height: None,
+            body_height: images.body_height,
+        });
+        return width + bs.padding.horizontal() + bs.border.widths().horizontal();
+    }
     let intrinsic = item
         .image
         .as_ref()
@@ -1851,6 +1863,7 @@ fn build_grid_leaves(
     items: &[LayoutBox],
     fs: f32,
     areas: &AreaMap,
+    container: &ComputedStyle,
 ) -> Vec<TaffyId> {
     items
         .iter()
@@ -1881,6 +1894,7 @@ fn build_grid_leaves(
             // `end` value here instead sizes the item to its own width and aligns it
             // in the track.
             style.justify_self = justify_self(&it.style);
+            frames::grid_alignment(&mut style, it, container);
             if let Some((row, col)) = area_placement(it, areas) {
                 style.grid_row = row;
                 style.grid_column = col;
@@ -1968,7 +1982,7 @@ pub(crate) fn layout_grid(
         .unwrap_or_default();
     let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
-    let leaves = build_grid_leaves(&mut tree, items, fs, &areas);
+    let leaves = build_grid_leaves(&mut tree, items, fs, &areas, &container.style);
     let root = tree.new_with_children(grid_container_style(container, cw, &areas), &leaves);
     let fill = Fill {
         width: cw,

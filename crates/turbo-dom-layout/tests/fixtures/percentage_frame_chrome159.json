@@ -1,8 +1,8 @@
 {
   "browser": "159.0.8154.6",
   "offline": true,
-  "casesSha256": "adf52c7741e1096ad1664c0c38ac5da01736d28aedb8748ce7061eadf607bb0e",
-  "collectorSha256": "ace5b8ad24456d0437d5f168b158a9697d6c721c0578521fb36b599c92305aec",
+  "casesSha256": "1308f196d6c4c973a3ca8b38fa06208e12f1c6afd0d9a5bbf414f794d53f118c",
+  "collectorSha256": "ce99a40b78cb744a04ea8d5bd84801f984008b9674857332c11e88613b5cdb6b",
   "rows": [
     {
       "id": "flex_padding_content",
@@ -43,7 +43,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_padding_border",
@@ -84,7 +88,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_margin_positive",
@@ -125,7 +133,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_margin_negative",
@@ -166,7 +178,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_constrained_content",
@@ -207,7 +223,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_constrained_border",
@@ -248,7 +268,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_frame_floor",
@@ -289,7 +313,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_logical",
@@ -330,7 +358,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "flex_auto_margins",
@@ -371,7 +403,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_padding_content",
@@ -412,7 +448,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_padding_border",
@@ -453,7 +493,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_margin_positive",
@@ -494,7 +538,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_margin_negative",
@@ -535,7 +583,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_constrained_content",
@@ -576,7 +628,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_constrained_border",
@@ -617,7 +673,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_frame_floor",
@@ -658,7 +718,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_logical",
@@ -699,7 +763,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_auto_margins",
@@ -740,7 +808,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_intrinsic_positive",
@@ -781,7 +853,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_intrinsic_negative",
@@ -822,7 +898,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_span",
@@ -863,7 +943,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_calc_positive",
@@ -904,7 +988,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "grid_calc_negative",
@@ -945,7 +1033,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "column_content",
@@ -986,7 +1078,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "column_border",
@@ -1027,7 +1123,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "column_signed_margins",
@@ -1068,7 +1168,11 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
     },
     {
       "id": "column_percent_basis",
@@ -1109,7 +1213,551 @@
             20
           ]
         }
-      ]
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_parent_stretch",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            144,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_self_stretch",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            144,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_center",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            32,
+            -4,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            220,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            220,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_flex_grow",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            320,
+            180
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            360,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            360,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content_auto_min",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            70
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            40,
+            40
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            40,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            40,
+            40,
+            40
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content_visible",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            70
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            40
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex_auto_borderbox",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_flex_content_height",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            80,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            120,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            120,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
     }
   ]
 }

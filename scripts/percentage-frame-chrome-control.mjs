@@ -44,7 +44,11 @@ try {
 				return { key: selector, rect: [r.x, r.y, r.width, r.height] };
 			}),
 		);
-		rows.push({ id: input.id, boxes });
+		const itemStyle = await page.$eval(".item", (element) => {
+			const style = getComputedStyle(element);
+			return { overflowX: style.overflowX, overflowY: style.overflowY };
+		});
+		rows.push({ id: input.id, boxes, itemStyle });
 	}
 	writeFileSync(
 		resolve(

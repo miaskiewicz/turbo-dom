@@ -197,6 +197,7 @@ ul, ol { margin: 1em 0; padding-left: 40px }
 small { font-size: 0.8em; display: inline }
 span { display: inline }
 img { display: inline }
+svg:not(:root) { overflow: hidden }
 b, strong, i, em { display: inline }
 code, kbd, samp { display: inline }
 sub, sup, abbr, cite, q, mark, u, s, label, time, bdi, bdo { display: inline }

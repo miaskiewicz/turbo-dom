@@ -1,7 +1,8 @@
-//! Taffy 0.8 adds column flex-basis padding using the main-axis percentage basis.
-//! Resolve it against the definite inline size for this solve, then restore it.
+//! Flex intrinsic probes omit their main-axis percentage basis; Taffy 0.8 also
+//! resolves column flex-basis padding against height. Keep the definite inline
+//! frame through both paths for this solve, then restore its typed declaration.
 use super::{resolve_calc, LayoutInput, NodeId, View};
-use taffy::{BoxSizing, FlexDirection, LengthPercentage, MaybeResolve, Rect, ResolveOrZero};
+use taffy::{LengthPercentage, MaybeResolve, Rect, ResolveOrZero};
 
 pub(super) type Saved = Vec<(NodeId, Rect<LengthPercentage>)>;
 
@@ -16,12 +17,6 @@ fn cyclic(padding: Rect<LengthPercentage>) -> bool {
 
 pub(super) fn resolve<C>(view: &mut View<'_, C>, id: NodeId, input: LayoutInput) -> Saved {
     let style = &view.tree.nodes[usize::from(id)].style;
-    if !matches!(
-        style.flex_direction,
-        FlexDirection::Column | FlexDirection::ColumnReverse
-    ) {
-        return Vec::new();
-    }
     let width = input.known_dimensions.width.or_else(|| {
         style
             .size
@@ -35,7 +30,7 @@ pub(super) fn resolve<C>(view: &mut View<'_, C>, id: NodeId, input: LayoutInput)
     for index in 0..view.tree.nodes[usize::from(id)].children.len() {
         let child = view.tree.nodes[usize::from(id)].children[index];
         let node = &mut view.tree.nodes[usize::from(child)];
-        if node.style.box_sizing == BoxSizing::ContentBox && cyclic(node.style.padding) {
+        if cyclic(node.style.padding) {
             saved.push((child, node.style.padding));
             node.style.padding = node
                 .style
@@ -57,7 +52,9 @@ pub(super) fn restore<C>(view: &mut View<'_, C>, saved: Saved) {
 mod tests {
     use super::super::Tree;
     use super::*;
-    use taffy::{AlignItems, AvailableSpace, Dimension, Display, Size, Style};
+    use taffy::{
+        AlignItems, AvailableSpace, BoxSizing, Dimension, Display, FlexDirection, Size, Style,
+    };
 
     #[test]
     fn column_padding_tracks_inline_size_without_losing_the_percentage() {
