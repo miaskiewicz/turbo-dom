@@ -3819,6 +3819,54 @@ mod exact_tests {
     }
 
     #[test]
+    fn multi_shadow_scratch_rejects_nonpainting_geometry_without_erasing_background() {
+        use crate::shadow_layers::{PaintContext, ShadowLayers};
+        let images = DecodedAssets::new();
+        let shadows = vec![hard(1, 1, 0), hard(2, 2, 0)];
+        let layers = ShadowLayers::from([(NodeId(0), shadows)]);
+        let input = PaintContext {
+            images: &images,
+            layers: &layers,
+        };
+        let normal = boxed(2.0, 2.0, 4.0, 4.0, 0.0, Some(hard(1, 1, 0)));
+        let offscreen = boxed(100.0, 100.0, 4.0, 4.0, 0.0, Some(hard(1, 1, 0)));
+        // Each rejection is a different scratch-allocation boundary: invalid
+        // transform, no canvas intersection, and an unrepresentable knockout.
+        let (x, y, w, h) =
+            crate::shadow_layers::outer_bounds(&normal, input.shadows(&normal)).unwrap();
+        assert!(Rect::from_xywh(x, y, w, h)
+            .unwrap()
+            .transform(Transform::from_scale(f32::INFINITY, 1.0))
+            .is_none());
+        let (x, y, w, h) =
+            crate::shadow_layers::outer_bounds(&offscreen, input.shadows(&offscreen)).unwrap();
+        assert!(device_span(Rect::from_xywh(x, y, w, h).unwrap(), 20, 20).is_none());
+        assert!(rrect_path(
+            (normal.x, normal.y, normal.width, normal.height),
+            &BorderRadii::uniform(f32::INFINITY)
+        )
+        .is_none());
+        for (f, radii, xf) in [
+            (
+                &normal,
+                BorderRadii::ZERO,
+                Transform::from_scale(f32::INFINITY, 1.0),
+            ),
+            (&offscreen, BorderRadii::ZERO, Transform::identity()),
+            (
+                &normal,
+                BorderRadii::uniform(f32::INFINITY),
+                Transform::identity(),
+            ),
+        ] {
+            let mut actual = white(20, 20);
+            let before = actual.data().to_vec();
+            paint_outer_layers(&mut actual, f, &radii, &input, xf);
+            assert_eq!(actual.data(), before);
+        }
+    }
+
+    #[test]
     fn unblurred_shadows_are_the_offset_spread_silhouette() {
         let id = Transform::identity();
         // Offset (5, 7), spread 3: the shadow is (10+5-3, 10+7-3) sized (20+6) x (10+6).

@@ -204,3 +204,120 @@ fn capture_keeps_zero_area_clipped_boxes_and_their_positioned_descendants() {
     );
     assert!(boxes(&ordinary).iter().all(|f| f.clip.is_none()));
 }
+
+fn inspect_shadow_layers(nodes: &[StyledNode], target: Handle) -> Vec<turbo_dom_layout::BoxShadow> {
+    for node in nodes {
+        if let StyledNode::Element(element) = node {
+            if element.source == Some(target) {
+                return turbo_dom_layout::layout::value::box_shadow_layers(
+                    &element.style,
+                    turbo_dom_layout::layout::value::ResolveCtx {
+                        parent_font_size: 16.0,
+                        cb_width: 120.0,
+                    },
+                );
+            }
+            let found = inspect_shadow_layers(&element.children, target);
+            if !found.is_empty() {
+                return found;
+            }
+        }
+    }
+    vec![]
+}
+
+#[test]
+fn optional_recording_hook_observes_cascade_and_changes_geometry_before_layout() {
+    use turbo_dom_layout::layout_html_tree_in_viewport_with_optional_sources;
+    let tree = Tree::parse("<!doctype html><div id=target></div>");
+    let target = tree.get_element_by_id("target").unwrap();
+    let fonts = FontRegistry::new();
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    for shadow in ["none", "1px 2px red,3px 4px blue"] {
+        let css = format!("html{{font-size:20px}}body{{margin:0;background:rgb(1,2,3)}}#target{{width:1px;height:10px;box-shadow:{shadow}}}");
+        let mut observed = vec![];
+        let (galley, sources) = layout_html_tree_in_viewport_with_optional_sources(
+            &tree,
+            &css,
+            (120.0, 80.0),
+            &fonts,
+            &images,
+            &HtmlOptions::default(),
+            false,
+            |nodes| {
+                observed = inspect_shadow_layers(nodes, target);
+                patch_target(nodes, target);
+                observed.len() > 1
+            },
+            &mut Diagnostics::default(),
+        );
+        assert_eq!(sources.is_some(), shadow != "none");
+        let ordinary = layout_html_tree_in_viewport_with(
+            &tree,
+            &css,
+            (120.0, 80.0),
+            &fonts,
+            &images,
+            &HtmlOptions::default(),
+            |nodes| patch_target(nodes, target),
+            &mut Diagnostics::default(),
+        );
+        assert_eq!(format!("{galley:?}"), format!("{ordinary:?}"));
+        if let Some(sources) = sources {
+            let target_box = source_box(&LaidOut { galley, sources }, target).clone();
+            assert_eq!(target_box.width, 40.0);
+            assert_eq!((observed[1].offset_x, observed[1].offset_y), (3, 4));
+        }
+    }
+}
+
+#[test]
+fn optional_source_hook_keeps_capture_clips_and_logical_edge_pairs() {
+    use turbo_dom_layout::layout_html_tree_in_viewport_with_optional_sources;
+    let tree = Tree::parse("<!doctype html><div id=target style='width:10px;height:10px;padding-inline:2px 3px;padding-block:4px 5px;margin-inline:1px 2px 3px;clip:rect(0,0,0,0)'></div>");
+    let target = tree.get_element_by_id("target").unwrap();
+    let fonts = FontRegistry::new();
+    let images = ImageCtx {
+        resolver: &NoImages,
+        body_height: None,
+    };
+    let (galley, sources) = layout_html_tree_in_viewport_with_optional_sources(
+        &tree,
+        "body{margin:0}",
+        (120.0, 80.0),
+        &fonts,
+        &images,
+        &HtmlOptions::default(),
+        true,
+        |_| true,
+        &mut Diagnostics::default(),
+    );
+    let laid = LaidOut {
+        galley,
+        sources: sources.unwrap(),
+    };
+    let f = source_box(&laid, target);
+    assert_eq!((f.width, f.height), (15.0, 19.0));
+}
+
+#[test]
+fn logical_edge_pairs_preserve_physical_fallback_for_malformed_pairs() {
+    use turbo_dom_layout::layout::value::{resolve_box_style, ResolveCtx};
+    let style = ComputedStyle::from_pairs([
+        ("margin", "7px"),
+        ("margin-block", "2px 3px"),
+        ("margin-inline", "1px 2px 3px"),
+    ]);
+    let used = resolve_box_style(
+        &style,
+        ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: 120.0,
+        },
+    );
+    assert_eq!((used.margin.top, used.margin.bottom), (2.0, 3.0));
+    assert_eq!((used.margin.left, used.margin.right), (7.0, 7.0));
+}
