@@ -1064,6 +1064,55 @@ fn svg_probe_width(
     }
 }
 
+/// Natural-size replaced items keep their aspect ratio when flex constraints
+/// supply a used width. Resolve percentages against the container, not the
+/// item's own scratch width, and avoid mixing auto/known sizes in its cache.
+fn measure_natural_image(
+    item: &LayoutBox,
+    images: &ImageCtx,
+    known: Size<Option<f32>>,
+    (fs, cb_width): (f32, f32),
+) -> Option<Size<f32>> {
+    if item.svg_viewport.is_some() {
+        return None;
+    }
+    let src = item.image.as_ref().filter(|src| src.replaced)?;
+    let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
+    if intrinsic.natural_ratio.is_some() {
+        return None;
+    }
+    let mut bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width,
+    });
+    let frame = (
+        bs.padding.horizontal() + bs.border.widths().horizontal(),
+        bs.padding.vertical() + bs.border.widths().vertical(),
+    );
+    let inset = if bs.box_sizing == BoxSizing::BorderBox {
+        (0.0, 0.0)
+    } else {
+        frame
+    };
+    if let Some(width) = known.width {
+        bs.width = LengthPct::Px((width - inset.0).max(0.0));
+    }
+    if let Some(height) = known.height {
+        bs.height = LengthPct::Px((height - inset.1).max(0.0));
+    }
+    let sizing = super::imgsize::SizeCtx {
+        style: &bs,
+        cb_width,
+        cb_height: None,
+        body_height: images.body_height,
+    };
+    let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing, 1.0);
+    Some(Size {
+        width: known.width.unwrap_or(sized.width + frame.0),
+        height: known.height.unwrap_or(sized.height + frame.1),
+    })
+}
+
 fn measure_item(
     known: Size<Option<f32>>,
     avail: Size<AvailableSpace>,
@@ -1080,6 +1129,11 @@ fn measure_item(
     ),
 ) -> Size<f32> {
     let (live_geometry, html_font_metrics, html_font_scale, original_units, fill) = policy;
+    if fill.row {
+        if let Some(size) = measure_natural_image(item, images, known, (fs, fill.width)) {
+            return size;
+        }
+    }
     // A replaced `<img>` sizes from its intrinsic (or explicit) width, a ratio-only one
     // from the width it is offered; other items from a max-content measurement of
     // their content.
@@ -2320,6 +2374,90 @@ mod coverage_tests {
             min > 20.0,
             "atomic line min-content should be its content, got {min}"
         );
+    }
+
+    struct LogoImages;
+
+    impl crate::image::ImageResolver for LogoImages {
+        fn resolve(&self, _name: &str) -> Option<&[u8]> {
+            None
+        }
+
+        fn intrinsic(&self, name: &str) -> Option<crate::image::Intrinsic> {
+            let (width, height) = match name {
+                "wide" => (253, 80),
+                "tall" => (560, 400),
+                _ => return None,
+            };
+            Some(crate::image::Intrinsic::new(width, height, true))
+        }
+    }
+
+    #[test]
+    fn row_image_measurement_keeps_constraints_ratio_and_known_width_separate() {
+        let fonts = FontRegistry::new();
+        let images = ImageCtx {
+            resolver: &LogoImages,
+            body_height: None,
+        };
+        for (name, expected) in [
+            ("wide", (108.0, 108.0 * 80.0 / 253.0)),
+            ("tall", (86.8, 62.0)),
+        ] {
+            let img = StyledNode::Element(StyledElement {
+                tag: Tag::Html("img".into()),
+                attrs: vec![Attr {
+                    name: "src".into(),
+                    value: name.into(),
+                }],
+                style: cs(&[("max-width", "80%"), ("max-height", "62px")]),
+                children: vec![],
+                source: None,
+            });
+            let tree = build_box_tree(&[el("div", &[("display", "flex")], vec![img])]);
+            let BoxKind::Block(rows) = &tree.kind else {
+                unreachable!()
+            };
+            let BoxKind::Flex(items) = &rows[0].kind else {
+                unreachable!()
+            };
+            let measure = |width| {
+                measure_item(
+                    Size {
+                        width,
+                        height: None,
+                    },
+                    Size {
+                        width: AvailableSpace::MaxContent,
+                        height: AvailableSpace::Definite(62.0),
+                    },
+                    &items[0],
+                    16.0,
+                    &fonts,
+                    &images,
+                    (
+                        true,
+                        true,
+                        None,
+                        None,
+                        Fill {
+                            width: 135.0,
+                            row: true,
+                        },
+                    ),
+                )
+            };
+            let auto = measure(None);
+            assert!((auto.width - expected.0).abs() < 0.001, "{name}: {auto:?}");
+            assert!((auto.height - expected.1).abs() < 0.001, "{name}: {auto:?}");
+            // The same width can be auto or known; a width-only scratch cache
+            // must not substitute its unconstrained intrinsic-height result.
+            assert_eq!(measure(Some(auto.width)), auto);
+            let shrunk = measure(Some(54.0));
+            assert_eq!(shrunk.width, 54.0);
+            assert!(shrunk.height < auto.height);
+            assert_eq!(measure(None), auto);
+        }
     }
 
     // --- min_content_width: replaced image path + marker (zero) path ---
