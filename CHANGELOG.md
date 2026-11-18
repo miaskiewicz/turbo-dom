@@ -8,14 +8,15 @@ at the time); this file reconstructs them from history.
 ## [0.8.5] — Unreleased
 
 - **Auto-fit gutter correction (#525)**: collapse the gutters adjoining empty
-  auto-fit tracks, then solve with the original track constraints. The core fix
-  is pinned by 630 independent Chromium controls; native-capacity and row
-  min-content follow-ups remain under validation.
+  auto-fit tracks, then solve with the original track constraints. Preserve row
+  repeats, min-content offers and collapsed alignment; 630 independent Chromium
+  controls retain the original diagnostic inputs.
 - **Flex row minimums (#533)**: preserve automatic content minimums for ordinary row
   items while retaining specified-size/max-width caps and scrollable-overflow
   shrinking. Distinguish content flex bases from preferred widths and transfer
-  definite ratio heights with correct content-box/border-box frames. Pin 40
-  independent Chromium controls, including embedded images and no-default builds.
+  definite ratio heights with correct content-box/border-box frames. Preserve
+  wrapping min-content offers and cyclic replaced-image contribution floors.
+  Forty-two independent flex controls include images and no-default builds.
 
 - **Signed column margins (#526)**: include negative margins in automatic flex
   column intrinsic heights, preserving grow/shrink, wrapping, min/max constraints
@@ -39,9 +40,10 @@ at the time); this file reconstructs them from history.
   height before laying out absolute overlays and dependent percentage-height
   descendants, preserving content growth, min/max sizes and decorated frames.
 - **Translucent border joins (#532)**: paint uniform square borders as one ring
-  in PNG and SVG, and partition mixed-color PNG and square SVG joins into a
-  single source so adjacent sides do not composite alpha twice. Exact color/area
-  controls remain distinct from curve and fractional-edge antialiasing diagnostics.
+  in PNG and SVG, and partition mixed-color joins into a single source so adjacent
+  sides do not composite alpha twice. Rounded SVG borders retain the complete
+  rounded ring and opacity group. Exact color/area controls remain distinct from
+  curve and fractional-edge antialiasing diagnostics.
 - **Raster allocation-test isolation**: serialize entire tests that share
   process-wide allocation counters, including preparation and assertions, so
   concurrent tests cannot contaminate another test's measurement.
@@ -64,7 +66,7 @@ at the time); this file reconstructs them from history.
   controls and the original text-free component pixel comparisons pass.
 - **Grid tracks (#521)**: size cyclic percentage constraints intrinsically before
   restoring item sizes against their actual grid areas, preserving spans, implicit
-  columns, absolute placement and content alignment. Pin 260 Chromium cases.
+  columns, absolute placement and content alignment. Pin 630 Chromium cases.
 - **Logo layout (#522)**: honor constrained natural image sizes and ratio-derived
   heights; expand flex-flow with cascade order, importance and variables. Static
   screenshots use an explicit fractional CSS geometry policy, independent of fonts
@@ -72,11 +74,20 @@ at the time); this file reconstructs them from history.
 - **ImageData constructors (#523)**: support branded dimensions/data overloads,
   typed formats, cross-realm borrowing, detached-buffer validation and Canvas
   create/get/put behavior. RGBA8/sRGB canvas uploads are supported; unsupported
-  P3/float16 canvas conversions fail explicitly. Native real-player verification
-  remains a consumer integration check.
+  P3/float16 canvas conversions fail explicitly. A rebuilt native Surf NAPI run of
+  the real dotLottie player reached frame 30 with exact Chromium frame pixels.
 - **Canvas pixel uploads (#523)**: replay RGBA ImageData uploads as clipped bitmap
   replacement independent of transforms, global alpha and composition state.
   Metal uses the software bitmap path for these uploads.
+- **Canonical canvas state (#523)**: reflect content-attribute dimensions and
+  reset drawing state, path logs and bitmap pixels on dimension changes. Private
+  host capture reads canonical context, owner, dimensions and nondraining upload
+  snapshots while preserving authored JavaScript overrides.
+- **Grid height, flow and capacity (#534)**: retain definite and constrained grid
+  heights, row auto-repeat/auto-fit behavior, dense row/column flow and
+  case-insensitive content alignment. Fifteen height/flow controls join the 42
+  flex controls; six stress tests pin the documented native limit of 1,000 logical
+  tracks per axis. This memory limit is not Chromium's grid limit.
 
 - **Nested flex heights (#520)**: pass the native content height to the
   padding-free flex solver and convert border-box height constraints into that
