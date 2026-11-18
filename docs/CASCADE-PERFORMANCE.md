@@ -52,8 +52,8 @@ Chrome-oracle gates for an actual change.
 
 Each block executes ABBA or BAAB, alternating blocks. It averages each binary's
 two samples, then reports the median paired improvement across blocks. Positive
-means faster; negative means slower. The report retains all wall-time samples,
-child-process CPU samples, binary fingerprints and output hashes. The ref runner
+means faster; negative means slower. The report retains the per-block averaged wall-time and child-process CPU
+samples, paired ratios, binary fingerprints and output hashes. The ref runner
 also records source revisions, harness revision/file hashes and Rust toolchain.
 Child CPU samples cover the whole benchmark process, including startup, warmup
 and output hashing; per-workload wall timings exclude those preparation steps.
@@ -63,3 +63,7 @@ spread of paired samples. Small changes inside host noise are inconclusive. A
 faster styling phase does not establish faster full layout; review every workload
 and repeat meaningful regressions before integrating a runtime change. These are
 native layout measurements, not PDF generation or comparisons with jsPDF/jsdom.
+
+Measured checkpoints:
+
+- [v0.8.5 e1516f2a: healthy flex/grid regressions, retained for investigation](benchmarks/cascade-v085-e1516f2a.md).
