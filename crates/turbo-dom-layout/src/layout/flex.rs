@@ -152,22 +152,21 @@ fn gap_shorthand(s: &ComputedStyle, column: bool) -> Option<f32> {
     parse_px(tok, DEFAULT_FONT_SIZE)
 }
 
-fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style {
+fn container_style(container: &LayoutBox, cw: f32, fs: f32, known_height: Option<f32>) -> Style {
     let s = &container.style;
     let bs = container.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: cw,
     });
-    // When the container's own `height` is `auto` but a definite content height was
-    // handed down (`cb_h` — e.g. this flex box is itself a flex item its parent
-    // stretched/grew, or an in-flow box under a fixed-height ancestor), give taffy
-    // that definite height so cross-axis `align-items` / column main-axis space has
-    // a basis. Without it a nested `align-items:center` centres in content height
-    // instead of the assigned height (a centred child lands at the top).
-    let container_h = match bs.height {
-        LengthPct::Auto if cb_h > 0.0 => Dimension::length(cb_h),
-        _ => dim(bs.height),
+    let inset = match bs.box_sizing {
+        BoxSizing::BorderBox => bs.padding.vertical() + bs.border.widths().vertical(),
+        BoxSizing::ContentBox => 0.0,
     };
+    // This Taffy root has no padding/border: native block layout already owns
+    // that frame. Prefer its actual definite content height (including flexed or
+    // percentage-resolved sizes), and convert declared constraints to this space.
+    let container_h =
+        known_height.map_or_else(|| dim(content_height(bs.height, inset)), Dimension::length);
     Style {
         display: Display::Flex,
         flex_direction: flex_direction(s),
@@ -188,11 +187,11 @@ fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style 
         },
         min_size: Size {
             width: dim(bs.min_width),
-            height: dim(bs.min_height),
+            height: dim(content_height(bs.min_height, inset)),
         },
         max_size: Size {
             width: dim(bs.max_width),
-            height: dim(bs.max_height),
+            height: dim(content_height(bs.max_height, inset)),
         },
         ..Default::default()
     }
@@ -1791,7 +1790,10 @@ pub(crate) fn layout_flex(
     );
     let leaves = build_leaves(&mut tree, items, (fs, column), ctx.images);
     let root = tree
-        .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
+        .new_with_children(
+            container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
+            &leaves,
+        )
         .expect("flex root");
     let fill = Fill {
         width: cw,

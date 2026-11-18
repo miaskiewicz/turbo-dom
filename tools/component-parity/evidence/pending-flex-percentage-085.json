@@ -1,0 +1,173 @@
+{
+  "issue": 519,
+  "scope": "Pre-existing indefinite-height percent resolution, independently present before #520",
+  "fixture_sha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+  "browser": "159.0.8154.6",
+  "case": {
+    "id": "percentage-indefinite",
+    "width": 1440,
+    "css": ".item{align-self:flex-start}.card{height:75%}"
+  },
+  "chromium": [
+    {
+      "key": ".grid:0",
+      "rect": [
+        0,
+        0,
+        1152,
+        124
+      ]
+    },
+    {
+      "key": ".item:0",
+      "rect": [
+        0,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".item:1",
+      "rect": [
+        394.65625,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".item:2",
+      "rect": [
+        789.3125,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".card:0",
+      "rect": [
+        0,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".card:1",
+      "rect": [
+        394.65625,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".card:2",
+      "rect": [
+        789.3125,
+        0,
+        362.65625,
+        124
+      ]
+    },
+    {
+      "key": ".badge:0",
+      "rect": [
+        32,
+        32,
+        40,
+        40
+      ]
+    },
+    {
+      "key": ".badge:1",
+      "rect": [
+        426.65625,
+        32,
+        40,
+        40
+      ]
+    },
+    {
+      "key": ".badge:2",
+      "rect": [
+        821.3125,
+        32,
+        40,
+        40
+      ]
+    },
+    {
+      "key": ".body:0",
+      "rect": [
+        32,
+        92,
+        298.65625,
+        0
+      ]
+    },
+    {
+      "key": ".body:1",
+      "rect": [
+        426.65625,
+        92,
+        298.65625,
+        0
+      ]
+    },
+    {
+      "key": ".body:2",
+      "rect": [
+        821.3125,
+        92,
+        298.65625,
+        0
+      ]
+    }
+  ],
+  "baseline_engine": "c49fd0b10be0d44764f57215f3ca716b75c22c93",
+  "baseline_driver": "868937f4",
+  "baseline_native": [
+    {
+      "key": ".card:0",
+      "rect": [
+        0.0,
+        0.0,
+        363.0,
+        93.0
+      ]
+    },
+    {
+      "key": ".card:1",
+      "rect": [
+        395.0,
+        0.0,
+        362.0,
+        93.0
+      ]
+    },
+    {
+      "key": ".card:2",
+      "rect": [
+        789.0,
+        0.0,
+        363.0,
+        93.0
+      ]
+    },
+    {
+      "key": ".body:0",
+      "rect": null
+    },
+    {
+      "key": ".body:1",
+      "rect": null
+    },
+    {
+      "key": ".body:2",
+      "rect": null
+    }
+  ]
+}

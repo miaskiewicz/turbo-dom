@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **Nested flex heights (#520)**: pass the native content height to the
+  padding-free flex solver and convert border-box height constraints into that
+  same coordinate space. Borders, min/max heights, resolved percentages, row
+  stretching, column shrinking and definite zero heights retain their geometry.
+
 - **Cascade allocation performance**: move freshly parsed inline/token/hint strings
   into candidates instead of cloning them again. Computed results remain owned
   and independent of their inputs.
