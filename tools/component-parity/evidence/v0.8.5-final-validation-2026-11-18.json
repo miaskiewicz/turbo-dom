@@ -1,0 +1,359 @@
+{
+  "runtimeCommit": "e1516f2a0bf86e9fa64efc23af5d951da626981e",
+  "runtimeTree": "f8f8e1d1f2b8f74199e8abc8e1379f6c0dc27601",
+  "sourceTreeCleanBeforeReceipts": true,
+  "browser": "159.0.8154.6",
+  "chromiumCapture": "Independent stored Chromium159 controls; no browser rerun or control regeneration.",
+  "nativeOnly": true,
+  "platform": "Darwin arm64",
+  "rust": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "node": "v26.11.0",
+  "deviceScale": 1,
+  "viewportHeight": 1000,
+  "widths": [
+    1440,
+    768,
+    390
+  ],
+  "geometryToleranceCssPixels": 1,
+  "pixelChannelThreshold": 16,
+  "nativeSha256": "3082f60d3063b3d396124ca8088eaa395845c363c7d2e700d036934a182426e5",
+  "cargoLockSha256": "6638d320abfac3822d4008bb8584ee0dbd7f8da5e487f33bc7e44343108f890d",
+  "fixtureAndAssetSha256": {
+    "assets/1262f69064272abf.png": "1262f69064272abf4d8bdfc8b7699c15b0275b9ce8b109af798be541e0c18b8d",
+    "assets/46cb8476bc0e2152.png": "46cb8476bc0e2152e731075df5e03a8f330f0a0edc2cc50bebb26a57847f1a80",
+    "assets/4e61e61647f031e6.svg": "4e61e61647f031e65e37f97b0cdd1c43af249c1b6277b12a13e64b7219f7c81d",
+    "assets/7a8d8a895fe35ca6.png": "7a8d8a895fe35ca62f27931ed4d3f86b7047e7d6f537a206197961fa50bb21d6",
+    "assets/9493a7c1831e2ba5.png": "9493a7c1831e2ba526b497618b9b18dcff142943beadc44762878e586460cc2f",
+    "assets/da9f4488a7db7c72.svg": "da9f4488a7db7c723791677f498c7ff80650c28772d2b1c4066370560d3444f4",
+    "assets/eec577c0a2486b18.png": "eec577c0a2486b1842389e9433c401fcf03c3c144cd2a8f2a38ff94c89dc53e5",
+    "assets/f448a651682017b9.png": "f448a651682017b908ecb44d0c2c0c863a37ff3501ace31bab0f379b2155bf87",
+    "assets/f96207d6aa0d3d51.png": "f96207d6aa0d3d511b94f29169b2a3f9090901524ab4301f10100fc6e321d33e",
+    "feature-cards.html": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+    "mui-width-additive.html": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+    "mui-width-expression.html": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+    "nested-flex-padding.html": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+    "nested-grid-tracks.html": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+    "partner-logos.html": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+    "product-cards.html": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+    "resources.html": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38"
+  },
+  "harnessSha256": {
+    "tools/component-parity/run.mjs": "48f0613c0c32894c56fb12b0934e8a65a5405f9d0cdad9865f0a1aa2f25ea17c",
+    "tools/component-parity/cases.mjs": "a0010198159b7a07cc8be5ae4a9a40e490254493569014e80fea3dd65b2f0e84",
+    "tools/component-parity/pixels.mjs": "7714c87aca1b12ff0fbba01ad474d51d02cb556ce84830e630c7c46248364655",
+    "tools/component-parity/png-pixels.mjs": "6e4e8c09c0023dca8be40d5b9ebf8ead091dcb2484a3d0dabc3bc9ad82f86943",
+    "tools/component-parity/chromium-reference.json": "fa1f392042aff9282e8777b21998f96b36eb4e567eea7677e52442f71e83d3ee"
+  },
+  "summary": {
+    "caseViewports": 24,
+    "geometryFailures": 0,
+    "textFreeCaseViewports": 12,
+    "textFreeChangedPixels": 0,
+    "textFreeGeometryFailures": 0,
+    "resourcesGeometryFailures": 0,
+    "partnerOuterHeights": [
+      {
+        "width": 1440,
+        "chromiumHeight": 617,
+        "nativeHeight": 618,
+        "delta": 1
+      },
+      {
+        "width": 768,
+        "chromiumHeight": 725,
+        "nativeHeight": 726,
+        "delta": 1
+      },
+      {
+        "width": 390,
+        "chromiumHeight": 765,
+        "nativeHeight": 765,
+        "delta": 0
+      }
+    ]
+  },
+  "limitations": [
+    "Text-bearing components retain text antialiasing/font and image paint differences; their pixel metrics are diagnostic, not pixel parity.",
+    "Geometry passes within the existing 1px tolerance; partner desktop/tablet outer heights differ by1px.",
+    "This receipt validates only the frozen layout/raster source; it does not replace CI, browser-binding or consumer verification."
+  ],
+  "artifacts": {
+    "localDirectory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/component-final-audit-085/.perf-evidence/native-e1516f2a",
+    "storedChromiumDirectory": "/Users/grzegorz/github-flux/turbo-dom/.recovery-archive/triage-085-integrated-50ab",
+    "diffPattern": "NAME-WIDTH-archive-diff.png",
+    "geometry": "results.json",
+    "comparison": "archive-comparison.json"
+  },
+  "replay": {
+    "build": "CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/path/to/isolated-target cargo +1.98.0 build --locked -p turbo-dom-raster --example component_parity",
+    "native": "node tools/component-parity/run.mjs --native /path/to/isolated-target/debug/examples/component_parity --native-only --out /path/to/component-audit",
+    "pixels": "Use pixelDiff from tools/component-parity/pixels.mjs (default threshold16) to compare NAME-WIDTH-native.png with stored NAME-WIDTH-chromium.png. See adjacent Markdown for executable replay."
+  },
+  "results": [
+    {
+      "name": "feature-cards",
+      "width": 1440,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "changedPixels": 13734,
+      "changedFraction": 0.0095375,
+      "meanChannelError": 0.4540511574074074,
+      "expectedSha256": "429b8f1faecfd47d66965a77a9c80e20eed09a2e68738ffd6c3a8c4cf5041174",
+      "actualSha256": "7f7dc0b7da61fac1d11250584a10ed1c44cfa6e02cf79c103f68e94d41afbfba"
+    },
+    {
+      "name": "feature-cards",
+      "width": 768,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "changedPixels": 16360,
+      "changedFraction": 0.021302083333333333,
+      "meanChannelError": 1.3033958333333333,
+      "expectedSha256": "f91cf463e2fe1b8a43d86ee3d72fd1a5eaa9ad6c5b667151c381698869617073",
+      "actualSha256": "96e579853def6ee7a49bf8382fdd2376d3f3ed99a2c49fd0abe10dac909e562a"
+    },
+    {
+      "name": "feature-cards",
+      "width": 390,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "changedPixels": 13286,
+      "changedFraction": 0.03406666666666667,
+      "meanChannelError": 1.5934623931623932,
+      "expectedSha256": "6f0550a89b5b2dd65b94bc2bd39fb58a60d0c3d7cead49678dc4b5b589d3bbdf",
+      "actualSha256": "48f2ca14548bd1981aeefd5600f13cc638805e24b2f2a0be1155506a77f6329c"
+    },
+    {
+      "name": "product-cards",
+      "width": 1440,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "changedPixels": 32398,
+      "changedFraction": 0.02249861111111111,
+      "meanChannelError": 1.7243238425925926,
+      "expectedSha256": "cf71483c88e9aed1468231a3b209b7b3cf8c47d6d2739efb4abf078bdfa600bf",
+      "actualSha256": "05465be98591ce44e24c82dad73723238d3d95b73d80d36a24146b24b6d744f1"
+    },
+    {
+      "name": "product-cards",
+      "width": 768,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "changedPixels": 31868,
+      "changedFraction": 0.04149479166666667,
+      "meanChannelError": 3.1821536458333335,
+      "expectedSha256": "a88e56c0a4227a20d31bd0f31632558b7a7e179699428df31d052ef262085db7",
+      "actualSha256": "b79e5f11bf87359db2b5fb9c130aae63ce2b4226caaea5ecbe180ca28618601d"
+    },
+    {
+      "name": "product-cards",
+      "width": 390,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "changedPixels": 15739,
+      "changedFraction": 0.040356410256410256,
+      "meanChannelError": 1.576740170940171,
+      "expectedSha256": "0a4d866526023266e7e586b00ad8972ca24c14920c78028b4c8584fea415b5bd",
+      "actualSha256": "e10f51f55259bbce253c2a5a43754666e3eb20e2988291fd45194df7a2cef46e"
+    },
+    {
+      "name": "partner-logos",
+      "width": 1440,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [],
+      "changedPixels": 27287,
+      "changedFraction": 0.018949305555555556,
+      "meanChannelError": 1.2803469907407408,
+      "expectedSha256": "c17da7df5f9f3f8e087cec5786ddb3bed29c4a9dfc035eba42227295d7c73e9b",
+      "actualSha256": "162ffd2fd2d7e7ecae77d029da85b069bbc4783b906d1cb60382ed349ab8d4bd"
+    },
+    {
+      "name": "partner-logos",
+      "width": 768,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [],
+      "changedPixels": 27694,
+      "changedFraction": 0.036059895833333334,
+      "meanChannelError": 2.3517916666666667,
+      "expectedSha256": "35f4bf3f0b3b93f7301a13e0a1e2a3b849e864cbc5fd5603b2a94e4371d3bafb",
+      "actualSha256": "ce9e5cb669fb87edf3c79f21e938c50fccf2d9c8a82a9c23f1d9d5e1fc2946a7"
+    },
+    {
+      "name": "partner-logos",
+      "width": 390,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [],
+      "changedPixels": 12835,
+      "changedFraction": 0.03291025641025641,
+      "meanChannelError": 1.274254700854701,
+      "expectedSha256": "29d0ec5f5291bf2a016329ff208dc0bc6e9c7a2d8cb8aa0ec25dad366280b6d8",
+      "actualSha256": "2f71d33acd0766bdb2b2b8087318863e73edcd4c89a246b17dc3251b7dbc15f7"
+    },
+    {
+      "name": "resources",
+      "width": 1440,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "changedPixels": 46916,
+      "changedFraction": 0.03258055555555556,
+      "meanChannelError": 1.653912037037037,
+      "expectedSha256": "24df03e3c53f8b3f43e4ac4c9d32c91937c4e24fe10bd3914082c4b68206e6a3",
+      "actualSha256": "65cde75213f648f5680834e700f2641e789d188cdd2745886148ab61bf251aef"
+    },
+    {
+      "name": "resources",
+      "width": 768,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "changedPixels": 62417,
+      "changedFraction": 0.08127213541666667,
+      "meanChannelError": 3.9067491319444443,
+      "expectedSha256": "2cd3285e6b759f8adba9d9af7cc8b41ef849ada37f3d66dc767984bfd88e5e78",
+      "actualSha256": "727c3d01cece0a19c6cdf0fcedf665e6fecb18c406b01abf748d408b4da13c5c"
+    },
+    {
+      "name": "resources",
+      "width": 390,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "changedPixels": 34493,
+      "changedFraction": 0.08844358974358975,
+      "meanChannelError": 4.029318803418803,
+      "expectedSha256": "8b3bc692ac1eb094e737e9240486ab291bce5607af6b881bd437165474d06d4c",
+      "actualSha256": "72ec5bfa02d86ec1a8839ee098f8765a15e15a14107bec43a75c51df493bc8c3"
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 1440,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "c64d2fb7abc2cffb0ca665f1c688c8f150e9eea8e972b21a729b1d5f5503ab4b",
+      "actualSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 768,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "d57951fa753476bbaac6dfb41a93cec4e2183d121b29ce47530843f5b07633cb",
+      "actualSha256": "2ff887e925b4ba05f5083808c686a217a53d43e090bb17b310a77883c8544342"
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 390,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "5f1112c6238359ef871c5d74749a857303cf24ff59d51b2490acb4e45e69f6f3",
+      "actualSha256": "69a5250efd9fb1150e43246d974a09307bd694700be7edb82c7ad89f70d52ae7"
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 1440,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0.0026305555555555557,
+      "expectedSha256": "a6da62f4fdafd7faa8ccfb648ab36466986701bc1c0f6276fc518bb321289ac7",
+      "actualSha256": "836276845d2dabfa68fafde87ab3f9fee2d11685f73f077fbf4535a95a22d14f"
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 768,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0.0049296875,
+      "expectedSha256": "270c03aa0c3b85df85bc040116ed84377a5a0e8afc6953c6104412ed9a542ee1",
+      "actualSha256": "12124184edad9cb953f1438ac39d653ef30cc7dd9d0d63826a5cc830ed36b7f0"
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 390,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0.009713675213675214,
+      "expectedSha256": "2b300fd4d17e393654df80d9c9b735a4c59e7d53f92ba8a45579ae52854d218a",
+      "actualSha256": "884ab7395139ac897ac1f7102796342a7b7e6466e14e3756120c9ff0633c3fa8"
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 1440,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "c64d2fb7abc2cffb0ca665f1c688c8f150e9eea8e972b21a729b1d5f5503ab4b",
+      "actualSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 768,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "d57951fa753476bbaac6dfb41a93cec4e2183d121b29ce47530843f5b07633cb",
+      "actualSha256": "2ff887e925b4ba05f5083808c686a217a53d43e090bb17b310a77883c8544342"
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 390,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "5f1112c6238359ef871c5d74749a857303cf24ff59d51b2490acb4e45e69f6f3",
+      "actualSha256": "69a5250efd9fb1150e43246d974a09307bd694700be7edb82c7ad89f70d52ae7"
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 1440,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "c64d2fb7abc2cffb0ca665f1c688c8f150e9eea8e972b21a729b1d5f5503ab4b",
+      "actualSha256": "7920a4762839abae1d272041a23dadd7e4745963acab9555a6d5c2fd098fb36a"
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 768,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "ffdebfd363c5321478e2814040c3ea41f1be2599524acdd563231963fcf64323",
+      "actualSha256": "da35cbc72825b3cded211478249543091548994ffbb83e3eb22ab69014d02254"
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 390,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "changedPixels": 0,
+      "changedFraction": 0,
+      "meanChannelError": 0,
+      "expectedSha256": "3723ddb14d01f1af81eef8252c4ddcbdc24e967e3c9bd729f187513efaad315b",
+      "actualSha256": "f8a2306dd624ef310ef74273792675cd72a77f71fa117e9c7b5e4485f07ca064"
+    }
+  ]
+}
