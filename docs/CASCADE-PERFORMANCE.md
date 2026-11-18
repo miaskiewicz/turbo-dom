@@ -83,3 +83,5 @@ Unknown names or incomplete arguments fail. Sample the spawned process after
 warmup (for example, macOS `sample PID 10 1 -file profile.txt`), then terminate the
 long profiling loop. Profile samples collected alongside builds identify CPU
 stacks; their incidental elapsed times are not admitted benchmark comparisons.
+
+The [bcfce3b4 typed-edge checkpoint](benchmarks/cascade-v085-bcfce3b4.md) uses freshly rebuilt binaries with the identical current harness. It shows modest report/card gains and approximately flat healthy flex; earlier failed checkpoints remain preserved.
