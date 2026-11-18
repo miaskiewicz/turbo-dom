@@ -36,3 +36,5 @@ limitations. Compressed `.sample.txt.gz` files preserve full original symbolized
 captures; `sample-receipts.json` records successful sampler exits. Reproduce using
 the documented optional selector, then `sample PID 10 1 -file profile.txt`.
 Terminate only the owned long-running loop after capture.
+
+The rejected clone-removal experiment is preserved as [rejected-8234d47f.patch](rejected-8234d47f.patch), including its parent identity, so it can be reconstructed without an unpublished local branch. It remains unmerged.
