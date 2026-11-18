@@ -1172,12 +1172,9 @@ fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     }
     let mitred = rrect::mixed_colours(b);
     if !mitred {
-        if let Some((w, c)) = border_side(b.top) {
-            fill_rect(pm, f.x, f.y, f.width, w, c, xf);
-        }
-        if let Some((w, c)) = border_side(b.bottom) {
-            fill_rect(pm, f.x, f.y + f.height - w, f.width, w, c, xf);
-        }
+        // One ring keeps adjacent translucent sides from compositing twice.
+        paint_round_border(pm, f, b, &BorderRadii::ZERO, xf);
+        return;
     }
     if let Some((w, c)) = border_side(b.left) {
         fill_rect(pm, f.x, f.y, w, f.height, c, xf);

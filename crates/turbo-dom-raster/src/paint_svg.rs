@@ -935,21 +935,14 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     };
     let mitred = crate::rrect::mixed_colours(b);
     if !mitred {
-        if let Some((w, c)) = side(&b.top) {
-            rect(svg, f.x, f.y, f.width, w, c);
-        }
-        if let Some((w, c)) = side(&b.bottom) {
-            rect(svg, f.x, f.y + f.height - w, f.width, w, c);
-        }
+        paint_round_border(svg, f, b, &BorderRadii::ZERO);
+        return;
     }
     if let Some((w, c)) = side(&b.left) {
         rect(svg, f.x, f.y, w, f.height, c);
     }
     if let Some((w, c)) = side(&b.right) {
         rect(svg, f.x + f.width - w, f.y, w, f.height, c);
-    }
-    if !mitred {
-        return;
     }
     // As the raster painter: sides that differ in colour paint the top and bottom bands
     // over the left and right ones, mitred on the corner diagonals.
@@ -1456,14 +1449,13 @@ mod tests {
             &HashMap::new(),
         );
         assert_eq!(colourless.matches("<clipPath").count(), 3, "{colourless}");
-        // At a radius of 0.5 or less the four square edge bands paint instead.
-        assert_eq!(
-            body(
-                &bordered([side(2, blue), none, none, none], 0.5),
-                &HashMap::new()
-            ),
-            "<rect x=\"1.00\" y=\"2.00\" width=\"20.00\" height=\"2.00\" fill=\"#0000ff\"/>\n"
+        // Small radii select the square ring, which still paints the top band only.
+        let square = body(
+            &bordered([side(2, blue), none, none, none], 0.5),
+            &HashMap::new(),
         );
+        assert_eq!(square.matches("<path ").count(), 1);
+        assert!(square.contains("fill-rule=\"evenodd\""));
     }
 
     fn decorated(
@@ -1786,7 +1778,7 @@ mod tests {
     }
 
     #[test]
-    fn square_borders_are_four_edge_bands_of_their_own_widths() {
+    fn square_borders_form_one_ring_with_each_sides_width() {
         let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
         let blue = Some(Rgba::new(0, 0, 255, 255));
         let mut f = plain(10.0, 20.0, 40.0, 30.0, None);
@@ -1798,19 +1790,12 @@ mod tests {
                 left: side(4, blue),
             };
         }
-        let r = |x: f32, y: f32, w: f32, h: f32| {
-            format!("<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\" fill=\"#0000ff\"/>\n")
-        };
-        assert_eq!(
-            body(&f, &HashMap::new()),
-            [
-                r(10.0, 20.0, 40.0, 1.0),
-                r(10.0, 47.0, 40.0, 3.0),
-                r(10.0, 20.0, 4.0, 30.0),
-                r(48.0, 20.0, 2.0, 30.0)
-            ]
-            .concat()
-        );
+        let ring = body(&f, &HashMap::new());
+        assert_eq!(ring.matches("<path ").count(), 1, "{ring}");
+        assert!(ring.contains("fill-rule=\"evenodd\""), "{ring}");
+        assert!(ring.contains("M10.00 20.00 L50.00 20.00"), "{ring}");
+        assert!(ring.contains("M14.00 21.00 L48.00 21.00"), "{ring}");
+        assert!(ring.contains("L48.00 47.00"), "{ring}");
         // Zero-width or colourless sides are no band.
         if let FragmentContent::Box { border, .. } = &mut f.content {
             *border = BorderEdges {

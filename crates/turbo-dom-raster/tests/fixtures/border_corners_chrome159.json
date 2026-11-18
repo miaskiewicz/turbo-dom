@@ -1,0 +1,305 @@
+{
+  "chrome": "159.0.8154.6",
+  "cases": [
+    {
+      "id": "equal-alpha",
+      "html": "<!doctype html><style>body{margin:0;background:white}div{border-style:solid}</style><div style=\"width:4px;height:4px;border-width:2px;border-color:rgba(0,0,255,.5)\"></div>",
+      "pixels": [
+        {
+          "x": 0,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 7,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 7,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 7,
+          "y": 7,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 3,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 3,
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unequal-alpha",
+      "html": "<!doctype html><style>body{margin:0;background:white}div{border-style:solid}</style><div style=\"width:4px;height:4px;border-width:1px 3px 2px 2px;border-color:rgba(0,0,255,.5)\"></div>",
+      "pixels": [
+        {
+          "x": 0,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 8,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 6,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 8,
+          "y": 6,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 3,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 3,
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zero-content",
+      "html": "<!doctype html><style>body{margin:0;background:white}div{border-style:solid}</style><div style=\"width:0;height:0;border-width:2px;border-color:rgba(0,0,255,.5)\"></div>",
+      "pixels": [
+        {
+          "x": 0,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 3,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 3,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rounded-alpha",
+      "html": "<!doctype html><style>body{margin:0;background:white}div{border-style:solid}</style><div style=\"width:8px;height:8px;border-width:2px;border-color:rgba(0,0,255,.5);border-radius:4px\"></div>",
+      "pixels": [
+        {
+          "x": 0,
+          "y": 0,
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 5,
+          "y": 0,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 0,
+          "y": 5,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 5,
+          "y": 5,
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "id": "translated-alpha",
+      "html": "<!doctype html><style>body{margin:0;background:white}div{border-style:solid}</style><div style=\"width:4px;height:4px;border-width:2px;border-color:rgba(0,0,255,.5);transform:translate(3px,2px)\"></div>",
+      "pixels": [
+        {
+          "x": 3,
+          "y": 2,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 10,
+          "y": 2,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 3,
+          "y": 9,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 10,
+          "y": 9,
+          "rgba": [
+            127,
+            127,
+            255,
+            255
+          ]
+        },
+        {
+          "x": 6,
+          "y": 5,
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ]
+        }
+      ]
+    }
+  ]
+}
