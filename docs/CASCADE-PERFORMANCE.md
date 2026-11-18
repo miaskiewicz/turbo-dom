@@ -67,3 +67,5 @@ native layout measurements, not PDF generation or comparisons with jsPDF/jsdom.
 Measured checkpoints:
 
 - [v0.8.5 e1516f2a: healthy flex/grid regressions, retained for investigation](benchmarks/cascade-v085-e1516f2a.md).
+
+The [8234d47f experimental checkpoint](benchmarks/cascade-v085-8234d47f.md) retains the subsequent failed healthy-layout measurement; it does not establish the proposed optimization as faster.
