@@ -5,6 +5,10 @@ The Rust `cascade_perf` example measures styling and full native layout for a
 It parses each document and constructs the font registry outside the timed loops.
 Each workload warms its caches before measuring; allocation, output destruction,
 cascade and layout work remain inside the relevant measured loop.
+Two healthy definite-size cases place 100 short text items in a wrapping flexbox
+or a ten-column grid. Both use 64-by-24-pixel items, eight-pixel gaps and the same
+712-by-312-pixel container. These avoid intrinsic/percentage sizing and isolate
+ordinary flex/grid overhead; full output hashes must still match the baseline.
 Three additional pre-matched cascade cases override inherited CSS variables:
 one 64-byte value, one 16 KiB payload, and eight 64-byte theme values. Each sample
 iteration performs 100 resolutions; parent/declaration construction is excluded.

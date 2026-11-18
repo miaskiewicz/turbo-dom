@@ -40,6 +40,22 @@ fn article() -> String {
     format!("<!doctype html><style>body{{font:14px Inter;width:700px}}p{{margin:4px 0;color:#234567;line-height:20px}}</style>{}", "<p>A paragraph with repeated words, punctuation and readable text.</p>".repeat(100))
 }
 
+fn definite_items(display: &str) -> String {
+    let tracks = if display == "grid" {
+        "grid-template-columns:repeat(10,64px);grid-template-rows:repeat(10,24px)"
+    } else {
+        "flex-wrap:wrap;align-content:start;align-items:start"
+    };
+    let mut html = format!(
+        "<!doctype html><style>body{{margin:0;font:12px Inter}}.items{{display:{display};width:712px;height:312px;gap:8px;{tracks}}}.item{{box-sizing:border-box;flex:none;width:64px;height:24px;line-height:16px;background:#def}}</style><div class=items>"
+    );
+    for item in 0..100 {
+        write!(html, "<div class=item>Item {item}</div>").unwrap();
+    }
+    html.push_str("</div>");
+    html
+}
+
 fn measure<T: std::fmt::Debug>(name: &str, iterations: usize, mut run: impl FnMut() -> T) {
     let digest = format!("{:x}", Sha256::digest(format!("{:?}", run())));
     for _ in 0..3 {
@@ -106,6 +122,8 @@ fn main() {
         ("report10", report(10)),
         ("cards100", cards()),
         ("article100", article()),
+        ("definite_flex100", definite_items("flex")),
+        ("definite_grid100", definite_items("grid")),
     ] {
         let tree = parse_html_tree(&html);
         measure(&format!("style_{name}"), iterations, || {
