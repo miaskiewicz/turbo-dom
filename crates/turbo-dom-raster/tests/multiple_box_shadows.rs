@@ -169,3 +169,27 @@ fn offscreen_shadow_extents_never_serialize_nonfinite_mask_geometry() {
     let vector = svg_pixels(&svg);
     assert_eq!(png.data(), vector.data());
 }
+
+#[test]
+fn multi_layer_snapshots_do_not_leak_into_single_or_unshadowed_fast_paths() {
+    let html = "<!doctype html><body style='margin:0;background:white'><div style='position:absolute;left:30px;top:30px;width:40px;height:40px;background:white;box-shadow:10px 10px red,14px 14px blue'></div>";
+    let multi = scene(html);
+    let single = scene(&html.replace("10px 10px red,14px 14px blue", "10px 10px lime"));
+    let none = scene(&html.replace("10px 10px red,14px 14px blue", "none"));
+    for (capture, expected) in [(&single, [0, 255, 0, 255]), (&none, [255; 4])] {
+        let png = tiny_skia::Pixmap::decode_png(&capture.png().unwrap()).unwrap();
+        let svg = svg_pixels(&capture.svg().unwrap());
+        for pixels in [&png, &svg] {
+            let p = pixels.pixel(75, 75).unwrap().demultiply();
+            assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], expected);
+            let p = pixels.pixel(83, 83).unwrap().demultiply();
+            assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], [255; 4]);
+        }
+    }
+    let png = tiny_skia::Pixmap::decode_png(&multi.png().unwrap()).unwrap();
+    let svg = svg_pixels(&multi.svg().unwrap());
+    for pixels in [&png, &svg] {
+        let p = pixels.pixel(83, 83).unwrap().demultiply();
+        assert_eq!([p.red(), p.green(), p.blue(), p.alpha()], [0, 0, 255, 255]);
+    }
+}

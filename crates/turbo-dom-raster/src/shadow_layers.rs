@@ -147,3 +147,144 @@ impl PaintInput for PaintContext<'_> {
         Some(self.layers)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use turbo_dom_layout::layout::value::BorderEdges;
+    use turbo_dom_layout::{BorderRadii, ComputedStyle, Rgba, StyledElement, Tag};
+
+    fn shadow(offset: i32) -> BoxShadow {
+        BoxShadow {
+            offset_x: offset,
+            offset_y: offset,
+            blur: 0,
+            spread: 0,
+            color: Rgba::BLACK,
+            inset: false,
+        }
+    }
+
+    fn frame(id: u32, painted: bool) -> Fragment {
+        Fragment::new(
+            NodeId(id),
+            10.0,
+            20.0,
+            40.0,
+            30.0,
+            FragmentContent::Box {
+                background: None,
+                border: BorderEdges::default(),
+                border_radius: BorderRadii::default(),
+                shadow: painted.then(|| shadow(1)),
+                gradient: None,
+                transform: None,
+            },
+        )
+    }
+
+    fn styled(source: Option<Handle>, value: &str, children: Vec<StyledNode>) -> StyledNode {
+        StyledNode::Element(StyledElement {
+            tag: Tag::Html("div".into()),
+            attrs: vec![],
+            style: ComputedStyle::from_pairs([("box-shadow", value)]),
+            children,
+            source,
+        })
+    }
+
+    #[test]
+    fn synthetic_style_ancestors_do_not_hide_owned_descendants() {
+        let tree = turbo_dom_layout::turbo_dom::Tree::parse("<div id=a></div><div id=b></div>");
+        let a = tree.query_selector("#a").unwrap();
+        let b = tree.query_selector("#b").unwrap();
+        let nodes = [styled(
+            None,
+            "1px 1px red,2px 2px blue",
+            vec![
+                StyledNode::Text("text".into()),
+                styled(Some(a), "1em 2em red,3px 4px blue", vec![]),
+                styled(Some(b), "1px 1px red", vec![]),
+            ],
+        )];
+        let mut found = SourceLayers::new();
+        collect(&nodes, 20.0, 200.0, &mut found);
+        assert_eq!(found.len(), 1);
+        assert_eq!((found[&a][0].offset_x, found[&a][0].offset_y), (20, 40));
+        assert!(!found.contains_key(&b));
+    }
+
+    #[test]
+    fn only_table_grids_inherit_the_nearest_real_source() {
+        let tree =
+            turbo_dom_layout::turbo_dom::Tree::parse("<table id=a></table><table id=b></table>");
+        let a = tree.query_selector("#a").unwrap();
+        let b = tree.query_selector("#b").unwrap();
+        let layers = SourceLayers::from([
+            (a, vec![shadow(1), shadow(2)]),
+            (b, vec![shadow(3), shadow(4)]),
+        ]);
+        let mut root = frame(0, false);
+        let mut nested = frame(3, false);
+        let mut anonymous = frame(6, false);
+        anonymous.children.push(frame(7, true));
+        nested.children = vec![frame(4, true), frame(5, true), anonymous];
+        root.children = vec![frame(1, true), frame(2, true), nested];
+        let mut sources = NodeSources::default();
+        sources
+            .elements
+            .extend([(NodeId(0), a), (NodeId(3), b), (NodeId(5), a)]);
+        sources
+            .table_grids
+            .extend([NodeId(1), NodeId(4), NodeId(7)]);
+        let mapped = remap(Some(&sources), &layers, &root);
+        assert_eq!(mapped.len(), 4);
+        assert_eq!(mapped[&NodeId(1)], layers[&a]);
+        assert_eq!(mapped[&NodeId(5)], layers[&a]);
+        assert_eq!(mapped[&NodeId(4)], layers[&b]);
+        assert_eq!(mapped[&NodeId(7)], layers[&b]);
+        assert!(
+            !mapped.contains_key(&NodeId(2)),
+            "ordinary anonymous boxes must not duplicate a parent's shadows"
+        );
+        assert!(remap(None, &layers, &root).is_empty());
+        assert!(remap(Some(&sources), &SourceLayers::new(), &root).is_empty());
+    }
+
+    #[test]
+    fn invisible_layers_do_not_expand_opacity_bounds() {
+        let f = frame(0, true);
+        let visible = shadow(3);
+        let mut transparent = shadow(10000);
+        transparent.color.a = 0;
+        let mut inset = shadow(-10000);
+        inset.inset = true;
+        assert_eq!(
+            outer_bounds(&f, &[visible, transparent, inset]),
+            outer_bounds(&f, &[visible])
+        );
+        assert_eq!(outer_bounds(&f, &[transparent, inset]), None);
+        for width in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            let mut invalid = f.clone();
+            invalid.width = width;
+            assert_eq!(outer_bounds(&invalid, &[visible]), None);
+        }
+    }
+
+    #[test]
+    fn legacy_paint_input_and_unrelated_metadata_keep_the_fragment_shadow() {
+        let images = DecodedAssets::new();
+        let f = frame(10, true);
+        let layers = ShadowLayers::from([(NodeId(11), vec![shadow(5), shadow(6)])]);
+        let context = PaintContext {
+            images: &images,
+            layers: &layers,
+        };
+        assert!(!images.multiple(&f));
+        assert!(!context.multiple(&f));
+        assert_eq!(images.shadows(&f), &[shadow(1)]);
+        assert_eq!(context.shadows(&f), images.shadows(&f));
+        assert!(images.shadows(&frame(12, false)).is_empty());
+        assert!(context.images().is_empty());
+    }
+}
