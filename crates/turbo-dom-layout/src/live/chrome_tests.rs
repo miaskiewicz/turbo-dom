@@ -882,3 +882,36 @@ fn unknown_inline_offset_width_is_zero_like_chrome_156() {
         failures.join("\n")
     );
 }
+
+#[test]
+fn aspect_ratio_percentage_descendants_match_chrome_156() {
+    let cases: Value =
+        serde_json::from_str(include_str!("../../tests/aspect_absolute_cases.json")).unwrap();
+    let control: Value =
+        serde_json::from_str(include_str!("../../tests/aspect_absolute_chrome156.json")).unwrap();
+    for (case, expected) in cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(control["cases"].as_array().unwrap())
+    {
+        let (tree, snapshot, styles) = super::testing::layout(
+            case["html"].as_str().unwrap(),
+            "",
+            (1000.0, 900.0),
+            Some(1.0),
+        );
+        for (id, rect) in expected["rects"].as_object().unwrap() {
+            let handle = tree.query_selector(&format!("#{id}")).unwrap();
+            let got = bounds(&snapshot, &styles, source_id(DOCUMENT, handle)).unwrap();
+            for (axis, value) in [got.x, got.y, got.width, got.height].iter().enumerate() {
+                let want = rect[axis].as_f64().unwrap() as f32;
+                assert!(
+                    (value - want).abs() < 0.05,
+                    "{} {id} axis{axis}: {got:?} != {rect}",
+                    case["name"]
+                );
+            }
+        }
+    }
+}

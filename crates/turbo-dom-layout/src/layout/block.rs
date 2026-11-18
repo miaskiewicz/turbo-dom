@@ -423,8 +423,9 @@ fn positioned_child_block(
 
 /// A positioned box's padding-box height from its laid-out `content` height, for its
 /// deferred absolute children (miaskiewicz/turbo-dom#100: on every path).
-fn deferred_cb_height(content: f32, bs: &BoxStyle) -> f32 {
-    content + bs.padding.vertical()
+fn deferred_cb_height(content: f32, width: f32, bs: &BoxStyle, ctx: &Ctx) -> f32 {
+    let auto = aspect_auto_height(bs, width).map_or(content, |ratio| ratio.max(content));
+    resolved_content_height(bs, auto, ctx) + bs.padding.vertical()
 }
 
 fn layout_positioned(
@@ -2167,7 +2168,7 @@ fn layout_block_flow(
         &deferred,
         cw,
         fs,
-        deferred_cb_height(content_h, bs),
+        deferred_cb_height(content_h, cw, bs, ctx),
         &mut frags,
         ctx,
     );
@@ -3140,6 +3141,15 @@ fn child_height_known(lb: &LayoutBox, height: Option<f32>, inherited: bool) -> b
     height.is_some() || (lb.node_id == NodeId(0) && inherited)
 }
 
+// Absolute descendants still wait for final content growth; in-flow percentages
+// can use the definite inline size transferred through the preferred ratio.
+fn expose_aspect_child_height(bs: &BoxStyle, width: f32, ctx: &mut Ctx) {
+    if let Some(ratio) = aspect_auto_height(bs, width) {
+        ctx.cb_h = resolved_content_height(bs, ratio, ctx);
+        ctx.cb_h_known = true;
+    }
+}
+
 fn layout_box_sized_impl(
     lb: &LayoutBox,
     bs: &BoxStyle,
@@ -3195,6 +3205,7 @@ fn layout_box_sized_impl(
     let saved_cb_known = ctx.cb_h_known;
     ctx.cb_h_known = child_height_known(lb, own_height, saved_cb_known);
     ctx.cb_h = live_child_height(lb, bs, saved_cb_h, ctx.live_geometry);
+    expose_aspect_child_height(bs, content_w, ctx);
     // A box that establishes a block formatting context isolates floats: its
     // content does not wrap around outer floats, and the floats placed inside it
     // are contained by (grow) this box rather than escaping to sibling blocks.
@@ -3517,7 +3528,17 @@ fn aspect_auto_height(bs: &BoxStyle, content_w: f32) -> Option<f32> {
     if bs.height != LengthPct::Auto {
         return None;
     }
-    bs.aspect_ratio.map(|r| content_w / r)
+    bs.aspect_ratio.map(|ratio| {
+        if bs.box_sizing == BoxSizing::BorderBox {
+            let border = bs.border.widths();
+            ((content_w + bs.padding.horizontal() + border.horizontal()) / ratio
+                - bs.padding.vertical()
+                - border.vertical())
+            .max(0.0)
+        } else {
+            content_w / ratio
+        }
+    })
 }
 
 /// Stamp every replaced `<img>` box's intrinsic pixel width from the resolver,
