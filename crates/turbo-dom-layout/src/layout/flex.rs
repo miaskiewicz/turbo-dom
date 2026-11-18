@@ -410,11 +410,22 @@ fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -
     };
     style.size = grow(style.size);
     style.min_size = grow(style.min_size);
+    style.min_size.width = frame_minimum(style.min_size.width, frame.width);
+    style.min_size.height = frame_minimum(style.min_size.height, frame.height);
     style.max_size = grow(style.max_size);
     let main = if column { frame.height } else { frame.width };
     style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
 
     style
+}
+
+/// A border box cannot shrink below its padding and borders, even with min:0.
+fn frame_minimum(value: Dimension, frame: f32) -> Dimension {
+    match value.tag() {
+        taffy::CompactLength::LENGTH_TAG => Dimension::length(value.value().max(frame)),
+        taffy::CompactLength::AUTO_TAG => Dimension::length(frame),
+        _ => value,
+    }
 }
 
 /// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
@@ -1348,7 +1359,11 @@ fn place_one(
     if !ratio_grid {
         used_width(&mut bs, layout.size.width);
     }
-    let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, layout.size.width, ctx);
+    let width = layout
+        .size
+        .width
+        .max(bs.padding.horizontal() + bs.border.widths().horizontal());
+    let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, width, ctx);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
 }

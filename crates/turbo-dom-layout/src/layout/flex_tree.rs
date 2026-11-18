@@ -64,12 +64,14 @@ struct Node<C> {
 pub(super) struct Tree<C> {
     nodes: Vec<Node<C>>,
     rounding: bool,
+    dirty: bool,
 }
 impl<C> Tree<C> {
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
             rounding: true,
+            dirty: false,
         }
     }
     fn add(&mut self, style: Style, context: Option<C>, children: Vec<NodeId>) -> NodeId {
@@ -96,11 +98,7 @@ impl<C> Tree<C> {
     }
     pub fn set_style(&mut self, id: NodeId, style: Style) -> Option<()> {
         self.nodes.get_mut(usize::from(id))?.style = style;
-        // This flat tree is one solve arena. A changed leaf invalidates the root
-        // and every cached intrinsic pass that can depend on it.
-        for node in &mut self.nodes {
-            node.cache.clear();
-        }
+        self.dirty = true;
         Some(())
     }
     pub fn detailed_layout_info(&self, id: NodeId) -> &taffy::DetailedLayoutInfo {
@@ -131,6 +129,14 @@ impl<C> Tree<C> {
             &Style,
         ) -> Size<f32>,
     {
+        // A batch of changed leaf styles invalidates the arena once, avoiding
+        // a full cache walk for every item in grid's intrinsic/final phases.
+        if self.dirty {
+            for node in &mut self.nodes {
+                node.cache.clear();
+            }
+            self.dirty = false;
+        }
         let mut view = View {
             tree: self,
             measure: &mut measure,
@@ -292,7 +298,7 @@ mod tests {
         let outer = CalcScope::new(Some(2.0));
         let token = calc(50.0, -0.003);
         let expected = resolve_calc(token, 10.0);
-        assert_eq!(expected, 4.9921875);
+        assert_eq!(expected, 4.992_187_5);
         {
             let _inner = CalcScope::new(None);
             let nested = calc(25.0, 0.003);
@@ -300,7 +306,7 @@ mod tests {
             assert_eq!(resolve_calc(token, 10.0), expected);
         }
         let offset = offset_calc(token, 2.0);
-        assert_eq!(resolve_calc(offset, 10.0), 6.9921875);
+        assert_eq!(resolve_calc(offset, 10.0), 6.992_187_5);
         drop(outer);
     }
 
