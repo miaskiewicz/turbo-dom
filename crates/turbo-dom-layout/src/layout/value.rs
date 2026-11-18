@@ -1172,15 +1172,50 @@ pub(crate) fn edge_lengths(s: &ComputedStyle, prefix: &str, fs: f32) -> [LengthP
     })
 }
 
+/// Typed frame declarations from the same font/unit context as box metrics.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TypedEdges {
+    pub padding: [LengthPct; 4],
+    pub margin: [LengthPct; 4],
+    font: u32,
+}
+
+impl TypedEdges {
+    fn parse(style: &ComputedStyle, font: f32) -> Self {
+        Self {
+            padding: edge_lengths(style, "padding", font),
+            margin: edge_lengths(style, "margin", font),
+            font: font.to_bits(),
+        }
+    }
+
+    pub(crate) fn for_font(self, style: &ComputedStyle, font: f32) -> Self {
+        if self.font == font.to_bits() {
+            self
+        } else {
+            Self::parse(style, font)
+        }
+    }
+}
+
 fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
-    let [top, right, bottom, left] =
-        edge_lengths(s, prefix, fs).map(|value| value.resolve(basis).unwrap_or(0.0));
+    resolve_typed_edges(edge_lengths(s, prefix, fs), basis)
+}
+
+fn resolve_typed_edges(values: [LengthPct; 4], basis: f32) -> Edges {
+    let [top, right, bottom, left] = values.map(|value| value.resolve(basis).unwrap_or(0.0));
     Edges {
         top,
         right,
         bottom,
         left,
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedMetrics {
+    pub style: BoxStyle,
+    pub edges: TypedEdges,
 }
 
 /// Whether the box's block-end margin is the UA quirks.css one (no author block-end
@@ -1757,7 +1792,7 @@ fn colour_of(s: &ComputedStyle) -> Rgba {
     s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK)
 }
 
-fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle {
+fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx, edges: TypedEdges) -> BoxStyle {
     BoxStyle {
         display: display_of(s),
         position: position_of(s),
@@ -1767,8 +1802,8 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         inset_bottom: length_prop(s, "bottom", fs, LengthPct::Auto),
         inset_left: length_prop(s, "left", fs, LengthPct::Auto),
         z_index: s.get("z-index").and_then(|v| v.trim().parse::<i32>().ok()),
-        margin: resolve_edges(s, "margin", fs, ctx.cb_width),
-        padding: resolve_edges(s, "padding", fs, ctx.cb_width),
+        margin: resolve_typed_edges(edges.margin, ctx.cb_width),
+        padding: resolve_typed_edges(edges.padding, ctx.cb_width),
         border: resolve_borders(s, fs),
         width: length_prop(s, "width", fs, LengthPct::Auto),
         height: length_prop(s, "height", fs, LengthPct::Auto),
@@ -2510,9 +2545,17 @@ fn box_sizing_of(s: &ComputedStyle) -> BoxSizing {
 /// Resolve a [`ComputedStyle`] into a typed [`BoxStyle`] for layout.
 #[must_use]
 pub fn resolve_box_style(s: &ComputedStyle, ctx: ResolveCtx) -> BoxStyle {
+    resolve_box_style_with_edges(s, ctx).style
+}
+
+pub(crate) fn resolve_box_style_with_edges(s: &ComputedStyle, ctx: ResolveCtx) -> ResolvedMetrics {
     crate::hot!("layout.resolve_box_style");
     let fs = resolve_font_size(s, ctx.parent_font_size);
-    resolve_box_metrics(s, fs, ctx)
+    let edges = TypedEdges::parse(s, fs);
+    ResolvedMetrics {
+        style: resolve_box_metrics(s, fs, ctx, edges),
+        edges,
+    }
 }
 
 /// The used values a text run reads; frame and paint-box properties are not needed.

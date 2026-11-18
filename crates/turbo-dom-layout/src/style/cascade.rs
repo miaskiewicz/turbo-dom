@@ -20,6 +20,12 @@ pub struct ComputedStyle {
 }
 
 impl ComputedStyle {
+    /// Retaining the source style makes mutation copy-on-write, so cached
+    /// metrics can validate their declaration identity without rescanning values.
+    pub(crate) fn same_storage(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.map, &other.map)
+    }
+
     /// The computed value of a property, if set.
     pub fn get(&self, property: &str) -> Option<&str> {
         self.map.get(property).map(String::as_str)
@@ -78,16 +84,14 @@ impl ComputedStyle {
     }
 
     /// Whether no value uses a containing-block-relative (`%`) or font-relative
-    /// (`em`/`rem`) unit. When true, the box's resolved metrics do not depend on
+    /// (`em`/`rem`) or viewport-relative unit. When true, the box's resolved metrics do not depend on
     /// the layout context, so they can be resolved once and cached (a `font-size`
     /// is still required to be absolute — see `is_ctx_independent`). Conservative:
-    /// any `%`/`em` substring (even inside a value like `lemonchiffon`) just
+    /// any relative-unit substring (even inside a value like `lemonchiffon`) just
     /// disables the cache, which is always safe.
     #[must_use]
     pub fn has_no_relative_units(&self) -> bool {
-        self.map
-            .values()
-            .all(|v| !v.contains('%') && !v.contains("em"))
+        self.map.values().all(|v| !relative_value(v))
     }
 
     /// Build a computed style directly from property/value pairs. Useful for
@@ -104,6 +108,19 @@ impl ComputedStyle {
             .collect();
         ComputedStyle { map: Arc::new(map) }
     }
+}
+
+fn relative_value(value: &str) -> bool {
+    value.contains('%')
+        || value.as_bytes().windows(2).any(|unit| {
+            unit.eq_ignore_ascii_case(b"em")
+                || unit.eq_ignore_ascii_case(b"vw")
+                || unit.eq_ignore_ascii_case(b"vh")
+        })
+        || value
+            .as_bytes()
+            .windows(4)
+            .any(|unit| unit.eq_ignore_ascii_case(b"vmin") || unit.eq_ignore_ascii_case(b"vmax"))
 }
 
 /// A styled element node.

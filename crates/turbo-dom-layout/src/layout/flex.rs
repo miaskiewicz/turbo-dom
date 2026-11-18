@@ -321,12 +321,8 @@ fn parse_basis(b: &str, fs: f32) -> Option<Dimension> {
 
 /// A flex (or grid: `column` false) item's taffy style; `column`: the container's main
 /// axis is vertical.
-fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
+fn item_style(item: &LayoutBox, bs: &BoxStyle, fs: f32, column: bool) -> Style {
     let s = &item.style;
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
     // A `position:absolute`/`fixed` child is out of flow: taffy must NOT treat it as
     // a flex item (else `align-items:stretch` in a column flex fills it to the
     // container width, ignoring its own width â the Codex radio's absolute icon blew
@@ -335,8 +331,8 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
     if bs.position.is_out_of_flow() {
         return Style {
             position: Position::Absolute,
-            inset: abs_item_inset(&bs),
-            size: item_size(&bs),
+            inset: abs_item_inset(bs),
+            size: item_size(bs),
             ..Default::default()
         };
     }
@@ -1257,9 +1253,13 @@ fn build_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut original = item_style(it, fs, column);
+            let (bs, edges) = it.resolved_with_edges(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: 0.0,
+            });
+            let mut original = item_style(it, &bs, fs, column);
             row_content_basis(&mut original, it, (fs, column, width), fonts, images);
-            let mut style = frames::style(original, it, fs);
+            let mut style = frames::style(original, &bs, edges);
             auto_min_main(&mut style, it, column, images);
             tree.new_leaf_with_context(style, i)
         })
@@ -1276,18 +1276,19 @@ fn row_content_basis(
     if column {
         return;
     }
+    let content = explicit_content_basis(&item.style);
+    if !content && !style.flex_basis.is_auto() {
+        return;
+    }
     let bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: width,
     });
-    let content = explicit_content_basis(&item.style);
     let transferred = match (bs.aspect_ratio, bs.height) {
         (Some(ratio), LengthPct::Px(height)) => Some(height * ratio),
         _ => None,
     };
-    if !(content
-        || (style.flex_basis.is_auto() && bs.width == LengthPct::Auto && transferred.is_some()))
-    {
+    if !content && (bs.width != LengthPct::Auto || transferred.is_none()) {
         return;
     }
     let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
@@ -1954,16 +1955,17 @@ fn build_grid_leaves(
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = item_style(it, fs, false);
+            let (bs, edges) = it.resolved_with_edges(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: 0.0,
+            });
+            let mut style = item_style(it, &bs, fs, false);
             // Grid has no flex-basis: an explicit width must reach its own size
             // constraint instead of becoming the track's stretch width — under every
             // layout policy (the HTML path too, miaskiewicz/turbo-dom#267).
-            style.size = item_size(&it.resolved(ResolveCtx {
-                parent_font_size: fs,
-                cb_width: 0.0,
-            }));
+            style.size = item_size(&bs);
             // Taffy owns the typed frame and the content-/border-box conversion.
-            let mut style = frames::style(style, it, fs);
+            let mut style = frames::style(style, &bs, edges);
             if it
                 .style
                 .get("min-width")

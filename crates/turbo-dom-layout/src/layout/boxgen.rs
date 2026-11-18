@@ -18,7 +18,8 @@ use crate::tag::{Attr, MarkerKind, Tag};
 
 use super::fragment::NodeId;
 use super::value::{
-    display_of, is_ctx_independent, resolve_box_style, BoxStyle, Display, ResolveCtx,
+    display_of, is_ctx_independent, resolve_box_style_with_edges, BoxStyle, Display, ResolveCtx,
+    ResolvedMetrics, TypedEdges,
 };
 
 /// A box in the layout tree.
@@ -271,7 +272,10 @@ enum StyleCache {
     Dependent,
     /// Style is context-independent; this resolution is reused for every `ctx`.
     /// Boxed to keep the enum small (a `BoxStyle` dwarfs the unit variants).
-    Cached(Box<BoxStyle>),
+    Cached {
+        source: ComputedStyle,
+        metrics: Box<ResolvedMetrics>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -541,7 +545,17 @@ impl LayoutBox {
     /// Resolve this box's [`BoxStyle`] for `ctx`, reusing the cached resolution
     /// when the style is context-independent.
     pub(crate) fn resolved(&self, ctx: ResolveCtx) -> BoxStyle {
-        let style = self.resolved_base(ctx);
+        self.finish_style(self.resolved_base(ctx))
+    }
+
+    pub(crate) fn resolved_with_edges(&self, ctx: ResolveCtx) -> (BoxStyle, TypedEdges) {
+        let metrics = self.resolved_metrics(ctx);
+        let style = self.finish_style(metrics.style);
+        let edges = metrics.edges.for_font(&self.style, style.font_size);
+        (style, edges)
+    }
+
+    fn finish_style(&self, style: BoxStyle) -> BoxStyle {
         let mut style = match &self.svg_viewport {
             Some(viewport) => viewport.apply_attributes(style),
             None => style,
@@ -814,24 +828,33 @@ impl LayoutBox {
     }
 
     pub(crate) fn resolved_base(&self, ctx: ResolveCtx) -> BoxStyle {
+        self.resolved_metrics(ctx).style
+    }
+
+    fn resolved_metrics(&self, ctx: ResolveCtx) -> ResolvedMetrics {
         match &*self.style_cache.borrow() {
-            StyleCache::Cached(bs) => return bs.as_ref().clone(),
-            StyleCache::Dependent => return resolve_box_style(&self.style, ctx),
-            StyleCache::Unknown => {}
+            StyleCache::Cached { source, metrics } if source.same_storage(&self.style) => {
+                return metrics.as_ref().clone();
+            }
+            StyleCache::Dependent => return resolve_box_style_with_edges(&self.style, ctx),
+            _ => {}
         }
         self.resolve_and_classify(ctx)
     }
 
-    /// First-use path: resolve once, then remember whether the result can be
-    /// reused for any context.
-    fn resolve_and_classify(&self, ctx: ResolveCtx) -> BoxStyle {
-        let bs = resolve_box_style(&self.style, ctx);
+    /// Classify only absolute styles for persistent reuse; dependent units are
+    /// resolved anew under the current font, root-font and viewport scopes.
+    fn resolve_and_classify(&self, ctx: ResolveCtx) -> ResolvedMetrics {
+        let metrics = resolve_box_style_with_edges(&self.style, ctx);
         *self.style_cache.borrow_mut() = if is_ctx_independent(&self.style) {
-            StyleCache::Cached(Box::new(bs.clone()))
+            StyleCache::Cached {
+                source: self.style.clone(),
+                metrics: Box::new(metrics.clone()),
+            }
         } else {
             StyleCache::Dependent
         };
-        bs
+        metrics
     }
 }
 
@@ -3058,5 +3081,106 @@ mod tests {
             flat.iter().any(|i| matches!(i, InlineItem::LineBreak)),
             "the flattened <br> produced a LineBreak item"
         );
+    }
+}
+
+#[cfg(test)]
+mod typed_frame_tests {
+    use super::*;
+    use crate::layout::value::{edge_lengths, LengthPct};
+
+    fn leaf(pairs: &[(&str, &str)]) -> LayoutBox {
+        anonymous_box(
+            NodeId(0),
+            ComputedStyle::from_pairs(pairs.iter().copied()),
+            BoxKind::Block(vec![]),
+        )
+    }
+
+    fn context() -> ResolveCtx {
+        ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: 200.0,
+        }
+    }
+
+    #[test]
+    fn typed_edges_keep_percent_calc_auto_and_fractional_font_units() {
+        let lb = leaf(&[
+            ("font-size", "13.37px"),
+            ("padding", "1em calc(10% + 2px)"),
+            ("margin", "auto 2rem"),
+        ]);
+        lb.set_html_layout_policy((true, Some(1.25)));
+        let (style, edges) = lb.resolved_with_edges(context());
+        assert_eq!(edges.padding[0], LengthPct::Px(style.font_size));
+        assert_eq!(edges.padding[1], LengthPct::Calc { pct: 10.0, px: 2.0 });
+        assert_eq!(edges.margin[0], LengthPct::Auto);
+        assert_eq!(edges.margin[1], LengthPct::Px(32.0));
+        // A later font postprocess must not reuse em lengths from the old font.
+        let changed = edges.for_font(&lb.style, 20.0);
+        assert_eq!(changed.padding[0], LengthPct::Px(20.0));
+        assert_eq!(changed.margin[1], edges.margin[1]);
+    }
+
+    #[test]
+    fn scoped_units_are_resolved_again_on_the_same_box() {
+        let lb = leaf(&[
+            ("font-size", "16px"),
+            ("padding", "1rem 10vw 10vh 1vmin"),
+            ("margin", "1vmax"),
+        ]);
+        let before = crate::style::viewport_px();
+        for (root, width, height) in [(16.0, 200.0, 100.0), (24.0, 400.0, 300.0)] {
+            let _scope = crate::style::root_font_scope(root);
+            crate::style::set_layout_viewport(width, height);
+            let (_, edges) = lb.resolved_with_edges(context());
+            assert_eq!(
+                edges.padding,
+                [
+                    LengthPct::Px(root),
+                    LengthPct::Px(width * 0.1),
+                    LengthPct::Px(height * 0.1),
+                    LengthPct::Px(height * 0.01)
+                ]
+            );
+            assert_eq!(edges.margin, [LengthPct::Px(width * 0.01); 4]);
+        }
+        crate::style::set_layout_viewport(before.0, before.1);
+    }
+
+    #[test]
+    fn cloned_cached_styles_follow_cow_mutation_and_relabelled_edges() {
+        let mut lb = leaf(&[
+            ("font-size", "16px"),
+            ("padding", "1px 2px 3px 4px"),
+            ("margin", "5px 6px 7px 8px"),
+        ]);
+        let (_, original) = lb.resolved_with_edges(context());
+        let cloned = lb.clone();
+        lb.style.set("padding", "9px".into());
+        assert_eq!(
+            lb.resolved_with_edges(context()).1.padding,
+            [LengthPct::Px(9.0); 4]
+        );
+        assert_eq!(
+            cloned.resolved_with_edges(context()).1.padding,
+            original.padding
+        );
+        let relabel = super::super::writing::Relabel::between(
+            super::super::writing::WritingMode::HorizontalTb,
+            super::super::writing::WritingMode::VerticalRl,
+        );
+        let rotated = cloned.relabelled(relabel);
+        let (style, edges) = rotated.resolved_with_edges(context());
+        assert_eq!(
+            edges.padding,
+            edge_lengths(&rotated.style, "padding", style.font_size)
+        );
+        assert_eq!(
+            edges.margin,
+            edge_lengths(&rotated.style, "margin", style.font_size)
+        );
+        assert_ne!(edges.padding, original.padding);
     }
 }

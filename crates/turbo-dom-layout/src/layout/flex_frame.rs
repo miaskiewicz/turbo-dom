@@ -3,7 +3,7 @@ use super::{
     measure_item, native_tree, AvailableSpace, BoxSizing, BoxStyle, Ctx, Fill, LayoutBox,
     LengthPercentage, LengthPercentageAuto, Rect, ResolveCtx, Size, Style,
 };
-use crate::layout::value::{edge_lengths, Edges, LengthPct};
+use crate::layout::value::{Edges, LengthPct, TypedEdges};
 use crate::style::ComputedStyle;
 use taffy::ResolveOrZero;
 
@@ -25,25 +25,19 @@ fn padding_value(value: LengthPct) -> LengthPercentage {
     }
 }
 
-pub(super) fn style(mut style: Style, item: &LayoutBox, fs: f32) -> Style {
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
+pub(super) fn style(mut style: Style, bs: &BoxStyle, edges: TypedEdges) -> Style {
     style.box_sizing = match bs.box_sizing {
         BoxSizing::ContentBox => taffy::BoxSizing::ContentBox,
         BoxSizing::BorderBox => taffy::BoxSizing::BorderBox,
     };
-    style.padding = rect(edge_lengths(&item.style, "padding", bs.font_size).map(padding_value));
-    style.margin = rect(
-        edge_lengths(&item.style, "margin", bs.font_size).map(|value| {
-            if value == LengthPct::Auto {
-                LengthPercentageAuto::auto()
-            } else {
-                padding_value(value).into()
-            }
-        }),
-    );
+    style.padding = rect(edges.padding.map(padding_value));
+    style.margin = rect(edges.margin.map(|value| {
+        if value == LengthPct::Auto {
+            LengthPercentageAuto::auto()
+        } else {
+            padding_value(value).into()
+        }
+    }));
     let edges = bs.border.widths();
     style.border =
         rect([edges.top, edges.right, edges.bottom, edges.left].map(LengthPercentage::length));
