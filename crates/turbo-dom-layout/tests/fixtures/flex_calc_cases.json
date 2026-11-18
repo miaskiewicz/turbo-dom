@@ -112,5 +112,17 @@
     "fixture": "mui-width-additive",
     "width": 1440,
     "css": ".grid{position:relative;height:400px}.grid>.item{position:absolute;left:calc(25% + 10px);top:calc(50% - 20px);width:100px;height:100px}.card{padding:0;height:100%}"
+  },
+  {
+    "id": "row-height-max",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{height:400px}.grid>.item{height:200px;max-height:calc(40% - 20px)}.card{height:100%;padding:0}"
+  },
+  {
+    "id": "row-height-min",
+    "fixture": "mui-width-additive",
+    "width": 1440,
+    "css": ".grid{height:400px}.grid>.item{height:80px;min-height:calc(30% + 10px)}.card{height:100%;padding:0}"
   }
 ]

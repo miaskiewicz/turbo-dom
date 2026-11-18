@@ -1327,7 +1327,7 @@ fn place_one(
     // whose height taffy left at auto keeps its content height (basis == content). In a
     // column the height is the main size, so taffy's always wins over a `px` `height`
     // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
-    if column || (stretch && !matches!(bs.height, LengthPct::Px(_))) {
+    if column || stretch || matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         if bs.box_sizing == BoxSizing::BorderBox {

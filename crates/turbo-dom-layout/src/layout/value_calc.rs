@@ -184,7 +184,7 @@ pub(super) fn parse(source: &str, font_size: f32) -> Option<LengthPct> {
         offset: 0,
         font_size,
     };
-    let value = parser.expression(1, 0)?;
+    let value = parser.atom(0)?;
     parser.whitespace();
     if parser.offset != source.len() || value.number {
         return None;
@@ -227,6 +227,9 @@ mod tests {
             "calc((1px)",
             "calc()",
             "calc(1px) extra",
+            "calc(1px) * 2",
+            "calc(1px) + 2px",
+            "calc(1px) / 2",
         ] {
             assert!(parse(source, 16.0).is_none(), "{source}");
         }
