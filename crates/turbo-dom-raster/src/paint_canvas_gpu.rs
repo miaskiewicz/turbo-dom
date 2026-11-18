@@ -201,6 +201,11 @@ pub(crate) fn replay(
     ops: &[Op],
     fonts: &turbo_dom_layout::text::FontRegistry,
 ) -> Result<Vec<u8>, String> {
+    // ImageData is a bitmap upload, not geometry. Until this backend batches
+    // texture uploads, avoid allocating two triangles per source pixel.
+    if ops.iter().any(|op| matches!(op, Op::PutImageData(_))) {
+        return crate::paint_canvas::replay(width, height, ops, fonts);
+    }
     let gpu = gpu()?;
     // Tessellate every op into device-space triangles + ordered draw ranges.
     let mut canvas = GpuCanvas::new(width as f32, height as f32);
@@ -310,6 +315,27 @@ fn lyon_path(subs: &[SubPath]) -> lyon_tessellation::path::Path {
 }
 
 impl CanvasBackend for GpuCanvas {
+    fn bitmap_size(&self) -> (u32, u32) {
+        (self.w as u32, self.h as u32)
+    }
+
+    fn replace_pixel(&mut self, x: i64, y: i64, color: Rgba) {
+        if x < 0 || y < 0 || x >= i64::from(self.w as u32) || y >= i64::from(self.h as u32) {
+            return;
+        }
+        let (x, y) = (x as f32, y as f32);
+        self.tri(
+            Kind::Replace,
+            [(x, y), (x + 1.0, y), (x + 1.0, y + 1.0)],
+            color,
+        );
+        self.tri(
+            Kind::Replace,
+            [(x, y), (x + 1.0, y + 1.0), (x, y + 1.0)],
+            color,
+        );
+    }
+
     fn fill(&mut self, subs: &[SubPath], color: Rgba) {
         if color.a == 0 {
             return;

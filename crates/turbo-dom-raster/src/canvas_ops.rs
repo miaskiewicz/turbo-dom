@@ -40,6 +40,7 @@ pub(crate) enum Op {
     FillRect(f32, f32, f32, f32),
     StrokeRect(f32, f32, f32, f32),
     ClearRect(f32, f32, f32, f32),
+    PutImageData(crate::canvas_image_data::ImageData),
     BeginPath,
     ClosePath,
     MoveTo(f32, f32),
@@ -110,6 +111,10 @@ fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
     };
+
+    if push_image_data(name, args, out) {
+        return;
+    }
 
     // Drawing-state snapshot carried on the tuple (indices 2/3/4/7).
     if let Some(c) = t
@@ -186,6 +191,16 @@ fn push_tuple(v: &serde_json::Value, out: &mut Vec<Op>) {
         _ => return,
     };
     out.push(op);
+}
+
+fn push_image_data(name: &str, args: Option<&Vec<serde_json::Value>>, out: &mut Vec<Op>) -> bool {
+    if name != "putImageData" {
+        return false;
+    }
+    if let Some(image) = args.and_then(|a| crate::canvas_image_data::ImageData::parse(a)) {
+        out.push(Op::PutImageData(image));
+    }
+    true
 }
 
 /// Parse a canvas `fillStyle`/`strokeStyle` colour string through turbo-dom's CSS colour
@@ -383,6 +398,10 @@ pub(crate) trait CanvasBackend {
     /// Clear a (possibly transformed) quad to transparent black, replacing — not
     /// compositing — the covered pixels (`ctx.clearRect`).
     fn clear(&mut self, quad: &[(f32, f32); 4]);
+    /// Replace one device pixel, including transparent pixels, without canvas state.
+    fn replace_pixel(&mut self, x: i64, y: i64, color: Rgba);
+    /// Bitmap bounds for clipping pixel uploads before visiting source pixels.
+    fn bitmap_size(&self) -> (u32, u32);
     /// Fill text. Default: trace glyph outlines (ttf-parser) into subpaths + fill. A backend may
     /// override to rasterize text through a system stack (CoreText) whose glyph hinting/AA matches a
     /// real browser's — `getImageData` over the text then reads back like Chrome.
@@ -489,6 +508,7 @@ pub(crate) fn run(ops: &[Op], backend: &mut dyn CanvasBackend, fonts: &FontRegis
                 device_line_width(&st.ctm, st.line_width),
             ),
             Op::ClearRect(x, y, w, h) => backend.clear(&rect_corners(&st.ctm, *x, *y, *w, *h)),
+            Op::PutImageData(image) => image.paint(backend),
             Op::BeginPath => path.clear(),
             Op::ClosePath => {
                 if let Some(last) = path.last_mut() {

@@ -24,6 +24,7 @@ mod avif;
 mod canvas_content;
 mod capture_resources;
 pub use capture_resources::{capture_resources, CaptureResources, ImageMetadata};
+mod canvas_image_data;
 mod canvas_ops;
 mod capture_geometry;
 #[cfg(test)]

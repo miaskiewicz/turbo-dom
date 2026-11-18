@@ -104,6 +104,25 @@ fn solid(c: Rgba) -> Paint<'static> {
 }
 
 impl CanvasBackend for SkiaCanvas {
+    fn bitmap_size(&self) -> (u32, u32) {
+        (self.pm.width(), self.pm.height())
+    }
+
+    fn replace_pixel(&mut self, x: i64, y: i64, color: Rgba) {
+        if x < 0 || y < 0 || x >= i64::from(self.pm.width()) || y >= i64::from(self.pm.height()) {
+            return;
+        }
+        let at = ((y as u64 * u64::from(self.pm.width()) + x as u64) * 4) as usize;
+        // SkMulDiv255Round, the same byte premultiplication used by Chrome's Skia.
+        let channel = |c: u8| ((u16::from(c) * u16::from(color.a) + 127) / 255) as u8;
+        self.pm.data_mut()[at..at + 4].copy_from_slice(&[
+            channel(color.r),
+            channel(color.g),
+            channel(color.b),
+            color.a,
+        ]);
+    }
+
     // Text: on macOS with `coretext`, rasterize glyphs through CoreText/CoreGraphics (Chrome's
     // glyph stack) and composite onto the pixmap — so getImageData over text matches a real Mac
     // Chrome. Falls back to the vector glyph trace for a scaled/rotated CTM the CoreText path

@@ -106,7 +106,11 @@ fn shot(html: &str) -> Result<Vec<u8>, String> {
   markup, CSS, viewport, metadata, fonts or live IDL inputs.
   Run the scalable offline correctness/timing harness with
   `cargo run -p turbo-dom-raster --example capture_resources -- 1000`.
-- **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log. Colours go
+- **Canvas:** `canvas_ops_png` / `canvas_ops_rgba` replay a 2D-canvas op log.
+  `putImageData` accepts recorded sRGB RGBA8 payloads and replaces device pixels,
+  including transparent pixels, with dirty-source and destination clipping. It ignores
+  transforms, global alpha and compositing, as Chrome does. Logs containing ImageData
+  use software replay even with `gpu-metal`, avoiding per-pixel GPU geometry. Colours go
   through turbo-dom's `rtdom::color::parse_color`. `measure_text` measures a text run (width, height) with the bundled or system faces;
   `measure_canvas_text(text, font)` is canvas `measureText`'s width for a CSS `font`
   shorthand. Canvas text uses the bundled faces; `canvas_ops_png_with_fonts(width,
@@ -184,6 +188,7 @@ Pixel expectations come from **Chrome 156 controls**, recorded by the repository
 | test | control | what it checks |
 |---|---|---|
 | `tests/paint_chrome.rs` | `paint-chrome-control.mjs` | box decorations, clips, translucency (SVG output rasterized against the same probes) |
+| `tests/canvas_image_data.rs` | `canvas-imagedata-chrome-control.mjs` | ImageData replacement, clipping and drawing-state independence |
 | `tests/canvas_ops_chrome.rs` | `canvas-ops-chrome-control.mjs` | canvas op logs |
 | `tests/avif_decode_chrome.rs` | `raster-avif-chrome-control.mjs` | AVIF decode |
 | `tests/image_formats_chrome.rs` | `image-formats-chrome-control.mjs` | image formats |
