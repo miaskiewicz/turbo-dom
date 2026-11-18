@@ -1,11 +1,12 @@
 # Native canvas and real-player integration (#523)
 
-The primary Surf NAPI path has been verified with the actual dotLottie player.
-The secondary MCP capture/restore path remains separate work under
+The primary Surf NAPI player and the local source-consumer MCP capture/restore
+path have been validated. The consumer changes are not published; full-workspace
+and final CI validation remain pending. The integration is tracked under
 [turbo-surf#527](https://github.com/miaskiewicz/turbo-surf/issues/527). Constructor
 support alone is not the acceptance criterion for either path.
 
-## Pinned primary-path proof — 2026-11-18
+## Historical 8c primary-path proof — 2026-11-18
 
 The unchanged local fixture ran the real dotLottie 0.70.0 JavaScript and WASM in a
 rebuilt Surf native NAPI addon against turbo-dom
@@ -39,7 +40,7 @@ not arbitrary animations or a fresh rerun of every later release change.
 ## Canonical host canvas access
 
 Embedders obtain `canvasHost` from the document's private `get_interface_record`.
-It is neither a guest global nor a document property. The four integrated methods
+It is neither a guest global nor a document property. The five integrated methods
 are:
 
 | Method | Canonical result |
@@ -48,12 +49,32 @@ are:
 | `readCanvas(context)` | The actual owning canvas. |
 | `snapshotJSON(context)` | A nondraining JSON snapshot of the canonical drawing/upload records. |
 | `size(canvas)` | The canonical native bitmap dimensions. |
+| `restoreJSON(canvas, text)` | Restore one validated full RGBA8/sRGB bitmap seed and return the canonical 2D context. |
 
 Unknown or foreign-document objects return `null`. These reads ignore overwritten
 `__ctx2d`, `_ops`, `canvas`, `width` and `height` diagnostic properties and do not
 invoke guest serialization hooks. Hosts should use this seam instead of treating
 those mutable JavaScript properties as authoritative. Authored JavaScript
 method/property overrides remain observable to page code.
+
+`restoreJSON` was integrated in turbo-dom
+`019dd016aef1283a5a5b578d02fc1bc981c1eaae`. It accepts exactly one unpositioned
+`putImageData` operation covering the entire current native bitmap. The image must
+have exactly `width`, `height`, `data`, `colorSpace: "srgb"` and
+`pixelFormat: "rgba-unorm8"`; dimensions and dirty bounds must match the canvas,
+and `data` must contain exactly width×height×4 integer bytes in 0–255. Positioned
+or partial uploads, mixed draw logs and other formats are rejected. Hosts must
+flatten earlier drawing into this seed first: the API is not a generic draw-log
+replayer.
+
+Validation and pixel allocation finish before commit. A rejected seed or locked
+existing log preserves the previous context, pixels and draw records. A successful
+restore preserves an existing 2D context's identity, but resets drawing defaults,
+paths and the save stack before installing the seed; it transfers neither previous
+transforms nor JavaScript state. With no existing 2D context, the prepared context
+is published only after validation. Zero-area or over-budget seeds are rejected;
+the limits are 268,435,456 pixels and 268,435,456 JSON code units. Unknown or
+foreign-document canvases return `null`.
 
 Canvas `width` and `height` reflect null-namespace content attributes, defaulting
 to 300×150. Setting either dimension, including its current value, or changing or
@@ -67,22 +88,24 @@ after host upload-log drains. Display-P3/float16 ImageData construction and
 inspection are supported; unsupported bare-binding canvas color/pixel-format
 conversions throw explicitly rather than silently approximating output.
 
-## Remaining MCP handoff and final validation
+## Local MCP validation and current acceptance
 
-A small host-private pure-RGBA restore API is still pending for the secondary Surf
-MCP capture path. Its implementation and the consumer integration tracked in
-[turbo-surf#527](https://github.com/miaskiewicz/turbo-surf/issues/527) are not
-established by the primary NAPI proof above. Do not use a guest-visible shim or
-assume that rerunning a stale addon validates new dependency pins.
+The integrated restore API passed 822 binding tests and strict checks. The Surf
+source-consumer validation reported nine MCP tests passing, including four
+previously failing regression cases, plus 39 focused tests, 834 shim tests and
+55 end-to-end tests. These are local integration results, not a published Surf
+release or a completed full-workspace gate.
 
-The Surf integration owner should repin the coherent turbo-dom crate set, retain
-one turbo-dom-v8 dependency, rebuild its native host and run the existing local
-real-player harness through the actual consumer path. Retain load events, frame
-30, canonical upload dimensions/data, nontransparent alpha counts, errors and
-native/Chromium PNGs. A nonempty fallback image or constructor existence is
-insufficient. The primary proof's expected alpha count is 544,214.
+A rebuilt real native player run against
+`019dd016aef1283a5a5b578d02fc1bc981c1eaae` again reached `ready` through `load`
+at frame 30 with no page errors and 544,214 nontransparent canvas pixels. Its
+screenshot had zero changed pixels across 810,000 compared pixels. This later
+result is separate from the historical 8c artifacts above; its committed consumer
+receipt is to be added after the Surf source changes are committed. Neither a
+nonempty fallback PNG nor constructor existence was used as acceptance.
 
-The final combined gates, 24-comparison component audit and paired performance
-run are still pending for the runtime pipeline through `e1516f2a`. The earlier
-`5ed0ed7d` CI coverage receipt required fixes and is not a final-green release
-receipt. No PR, tag or publication is claimed here.
+Full consumer workspace and final CI checks remain pending. The admitted native
+performance checkpoint for `e1516f2a` shows healthy flex/grid regressions; see
+[the checkpoint](benchmarks/cascade-v085-e1516f2a.md). Experimental optimization
+`8234` is not merged and has no timing result yet. No final-green release result,
+PR, tag or publication is claimed here.

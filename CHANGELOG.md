@@ -83,6 +83,13 @@ at the time); this file reconstructs them from history.
   reset drawing state, path logs and bitmap pixels on dimension changes. Private
   host capture reads canonical context, owner, dimensions and nondraining upload
   snapshots while preserving authored JavaScript overrides.
+- **Host canvas bitmap restore (#523)**: add private `canvasHost.restoreJSON`
+  for one complete unpositioned RGBA8/sRGB bitmap seed. Validate dimensions,
+  bounds, format and byte data before committing; rejection preserves prior state.
+  Success retains an existing context's identity while resetting drawing defaults,
+  paths and saved state. The API restores a flattened bitmap, not arbitrary draw logs.
+  Local Surf MCP and real-player integration pass; full-workspace/final CI remain
+  pending and consumer changes are not published.
 - **Grid height, flow and capacity (#534)**: retain definite and constrained grid
   heights, row auto-repeat/auto-fit behavior, dense row/column flow and
   case-insensitive content alignment. Fifteen height/flow controls join the 42
@@ -102,8 +109,11 @@ at the time); this file reconstructs them from history.
 - **Inheritance performance**: move overriding local values into inherited-property
   slots without first copying the discarded parent values. Normalize font sizes in their
   existing string buffers without changing keyword, relative-unit or variable behavior.
-- **Performance validation**: add allocation regressions and paired style/layout
-  benchmarks with complete output hashes for reports, cards and articles.
+- **Performance validation**: retain allocation regressions and paired style/layout
+  benchmarks with complete output hashes. The admitted `e1516f2a` checkpoint is
+  3.04% slower for healthy definite flex and 2.17% slower for definite grid;
+  the 100-row report has no meaningful speedup. A proposed optimization remains
+  unmerged and unmeasured; isolated cascade gains are not broad layout gains.
 
 ## [0.8.4] — 2026-11-18
 
