@@ -1859,11 +1859,20 @@ fn strip_quoted(value: &str) -> String {
 }
 
 fn grid_align_content(style: &ComputedStyle) -> Option<JustifyContent> {
-    match style.get("align-content").map(str::trim) {
-        None | Some("normal") => None,
-        Some("stretch") => Some(JustifyContent::Stretch),
-        Some(value) => Some(justify_content_value(value)),
-    }
+    let value = style.get("align-content")?.trim();
+    [
+        ("stretch", JustifyContent::Stretch),
+        ("start", JustifyContent::FlexStart),
+        ("flex-start", JustifyContent::FlexStart),
+        ("end", JustifyContent::FlexEnd),
+        ("flex-end", JustifyContent::FlexEnd),
+        ("center", JustifyContent::Center),
+        ("space-between", JustifyContent::SpaceBetween),
+        ("space-around", JustifyContent::SpaceAround),
+        ("space-evenly", JustifyContent::SpaceEvenly),
+    ]
+    .into_iter()
+    .find_map(|(name, alignment)| value.eq_ignore_ascii_case(name).then_some(alignment))
 }
 
 fn grid_flow_token(token: &str) -> Option<u8> {
@@ -2157,6 +2166,18 @@ mod coverage_tests {
 
     fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
         ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
+    }
+
+    #[test]
+    fn grid_content_alignment_accepts_uppercase_and_ignores_invalid_values() {
+        assert_eq!(
+            grid_align_content(&cs(&[("align-content", "CENTER")])),
+            Some(JustifyContent::Center)
+        );
+        assert_eq!(
+            grid_align_content(&cs(&[("align-content", "invalid")])),
+            None
+        );
     }
 
     #[test]
