@@ -742,4 +742,82 @@ mod tests {
         assert_eq!(mapped_absolute_line(3, &tracks, true, true), Some(line(7)));
         assert_eq!(mapped_absolute_line(3, &tracks, true, false), Some(line(7)));
     }
+    #[test]
+    fn expanded_rows_preserve_absolute_area_and_ignore_hidden_siblings() {
+        fn measure(
+            _: taffy::Size<Option<f32>>,
+            _: taffy::Size<taffy::AvailableSpace>,
+            _: TaffyId,
+            _: Option<&mut usize>,
+            _: &Style,
+            _: taffy::Size<Option<f32>>,
+        ) -> taffy::Size<f32> {
+            taffy::Size {
+                width: 10.0,
+                height: 10.0,
+            }
+        }
+        let mut tree = TaffyTree::<usize>::new();
+        let item = Style {
+            grid_row: Line {
+                start: line(1),
+                end: line(2),
+            },
+            size: taffy::Size {
+                width: Dimension::length(10.0),
+                height: Dimension::length(10.0),
+            },
+            ..Style::default()
+        };
+        let normal = tree.new_leaf_with_context(item.clone(), 0);
+        let mut absolute_style = item.clone();
+        absolute_style.position = Position::Absolute;
+        let absolute = tree.new_leaf_with_context(absolute_style, 1);
+        let mut hidden_style = item;
+        hidden_style.display = Display::None;
+        let hidden = tree.new_leaf_with_context(hidden_style.clone(), 2);
+        let leaves = [normal, absolute, hidden];
+        let root_style = Style {
+            display: Display::Grid,
+            grid_template_columns: vec![TrackSizingFunction::from_length(40.0_f32)],
+            grid_template_rows: vec![TrackSizingFunction::Repeat(
+                GridTrackRepetition::AutoFill,
+                vec![taffy::NonRepeatedTrackSizingFunction::from_length(10.0_f32)],
+            )],
+            size: taffy::Size {
+                width: Dimension::length(40.0),
+                height: Dimension::length(20.0),
+            },
+            ..Style::default()
+        };
+        let root = tree.new_with_children(root_style.clone(), &leaves);
+        let available = taffy::Size {
+            width: taffy::AvailableSpace::Definite(40.0),
+            height: taffy::AvailableSpace::Definite(20.0),
+        };
+
+        tree.compute_layout_with_measure(root, available, measure);
+        let DetailedLayoutInfo::Grid(info) = tree.detailed_layout_info(root) else {
+            unreachable!()
+        };
+        let info = info.clone();
+        let before = tree.layout(absolute).unwrap().location.y;
+        let mut expanded = root_style;
+        expanded.grid_template_rows = [0.0_f32, 10.0, 0.0, 10.0, 0.0]
+            .map(TrackSizingFunction::from_length)
+            .to_vec();
+        tree.set_style(root, expanded).unwrap();
+        restore_rows(&mut tree, &leaves, &info);
+        assert_eq!(
+            tree.style(absolute).unwrap().grid_row,
+            Line {
+                start: line(2),
+                end: line(3)
+            }
+        );
+        assert_eq!(tree.style(hidden).unwrap(), &hidden_style);
+        tree.compute_layout_with_measure(root, available, measure);
+        assert_eq!(tree.layout(absolute).unwrap().location.y, before);
+        assert_eq!(tree.layout(absolute).unwrap().size.height, 10.0);
+    }
 }

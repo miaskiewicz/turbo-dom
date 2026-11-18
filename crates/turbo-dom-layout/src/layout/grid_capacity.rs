@@ -215,9 +215,8 @@ fn transpose(styles: &mut [Style]) {
 fn prepare_rows(styles: &mut [Style], columns: usize, rows: usize, dense: bool) {
     let col_window = window(styles.iter(), columns, true);
     let row_window = window(styles.iter(), rows, false);
-    if !overflow(styles.iter(), col_window, true) && !overflow(styles.iter(), row_window, false) {
-        return;
-    }
+    // prepare() has already established overflow. Transposing the placements
+    // and explicit counts exchanges the two axis predicates without changing it.
     let requests: Vec<_> = styles
         .iter_mut()
         .enumerate()
@@ -661,5 +660,92 @@ mod tests {
             Some(Range { start: -2, end: 0 })
         );
         assert_eq!(super::span(GridPlacement::Auto), 1);
+    }
+    #[test]
+    fn negative_mixed_prepass_preserves_excluded_nodes_and_fills_real_holes() {
+        let fixed = |col, row| Style {
+            grid_column: col,
+            grid_row: row,
+            ..Style::default()
+        };
+        let mut absolute = fixed(
+            placement(line(-2001), line(2001)),
+            placement(line(1), line(2)),
+        );
+        absolute.position = Position::Absolute;
+        let mut hidden = absolute.clone();
+        hidden.position = Position::Relative;
+        hidden.display = taffy::Display::None;
+        let original = vec![
+            fixed(placement(line(-9), line(-7)), placement(line(1), line(2))),
+            fixed(
+                placement(grid_span(3), line(-3)),
+                placement(line(2), line(3)),
+            ),
+            fixed(
+                placement(line(2001), line(2002)),
+                placement(line(3), line(4)),
+            ),
+            absolute.clone(),
+            hidden.clone(),
+            fixed(
+                placement(GridPlacement::Auto, GridPlacement::Auto),
+                placement(line(1), line(2)),
+            ),
+            fixed(placement(line(-9), line(-8)), Line::default()),
+            fixed(placement(line(-9), line(-8)), Line::default()),
+        ];
+        for flow in [GridAutoFlow::Row, GridAutoFlow::RowDense] {
+            let mut styles = original.clone();
+            assert!(needed(styles.iter(), 2, 1));
+            prepare(&mut styles, 2, 1, flow);
+            let area = |i: usize| {
+                let col = raw_range(styles[i].grid_column, 2).unwrap();
+                let row = raw_range(styles[i].grid_row, 1).unwrap();
+                (col.start, col.end, row.start, row.end)
+            };
+            assert_eq!(area(0), (-6, -4, 0, 1));
+            assert_eq!(area(1), (-3, 0, 1, 2));
+            assert_eq!(area(2), (993, 994, 2, 3));
+            assert_eq!(styles[3], absolute);
+            assert_eq!(styles[4], hidden);
+            assert_eq!(area(5), (-4, -3, 0, 1));
+            assert_eq!(area(6), (-6, -5, 1, 2));
+            assert_eq!(area(7), (-6, -5, 2, 3));
+        }
+    }
+
+    #[test]
+    fn saturated_definite_row_keeps_automatic_children_in_its_last_track() {
+        let mut styles = [
+            Style {
+                grid_column: placement(line(1), line(1001)),
+                grid_row: placement(line(1), line(2)),
+                ..Style::default()
+            },
+            Style {
+                grid_row: placement(line(1), line(2)),
+                ..Style::default()
+            },
+        ];
+        prepare(&mut styles, 1000, 1, GridAutoFlow::RowDense);
+        assert_eq!(
+            raw_range(styles[0].grid_column, 1000),
+            Some(Range {
+                start: 0,
+                end: 1000
+            })
+        );
+        assert_eq!(
+            raw_range(styles[1].grid_column, 1000),
+            Some(Range {
+                start: 999,
+                end: 1000
+            })
+        );
+        assert_eq!(
+            raw_range(styles[1].grid_row, 1),
+            Some(Range { start: 0, end: 1 })
+        );
     }
 }
