@@ -447,11 +447,13 @@ mod tests {
     use super::*;
     #[test]
     fn glyphless_runs_do_not_claim_hits_or_seen_sources() {
-        let (tree, snapshot, styles) = crate::live::testing::layout(
+        let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
             "<body style='margin:0'><span id=t>abc</span></body>",
             "",
             (400.0, 300.0),
             Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
         );
         let target = crate::live::testing::id(&tree, "#t");
         let mut run = snapshot.text_runs()[0].clone();

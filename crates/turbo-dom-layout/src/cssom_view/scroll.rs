@@ -1283,11 +1283,18 @@ mod tests {
 
     #[test]
     fn text_sources_refuse_scroll_metrics_without_border_provenance() {
-        let case = case("range-client-rects");
-        let source = case.snapshot.text_runs()[0].source_id.unwrap();
-        assert!(case.snapshot.source(source).is_some());
+        let (_, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            "<body style='margin:0'>abc</body>",
+            "",
+            (400.0, 300.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let source = snapshot.text_runs()[0].source_id.unwrap();
+        assert!(snapshot.source(source).is_some());
         assert_eq!(
-            scroll_metrics(&case.snapshot, &case.styles, source).unwrap_err(),
+            scroll_metrics(&snapshot, &styles, source).unwrap_err(),
             "native scroll requires inline border provenance",
         );
     }
