@@ -7,6 +7,10 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **Auto-fit gutter correction (#525)**: collapse the gutters adjoining empty
+  auto-fit tracks, then solve with the original track constraints. The core fix
+  is pinned by 630 independent Chromium controls; native-capacity and row
+  min-content follow-ups remain under validation.
 - **Flex row minimums (#533)**: preserve automatic content minimums for ordinary row
   items while retaining specified-size/max-width caps and scrollable-overflow
   shrinking. Distinguish content flex bases from preferred widths and transfer
@@ -35,15 +39,15 @@ at the time); this file reconstructs them from history.
   height before laying out absolute overlays and dependent percentage-height
   descendants, preserving content growth, min/max sizes and decorated frames.
 - **Translucent border joins (#532)**: paint uniform square borders as one ring
-  in PNG and SVG, and partition mixed-color PNG joins into a single source so
-  adjacent sides do not composite alpha twice. Exact color/area controls remain
-  distinct from curve and fractional-edge antialiasing diagnostics.
+  in PNG and SVG, and partition mixed-color PNG and square SVG joins into a
+  single source so adjacent sides do not composite alpha twice. Exact color/area
+  controls remain distinct from curve and fractional-edge antialiasing diagnostics.
 - **Raster allocation-test isolation**: serialize entire tests that share
   process-wide allocation counters, including preparation and assertions, so
   concurrent tests cannot contaminate another test's measurement.
 
-- **Multiple box shadows**: retain every computed layer in owned screenshot paint
-  metadata without changing the public fragment or shadow structs. PNG and SVG
+- **Multiple box shadows (#530)**: retain every computed layer in owned screenshot
+  paint metadata without changing the public fragment or shadow structs. PNG and SVG
   paint outer and inset layers in CSS order, preserve rounded transparent-box
   knockouts, and include every shadow in opacity bounds. Source recording stays
   conditional; prepared scenes retain independent layer identities.
