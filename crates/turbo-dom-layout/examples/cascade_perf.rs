@@ -64,9 +64,10 @@ fn matched_overrides(iterations: usize) {
         let parent = ComputedStyle::from_pairs(
             (0..count).map(|index| (format!("--theme-{index}"), "x".repeat(size))),
         );
-        let css: String = (0..count)
-            .map(|index| format!("--theme-{index}:blue;"))
-            .collect();
+        let mut css = String::new();
+        for index in 0..count {
+            write!(css, "--theme-{index}:blue;").unwrap();
+        }
         let declarations: Vec<_> = parse_declarations(&css)
             .into_iter()
             .enumerate()
