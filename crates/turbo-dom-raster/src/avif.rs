@@ -522,6 +522,29 @@ mod progress {
         assert_eq!(parent.read(""), case_id(7, 1, 1234));
     }
 
+    /// Breadcrumbs made in the same clock tick (macOS clocks tick in microseconds, and the
+    /// tests run in parallel) get distinct files instead of failing `create_new`.
+    #[cfg(unix)]
+    #[test]
+    fn breadcrumbs_created_at_once_never_collide() {
+        let start = std::sync::Barrier::new(16);
+        let paths: Vec<_> = std::thread::scope(|scope| {
+            let threads: Vec<_> = (0..16)
+                .map(|_| {
+                    scope.spawn(|| {
+                        start.wait();
+                        (0..64)
+                            .map(|_| Breadcrumb::new().map(|c| c.path.clone()))
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            threads.into_iter().flat_map(|t| t.join().unwrap()).collect()
+        });
+        let created: Vec<_> = paths.into_iter().collect::<io::Result<_>>().unwrap();
+        assert_eq!(created.len(), 16 * 64);
+    }
+
     #[cfg(unix)]
     #[test]
     fn truncated_progress_storage_is_rejected_before_mapping() {
