@@ -8,6 +8,8 @@
 
 #[path = "value_affine.rs"]
 mod affine;
+#[path = "value_calc.rs"]
+mod calc;
 pub(crate) use affine::{native_transform, NativeTransform};
 
 #[path = "value_flow.rs"]
@@ -319,46 +321,12 @@ fn raw_to_px(raw: RawLength, font_size: f32, basis: f32) -> f32 {
     }
 }
 
-/// Evaluate an additive `calc(A ± B ± …)` of non-`%` length terms to px. CSS
-/// mandates spaces around `+`/`-`, so the body tokenizes on whitespace. Real
-/// stylesheets lean on this for component sizing — Codex's radio label offset
-/// `padding-left: calc(1rem + 10px)`, breakpoints like `calc(1120px - 1px)`, etc.
-/// (`var()` is already substituted by the cascade.) Multiplicative or `%` terms
-/// aren't handled here and yield `None` (the caller falls back to its default).
+/// Evaluate typed arithmetic, accepting only a length without percentages here.
 fn eval_calc_px(s: &str, font_size: f32) -> Option<f32> {
-    let toks: Vec<&str> = strip_calc(s)?.split_whitespace().collect();
-    sum_calc_terms(&toks, font_size)
-}
-
-/// The inside of a `calc( … )` / `CALC( … )` wrapper, or `None` if `s` isn't one.
-fn strip_calc(s: &str) -> Option<&str> {
-    let t = s.trim();
-    t.strip_prefix("calc(")
-        .or_else(|| t.strip_prefix("CALC("))?
-        .strip_suffix(')')
-}
-
-/// One `calc()` term as px — an absolute/font-relative length (never a `%`).
-fn calc_term_px(t: &str, font_size: f32) -> Option<f32> {
-    match parse_raw(t)? {
-        RawLength::Pct(_) => None,
-        raw => Some(raw_to_px(raw, font_size, 0.0)),
+    match calc::parse(s, font_size)? {
+        LengthPct::Px(px) => Some(px),
+        _ => None,
     }
-}
-
-/// Left-fold `term (± term)*` (only `+`/`-` supported), or `None` on any bad token.
-fn sum_calc_terms(toks: &[&str], font_size: f32) -> Option<f32> {
-    let (first, rest) = toks.split_first()?;
-    let init = calc_term_px(first, font_size)?;
-    let (pairs, _) = rest.as_chunks::<2>();
-    pairs.iter().try_fold(init, |total, pair| {
-        let v = calc_term_px(pair[1], font_size)?;
-        match pair[0] {
-            "+" => Some(total + v),
-            "-" => Some(total - v),
-            _ => None,
-        }
-    })
 }
 
 /// Parse an absolute/`em` length (or `calc()` thereof) to px (no `%`); used for
@@ -374,38 +342,8 @@ pub fn parse_px(s: &str, font_size: f32) -> Option<f32> {
     }
 }
 
-/// Evaluate an additive `calc(A ± B ± …)` that may MIX `%` and absolute terms into a
-/// [`LengthPct`]: `%` terms sum into the percentage, absolute/font-relative terms into
-/// the px offset. `calc(100% - 616px)` → `Calc{100,-616}`; a pure-px calc stays `Px`,
-/// a pure-`%` calc `Pct`. Only `+`/`-` (CSS mandates surrounding spaces).
 fn eval_calc_length(s: &str, font_size: f32) -> Option<LengthPct> {
-    let toks: Vec<&str> = strip_calc(s)?.split_whitespace().collect();
-    let (first, rest) = toks.split_first()?;
-    let init = calc_term_parts(first, font_size)?;
-    let (pairs, _) = rest.as_chunks::<2>();
-    let (pct, px) = pairs.iter().try_fold(init, |(pct, px), pair| {
-        let sign = calc_sign(pair[0])?;
-        let (tp, tx) = calc_term_parts(pair[1], font_size)?;
-        Some((pct + sign * tp, px + sign * tx))
-    })?;
-    Some(length_pct_from_parts(pct, px))
-}
-
-/// One `calc()` term split into its (`%`, px) contributions — a `%` term is
-/// `(value, 0)`, any absolute/font-relative length `(0, px)`.
-fn calc_term_parts(t: &str, font_size: f32) -> Option<(f32, f32)> {
-    match parse_raw(t)? {
-        RawLength::Pct(p) => Some((p, 0.0)),
-        raw => Some((0.0, raw_to_px(raw, font_size, 0.0))),
-    }
-}
-
-fn calc_sign(op: &str) -> Option<f32> {
-    match op {
-        "+" => Some(1.0),
-        "-" => Some(-1.0),
-        _ => None,
-    }
+    calc::parse(s, font_size)
 }
 
 /// Collapse summed (`%`, px) parts to the narrowest [`LengthPct`]: pure-px → `Px`,
@@ -1116,49 +1054,6 @@ pub fn float_of(s: &ComputedStyle) -> Float {
     }
 }
 
-fn edge_px(token: &str, fs: f32, basis: f32) -> f32 {
-    parse_length_pct(token, fs)
-        .and_then(|l| l.resolve(basis))
-        .unwrap_or(0.0)
-}
-
-fn edges_from_slice(v: &[f32]) -> Edges {
-    match v {
-        [a] => Edges::all(*a),
-        [a, b] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *a,
-            left: *b,
-        },
-        [a, b, c] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *c,
-            left: *b,
-        },
-        [a, b, c, d] => Edges {
-            top: *a,
-            right: *b,
-            bottom: *c,
-            left: *d,
-        },
-        _ => Edges::default(),
-    }
-}
-
-fn parse_edge_shorthand(v: &str, fs: f32, basis: f32) -> Edges {
-    let vals: Vec<f32> = v
-        .split_whitespace()
-        .map(|t| edge_px(t, fs, basis))
-        .collect();
-    edges_from_slice(&vals)
-}
-
-fn side_value(s: &ComputedStyle, prop: &str, fs: f32, basis: f32) -> Option<f32> {
-    s.get(prop).map(|v| edge_px(v, fs, basis))
-}
-
 /// The UA sheet's flow-relative padding of the text fields and buttons (Chrome 156's
 /// `padding-block` / `padding-inline`, miaskiewicz/turbo-dom#239): `<block> <inline>`
 /// in the box's own writing mode, under any `padding` the author sets. It names
@@ -1187,38 +1082,140 @@ const PADDING_PROPERTIES: [&str; 8] = [
     "padding-inline-end",
 ];
 
-fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
+/// Split top-level CSS components without separating whitespace inside `calc()`.
+pub(crate) fn component_tokens(value: &str) -> Vec<&str> {
+    let mut depth = 0_u32;
+    let mut start = 0;
+    let mut tokens = Vec::new();
+    for (index, ch) in value.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if ch.is_ascii_whitespace() && depth == 0 {
+            if start < index {
+                tokens.push(&value[start..index]);
+            }
+            start = index + ch.len_utf8();
+        }
+    }
+    if start < value.len() {
+        tokens.push(&value[start..]);
+    }
+    tokens
+}
+
+fn edge_tokens<'a>(s: &'a ComputedStyle, prefix: &str) -> [Option<&'a str>; 4] {
     let base = s.get(prefix).or_else(|| {
         (prefix == "padding" && !has_padding_longhand(s))
             .then(|| s.get(UA_LOGICAL_PADDING))
             .flatten()
     });
-    let mut e = base
-        .map(|v| parse_edge_shorthand(v, fs, basis))
-        .unwrap_or_default();
+    let tokens = component_tokens(base.unwrap_or(""));
+    let mut edges = match tokens.as_slice() {
+        [a] => [Some(*a); 4],
+        [a, b] => [Some(*a), Some(*b), Some(*a), Some(*b)],
+        [a, b, c] => [Some(*a), Some(*b), Some(*c), Some(*b)],
+        [a, b, c, d] => [Some(*a), Some(*b), Some(*c), Some(*d)],
+        _ => [None; 4],
+    };
+    logical_edge_pairs(s, prefix, &mut edges);
     let properties = if prefix == "margin" {
         &MARGIN_PROPERTIES
     } else {
         &PADDING_PROPERTIES
     };
-    apply_side(s, properties[0], fs, basis, &mut e.top);
-    apply_side(s, properties[1], fs, basis, &mut e.right);
-    apply_side(s, properties[2], fs, basis, &mut e.bottom);
-    apply_side(s, properties[3], fs, basis, &mut e.left);
-    // Flow-relative longhands map to physical sides (assuming the LTR /
-    // `horizontal-tb` default): `*-inline-start` → left, `*-inline-end` → right.
-    // Google's search-bar "AI Mode" label uses `margin-inline-start` to clear its
-    // icon; without this it printed over the icon.
-    apply_side(s, properties[4], fs, basis, &mut e.top);
-    apply_side(s, properties[5], fs, basis, &mut e.bottom);
-    apply_side(s, properties[6], fs, basis, &mut e.left);
-    apply_side(s, properties[7], fs, basis, &mut e.right);
-    if prefix == "margin" && quirks_margin_block_end(s) {
-        if let Some(v) = side_value(s, UA_LOGICAL_MARGIN_BLOCK_END, fs, basis) {
-            e.bottom = v;
+    for (prop, side) in properties.iter().zip([0, 1, 2, 3, 0, 2, 3, 1]) {
+        if let Some(value) = s.get(prop) {
+            edges[side] = Some(value);
         }
     }
-    e
+    if prefix == "margin" && quirks_margin_block_end(s) {
+        if let Some(value) = s.get(UA_LOGICAL_MARGIN_BLOCK_END) {
+            edges[2] = Some(value);
+        }
+    }
+    edges
+}
+
+fn logical_edge_pairs<'a>(s: &'a ComputedStyle, prefix: &str, edges: &mut [Option<&'a str>; 4]) {
+    let names = if prefix == "margin" {
+        ["margin-block", "margin-inline"]
+    } else {
+        ["padding-block", "padding-inline"]
+    };
+    for (name, [start, end]) in names.into_iter().zip([[0, 2], [3, 1]]) {
+        if let Some(value) = s.get(name) {
+            let tokens = component_tokens(value);
+            match tokens.as_slice() {
+                [one] => {
+                    edges[start] = Some(*one);
+                    edges[end] = Some(*one);
+                }
+                [one, two] => {
+                    edges[start] = Some(*one);
+                    edges[end] = Some(*two);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// Preserve percentage edges until a layout solver knows their containing block.
+pub(crate) fn edge_lengths(s: &ComputedStyle, prefix: &str, fs: f32) -> [LengthPct; 4] {
+    edge_tokens(s, prefix).map(|token| {
+        token
+            .and_then(|value| parse_length_pct(value, fs))
+            .unwrap_or(LengthPct::Px(0.0))
+    })
+}
+
+/// Typed frame declarations from the same font/unit context as box metrics.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TypedEdges {
+    pub padding: [LengthPct; 4],
+    pub margin: [LengthPct; 4],
+    font: u32,
+}
+
+impl TypedEdges {
+    fn parse(style: &ComputedStyle, font: f32) -> Self {
+        Self {
+            padding: edge_lengths(style, "padding", font),
+            margin: edge_lengths(style, "margin", font),
+            font: font.to_bits(),
+        }
+    }
+
+    pub(crate) fn for_font(self, style: &ComputedStyle, font: f32) -> Self {
+        if self.font == font.to_bits() {
+            self
+        } else {
+            Self::parse(style, font)
+        }
+    }
+}
+
+fn resolve_edges(s: &ComputedStyle, prefix: &str, fs: f32, basis: f32) -> Edges {
+    resolve_typed_edges(edge_lengths(s, prefix, fs), basis)
+}
+
+fn resolve_typed_edges(values: [LengthPct; 4], basis: f32) -> Edges {
+    let [top, right, bottom, left] = values.map(|value| value.resolve(basis).unwrap_or(0.0));
+    Edges {
+        top,
+        right,
+        bottom,
+        left,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedMetrics {
+    pub style: BoxStyle,
+    pub edges: TypedEdges,
 }
 
 /// Whether the box's block-end margin is the UA quirks.css one (no author block-end
@@ -1241,13 +1238,6 @@ fn has_block_end_margin(s: &ComputedStyle) -> bool {
 /// longhands): the UA's logical padding then gives way, as a shorthand would.
 fn has_padding_longhand(s: &ComputedStyle) -> bool {
     PADDING_PROPERTIES.iter().any(|prop| s.get(prop).is_some())
-}
-
-/// Overwrite one edge slot when that longhand is set.
-fn apply_side(s: &ComputedStyle, prop: &str, fs: f32, basis: f32, slot: &mut f32) {
-    if let Some(v) = side_value(s, prop, fs, basis) {
-        *slot = v;
-    }
 }
 
 fn length_prop(s: &ComputedStyle, prop: &str, fs: f32, default: LengthPct) -> LengthPct {
@@ -1440,7 +1430,7 @@ type DeclaredSide = (u16, Option<SideColour>);
 fn parse_border_shorthand(v: Option<&str>, fs: f32) -> DeclaredSide {
     let Some(text) = v else { return (0, None) };
     let mut side = (0, Some(SideColour::Current));
-    for token in text.split_whitespace() {
+    for token in css_value_tokens(text) {
         if let Some(w) = border_width_token(token, fs) {
             side.0 = w;
         } else if let Some(c) = border_colour_token(token) {
@@ -1802,7 +1792,7 @@ fn colour_of(s: &ComputedStyle) -> Rgba {
     s.get("color").and_then(parse_color).unwrap_or(Rgba::BLACK)
 }
 
-fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle {
+fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx, edges: TypedEdges) -> BoxStyle {
     BoxStyle {
         display: display_of(s),
         position: position_of(s),
@@ -1812,8 +1802,8 @@ fn resolve_box_metrics(s: &ComputedStyle, fs: f32, ctx: ResolveCtx) -> BoxStyle 
         inset_bottom: length_prop(s, "bottom", fs, LengthPct::Auto),
         inset_left: length_prop(s, "left", fs, LengthPct::Auto),
         z_index: s.get("z-index").and_then(|v| v.trim().parse::<i32>().ok()),
-        margin: resolve_edges(s, "margin", fs, ctx.cb_width),
-        padding: resolve_edges(s, "padding", fs, ctx.cb_width),
+        margin: resolve_typed_edges(edges.margin, ctx.cb_width),
+        padding: resolve_typed_edges(edges.padding, ctx.cb_width),
         border: resolve_borders(s, fs),
         width: length_prop(s, "width", fs, LengthPct::Auto),
         height: length_prop(s, "height", fs, LengthPct::Auto),
@@ -2380,8 +2370,9 @@ fn fill_position_gaps(positions: &mut [Option<f32>]) {
     }
 }
 
-/// The first (topmost) `box-shadow` layer: `[inset]? <ox> <oy> <blur>? <spread>?
-/// <color>?` in any color position, comma-separated layers (v1 keeps the first).
+/// The first (topmost) `box-shadow` layer for the legacy fragment field:
+/// `[inset]? <ox> <oy> <blur>? <spread>? <color>?` in any color position.
+/// Complete screenshot paint lists use [`box_shadow_layers`].
 /// `None` for `none`/absent/malformed (needs at least the two offset lengths).
 /// The color defaults to the box's `color` (CSS `currentColor`).
 fn box_shadow_of(s: &ComputedStyle, fs: f32) -> Option<super::fragment::BoxShadow> {
@@ -2390,7 +2381,29 @@ fn box_shadow_of(s: &ComputedStyle, fs: f32) -> Option<super::fragment::BoxShado
         return None;
     }
     let first = top_level_comma_split(value).next()?;
-    let parts = parse_shadow_parts(first, fs);
+    resolve_shadow_layer(first, s, fs)
+}
+
+/// Every computed `box-shadow` layer, in CSS order (the first is topmost).
+/// This additive paint seam leaves [`BoxStyle::box_shadow`] and the public
+/// fragment's single-shadow representation unchanged.
+#[must_use]
+pub fn box_shadow_layers(s: &ComputedStyle, ctx: ResolveCtx) -> Vec<super::fragment::BoxShadow> {
+    let Some(value) = s.get("box-shadow").filter(|v| !is_none_keyword(v.trim())) else {
+        return Vec::new();
+    };
+    let fs = resolve_font_size(s, ctx.parent_font_size);
+    top_level_comma_split(value)
+        .filter_map(|layer| resolve_shadow_layer(layer, s, fs))
+        .collect()
+}
+
+fn resolve_shadow_layer(
+    layer: &str,
+    s: &ComputedStyle,
+    fs: f32,
+) -> Option<super::fragment::BoxShadow> {
+    let parts = parse_shadow_parts(layer, fs);
     if parts.lengths.len() < 2 {
         return None;
     }
@@ -2532,9 +2545,17 @@ fn box_sizing_of(s: &ComputedStyle) -> BoxSizing {
 /// Resolve a [`ComputedStyle`] into a typed [`BoxStyle`] for layout.
 #[must_use]
 pub fn resolve_box_style(s: &ComputedStyle, ctx: ResolveCtx) -> BoxStyle {
+    resolve_box_style_with_edges(s, ctx).style
+}
+
+pub(crate) fn resolve_box_style_with_edges(s: &ComputedStyle, ctx: ResolveCtx) -> ResolvedMetrics {
     crate::hot!("layout.resolve_box_style");
     let fs = resolve_font_size(s, ctx.parent_font_size);
-    resolve_box_metrics(s, fs, ctx)
+    let edges = TypedEdges::parse(s, fs);
+    ResolvedMetrics {
+        style: resolve_box_metrics(s, fs, ctx, edges),
+        edges,
+    }
 }
 
 /// The used values a text run reads; frame and paint-box properties are not needed.
@@ -2700,7 +2721,10 @@ mod calc_aspect_tests {
 
     #[test]
     fn calc_with_unsupported_operator_or_bad_term_is_none() {
-        assert_eq!(parse_length_pct("calc(100% * 2)", 16.0), None); // `*` unsupported
+        assert_eq!(
+            parse_length_pct("calc(100% * 2)", 16.0),
+            Some(LengthPct::Pct(200.0))
+        );
         assert_eq!(parse_length_pct("calc(100% - foo)", 16.0), None); // bad term
         assert_eq!(parse_length_pct("calc()", 16.0), None); // empty
     }
@@ -2724,6 +2748,58 @@ mod box_shadow_tests {
     fn shadow(value: &str) -> Option<super::super::fragment::BoxShadow> {
         let s = ComputedStyle::from_pairs([("box-shadow", value), ("color", "#123456")]);
         box_shadow_of(&s, 16.0)
+    }
+
+    #[test]
+    fn additive_layer_reader_preserves_legacy_first_shadow_and_css_order() {
+        let style = ComputedStyle::from_pairs([
+            ("color", "#123456"),
+            ("font-size", "20px"),
+            (
+                "box-shadow",
+                "1em 2em rgba(255, 0, 0, .5), inset -1px 0 currentColor, 0 0 3px 4px blue",
+            ),
+        ]);
+        let layers = box_shadow_layers(
+            &style,
+            ResolveCtx {
+                parent_font_size: 16.0,
+                cb_width: 200.0,
+            },
+        );
+        assert_eq!(layers.len(), 3);
+        assert_eq!(Some(layers[0]), box_shadow_of(&style, 20.0));
+        assert_eq!((layers[0].offset_x, layers[0].offset_y), (20, 40));
+        assert!(layers[1].inset);
+        assert_eq!(
+            layers[1].color,
+            Rgba {
+                r: 0x12,
+                g: 0x34,
+                b: 0x56,
+                a: 255
+            }
+        );
+        assert_eq!(
+            layers[2].color,
+            Rgba {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255
+            }
+        );
+        for value in ["none", "", "red"] {
+            let style = ComputedStyle::from_pairs([("box-shadow", value)]);
+            assert!(box_shadow_layers(
+                &style,
+                ResolveCtx {
+                    parent_font_size: 16.0,
+                    cb_width: 100.0
+                }
+            )
+            .is_empty());
+        }
     }
 
     #[test]

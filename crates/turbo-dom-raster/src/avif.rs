@@ -8,10 +8,10 @@
 //! `avif-native` only — libdav1d, a native C library found through pkg-config; `ravif`
 //! encodes only; `zenavif` / `rav1d-safe` are AGPL; `rav1d` (1.1, BSD-2-Clause, the ISRG
 //! Prossimo Rust port of dav1d) is pure Rust with its assembly off
-//! (`default-features = false`), at the cost of its C-ABI (`unsafe extern "C"`) entry
-//! points and a large dependency tree. This module uses `rav1d` (no assembly, two frame
-//! contexts — see [`av1::decode`] for why not one) and converts the decoded YUV planes to
-//! RGBA itself; without the feature an AVIF paints as the placeholder, and a corrupt AVIF
+//! (`default-features = false`), at the cost of its C-ABI entry points and a large
+//! dependency tree. This module uses turbo-dom-rav1d, turbo-dom's fork of rav1d 1.1.0 whose
+//! C ABI unwinds (`crates/turbo-dom-rav1d`; see [`av1::decode`] for why), on the calling
+//! thread only, and converts the decoded YUV planes to RGBA itself; without the feature an AVIF paints as the placeholder, and a corrupt AVIF
 //! (no pixels) paints nothing, as in Chrome (turbo-dom#107).
 
 use turbo_dom_layout::image::Rgba8Image;
@@ -59,7 +59,7 @@ pub(crate) struct Frame {
 
 #[cfg(feature = "avif")]
 mod av1 {
-    //! The `rav1d` C-ABI calls: open a two-frame-context decoder, feed one temporal unit,
+    //! The `rav1d` C-ABI calls: open a single-threaded decoder, feed one temporal unit,
     //! take the picture, copy its planes out, release everything.
     use std::ptr::NonNull;
 
@@ -79,23 +79,37 @@ mod av1 {
     const AGAIN: i32 = -libc::EAGAIN;
 
     /// Decode one AV1 still frame (an AVIF item's OBU stream).
+    ///
+    /// rav1d 1.1.0 panics on some malformed streams (memorysafety/rav1d#1476, #1497).
+    /// Behind its `extern "C"` API such a panic cannot unwind and aborts the process
+    /// (miaskiewicz/turbo-dom#94, #535); turbo-dom-rav1d declares that API
+    /// `extern "C-unwind"`, so the panic is caught here and the image is broken (`None`).
+    /// A context rav1d panicked inside is leaked, never reused or closed: its state is
+    /// unknown, and a second panic while unwinding would abort. This needs the default
+    /// `panic = "unwind"`; under `panic = "abort"` a decoder panic still aborts.
     pub(crate) fn decode(stream: &[u8]) -> Option<Frame> {
         if stream.is_empty() {
             return None;
         }
+        std::panic::catch_unwind(|| decode_stream(stream))
+            .ok()
+            .flatten()
+    }
+
+    fn decode_stream(stream: &[u8]) -> Option<Frame> {
         let mut settings = std::mem::MaybeUninit::<Dav1dSettings>::uninit();
         // SAFETY: `settings` is valid to write the default settings into.
         unsafe { dav1d_default_settings(NonNull::new(settings.as_mut_ptr())?) };
         // SAFETY: `dav1d_default_settings` initialized every field.
         let mut settings = unsafe { settings.assume_init() };
-        // Two frame contexts (frame delay 2, two worker threads): with exactly one, rav1d
-        // 1.1.0 tears a frame down twice on a decode error and panics inside its
-        // `extern "C"` API, which aborts the process (miaskiewicz/turbo-dom#94, upstream
-        // memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). With two, a
-        // decode error comes back as an error result. AV1 decoding is bit-exact, so the
-        // pixels do not depend on the thread count.
-        settings.n_threads = 2;
-        settings.max_frame_delay = 2;
+        // One thread, one frame context: everything runs on the calling thread, so every
+        // rav1d panic reaches `decode`'s `catch_unwind` (a worker thread's panic would
+        // leave the caller waiting for its frame), and no worker outlives `dav1d_close`.
+        // turbo-dom-rav1d carries the fix for the single-context decode-error panic
+        // (memorysafety/rav1d#1497) that made 1.1.0 need two. AV1 decoding is bit-exact,
+        // so the pixels do not depend on the thread count.
+        settings.n_threads = 1;
+        settings.max_frame_delay = 1;
         // Bound the frame like every other format's decode (the `image` crate's 512 MiB
         // `max_alloc`, as RGBA): unbounded, a 1.8 KB 12000 x 12000 still peaks at ~2.8 GB.
         // An over-budget frame is a decode error: laid out at its size, painting nothing.
@@ -320,7 +334,294 @@ pub(crate) mod yuv {
 }
 
 #[cfg(all(test, feature = "avif"))]
+mod progress {
+    //! Test-only last-mutation storage; recording must not change decoder timing with I/O.
+    use std::io;
+    use std::process::Command;
+
+    #[cfg(unix)]
+    const ENV: &str = "TURBO_DOM_AVIF_FUZZ_PROGRESS";
+
+    pub(super) fn case_id(fixture: usize, plane: usize, variant: usize) -> u64 {
+        (u64::from(u16::try_from(fixture).unwrap()) << 48)
+            | (u64::from(u16::try_from(plane).unwrap()) << 32)
+            | u64::from(u32::try_from(variant).unwrap().checked_add(1).unwrap())
+    }
+
+    pub(super) struct Breadcrumb {
+        #[cfg(unix)]
+        pointer: std::ptr::NonNull<std::sync::atomic::AtomicU64>,
+        #[cfg(unix)]
+        path: std::path::PathBuf,
+        #[cfg(unix)]
+        owner: bool,
+    }
+
+    #[cfg(unix)]
+    impl Breadcrumb {
+        pub(super) fn new() -> io::Result<Self> {
+            use std::os::unix::fs::OpenOptionsExt;
+            // The clock separates runs; the counter separates breadcrumbs made in one
+            // clock tick by parallel tests (macOS clocks tick in microseconds).
+            static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let nonce = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let sequence = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "turbo-dom-avif-{}-{nonce}-{sequence}.progress",
+                std::process::id()
+            ));
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&path)?;
+            file.set_len(std::mem::size_of::<std::sync::atomic::AtomicU64>() as u64)?;
+            Self::map(&file, path, true)
+        }
+
+        pub(super) fn child() -> io::Result<Self> {
+            Self::child_path(std::env::var_os(ENV).map(std::path::PathBuf::from))
+        }
+
+        fn child_path(path: Option<std::path::PathBuf>) -> io::Result<Self> {
+            match path {
+                Some(path) => Self::open(path),
+                None => Self::new(),
+            }
+        }
+
+        fn open(path: std::path::PathBuf) -> io::Result<Self> {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&path)?;
+            Self::map(&file, path, false)
+        }
+
+        fn map(file: &std::fs::File, path: std::path::PathBuf, owner: bool) -> io::Result<Self> {
+            use std::os::fd::AsRawFd;
+            if file.metadata()?.len() < std::mem::size_of::<std::sync::atomic::AtomicU64>() as u64 {
+                return Err(io::Error::other("short AVIF progress file"));
+            }
+            // SAFETY: the file owns one zero-initialized atomic-sized slot. mmap
+            // returns page-aligned storage, retained until this mapping is dropped.
+            let memory = unsafe {
+                libc::mmap(
+                    std::ptr::null_mut(),
+                    std::mem::size_of::<std::sync::atomic::AtomicU64>(),
+                    libc::PROT_READ | libc::PROT_WRITE,
+                    libc::MAP_SHARED,
+                    file.as_raw_fd(),
+                    0,
+                )
+            };
+            if memory == libc::MAP_FAILED {
+                return Err(io::Error::last_os_error());
+            }
+            let pointer = mapping_pointer(memory, unmap)?;
+            Ok(Self {
+                pointer,
+                path,
+                owner,
+            })
+        }
+
+        pub(super) fn configure(&self, command: &mut Command) {
+            command.env(ENV, &self.path);
+        }
+
+        pub(super) fn record(&self, fixture: usize, plane: usize, variant: usize) {
+            // SAFETY: this mapping contains one aligned AtomicU64. The child is its
+            // sole writer; the parent reads only after that process has exited.
+            unsafe { self.pointer.as_ref() }.store(
+                case_id(fixture, plane, variant),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        }
+
+        pub(super) fn read(&self, _stderr: &str) -> u64 {
+            // SAFETY: the mapping is still owned by self and the child has exited.
+            unsafe { self.pointer.as_ref() }.load(std::sync::atomic::Ordering::Relaxed)
+        }
+    }
+
+    #[cfg(unix)]
+    fn mapping_pointer(
+        memory: *mut libc::c_void,
+        release: impl FnOnce(*mut libc::c_void),
+    ) -> io::Result<std::ptr::NonNull<std::sync::atomic::AtomicU64>> {
+        let Some(pointer) = std::ptr::NonNull::new(memory.cast()) else {
+            // A successful address-zero mapping must be released before rejection;
+            // never form an AtomicU64 reference at that address.
+            release(memory);
+            return Err(io::Error::other("null AVIF progress mapping"));
+        };
+        Ok(pointer)
+    }
+
+    #[cfg(unix)]
+    fn unmap(memory: *mut libc::c_void) {
+        // SAFETY: callers supply exactly the live atomic-sized mapping from mmap.
+        unsafe { libc::munmap(memory, std::mem::size_of::<std::sync::atomic::AtomicU64>()) };
+    }
+
+    #[cfg(unix)]
+    impl Drop for Breadcrumb {
+        fn drop(&mut self) {
+            unmap(self.pointer.as_ptr().cast());
+            if self.owner {
+                let _ = std::fs::remove_file(&self.path);
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    impl Breadcrumb {
+        pub(super) fn new() -> io::Result<Self> {
+            Ok(Self {})
+        }
+        pub(super) fn child() -> io::Result<Self> {
+            Self::new()
+        }
+        pub(super) fn configure(&self, _command: &mut Command) {}
+        pub(super) fn record(&self, fixture: usize, plane: usize, variant: usize) {
+            eprintln!("FUZZ-ID {}", case_id(fixture, plane, variant));
+        }
+        pub(super) fn read(&self, stderr: &str) -> u64 {
+            stderr
+                .lines()
+                .rev()
+                .find_map(|line| line.strip_prefix("FUZZ-ID ")?.parse().ok())
+                .unwrap_or(0)
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn independently_mapped_child_progress_survives_until_parent_reads_it() {
+        let parent = Breadcrumb::new().unwrap();
+        let path = parent.path.clone();
+        assert_eq!(parent.read(""), 0);
+        let child = Breadcrumb::open(path.clone()).unwrap();
+        child.record(17, 2, 65537);
+        drop(child);
+        assert_eq!(parent.read(""), case_id(17, 2, 65537));
+        drop(parent);
+        assert!(!path.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_nonzero_child_exit_retains_its_last_atomic_case_without_stderr() {
+        const PROBE: &str = "TURBO_DOM_AVIF_PROGRESS_PROBE";
+        if std::env::var_os(PROBE).is_some() {
+            Breadcrumb::child().unwrap().record(7, 1, 1234);
+            std::process::exit(23);
+        }
+        let parent = Breadcrumb::new().unwrap();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        parent.configure(&mut command);
+        let output = command
+            .env(PROBE, "1")
+            .args([
+                "--exact",
+                "avif::progress::a_nonzero_child_exit_retains_its_last_atomic_case_without_stderr",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(23));
+        assert!(output.stderr.is_empty());
+        assert_eq!(parent.read(""), case_id(7, 1, 1234));
+    }
+
+    /// Breadcrumbs made in the same clock tick (macOS clocks tick in microseconds, and the
+    /// tests run in parallel) get distinct files instead of failing `create_new`.
+    #[cfg(unix)]
+    #[test]
+    fn breadcrumbs_created_at_once_never_collide() {
+        let start = std::sync::Barrier::new(16);
+        let paths: Vec<_> = std::thread::scope(|scope| {
+            let threads: Vec<_> = (0..16)
+                .map(|_| {
+                    scope.spawn(|| {
+                        start.wait();
+                        (0..64)
+                            .map(|_| Breadcrumb::new().map(|c| c.path.clone()))
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            threads
+                .into_iter()
+                .flat_map(|t| t.join().unwrap())
+                .collect()
+        });
+        let created: Vec<_> = paths.into_iter().collect::<io::Result<_>>().unwrap();
+        assert_eq!(created.len(), 16 * 64);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn truncated_progress_storage_is_rejected_before_mapping() {
+        let parent = Breadcrumb::new().unwrap();
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&parent.path)
+            .unwrap()
+            .set_len(0)
+            .unwrap();
+        assert!(Breadcrumb::open(parent.path.clone()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn absent_parent_progress_path_creates_owned_storage_without_changing_environment() {
+        let child = Breadcrumb::child_path(None).unwrap();
+        let path = child.path.clone();
+        assert!(child.owner);
+        child.record(3, 4, 5);
+        assert_eq!(child.read(""), case_id(3, 4, 5));
+        assert!(path.exists());
+        drop(child);
+        assert!(!path.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn shared_writable_mapping_rejects_a_read_only_file_descriptor() {
+        let parent = Breadcrumb::new().unwrap();
+        let read_only = std::fs::File::open(&parent.path).unwrap();
+        let error = Breadcrumb::map(&read_only, parent.path.clone(), false)
+            .err()
+            .expect("MAP_SHARED with PROT_WRITE requires a writable descriptor");
+        assert_eq!(error.raw_os_error(), Some(libc::EACCES));
+        assert_eq!(parent.read(""), 0);
+        assert!(parent.path.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn address_zero_mapping_is_released_once_before_rejection() {
+        let releases = std::cell::Cell::new(0);
+        let error = mapping_pointer(std::ptr::null_mut(), |memory| {
+            assert!(memory.is_null());
+            releases.set(releases.get() + 1);
+        })
+        .unwrap_err();
+        assert_eq!(releases.get(), 1);
+        assert_eq!(error.to_string(), "null AVIF progress mapping");
+    }
+}
+
+#[cfg(all(test, feature = "avif"))]
 mod tests {
+    use super::progress::Breadcrumb;
     use super::yuv::{to_rgba, weights};
     use super::{av1, Frame};
 
@@ -374,9 +675,15 @@ mod tests {
         variants
     }
 
-    fn fuzz_container(label: &str, avif: &[u8]) -> (usize, usize) {
+    fn fuzz_container(
+        label: &str,
+        avif: &[u8],
+        progress: &Breadcrumb,
+        fixture: usize,
+    ) -> (usize, usize) {
         let (mut decoded, mut rejected) = (0, 0);
-        for v in byte_flip_variants(avif, 3) {
+        for (index, v) in byte_flip_variants(avif, 3).into_iter().enumerate() {
+            progress.record(fixture, 0, index);
             match super::decode(&v) {
                 Some(img) => {
                     assert_eq!(
@@ -392,14 +699,21 @@ mod tests {
         (decoded, rejected)
     }
 
-    fn fuzz_stream(label: &str, stream: Vec<u8>) -> (usize, usize) {
+    fn fuzz_stream(
+        label: &str,
+        stream: Vec<u8>,
+        progress: &Breadcrumb,
+        fixture: usize,
+        plane: usize,
+    ) -> (usize, usize) {
         let (mut decoded, mut rejected) = (0, 0);
         let n = stream.len();
         let mut variants = byte_flip_variants(&stream, 1);
         let mut ones = stream;
         ones[n / 2..].fill(0xff);
         variants.push(ones);
-        for v in variants {
+        for (index, v) in variants.into_iter().enumerate() {
+            progress.record(fixture, plane + 1, index);
             match av1::decode(&v) {
                 Some(frame) => {
                     assert_eq!(frame.planes[0].len(), frame.width * frame.height, "{label}");
@@ -415,8 +729,9 @@ mod tests {
     #[ignore = "run in a child process by corrupt_avifs_are_broken_images_never_a_process_abort"]
     fn corrupt_avif_fuzz_child() {
         let (mut decoded, mut rejected) = (0, 0);
-        for (label, avif) in fixtures() {
-            let (d, r) = fuzz_container(&label, &avif);
+        let progress = Breadcrumb::child().unwrap();
+        for (fixture, (label, avif)) in fixtures().into_iter().enumerate() {
+            let (d, r) = fuzz_container(&label, &avif, &progress, fixture);
             decoded += d;
             rejected += r;
             // Most container-level variants fail in the demuxer before rav1d sees them, so
@@ -426,8 +741,11 @@ mod tests {
             let Some(payload) = turbo_dom_layout::image::avif_payload(&avif) else {
                 continue;
             };
-            for stream in std::iter::once(payload.color).chain(payload.alpha) {
-                let (d, r) = fuzz_stream(&label, stream);
+            for (index, stream) in std::iter::once(payload.color)
+                .chain(payload.alpha)
+                .enumerate()
+            {
+                let (d, r) = fuzz_stream(&label, stream, &progress, fixture, index);
                 decoded += d;
                 rejected += r;
             }
@@ -440,7 +758,11 @@ mod tests {
     /// `extern "C"` API on a decode error with one frame context, aborting).
     #[test]
     fn corrupt_avifs_are_broken_images_never_a_process_abort() {
-        let out = std::process::Command::new(std::env::current_exe().unwrap())
+        let progress = Breadcrumb::new().unwrap();
+        let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+        progress.configure(&mut command);
+        let out = command
+            .env("RUST_BACKTRACE", "1")
             .args([
                 "--exact",
                 "avif::tests::corrupt_avif_fuzz_child",
@@ -451,16 +773,75 @@ mod tests {
             .output()
             .unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
-        assert!(
-            out.status.success() && stdout.contains("FUZZ-DONE"),
-            "child {:?}\n{stdout}\n{}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-                .lines()
-                .take(12)
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
+        if !out.status.success() || !stdout.contains("FUZZ-DONE") {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../target/avif-fuzz.stderr.log");
+            let saved = std::fs::create_dir_all(path.parent().unwrap())
+                .and_then(|()| std::fs::write(&path, &out.stderr));
+            panic!(
+                "child {:?}\n{stdout}\nfull stderr: {} ({saved:?})\n{}\n{}",
+                out.status,
+                path.display(),
+                describe_case(progress.read(&stderr)),
+                fuzz_failure_details(&stderr)
+            );
+        }
+    }
+
+    fn describe_case(id: u64) -> String {
+        if id == 0 {
+            return "last mutation unavailable".into();
+        }
+        let fixture = usize::try_from(id >> 48).unwrap();
+        let plane = (id >> 32) & 0xffff;
+        let variant = (id & 0xffff_ffff) - 1;
+        let inputs = fixtures();
+        let label = &inputs[fixture].0;
+        let kind = if plane == 0 {
+            "container".to_string()
+        } else {
+            format!("stream plane={}", plane - 1)
+        };
+        format!("FUZZ-CASE {kind} {label} variant={variant}")
+    }
+
+    #[test]
+    fn packed_progress_identifies_container_color_and_alpha_mutations() {
+        use super::progress::case_id;
+        assert_eq!(describe_case(0), "last mutation unavailable");
+        for (plane, expected) in [
+            (0, "container"),
+            (1, "stream plane=0"),
+            (2, "stream plane=1"),
+        ] {
+            let description = describe_case(case_id(0, plane, 127));
+            assert!(description.contains(expected));
+            assert!(description.contains("q-alpha.avif variant=127"));
+        }
+    }
+
+    fn fuzz_failure_details(stderr: &str) -> String {
+        let panic = stderr
+            .lines()
+            .find(|line| line.contains("panicked at") || line.contains("memory allocation"))
+            .unwrap_or("no Rust panic/allocation message");
+        let tail: Vec<_> = stderr.lines().rev().take(120).collect();
+        format!(
+            "first failure: {panic}\nstderr tail:\n{}",
+            tail.into_iter().rev().collect::<Vec<_>>().join("\n")
+        )
+    }
+
+    #[test]
+    fn fuzz_failure_diagnostics_preserve_the_case_and_late_panic() {
+        let noise = "irrelevant decoder output\n".repeat(500);
+        let stderr = format!("{noise}FUZZ-CASE stream fixture plane=0 variant=37 bytes=50\nthread worker panicked at decoder.rs:4997\nstack end");
+        let details = fuzz_failure_details(&stderr);
+        assert!(details.contains("variant=37"));
+        assert!(details.contains("panicked at decoder.rs:4997"));
+        assert!(details.ends_with("stack end"));
+        assert!(details.len() < stderr.len());
     }
 
     /// The colour (and alpha) streams of an AVIF fixture of this crate or turbo-dom-layout.
@@ -579,6 +960,18 @@ mod tests {
         }
         // Only the temporal delimiter and sequence header (no frame): no picture comes.
         assert!(av1::decode(&good[..n / 8]).is_none(), "header only");
+    }
+
+    /// A stream that makes rav1d panic is a broken image, not a process abort
+    /// (miaskiewicz/turbo-dom#535). This ITU-T T.35 metadata OBU underflows rav1d 1.1.0's
+    /// payload size (memorysafety/rav1d#1476): the panic used to cross its `extern "C"`
+    /// API and abort the process.
+    #[test]
+    fn a_stream_that_panics_rav1d_is_a_broken_image_not_an_abort() {
+        let itut_t35_underflow = [47, 47, 5, 4, 128, 0, 0, 0];
+        assert!(av1::decode(&itut_t35_underflow).is_none());
+        // The decoder still works afterwards.
+        assert!(av1::decode(&stream()).is_some());
     }
 
     /// A one-row frame of `bits` depth with the given planes.

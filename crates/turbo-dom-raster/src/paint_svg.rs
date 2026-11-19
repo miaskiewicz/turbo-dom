@@ -4,6 +4,8 @@
 //! boxes/borders as `<rect>`, and images as base64 PNG `data:` URI `<image>`s
 //! (any decoded source format; unknown formats fall back to a placeholder rect).
 
+mod border_opacity;
+
 use std::fmt::Write;
 
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
@@ -16,6 +18,7 @@ use turbo_dom_layout::{
 use crate::image_paint::{self, DecodedAssets};
 use crate::paint_png::fragment_finite_positive;
 use crate::rrect::{self, Seg};
+use crate::shadow_layers::PaintInput;
 use crate::tile_cell::TileCell;
 
 const IMAGE_PLACEHOLDER: Rgba = Rgba {
@@ -53,7 +56,7 @@ pub(crate) fn paint_at_size_with_masks(
     _css_size: (u32, u32),
     pixel_size: (u32, u32),
     bg: Rgba,
-    images: &DecodedAssets,
+    images: &impl PaintInput,
     scale: f64,
     masks: &[crate::ScreenshotMask],
 ) -> String {
@@ -156,7 +159,7 @@ fn preblend_class(top: u32) -> [f32; 256] {
     table
 }
 
-fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_fragment(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     // CSS `opacity` (miaskiewicz/turbo-dom#206) is a group opacity over the box and
     // its subtree; `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
@@ -171,7 +174,7 @@ fn paint_fragment(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
-fn paint_opaque(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     // A CSS `transform` wraps this box + subtree in a `<g transform>` (applied about
     // the box's absolute transform-origin), so the SVG viewer transforms them as a unit.
     let transformed = matches!(
@@ -205,7 +208,7 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
 /// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52) inside a
 /// `<g clip-path>` of that region (in the box's own, possibly transformed, user space;
 /// the `clipPath` id is the document offset, unique); an empty region paints nothing.
-fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &DecodedAssets) {
+fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl PaintInput) {
     if clip.width <= 0.0 || clip.height <= 0.0 {
         return;
     }
@@ -219,26 +222,25 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &Decode
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
-fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     match &f.content {
         FragmentContent::Box {
             background,
             border,
             border_radius,
-            shadow,
             gradient,
             ..
         } => {
-            if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
-                paint_box_shadow(svg, f, border_radius, &sh);
-            }
+            paint_outer_layers(svg, f, border_radius, images);
             if let Some(bg) = background {
                 rect_r(svg, (f.x, f.y, f.width, f.height), *bg, border_radius);
             }
             if let Some(g) = gradient {
                 paint_gradient(svg, f, border_radius, g);
             }
-            paint_inset_shadow(svg, f, border, border_radius, shadow.as_ref());
+            for sh in images.shadows(f).iter().rev() {
+                paint_inset_shadow(svg, f, border, border_radius, Some(sh));
+            }
             if border_radius.is_rounded() {
                 paint_round_border(svg, f, border, border_radius);
             } else {
@@ -262,8 +264,8 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
                 (*font_size, *color),
             );
         }
-        FragmentContent::Image(placement) => paint_image(svg, f, placement, images),
-        FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images),
+        FragmentContent::Image(placement) => paint_image(svg, f, placement, images.images()),
+        FragmentContent::Tiles(pattern) => paint_tiles(svg, f, pattern, images.images()),
         FragmentContent::ColumnRule { style, color } => paint_column_rule(svg, f, *style, *color),
         FragmentContent::Marker(_) => {}
     }
@@ -580,7 +582,7 @@ fn paint_tile_texture(
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
 /// region (miaskiewicz/turbo-dom#253) when it has one and they may paint past it (an empty
 /// region paints none of them).
-fn paint_children(svg: &mut String, f: &Fragment, images: &DecodedAssets) {
+fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     let clip = f.overflow_clip.filter(|c| {
         !f.children.is_empty()
             && (c.radii.is_rounded()
@@ -744,6 +746,31 @@ fn fill_attrs(c: Rgba) -> String {
 
 fn rect(svg: &mut String, x: f32, y: f32, w: f32, h: f32, c: Rgba) {
     rect_r(svg, (x, y, w, h), c, &BorderRadii::ZERO);
+}
+
+fn paint_outer_layers(
+    svg: &mut String,
+    f: &Fragment,
+    radii: &BorderRadii,
+    input: &impl PaintInput,
+) {
+    let shadows = input.shadows(f);
+    let multiple = input.multiple(f);
+    if multiple {
+        let Some((x, y, w, h)) = crate::shadow_layers::outer_bounds(f, shadows) else {
+            return;
+        };
+        let id = svg.len();
+        let _ = write!(svg, "<mask id=\"outer{id}\" maskUnits=\"userSpaceOnUse\" x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\"><rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"white\"/>");
+        shape(svg, (f.x, f.y, f.width, f.height), radii, "fill=\"black\"");
+        let _ = write!(svg, "</mask><g mask=\"url(#outer{id})\">");
+    }
+    for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a > 0) {
+        paint_box_shadow(svg, f, radii, sh);
+    }
+    if multiple {
+        svg.push_str("</g>");
+    }
 }
 
 /// Paint an outer `box-shadow` as a blurred rounded rect behind the box, using an
@@ -928,6 +955,10 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     if !fragment_finite_positive(f) {
         return;
     }
+    if border_opacity::needed(b) {
+        border_opacity::paint(svg, f, b);
+        return;
+    }
     let side = |s: &BorderSide| {
         s.color
             .filter(|_| s.width > 0)
@@ -935,21 +966,14 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
     };
     let mitred = crate::rrect::mixed_colours(b);
     if !mitred {
-        if let Some((w, c)) = side(&b.top) {
-            rect(svg, f.x, f.y, f.width, w, c);
-        }
-        if let Some((w, c)) = side(&b.bottom) {
-            rect(svg, f.x, f.y + f.height - w, f.width, w, c);
-        }
+        paint_round_border(svg, f, b, &BorderRadii::ZERO);
+        return;
     }
     if let Some((w, c)) = side(&b.left) {
         rect(svg, f.x, f.y, w, f.height, c);
     }
     if let Some((w, c)) = side(&b.right) {
         rect(svg, f.x + f.width - w, f.y, w, f.height, c);
-    }
-    if !mitred {
-        return;
     }
     // As the raster painter: sides that differ in colour paint the top and bottom bands
     // over the left and right ones, mitred on the corner diagonals.
@@ -968,6 +992,10 @@ fn paint_border(svg: &mut String, f: &Fragment, b: &BorderEdges) {
 /// `<clipPath>` of its region ([`rrect::side_region`]). Clip ids are document offsets.
 fn paint_round_border(svg: &mut String, f: &Fragment, b: &BorderEdges, radii: &BorderRadii) {
     if !fragment_finite_positive(f) {
+        return;
+    }
+    if border_opacity::needed(b) {
+        border_opacity::paint_round(svg, f, b, radii);
         return;
     }
     let rect = (f.x, f.y, f.width, f.height);
@@ -1456,14 +1484,13 @@ mod tests {
             &HashMap::new(),
         );
         assert_eq!(colourless.matches("<clipPath").count(), 3, "{colourless}");
-        // At a radius of 0.5 or less the four square edge bands paint instead.
-        assert_eq!(
-            body(
-                &bordered([side(2, blue), none, none, none], 0.5),
-                &HashMap::new()
-            ),
-            "<rect x=\"1.00\" y=\"2.00\" width=\"20.00\" height=\"2.00\" fill=\"#0000ff\"/>\n"
+        // Small radii select the square ring, which still paints the top band only.
+        let square = body(
+            &bordered([side(2, blue), none, none, none], 0.5),
+            &HashMap::new(),
         );
+        assert_eq!(square.matches("<path ").count(), 1);
+        assert!(square.contains("fill-rule=\"evenodd\""));
     }
 
     fn decorated(
@@ -1786,7 +1813,7 @@ mod tests {
     }
 
     #[test]
-    fn square_borders_are_four_edge_bands_of_their_own_widths() {
+    fn square_borders_form_one_ring_with_each_sides_width() {
         let side = |width: u16, color: Option<Rgba>| BorderSide { width, color };
         let blue = Some(Rgba::new(0, 0, 255, 255));
         let mut f = plain(10.0, 20.0, 40.0, 30.0, None);
@@ -1798,19 +1825,12 @@ mod tests {
                 left: side(4, blue),
             };
         }
-        let r = |x: f32, y: f32, w: f32, h: f32| {
-            format!("<rect x=\"{x:.2}\" y=\"{y:.2}\" width=\"{w:.2}\" height=\"{h:.2}\" fill=\"#0000ff\"/>\n")
-        };
-        assert_eq!(
-            body(&f, &HashMap::new()),
-            [
-                r(10.0, 20.0, 40.0, 1.0),
-                r(10.0, 47.0, 40.0, 3.0),
-                r(10.0, 20.0, 4.0, 30.0),
-                r(48.0, 20.0, 2.0, 30.0)
-            ]
-            .concat()
-        );
+        let ring = body(&f, &HashMap::new());
+        assert_eq!(ring.matches("<path ").count(), 1, "{ring}");
+        assert!(ring.contains("fill-rule=\"evenodd\""), "{ring}");
+        assert!(ring.contains("M10.00 20.00 L50.00 20.00"), "{ring}");
+        assert!(ring.contains("M14.00 21.00 L48.00 21.00"), "{ring}");
+        assert!(ring.contains("L48.00 47.00"), "{ring}");
         // Zero-width or colourless sides are no band.
         if let FragmentContent::Box { border, .. } = &mut f.content {
             *border = BorderEdges {

@@ -23,3 +23,6 @@ pkg-spike/
 __pycache__/
 mutants.out/
 mutants.out.old/
+
+# Local decoder investigation logs, archives and private build caches
+/.evidence/

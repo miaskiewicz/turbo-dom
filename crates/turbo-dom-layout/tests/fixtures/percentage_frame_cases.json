@@ -1,0 +1,170 @@
+[
+  {
+    "id": "flex_padding_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_padding_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_margin_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:5% 10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_margin_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:-5% -10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_constrained_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_constrained_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_frame_floor",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:0;min-width:0;height:0;min-height:0;padding:10%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_logical",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding-inline:5%;padding-block:2.5%;margin-inline-start:-5%;margin-block-start:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "flex_auto_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin-left:auto;margin-right:auto}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_padding_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_padding_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_margin_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:5% 10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_margin_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;margin:-5% -10%;padding:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_constrained_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_constrained_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:50%;min-width:60px;max-width:100px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_frame_floor",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:0;min-width:0;height:0;min-height:0;padding:10%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_logical",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding-inline:5%;padding-block:2.5%;margin-inline-start:-5%;margin-block-start:5%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_auto_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin-left:auto;margin-right:auto}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_intrinsic_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;padding:10%;margin:5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_intrinsic_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;padding:10%;margin:-5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_span",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:100px 200px;gap:20px;align-items:start}.item{grid-column:1/3;width:80px;padding:5%;margin:-5%;height:40px}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_calc_positive",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;height:40px;padding:calc(10% + 4px);margin:calc(5% + 3px)}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "grid_calc_negative",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;width:400px;grid-template-columns:auto auto;gap:20px;align-items:start}.item{width:80px;height:40px;padding:calc(10% + 4px);margin:calc(-5% - 3px)}.inner{width:100%;height:10px}.next{width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_border",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;border:2px solid;box-sizing:border-box}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_signed_margins",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;padding:5%;margin:-5% 10%}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_percent_basis",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:80px;height:40px;flex-basis:25%;padding:5%;border:2px solid}.inner{height:10px;width:100%}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "svg_flex",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_column",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_grid",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_grid_parent_stretch",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;justify-items:stretch;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_grid_self_stretch",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;justify-self:stretch}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_grid_center",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:grid;grid-template-columns:160px 160px;align-items:start;justify-items:center;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_flex_grow",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;flex:1;min-width:0}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_column_content",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;flex:0 0 content;height:80px;min-height:0}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_column_content_auto_min",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:70px}.item{flex:0 1 content;width:auto;height:20px;padding:5%}.next{flex:none;width:40px;height:40px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_column_content_visible",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;width:400px;height:70px}.item{flex:0 1 content;width:auto;height:20px;padding:5%;overflow:visible}.next{flex:none;width:40px;height:40px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_flex_auto_borderbox",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;box-sizing:border-box}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "svg_flex_content_height",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:auto;padding:5%;margin:-2.5% 5%;flex:0 0 content;height:20px;min-width:0}.next{flex:none;width:40px;height:20px}.inner{height:10px;width:100%}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  },
+  {
+    "id": "flex_invalid_auto_padding",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;width:400px;align-items:flex-start}.item{flex:none;width:80px;height:40px;padding:auto;border:2px solid}.inner{width:100%;height:10px}.next{flex:none;width:40px;height:20px}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "column_negative_with_absolute_percentage",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;flex-direction:column;align-items:flex-start;position:relative;width:400px}.item{flex:none;width:80px;height:80px;margin:-10px 0}.inner{width:100%;height:10px}.next{position:absolute;top:0;left:100px;width:40px;height:50%}</style><div class=grid><div class=item><div class=inner></div></div><div class=next></div></div>"
+  },
+  {
+    "id": "svg_flex_borderbox_known_height",
+    "html": "<!doctype html><style>body{margin:0}.grid{display:flex;align-items:flex-start;width:400px;height:240px}.item{flex:none;width:auto;height:60px;box-sizing:border-box;padding:5%;border:2px solid}.next{flex:none;width:40px;height:20px}.inner{width:100%;height:10px}</style><div class=grid><svg class=item width=\"80\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"80\" height=\"40\" fill=\"red\"/></svg><div class=next><div class=inner></div></div></div>"
+  }
+]

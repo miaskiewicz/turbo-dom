@@ -1282,6 +1282,24 @@ mod tests {
     }
 
     #[test]
+    fn text_sources_refuse_scroll_metrics_without_border_provenance() {
+        let (_, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            "<body style='margin:0'>abc</body>",
+            "",
+            (400.0, 300.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let source = snapshot.text_runs()[0].source_id.unwrap();
+        assert!(snapshot.source(source).is_some());
+        assert_eq!(
+            scroll_metrics(&snapshot, &styles, source).unwrap_err(),
+            "native scroll requires inline border provenance",
+        );
+    }
+
+    #[test]
     fn computed_overflow_pairs_match_chrome_156() {
         assert_extents("overflow-computed-pairs");
     }
@@ -1614,6 +1632,34 @@ mod tests {
     }
     fn laid_out(html: &str) -> (turbo_dom::Tree, LayoutSnapshot, SourceStyles) {
         crate::live::testing::layout(html, "", (800.0, 600.0), Some(1.0))
+    }
+
+    #[test]
+    fn generic_snapshots_do_not_fabricate_native_scroll_provenance() {
+        let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            "<body><div id=b style='width:60px;height:30px'><span id=i>text</span></div><span id=bg style='background:red'>text</span><span id=frame style='border:1px solid'>text</span></body>",
+            "",
+            (200.0, 100.0),
+            None,
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let inline = crate::live::testing::id(&tree, "#i");
+        assert_eq!(
+            scroll_metrics(&snapshot, &styles, inline).unwrap_err(),
+            "native scroll requires inline border provenance"
+        );
+        for selector in ["#bg", "#frame"] {
+            let source = crate::live::testing::id(&tree, selector);
+            assert_eq!(
+                scroll_metrics(&snapshot, &styles, source).unwrap(),
+                zero_scroll_metrics(),
+                "{selector}"
+            );
+        }
+        let block = crate::live::testing::id(&tree, "#b");
+        let metrics = scroll_metrics(&snapshot, &styles, block).unwrap();
+        assert_eq!((metrics.width, metrics.height), (60, 30));
     }
 
     #[test]

@@ -480,6 +480,56 @@ pub fn layout_html_tree_recorded_in_viewport_with(
     output
 }
 
+/// Viewport layout with source recording requested by the post-cascade hook.
+///
+/// The hook returns `true` only when its paint metadata needs exact box identities.
+/// Ordinary documents retain the unrecorded path. `keep_zero_area_clips` preserves
+/// nonpainting boxes needed for full-page capture bounds. Returned sources belong
+/// exclusively to this galley and the supplied document.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_html_tree_in_viewport_with_optional_sources(
+    tree: &Tree,
+    extra_css: &str,
+    viewport: (f32, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    options: &HtmlOptions,
+    keep_zero_area_clips: bool,
+    post_cascade: impl FnOnce(&mut [StyledNode]) -> bool,
+    diags: &mut Diagnostics,
+) -> (Fragment, Option<crate::NodeSources>) {
+    let mut styled = style_document(tree, extra_css, viewport.0, options);
+    let _root_font = root_font_scope(document_root_font_px(&styled));
+    if !post_cascade(&mut styled) {
+        return (
+            lay_out_document(
+                styled,
+                viewport,
+                fonts,
+                images,
+                options.layout(),
+                keep_zero_area_clips,
+                diags,
+            ),
+            None,
+        );
+    }
+    let canvas = propagate_canvas_background(&mut styled);
+    let mut output = crate::layout::layout_recorded_with_clips(
+        &styled,
+        viewport,
+        fonts,
+        images,
+        options.layout(),
+        keep_zero_area_clips,
+        diags,
+    );
+    if let FragmentContent::Box { background, .. } = &mut output.galley.content {
+        *background = canvas;
+    }
+    (output.galley, Some(output.sources))
+}
+
 /// One laid-out box paired with the `data-cid` its source element carried
 /// ([`layout_boxes`]). Coordinates are absolute px in the galley's top-down
 /// space (a fragment's `x`/`y` are already accumulated to page origin), and the

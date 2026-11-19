@@ -1,0 +1,2011 @@
+{
+  "browser": "159.0.8154.6",
+  "viewportHeight": 1000,
+  "deviceScale": 1,
+  "offline": true,
+  "casesSha256": "8ae540340ca99d71dea0917c0f19649cd34343c9aadca8a14092d97a524c5588",
+  "collectorSha256": "a416912b8e1080f43ec54c44540efe8c17030ca7f0e4f670f81e33169c69a391",
+  "rows": [
+    {
+      "id": "auto",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clip",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:clip}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hidden",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "auto-overflow",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:auto}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scroll",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:scroll}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "min0",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "width40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "max40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{max-width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "basis20",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-width40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "basis200-width40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:200px;width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "min120",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:120px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            120,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nowrap",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{white-space:nowrap}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overflow-pair",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:visible hidden}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overflow-override",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden;overflow-x:visible;overflow-y:visible}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "basis0",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flex1",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex:1}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "auto-explicit",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:auto}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "minpct",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:50%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "widthpct",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:50%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            30,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-max40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;max-width:40px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-min0",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-frame",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            6,
+            6,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-borderbox",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:4px;border:2px solid;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            6,
+            6,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frame",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            112,
+            32
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            6,
+            6,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ratio-height",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ratio-min0",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-ratio",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;aspect-ratio:2;height:20px}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "visible-x-scroll-y",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow-x:visible;overflow-y:scroll}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reverse",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px;flex-direction:row-reverse}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            -40,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            -40,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wrap",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px;flex-wrap:wrap}.i{}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-min0",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{min-width:0}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-hidden",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{overflow:hidden}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-width40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{width:40px}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-content-width40",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px}</style><div class=r data-cid=r><img class=i data-cid=i width=100 height=20 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAUCAYAAAB7wJiVAAAASUlEQVR4nO3RoQ0AMBDEsNt/6e8YDTAwj5TddnTsdwCGpBkSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgSY0iMITGGxBgS8wDoy5FCN+dP6QAAAABJRU5ErkJggg==\"></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ratio-content-frame",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0;padding:4px;border:2px solid}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            32
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            52,
+            32
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            6,
+            6,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ratio-borderbox-frame",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{aspect-ratio:2;height:20px;min-width:0;padding:4px;border:2px solid;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            20
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            40,
+            20
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            6,
+            6,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-percent-padding",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:5%}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            26
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            26
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            3,
+            3,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content-percent-borderbox",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:60px}.i{flex-basis:content;width:40px;padding:5%;box-sizing:border-box}.c{width:100px;height:20px}</style><div class=r data-cid=r><div class=i data-cid=i><div class=c data-cid=c></div></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            60,
+            26
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            60,
+            26
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            3,
+            3,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audit-two-atoms",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.r{display:flex;width:150px;line-height:20px;vertical-align:top}.i span{display:inline-block;width:100px;height:20px;vertical-align:top}</style><div class=r data-cid=r><div class=i data-cid=i><span data-cid=a></span> <span data-cid=b></span></div></div>",
+      "boxes": [
+        {
+          "key": "r",
+          "rect": [
+            0,
+            0,
+            150,
+            40
+          ]
+        },
+        {
+          "key": "i",
+          "rect": [
+            0,
+            0,
+            150,
+            40
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            100,
+            20
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            0,
+            20,
+            100,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-cyclic-image-minimum",
+      "width": 1440,
+      "html": "<!doctype html><style>body{margin:0;font-family:Arial,sans-serif}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;width:1152px}.card{display:flex;flex-direction:column;gap:32px;box-sizing:border-box;padding:16px 16px 32px;max-width:374px;width:100%}.image{height:195px;overflow:hidden;flex-shrink:0}img{width:100%;max-width:100%;height:100%;object-fit:cover;display:block}.content{display:flex;flex-direction:column;padding:0 12px;flex:1 1 0%}h4{margin:0;font-size:20px;line-height:24px}.square{height:48px;width:100px}</style><div class=grid data-cid=grid><div class=card data-cid=card0><div class=image><img width=1000 height=200 data-cid=image0 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAADICAYAAAB758tPAAAE5ElEQVR4nO3XoQEAMBCEsNt/6XaMR0TEY9nbHgAAAHBr1wEAAACAQQcAAIAEgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQ8AE3wsCtQS4qhQAAAABJRU5ErkJggg==\"></div><div class=content data-cid=content0><div class=square></div></div></div><div class=card data-cid=card1><div class=image><img width=1000 height=200 data-cid=image1 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAADICAYAAAB758tPAAAE5ElEQVR4nO3XoQEAMBCEsNt/6XaMR0TEY9nbHgAAAHBr1wEAAACAQQcAAIAEgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQ8AE3wsCtQS4qhQAAAABJRU5ErkJggg==\"></div><div class=content data-cid=content1><div class=square></div></div></div><div class=card data-cid=card2><div class=image><img width=1000 height=200 data-cid=image2 src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA+gAAADICAYAAAB758tPAAAE5ElEQVR4nO3XoQEAMBCEsNt/6XaMR0TEY9nbHgAAAHBr1wEAAACAQQcAAIAEgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQYNABAAAgwKADAABAgEEHAACAAIMOAAAAAQYdAAAAAgw6AAAABBh0AAAACDDoAAAAEGDQAQAAIMCgAwAAQIBBBwAAgACDDgAAAAEGHQAAAAIMOgAAAAQYdAAAAAgw6AAAABBg0AEAACDAoAMAAECAQQcAAIAAgw4AAAABBh0AAAACDDoAAAAEGHQAAAAIMOgAAAAQ8AE3wsCtQS4qhQAAAABJRU5ErkJggg==\"></div><div class=content data-cid=content2><div class=square></div></div></div></div>",
+      "boxes": [
+        {
+          "key": "grid",
+          "rect": [
+            0,
+            0,
+            1152,
+            323
+          ]
+        },
+        {
+          "key": "card0",
+          "rect": [
+            0,
+            0,
+            357.328125,
+            323
+          ]
+        },
+        {
+          "key": "image0",
+          "rect": [
+            16,
+            16,
+            325.328125,
+            195
+          ]
+        },
+        {
+          "key": "content0",
+          "rect": [
+            16,
+            243,
+            325.328125,
+            48
+          ]
+        },
+        {
+          "key": "card1",
+          "rect": [
+            397.328125,
+            0,
+            357.328125,
+            323
+          ]
+        },
+        {
+          "key": "image1",
+          "rect": [
+            413.328125,
+            16,
+            325.328125,
+            195
+          ]
+        },
+        {
+          "key": "content1",
+          "rect": [
+            413.328125,
+            243,
+            325.328125,
+            48
+          ]
+        },
+        {
+          "key": "card2",
+          "rect": [
+            794.65625,
+            0,
+            357.34375,
+            323
+          ]
+        },
+        {
+          "key": "image2",
+          "rect": [
+            810.65625,
+            16,
+            325.34375,
+            195
+          ]
+        },
+        {
+          "key": "content2",
+          "rect": [
+            810.65625,
+            243,
+            325.34375,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-definite-rows-content-box",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;box-sizing:content-box;width:100px;height:100px;padding:10px;border:2px solid;grid-template-columns:40px;grid-template-rows:repeat(auto-fill,10px);row-gap:5px}.g>div{height:10px}</style><div class=g data-cid=g><div data-cid=first></div><div style='grid-row:-2' data-cid=last></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            124,
+            124
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            12,
+            12,
+            40,
+            10
+          ]
+        },
+        {
+          "key": "last",
+          "rect": [
+            12,
+            102,
+            40,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-definite-rows-border-box",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;box-sizing:border-box;width:100px;height:100px;padding:10px;border:2px solid;grid-template-columns:40px;grid-template-rows:repeat(auto-fill,10px);row-gap:5px}.g>div{height:10px}</style><div class=g data-cid=g><div data-cid=first></div><div style='grid-row:-2' data-cid=last></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            100
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            12,
+            12,
+            40,
+            10
+          ]
+        },
+        {
+          "key": "last",
+          "rect": [
+            12,
+            72,
+            40,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-row",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:row;grid-template-columns:10px 10px 10px;row-gap:3px;column-gap:5px}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-column:span 2' data-cid=a></div><div style='grid-column:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            23
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            0,
+            13,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            30,
+            13,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-row-dense",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:row dense;grid-template-columns:10px 10px 10px;row-gap:3px;column-gap:5px}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-column:span 2' data-cid=a></div><div style='grid-column:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            23
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            0,
+            13,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            30,
+            0,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-column",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:column;grid-template-rows:10px 10px 10px;row-gap:3px;column-gap:5px;justify-content:start}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-row:span 2' data-cid=a></div><div style='grid-row:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            36
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            15,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            15,
+            26,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-column-dense",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:column dense;grid-template-rows:10px 10px 10px;row-gap:3px;column-gap:5px;justify-content:start}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-row:span 2' data-cid=a></div><div style='grid-row:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            36
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            15,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            26,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-dense-column",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:dense column;grid-template-rows:10px 10px 10px;row-gap:3px;column-gap:5px;justify-content:start}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-row:span 2' data-cid=a></div><div style='grid-row:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            36
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            15,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            26,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-percentage-height-borderbox",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;box-sizing:border-box;width:100px;height:50%;padding:10px;border:2px solid;grid-template-columns:40px;grid-template-rows:repeat(auto-fill,10px);row-gap:5px}.g>div{height:10px}</style><div style='height:200px'><div class=g data-cid=g><div data-cid=first></div><div style='grid-row:-2' data-cid=last></div></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            100
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            12,
+            12,
+            40,
+            10
+          ]
+        },
+        {
+          "key": "last",
+          "rect": [
+            12,
+            72,
+            40,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-autofit-row-fr-100",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;height:100px;grid-template-columns:40px;grid-template-rows:repeat(auto-fit,minmax(10px,1fr));row-gap:5px}.g>div{width:10px}</style><div class=g data-cid=g><div data-cid=first></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            100
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            0,
+            0,
+            10,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-autofit-row-fr-1000000",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;height:1000000px;grid-template-columns:40px;grid-template-rows:repeat(auto-fit,minmax(10px,1fr));row-gap:5px}.g>div{width:10px}</style><div class=g data-cid=g><div data-cid=first></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            1000000
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            0,
+            0,
+            10,
+            1000000
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-auto-rows-min-height-ceil-floor",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;min-height:41px;grid-template-columns:40px;grid-template-rows:repeat(auto-fill,10px);row-gap:5px}.g>div{height:10px}</style><div class=g data-cid=g><div data-cid=first></div><div style='grid-row:-2' data-cid=last></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            55
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            0,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": "last",
+          "rect": [
+            0,
+            45,
+            40,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-auto-rows-max-height-ceil-floor",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;max-height:41px;grid-template-columns:40px;grid-template-rows:repeat(auto-fill,10px);row-gap:5px}.g>div{height:10px}</style><div class=g data-cid=g><div data-cid=first></div><div style='grid-row:-2' data-cid=last></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            40
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            0,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": "last",
+          "rect": [
+            0,
+            30,
+            40,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-autofit-row-center",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;height:100px;grid-template-columns:40px;grid-template-rows:repeat(auto-fit,10px);row-gap:5px;align-content:center}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div data-cid=first></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            100
+          ]
+        },
+        {
+          "key": "first",
+          "rect": [
+            0,
+            45,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-uppercase",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:COLUMN DENSE;grid-template-rows:10px 10px 10px;row-gap:3px;column-gap:5px;justify-content:start}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-row:span 2' data-cid=a></div><div style='grid-row:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            36
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            15,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            26,
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-flow-invalid-axes",
+      "width": 390,
+      "html": "<!doctype html><style>body{margin:0}.g{display:grid;width:100px;grid-auto-flow:column row;grid-template-rows:10px 10px 10px;row-gap:3px;column-gap:5px;justify-content:start}.g>div{width:10px;height:10px}</style><div class=g data-cid=g><div style='grid-row:span 2' data-cid=a></div><div style='grid-row:span 2' data-cid=b></div><div data-cid=c></div></div>",
+      "boxes": [
+        {
+          "key": "g",
+          "rect": [
+            0,
+            0,
+            100,
+            52
+          ]
+        },
+        {
+          "key": "a",
+          "rect": [
+            0,
+            0,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "b",
+          "rect": [
+            0,
+            26,
+            10,
+            10
+          ]
+        },
+        {
+          "key": "c",
+          "rect": [
+            0,
+            42,
+            10,
+            10
+          ]
+        }
+      ]
+    }
+  ]
+}

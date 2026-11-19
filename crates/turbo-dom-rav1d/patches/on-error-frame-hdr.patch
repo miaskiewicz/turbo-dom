@@ -1,0 +1,11 @@
+--- a/src/decode.rs
++++ b/src/decode.rs
+@@ -4994,7 +4994,7 @@
+     ) {
+         fc.task_thread.error.store(1, Ordering::Relaxed);
+         let _ = mem::take(&mut *fc.in_cdf.try_write().unwrap());
+-        if f.frame_hdr.as_ref().unwrap().refresh_context != 0 {
++        if f.frame_hdr.as_ref().is_some_and(|h| h.refresh_context != 0) {
+             let _ = mem::take(&mut f.out_cdf);
+         }
+         for i in 0..7 {

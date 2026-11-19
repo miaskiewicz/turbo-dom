@@ -11,6 +11,10 @@ One `vX.Y.Z` tag releases every package of this repository:
 | `turbo-dom-browser-env` | crates.io | X.Y.Z |
 | `@miaskiewicz/turbo-dom` (JS runtime + native/WASM `turbo-dom-parser`) | npm | X.Y.Z |
 
+`turbo-dom-rav1d` (the generated rav1d fork behind turbo-dom-raster's `avif` feature) is
+not released by the tag. It is published by hand, only when its pins change, before any
+turbo-dom-raster that needs it. See [turbo-dom-rav1d](#turbo-dom-rav1d) below.
+
 The root `turbo-dom-parser` crate is `publish = false` (it ships inside the npm package).
 The source of truth is [`.github/workflows/publish.yml`](./.github/workflows/publish.yml),
 which first runs the whole [`ci.yml`](./.github/workflows/ci.yml) on the tagged commit.
@@ -126,3 +130,54 @@ After the tag: consumers drop their pre-publish `[patch.crates-io]` sections and
 `turbo-dom-v8` is not part of the workspace: it is generated from pinned inputs into the
 gitignored `crates/turbo-dom-v8/crate/` and published first by `release.py --publish`
 from the release workflow. See [crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md).
+
+## turbo-dom-rav1d
+
+`turbo-dom-rav1d` is rav1d 1.1.0 with two changes: upstream's fix for
+memorysafety/rav1d#1497 (`patches/on-error-frame-hdr.patch`), and every `extern "C"`
+turned into `extern "C-unwind"` (159 sites). With both, turbo-dom-raster can catch a
+decoder panic and paint a broken image instead of the process aborting (turbo-dom#535).
+[crates/turbo-dom-rav1d/README.md](crates/turbo-dom-rav1d/README.md) has the details.
+No rav1d source is committed. `scripts/generate.py` rebuilds the crate from the
+checksum-pinned upstream `rav1d-1.1.0.crate`, and CI (`guards`) checks that it reproduces
+the pinned tree (`generate.py --download --check`).
+
+It is outside the workspace and outside the tag release. turbo-dom-raster depends on the
+published version (`rav1d = { package = "turbo-dom-rav1d", version = "=X" }`), so a new
+version must be on crates.io before the turbo-dom-raster change that uses it is pushed.
+1.1.0 was published on 2026-11-19 by this procedure.
+
+1. Change the patches or the transform, add a test to `scripts/test_generate.py`, and bump
+   `version` in `crates/turbo-dom-rav1d/pins.json`. A published version is immutable, so
+   every change needs a new version.
+2. Accept the reviewed tree and run the self-tests:
+   ```bash
+   python3 crates/turbo-dom-rav1d/scripts/generate.py --write --update-pins
+   python3 -m unittest discover -s crates/turbo-dom-rav1d/scripts -p 'test_*.py'
+   ```
+3. Generate a copy **outside the repository**. Inside it, and above all inside a git
+   worktree, cargo walks up into the turbo-dom workspace and refuses to build the crate.
+   Then dry-run the publish:
+   ```bash
+   out=$(mktemp -d)/turbo-dom-rav1d
+   python3 crates/turbo-dom-rav1d/scripts/generate.py --write --output "$out"
+   (cd "$out" && cargo publish --dry-run --allow-dirty --no-default-features --features bitdepth_8,bitdepth_16)
+   ```
+4. Point turbo-dom-raster at the copy with a temporary, uncommitted root `Cargo.toml`
+   `[patch.crates-io] turbo-dom-rav1d = { path = "<out>" }`. Then run the AVIF gates:
+   `cargo test -p turbo-dom-raster --features avif --lib` (the corrupt-AVIF fuzz child takes
+   about 40 minutes in a debug build) and clippy for the default, `avif` and `jxl` builds.
+5. Publish with a crates.io token that can publish new crates. Keep the token out of shell
+   history and logs:
+   ```bash
+   (cd "$out" && CARGO_REGISTRY_TOKEN="$(tr -d '[:space:]' < <token file>)" \
+     cargo publish --allow-dirty --no-default-features --features bitdepth_8,bitdepth_16)
+   ```
+6. Remove the temporary `[patch]`. Bump the requirement in `crates/turbo-dom-raster/Cargo.toml`,
+   run `cargo update -p turbo-dom-rav1d`, and check that `cargo metadata --locked` passes.
+   Commit `pins.json`, the patches and the lockfile together, then push.
+
+To retire the fork, switch turbo-dom-raster back to `rav1d` once upstream publishes a release
+that has the #1497 fix and an unwinding C ABI (memorysafety/rav1d#1521). Keep the
+single-threaded `catch_unwind` decode in `src/avif.rs`. Then remove `crates/turbo-dom-rav1d`
+and its CI guard steps.

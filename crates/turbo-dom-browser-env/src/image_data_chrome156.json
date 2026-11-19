@@ -1,0 +1,586 @@
+{
+  "browser": "156.0.8078.47",
+  "probeSha256": "fe76df79513b43b1c77bfe6a136319ec87b3795241b8561f2dfc4ebfe1874585",
+  "result": {
+    "dimensions": {
+      "width": 2,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "fractional": {
+      "width": 2,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "modulo": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "zeroWidth": {
+      "error": "IndexSizeError"
+    },
+    "zeroHeight": {
+      "error": "IndexSizeError"
+    },
+    "nan": {
+      "error": "IndexSizeError"
+    },
+    "infinity": {
+      "error": "IndexSizeError"
+    },
+    "missing": {
+      "error": "TypeError"
+    },
+    "array": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        1,
+        2,
+        3,
+        255
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "inferHeight": {
+      "width": 1,
+      "height": 2,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "short": {
+      "error": "InvalidStateError"
+    },
+    "empty": {
+      "error": "InvalidStateError"
+    },
+    "mismatch": {
+      "error": "IndexSizeError"
+    },
+    "badWidth": {
+      "error": "IndexSizeError"
+    },
+    "wrongArray": {
+      "error": "IndexSizeError"
+    },
+    "plain": {
+      "error": "IndexSizeError"
+    },
+    "null": {
+      "error": "IndexSizeError"
+    },
+    "p3": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "display-p3",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "badSpace": {
+      "error": "TypeError"
+    },
+    "nullSettings": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "badSettings": {
+      "error": "TypeError"
+    },
+    "badFormat": {
+      "error": "TypeError"
+    },
+    "arrayWrongFormat": {
+      "error": "InvalidStateError"
+    },
+    "floatAllocated": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-float16",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": []
+    },
+    "floatArray": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-float16",
+      "data": [
+        1,
+        0.5,
+        0,
+        1
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": []
+    },
+    "floatDefault": {
+      "error": "InvalidStateError"
+    },
+    "resizable": {
+      "error": "TypeError"
+    },
+    "identity": [
+      true,
+      9
+    ],
+    "call": {
+      "error": "TypeError"
+    },
+    "interface": {
+      "length": 2,
+      "keys": [
+        "width",
+        "height",
+        "colorSpace",
+        "data",
+        "pixelFormat"
+      ],
+      "tag": "[object ImageData]",
+      "prototypeWritable": false
+    },
+    "dataDescriptor": {
+      "get": "undefined",
+      "set": "undefined",
+      "writable": false,
+      "enumerable": true,
+      "configurable": true
+    },
+    "borrow": {
+      "error": "TypeError"
+    },
+    "inheritedBrand": {
+      "error": "TypeError"
+    },
+    "proxyBrand": {
+      "error": "TypeError"
+    },
+    "subclass": [
+      true,
+      true,
+      1
+    ],
+    "created": {
+      "width": 2,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "createdClone": [
+      true,
+      true,
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "createdNegative": {
+      "width": 2,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "put": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        100,
+        20,
+        40,
+        255
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "contextDimensions": [
+      [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        },
+        {
+          "error": "TypeError"
+        }
+      ]
+    ],
+    "putNonFinite": [
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      },
+      {
+        "error": "TypeError"
+      }
+    ],
+    "dirtyNonFinite": {
+      "error": "TypeError"
+    },
+    "fakePut": {
+      "error": "TypeError"
+    },
+    "view": [
+      true,
+      {
+        "width": 1,
+        "height": 1,
+        "colorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "data": [
+          11,
+          12,
+          13,
+          255
+        ],
+        "tag": "[object ImageData]",
+        "instance": true,
+        "own": [
+          "data"
+        ]
+      }
+    ],
+    "spoof": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        8,
+        9,
+        10,
+        255
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "accessors": [
+      [
+        "width",
+        "get width",
+        0,
+        true,
+        true,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "height",
+        "get height",
+        0,
+        true,
+        true,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "data",
+        "get data",
+        0,
+        true,
+        true,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "colorSpace",
+        "get colorSpace",
+        0,
+        true,
+        true,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "pixelFormat",
+        "get pixelFormat",
+        0,
+        true,
+        true,
+        {
+          "error": "TypeError"
+        }
+      ]
+    ],
+    "methodShape": [
+      [
+        "createImageData",
+        "createImageData",
+        1,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "getImageData",
+        "getImageData",
+        4,
+        {
+          "error": "TypeError"
+        }
+      ],
+      [
+        "putImageData",
+        "putImageData",
+        3,
+        {
+          "error": "TypeError"
+        }
+      ]
+    ],
+    "cloneFloat": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "srgb",
+      "pixelFormat": "rgba-float16",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": []
+    },
+    "cloneP3": {
+      "width": 1,
+      "height": 1,
+      "colorSpace": "display-p3",
+      "pixelFormat": "rgba-unorm8",
+      "data": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tag": "[object ImageData]",
+      "instance": true,
+      "own": [
+        "data"
+      ]
+    },
+    "borrowContext": [
+      9,
+      10,
+      11,
+      255
+    ],
+    "alpha": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        255,
+        128,
+        0,
+        2
+      ],
+      [
+        212,
+        85,
+        0,
+        6
+      ],
+      [
+        202,
+        76,
+        13,
+        77
+      ],
+      [
+        201,
+        78,
+        14,
+        128
+      ],
+      [
+        201,
+        77,
+        13,
+        255
+      ]
+    ],
+    "dirty": [
+      100,
+      20,
+      40,
+      255,
+      20,
+      30,
+      40,
+      255
+    ]
+  }
+}

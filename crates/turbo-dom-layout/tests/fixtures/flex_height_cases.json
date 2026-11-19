@@ -1,0 +1,82 @@
+[
+  {
+    "id": "original-1440",
+    "width": 1440,
+    "css": ""
+  },
+  {
+    "id": "original-768",
+    "width": 768,
+    "css": ""
+  },
+  {
+    "id": "original-390",
+    "width": 390,
+    "css": ""
+  },
+  {
+    "id": "border-box-with-border",
+    "width": 1440,
+    "css": ".card{border:4px solid black}"
+  },
+  {
+    "id": "content-box",
+    "width": 1440,
+    "css": ".card{box-sizing:content-box}"
+  },
+  {
+    "id": "content-box-with-border",
+    "width": 1440,
+    "css": ".card{box-sizing:content-box;border:4px solid black}"
+  },
+  {
+    "id": "minimum-border-box",
+    "width": 1440,
+    "css": ".card{height:auto;min-height:180px}"
+  },
+  {
+    "id": "minimum-content-box",
+    "width": 1440,
+    "css": ".card{box-sizing:content-box;height:auto;min-height:180px}"
+  },
+  {
+    "id": "maximum-border-box",
+    "width": 1440,
+    "css": ".card{height:240px;max-height:180px}"
+  },
+  {
+    "id": "minimum-with-border",
+    "width": 1440,
+    "css": ".card{height:140px;min-height:180px;padding:16px;border:2px solid black}"
+  },
+  {
+    "id": "percentage-definite",
+    "width": 1440,
+    "css": ".grid{height:240px}.item{height:100%}.card{height:75%}"
+  },
+  {
+    "id": "zero-content",
+    "width": 1440,
+    "css": ".card{height:64px;gap:0}.badge{height:0}"
+  },
+  {
+    "id": "row-stretch-border-box",
+    "width": 1440,
+    "css": ".card{flex-direction:row;align-items:stretch}.body{width:auto}"
+  },
+  {
+    "id": "row-stretch-content-box",
+    "width": 1440,
+    "css": ".card{flex-direction:row;align-items:stretch;box-sizing:content-box}.body{width:auto}"
+  },
+  {
+    "id": "column-shrink",
+    "width": 1440,
+    "css": ".badge{height:140px;min-height:0}"
+  },
+  {
+    "id": "percentage-indefinite",
+    "width": 1440,
+    "css": ".item{align-self:flex-start}.card{height:75%}"
+  }
+]

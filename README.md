@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.4**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.5**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -19,17 +19,18 @@ and the publish order.
 
 ## Packages in this release
 
-The DOM packages share version 0.8.4. The independently versioned V8 fork is
-150.4.2 and uses the official V8 150.4.0 archive. After installing the published
-release, consumers can remove their pre-release `[patch.crates-io]` overrides.
+The DOM packages share version 0.8.5. The independently versioned V8 fork is
+150.4.2 and uses the official V8 150.4.0 archive; the AVIF decoder fork
+`turbo-dom-rav1d` is 1.1.0. After installing the published release, consumers can
+remove their pre-release `[patch.crates-io]` overrides.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.4 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.4 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.4 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.4 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.4 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.5 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.5 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.5 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.5 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.5 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.2 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -111,10 +112,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.8.4"
-turbo-dom-layout = "0.8.4"                 # bundled fonts on by default
-turbo-dom-raster = "0.8.4"
-turbo-dom-browser-env = "0.8.4"            # needs a V8 archive, see its README
+turbo-dom = "0.8.5"
+turbo-dom-layout = "0.8.5"                 # bundled fonts on by default
+turbo-dom-raster = "0.8.5"
+turbo-dom-browser-env = "0.8.5"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -146,7 +147,7 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | | `serde` | off | `Serialize` for the CSSOM-View metrics records |
 | | `perf` | off | hot-path instrumentation counters |
 | | `test-support` | off | font fixtures and test literals for downstream tests; never in production |
-| `turbo-dom-raster` | `avif` | off | AVIF pixels (pure-Rust rav1d) |
+| `turbo-dom-raster` | `avif` | off | AVIF pixels (pure-Rust rav1d, via the `turbo-dom-rav1d` fork) |
 | | `jxl` | off | JPEG XL pixels (jxl-oxide) |
 | | `gpu-metal` | off | wgpu (Metal) canvas and WebGL rasterization, falling back to the CPU path on any GPU failure |
 | | `coretext` | off | macOS only: canvas text through CoreText (inert elsewhere) |
@@ -159,6 +160,10 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 features (for example `simdutf`).
 
 ## Status
+
+- **0.8.5 (unreleased):** reduce cascade declaration cloning, winner-map lookups
+  and inherited-value allocations. See the changelog and the reproducible cascade
+  performance harness.
 
 - **0.8.4:** bounded shaping-cache retention, shared immutable styles
   and font-family storage, and inline text paths that avoid unused box parsing and

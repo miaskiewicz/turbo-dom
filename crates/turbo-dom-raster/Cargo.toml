@@ -1,7 +1,7 @@
 [package]
 name = "turbo-dom-raster"
 edition = "2021"
-version = "0.8.4"
+version = "0.8.5"
 license = "MIT"
 repository = "https://github.com/miaskiewicz/turbo-dom"
 readme = "README.md"
@@ -17,7 +17,7 @@ description = "turbo-dom synthetic screenshot tier: HTML snapshot → turbo-dom-
 # image layer: the PNG decode (`image::decode_png_rgba`), the header size probe and,
 # via `svg-rasterize`, the one SVG rasterizer (at 1x). Features explicit: its `svg`
 # feature (the PDF SVG pipeline) is never enabled from here.
-turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.8.4", default-features = false, features = [
+turbo-dom-layout = { path = "../turbo-dom-layout", version = "0.8.5", default-features = false, features = [
     "bundled-fonts",
     "svg-rasterize",
 ] }
@@ -60,13 +60,14 @@ naga = { version = "22", optional = true, features = ["glsl-in", "wgsl-out"] }
 base64 = { version = "0.22", optional = true }
 
 # --- `avif` (off by default) -------------------------------------------------
-# AVIF screenshot pixels (miaskiewicz/turbo-surf#30): rav1d, the BSD-2-Clause pure-Rust
-# port of dav1d, with its assembly off (no nasm / C toolchain) and two frame contexts (a
-# decode error with one aborts in 1.1.0: turbo-dom#94);
-# `libc` only for its `EAGAIN` result code. See src/avif.rs for the options assessed.
-# Without the feature an AVIF still lays out at its real size (turbo-dom-layout's
-# pure-Rust probe) and paints as the placeholder.
-rav1d = { version = "1.1.0", default-features = false, features = [
+# AVIF screenshot pixels (miaskiewicz/turbo-surf#30): turbo-dom-rav1d, turbo-dom's fork of
+# rav1d 1.1.0 (the BSD-2-Clause pure-Rust port of dav1d; generated from the pinned upstream
+# crate by crates/turbo-dom-rav1d/scripts/generate.py) whose C ABI unwinds, so a decoder
+# panic is a broken image instead of a process abort (turbo-dom#535). Assembly off (no
+# nasm / C toolchain). `libc` only for its `EAGAIN` result code. See src/avif.rs for the
+# options assessed. Without the feature an AVIF still lays out at its real size
+# (turbo-dom-layout's pure-Rust probe) and paints as the placeholder.
+rav1d = { package = "turbo-dom-rav1d", version = "=1.1.0", default-features = false, features = [
     "bitdepth_8",
     "bitdepth_16",
 ], optional = true }
@@ -107,6 +108,7 @@ avif = ["dep:rav1d", "dep:libc"]
 jxl = ["dep:jxl-oxide"]
 
 [dev-dependencies]
+sha2 = "0.10"
 # Screenshot tests build a fixture PNG and decode the rendered output to sample
 # pixels (verifying an image was painted, not a placeholder).
 tiny-skia = "0.11"

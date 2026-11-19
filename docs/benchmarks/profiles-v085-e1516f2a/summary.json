@@ -1,0 +1,1087 @@
+{
+  "candidate-layout_definite_grid100.sample": {
+    "thread_samples": 6896,
+    "groups": {
+      "edge_lengths": {
+        "self_samples": 122,
+        "percent_thread_samples": 1.7691415313225058,
+        "symbols": [
+          [
+            122,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value12edge_lengths  (in candidate)"
+          ]
+        ]
+      },
+      "box_metrics": {
+        "self_samples": 69,
+        "percent_thread_samples": 1.0005800464037122,
+        "symbols": [
+          [
+            69,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value19resolve_box_metrics  (in candidate)"
+          ]
+        ]
+      },
+      "row_basis": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "frame_measure": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "item_setup": {
+        "self_samples": 15,
+        "percent_thread_samples": 0.21751740139211137,
+        "symbols": [
+          [
+            15,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout4flex10item_style  (in candidate)"
+          ]
+        ]
+      },
+      "taffy_flex_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "taffy_grid_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "style_clone": {
+        "self_samples": 65,
+        "percent_thread_samples": 0.9425754060324826,
+        "symbols": [
+          [
+            34,
+            "_RNvXs1y_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5valueNtB6_8BoxStyleNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in candidate)"
+          ],
+          [
+            10,
+            "_RNvXsk_NtNtCsgegQXAWYzzX_9turbo_dom5rtdom5queryNtB5_8CompoundNtNtCslWxY2MhVcag_4core5clone5Clone5clone.4773  (in candidate)"
+          ],
+          [
+            9,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtB7_6string6StringENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+          ],
+          [
+            7,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtNtNtCsgegQXAWYzzX_9turbo_dom5rtdom5query7cascade15CascadeSelectorENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline13reopen_clones  (in candidate)"
+          ]
+        ]
+      },
+      "text_measure": {
+        "self_samples": 553,
+        "percent_thread_samples": 8.019141531322505,
+        "symbols": [
+          [
+            81,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15flush_run_group  (in candidate)"
+          ],
+          [
+            78,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11split_items  (in candidate)"
+          ],
+          [
+            56,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer5flush  (in candidate)"
+          ],
+          [
+            56,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11marked_word  (in candidate)"
+          ],
+          [
+            53,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline9shape_seg  (in candidate)"
+          ],
+          [
+            36,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline8make_seg  (in candidate)"
+          ],
+          [
+            26,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15breakable_words  (in candidate)"
+          ],
+          [
+            17,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer5place  (in candidate)"
+          ],
+          [
+            17,
+            "_RNvXs0_NtNtCs6KVRSXc8uZF_5alloc3vec11spec_extendINtB7_3VecNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline4WordEINtB5_10SpecExtendBU_INtNtB7_9into_iter8IntoIterBU_EE11spec_extendB10_  (in candidate)"
+          ],
+          [
+            16,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline8finalize  (in candidate)"
+          ],
+          [
+            13,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline12build_pieces  (in candidate)"
+          ],
+          [
+            12,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline19native_text_advance8advances  (in candidate)"
+          ],
+          [
+            10,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer3add  (in candidate)"
+          ],
+          [
+            10,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15apply_baselines  (in candidate)"
+          ],
+          [
+            10,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline19measured_line_width  (in candidate)"
+          ],
+          [
+            9,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout12inline_boxes9fragments  (in candidate)"
+          ],
+          [
+            9,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15inline_advances7prepare  (in candidate)"
+          ],
+          [
+            7,
+            "_RNvXs0_NtNtNtCslWxY2MhVcag_4core4iter8adapters3mapINtB5_3MapNtNtNtBb_3str4iter11CharIndicesNCNvMs1_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB1z_8RunChars4iter0ENtNtNtB9_6traits8iterator8Iterator4nextB1D_  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvMs4_NtCs6KVRSXc8uZF_5alloc7raw_vecINtB5_6RawVecNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline4WordE8grow_oneBS_  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvXse_NtNtCs6KVRSXc8uZF_5alloc3vec9into_iterINtB5_8IntoIterINtB7_3VecNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline10SourceItemEENtNtNtCslWxY2MhVcag_4core3ops4drop4Drop4dropB1c_  (in candidate)"
+          ],
+          [
+            5,
+            "_RINvNtCslWxY2MhVcag_4core3ptr9drop_glueNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline4WordEBH_  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout12inline_boxes9positions  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5block13inline_sticky  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline13reopen_clones  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15inline_advances9edge_char  (in candidate)"
+          ]
+        ]
+      }
+    },
+    "top_self": [
+      [
+        820,
+        "_platform_memcmp  (in libsystem_platform.dylib)"
+      ],
+      [
+        574,
+        "_xzm_free_main  (in libsystem_malloc.dylib)"
+      ],
+      [
+        538,
+        "_xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib)"
+      ],
+      [
+        370,
+        "_platform_memmove  (in libsystem_platform.dylib)"
+      ],
+      [
+        208,
+        "mach_absolute_time  (in libsystem_kernel.dylib)"
+      ],
+      [
+        204,
+        "<deduplicated_symbol>  (in libsystem_malloc.dylib)"
+      ],
+      [
+        194,
+        "DYLD-STUB$$memcmp  (in candidate)"
+      ],
+      [
+        147,
+        "_RINvNtNtCsgegQXAWYzzX_9turbo_dom5rtdom5query13matches_chainNtNtNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade9tree_view9NavigatorEB13_  (in candidate)"
+      ],
+      [
+        147,
+        "_malloc_zone_malloc  (in libsystem_malloc.dylib)"
+      ],
+      [
+        144,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade7inherit  (in candidate)"
+      ],
+      [
+        130,
+        "_RNvMs7_NtNtCsgegQXAWYzzX_9turbo_dom5rtdom4treeNtB5_4Tree9node_type  (in candidate)"
+      ],
+      [
+        122,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value12edge_lengths  (in candidate)"
+      ],
+      [
+        121,
+        "_free  (in libsystem_malloc.dylib)"
+      ],
+      [
+        119,
+        "_RINvMNtCslWxY2MhVcag_4core3stre12trim_matchesNvMNtNtB5_4char7methodsc13is_whitespaceECscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+      ],
+      [
+        81,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15flush_run_group  (in candidate)"
+      ],
+      [
+        79,
+        "_RNvMs7_NtNtCsgegQXAWYzzX_9turbo_dom5rtdom4treeNtB5_4Tree10local_name  (in candidate)"
+      ],
+      [
+        78,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11split_items  (in candidate)"
+      ],
+      [
+        77,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade13resolve_style  (in candidate)"
+      ],
+      [
+        73,
+        "_RNvMNtNtNtCshQnAfwxTwxk_10ttf_parser6tables4cmap7format4NtB2_9Subtable411glyph_index  (in candidate)"
+      ],
+      [
+        69,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value19resolve_box_metrics  (in candidate)"
+      ]
+    ],
+    "inclusive_nonrecursive_symbols": {
+      "edge_lengths": 408,
+      "frames5style": 156
+    },
+    "raw_sha256": "7f97582de1e6e1d79ef65a4ad4f8e7f36e0ac392dd243a68e5bab0d8d037567d"
+  },
+  "baseline-layout_definite_grid100.sample": {
+    "thread_samples": 6826,
+    "groups": {
+      "edge_lengths": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "box_metrics": {
+        "self_samples": 66,
+        "percent_thread_samples": 0.9668912979783182,
+        "symbols": [
+          [
+            66,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5value19resolve_box_metrics  (in baseline)"
+          ]
+        ]
+      },
+      "row_basis": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "frame_measure": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "item_setup": {
+        "self_samples": 15,
+        "percent_thread_samples": 0.2197480222677996,
+        "symbols": [
+          [
+            15,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout4flex10item_style  (in baseline)"
+          ]
+        ]
+      },
+      "taffy_flex_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "taffy_grid_self": {
+        "self_samples": 11,
+        "percent_thread_samples": 0.16114854966305303,
+        "symbols": [
+          [
+            11,
+            "_RINvNtNtCs6Yltn6dNZUm_5taffy7compute4grid19compute_grid_layoutINtNtNtB6_4tree10taffy_tree9TaffyViewjNCNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout4flex5solve0EEB1I_  (in baseline)"
+          ]
+        ]
+      },
+      "style_clone": {
+        "self_samples": 60,
+        "percent_thread_samples": 0.8789920890711984,
+        "symbols": [
+          [
+            23,
+            "_RNvXs1y_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5valueNtB6_8BoxStyleNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in baseline)"
+          ],
+          [
+            14,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtNtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5query7cascade15CascadeSelectorENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+          ],
+          [
+            12,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtB7_6string6StringENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+          ],
+          [
+            6,
+            "_RNvXsk_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5queryNtB5_8CompoundNtNtCslWxY2MhVcag_4core5clone5Clone5clone.4773  (in baseline)"
+          ],
+          [
+            5,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout5style6parser11DeclarationENtNtCslWxY2MhVcag_4core5clone5Clone5cloneBL_  (in baseline)"
+          ]
+        ]
+      },
+      "text_measure": {
+        "self_samples": 538,
+        "percent_thread_samples": 7.881629065338412,
+        "symbols": [
+          [
+            109,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15flush_run_group  (in baseline)"
+          ],
+          [
+            76,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11split_items  (in baseline)"
+          ],
+          [
+            58,
+            "_RNvMs5_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inlineNtB5_6Placer5flush  (in baseline)"
+          ],
+          [
+            45,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11marked_word  (in baseline)"
+          ],
+          [
+            38,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline8make_seg  (in baseline)"
+          ],
+          [
+            38,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline9shape_seg  (in baseline)"
+          ],
+          [
+            25,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15breakable_words  (in baseline)"
+          ],
+          [
+            18,
+            "_RNvMs5_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inlineNtB5_6Placer5place  (in baseline)"
+          ],
+          [
+            15,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline12build_pieces  (in baseline)"
+          ],
+          [
+            12,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline19native_text_advance8advances  (in baseline)"
+          ],
+          [
+            11,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline12resolve_face  (in baseline)"
+          ],
+          [
+            10,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout12inline_boxes9fragments  (in baseline)"
+          ],
+          [
+            10,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline19measured_line_width  (in baseline)"
+          ],
+          [
+            9,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline19native_text_advance7measure  (in baseline)"
+          ],
+          [
+            9,
+            "_RNvXse_NtNtCs6KVRSXc8uZF_5alloc3vec9into_iterINtB5_8IntoIterINtB7_3VecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline10SourceItemEENtNtNtCslWxY2MhVcag_4core3ops4drop4Drop4dropB1c_  (in baseline)"
+          ],
+          [
+            8,
+            "_RNvMs5_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inlineNtB5_6Placer3add  (in baseline)"
+          ],
+          [
+            8,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15inline_advances7prepare  (in baseline)"
+          ],
+          [
+            8,
+            "_RNvXs0_NtNtCs6KVRSXc8uZF_5alloc3vec11spec_extendINtB7_3VecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline4WordEINtB5_10SpecExtendBU_INtNtB7_9into_iter8IntoIterBU_EE11spec_extendB10_  (in baseline)"
+          ],
+          [
+            7,
+            "_RNvMs4_NtCs6KVRSXc8uZF_5alloc7raw_vecINtB5_6RawVecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline5PieceE8grow_oneBS_  (in baseline)"
+          ],
+          [
+            7,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5block19build_inline_pieces  (in baseline)"
+          ],
+          [
+            7,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15apply_baselines  (in baseline)"
+          ],
+          [
+            5,
+            "_RNvMs4_NtCs6KVRSXc8uZF_5alloc7raw_vecINtB5_6RawVecINtNtB7_3vec3VecIBN_NtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline18GlyphSourceClusterEEE8grow_oneB1c_  (in baseline)"
+          ],
+          [
+            5,
+            "_RNvMs4_NtCs6KVRSXc8uZF_5alloc7raw_vecINtB5_6RawVecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline10SourceItemE8grow_oneBS_  (in baseline)"
+          ]
+        ]
+      }
+    },
+    "top_self": [
+      [
+        755,
+        "_platform_memcmp  (in libsystem_platform.dylib)"
+      ],
+      [
+        562,
+        "_xzm_free_main  (in libsystem_malloc.dylib)"
+      ],
+      [
+        513,
+        "_xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib)"
+      ],
+      [
+        375,
+        "_platform_memmove  (in libsystem_platform.dylib)"
+      ],
+      [
+        270,
+        "mach_absolute_time  (in libsystem_kernel.dylib)"
+      ],
+      [
+        227,
+        "_malloc_zone_malloc  (in libsystem_malloc.dylib)"
+      ],
+      [
+        219,
+        "<deduplicated_symbol>  (in libsystem_malloc.dylib)"
+      ],
+      [
+        186,
+        "DYLD-STUB$$memcmp  (in baseline)"
+      ],
+      [
+        166,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout5style7cascade7inherit  (in baseline)"
+      ],
+      [
+        157,
+        "_RINvNtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5query13matches_chainNtNtNtNtCsadKpl9L0zVS_16turbo_dom_layout5style7cascade9tree_view9NavigatorEB13_  (in baseline)"
+      ],
+      [
+        144,
+        "_RNvMs7_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom4treeNtB5_4Tree9node_type  (in baseline)"
+      ],
+      [
+        135,
+        "_free  (in libsystem_malloc.dylib)"
+      ],
+      [
+        125,
+        "_RINvMNtCslWxY2MhVcag_4core3stre12trim_matchesNvMNtNtB5_4char7methodsc13is_whitespaceECsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+      ],
+      [
+        109,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15flush_run_group  (in baseline)"
+      ],
+      [
+        76,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11split_items  (in baseline)"
+      ],
+      [
+        68,
+        "_RNvMNtNtNtCshQnAfwxTwxk_10ttf_parser6tables4cmap7format4NtB2_9Subtable411glyph_index  (in baseline)"
+      ],
+      [
+        66,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5value19resolve_box_metrics  (in baseline)"
+      ],
+      [
+        64,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5block8text_run  (in baseline)"
+      ],
+      [
+        62,
+        "_RNvMs7_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom4treeNtB5_4Tree10local_name  (in baseline)"
+      ],
+      [
+        61,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5value13resolve_edges  (in baseline)"
+      ]
+    ],
+    "inclusive_nonrecursive_symbols": {
+      "edge_lengths": 0,
+      "frames5style": 0
+    },
+    "raw_sha256": "6d4b319745ca294232a1645190ed5d820b560ea87020a371235122688fbcfe0a"
+  },
+  "baseline-layout_definite_flex100.sample": {
+    "thread_samples": 6850,
+    "groups": {
+      "edge_lengths": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "box_metrics": {
+        "self_samples": 64,
+        "percent_thread_samples": 0.9343065693430657,
+        "symbols": [
+          [
+            64,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5value19resolve_box_metrics  (in baseline)"
+          ]
+        ]
+      },
+      "row_basis": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "frame_measure": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "item_setup": {
+        "self_samples": 15,
+        "percent_thread_samples": 0.21897810218978103,
+        "symbols": [
+          [
+            15,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout4flex10item_style  (in baseline)"
+          ]
+        ]
+      },
+      "taffy_flex_self": {
+        "self_samples": 20,
+        "percent_thread_samples": 0.291970802919708,
+        "symbols": [
+          [
+            20,
+            "_RINvNtNtCs6Yltn6dNZUm_5taffy7compute7flexbox22compute_flexbox_layoutINtNtNtB6_4tree10taffy_tree9TaffyViewjNCNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout4flex5solve0EEB1O_  (in baseline)"
+          ]
+        ]
+      },
+      "taffy_grid_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "style_clone": {
+        "self_samples": 51,
+        "percent_thread_samples": 0.7445255474452555,
+        "symbols": [
+          [
+            20,
+            "_RNvXs1y_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5valueNtB6_8BoxStyleNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in baseline)"
+          ],
+          [
+            11,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtNtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5query7cascade15CascadeSelectorENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+          ],
+          [
+            9,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtB7_6string6StringENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+          ],
+          [
+            6,
+            "_RNvXsk_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5queryNtB5_8CompoundNtNtCslWxY2MhVcag_4core5clone5Clone5clone.4773  (in baseline)"
+          ],
+          [
+            5,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline13reopen_clones  (in baseline)"
+          ]
+        ]
+      },
+      "text_measure": {
+        "self_samples": 523,
+        "percent_thread_samples": 7.635036496350365,
+        "symbols": [
+          [
+            102,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15flush_run_group  (in baseline)"
+          ],
+          [
+            92,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11split_items  (in baseline)"
+          ],
+          [
+            54,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11marked_word  (in baseline)"
+          ],
+          [
+            48,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline9shape_seg  (in baseline)"
+          ],
+          [
+            40,
+            "_RNvMs5_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inlineNtB5_6Placer5flush  (in baseline)"
+          ],
+          [
+            30,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline8make_seg  (in baseline)"
+          ],
+          [
+            24,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15breakable_words  (in baseline)"
+          ],
+          [
+            18,
+            "_RNvMs5_NtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inlineNtB5_6Placer5place  (in baseline)"
+          ],
+          [
+            15,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15apply_baselines  (in baseline)"
+          ],
+          [
+            13,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline12build_pieces  (in baseline)"
+          ],
+          [
+            12,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline19native_text_advance7measure  (in baseline)"
+          ],
+          [
+            11,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout12inline_boxes9fragments  (in baseline)"
+          ],
+          [
+            11,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15inline_advances7prepare  (in baseline)"
+          ],
+          [
+            10,
+            "_RNvNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline19native_text_advance8advances  (in baseline)"
+          ],
+          [
+            10,
+            "_RNvXs0_NtNtCs6KVRSXc8uZF_5alloc3vec11spec_extendINtB7_3VecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline4WordEINtB5_10SpecExtendBU_INtNtB7_9into_iter8IntoIterBU_EE11spec_extendB10_  (in baseline)"
+          ],
+          [
+            9,
+            "_RNvXse_NtNtCs6KVRSXc8uZF_5alloc3vec9into_iterINtB5_8IntoIterINtB7_3VecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline10SourceItemEENtNtNtCslWxY2MhVcag_4core3ops4drop4Drop4dropB1c_  (in baseline)"
+          ],
+          [
+            7,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline8finalize  (in baseline)"
+          ],
+          [
+            6,
+            "_RNvMs4_NtCs6KVRSXc8uZF_5alloc7raw_vecINtB5_6RawVecNtNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline10SourceItemE8grow_oneBS_  (in baseline)"
+          ],
+          [
+            6,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline12resolve_face  (in baseline)"
+          ],
+          [
+            5,
+            "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline13reopen_clones  (in baseline)"
+          ]
+        ]
+      }
+    },
+    "top_self": [
+      [
+        783,
+        "_platform_memcmp  (in libsystem_platform.dylib)"
+      ],
+      [
+        546,
+        "_xzm_free_main  (in libsystem_malloc.dylib)"
+      ],
+      [
+        518,
+        "_xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib)"
+      ],
+      [
+        376,
+        "_platform_memmove  (in libsystem_platform.dylib)"
+      ],
+      [
+        274,
+        "mach_absolute_time  (in libsystem_kernel.dylib)"
+      ],
+      [
+        212,
+        "<deduplicated_symbol>  (in libsystem_malloc.dylib)"
+      ],
+      [
+        184,
+        "DYLD-STUB$$memcmp  (in baseline)"
+      ],
+      [
+        181,
+        "_RINvNtNtCsiZZ9xGob6gh_9turbo_dom5rtdom5query13matches_chainNtNtNtNtCsadKpl9L0zVS_16turbo_dom_layout5style7cascade9tree_view9NavigatorEB13_  (in baseline)"
+      ],
+      [
+        168,
+        "_malloc_zone_malloc  (in libsystem_malloc.dylib)"
+      ],
+      [
+        160,
+        "_RNvMs7_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom4treeNtB5_4Tree9node_type  (in baseline)"
+      ],
+      [
+        127,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout5style7cascade7inherit  (in baseline)"
+      ],
+      [
+        114,
+        "_RINvMNtCslWxY2MhVcag_4core3stre12trim_matchesNvMNtNtB5_4char7methodsc13is_whitespaceECsadKpl9L0zVS_16turbo_dom_layout  (in baseline)"
+      ],
+      [
+        111,
+        "_free  (in libsystem_malloc.dylib)"
+      ],
+      [
+        102,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline15flush_run_group  (in baseline)"
+      ],
+      [
+        92,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout6inline11split_items  (in baseline)"
+      ],
+      [
+        77,
+        "_RNvMNtNtNtCshQnAfwxTwxk_10ttf_parser6tables4cmap7format4NtB2_9Subtable411glyph_index  (in baseline)"
+      ],
+      [
+        77,
+        "_RNvMs7_NtNtCsiZZ9xGob6gh_9turbo_dom5rtdom4treeNtB5_4Tree10local_name  (in baseline)"
+      ],
+      [
+        71,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout5style7cascade13resolve_style  (in baseline)"
+      ],
+      [
+        64,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5value19resolve_box_metrics  (in baseline)"
+      ],
+      [
+        60,
+        "_RNvNtNtCsadKpl9L0zVS_16turbo_dom_layout6layout5block8text_run  (in baseline)"
+      ]
+    ],
+    "inclusive_nonrecursive_symbols": {
+      "edge_lengths": 0,
+      "frames5style": 0
+    },
+    "raw_sha256": "a1b194d2eba82c477d3f18bfd06655f47332c36e3395b6fccc20aab59ef8ac95"
+  },
+  "candidate-layout_definite_flex100.sample": {
+    "thread_samples": 6862,
+    "groups": {
+      "edge_lengths": {
+        "self_samples": 103,
+        "percent_thread_samples": 1.501020110754882,
+        "symbols": [
+          [
+            103,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value12edge_lengths  (in candidate)"
+          ]
+        ]
+      },
+      "box_metrics": {
+        "self_samples": 65,
+        "percent_thread_samples": 0.9472457009618187,
+        "symbols": [
+          [
+            65,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value19resolve_box_metrics  (in candidate)"
+          ]
+        ]
+      },
+      "row_basis": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "frame_measure": {
+        "self_samples": 9,
+        "percent_thread_samples": 0.1311570970562518,
+        "symbols": [
+          [
+            9,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout4flex6frames7measure  (in candidate)"
+          ]
+        ]
+      },
+      "item_setup": {
+        "self_samples": 9,
+        "percent_thread_samples": 0.1311570970562518,
+        "symbols": [
+          [
+            9,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout4flex10item_style  (in candidate)"
+          ]
+        ]
+      },
+      "taffy_flex_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "taffy_grid_self": {
+        "self_samples": 0,
+        "percent_thread_samples": 0.0,
+        "symbols": []
+      },
+      "style_clone": {
+        "self_samples": 83,
+        "percent_thread_samples": 1.2095598950743223,
+        "symbols": [
+          [
+            37,
+            "_RNvXs1y_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5valueNtB6_8BoxStyleNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in candidate)"
+          ],
+          [
+            21,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtB7_6string6StringENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+          ],
+          [
+            13,
+            "_RNvXsa_NtCs6KVRSXc8uZF_5alloc3vecINtB5_3VecNtNtNtNtCsgegQXAWYzzX_9turbo_dom5rtdom5query7cascade15CascadeSelectorENtNtCslWxY2MhVcag_4core5clone5Clone5cloneCscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+          ],
+          [
+            7,
+            "_RNvXsa_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_9InlineRunNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline13reopen_clones  (in candidate)"
+          ]
+        ]
+      },
+      "text_measure": {
+        "self_samples": 498,
+        "percent_thread_samples": 7.2573593704459345,
+        "symbols": [
+          [
+            96,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15flush_run_group  (in candidate)"
+          ],
+          [
+            69,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11split_items  (in candidate)"
+          ],
+          [
+            51,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11marked_word  (in candidate)"
+          ],
+          [
+            47,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer5flush  (in candidate)"
+          ],
+          [
+            45,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline9shape_seg  (in candidate)"
+          ],
+          [
+            35,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline8make_seg  (in candidate)"
+          ],
+          [
+            19,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15breakable_words  (in candidate)"
+          ],
+          [
+            14,
+            "_RNvXs0_NtNtCs6KVRSXc8uZF_5alloc3vec11spec_extendINtB7_3VecNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline4WordEINtB5_10SpecExtendBU_INtNtB7_9into_iter8IntoIterBU_EE11spec_extendB10_  (in candidate)"
+          ],
+          [
+            13,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer5place  (in candidate)"
+          ],
+          [
+            13,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout12inline_boxes9fragments  (in candidate)"
+          ],
+          [
+            13,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline12build_pieces  (in candidate)"
+          ],
+          [
+            11,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline12resolve_face  (in candidate)"
+          ],
+          [
+            9,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline19measured_line_width  (in candidate)"
+          ],
+          [
+            7,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15inline_advances7prepare  (in candidate)"
+          ],
+          [
+            7,
+            "_RNvXsa_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_9InlineRunNtNtCslWxY2MhVcag_4core5clone5Clone5clone  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15apply_baselines  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline8finalize  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline19native_text_advance7measure  (in candidate)"
+          ],
+          [
+            6,
+            "_RNvXse_NtNtCs6KVRSXc8uZF_5alloc3vec9into_iterINtB5_8IntoIterINtB7_3VecNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline10SourceItemEENtNtNtCslWxY2MhVcag_4core3ops4drop4Drop4dropB1c_  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvMs5_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB5_6Placer3add  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline13reopen_clones  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline19native_text_advance8advances  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvXs0_NtNtNtCslWxY2MhVcag_4core4iter8adapters3mapINtB5_3MapNtNtNtBb_3str4iter11CharIndicesNCNvMs1_NtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inlineNtB1z_8RunChars4iter0ENtNtNtB9_6traits8iterator8Iterator4nextB1D_  (in candidate)"
+          ],
+          [
+            5,
+            "_RNvXse_NtNtCs6KVRSXc8uZF_5alloc3vec9into_iterINtB5_8IntoIterNtNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline10SourceItemENtNtNtCslWxY2MhVcag_4core3ops4drop4Drop4dropB12_  (in candidate)"
+          ]
+        ]
+      }
+    },
+    "top_self": [
+      [
+        726,
+        "_platform_memcmp  (in libsystem_platform.dylib)"
+      ],
+      [
+        602,
+        "_xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib)"
+      ],
+      [
+        560,
+        "_xzm_free_main  (in libsystem_malloc.dylib)"
+      ],
+      [
+        317,
+        "_platform_memmove  (in libsystem_platform.dylib)"
+      ],
+      [
+        232,
+        "DYLD-STUB$$memcmp  (in candidate)"
+      ],
+      [
+        227,
+        "<deduplicated_symbol>  (in libsystem_malloc.dylib)"
+      ],
+      [
+        190,
+        "mach_absolute_time  (in libsystem_kernel.dylib)"
+      ],
+      [
+        160,
+        "_RINvNtNtCsgegQXAWYzzX_9turbo_dom5rtdom5query13matches_chainNtNtNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade9tree_view9NavigatorEB13_  (in candidate)"
+      ],
+      [
+        159,
+        "_RNvMs7_NtNtCsgegQXAWYzzX_9turbo_dom5rtdom4treeNtB5_4Tree9node_type  (in candidate)"
+      ],
+      [
+        150,
+        "_RINvMNtCslWxY2MhVcag_4core3stre12trim_matchesNvMNtNtB5_4char7methodsc13is_whitespaceECscxCyQ0y0foO_16turbo_dom_layout  (in candidate)"
+      ],
+      [
+        135,
+        "_malloc_zone_malloc  (in libsystem_malloc.dylib)"
+      ],
+      [
+        127,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade7inherit  (in candidate)"
+      ],
+      [
+        121,
+        "_free  (in libsystem_malloc.dylib)"
+      ],
+      [
+        103,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5value12edge_lengths  (in candidate)"
+      ],
+      [
+        96,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline15flush_run_group  (in candidate)"
+      ],
+      [
+        83,
+        "_RNvMs7_NtNtCsgegQXAWYzzX_9turbo_dom5rtdom4treeNtB5_4Tree10local_name  (in candidate)"
+      ],
+      [
+        80,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout5style7cascade13resolve_style  (in candidate)"
+      ],
+      [
+        74,
+        "_RNvMNtNtNtCshQnAfwxTwxk_10ttf_parser6tables4cmap7format4NtB2_9Subtable411glyph_index  (in candidate)"
+      ],
+      [
+        74,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout5block8text_run  (in candidate)"
+      ],
+      [
+        69,
+        "_RNvNtNtCscxCyQ0y0foO_16turbo_dom_layout6layout6inline11split_items  (in candidate)"
+      ]
+    ],
+    "inclusive_nonrecursive_symbols": {
+      "edge_lengths": 392,
+      "frames5style": 164
+    },
+    "raw_sha256": "f9e4dcacea18d8138de7c54cb1e1c3cbab522a521f29cc948ef98c0f5676a379"
+  },
+  "method": {
+    "baseline": "c49fd0b10be0d44764f57215f3ca716b75c22c93",
+    "candidate": "e1516f2a0bf86e9fa64efc23af5d951da626981e",
+    "duration_seconds_per_capture": 10,
+    "interval_ms": 1,
+    "launch_iterations": 100000,
+    "warm_before_capture_seconds": 1,
+    "timing_samples_admitted": false,
+    "concurrent_owned_workloads_possible": true,
+    "caveat": "Self symbols under 5 samples omitted. Inlining changes attribution; absence is not zero cost. Inclusive nonrecursive counts overlap; never add groups.",
+    "harness_sha256": "5d1434af05fee8281bfda2c6cbbcab6a25a732b0cb64921d429b229c80450c3b",
+    "binary_sha256": {
+      "baseline": "9c3993975d4ec98e073cf5b4d300791f54dcabd5bd314eab141390e6c5d4a0a3",
+      "candidate": "8ee21469becc893c7149db4027b34044502e83e17b064f42907d54d6e627113e"
+    }
+  }
+}

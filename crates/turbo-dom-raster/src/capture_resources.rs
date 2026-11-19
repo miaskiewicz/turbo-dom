@@ -34,7 +34,7 @@ pub fn capture_resources(
     let mut decoded = image_paint::DecodedAssets::new();
     add_metadata(&mut decoded, Some(metadata));
     image_paint::add_data_uri_images(&mut decoded, css, html);
-    let tree = crate::parse_document(html, &mut decoded, options);
+    let tree = crate::parse_document(html, css, viewport, &mut decoded, options);
     let galley =
         options.with_fonts(|fonts| crate::lay_out(&tree, css, viewport, &decoded, fonts, options));
     let height = crate::paint_height(&galley, viewport, options.full_page);

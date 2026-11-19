@@ -1,0 +1,143 @@
+{
+  "diagnostic_commit": "713f82a90474d2177a8a393f27a2c45deacc6e29",
+  "production_base": "4f15c37db0f192ab2126bcc637c6cceacb575486",
+  "decoder_unchanged_sha256": "b7ce20ae314a5488afb55ce96c6c8c553d3a1b5d60c03c02ea014595b19c4ba1",
+  "rav1d": "1.1.0",
+  "linux_toolchain": "1.98.1",
+  "linux_x64": {
+    "result": "pass",
+    "decoded": 4590,
+    "rejected": 11323,
+    "peak_rss_kib": 196948,
+    "wall_seconds": 442.615,
+    "image": "rust@sha256:c49256cbe5ea0188bc658a689500d70c41eb51f009a7a7be209caf60a944f3ec",
+    "emulation": "Docker Desktop aarch64 host; linux/amd64 Rosetta"
+  },
+  "linux_arm64": {
+    "result": "pass",
+    "wall_seconds": 460.64,
+    "image": "rust@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
+    "peak_rss_kib": null
+  },
+  "limitations": [
+    "No local single-pass corpus or bounded-concurrency experiment reproduced the original abort.",
+    "Linux Docker diagnostics use Rust1.98.1; failed and printed-diagnostic Ubuntu CI use1.98.0.",
+    "Mac corpus uses1.98.0.",
+    "The three full-corpus binaries include printed case markers. Passing may change timing, so the next diagnostic uses one shared atomic store instead.",
+    "A corpus pass and a concurrency pass do not establish memory/thread exhaustion, decoder race, or an AVIF fix. Issue535 remains unresolved.",
+    "No production decoder, dependency, frame budget, resource limit, fixture, retry policy or coverage threshold was changed."
+  ],
+  "corpus": {
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-alpha.avif": "f00e72bdd3704358e33b8f647bc718af9eba5f78c88c4dfda5ba8a4ab73c1878",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-imir0.avif": "4fb1fcd78e3f428fe1dcec6b35b7600ea340329d56a634d86870f92cd04d6f55",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-imir1.avif": "a2c23f7475c89cde6e7213b140e6bb5c35bed92822fd841a4db2e5393c8313ca",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-irot180.avif": "f5a3c028cdc5e8356a7a4ed69de0817f70bffd66e375383f105395494d2164f3",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-irot270.avif": "fd1600e534ec817122b0d343035aeea780f01bea067e42eae045b0ce59c63ec3",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-irot90-imir0.avif": "16b60b4afc982628e3f81e8f9f9c790eb8cbf300ff68373bfab6f9da29ae5f77",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q-irot90.avif": "3f0695895e0fc3ad893b4d7bdcfb9afc9873c2b95597ebc2bb4a0258747219f0",
+    "crates/turbo-dom-layout/tests/fixtures/images/formats/q.avif": "6998708399ef7646ea9e97c61436071ae31cc7cee3a7dff6797acc892f8ef64c",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/oversize-12000.avif": "e1d159a0882892e18557705cedd8dc75694cec4f9995a7a60497862440a12438",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-10bit-limited.avif": "5b9e3c6fcf03b40c3b4312874bf9c2deed0b2000b1e9bc591f8480f88c0323ba",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-12bit-full.avif": "f38ac3a2759f11ced0ddda50f020284ba2834d76272ddac72ae39fc7d1ca500e",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-420-bt2020.avif": "a9854b8c49063b9835cdce32fb11e4a4da706a5a5d323cd6bbbf24311333e74e",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-420-fcc.avif": "44b2f9d52519bd4e912c4b9168dcfb5edad781f977799c69279bffb355cba023",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-420-smpte240.avif": "5634bacc8c5fa555bb157e7ce2ea12b5cee9abf2217044b2ac24ca4e9c29caec",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-422-bt601.avif": "587c9c2617ae66bb320580e7619ea07c9e68c89e7ec74e340e3a610caf83b8ef",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-444-bt709-limited.avif": "6c70d2a6cc41f2b7714d1255730c521116079876b28df39461a4a97c30dea32a",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-lossless.avif": "b9e54aedb82318ddb399497188096068f17af86426f9ecefc3907735745dcb4b",
+    "crates/turbo-dom-raster/tests/fixtures/images/avif/q-nocolr.avif": "cfbfb0d1472c321954b5463e50662972504bf6909b1875b5671313401ca29c95"
+  },
+  "macos_arm64": {
+    "toolchain": "1.98.0",
+    "result": "pass",
+    "wall_seconds": 1508.84,
+    "peak_rss_kib": null
+  },
+  "issue": "https://github.com/miaskiewicz/turbo-dom/issues/535",
+  "status": "resolved",
+  "production_fix": {
+    "decoder": "turbo-dom-rav1d 1.1.0 (crates/turbo-dom-rav1d: rav1d 1.1.0 + upstream 6c6f46378 + extern \"C-unwind\")",
+    "decode": "n_threads=1, max_frame_delay=1, inside catch_unwind; a decoder panic is a broken image",
+    "regression_test": "avif::tests::a_stream_that_panics_rav1d_is_a_broken_image_not_an_abort (memorysafety/rav1d#1476 input; SIGABRT before the fix)",
+    "root_cause_note": "The original CI panic message was never captured, so the exact panicking site for run 44418005980 is unknown; the fix removes the abort mechanism for every rav1d panic and the worker threads/async close that made it timing-dependent."
+  },
+  "diagnostic_commits": [
+    "713f82a90474d2177a8a393f27a2c45deacc6e29",
+    "2fabd48adbb9217d21147f2ea970701be3d3a266"
+  ],
+  "published_decoder": {
+    "name": "rav1d",
+    "version": "1.1.0",
+    "license": "BSD-2-Clause",
+    "crate_sha256": "1932f060d5e7bd49dc9f8b272c1dc5e9ce0ffe141c28be900265d3989b36c9ed",
+    "source_verified": "All locally cached archive files match the published .crate, not just the four lifecycle sources."
+  },
+  "concurrency": {
+    "returncode": 0,
+    "wall_seconds": 115.96498796995729,
+    "peak_rss_kib": 73520,
+    "sampled_peak_threads": 51,
+    "sampled_peak_cgroup_pids": 53,
+    "sampled_peak_rss_kib": 74812,
+    "limits_unchanged": {
+      "pids.max": "max",
+      "memory.max": "max"
+    },
+    "sample_period_seconds": 0.01,
+    "callers": 16,
+    "calls_per_caller": 128,
+    "total_calls": 2048,
+    "valid_decodes": 1024,
+    "corrupt_rejections": 1024,
+    "fixture": "crates/turbo-dom-layout/tests/fixtures/images/formats/q.avif",
+    "valid_sha256": "6998708399ef7646ea9e97c61436071ae31cc7cee3a7dff6797acc892f8ef64c",
+    "corrupt_sha256": "472e59ad054dcb8ccb44665da5d4e4eaf48baac886b65fe76b3854dd6992ac69",
+    "corruption": "Overwrite the second half of the color OBU payload with 0xff in place; all container bytes and lengths otherwise unchanged.",
+    "harness_no_per_call_logging": true,
+    "decoder_threads": 2,
+    "decoder_max_frame_delay": 2,
+    "source": "tools/avif-diagnostics/concurrency.rs",
+    "image": "rust@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
+    "toolchain": "1.98.1"
+  },
+  "corpus_fixture_count": 18,
+  "ci": {
+    "original_failure": {
+      "run": 44418005980,
+      "job": 135203263122,
+      "outcome": "child exited with SIGABRT/status134; first12 stderr lines hid the cause"
+    },
+    "printed_diagnostic": {
+      "run": 44422579055,
+      "job": 135219076053,
+      "outcome": "raster passed; this does not establish a decoder fix"
+    }
+  },
+  "audit_alternatives": {
+    "rusty_av1d_1.3.0": {
+      "crate_sha256": "9af56536f07b275509d08654be29737c2b4f911cf74dbaa35d68b662fe15b35f",
+      "license": "BSD-2-Clause",
+      "vcs_sha": "dea9796e3ca6e01f743826f1f36e0b2a1d4a5fe5",
+      "decision": "Rejected: historical frame_hdr unwrap, spawn unwrap, and asynchronous close all remain."
+    },
+    "re_rav1d_0.1.3": {
+      "crate_sha256": "e5eb64c43c68024d96d99d52ef0525030d17bdcc6a6b4ddba048ec8f713c91fc",
+      "license": "BSD-2-Clause",
+      "vcs_sha": "8c4d235ac3af85761bd7a3ab7cc1f0429a3e321e",
+      "repository": "https://github.com/rerun-io/re_rav1d",
+      "provenance": "The published archive checksum matches official registry metadata; embedded VCS SHA matches the public re_rav1d branch. Repository archived June9,2026.",
+      "api": "Existing include::dav1d and src::lib C API paths are retained; Rust header files match1.1.0. ASM-off supported by cfg(feature=asm) build.rs guard.",
+      "historical_fix": "on_error uses frame_hdr.as_ref().is_some_and at decode.rs4997-5000, equivalent to upstream PR1503. Single context avoids worker spawn and async shutdown.",
+      "decision": "Rejected as-is: older AlignedVec lacks official1.1.0 checked allocation multiplication and alignment assertion/tests. Additional CDF, refmvs, allocator and DSP changes mean this is not simply1.1.0 plus the teardown fix."
+    }
+  },
+  "reproduction_commands": {
+    "project_location": ".perf-evidence/avif-concurrency",
+    "manifest": "[package]\nname=\"avif-concurrency-diagnosis\"\nversion=\"0.0.0\"\nedition=\"2021\"\n[workspace]\n[features]\ndefault=[\"avif\"]\navif=[]\n[dependencies]\nturbo-dom-layout={path=\"../../crates/turbo-dom-layout\"}\nrav1d={version=\"=1.1.0\",default-features=false,features=[\"bitdepth_8\",\"bitdepth_16\"]}\nlibc=\"0.2\"\n[[bin]]\nname=\"avif-concurrency-diagnosis\"\npath=\"../../tools/avif-diagnostics/concurrency.rs\"\n",
+    "build": "CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=<existing-warm-target> cargo build --offline --manifest-path .perf-evidence/avif-concurrency/Cargo.toml",
+    "observe": "python3 tools/avif-diagnostics/sample-resources.py <existing-warm-target>/debug/avif-concurrency-diagnosis .perf-evidence/concurrency-resource.json",
+    "notes": "Run from repository root inside the recorded Linux image; keep limits unchanged. This is a bounded diagnostic, not a replacement for the full corpus gate.",
+    "retained_harness_note": "The retained source changes only the relative module path and one-time corrupt-input output path from the executed temporary harness; it was not used for another native run."
+  },
+  "raw_logs": "Large raw logs and temporary build targets stay ignored under /.evidence/. No raw decoder archive is committed."
+}

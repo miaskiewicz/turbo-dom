@@ -1,0 +1,1898 @@
+{
+  "browser": "159.0.8154.6",
+  "offline": true,
+  "casesSha256": "ee7f97610e3cd26fc2cbb4f8faf0a1cdf9a820479e028af2f0aab33360646d7b",
+  "collectorSha256": "ce99a40b78cb744a04ea8d5bd84801f984008b9674857332c11e88613b5cdb6b",
+  "rows": [
+    {
+      "id": "flex_padding_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            124,
+            84
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            124,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_padding_border",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            44
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            36,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            80,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_margin_positive",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            40,
+            20,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            60,
+            40,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            200,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_margin_negative",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -40,
+            -20,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            -20,
+            0,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            40,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_constrained_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            144,
+            84
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            100,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            144,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_constrained_border",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            100,
+            44
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            56,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            100,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_frame_floor",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            84,
+            84
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            42,
+            42,
+            0,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            84,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_logical",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -20,
+            20,
+            120,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            30,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            100,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "flex_auto_margins",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            120,
+            0,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            140,
+            20,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            360,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_padding_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            100,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            10,
+            10,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_padding_border",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            40
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            10,
+            10,
+            60,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_margin_positive",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            16,
+            8,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            24,
+            16,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_margin_negative",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -16,
+            -8,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            -8,
+            0,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_constrained_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            100,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            10,
+            10,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_constrained_border",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            40
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            10,
+            10,
+            60,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_frame_floor",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            36,
+            36
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            18,
+            18,
+            0,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_logical",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -8,
+            8,
+            96,
+            48
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            12,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_auto_margins",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            32,
+            0,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            40,
+            8,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_intrinsic_positive",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            103
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            10.5,
+            10.5,
+            122,
+            82
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            31.5,
+            31.5,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            230,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_intrinsic_negative",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            61
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -10.5,
+            -10.5,
+            122,
+            82
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            10.5,
+            10.5,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            230,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_span",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            80
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -16,
+            -16,
+            112,
+            72
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            0,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_calc_positive",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            119.0625
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            13.84375,
+            13.84375,
+            131.375,
+            91.375
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            39.53125,
+            39.53125,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            237,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "grid_calc_negative",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            63.09375
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            -13.546875,
+            -13.546875,
+            130.1875,
+            90.1875
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            11.546875,
+            11.546875,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            231,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            124,
+            84
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            84,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_border",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            44
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            36,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            44,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_signed_margins",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            40,
+            -20,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            60,
+            0,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            40,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_percent_basis",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            124,
+            104
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            22,
+            22,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            104,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_parent_stretch",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            144,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_self_stretch",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            8,
+            -4,
+            144,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_grid_center",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            32,
+            -4,
+            96,
+            56
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            220,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            220,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_flex_grow",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            320,
+            180
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            360,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            360,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content_auto_min",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            70
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            40,
+            40
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            40,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            40,
+            40,
+            40
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_column_content_visible",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            70
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            80,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            60,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            0,
+            60,
+            40,
+            40
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex_auto_borderbox",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            120,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            160,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            160,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "svg_flex_content_height",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            20,
+            -10,
+            80,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            120,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            120,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    },
+    {
+      "id": "flex_invalid_auto_padding",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            44
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            84,
+            44
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            2,
+            2,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            84,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "column_negative_with_absolute_percentage",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            60
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            -10,
+            80,
+            80
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            0,
+            -10,
+            80,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            100,
+            0,
+            40,
+            30
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "visible",
+        "overflowY": "visible"
+      }
+    },
+    {
+      "id": "svg_flex_borderbox_known_height",
+      "boxes": [
+        {
+          "key": ".grid",
+          "rect": [
+            0,
+            0,
+            400,
+            240
+          ]
+        },
+        {
+          "key": ".item",
+          "rect": [
+            0,
+            0,
+            76,
+            60
+          ]
+        },
+        {
+          "key": ".inner",
+          "rect": [
+            76,
+            0,
+            40,
+            10
+          ]
+        },
+        {
+          "key": ".next",
+          "rect": [
+            76,
+            0,
+            40,
+            20
+          ]
+        }
+      ],
+      "itemStyle": {
+        "overflowX": "hidden",
+        "overflowY": "hidden"
+      }
+    }
+  ]
+}

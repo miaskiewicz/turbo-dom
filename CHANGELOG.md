@@ -5,6 +5,134 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.5] — 2026-11-19
+
+Breaking changes: no removed or changed public Rust API items relative to 0.8.4,
+including the hidden host integration surface. The generated API comparison is
+recorded in `tools/release/public-api-0.8.5.txt`. turbo-dom-raster's `avif` feature
+now depends on `turbo-dom-rav1d` 1.1.0 instead of `rav1d` 1.1.0.
+
+- **AVIF decoder panics are broken images (#535)**: turbo-dom-raster's `avif` feature
+  decodes through `turbo-dom-rav1d`, a new crate generated from the pinned rav1d 1.1.0
+  (`crates/turbo-dom-rav1d`). It adds upstream's fix for memorysafety/rav1d#1497 and turns
+  every `extern "C"` ABI into `extern "C-unwind"`, so a rav1d panic is caught and the image
+  paints nothing instead of aborting the process. The decoder now runs on the calling
+  thread: no worker threads, and no worker outliving `dav1d_close`.
+
+- **Auto-fit gutter correction (#525)**: collapse the gutters adjoining empty
+  auto-fit tracks, then solve with the original track constraints. Preserve row
+  repeats, min-content offers and collapsed alignment; 630 independent Chromium
+  controls retain the original diagnostic inputs.
+- **Flex row minimums (#533)**: preserve automatic content minimums for ordinary row
+  items while retaining specified-size/max-width caps and scrollable-overflow
+  shrinking. Distinguish content flex bases from preferred widths and transfer
+  definite ratio heights with correct content-box/border-box frames. Preserve
+  wrapping min-content offers and cyclic replaced-image contribution floors.
+  Forty-two independent flex controls include images and no-default builds.
+
+- **Signed column margins (#526)**: include negative margins in automatic flex
+  column intrinsic heights, preserving grow/shrink, wrapping, min/max constraints
+  and the distinction between allocated geometry and a definite percentage-height
+  basis. Pin 74 independent Chromium controls and restore partner-logo container
+  geometry at desktop, tablet and mobile widths.
+
+- **Percentage item frames (#527)**: resolve flex and grid padding and margins
+  against the actual containing block or solved grid area. Retain signed offsets,
+  content-box/border-box constraints and the fixed terms of cyclic grid edge sizes
+  during intrinsic measurement; final grid frames use their solved column areas.
+- **Functional border colors (#528)**: keep parenthesized color arguments together
+  when parsing border shorthands, so spaced `rgb()` and `rgba()` values retain
+  their authored colors instead of falling back to the text color.
+- **Inline SVG presentation (#529)**: preserve cascaded root layout properties and
+  descendant presentation styles when converting inline SVGs into raster assets.
+  Honor inherited `currentColor`, custom properties, linked/media stylesheets and
+  SVG presentation-attribute precedence. Documents without SVGs need no extra
+  cascade pass. Independent Chromium controls assert pixels and public geometry.
+- **Ratio-sized overlays (#531)**: resolve the parent's constrained aspect-ratio
+  height before laying out absolute overlays and dependent percentage-height
+  descendants, preserving content growth, min/max sizes and decorated frames.
+- **Translucent border joins (#532)**: paint uniform square borders as one ring
+  in PNG and SVG, and partition mixed-color joins into a single source so adjacent
+  sides do not composite alpha twice. Rounded SVG borders retain the complete
+  rounded ring and opacity group. Exact color/area controls remain distinct from
+  curve and fractional-edge antialiasing diagnostics.
+- **Raster allocation-test isolation**: serialize entire tests that share
+  process-wide allocation counters, including preparation and assertions, so
+  concurrent tests cannot contaminate another test's measurement.
+
+- **Multiple box shadows (#530)**: retain every computed layer in owned screenshot
+  paint metadata without changing the public fragment or shadow structs. PNG and SVG
+  paint outer and inset layers in CSS order, preserve rounded transparent-box
+  knockouts, and include every shadow in opacity bounds. Source recording stays
+  conditional; prepared scenes retain independent layer identities.
+- **MUI calc widths (#518)**: parse typed multiplication, division and nested
+  parentheses with operator precedence, and preserve case-sensitive custom-property
+  names so MUI's Grid variables resolve. Reject malformed, dimensionally invalid
+  and non-finite arithmetic instead of accepting an incomplete expression.
+- **Mixed flex lengths (#519)**: preserve both percentage and pixel terms through
+  the solver, including flex-basis, min/max sizes, content-box frames and absolute
+  insets. Reuse solved widths instead of applying percentage constraints twice;
+  non-stretched auto-height items keep descendant percentage heights indefinite.
+- **Fractional background painting**: snap square CSS background paint edges to
+  device pixels while preserving layout geometry. Twenty independent Chrome pixel
+  controls and the original text-free component pixel comparisons pass.
+- **Grid tracks (#521)**: size cyclic percentage constraints intrinsically before
+  restoring item sizes against their actual grid areas, preserving spans, implicit
+  columns, absolute placement and content alignment. Pin 630 Chromium cases.
+- **Logo layout (#522)**: honor constrained natural image sizes and ratio-derived
+  heights; expand flex-flow with cascade order, importance and variables. Static
+  screenshots use an explicit fractional CSS geometry policy, independent of fonts
+  and image caps, while the default paged-layout policy is retained.
+- **ImageData constructors (#523)**: support branded dimensions/data overloads,
+  typed formats, cross-realm borrowing, detached-buffer validation and Canvas
+  create/get/put behavior. RGBA8/sRGB canvas uploads are supported; unsupported
+  P3/float16 canvas conversions fail explicitly. A rebuilt native Surf NAPI run of
+  the real dotLottie player reached frame 30 with exact Chromium frame pixels.
+- **Canvas pixel uploads (#523)**: replay RGBA ImageData uploads as clipped bitmap
+  replacement independent of transforms, global alpha and composition state.
+  Metal uses the software bitmap path for these uploads.
+- **Canonical canvas state (#523)**: reflect content-attribute dimensions and
+  reset drawing state, path logs and bitmap pixels on dimension changes. Private
+  host capture reads canonical context, owner, dimensions and nondraining upload
+  snapshots while preserving authored JavaScript overrides.
+- **Host canvas bitmap restore (#523)**: add private `canvasHost.restoreJSON`
+  for one complete unpositioned RGBA8/sRGB bitmap seed. Validate dimensions,
+  bounds, format and byte data before committing; rejection preserves prior state.
+  Success retains an existing context's identity while resetting drawing defaults,
+  paths and saved state. The API restores a flattened bitmap, not arbitrary draw logs.
+  Local Surf MCP and real-player integration pass; full-workspace/final CI remain
+  pending and consumer changes are not published.
+- **Grid height, flow and capacity (#534)**: retain definite and constrained grid
+  heights, row auto-repeat/auto-fit behavior, dense row/column flow and
+  case-insensitive content alignment. Fifteen height/flow controls join the 42
+  flex controls; six stress tests pin the documented native limit of 1,000 logical
+  tracks per axis. This memory limit is not Chromium's grid limit.
+
+- **Nested flex heights (#520)**: pass the native content height to the
+  padding-free flex solver and convert border-box height constraints into that
+  same coordinate space. Borders, min/max heights, resolved percentages, row
+  stretching, column shrinking and definite zero heights retain their geometry.
+
+- **Cascade allocation performance**: move freshly parsed inline/token/hint strings
+  into candidates instead of cloning them again. Computed results remain owned
+  and independent of their inputs.
+- **Cascade winner selection**: use one B-tree lookup per candidate instead of
+  searching again when inserting or replacing a winning declaration.
+- **Inheritance performance**: move overriding local values into inherited-property
+  slots without first copying the discarded parent values. Normalize font sizes in their
+  existing string buffers without changing keyword, relative-unit or variable behavior.
+- **Typed frame reuse**: retain typed edge declarations from style resolution
+  for later layout instead of repeatedly looking up and parsing the same values.
+  Containing-block-dependent resolution remains deferred to its actual layout basis.
+- **Performance validation**: admit the measured `bcfce3b4` combined candidate,
+  integrated as `2ba05e87`, with modest paired gains against v0.8.4: report100
+  1.16%, report10 1.38%, cards 1.59% and article 0.86%. Healthy flex is effectively
+  flat; the small grid result does not establish a broad speedup. All 15 benchmark
+  output hashes match v0.8.4, and 24 component PNG/geometry comparisons preserve
+  the corrected pre-optimization rendering.
+  Failed `e1516f2a` and standalone `8234d47f` checkpoints remain recorded; the
+  separate sessions do not isolate gains from any individual optimization.
+
 ## [0.8.4] — 2026-11-18
 
 Breaking changes: no removed or changed public Rust API items relative to 0.8.3,

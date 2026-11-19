@@ -7,7 +7,9 @@ use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
     Point, Rect, SpreadMode, Transform,
 };
-use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
+use turbo_dom_layout::layout::value::BorderEdges;
+#[cfg(test)]
+use turbo_dom_layout::layout::value::BorderSide;
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
     border_style_colour, BorderRadii, BoxShadow, ClipRect, ColumnRuleStyle, Fragment,
@@ -19,6 +21,7 @@ use std::rc::Rc;
 
 use crate::image_paint::DecodedAssets;
 use crate::rrect::{self, Seg};
+use crate::shadow_layers::PaintInput;
 use crate::tile_cell::TileCell;
 
 /// Neutral fill for an `<img>` box whose pixels we don't have.
@@ -73,7 +76,7 @@ pub(crate) fn paint_scaled_with_masks(
     width: u32,
     height: u32,
     bg: Rgba,
-    images: &DecodedAssets,
+    images: &impl PaintInput,
     scale: f64,
     masks: &[crate::ScreenshotMask],
 ) -> Result<Vec<u8>, String> {
@@ -166,13 +169,15 @@ fn compose_transform(xf: Transform, f: &Fragment, t: &BoxTransform) -> Transform
     xf.pre_concat(m)
 }
 
-fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
     // CSS `opacity` (miaskiewicz/turbo-dom#206): the box and its subtree paint into
     // one canvas-sized layer composited at that alpha (a transparency group, so
     // overlapping descendants do not compound); `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
         if f.opacity > 0.0 {
-            let Some((x0, y0, w, h)) = group_layer(f, xf, pm.width(), pm.height()) else {
+            let Some((x0, y0, w, h)) =
+                group_layer_with_layers(f, xf, pm.width(), pm.height(), images.layers())
+            else {
                 return;
             };
             let mut layer = Pixmap::new(w, h).expect("layer within the canvas");
@@ -193,8 +198,19 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tra
 /// a `w x h` canvas: a conservative bound on the subtree's ink, clamped to the canvas
 /// (miaskiewicz/turbo-dom#211). `None` when nothing of it can show; the whole canvas when
 /// the bound does not resolve (a degenerate transform), as before.
+#[cfg(test)]
 fn group_layer(f: &Fragment, xf: Transform, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
-    let Some(ink) = ink_bounds(f, xf) else {
+    group_layer_with_layers(f, xf, w, h, None)
+}
+
+fn group_layer_with_layers(
+    f: &Fragment,
+    xf: Transform,
+    w: u32,
+    h: u32,
+    layers: Option<&crate::shadow_layers::ShadowLayers>,
+) -> Option<(i32, i32, u32, u32)> {
+    let Some(ink) = ink_bounds_with_layers(f, xf, layers) else {
         return Some((0, 0, w, h));
     };
     device_span(ink, w, h)
@@ -202,26 +218,19 @@ fn group_layer(f: &Fragment, xf: Transform, w: u32, h: u32) -> Option<(i32, i32,
 
 /// A device-space rectangle holding every pixel `f` and its subtree can paint under
 /// `xf`, or `None` when a transform does not map it to finite bounds.
-fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
+fn ink_bounds_with_layers(
+    f: &Fragment,
+    xf: Transform,
+    layers: Option<&crate::shadow_layers::ShadowLayers>,
+) -> Option<Rect> {
     let xf = match &f.content {
         FragmentContent::Box {
             transform: Some(t), ..
         } => compose_transform(xf, f, t),
         _ => xf,
     };
-    let (mut l, mut t, mut r, mut b) = (f.x, f.y, f.x + f.width, f.y + f.height);
+    let (mut l, mut t, mut r, mut b) = shadow_ink_bounds(f, layers);
     match &f.content {
-        FragmentContent::Box {
-            shadow: Some(sh), ..
-        } => {
-            // The shadow rect (offset, spread) plus the blur's reach on each side.
-            let reach = sh.spread.max(0) as f32 + 3.0 * shadow_blur(sh) + 1.0;
-            let (dx, dy) = (sh.offset_x as f32, sh.offset_y as f32);
-            l = l.min(l + dx - reach);
-            t = t.min(t + dy - reach);
-            r = r.max(r + dx + reach);
-            b = b.max(b + dy + reach);
-        }
         FragmentContent::TextLine {
             glyphs,
             font_size,
@@ -249,7 +258,7 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
     // while unioning descendants, rather than allocating a one-pixel opacity layer.
     let mut ink = Rect::from_ltrb(l, t, r.max(l), b.max(t))?.transform(xf)?;
     for c in &f.children {
-        let cb = ink_bounds(c, xf)?;
+        let cb = ink_bounds_with_layers(c, xf, layers)?;
         ink = Rect::from_ltrb(
             ink.left().min(cb.left()),
             ink.top().min(cb.top()),
@@ -260,8 +269,24 @@ fn ink_bounds(f: &Fragment, xf: Transform) -> Option<Rect> {
     Some(ink)
 }
 
+fn shadow_ink_bounds(
+    f: &Fragment,
+    layers: Option<&crate::shadow_layers::ShadowLayers>,
+) -> (f32, f32, f32, f32) {
+    let (mut l, mut t, mut r, mut b) = (f.x, f.y, f.x + f.width, f.y + f.height);
+    for sh in crate::shadow_layers::for_fragment(f, layers) {
+        let reach = sh.spread.max(0) as f32 + 3.0 * shadow_blur(sh) + 1.0;
+        let (dx, dy) = (sh.offset_x as f32, sh.offset_y as f32);
+        l = l.min(f.x + dx - reach);
+        t = t.min(f.y + dy - reach);
+        r = r.max(f.x + f.width + dx + reach);
+        b = b.max(f.y + f.height + dy + reach);
+    }
+    (l, t, r, b)
+}
+
 /// [`paint_fragment`] for a box painted at full opacity.
-fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
     // A CSS `transform` on this box applies to it AND its whole subtree.
     let xf = match &f.content {
         FragmentContent::Box {
@@ -283,7 +308,7 @@ fn paint_clipped(
     pm: &mut Pixmap,
     f: &Fragment,
     clip: ClipRect,
-    images: &DecodedAssets,
+    images: &impl PaintInput,
     xf: Transform,
 ) {
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
@@ -346,7 +371,7 @@ fn device_span(bounds: Rect, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
 /// Paint `f`'s children in stacking order, clipped to its `overflow` region
 /// (miaskiewicz/turbo-dom#253) when it has one: an empty region paints none of them, and
 /// children all inside a square region paint directly.
-fn paint_children(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+fn paint_children(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
     let paint = |pm: &mut Pixmap, xf: Transform| {
         // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
         // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
@@ -394,21 +419,18 @@ pub(crate) fn within(f: &Fragment, (x, y, w, h): rrect::Rect) -> bool {
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
-fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Transform) {
+fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
     match &f.content {
         FragmentContent::Box {
             background,
             border,
             border_radius,
-            shadow,
             gradient,
             ..
         } => {
             // An outer shadow paints behind the box (before its fill/border) so the
             // card sits on it; an inset one paints over the background, under the border.
-            if let Some(sh) = shadow.filter(|s| !s.inset && s.color.a > 0) {
-                paint_box_shadow(pm, f, border_radius, &sh, xf);
-            }
+            paint_outer_layers(pm, f, border_radius, images, xf);
             if border_radius.is_rounded() {
                 if let Some(bg) = background {
                     fill_rrect(pm, (f.x, f.y, f.width, f.height), border_radius, *bg, xf);
@@ -416,16 +438,16 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, border_radius, g, xf);
                 }
-                paint_inset_shadow(pm, f, border, border_radius, shadow.as_ref(), xf);
+                paint_inset_layers(pm, f, border, border_radius, images, xf);
                 paint_round_border(pm, f, border, border_radius, xf);
             } else {
                 if let Some(bg) = background {
-                    fill_rect(pm, f.x, f.y, f.width, f.height, *bg, xf);
+                    fill_background(pm, f, *bg, xf);
                 }
                 if let Some(g) = gradient {
                     paint_gradient(pm, f, &BorderRadii::ZERO, g, xf);
                 }
-                paint_inset_shadow(pm, f, border, &BorderRadii::ZERO, shadow.as_ref(), xf);
+                paint_inset_layers(pm, f, border, &BorderRadii::ZERO, images, xf);
                 paint_border(pm, f, border, xf);
             }
         }
@@ -445,8 +467,8 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &DecodedAssets, xf: Tran
             (*font_size, *color),
             xf.pre_concat(glyph_frame(f, *vertical)),
         ),
-        FragmentContent::Image(placement) => paint_image(pm, f, placement, images, xf),
-        FragmentContent::Tiles(pattern) => paint_tiles(pm, f, pattern, images, xf),
+        FragmentContent::Image(placement) => paint_image(pm, f, placement, images.images(), xf),
+        FragmentContent::Tiles(pattern) => paint_tiles(pm, f, pattern, images.images(), xf),
         FragmentContent::ColumnRule { style, color } => {
             paint_column_rule(pm, f, *style, *color, xf);
         }
@@ -1088,6 +1110,24 @@ fn solid(c: Rgba) -> Paint<'static> {
     paint
 }
 
+/// Axis-aligned CSS backgrounds snap their paint edges to device pixels. Keep
+/// layout fractional; transformed shapes retain their antialiased coverage.
+fn fill_background(pm: &mut Pixmap, f: &Fragment, color: Rgba, xf: Transform) {
+    let (x, y, width, height) = if xf.is_identity() {
+        let x = f.x.round();
+        let y = f.y.round();
+        (
+            x,
+            y,
+            (f.x + f.width).round() - x,
+            (f.y + f.height).round() - y,
+        )
+    } else {
+        (f.x, f.y, f.width, f.height)
+    };
+    fill_rect(pm, x, y, width, height, color, xf);
+}
+
 fn fill_rect(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, c: Rgba, xf: Transform) {
     fill_admitted_rect(pm, x, y, w, h, c, xf);
 }
@@ -1126,49 +1166,15 @@ fn fill_admitted_rect(
     true
 }
 
-/// Paint each border side as a filled edge band (no line styles — width + colour only).
-/// Sides that differ in colour ([`rrect::mixed_colours`]) paint the full-height left and
-/// right bands first, then the top and bottom ones mitred on the corner diagonals.
-fn border_side(s: BorderSide) -> Option<(f32, Rgba)> {
-    let width = std::num::NonZeroU16::new(s.width)?;
-    Some((f32::from(width.get()), s.color?))
-}
-
-fn paint_mitred_bands(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
-    for (top, s) in [(true, &b.top), (false, &b.bottom)] {
-        let Some((_, c)) = border_side(*s) else {
-            continue;
-        };
-        let band = rrect::mitred_band((f.x, f.y, f.width, f.height), rrect::widths(b), top);
-        let mut path = PathBuilder::new();
-        trace(&mut path, &rrect::polygon(&band));
-        if let Some(path) = path.finish() {
-            pm.fill_path(&path, &solid(c), FillRule::Winding, xf, None);
-        }
-    }
-}
-
+/// Paint one border ring; differently coloured square sides share pixel coverage.
 fn paint_border(pm: &mut Pixmap, f: &Fragment, b: &BorderEdges, xf: Transform) {
     if !fragment_finite_positive(f) {
         return;
     }
-    let mitred = rrect::mixed_colours(b);
-    if !mitred {
-        if let Some((w, c)) = border_side(b.top) {
-            fill_rect(pm, f.x, f.y, f.width, w, c, xf);
-        }
-        if let Some((w, c)) = border_side(b.bottom) {
-            fill_rect(pm, f.x, f.y + f.height - w, f.width, w, c, xf);
-        }
-    }
-    if let Some((w, c)) = border_side(b.left) {
-        fill_rect(pm, f.x, f.y, w, f.height, c, xf);
-    }
-    if let Some((w, c)) = border_side(b.right) {
-        fill_rect(pm, f.x + f.width - w, f.y, w, f.height, c, xf);
-    }
-    if mitred {
-        paint_mitred_bands(pm, f, b, xf);
+    if rrect::mixed_colours(b) {
+        crate::border_pixels::paint(pm, f, b, xf);
+    } else {
+        paint_round_border(pm, f, b, &BorderRadii::ZERO, xf);
     }
 }
 
@@ -1217,6 +1223,53 @@ fn fill_round_rect(
     fill_rrect(pm, (x, y, w, h), &BorderRadii::uniform(r.max(0.0)), c, xf);
 }
 
+/// Multiple outer shadows share the border-box knockout, including a transparent
+/// box. The bounded group never erases pixels already painted behind this element.
+fn paint_outer_layers(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    radii: &BorderRadii,
+    input: &impl PaintInput,
+    xf: Transform,
+) {
+    let shadows = input.shadows(f);
+    if !input.multiple(f) {
+        for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a > 0) {
+            paint_box_shadow(pm, f, radii, sh, xf);
+        }
+        return;
+    }
+    let Some((x, y, w, h)) = crate::shadow_layers::outer_bounds(f, shadows) else {
+        return;
+    };
+    let Some(bounds) = Rect::from_xywh(x, y, w, h).and_then(|r| r.transform(xf)) else {
+        return;
+    };
+    let Some((x, y, w, h)) = device_span(bounds, pm.width(), pm.height()) else {
+        return;
+    };
+    let Some(hole) = rrect_path((f.x, f.y, f.width, f.height), radii) else {
+        return;
+    };
+    let local = Transform::from_translate(-x as f32, -y as f32).pre_concat(xf);
+    let mut layer = Pixmap::new(w, h).expect("shadow layer within canvas");
+    for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a > 0) {
+        paint_box_shadow(&mut layer, f, radii, sh, local);
+    }
+    let mut mask = Mask::new(w, h).expect("shadow mask within canvas");
+    mask.fill_path(&hole, FillRule::Winding, true, local);
+    mask.invert();
+    layer.apply_mask(&mask);
+    pm.draw_pixmap(
+        x,
+        y,
+        layer.as_ref(),
+        &PixmapPaint::default(),
+        Transform::identity(),
+        None,
+    );
+}
+
 /// Paint an outer `box-shadow` behind the box: stamp its rounded-rect silhouette
 /// (the border box, offset by `(offset_x, offset_y)` and grown by `spread`) in the
 /// shadow colour onto a scratch pixmap, box-blur it by `blur`, and composite it
@@ -1256,6 +1309,19 @@ fn paint_box_shadow(
         color: sh.color,
     };
     blurred_shadow(pm, &silhouette, blur, xf, SHADOW_TILE, MAX_SHADOW_SCRATCH);
+}
+
+fn paint_inset_layers(
+    pm: &mut Pixmap,
+    f: &Fragment,
+    border: &BorderEdges,
+    radii: &BorderRadii,
+    input: &impl PaintInput,
+    xf: Transform,
+) {
+    for shadow in input.shadows(f).iter().rev() {
+        paint_inset_shadow(pm, f, border, radii, Some(shadow), xf);
+    }
 }
 
 /// Paint an inset `box-shadow` (miaskiewicz/turbo-dom#192): the padding box in the shadow
@@ -1619,16 +1685,7 @@ fn paint_round_border(
         }
         return;
     }
-    for (side, c) in painted {
-        let region = rrect::side_region(rect, widths, side);
-        let mut clip = PathBuilder::new();
-        trace(&mut clip, &rrect::polygon(&region));
-        if let Some(clip) = clip.finish() {
-            paint_masked(pm, &clip, xf, |layer, local| {
-                layer.fill_path(&ring, &solid(c), FillRule::EvenOdd, local, None);
-            });
-        }
-    }
+    crate::border_pixels::paint_ring(pm, f, b, xf, &ring);
 }
 
 /// Fill a line's glyph outlines in `color` (a transparent colour paints nothing). The
@@ -3758,6 +3815,54 @@ mod exact_tests {
             spread,
             color: BLUE,
             inset: false,
+        }
+    }
+
+    #[test]
+    fn multi_shadow_scratch_rejects_nonpainting_geometry_without_erasing_background() {
+        use crate::shadow_layers::{PaintContext, ShadowLayers};
+        let images = DecodedAssets::new();
+        let shadows = vec![hard(1, 1, 0), hard(2, 2, 0)];
+        let layers = ShadowLayers::from([(NodeId(0), shadows)]);
+        let input = PaintContext {
+            images: &images,
+            layers: &layers,
+        };
+        let normal = boxed(2.0, 2.0, 4.0, 4.0, 0.0, Some(hard(1, 1, 0)));
+        let offscreen = boxed(100.0, 100.0, 4.0, 4.0, 0.0, Some(hard(1, 1, 0)));
+        // Each rejection is a different scratch-allocation boundary: invalid
+        // transform, no canvas intersection, and an unrepresentable knockout.
+        let (x, y, w, h) =
+            crate::shadow_layers::outer_bounds(&normal, input.shadows(&normal)).unwrap();
+        assert!(Rect::from_xywh(x, y, w, h)
+            .unwrap()
+            .transform(Transform::from_scale(f32::INFINITY, 1.0))
+            .is_none());
+        let (x, y, w, h) =
+            crate::shadow_layers::outer_bounds(&offscreen, input.shadows(&offscreen)).unwrap();
+        assert!(device_span(Rect::from_xywh(x, y, w, h).unwrap(), 20, 20).is_none());
+        assert!(rrect_path(
+            (normal.x, normal.y, normal.width, normal.height),
+            &BorderRadii::uniform(f32::INFINITY)
+        )
+        .is_none());
+        for (f, radii, xf) in [
+            (
+                &normal,
+                BorderRadii::ZERO,
+                Transform::from_scale(f32::INFINITY, 1.0),
+            ),
+            (&offscreen, BorderRadii::ZERO, Transform::identity()),
+            (
+                &normal,
+                BorderRadii::uniform(f32::INFINITY),
+                Transform::identity(),
+            ),
+        ] {
+            let mut actual = white(20, 20);
+            let before = actual.data().to_vec();
+            paint_outer_layers(&mut actual, f, &radii, &input, xf);
+            assert_eq!(actual.data(), before);
         }
     }
 

@@ -3,7 +3,8 @@
 //! node styles, and folding in inheritance. Cascade order (low→high):
 //! UA < author sheets < tokens < node styles < inline < `!important` (AC-4.9).
 
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
+use std::fmt::Write;
 use std::sync::Arc;
 
 use super::parser::{parse_declarations, Declaration, Rule};
@@ -19,6 +20,12 @@ pub struct ComputedStyle {
 }
 
 impl ComputedStyle {
+    /// Retaining the source style makes mutation copy-on-write, so cached
+    /// metrics can validate their declaration identity without rescanning values.
+    pub(crate) fn same_storage(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.map, &other.map)
+    }
+
     /// The computed value of a property, if set.
     pub fn get(&self, property: &str) -> Option<&str> {
         self.map.get(property).map(String::as_str)
@@ -77,16 +84,14 @@ impl ComputedStyle {
     }
 
     /// Whether no value uses a containing-block-relative (`%`) or font-relative
-    /// (`em`/`rem`) unit. When true, the box's resolved metrics do not depend on
+    /// (`em`/`rem`) or viewport-relative unit. When true, the box's resolved metrics do not depend on
     /// the layout context, so they can be resolved once and cached (a `font-size`
     /// is still required to be absolute — see `is_ctx_independent`). Conservative:
-    /// any `%`/`em` substring (even inside a value like `lemonchiffon`) just
+    /// any relative-unit substring (even inside a value like `lemonchiffon`) just
     /// disables the cache, which is always safe.
     #[must_use]
     pub fn has_no_relative_units(&self) -> bool {
-        self.map
-            .values()
-            .all(|v| !v.contains('%') && !v.contains("em"))
+        self.map.values().all(|v| !relative_value(v))
     }
 
     /// Build a computed style directly from property/value pairs. Useful for
@@ -103,6 +108,19 @@ impl ComputedStyle {
             .collect();
         ComputedStyle { map: Arc::new(map) }
     }
+}
+
+fn relative_value(value: &str) -> bool {
+    value.contains('%')
+        || value.as_bytes().windows(2).any(|unit| {
+            unit.eq_ignore_ascii_case(b"em")
+                || unit.eq_ignore_ascii_case(b"vw")
+                || unit.eq_ignore_ascii_case(b"vh")
+        })
+        || value
+            .as_bytes()
+            .windows(4)
+            .any(|unit| unit.eq_ignore_ascii_case(b"vmin") || unit.eq_ignore_ascii_case(b"vmax"))
 }
 
 /// A styled element node.
@@ -343,6 +361,22 @@ fn push_decls(
     }
 }
 
+fn push_owned_decls(decls: impl IntoIterator<Item = Declaration>, level: u8, out: &mut Vec<Cand>) {
+    for (i, d) in decls.into_iter().enumerate() {
+        out.push(Cand {
+            key: (
+                d.important,
+                origin_rank(d.important, level),
+                (0, 0, 0),
+                0,
+                i,
+            ),
+            property: d.property,
+            value: d.value,
+        });
+    }
+}
+
 fn collect_rules(cascade: &Cascade, nav: &Navigator, h: Handle, out: &mut Vec<Cand>) {
     for lr in &cascade.rules {
         if let Some(spec) = lr.rule.selectors.best_match(nav, h) {
@@ -354,14 +388,14 @@ fn collect_rules(cascade: &Cascade, nav: &Navigator, h: Handle, out: &mut Vec<Ca
 fn collect_tokens(element: Subject, cascade: &Cascade, out: &mut Vec<Cand>) {
     if let Some(t_style) = element.attrs.get("t:style") {
         let decls = resolve_tokens(t_style, &cascade.tokens);
-        push_decls(&decls, 2, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 2, out);
     }
 }
 
 fn collect_inline(element: Subject, out: &mut Vec<Cand>) {
     if let Some(style) = element.attrs.get("style") {
         let decls = parse_declarations(style);
-        push_decls(&decls, 4, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 4, out);
     }
 }
 
@@ -371,6 +405,7 @@ fn collect_inline(element: Subject, out: &mut Vec<Cand>) {
 /// 0), so an author stylesheet always overrides them. Old table-layout sites
 /// (Hacker News' orange header `<td bgcolor>`, sized `<img>`) depend on them.
 fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
+    collect_svg_presentational(element, out);
     // Order matters (bgcolor, width, height, then `<font color>`); each entry is
     // present only when its attribute is set and usable.
     let decls: Vec<Declaration> = [
@@ -387,8 +422,54 @@ fn collect_presentational(element: Subject, out: &mut Vec<Cand>) {
     .flatten()
     .collect();
     if !decls.is_empty() {
-        push_decls(&decls, 1, (0, 0, 0), 0, out);
+        push_owned_decls(decls, 1, out);
     }
+}
+
+/// SVG presentation attributes participate at author specificity zero, before
+/// stylesheet rules. Namespace checking keeps HTML attributes from becoming CSS.
+fn collect_svg_presentational(element: Subject, out: &mut Vec<Cand>) {
+    let Attrs::Tree(tree, source) = element.attrs else {
+        return;
+    };
+    if tree.namespace(source) != turbo_dom::rtdom::tree::Namespace::Svg {
+        return;
+    }
+    let declarations = [
+        "color",
+        "fill",
+        "fill-opacity",
+        "fill-rule",
+        "stroke",
+        "stroke-width",
+        "stroke-opacity",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-miterlimit",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "opacity",
+        "visibility",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "text-anchor",
+        "clip-path",
+        "clip-rule",
+        "mask",
+        "filter",
+        "stop-color",
+        "stop-opacity",
+    ]
+    .into_iter()
+    .filter_map(|property| {
+        element
+            .attrs
+            .get(property)
+            .map(|value| pres_decl(property, value.to_owned()))
+    });
+    push_owned_decls(declarations, 1, out);
 }
 
 /// A `width` / `height` attribute as a presentational length, except on `<canvas>`
@@ -561,7 +642,7 @@ fn collect_cellpadding(element: Subject, nav: &Navigator, h: Handle, out: &mut V
             value: format!("{pad}px"),
             important: false,
         };
-        push_decls(&[decl], 1, (0, 0, 0), 0, out);
+        push_owned_decls([decl], 1, out);
     }
 }
 
@@ -644,9 +725,15 @@ fn paragraph_margin_mask(mut origins: [Option<Key>; 8], style: &ComputedStyle) -
 fn pick_winners(cands: Vec<Cand>) -> BTreeMap<String, String> {
     let mut best: BTreeMap<String, (Key, String)> = BTreeMap::new();
     for cand in cands {
-        let beats = best.get(&cand.property).is_none_or(|(k, _)| cand.key >= *k);
-        if beats {
-            best.insert(cand.property, (cand.key, cand.value));
+        match best.entry(cand.property) {
+            Entry::Vacant(entry) => {
+                entry.insert((cand.key, cand.value));
+            }
+            Entry::Occupied(mut entry) => {
+                if cand.key >= entry.get().0 {
+                    entry.insert((cand.key, cand.value));
+                }
+            }
         }
     }
     best.into_iter().map(|(k, (_, v))| (k, v)).collect()
@@ -667,11 +754,13 @@ fn resolve_font_size(map: &mut BTreeMap<String, String>, parent: &ComputedStyle)
         .get("font-size")
         .and_then(parse_abs_px)
         .unwrap_or(ROOT_FONT_PX);
-    let Some(raw) = map.get("font-size") else {
+    let Some(raw) = map.get_mut("font-size") else {
         return;
     };
     let px = font_size_px(raw, parent_px);
-    map.insert("font-size".to_string(), format!("{px}px"));
+    // Reuse the inherited/declaration string's allocation for its computed value.
+    raw.clear();
+    write!(raw, "{px}px").expect("writing to a String is infallible");
 }
 
 /// An element's computed `font-size` in px (the cascade stores it absolute), or the
@@ -731,17 +820,17 @@ fn font_size_px(value: &str, parent_px: f32) -> f32 {
     }
 }
 
-fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedStyle {
+fn inherit(mut own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedStyle {
     let mut map = BTreeMap::new();
     for prop in INHERITED {
         if let Some(v) = parent.get(prop) {
-            map.insert((*prop).to_string(), v.to_string());
+            inherit_value(&mut map, &mut own, prop, v);
         }
     }
     // Custom properties (`--*`) inherit by default (they're how `var()` cascades).
     for (k, v) in parent.map.iter() {
         if k.starts_with("--") {
-            map.insert(k.clone(), v.clone());
+            inherit_value(&mut map, &mut own, k, v);
         }
     }
     map.extend(own);
@@ -750,6 +839,20 @@ fn inherit(own: BTreeMap<String, String>, parent: &ComputedStyle) -> ComputedSty
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
     ComputedStyle { map: Arc::new(map) }
+}
+
+fn inherit_value(
+    map: &mut BTreeMap<String, String>,
+    own: &mut BTreeMap<String, String>,
+    property: &str,
+    inherited: &str,
+) {
+    // Keep inherited-property insertion order, while moving an overriding local
+    // value directly into its slot instead of first cloning a discarded parent.
+    let (key, value) = own
+        .remove_entry(property)
+        .unwrap_or_else(|| (property.to_string(), inherited.to_string()));
+    map.insert(key, value);
 }
 
 /// The initial value of each inherited property (and of `display`, whose absence
@@ -779,6 +882,8 @@ const INITIAL: &[(&str, &str)] = &[
     ("caption-side", "top"),
     ("border-spacing", "0px"),
     ("display", "inline"),
+    ("flex-direction", "row"),
+    ("flex-wrap", "nowrap"),
     // Multi-column + fragmentation (CSS Multicol 1, CSS Fragmentation 3; turbo-dom#398).
     ("column-count", "auto"),
     ("column-width", "auto"),
@@ -959,7 +1064,13 @@ fn expand_quad_candidates(cands: Vec<Cand>, parent: &ComputedStyle) -> Vec<Cand>
         super::quad_shorthand::is_quad(&cand.property)
             || matches!(
                 cand.property.as_str(),
-                "font" | "list-style" | "border-radius" | "background" | "columns",
+                "font"
+                    | "list-style"
+                    | "border-radius"
+                    | "background"
+                    | "columns"
+                    | "flex-flow"
+                    | "-webkit-flex-flow",
             )
     }) {
         return cands;
@@ -1048,7 +1159,8 @@ fn take_longhand(longhands: &mut Vec<Cand>, name: &str) -> Option<String> {
 }
 
 /// The `font` (miaskiewicz/turbo-dom#176), `list-style` (#128), `border-radius`
-/// (#253), `columns` (#398 PR-C1) and `column-rule` (#398 PR-D) shorthands'
+/// (#253), `columns` (#398 PR-C1), `column-rule` (#398 PR-D) and `flex-flow`
+/// (#522) shorthands'
 /// longhands, parsed by turbo-dom's shorthand grammar, at the shorthand's
 /// cascade position. An invalid value (or a system-font keyword, which has no
 /// longhand values here) contributes nothing; one whose `var()` fails is
@@ -1057,7 +1169,13 @@ fn expanded_font(cand: &Cand, variables: &BTreeMap<String, String>) -> Vec<Cand>
     let name = cand.property.as_str();
     if !matches!(
         name,
-        "font" | "list-style" | "border-radius" | "columns" | "column-rule"
+        "font"
+            | "list-style"
+            | "border-radius"
+            | "columns"
+            | "column-rule"
+            | "flex-flow"
+            | "-webkit-flex-flow"
     ) {
         return Vec::new();
     }

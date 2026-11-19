@@ -18,6 +18,11 @@ All in `scripts/agent/`. Each supports `--help`.
 | [`verify-copied.sh`](../scripts/agent/verify-copied.sh) | Run all three S1/S5 "verify copied" guards. |
 | [`release-prep.sh X.Y.Z`](../scripts/agent/release-prep.sh) | Bump every manifest, re-lock, rebuild WASM, run the guards. Does **not** tag or publish. |
 
+For paired native layout performance and output-parity checks, use
+[`benchmark-cascade-refs.py`](../scripts/benchmark-cascade-refs.py) with two refs;
+the [runbook](CASCADE-PERFORMANCE.md) explains accuracy gates, retained artifacts
+and timing noise.
+
 ## Shared cache locations
 
 The helpers read these via `scripts/agent/lib.sh`; override any one with an

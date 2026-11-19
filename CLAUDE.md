@@ -4,7 +4,7 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.8.4):
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.8.5):
 
 - the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
   native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
@@ -83,6 +83,13 @@ patches + `scripts/generate.py`; the crate is written to the gitignored `crates/
 and built standalone (the root workspace excludes it, so the base gates never need V8). See
 [crates/turbo-dom-v8/README.md](crates/turbo-dom-v8/README.md) for generate/check/test/release.
 Generator tests: `python3 -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'`.
+
+**`crates/turbo-dom-rav1d` is generated the same way.** It is rav1d 1.1.0, plus upstream's
+memorysafety/rav1d#1497 fix, with every `extern "C"` turned into `extern "C-unwind"`, so
+turbo-dom-raster's AVIF decode can catch a decoder panic (turbo-dom#535). It is built from
+the pinned crate by `scripts/generate.py` into the gitignored `crate/` and published to
+crates.io as `turbo-dom-rav1d`. turbo-dom-raster depends on the published version. See its
+README. Generator tests: `python3 -m unittest discover -s crates/turbo-dom-rav1d/scripts -p 'test_*.py'`.
 
 Toolchain: Node ≥ 24, Rust 1.98.0 via rustup (CI's pin; MSRV 1.89 for turbo-dom/-layout/-raster, 1.91
 for -v8/-browser-env; `source $HOME/.cargo/env` if cargo isn't on PATH).
@@ -335,7 +342,8 @@ package or publish workflow.
   vertical offsets (the 40px `g` bar, `paint_chrome.rs` probe (28,44)). Relocated verbatim from
   turbo-surf-raster 0.5.5 (S1). Decodes images through turbo-dom-layout's image layer (PNG,
   SVG at 1x) and the `image` crate (JPEG/GIF/WebP/BMP/ICO/CUR, resize, PNG re-encode for
-  SVG `data:` URIs), AVIF via `rav1d` under the off-by-default `avif` feature (P5b
+  SVG `data:` URIs), AVIF via `turbo-dom-rav1d` (turbo-dom's generated rav1d 1.1.0 fork with an unwinding C ABI,
+  `crates/turbo-dom-rav1d`, turbo-dom#535) under the off-by-default `avif` feature (P5b
   turbo-surf#30) and JPEG XL via `jxl-oxide` under the off-by-default `jxl` feature (P5b
   turbo-dom#45; the size/orientation probe is in turbo-dom-layout, every build); `image_paint::shared_layer_tests` gates it byte for byte against the old
   decode over `tools/parity` image inputs. 100% line coverage in its default / `avif` / `jxl`

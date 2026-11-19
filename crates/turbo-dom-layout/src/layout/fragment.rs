@@ -236,7 +236,7 @@ impl TilePattern {
 /// A resolved `box-shadow` layer (§CSS backgrounds §7). Geometry is px in the
 /// galley's coordinate space; the raster stamps a rounded rect of `color` at the
 /// box's outline, offset by `(offset_x, offset_y)`, grown by `spread`, blurred by
-/// `blur`. `inset` shadows paint inside the box (v1 paints outer only).
+/// `blur`. `inset` identifies a shadow inside the padding box rather than behind it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoxShadow {
     pub offset_x: i32,

@@ -49,6 +49,10 @@ unsafe impl GlobalAlloc for Peak {
 #[global_allocator]
 static GLOBAL: Peak = Peak;
 
+// Measurements use process-global counters; setup and assertions in another test
+// allocate too, so guard each complete test as well as the measured closure.
+static TEST_SERIAL: Mutex<()> = Mutex::new(());
+
 /// One measurement at a time: the peak is process-wide.
 static SERIAL: Mutex<()> = Mutex::new(());
 
@@ -103,6 +107,9 @@ fn pixel(png: &[u8], x: u32, y: u32) -> [u8; 3] {
 
 #[test]
 fn a_huge_background_size_paints_with_bounded_scratch() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut assets: ImageAssets = HashMap::new();
     assets.insert("a.png".into(), two_by_two());
     // The 40000px tile's left half (red) covers the whole 100px box.
@@ -119,6 +126,9 @@ fn a_huge_background_size_paints_with_bounded_scratch() {
 
 #[test]
 fn a_huge_img_paints_with_bounded_scratch() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut assets: ImageAssets = HashMap::new();
     assets.insert("a.png".into(), two_by_two());
     let html = r#"<body style="margin:0"><img src="a.png" style="display:block;width:40000px;height:40000px">"#;
@@ -136,6 +146,9 @@ fn a_huge_img_paints_with_bounded_scratch() {
 
 #[test]
 fn inset_shadows_on_a_tall_page_paint_with_bounded_scratch() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut html = String::from(r#"<body style="margin:0;background:#fff">"#);
     for _ in 0..200 {
         html.push_str(
@@ -162,6 +175,9 @@ fn inset_shadows_on_a_tall_page_paint_with_bounded_scratch() {
 /// Chrome 156: `bg-tiles-shrunk-fractional` in `paint_chrome156.json`.
 #[test]
 fn millions_of_fractional_tiles_paint_the_whole_box_in_bounded_work() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let html = r#"<body style="margin:0;background:#0ff"><div style="position:absolute;left:0;top:0;width:800px;height:800px;transform:scale(0.25);transform-origin:0 0;background:#0f0 linear-gradient(#f00,#f00) 0 0/1.5px 1.5px"></div>"#;
     let mut png = Vec::new();
     let count = allocation_count(|| {
@@ -194,6 +210,9 @@ fn full_opacity_boxes(fragment: &Fragment, opacity: f32) -> usize {
 #[test]
 fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
     const BOXES: usize = 20;
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let viewport = Viewport {
         width: 1024,
         height: 1024,
@@ -251,6 +270,9 @@ fn opaque_and_zero_opacity_boxes_do_not_allocate_transparency_layers() {
 
 #[test]
 fn empty_opacity_boxes_do_not_allocate_scratch_layers() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut counts = [0; 2];
     for (i, opacity) in [1.0, 0.5].into_iter().enumerate() {
         let preparation = SERIAL
@@ -295,17 +317,26 @@ fn transparent_shadows(fragment: &Fragment, inset: bool) -> usize {
 
 #[test]
 fn transparent_outer_shadows_do_not_allocate_blur_layers() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     check_transparent_shadow_allocations(false);
 }
 
 #[test]
 fn transparent_inset_shadows_do_not_allocate_blur_layers() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     check_transparent_shadow_allocations(true);
 }
 
 #[test]
 fn visible_blurred_shadows_reuse_their_scratch_for_compositing() {
     const BOXES: usize = 10;
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let preparation = SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -341,6 +372,9 @@ fn visible_blurred_shadows_reuse_their_scratch_for_compositing() {
 
 #[test]
 fn a_huge_blurred_shadow_allocates_only_its_small_visible_region() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     for position in [20, -5000] {
         let preparation = SERIAL
             .lock()
@@ -377,6 +411,9 @@ fn a_huge_blurred_shadow_allocates_only_its_small_visible_region() {
 
 #[test]
 fn a_downscaled_long_shadow_keeps_both_scratch_axes_bounded() {
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let preparation = SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -462,6 +499,9 @@ fn positioned_image_strips(fragment: &Fragment) -> usize {
 #[test]
 fn oversized_repeated_image_textures_use_only_visible_scratch() {
     const BOXES: usize = 20;
+    let _test = TEST_SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let preparation = SERIAL
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

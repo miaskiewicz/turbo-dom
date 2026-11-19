@@ -1,0 +1,353 @@
+{
+  "browser": "159.0.8154.6",
+  "nativeOnly": true,
+  "nativeSha256": "e9c974edaacd952d973aeb579b09b5957ed3ccaa0db123b4f795979a5a3e9ca0",
+  "cargoLockSha256": "6638d320abfac3822d4008bb8584ee0dbd7f8da5e487f33bc7e44343108f890d",
+  "deviceScale": 1,
+  "viewportHeight": 1000,
+  "runtimeCommit": "b899b750c46e5da9035026026687e44ca2fef2a2",
+  "chromiumComparison": "Fresh Chromium 159 captures from triage-085-integrated-50ab; fixture bytes and viewport unchanged. Final native paint compared offline to those PNGs with the unchanged harness threshold.",
+  "layoutTestsPassed": 1219,
+  "rasterTestsPassed": 454,
+  "browserBindingTestsPassed": 807,
+  "browserBindingExistingIgnored": 4,
+  "fixedNativeLottieVerified": false,
+  "results": [
+    {
+      "name": "feature-cards",
+      "width": 1440,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 13808,
+        "changedFraction": 0.009588888888888888,
+        "meanChannelError": 0.46410972222222224
+      }
+    },
+    {
+      "name": "feature-cards",
+      "width": 768,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 16432,
+        "changedFraction": 0.021395833333333333,
+        "meanChannelError": 1.32228515625
+      }
+    },
+    {
+      "name": "feature-cards",
+      "width": 390,
+      "fixtureSha256": "c2aa31bff7228bff138f8af50d456d42e2229ca2f7b991d71792fd226eded9e4",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 13358,
+        "changedFraction": 0.03425128205128205,
+        "meanChannelError": 1.630659829059829
+      }
+    },
+    {
+      "name": "product-cards",
+      "width": 1440,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 34340,
+        "changedFraction": 0.02384722222222222,
+        "meanChannelError": 2.2425766203703703
+      }
+    },
+    {
+      "name": "product-cards",
+      "width": 768,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 33656,
+        "changedFraction": 0.04382291666666667,
+        "meanChannelError": 4.100252604166666
+      }
+    },
+    {
+      "name": "product-cards",
+      "width": 390,
+      "fixtureSha256": "8305225e49f67029eacf9c59c92df6f270c0cbcdd28bb61c6038dd7dac31be88",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 18652,
+        "changedFraction": 0.047825641025641026,
+        "meanChannelError": 2.8660948717948718
+      }
+    },
+    {
+      "name": "partner-logos",
+      "width": 1440,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [
+        {
+          "key": ".MuiContainer-root:0",
+          "chromium": [
+            120,
+            0,
+            1200,
+            617
+          ],
+          "native": [
+            120,
+            0,
+            1200,
+            768
+          ]
+        }
+      ],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 27453,
+        "changedFraction": 0.019064583333333333,
+        "meanChannelError": 1.2960546296296296
+      }
+    },
+    {
+      "name": "partner-logos",
+      "width": 768,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [
+        {
+          "key": ".MuiContainer-root:0",
+          "chromium": [
+            0,
+            0,
+            768,
+            725
+          ],
+          "native": [
+            0,
+            0,
+            768,
+            884
+          ]
+        }
+      ],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 27670,
+        "changedFraction": 0.03602864583333333,
+        "meanChannelError": 2.39126171875
+      }
+    },
+    {
+      "name": "partner-logos",
+      "width": 390,
+      "fixtureSha256": "a0eefdf3e3ec9557a394b58074bda2d01940f37f72aa9dead146bb589b28eb08",
+      "geometryDifferences": [
+        {
+          "key": ".MuiContainer-root:0",
+          "chromium": [
+            0,
+            0,
+            390,
+            765
+          ],
+          "native": [
+            0,
+            0,
+            390,
+            923
+          ]
+        }
+      ],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 12835,
+        "changedFraction": 0.03291025641025641,
+        "meanChannelError": 1.384657264957265
+      }
+    },
+    {
+      "name": "resources",
+      "width": 1440,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 47421,
+        "changedFraction": 0.03293125,
+        "meanChannelError": 1.700925
+      }
+    },
+    {
+      "name": "resources",
+      "width": 768,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 62467,
+        "changedFraction": 0.08133723958333333,
+        "meanChannelError": 3.9883511284722224
+      }
+    },
+    {
+      "name": "resources",
+      "width": 390,
+      "fixtureSha256": "ec32995b17c007675e9da69ccdb4e55a22bef864bd6c2a9bee099177ee57fc38",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 34519,
+        "changedFraction": 0.08851025641025641,
+        "meanChannelError": 4.1210555555555555
+      }
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 1440,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 768,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "mui-width-expression",
+      "width": 390,
+      "fixtureSha256": "b8febe8619730f4ed0ea17381259a33cd3a6d866fcb59bd7b71f31f05fce6e70",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 1440,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0.0026305555555555557
+      }
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 768,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0.0049296875
+      }
+    },
+    {
+      "name": "nested-grid-tracks",
+      "width": 390,
+      "fixtureSha256": "2b59c3aca86ca4d8cc10bbcbc52f402b788bc5e95b04c4f22af66e8adcbd20b2",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0.009713675213675214
+      }
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 1440,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 768,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "mui-width-additive",
+      "width": 390,
+      "fixtureSha256": "b699853828cf85909a298855aeb447f7edc86300c32301066798eec49591b3c0",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 1440,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 768,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    },
+    {
+      "name": "nested-flex-padding",
+      "width": 390,
+      "fixtureSha256": "b6c65bd56a1ed50e7e1c0aa604117eae5564450f395a69455193aeeb997cb239",
+      "geometryDifferences": [],
+      "chromiumErrors": [],
+      "pixels": {
+        "changedPixels": 0,
+        "changedFraction": 0,
+        "meanChannelError": 0
+      }
+    }
+  ]
+}

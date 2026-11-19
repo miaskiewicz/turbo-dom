@@ -446,6 +446,57 @@ fn clip_rect(style: &SourceStyle, border: Rect) -> Option<Rect> {
 mod tests {
     use super::*;
     #[test]
+    fn glyphless_runs_do_not_claim_hits_or_seen_sources() {
+        let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
+            "<body style='margin:0'><span id=t>abc</span></body>",
+            "",
+            (400.0, 300.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let target = crate::live::testing::id(&tree, "#t");
+        let mut run = snapshot.text_runs()[0].clone();
+        let rect = super::super::text::run_rect(&snapshot, &run).unwrap();
+        let point = [
+            f64::from(rect.x + rect.width / 2.0),
+            f64::from(rect.y + rect.height / 2.0),
+        ];
+        let offsets = BTreeMap::new();
+        let mut result = Vec::new();
+        let mut seen = BTreeSet::new();
+        process_run_hit(
+            &snapshot,
+            &styles,
+            &offsets,
+            point,
+            &snapshot.fragments()[run.fragment_index],
+            &run,
+            &mut result,
+            &mut seen,
+        )
+        .unwrap();
+        assert_eq!(result, vec![target]);
+        assert_eq!(seen, BTreeSet::from([target]));
+        run.glyphs.clear();
+        result.clear();
+        seen.clear();
+        process_run_hit(
+            &snapshot,
+            &styles,
+            &offsets,
+            point,
+            &snapshot.fragments()[run.fragment_index],
+            &run,
+            &mut result,
+            &mut seen,
+        )
+        .unwrap();
+        assert!(result.is_empty());
+        assert!(seen.is_empty());
+    }
+
+    #[test]
     fn actual_inverse_transform_excludes_axis_bounds_and_degenerate_boxes() {
         let rect = Rect {
             x: 0.0,

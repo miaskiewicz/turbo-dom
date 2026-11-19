@@ -283,6 +283,13 @@ jobs:
       - name: Check gpu-metal (wgpu builds on Linux too; coretext is inert there)
         if: runner.os == 'Linux'
         run: cargo check -p turbo-dom-raster --features coretext,gpu-metal
+      - name: Retain AVIF decoder failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avif-fuzz-${{ matrix.os }}
+          path: target/avif-fuzz.stderr.log
+          if-no-files-found: ignore
 
   # ---- turbo-dom-v8 (generated fork) + turbo-dom-browser-env ----
   v8:
@@ -428,6 +435,10 @@ jobs:
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
+      - name: turbo-dom-rav1d generator self-tests
+        run: python -m unittest discover -s crates/turbo-dom-rav1d/scripts -p 'test_*.py'
+      - name: turbo-dom-rav1d regenerates to the pinned tree
+        run: python crates/turbo-dom-rav1d/scripts/generate.py --download --check
       - name: Script self-tests (publish-crates.py, check-versions.py, check-baseline-red.py, check-glibc-ceiling.sh)
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)
@@ -529,7 +540,11 @@ jobs:
           - { crate: turbo-dom-layout,      floor: 99.8, features: '' }
           - { crate: turbo-dom-layout,      floor: 99.8, features: '--features turbo-dom-layout/svg,turbo-dom-layout/perf,turbo-dom-layout/serde,turbo-dom-layout/test-support', label: turbo-dom-layout-all-features }
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
-          - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
+          # The avif lib binary runs the corrupt-AVIF fuzz corpus in a child process; since
+          # turbo-dom#535 it decodes single-threaded (the price of catching every rav1d
+          # panic), so it exceeds 600s instrumented ("Timed out waiting for test response" on
+          # corrupt_avifs_are_broken_images_never_a_process_abort). Not a hang.
+          - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif, timeout: 2400 }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
           # timeout: tarpaulin's --timeout bounds a WHOLE test binary's run, not one test. The
           # browser-env lib binary (~555 V8 tests) takes ~600s instrumented on ubuntu-latest, so the

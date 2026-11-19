@@ -128,6 +128,55 @@ pub(crate) fn html_elements(tree: &Tree, name: &str) -> Vec<Handle> {
     found
 }
 
+/// Preserve the document cascade before SVGs become standalone images.
+/// Without this, `currentColor` resolves against resvg's initial black instead of
+/// the surrounding HTML. Root declarations also survive selectors such as `svg`
+/// losing their match after replacement. Documents without SVGs need no style pass.
+pub(crate) fn resolve_inline_svg_styles(
+    tree: &mut Tree,
+    css: &str,
+    viewport: crate::Viewport,
+) -> bool {
+    let roots = svg_roots(tree);
+    if roots.is_empty() {
+        return false;
+    }
+    turbo_dom_layout::set_media_viewport_height(viewport.height as f32);
+    let styled = turbo_dom_layout::style_html_tree(
+        tree,
+        "",
+        viewport.width as f32,
+        &turbo_dom_layout::HtmlOptions {
+            linked_css: css,
+            ..Default::default()
+        },
+    );
+    let mut pending: Vec<_> = styled.iter().collect();
+    while let Some(node) = pending.pop() {
+        if let Some(element) = node.as_element() {
+            if let Some(source) = element
+                .source
+                .filter(|source| tree.namespace(*source) == Namespace::Svg)
+            {
+                // Variables are already substituted. resvg does not parse custom
+                // declarations; retaining them can discard the following style.
+                let mut resolved = String::new();
+                for (property, value) in element
+                    .style
+                    .iter()
+                    .filter(|(name, _)| !name.starts_with("--"))
+                {
+                    use std::fmt::Write;
+                    let _ = write!(resolved, "{property}:{value}!important;");
+                }
+                tree.set_attribute(source, "style", &resolved);
+            }
+            pending.extend(&element.children);
+        }
+    }
+    true
+}
+
 /// Replace each inline `<svg>` ELEMENT of the parsed document (the outermost one of a
 /// nested set) with an `<img>` carrying the SVG's `class`/`style`/`width`/`height` (so CSS
 /// sizing still applies) and a synthetic `src` key, returning the `(key, svg-source)` pairs

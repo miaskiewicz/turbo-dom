@@ -6,10 +6,22 @@
 //! Content sizing: an item's main size comes from its `flex-basis`/`width` when
 //! set, otherwise from a max-content measurement of its content (`natural_width`);
 //! the cross size comes from laying the content out at the proposed width. The
-//! item's padding/border are folded into the measured border-box, and its margins
-//! are handed to taffy. Per-item `align-self`/`order` are deferred (documented).
+//! item's typed padding, borders and margins remain with taffy until their containing
+//! block is known. The measurement bridge converts native border boxes to taffy
+//! content measurements without applying the frame twice.
 
 use std::collections::HashMap;
+#[path = "flex_tree.rs"]
+mod native_tree;
+use native_tree::Tree as TaffyTree;
+#[path = "grid_capacity.rs"]
+mod grid_capacity;
+
+#[path = "grid_tracks.rs"]
+mod grid_tracks;
+
+#[path = "flex_frame.rs"]
+mod frames;
 
 use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyMinContent};
 use taffy::style_helpers::{fr, line, minmax, percent, span};
@@ -17,7 +29,7 @@ use taffy::{
     AlignItems, AvailableSpace, Dimension, Display, FlexDirection, FlexWrap, GridPlacement,
     GridTrackRepetition, JustifyContent, Layout, LengthPercentage, LengthPercentageAuto, Line,
     MaxTrackSizingFunction, MinTrackSizingFunction, NodeId as TaffyId,
-    NonRepeatedTrackSizingFunction, Position, Rect, Size, Style, TaffyTree, TrackSizingFunction,
+    NonRepeatedTrackSizingFunction, Position, Rect, Size, Style, TrackSizingFunction,
 };
 
 use crate::error::Diagnostics;
@@ -28,7 +40,10 @@ use super::block::{self, Ctx};
 use super::boxgen::{BoxKind, InlineItem, LayoutBox};
 use super::fragment::Fragment;
 use super::inline;
-use super::value::{parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx, DEFAULT_FONT_SIZE};
+use super::value::{
+    component_tokens as basis_tokens, parse_px, BoxSizing, BoxStyle, LengthPct, ResolveCtx,
+    DEFAULT_FONT_SIZE,
+};
 use super::ImageCtx;
 
 // --------------------------------------------------------------------------
@@ -152,22 +167,21 @@ fn gap_shorthand(s: &ComputedStyle, column: bool) -> Option<f32> {
     parse_px(tok, DEFAULT_FONT_SIZE)
 }
 
-fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style {
+fn container_style(container: &LayoutBox, cw: f32, fs: f32, known_height: Option<f32>) -> Style {
     let s = &container.style;
     let bs = container.resolved(ResolveCtx {
         parent_font_size: fs,
         cb_width: cw,
     });
-    // When the container's own `height` is `auto` but a definite content height was
-    // handed down (`cb_h` — e.g. this flex box is itself a flex item its parent
-    // stretched/grew, or an in-flow box under a fixed-height ancestor), give taffy
-    // that definite height so cross-axis `align-items` / column main-axis space has
-    // a basis. Without it a nested `align-items:center` centres in content height
-    // instead of the assigned height (a centred child lands at the top).
-    let container_h = match bs.height {
-        LengthPct::Auto if cb_h > 0.0 => Dimension::length(cb_h),
-        _ => dim(bs.height),
+    let inset = match bs.box_sizing {
+        BoxSizing::BorderBox => bs.padding.vertical() + bs.border.widths().vertical(),
+        BoxSizing::ContentBox => 0.0,
     };
+    // This Taffy root has no padding/border: native block layout already owns
+    // that frame. Prefer its actual definite content height (including flexed or
+    // percentage-resolved sizes), and convert declared constraints to this space.
+    let container_h =
+        known_height.map_or_else(|| dim(content_height(bs.height, inset)), Dimension::length);
     Style {
         display: Display::Flex,
         flex_direction: flex_direction(s),
@@ -187,12 +201,12 @@ fn container_style(container: &LayoutBox, cw: f32, fs: f32, cb_h: f32) -> Style 
             height: container_h,
         },
         min_size: Size {
-            width: dim(bs.min_width),
-            height: dim(bs.min_height),
+            width: Dimension::auto(),
+            height: dim(content_height(bs.min_height, inset)),
         },
         max_size: Size {
-            width: dim(bs.max_width),
-            height: dim(bs.max_height),
+            width: Dimension::auto(),
+            height: dim(content_height(bs.max_height, inset)),
         },
         ..Default::default()
     }
@@ -219,8 +233,8 @@ fn flex_grow_shrink(s: &ComputedStyle) -> (f32, f32) {
         // `<grow> [<shrink>] [<basis>]`: the leading unitless numbers are grow/shrink
         // (a `<basis>` length/% carries a unit and is skipped by the number parse).
         rest => {
-            let nums: Vec<f32> = rest
-                .split_whitespace()
+            let nums: Vec<f32> = basis_tokens(rest)
+                .into_iter()
                 .filter_map(|t| t.parse().ok())
                 .collect();
             (
@@ -255,10 +269,10 @@ fn item_basis(s: &ComputedStyle, main: LengthPct, fs: f32) -> Dimension {
 fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
     let v = s.get("flex").map(str::trim)?;
     if matches!(v, "none" | "initial") {
-        return Some(Dimension::auto());
+        return None;
     }
     let mut saw_token = false;
-    for tok in v.split_whitespace() {
+    for tok in basis_tokens(v) {
         saw_token = true;
         match token_basis(tok, fs) {
             TokenBasis::DeferToWidth => return None,
@@ -267,7 +281,7 @@ fn flex_shorthand_basis(s: &ComputedStyle, fs: f32) -> Option<Dimension> {
         }
     }
     // A numbers-only shorthand (`flex: 1`, `flex: 2 0`) has an implied `0` basis.
-    saw_token.then(|| Dimension::length(0.0))
+    saw_token.then(|| Dimension::percent(0.0))
 }
 
 /// One `flex`-shorthand token's role in basis resolution.
@@ -302,28 +316,13 @@ fn parse_basis(b: &str, fs: f32) -> Option<Dimension> {
     if let Some(px) = parse_px(b, fs) {
         return Some(Dimension::length(px));
     }
-    b.strip_suffix('%')
-        .and_then(|n| n.trim().parse::<f32>().ok())
-        .map(|p| Dimension::percent(p / 100.0))
-}
-
-fn item_margins(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
-    Rect {
-        left: LengthPercentageAuto::length(bs.margin.left),
-        right: LengthPercentageAuto::length(bs.margin.right),
-        top: LengthPercentageAuto::length(bs.margin.top),
-        bottom: LengthPercentageAuto::length(bs.margin.bottom),
-    }
+    super::value::parse_length_pct(b, fs).map(dim)
 }
 
 /// A flex (or grid: `column` false) item's taffy style; `column`: the container's main
 /// axis is vertical.
-fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
+fn item_style(item: &LayoutBox, bs: &BoxStyle, fs: f32, column: bool) -> Style {
     let s = &item.style;
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
     // A `position:absolute`/`fixed` child is out of flow: taffy must NOT treat it as
     // a flex item (else `align-items:stretch` in a column flex fills it to the
     // container width, ignoring its own width â the Codex radio's absolute icon blew
@@ -332,9 +331,8 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
     if bs.position.is_out_of_flow() {
         return Style {
             position: Position::Absolute,
-            inset: abs_item_inset(&bs),
-            size: item_size(&bs),
-            margin: item_margins(&bs),
+            inset: abs_item_inset(bs),
+            size: item_size(bs),
             ..Default::default()
         };
     }
@@ -345,12 +343,18 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
         flex_shrink: num(s, "flex-shrink", shrink),
         flex_basis: item_basis(s, main, fs),
         align_self: align_self(s),
-        margin: item_margins(&bs),
         // A flex item's own `min/max` sizes and explicit cross-axis size (`height` in a
         // row, `width` in a column) must reach taffy — else an item whose height is only
         // a `min-height` collapses, and a column item stretches over its `width`.
-        // The main axis stays driven by `flex_basis`.
-        size: cross_size(&bs, column),
+        // Preferred width also caps the automatic minimum; flex-basis still drives flexing.
+        size: Size {
+            width: dim(bs.width),
+            height: if column {
+                Dimension::auto()
+            } else {
+                dim(bs.height)
+            },
+        },
         min_size: Size {
             width: dim(bs.min_width),
             height: dim(bs.min_height),
@@ -363,65 +367,12 @@ fn item_style(item: &LayoutBox, fs: f32, column: bool) -> Style {
     }
 }
 
-/// A flex item's style with its `size`, `min_size`, `max_size` and `flex_basis` lengths
-/// as border-box lengths, which is what taffy lays out: under `box-sizing: content-box`
-/// each grows by the item's padding and border on that axis (`column`: the basis is
-/// vertical; miaskiewicz/turbo-dom#93).
-fn border_box_sizes(mut style: Style, item: &LayoutBox, fs: f32, column: bool) -> Style {
-    let bs = item.resolved(ResolveCtx {
-        parent_font_size: fs,
-        cb_width: 0.0,
-    });
-    let border = bs.border.widths();
-    let frame = Size {
-        width: bs.padding.horizontal() + border.horizontal(),
-        height: bs.padding.vertical() + border.vertical(),
-    };
-    let grow = |size: Size<Dimension>| Size {
-        width: border_box(size.width, bs.box_sizing, frame.width),
-        height: border_box(size.height, bs.box_sizing, frame.height),
-    };
-    style.size = grow(style.size);
-    style.min_size = grow(style.min_size);
-    style.max_size = grow(style.max_size);
-    let main = if column { frame.height } else { frame.width };
-    style.flex_basis = border_box(style.flex_basis, bs.box_sizing, main);
-    style
-}
-
-/// A taffy length `d` as a border-box length for a box of `sizing` with `frame` px of
-/// padding and border on that axis; percentages and `auto` are left as they are.
-fn border_box(d: Dimension, sizing: BoxSizing, frame: f32) -> Dimension {
-    if d.tag() == taffy::CompactLength::LENGTH_TAG {
-        Dimension::length(block::to_border(d.value(), sizing, frame))
-    } else {
-        d
-    }
-}
-
-/// A flex item's taffy `size`: only its cross-axis size (the main axis is the basis).
-fn cross_size(bs: &BoxStyle, column: bool) -> Size<Dimension> {
-    if column {
-        Size {
-            width: dim(bs.width),
-            height: Dimension::auto(),
-        }
-    } else {
-        Size {
-            width: Dimension::auto(),
-            height: dim(bs.height),
-        }
-    }
-}
-
 /// A `LengthPct` â taffy `Dimension` (`auto` when not a fixed/percentage length).
 fn dim(lp: LengthPct) -> Dimension {
     match lp {
         LengthPct::Px(v) => Dimension::length(v),
         LengthPct::Pct(p) => Dimension::percent(p / 100.0),
-        // taffy has no mixed `%`+px length; approximate a `calc(% ± px)` flex-item
-        // size by its percentage (the block path resolves the offset exactly).
-        LengthPct::Calc { pct, .. } => Dimension::percent(pct / 100.0),
+        LengthPct::Calc { pct, px } => Dimension::calc(native_tree::calc(pct, px)),
         LengthPct::Auto => Dimension::auto(),
     }
 }
@@ -440,8 +391,7 @@ fn item_inset(bs: &BoxStyle) -> Rect<LengthPercentageAuto> {
     let edge = |lp: LengthPct| match lp {
         LengthPct::Px(v) => LengthPercentageAuto::length(v),
         LengthPct::Pct(p) => LengthPercentageAuto::percent(p / 100.0),
-        // No mixed `%`+px inset in taffy; approximate by the percentage.
-        LengthPct::Calc { pct, .. } => LengthPercentageAuto::percent(pct / 100.0),
+        LengthPct::Calc { pct, px } => LengthPercentageAuto::calc(native_tree::calc(pct, px)),
         LengthPct::Auto => LengthPercentageAuto::auto(),
     };
     Rect {
@@ -791,36 +741,41 @@ pub(crate) fn natural_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
-        if lb.containment().width {
-            // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
-            return frame;
-        }
-        if lb.orthogonal_root && lb.writing_root {
-            return super::writing::orthogonal_extent(lb, fonts);
-        }
-        // A replaced `<img>`: its intrinsic width (stamped from the resolver before
-        // layout) â so a `<div>` wrapping a logo measures the image, not 0.
-        if let Some(iw) = lb.intrinsic_w() {
-            return replaced_natural(lb, &bs, iw) + frame;
-        }
-        let inner = match &lb.kind {
-            BoxKind::Lines(items) => lines_natural(
-                items,
-                bs.font_size,
-                fonts,
-                lb.original_units().as_deref(),
-                (lb.uses_html_font_metrics(), lb.native_scale()),
-            ),
-            BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
-            // A table's max-content: its columns side by side plus border-spacing
-            // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
-            BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
-            BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
-            BoxKind::Block(k) => block_natural(k, fonts),
-            BoxKind::Marker(_) => 0.0,
-        };
-        inner + frame
+        intrinsic_natural_width(lb, &bs, fonts)
     })
+}
+
+fn intrinsic_natural_width(lb: &LayoutBox, bs: &BoxStyle, fonts: &FontRegistry) -> f32 {
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    if lb.containment().width {
+        // Size containment (miaskiewicz/turbo-dom#265): sized as if empty.
+        return frame;
+    }
+    if lb.orthogonal_root && lb.writing_root {
+        return super::writing::orthogonal_extent(lb, fonts);
+    }
+    // A replaced `<img>`: its intrinsic width (stamped from the resolver before
+    // layout) â so a `<div>` wrapping a logo measures the image, not 0.
+    if let Some(iw) = lb.intrinsic_w() {
+        return replaced_natural(lb, bs, iw) + frame;
+    }
+    let inner = match &lb.kind {
+        BoxKind::Lines(items) => lines_natural(
+            items,
+            bs.font_size,
+            fonts,
+            lb.original_units().as_deref(),
+            (lb.uses_html_font_metrics(), lb.native_scale()),
+        ),
+        BoxKind::Flex(k) => flex_natural(k, &lb.style, fonts),
+        // A table's max-content: its columns side by side plus border-spacing
+        // (miaskiewicz/turbo-dom#28 item 4), not its widest row group.
+        BoxKind::Table(k) => super::table::max_content_width(k, &lb.style, fonts),
+        BoxKind::Grid(k) => grid_natural(k, &lb.style, fonts),
+        BoxKind::Block(k) => block_natural(k, fonts),
+        BoxKind::Marker(_) => 0.0,
+    };
+    inner + frame
 }
 
 /// A replaced box's max-content (content-box) width from its intrinsic width `iw`: a
@@ -878,10 +833,16 @@ fn lines_min(
     text.max(atom)
 }
 
-/// The **min-content** width of a box: the least width it can take without its
-/// content overflowing. Text wraps to its widest word; a fixed/`%`-width box and a
-/// replaced image keep their declared size; a container is the widest child's
-/// min-content. Used so a table never shrinks a column below its content.
+fn cyclic_length(value: LengthPct) -> bool {
+    match value {
+        LengthPct::Pct(_) => true,
+        LengthPct::Calc { pct, .. } => pct != 0.0,
+        _ => false,
+    }
+}
+
+/// The min-content contribution: text wraps to its widest word; cyclic
+/// replaced percentages compress; containers use their widest child's minimum.
 pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     lb.min_content_cached(|| {
         let bs = lb.resolved(ResolveCtx {
@@ -889,6 +850,9 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
             cb_width: 0.0,
         });
         let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+        if let Some(width) = cyclic_replaced_minimum(lb, &bs, fonts) {
+            return width;
+        }
         if let LengthPct::Px(w) = bs.width {
             return caption_floored(lb, block::to_border(w, bs.box_sizing, frame), fonts);
         }
@@ -919,6 +883,43 @@ pub(crate) fn min_content_width(lb: &LayoutBox, fonts: &FontRegistry) -> f32 {
     })
 }
 
+/// Cyclic preferred/max percentages compress a replaced min-content contribution
+/// (CSS Sizing §5.2.1), while its max-content size keeps the natural dimensions.
+fn cyclic_replaced_minimum(lb: &LayoutBox, bs: &BoxStyle, fonts: &FontRegistry) -> Option<f32> {
+    if !lb.is_replaced() || !(cyclic_length(bs.width) || cyclic_length(bs.max_width)) {
+        return None;
+    }
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    let border = |value| block::to_border(value, bs.box_sizing, frame).max(frame);
+    let mut width = if cyclic_length(bs.width) {
+        border(bs.width.resolve(0.0).unwrap())
+    } else {
+        natural_width(lb, fonts)
+    };
+    if cyclic_length(bs.max_width) {
+        width = width.min(border(bs.max_width.resolve(0.0).unwrap()));
+    }
+    let minimum = border(bs.min_width.resolve(0.0).unwrap_or(0.0));
+    Some(
+        width
+            .max(minimum)
+            .max(transferred_replaced_minimum(lb, bs, frame)),
+    )
+}
+
+fn transferred_replaced_minimum(lb: &LayoutBox, bs: &BoxStyle, frame: f32) -> f32 {
+    let ratio = bs.aspect_ratio.or_else(|| {
+        let (width, height) = (lb.intrinsic_w()?, lb.intrinsic_h()?);
+        (height > 0.0).then_some(width / height)
+    });
+    let height = bs.min_height.resolve(0.0).unwrap_or(0.0);
+    let content = match bs.box_sizing {
+        BoxSizing::BorderBox => height - bs.padding.vertical() - bs.border.widths().vertical(),
+        BoxSizing::ContentBox => height,
+    };
+    content.max(0.0) * ratio.unwrap_or(0.0) + frame
+}
+
 fn measure_width(
     known: Option<f32>,
     avail: AvailableSpace,
@@ -931,6 +932,7 @@ fn measure_width(
         // (returning the offer made an align-items:center item fill and never center
         // — a logo column left-aligned; taffy stretches for align:stretch itself).
         (None, AvailableSpace::Definite(w)) => natural_width(item, fonts).min(w),
+        (None, AvailableSpace::MinContent) => min_content_width(item, fonts),
         (None, _) => natural_width(item, fonts),
     }
 }
@@ -952,10 +954,8 @@ enum Probe {
 /// an `<img>` with `width:auto` measured 0 in a flex row â its `max-width:100%` clamps
 /// against a 0-width containing block in the scratch measurement â and the item (a
 /// logo / hero image) collapsed to nothing.
+/// Inline SVG viewports are measured by `frames::measure` before this resource probe.
 fn replaced_probe(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<Probe> {
-    if let Some(viewport) = &item.svg_viewport {
-        return Some(Probe::Fixed(svg_probe_width(item, viewport, fs)));
-    }
     let src = item.image.as_ref().filter(|s| s.replaced)?;
     let bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
@@ -963,7 +963,7 @@ fn replaced_probe(item: &LayoutBox, images: &ImageCtx, fs: f32) -> Option<Probe>
     });
     let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
     if let LengthPct::Px(w) = bs.width {
-        return Some(Probe::Fixed(w + frame));
+        return Some(Probe::Fixed(block::to_border(w, bs.box_sizing, frame)));
     }
     let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
     Some(match intrinsic.natural_ratio {
@@ -987,6 +987,7 @@ fn is_ratio_only(item: &LayoutBox, images: &ImageCtx) -> bool {
 struct Fill {
     width: f32,
     row: bool,
+    column_height: Option<bool>,
 }
 
 /// The border-box width a ratio-only image item takes as a row flex item's base size
@@ -1018,19 +1019,87 @@ fn ratio_only_row_width(
     free.then(|| (cb_width - bs.margin.horizontal()).max(0.0))
 }
 
-fn svg_probe_width(
+/// Natural-size replaced items keep their aspect ratio when flex constraints
+/// supply a used width. Resolve percentages against the container, not the
+/// item's own scratch width, and avoid mixing auto/known sizes in its cache.
+fn measure_natural_image(
     item: &LayoutBox,
-    viewport: &super::svg_viewport::SvgViewport,
-    font_size: f32,
-) -> f32 {
-    let style = item.resolved(ResolveCtx {
-        parent_font_size: font_size,
-        cb_width: 0.0,
+    images: &ImageCtx,
+    known: Size<Option<f32>>,
+    (fs, cb_width): (f32, f32),
+) -> Option<Size<f32>> {
+    let src = item.image.as_ref().filter(|src| src.replaced)?;
+    let (intrinsic, _) = super::imgsize::replaced_intrinsic(images.resolver, src, &item.style)?;
+    if intrinsic.natural_ratio.is_some() {
+        return None;
+    }
+    let mut bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width,
     });
-    let frame = style.padding.horizontal() + style.border.widths().horizontal();
-    match style.width {
-        LengthPct::Px(width) => width + frame,
-        _ => viewport.natural_width(style.font_size) + frame,
+    let frame = (
+        bs.padding.horizontal() + bs.border.widths().horizontal(),
+        bs.padding.vertical() + bs.border.widths().vertical(),
+    );
+    let inset = if bs.box_sizing == BoxSizing::BorderBox {
+        (0.0, 0.0)
+    } else {
+        frame
+    };
+    if let Some(width) = known.width {
+        bs.width = LengthPct::Px((width - inset.0).max(0.0));
+    }
+    if let Some(height) = known.height {
+        bs.height = LengthPct::Px((height - inset.1).max(0.0));
+    }
+    let sizing = super::imgsize::SizeCtx {
+        style: &bs,
+        cb_width,
+        cb_height: None,
+        body_height: images.body_height,
+    };
+    let sized = super::imgsize::size_replaced_live(String::new(), intrinsic, &sizing, 1.0);
+    Some(Size {
+        width: known.width.unwrap_or(sized.width + frame.0),
+        height: known.height.unwrap_or(sized.height + frame.1),
+    })
+}
+
+fn explicit_content_basis(style: &ComputedStyle) -> bool {
+    style
+        .get("flex-basis")
+        .is_some_and(|value| value.trim() == "content")
+        || style
+            .get("flex")
+            .is_some_and(|value| basis_tokens(value).contains(&"content"))
+}
+
+fn content_column_basis(item: &LayoutBox, fs: f32, fill: Fill) -> bool {
+    let Some(definite) = fill.column_height else {
+        return false;
+    };
+    let explicit = explicit_content_basis(&item.style);
+    let style = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: fill.width,
+    });
+    let basis = item_basis(&item.style, style.height, fs);
+    explicit
+        || (!definite
+            && (basis.tag() == taffy::CompactLength::PERCENT_TAG || basis.into_raw().is_calc()))
+}
+
+fn specified_content_minimum(style: &BoxStyle, avail: AvailableSpace, content: bool) -> f32 {
+    if !content || avail != AvailableSpace::MinContent {
+        return f32::INFINITY;
+    }
+    match style.height {
+        LengthPct::Px(height) => block::to_border(
+            height,
+            style.box_sizing,
+            style.padding.vertical() + style.border.widths().vertical(),
+        ),
+        _ => f32::INFINITY,
     }
 }
 
@@ -1047,9 +1116,17 @@ fn measure_item(
         Option<f32>,
         Option<&crate::layout_snapshot::text_units::NativeUnitMap>,
         Fill,
+        &BoxStyle,
     ),
 ) -> Size<f32> {
-    let (live_geometry, html_font_metrics, html_font_scale, original_units, fill) = policy;
+    let (live_geometry, html_font_metrics, html_font_scale, original_units, fill, measured_style) =
+        policy;
+    let content_basis = content_column_basis(item, fs, fill);
+    if fill.row {
+        if let Some(size) = measure_natural_image(item, images, known, (fs, fill.width)) {
+            return size;
+        }
+    }
     // A replaced `<img>` sizes from its intrinsic (or explicit) width, a ratio-only one
     // from the width it is offered; other items from a max-content measurement of
     // their content.
@@ -1073,13 +1150,22 @@ fn measure_item(
     // Memoize the full sub-layout by proposed width: taffy probes each item several
     // times per solve, and each probe recurses a full layout, so nested flex is
     // exponential without this. `fs` (the flex container's font size) is stable per
-    // item, so width alone keys the cache.
+    // item. Percentage frames also depend on the current containing-block basis.
     let probe = || {
-        item.measure_cached(w, || {
-            let bs = item.resolved(ResolveCtx {
-                parent_font_size: fs,
-                cb_width: w,
-            });
+        let padding = measured_style.padding;
+        let key = [
+            w.to_bits(),
+            padding.top.to_bits(),
+            padding.right.to_bits(),
+            padding.bottom.to_bits(),
+            padding.left.to_bits(),
+            u32::from(content_basis),
+        ];
+        item.measure_cached(key, || {
+            let mut bs = measured_style.clone();
+            if content_basis {
+                bs.height = LengthPct::Auto;
+            }
             let mut sd = Diagnostics::default();
             let mut mctx = Ctx {
                 fonts,
@@ -1125,6 +1211,11 @@ fn measure_item(
         inputs.extend([
             u64::from(w.to_bits()),
             u64::from(fs.to_bits()),
+            u64::from(content_basis),
+            u64::from(measured_style.padding.top.to_bits()),
+            u64::from(measured_style.padding.right.to_bits()),
+            u64::from(measured_style.padding.bottom.to_bits()),
+            u64::from(measured_style.padding.left.to_bits()),
             std::ptr::from_ref(images.resolver).cast::<()>() as usize as u64,
             u64::from(images.body_height.unwrap_or(-1.0).to_bits()),
             u64::from(live_geometry),
@@ -1139,7 +1230,11 @@ fn measure_item(
     };
     Size {
         width: known.width.or(exact_width).unwrap_or(cw),
-        height: known.height.unwrap_or(ch),
+        height: known.height.unwrap_or(ch.min(specified_content_minimum(
+            measured_style,
+            avail.height,
+            content_basis,
+        ))),
     }
 }
 
@@ -1150,29 +1245,130 @@ fn measure_item(
 fn build_leaves(
     tree: &mut TaffyTree<usize>,
     items: &[LayoutBox],
-    (fs, column): (f32, bool),
+    (fs, column, width): (f32, bool, f32),
     images: &ImageCtx,
+    fonts: &FontRegistry,
 ) -> Vec<TaffyId> {
     items
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = border_box_sizes(item_style(it, fs, column), it, fs, column);
+            let (bs, edges) = it.resolved_with_edges(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: 0.0,
+            });
+            let mut original = item_style(it, &bs, fs, column);
+            row_content_basis(&mut original, it, (fs, column, width), fonts, images);
+            let mut style = frames::style(original, &bs, edges);
             auto_min_main(&mut style, it, column, images);
-            tree.new_leaf_with_context(style, i).expect("flex leaf")
+            tree.new_leaf_with_context(style, i)
         })
         .collect()
 }
 
-/// A ratio-only image item (an SVG with only a `viewBox`) whose main-axis `min-width` /
-/// `min-height` is `auto` gets taffy's automatic minimum size, its content size
-/// suggestion (miaskiewicz/turbo-dom#326): Chrome 156 will not shrink it below the
-/// width it fills (a `flex-basis:100px` one still lays out 400 wide in a 400px row).
-/// Other items keep `min-width: auto` as 0.
-fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, images: &ImageCtx) {
+fn row_content_basis(
+    style: &mut Style,
+    item: &LayoutBox,
+    (fs, column, width): (f32, bool, f32),
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+) {
+    if column {
+        return;
+    }
+    let content = explicit_content_basis(&item.style);
+    if !content && !style.flex_basis.is_auto() {
+        return;
+    }
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: width,
+    });
+    let transferred = match (bs.aspect_ratio, bs.height) {
+        (Some(ratio), LengthPct::Px(height)) => Some(height * ratio),
+        _ => None,
+    };
+    if !content && (bs.width != LengthPct::Auto || transferred.is_none()) {
+        return;
+    }
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    let border = transferred.map_or_else(
+        || row_intrinsic_width(item, &bs, fonts, images, width),
+        |width| match bs.box_sizing {
+            BoxSizing::BorderBox => width,
+            BoxSizing::ContentBox => width + frame,
+        },
+    );
+    style.flex_basis = Dimension::length(match bs.box_sizing {
+        BoxSizing::BorderBox => border,
+        BoxSizing::ContentBox => (border - frame).max(0.0),
+    });
+}
+
+fn row_intrinsic_width(
+    item: &LayoutBox,
+    bs: &BoxStyle,
+    fonts: &FontRegistry,
+    images: &ImageCtx,
+    width: f32,
+) -> f32 {
+    if let Some(viewport) = &item.svg_viewport {
+        let mut style = bs.clone();
+        style.width = LengthPct::Auto;
+        let (width, _) = viewport.size(&super::imgsize::SizeCtx {
+            style: &style,
+            cb_width: width,
+            cb_height: None,
+            body_height: images.body_height,
+        });
+        return width + bs.padding.horizontal() + bs.border.widths().horizontal();
+    }
+    let intrinsic = item
+        .image
+        .as_ref()
+        .filter(|src| src.replaced)
+        .and_then(|src| super::imgsize::replaced_intrinsic(images.resolver, src, &item.style));
+    let Some((intrinsic, _)) = intrinsic else {
+        return intrinsic_natural_width(item, bs, fonts);
+    };
+    let mut style = bs.clone();
+    style.width = LengthPct::Auto;
+    let sized = super::imgsize::size_replaced_live(
+        String::new(),
+        intrinsic,
+        &super::imgsize::SizeCtx {
+            style: &style,
+            cb_width: 0.0,
+            cb_height: None,
+            body_height: images.body_height,
+        },
+        1.0,
+    );
+    sized.width + bs.padding.horizontal() + bs.border.widths().horizontal()
+}
+
+/// Scrollable overflow uses a zero automatic minimum; visible/clip retain content.
+fn scrollable_overflow(style: &ComputedStyle) -> bool {
+    let mut parts = style
+        .get("overflow")
+        .unwrap_or("visible")
+        .split_whitespace();
+    let x = parts.next().unwrap_or("visible");
+    let y = parts.next().unwrap_or(x);
+    [("overflow-x", x), ("overflow-y", y)]
+        .into_iter()
+        .any(|(axis, fallback)| {
+            matches!(
+                style.get(axis).unwrap_or(fallback).trim(),
+                "hidden" | "scroll" | "auto"
+            )
+        })
+}
+
+fn auto_min_main(style: &mut Style, item: &LayoutBox, column: bool, _images: &ImageCtx) {
     let prop = if column { "min-height" } else { "min-width" };
     let auto = item.style.get(prop).is_none_or(|v| v.trim() == "auto");
-    if auto && is_ratio_only(item, images) {
+    if auto && !scrollable_overflow(&item.style) {
         if column {
             style.min_size.height = Dimension::auto();
         } else {
@@ -1191,32 +1387,17 @@ fn solve(
 ) {
     // Browser CSS geometry preserves fractional advances; whole-pixel rounding
     // belongs only to the legacy PDF layout policy.
-    if ctx.html_font_metrics {
+    if ctx.html_font_metrics || ctx.live_geometry || super::geometry_policy::fractional() {
         tree.disable_rounding();
     }
     let avail = Size {
         width: AvailableSpace::Definite(cw),
         height: AvailableSpace::MaxContent,
     };
-    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, _style| {
+    tree.compute_layout_with_measure(root, avail, |known, av, _node, ctx_idx, style, parent| {
         let idx = *ctx_idx.expect("leaf context");
-        measure_item(
-            known,
-            av,
-            &items[idx],
-            fs,
-            ctx.fonts,
-            ctx.images,
-            (
-                ctx.live_geometry,
-                ctx.html_font_metrics,
-                ctx.html_font_scale,
-                ctx.original_units,
-                fill,
-            ),
-        )
-    })
-    .expect("flex layout");
+        frames::measure(known, av, parent, style, (&items[idx], fs), ctx, fill)
+    });
 }
 
 /// Lay out one placed item; `axis`: `Some(column)` for a flex item, `None` for a grid
@@ -1224,16 +1405,21 @@ fn solve(
 fn place_one(
     item: &LayoutBox,
     layout: &Layout,
+    parent_width: f32,
     (cx, cy, fs): (f32, f32, f32),
-    axis: Option<bool>,
+    axis: Option<(bool, AlignItems, bool)>,
     ctx: &mut Ctx,
 ) -> Fragment {
-    let column = axis == Some(true);
+    let column = axis.is_some_and(|(column, _, _)| column);
+    let stretch = axis.is_none_or(|(_, parent, _)| {
+        align_self(&item.style).unwrap_or(parent) == AlignItems::Stretch
+    });
     let mut bs = item.resolved(ResolveCtx {
         parent_font_size: fs,
-        cb_width: layout.size.width,
+        cb_width: parent_width,
     });
-    let was_border_box = bs.box_sizing == BoxSizing::BorderBox;
+    bs.padding = frames::edges(layout.padding);
+    let mut height_basis = block::ContentHeightBasis::Declared;
     // taffy has resolved this item's main-axis size (column `flex-basis`/`grow`)
     // and cross-axis size (row `align-items:stretch`). Force that border-box height
     // onto the item's own layout as a definite content-box height, so it drives the
@@ -1243,9 +1429,15 @@ fn place_one(
     // whose height taffy left at auto keeps its content height (basis == content). In a
     // column the height is the main size, so taffy's always wins over a `px` `height`
     // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
-    if column || !matches!(bs.height, LengthPct::Px(_)) {
+    if column || stretch || matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
+        height_basis = item_height_basis(
+            axis,
+            item,
+            bs.font_size,
+            (layout.size.height - inset_v).max(0.0),
+        );
         if bs.box_sizing == BoxSizing::BorderBox {
             // The item's own border-box `min-height` / `max-height` become content-box
             // lengths with it, so they don't add the frame twice (0.7.0 review R3 #2).
@@ -1254,30 +1446,63 @@ fn place_one(
         }
         bs.box_sizing = BoxSizing::ContentBox;
     }
-    if axis.is_some() && matches!(bs.width, LengthPct::Auto) && is_ratio_only(item, ctx.images) {
-        flexed_width(&mut bs, layout.size.width, was_border_box);
+    // An auto-width ratio-only grid image derives its width back from the
+    // quantized height; flex items instead retain their allocated width.
+    let ratio_grid =
+        axis.is_none() && bs.width == LengthPct::Auto && is_ratio_only(item, ctx.images);
+    if !ratio_grid {
+        used_width(&mut bs, layout.size.width);
     }
-    let mut frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, layout.size.width, ctx);
+    let width = layout
+        .size
+        .width
+        .max(bs.padding.horizontal() + bs.border.widths().horizontal());
+    let mut frag = block::layout_box_sized_isolated_with_height_basis(
+        item,
+        &bs,
+        (0.0, 0.0),
+        width,
+        height_basis,
+        ctx,
+    );
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
 }
 
-/// Give a ratio-only image flex item the border-box `width` taffy resolved for it as a
-/// definite width, as Chrome 156 does a flex item's used size: left `auto`, its width
-/// would be derived back from the layout-unit height (miaskiewicz/turbo-dom#326).
-/// `was_border_box`: the item's own `box-sizing` before [`place_one`] made it
-/// `content-box`, whose `min-width` / `max-width` become content-box lengths with it.
-fn flexed_width(bs: &mut BoxStyle, width: f32, was_border_box: bool) {
-    if bs.box_sizing == BoxSizing::BorderBox {
-        bs.width = LengthPct::Px(width);
-        return;
+fn item_height_basis(
+    axis: Option<(bool, AlignItems, bool)>,
+    item: &LayoutBox,
+    fs: f32,
+    height: f32,
+) -> block::ContentHeightBasis {
+    match axis {
+        Some((true, _, false)) if !definite_item_basis(item, fs) => {
+            block::ContentHeightBasis::Indefinite
+        }
+        _ => block::ContentHeightBasis::Definite(height),
     }
-    let inset_h = bs.padding.horizontal() + bs.border.widths().horizontal();
-    bs.width = LengthPct::Px((width - inset_h).max(0.0));
-    if was_border_box {
-        bs.min_width = content_height(bs.min_width, inset_h);
-        bs.max_width = content_height(bs.max_width, inset_h);
-    }
+}
+
+fn definite_item_basis(item: &LayoutBox, fs: f32) -> bool {
+    let bs = item.resolved(ResolveCtx {
+        parent_font_size: fs,
+        cb_width: 0.0,
+    });
+    bs.aspect_ratio.is_some()
+        || item_basis(&item.style, bs.height, fs).tag() == taffy::CompactLength::LENGTH_TAG
+}
+
+fn used_width(bs: &mut BoxStyle, width: f32) {
+    // The solver already applied preferred and min/max widths against the
+    // containing block. Reapplying percentages against the allocated item width
+    // would constrain it a second time and give its descendants the wrong width.
+    let frame = bs.padding.horizontal() + bs.border.widths().horizontal();
+    bs.width = match bs.box_sizing {
+        BoxSizing::BorderBox => LengthPct::Px(width),
+        BoxSizing::ContentBox => LengthPct::Px((width - frame).max(0.0)),
+    };
+    bs.min_width = LengthPct::Auto;
+    bs.max_width = LengthPct::Auto;
 }
 
 /// A border-box `px` length as a content-box one (`inset`: padding and border on that
@@ -1294,13 +1519,20 @@ fn place_items(
     leaves: &[TaffyId],
     items: &[LayoutBox],
     origin: (f32, f32, f32),
-    axis: Option<bool>,
+    axis: Option<(bool, AlignItems, bool)>,
     ctx: &mut Ctx,
 ) -> Vec<Fragment> {
     let mut frags = Vec::new();
     for (i, leaf) in leaves.iter().enumerate() {
         let layout = tree.layout(*leaf).expect("item layout");
-        frags.push(place_one(&items[i], layout, origin, axis, ctx));
+        frags.push(place_one(
+            &items[i],
+            layout,
+            tree.parent_size(*leaf).width.unwrap_or(0.0),
+            origin,
+            axis,
+            ctx,
+        ));
     }
     frags
 }
@@ -1429,8 +1661,16 @@ type AreaMap = HashMap<String, (i16, i16, i16, i16)>;
 /// space-separated cell names; `.` is an empty cell) into an [`AreaMap`].
 fn grid_areas(value: &str) -> AreaMap {
     let mut map: AreaMap = HashMap::new();
-    for (r, row) in quoted_rows(value).into_iter().enumerate() {
-        for (c, name) in row.split_whitespace().enumerate() {
+    for (r, row) in quoted_rows(value)
+        .into_iter()
+        .take(grid_capacity::MAX_TRACKS)
+        .enumerate()
+    {
+        for (c, name) in row
+            .split_whitespace()
+            .take(grid_capacity::MAX_TRACKS)
+            .enumerate()
+        {
             if name == "." {
                 continue;
             }
@@ -1485,7 +1725,7 @@ fn area_rows(areas: &AreaMap) -> usize {
 /// grid declared only via `grid-template-areas` still has tracks to place into.
 fn fill_tracks(tracks: Vec<TrackSizingFunction>, n: usize) -> Vec<TrackSizingFunction> {
     if tracks.is_empty() {
-        vec![TrackSizingFunction::AUTO; n]
+        vec![TrackSizingFunction::AUTO; n.min(grid_capacity::MAX_TRACKS)]
     } else {
         tracks
     }
@@ -1523,18 +1763,30 @@ fn parse_repeat(tok: &str) -> Option<Vec<TrackSizingFunction>> {
         "auto-fill" => GridTrackRepetition::AutoFill,
         "auto-fit" => GridTrackRepetition::AutoFit,
         n => {
-            let count: usize = n.parse().ok()?;
-            let one: Vec<TrackSizingFunction> = tokens.into_iter().map(track_of).collect();
+            let count = grid_capacity::decimal(n, grid_capacity::MAX_TRACKS)?;
+            let one: Vec<TrackSizingFunction> = tokens
+                .into_iter()
+                .take(grid_capacity::MAX_TRACKS)
+                .map(track_of)
+                .collect();
             return Some(
                 one.iter()
                     .cloned()
                     .cycle()
-                    .take(count * one.len())
+                    .take(
+                        count
+                            .saturating_mul(one.len())
+                            .min(grid_capacity::MAX_TRACKS),
+                    )
                     .collect(),
             );
         }
     };
-    let singles = tokens.into_iter().map(single_track).collect();
+    let singles = tokens
+        .into_iter()
+        .take(grid_capacity::MAX_TRACKS)
+        .map(single_track)
+        .collect();
     Some(vec![TrackSizingFunction::Repeat(auto, singles)])
 }
 
@@ -1549,8 +1801,11 @@ fn grid_tracks(spec: Option<&str>) -> Vec<TrackSizingFunction> {
     };
     let mut out = Vec::new();
     for tok in super::value::css_value_tokens(spec) {
+        if out.len() == grid_capacity::MAX_TRACKS {
+            break;
+        }
         match parse_repeat(tok) {
-            Some(rep) => out.extend(rep),
+            Some(rep) => out.extend(rep.into_iter().take(grid_capacity::MAX_TRACKS - out.len())),
             None => out.push(track_of(tok)),
         }
     }
@@ -1604,8 +1859,62 @@ fn strip_quoted(value: &str) -> String {
     out
 }
 
-fn grid_container_style(container: &LayoutBox, cw: f32, areas: &AreaMap) -> Style {
+fn grid_align_content(style: &ComputedStyle) -> Option<JustifyContent> {
+    let value = style.get("align-content")?.trim();
+    [
+        ("stretch", JustifyContent::Stretch),
+        ("start", JustifyContent::FlexStart),
+        ("flex-start", JustifyContent::FlexStart),
+        ("end", JustifyContent::FlexEnd),
+        ("flex-end", JustifyContent::FlexEnd),
+        ("center", JustifyContent::Center),
+        ("space-between", JustifyContent::SpaceBetween),
+        ("space-around", JustifyContent::SpaceAround),
+        ("space-evenly", JustifyContent::SpaceEvenly),
+    ]
+    .into_iter()
+    .find_map(|(name, alignment)| value.eq_ignore_ascii_case(name).then_some(alignment))
+}
+
+fn grid_flow_token(token: &str) -> Option<u8> {
+    [("row", 1_u8), ("column", 2), ("dense", 4)]
+        .into_iter()
+        .find_map(|(name, flag)| token.eq_ignore_ascii_case(name).then_some(flag))
+}
+
+fn grid_auto_flow(style: &ComputedStyle) -> taffy::GridAutoFlow {
+    let mut flags = 0;
+    for token in style
+        .get("grid-auto-flow")
+        .unwrap_or("row")
+        .split_whitespace()
+    {
+        let Some(flag) = grid_flow_token(token) else {
+            return taffy::GridAutoFlow::Row;
+        };
+        if flags & flag != 0 {
+            return taffy::GridAutoFlow::Row;
+        }
+        flags |= flag;
+    }
+    match flags {
+        2 => taffy::GridAutoFlow::Column,
+        4 | 5 => taffy::GridAutoFlow::RowDense,
+        6 => taffy::GridAutoFlow::ColumnDense,
+        _ => taffy::GridAutoFlow::Row,
+    }
+}
+
+fn grid_container_style(
+    container: &LayoutBox,
+    cw: f32,
+    areas: &AreaMap,
+    fs: f32,
+    known_height: Option<f32>,
+) -> Style {
     let s = &container.style;
+    // Both formatting contexts share the block-owned content-height boundary.
+    let dimensions = container_style(container, cw, fs, known_height);
     // Explicit tracks (longhand or the `grid-template` shorthand), else â when only
     // `grid-template-areas` is given â one AUTO track per area column/row so named
     // placement still has a grid to land in.
@@ -1617,17 +1926,18 @@ fn grid_container_style(container: &LayoutBox, cw: f32, areas: &AreaMap) -> Styl
         display: Display::Grid,
         grid_template_columns: cols.into_iter().collect(),
         grid_template_rows: rows.into_iter().collect(),
+        grid_auto_flow: grid_auto_flow(s),
         gap: Size {
             width: gap_axis(s, "column-gap"),
             height: gap_axis(s, "row-gap"),
         },
         justify_content: justify_content_grid(s),
+        align_content: grid_align_content(s),
         justify_items: justify_items(s),
         align_items: align_items(s),
-        size: Size {
-            width: Dimension::length(cw),
-            height: Dimension::auto(),
-        },
+        size: dimensions.size,
+        min_size: dimensions.min_size,
+        max_size: dimensions.max_size,
         ..Default::default()
     }
 }
@@ -1639,22 +1949,30 @@ fn build_grid_leaves(
     items: &[LayoutBox],
     fs: f32,
     areas: &AreaMap,
+    container: &ComputedStyle,
 ) -> Vec<TaffyId> {
     items
         .iter()
         .enumerate()
         .map(|(i, it)| {
-            let mut style = item_style(it, fs, false);
+            let (bs, edges) = it.resolved_with_edges(ResolveCtx {
+                parent_font_size: fs,
+                cb_width: 0.0,
+            });
+            let mut style = item_style(it, &bs, fs, false);
             // Grid has no flex-basis: an explicit width must reach its own size
             // constraint instead of becoming the track's stretch width — under every
             // layout policy (the HTML path too, miaskiewicz/turbo-dom#267).
-            style.size = item_size(&it.resolved(ResolveCtx {
-                parent_font_size: fs,
-                cb_width: 0.0,
-            }));
-            // taffy sizes border boxes: content-box lengths grow by the padding and
-            // border (0.7.0 review R3 #2).
-            let mut style = border_box_sizes(style, it, fs, false);
+            style.size = item_size(&bs);
+            // Taffy owns the typed frame and the content-/border-box conversion.
+            let mut style = frames::style(style, &bs, edges);
+            if it
+                .style
+                .get("min-width")
+                .is_none_or(|value| value.trim() == "auto")
+            {
+                style.min_size.width = Dimension::auto();
+            }
             // taffy's track sizing reads the preferred size unclamped: a `px` size
             // reaches it already within its `px` min / max, like Chrome's used size.
             style.size = Size {
@@ -1670,6 +1988,7 @@ fn build_grid_leaves(
             // `end` value here instead sizes the item to its own width and aligns it
             // in the track.
             style.justify_self = justify_self(&it.style);
+            frames::grid_alignment(&mut style, it, container);
             if let Some((row, col)) = area_placement(it, areas) {
                 style.grid_row = row;
                 style.grid_column = col;
@@ -1686,7 +2005,7 @@ fn build_grid_leaves(
                     style.grid_row = row;
                 }
             }
-            tree.new_leaf_with_context(style, i).expect("grid leaf")
+            tree.new_leaf_with_context(style, i)
         })
         .collect()
 }
@@ -1727,11 +2046,21 @@ fn grid_line(value: Option<&str>) -> Option<Line<GridPlacement>> {
 fn grid_placement(tok: &str) -> GridPlacement {
     if let Some(n) = tok
         .strip_prefix("span")
-        .and_then(|r| r.trim().parse::<u16>().ok())
+        .and_then(|r| grid_capacity::decimal(r.trim(), grid_capacity::MAX_TRACKS))
     {
-        return span(n);
+        return if n == 0 {
+            GridPlacement::Auto
+        } else {
+            span(n as u16)
+        };
     }
-    tok.parse::<i16>().map_or(GridPlacement::Auto, line)
+    let (negative, digits) = tok
+        .strip_prefix('-')
+        .map_or((false, tok), |digits| (true, digits));
+    grid_capacity::decimal(digits, grid_capacity::MAX_TRACKS * 2 + 1)
+        .map_or(GridPlacement::Auto, |n| {
+            line(if negative { -(n as i16) } else { n as i16 })
+        })
 }
 
 /// Lay out a grid container's items into the content box at `(cx, cy)` of width
@@ -1755,16 +2084,25 @@ pub(crate) fn layout_grid(
         .get("grid-template-areas")
         .map(grid_areas)
         .unwrap_or_default();
+    let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
-    let leaves = build_grid_leaves(&mut tree, items, fs, &areas);
-    let root = tree
-        .new_with_children(grid_container_style(container, cw, &areas), &leaves)
-        .expect("grid root");
+    let leaves = build_grid_leaves(&mut tree, items, fs, &areas, &container.style);
+    let root = tree.new_with_children(
+        grid_container_style(
+            container,
+            cw,
+            &areas,
+            fs,
+            ctx.cb_h_known.then_some(ctx.cb_h),
+        ),
+        &leaves,
+    );
     let fill = Fill {
         width: cw,
         row: false,
+        column_height: None,
     };
-    solve(&mut tree, root, items, (fs, cw), fill, ctx);
+    grid_tracks::solve_grid(&mut tree, root, &leaves, items, (fs, cw), fill, ctx);
     let frags = place_items(&tree, &leaves, items, (cx, cy, fs), None, ctx);
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
@@ -1784,21 +2122,38 @@ pub(crate) fn layout_flex(
     if items.is_empty() {
         return (Vec::new(), 0.0);
     }
+    let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     let column = matches!(
         flex_direction(&container.style),
         FlexDirection::Column | FlexDirection::ColumnReverse
     );
-    let leaves = build_leaves(&mut tree, items, (fs, column), ctx.images);
-    let root = tree
-        .new_with_children(container_style(container, cw, fs, ctx.cb_h), &leaves)
-        .expect("flex root");
+    let leaves = build_leaves(&mut tree, items, (fs, column, cw), ctx.images, ctx.fonts);
+    let root = tree.new_with_children(
+        container_style(container, cw, fs, ctx.cb_h_known.then_some(ctx.cb_h)),
+        &leaves,
+    );
+    if column && !ctx.cb_h_known {
+        tree.resolve_indefinite_column_percentages(root);
+    }
     let fill = Fill {
         width: cw,
         row: !column,
+        column_height: column.then_some(ctx.cb_h_known),
     };
     solve(&mut tree, root, items, (fs, cw), fill, ctx);
-    let frags = place_items(&tree, &leaves, items, (cx, cy, fs), Some(column), ctx);
+    let frags = place_items(
+        &tree,
+        &leaves,
+        items,
+        (cx, cy, fs),
+        Some((
+            column,
+            align_items(&container.style).unwrap_or(AlignItems::Stretch),
+            ctx.cb_h_known,
+        )),
+        ctx,
+    );
     let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
@@ -1813,6 +2168,35 @@ mod coverage_tests {
 
     fn cs(pairs: &[(&str, &str)]) -> ComputedStyle {
         ComputedStyle::from_pairs(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())))
+    }
+
+    #[test]
+    fn grid_content_alignment_accepts_uppercase_and_ignores_invalid_values() {
+        assert_eq!(
+            grid_align_content(&cs(&[("align-content", "CENTER")])),
+            Some(JustifyContent::Center)
+        );
+        assert_eq!(
+            grid_align_content(&cs(&[("align-content", "invalid")])),
+            None
+        );
+    }
+
+    #[test]
+    fn grid_flow_keywords_are_case_insensitive_and_reject_invalid_combinations() {
+        for (value, expected) in [
+            ("ROW", taffy::GridAutoFlow::Row),
+            ("COLUMN", taffy::GridAutoFlow::Column),
+            ("dense", taffy::GridAutoFlow::RowDense),
+            ("ROW DENSE", taffy::GridAutoFlow::RowDense),
+            ("dense COLUMN", taffy::GridAutoFlow::ColumnDense),
+            ("column row", taffy::GridAutoFlow::Row),
+            ("foo dense", taffy::GridAutoFlow::Row),
+            ("column column", taffy::GridAutoFlow::Row),
+            ("column dense dense", taffy::GridAutoFlow::Row),
+        ] {
+            assert_eq!(grid_auto_flow(&cs(&[("grid-auto-flow", value)])), expected);
+        }
     }
 
     #[test]
@@ -1840,25 +2224,17 @@ mod coverage_tests {
     }
 
     #[test]
-    fn dim_and_edge_approximate_calc_by_its_percentage() {
-        use crate::layout::value::{resolve_box_style, ResolveCtx};
-        // taffy has no mixed `%`+px length; a `calc(% ± px)` size/inset uses the `%`.
+    fn mixed_calc_keeps_its_pixel_offset() {
+        use taffy::ResolveOrZero;
+        let _scope = native_tree::CalcScope::new(None);
+        let d = dim(LengthPct::Calc {
+            pct: 50.0,
+            px: -20.0,
+        });
         assert_eq!(
-            dim(LengthPct::Calc {
-                pct: 50.0,
-                px: -20.0
-            }),
-            Dimension::percent(0.5)
+            d.resolve_or_zero(Some(400.0), native_tree::resolve_for_test),
+            180.0
         );
-        let bs = resolve_box_style(
-            &cs(&[("left", "calc(25% + 8px)")]),
-            ResolveCtx {
-                parent_font_size: 16.0,
-                cb_width: 400.0,
-            },
-        );
-        assert_eq!(bs.inset_left, LengthPct::Calc { pct: 25.0, px: 8.0 });
-        assert_eq!(item_inset(&bs).left, LengthPercentageAuto::percent(0.25));
     }
 
     #[test]
@@ -2025,11 +2401,8 @@ mod coverage_tests {
 
     #[test]
     fn flex_shorthand_basis_resolves_every_form() {
-        // `none`/`initial` -> the shorthand's `auto` basis.
-        assert_eq!(
-            flex_shorthand_basis(&cs(&[("flex", "none")]), 16.0),
-            Some(Dimension::auto())
-        );
+        // `none`/`initial` use `auto`, which defers to the declared main size.
+        assert_eq!(flex_shorthand_basis(&cs(&[("flex", "none")]), 16.0), None);
         // a length `<basis>` token wins (`1 1 60px` -> 60px).
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "1 1 60px")]), 16.0),
@@ -2048,12 +2421,12 @@ mod coverage_tests {
         // a numbers-only shorthand carries an implied `0` basis (CSS `flex:1` == 1 1 0%).
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "2 0")]), 16.0),
-            Some(Dimension::length(0.0))
+            Some(Dimension::percent(0.0))
         );
         // an unparsable trailing token is skipped, leaving the implied `0` basis.
         assert_eq!(
             flex_shorthand_basis(&cs(&[("flex", "1 garbage")]), 16.0),
-            Some(Dimension::length(0.0))
+            Some(Dimension::percent(0.0))
         );
         // no `flex` at all -> None (caller falls back to `width`).
         assert_eq!(flex_shorthand_basis(&cs(&[]), 16.0), None);
@@ -2252,7 +2625,12 @@ mod coverage_tests {
                     Fill {
                         width: 0.0,
                         row: false,
+                        column_height: None,
                     },
+                    &copy.resolved(ResolveCtx {
+                        parent_font_size: 16.0,
+                        cb_width: w,
+                    }),
                 ),
             )
             .height
@@ -2288,6 +2666,199 @@ mod coverage_tests {
             min > 20.0,
             "atomic line min-content should be its content, got {min}"
         );
+    }
+
+    struct LogoImages;
+
+    impl crate::image::ImageResolver for LogoImages {
+        fn resolve(&self, _name: &str) -> Option<&[u8]> {
+            None
+        }
+
+        fn intrinsic(&self, name: &str) -> Option<crate::image::Intrinsic> {
+            let (width, height) = match name {
+                "wide" => (253, 80),
+                "tall" => (560, 400),
+                _ => return None,
+            };
+            Some(crate::image::Intrinsic::new(width, height, true))
+        }
+    }
+
+    #[test]
+    fn row_image_measurement_keeps_constraints_ratio_and_known_width_separate() {
+        let fonts = FontRegistry::new();
+        let images = ImageCtx {
+            resolver: &LogoImages,
+            body_height: None,
+        };
+        for (name, expected) in [
+            ("wide", (108.0, 108.0 * 80.0 / 253.0)),
+            ("tall", (86.8, 62.0)),
+        ] {
+            let img = StyledNode::Element(StyledElement {
+                tag: Tag::Html("img".into()),
+                attrs: vec![Attr {
+                    name: "src".into(),
+                    value: name.into(),
+                }],
+                style: cs(&[("max-width", "80%"), ("max-height", "62px")]),
+                children: vec![],
+                source: None,
+            });
+            let tree = build_box_tree(&[el("div", &[("display", "flex")], vec![img])]);
+            let BoxKind::Block(rows) = &tree.kind else {
+                unreachable!()
+            };
+            let BoxKind::Flex(items) = &rows[0].kind else {
+                unreachable!()
+            };
+            let measure = |width| {
+                measure_item(
+                    Size {
+                        width,
+                        height: None,
+                    },
+                    Size {
+                        width: AvailableSpace::MaxContent,
+                        height: AvailableSpace::Definite(62.0),
+                    },
+                    &items[0],
+                    16.0,
+                    &fonts,
+                    &images,
+                    (
+                        true,
+                        true,
+                        None,
+                        None,
+                        Fill {
+                            width: 135.0,
+                            row: true,
+                            column_height: None,
+                        },
+                        &items[0].resolved(ResolveCtx {
+                            parent_font_size: 16.0,
+                            cb_width: 135.0,
+                        }),
+                    ),
+                )
+            };
+            let auto = measure(None);
+            assert!((auto.width - expected.0).abs() < 0.001, "{name}: {auto:?}");
+            assert!((auto.height - expected.1).abs() < 0.001, "{name}: {auto:?}");
+            // The same width can be auto or known; a width-only scratch cache
+            // must not substitute its unconstrained intrinsic-height result.
+            assert_eq!(measure(Some(auto.width)), auto);
+            let shrunk = measure(Some(54.0));
+            assert_eq!(shrunk.width, 54.0);
+            assert!(shrunk.height < auto.height);
+            assert_eq!(measure(None), auto);
+        }
+    }
+
+    #[test]
+    fn image_frames_preserve_border_box_width_and_explicit_known_dimensions() {
+        let images = ImageCtx {
+            resolver: &LogoImages,
+            body_height: None,
+        };
+        for (sizing, expected_width) in [("border-box", 100.0), ("content-box", 120.0)] {
+            let img = StyledNode::Element(StyledElement {
+                tag: Tag::Html("img".into()),
+                attrs: vec![Attr {
+                    name: "src".into(),
+                    value: "wide".into(),
+                }],
+                style: cs(&[
+                    ("width", "100px"),
+                    ("padding", "10px"),
+                    ("box-sizing", sizing),
+                ]),
+                children: vec![],
+                source: None,
+            });
+            let tree = build_box_tree(&[el(
+                "div",
+                &[("display", "flex"), ("flex-direction", "column")],
+                vec![img],
+            )]);
+            let BoxKind::Block(rows) = &tree.kind else {
+                unreachable!()
+            };
+            let BoxKind::Flex(items) = &rows[0].kind else {
+                unreachable!()
+            };
+            assert_eq!(
+                replaced_probe(&items[0], &images, 16.0),
+                Some(Probe::Fixed(expected_width))
+            );
+            let known = Size {
+                width: Some(100.0),
+                height: Some(80.0),
+            };
+            assert_eq!(
+                measure_natural_image(&items[0], &images, known, (16.0, 200.0)),
+                Some(Size {
+                    width: 100.0,
+                    height: 80.0
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn cyclic_replaced_minimum_preserves_calc_frames_and_minimum_floors() {
+        let image = StyledNode::Element(StyledElement {
+            tag: Tag::Html("img".into()),
+            attrs: vec![Attr {
+                name: "src".into(),
+                value: "x.png".into(),
+            }],
+            style: cs(&[]),
+            children: vec![],
+            source: None,
+        });
+        let tree = build_box_tree(&[el("div", &[("display", "flex")], vec![image])]);
+        let BoxKind::Block(rows) = &tree.kind else {
+            unreachable!()
+        };
+        let BoxKind::Flex(items) = &rows[0].kind else {
+            unreachable!()
+        };
+        let image = &items[0];
+        image.set_intrinsic(1000.0, Some(200.0));
+        let fonts = FontRegistry::new();
+        let mut style = image.resolved(ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: 0.0,
+        });
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), None);
+        assert_eq!(cyclic_replaced_minimum(&rows[0], &style, &fonts), None);
+        style.width = LengthPct::Calc {
+            pct: 50.0,
+            px: 30.0,
+        };
+        style.padding.left = 3.0;
+        style.padding.right = 5.0;
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(38.0));
+        style.min_width = LengthPct::Px(50.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(58.0));
+        style.min_height = LengthPct::Px(20.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(108.0));
+        style.box_sizing = BoxSizing::BorderBox;
+        style.padding.top = 2.0;
+        style.padding.bottom = 2.0;
+        style.aspect_ratio = Some(2.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(50.0));
+        style.min_width = LengthPct::Px(0.0);
+        style.width = LengthPct::Px(500.0);
+        style.max_width = LengthPct::Pct(100.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(40.0));
+        style.min_height = LengthPct::Pct(100.0);
+        assert_eq!(cyclic_replaced_minimum(image, &style, &fonts), Some(8.0));
+        assert!(!cyclic_length(LengthPct::Calc { pct: 0.0, px: 30.0 }));
+        assert_eq!(natural_width(image, &fonts), 1000.0);
     }
 
     // --- min_content_width: replaced image path + marker (zero) path ---
