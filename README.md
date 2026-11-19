@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.5** (local unreleased candidate). turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.5**. turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -17,12 +17,12 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## Packages in this candidate
+## Packages in this release
 
-The 0.8.5 DOM packages are under local development; the published release is
-0.8.4. Local consumers need pre-release `[patch.crates-io]` overrides for this
-candidate. The independently versioned V8 fork remains published at 150.4.2
-and uses the official V8 150.4.0 archive.
+The DOM packages share version 0.8.5. The independently versioned V8 fork is
+150.4.2 and uses the official V8 150.4.0 archive; the AVIF decoder fork
+`turbo-dom-rav1d` is 1.1.0. After installing the published release, consumers can
+remove their pre-release `[patch.crates-io]` overrides.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|

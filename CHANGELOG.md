@@ -5,7 +5,12 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.5] — Unreleased
+## [0.8.5] — 2026-11-19
+
+Breaking changes: no removed or changed public Rust API items relative to 0.8.4,
+including the hidden host integration surface. The generated API comparison is
+recorded in `tools/release/public-api-0.8.5.txt`. turbo-dom-raster's `avif` feature
+now depends on `turbo-dom-rav1d` 1.1.0 instead of `rav1d` 1.1.0.
 
 - **AVIF decoder panics are broken images (#535)**: turbo-dom-raster's `avif` feature
   decodes through `turbo-dom-rav1d`, a new crate generated from the pinned rav1d 1.1.0

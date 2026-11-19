@@ -1,0 +1,64 @@
+# Public Rust API diff, v0.8.4 -> v0.8.5 release candidate
+# Previous: v0.8.4 annotated tag 43daf5facfc4cf645047b19cda22f661e5cd904e,
+#   peeled commit c49fd0b10be0d44764f57215f3ca716b75c22c93.
+# Candidate source: f7123228abeaf60861037deee74841e9dfdb4cbd.
+# The audit precedes release documentation/API-receipt commits; those do not alter
+# Rust source. Re-run if the release's Rust source or Cargo feature surface changes.
+# Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (2026-10-27 cargo 31d3246e0).
+# Host/target: aarch64-apple-darwin, identical toolchain at both source revisions.
+# cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
+# Commands, run in separate worktrees at both revisions (default features enabled):
+#   cargo +nightly public-api -sss --color never -p turbo-dom
+#   cargo +nightly public-api -sss --color never -p turbo-dom-parser
+#   cargo +nightly public-api -sss --color never -p turbo-dom-layout --features svg,perf,serde,test-support
+#   cargo +nightly public-api -sss --color never -p turbo-dom-raster --features avif,jxl
+#   cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# Supplemental host seam (standard rustdoc omits #[doc(hidden)] modules):
+#   RUSTDOCFLAGS=--document-hidden-items cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# RUSTY_V8_ARCHIVE uses the unchanged official V8 150.4.0 prebuilt archive.
+# All commands completed successfully; Cargo manifests/lockfiles were not modified.
+# '+' = candidate-only public API line; '-' = previous-only public API line.
+# Re-exported public paths count as separate lines. No removals or signature changes
+# were found in either the standard outputs or the doc-hidden host seam.
+# Summary: turbo-dom 0/0, parser 0/0, layout +5/-0, raster 0/0,
+#   browser-env standard +4/-0; supplemental hidden host additions +4/-0.
+# Breaking assessment: none identified for these audited Rust surfaces. The additions
+# are new free functions (layout) and test-support constants (browser-env).
+# Dependency change: turbo-dom-raster's `avif` feature now depends on turbo-dom-rav1d
+# =1.1.0 (turbo-dom's generated rav1d 1.1.0 fork, turbo-dom#535) instead of rav1d 1.1.0;
+# no rav1d type appears in turbo-dom-raster's public API, so its surface is unchanged.
+# Behavioral corrections are recorded separately in CHANGELOG.md, not inferred from
+# signatures.
+# Scope/limitations: this is a textual Rust signature audit, not an ABI, runtime,
+# semver-proof or consumer-execution check. It follows the prior release's CI-feature
+# matrix above; platform-only coretext/gpu-metal surfaces, simdutf, startup-snapshot,
+# split-install and native-SDK overlay feature combinations were not separately diffed.
+# turbo-dom-v8 stays at the already-published 150.4.2.
+
+## turbo-dom
+(no changes)
+
+## turbo-dom-parser
+(no changes)
+
+## turbo-dom-layout
++ pub fn turbo_dom_layout::html_layout::layout_html_tree_in_viewport_with_optional_sources(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, bool, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]) -> bool, &mut turbo_dom_layout::error::Diagnostics) -> (turbo_dom_layout::layout::fragment::Fragment, core::option::Option<turbo_dom_layout::layout::NodeSources>)
++ pub fn turbo_dom_layout::layout::value::box_shadow_layers(&turbo_dom_layout::ComputedStyle, turbo_dom_layout::layout::value::ResolveCtx) -> alloc::vec::Vec<turbo_dom_layout::layout::fragment::BoxShadow>
++ pub fn turbo_dom_layout::layout::with_fractional_css_geometry<T>(impl core::ops::function::FnOnce() -> T) -> T
++ pub fn turbo_dom_layout::layout_html_tree_in_viewport_with_optional_sources(&turbo_dom::rtdom::tree::Tree, &str, (f32, f32), &turbo_dom_layout::FontRegistry, &turbo_dom_layout::layout::ImageCtx<'_>, &turbo_dom_layout::html_layout::HtmlOptions<'_>, bool, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]) -> bool, &mut turbo_dom_layout::error::Diagnostics) -> (turbo_dom_layout::layout::fragment::Fragment, core::option::Option<turbo_dom_layout::layout::NodeSources>)
++ pub fn turbo_dom_layout::with_fractional_css_geometry<T>(impl core::ops::function::FnOnce() -> T) -> T
+
+## turbo-dom-raster
+(no changes)
+
+## turbo-dom-browser-env
++ pub const turbo_dom_browser_env::browser_env::test_support::IMAGE_DATA_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::IMAGE_DATA_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::IMAGE_DATA_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::IMAGE_DATA_PROBE_JS: &str
+
+## turbo-dom-browser-env (doc-hidden host seam)
++ pub const turbo_dom_browser_env::browser_env::test_support::IMAGE_DATA_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::browser_env::test_support::IMAGE_DATA_PROBE_JS: &str
++ pub const turbo_dom_browser_env::test_support::IMAGE_DATA_CHROME156_JSON: &str
++ pub const turbo_dom_browser_env::test_support::IMAGE_DATA_PROBE_JS: &str
