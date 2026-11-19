@@ -544,7 +544,11 @@ jobs:
           - { crate: turbo-dom-layout,      floor: 99.8, features: '' }
           - { crate: turbo-dom-layout,      floor: 99.8, features: '--features turbo-dom-layout/svg,turbo-dom-layout/perf,turbo-dom-layout/serde,turbo-dom-layout/test-support', label: turbo-dom-layout-all-features }
           - { crate: turbo-dom-raster,      floor: 100, features: '' }
-          - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif }
+          # The avif lib binary runs the corrupt-AVIF fuzz corpus in a child process; since
+          # turbo-dom#535 it decodes single-threaded (the price of catching every rav1d
+          # panic), so it exceeds 600s instrumented ("Timed out waiting for test response" on
+          # corrupt_avifs_are_broken_images_never_a_process_abort). Not a hang.
+          - { crate: turbo-dom-raster,      floor: 100, features: '--features avif', label: turbo-dom-raster-avif, timeout: 2400 }
           - { crate: turbo-dom-raster,      floor: 100, features: '--features jxl', label: turbo-dom-raster-jxl }
           # timeout: tarpaulin's --timeout bounds a WHOLE test binary's run, not one test. The
           # browser-env lib binary (~555 V8 tests) takes ~600s instrumented on ubuntu-latest, so the
