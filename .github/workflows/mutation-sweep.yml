@@ -1,8 +1,7 @@
 name: Mutation sweep 487
 
 on:
-  push:
-    branches: [codex/084-mutation-487]
+  pull_request:
     paths:
       - '.github/workflows/mutation-sweep.yml'
       - 'scripts/mutation*'

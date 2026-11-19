@@ -12,24 +12,20 @@ name: CI
 # publish.yml calls this whole workflow before it publishes anything.
 
 on:
-  push:
-    branches: [main, 'release/**']
-  # Only PRs that target main run CI. Stacked PRs into a release/** integration
-  # branch do not (the release branch still gets CI on push above, and its own
-  # PR into main runs the full gate); this is the merge gate, not every rung.
+  # Opening or updating a PR runs CI; standalone branch pushes do not.
   pull_request:
-    branches: [main]
+  workflow_dispatch:
   workflow_call:
     inputs:
       darwin:
-        # macOS runners are scarce, so PR / push CI runs on Linux (and Windows) only. The
+        # macOS runners are scarce, so PR CI runs on Linux (and Windows) only. The
         # release (publish.yml) passes darwin: true to add the aarch64-apple-darwin builds
         # and the macOS layout / raster / v8 jobs its published binaries need.
         type: boolean
         default: false
 
 # A newer push to a PR supersedes its running CI: pull_request runs share one group per PR
-# and cancel. Every other run (main pushes, tag runs, publish.yml's workflow_call) gets a
+# and cancel. Manual and release runs (publish.yml's workflow_call) get a
 # group of its own (the run id), so it is never cancelled, and never dropped as a pending
 # run that a newer run in the same group replaced.
 concurrency:

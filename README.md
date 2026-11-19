@@ -275,13 +275,26 @@ the host-font policy itself read system fonts.
 | cyclomatic complexity ≤ 9 (Rust cc-check, JS oxlint) | `ci.yml` `complexity-rust`, `complexity-js` | **blocking** for tracked Rust outside browser-env and the npm runtime (`src/`); browser-env remains excluded from both scans |
 | clippy pedantic `-D warnings`, rustfmt, MSRV 1.89, version agreement, churn allocation gate, verify-copied reviews | `ci.yml` | blocking |
 
-**CI runners.** Pull requests and pushes to `main` run on Linux (x64 and arm64) and on
+**CI triggers.** Branch CI runs automatically when a PR is opened, reopened, or
+updated, regardless of its target branch. Branch pushes without an open PR do not
+start CI. Without a PR, use **Actions → CI → Run workflow**, select the branch, or run:
+
+```sh
+gh workflow run ci.yml --repo miaskiewicz/turbo-dom --ref main
+gh run list --repo miaskiewicz/turbo-dom --workflow ci.yml --branch main --event workflow_dispatch
+```
+
+Replace `main` with your branch. It must contain the `workflow_dispatch` trigger;
+merge the latest `main` into older branches first. Manual CI on a branch does not
+publish packages; `v*` tags still invoke the separate publishing workflow.
+
+**CI runners.** Pull requests and manual CI run on Linux (x64 and arm64) and on
 Windows x64: the napi build, and the V8 / browser-env matrix with the default and
 simdutf archives. macOS arm64 builds and jobs run only in the release workflow.
 `publish.yml` calls `ci.yml` with `darwin: true`. Linux binaries build on ubuntu-22.04 and a
 guard (`scripts/check-glibc-ceiling.sh`) rejects any addon that needs glibc above 2.35. The
 guard also fails when an expected addon is missing or unreadable. A newer push to a pull
-request cancels its superseded CI run. `main`, tag and publish runs each get their own
+request cancels its superseded CI run. Manual and publish runs each get their own
 concurrency group, so they are never cancelled or dropped while pending.
 
 ## Releasing
