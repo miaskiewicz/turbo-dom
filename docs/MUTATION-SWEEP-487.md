@@ -27,15 +27,29 @@ per-mutant Build/Test durations from `outcomes.json`. No measured runtime is
 claimed before that pilot. The original reviewed matrix used 1,479 mutants. After the validated large-coordinate
 PNG/SVG fixes, the frozen runtime and added regression controls at `407258b4a7031be8df35fe7cfb67f674d8044fba` have this freshly measured inventory:
 
-| Target | Current mutants | Proposed shards |
-|---|---:|---:|
-| event_handlers | 40 | 4 |
-| worker_scope | 11 | 1 |
-| trusted_types | 98 | 2 |
-| paint_png | 840 | 12 |
-| paint_svg | 415 | 6 |
+| Target | Mutants at `407258b4` | Current mutants (v0.8.5, `b96cf92a`) | Shards |
+|---|---:|---:|---:|
+| event_handlers | 40 | 40 | 4 |
+| worker_scope | 11 | 11 | 1 |
+| trusted_types | 98 | 98 | 2 |
+| paint_png | 840 | 929 | 12 |
+| paint_svg | 415 | 411 | 6 |
 
-That is **1,404 mutants** across the same 25 jobs, at most four concurrent per workflow.
+That was **1,404 mutants** across the same 25 jobs, at most four concurrent per workflow.
+
+**Re-enumerated for v0.8.5 (2026-11-19).** The 0.8.5 painter changes grew `paint_png.rs`
+to 929 mutants and shrank `paint_svg.rs` to 411. The first run on the release PR (run
+44538517219) therefore stopped every painter shard at the inventory check before any
+baseline or mutation ran, so it gave no evidence. Release PR #536's CI gate was unaffected.
+The plan now pins the counts measured at the v0.8.5 merge commit `b96cf92a` with
+cargo-mutants 27.1.0 (`cargo mutants --no-config -p <package> -f <file> [--features …]
+--list --json`, the script's own command). There are no duplicate names, and the three
+browser-env inventories are unchanged. **1,489 mutants** in total. The shard counts are
+unchanged. The full painter shards at 840 / 415 took at most 23 minutes per job on
+2026-11-13/14, and 929 / 12 is about 78 mutants per shard, an estimated 26 minutes. That is
+still inside the 32-minute step bound, and 12 is already the per-target ceiling. These
+are re-enumerated counts, not mutation results: the new 0.8.5 mutants still need a
+full sweep and a review of any survivors.
 The approved scoped PNG/SVG workflows may run four jobs each concurrently.
 The plan records the source reference and reviewed per-file counts; an actual
 inventory with extra, missing or duplicate mutants stops before any baseline or
