@@ -147,7 +147,7 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | | `serde` | off | `Serialize` for the CSSOM-View metrics records |
 | | `perf` | off | hot-path instrumentation counters |
 | | `test-support` | off | font fixtures and test literals for downstream tests; never in production |
-| `turbo-dom-raster` | `avif` | off | AVIF pixels (pure-Rust rav1d) |
+| `turbo-dom-raster` | `avif` | off | AVIF pixels (pure-Rust rav1d, via the `turbo-dom-rav1d` fork) |
 | | `jxl` | off | JPEG XL pixels (jxl-oxide) |
 | | `gpu-metal` | off | wgpu (Metal) canvas and WebGL rasterization, falling back to the CPU path on any GPU failure |
 | | `coretext` | off | macOS only: canvas text through CoreText (inert elsewhere) |

@@ -8,7 +8,7 @@ members = ["crates/turbo-dom", "crates/turbo-dom-browser-env", "crates/turbo-dom
 # turbo-dom-v8 is generated (crates/turbo-dom-v8/scripts/generate.py) into the
 # gitignored crates/turbo-dom-v8/crate/ and built as its own standalone package, so a
 # fresh checkout resolves this workspace without generating V8 first.
-exclude = ["crates/turbo-dom-v8"]
+exclude = ["crates/turbo-dom-v8", "crates/turbo-dom-rav1d"]
 
 # The pedantic clippy gate shared by the turbo-dom, turbo-dom-layout and
 # turbo-dom-raster crates (`[lints] workspace = true`; the root parser package keeps its

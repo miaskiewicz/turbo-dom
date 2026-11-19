@@ -2156,27 +2156,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca45419789ae5a7899559e9512e58ca889e41f04f1f2445e9f4b290ceccd1d08"
 
 [[package]]
-name = "rav1d"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1932f060d5e7bd49dc9f8b272c1dc5e9ce0ffe141c28be900265d3989b36c9ed"
-dependencies = [
- "assert_matches",
- "atomig",
- "bitflags 2.12.1",
- "cc",
- "cfg-if",
- "libc",
- "nasm-rs",
- "parking_lot",
- "paste",
- "raw-cpuid",
- "strum",
- "to_method",
- "zerocopy 0.7.35",
-]
-
-[[package]]
 name = "raw-cpuid"
 version = "11.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2877,14 +2856,35 @@ dependencies = [
  "lyon_tessellation",
  "naga",
  "pollster",
- "rav1d",
  "resvg",
  "serde_json",
  "sha2",
  "tiny-skia",
  "ttf-parser",
  "turbo-dom-layout",
+ "turbo-dom-rav1d",
  "wgpu",
+]
+
+[[package]]
+name = "turbo-dom-rav1d"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef5440d3ad35bb7045c7b27222a26f88b02ac4466180aa8931c6dcd1ba2237ea"
+dependencies = [
+ "assert_matches",
+ "atomig",
+ "bitflags 2.12.1",
+ "cc",
+ "cfg-if",
+ "libc",
+ "nasm-rs",
+ "parking_lot",
+ "paste",
+ "raw-cpuid",
+ "strum",
+ "to_method",
+ "zerocopy 0.7.35",
 ]
 
 [[package]]

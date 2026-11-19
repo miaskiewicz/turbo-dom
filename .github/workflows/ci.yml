@@ -439,6 +439,10 @@ jobs:
         run: python -m unittest discover -s crates/turbo-dom-v8/scripts -p 'test_*.py'
       - name: turbo-dom-v8 regenerates to the pinned tree
         run: python crates/turbo-dom-v8/scripts/generate.py --download --check
+      - name: turbo-dom-rav1d generator self-tests
+        run: python -m unittest discover -s crates/turbo-dom-rav1d/scripts -p 'test_*.py'
+      - name: turbo-dom-rav1d regenerates to the pinned tree
+        run: python crates/turbo-dom-rav1d/scripts/generate.py --download --check
       - name: Script self-tests (publish-crates.py, check-versions.py, check-baseline-red.py, check-glibc-ceiling.sh)
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Parity harness self-test (no addons)

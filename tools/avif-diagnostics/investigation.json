@@ -54,8 +54,13 @@
     "peak_rss_kib": null
   },
   "issue": "https://github.com/miaskiewicz/turbo-dom/issues/535",
-  "status": "unresolved",
-  "production_fix": null,
+  "status": "resolved",
+  "production_fix": {
+    "decoder": "turbo-dom-rav1d 1.1.0 (crates/turbo-dom-rav1d: rav1d 1.1.0 + upstream 6c6f46378 + extern \"C-unwind\")",
+    "decode": "n_threads=1, max_frame_delay=1, inside catch_unwind; a decoder panic is a broken image",
+    "regression_test": "avif::tests::a_stream_that_panics_rav1d_is_a_broken_image_not_an_abort (memorysafety/rav1d#1476 input; SIGABRT before the fix)",
+    "root_cause_note": "The original CI panic message was never captured, so the exact panicking site for run 44418005980 is unknown; the fix removes the abort mechanism for every rav1d panic and the worker threads/async close that made it timing-dependent."
+  },
   "diagnostic_commits": [
     "713f82a90474d2177a8a393f27a2c45deacc6e29",
     "2fabd48adbb9217d21147f2ea970701be3d3a266"

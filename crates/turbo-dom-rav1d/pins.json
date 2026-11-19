@@ -1,0 +1,24 @@
+{
+  "package": "turbo-dom-rav1d",
+  "version": "1.1.0",
+  "repository": "https://github.com/miaskiewicz/turbo-dom",
+  "description": "turbo-dom fork of rav1d 1.1.0 (Rust port of the dav1d AV1 decoder): unwinding C ABI and the rav1d#1497 fix, so a decoder panic is catchable",
+  "upstream": {
+    "package": "rav1d",
+    "version": "1.1.0",
+    "repository": "https://github.com/memorysafety/rav1d",
+    "license": "BSD-2-Clause",
+    "fix_commit": "6c6f46378"
+  },
+  "input": {
+    "archive": "rav1d-1.1.0.crate",
+    "url": "https://static.crates.io/crates/rav1d/rav1d-1.1.0.crate",
+    "archive_sha256": "1932f060d5e7bd49dc9f8b272c1dc5e9ce0ffe141c28be900265d3989b36c9ed"
+  },
+  "transform": {
+    "c_abi_rewrites": 159
+  },
+  "generated": {
+    "tree_sha256": "3e8672d589315327049902be7b8d787b380364d3a59a2a365016cf96cb8a0905"
+  }
+}

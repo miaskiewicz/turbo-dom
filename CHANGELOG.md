@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.5] — Unreleased
 
+- **AVIF decoder panics are broken images (#535)**: turbo-dom-raster's `avif` feature
+  decodes through `turbo-dom-rav1d`, a new crate generated from the pinned rav1d 1.1.0
+  (`crates/turbo-dom-rav1d`). It adds upstream's fix for memorysafety/rav1d#1497 and turns
+  every `extern "C"` ABI into `extern "C-unwind"`, so a rav1d panic is caught and the image
+  paints nothing instead of aborting the process. The decoder now runs on the calling
+  thread: no worker threads, and no worker outliving `dav1d_close`.
+
 - **Auto-fit gutter correction (#525)**: collapse the gutters adjoining empty
   auto-fit tracks, then solve with the original track constraints. Preserve row
   repeats, min-content offers and collapsed alignment; 630 independent Chromium

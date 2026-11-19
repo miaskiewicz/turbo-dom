@@ -8,10 +8,10 @@
 //! `avif-native` only — libdav1d, a native C library found through pkg-config; `ravif`
 //! encodes only; `zenavif` / `rav1d-safe` are AGPL; `rav1d` (1.1, BSD-2-Clause, the ISRG
 //! Prossimo Rust port of dav1d) is pure Rust with its assembly off
-//! (`default-features = false`), at the cost of its C-ABI (`unsafe extern "C"`) entry
-//! points and a large dependency tree. This module uses `rav1d` (no assembly, two frame
-//! contexts — see [`av1::decode`] for why not one) and converts the decoded YUV planes to
-//! RGBA itself; without the feature an AVIF paints as the placeholder, and a corrupt AVIF
+//! (`default-features = false`), at the cost of its C-ABI entry points and a large
+//! dependency tree. This module uses turbo-dom-rav1d, turbo-dom's fork of rav1d 1.1.0 whose
+//! C ABI unwinds (`crates/turbo-dom-rav1d`; see [`av1::decode`] for why), on the calling
+//! thread only, and converts the decoded YUV planes to RGBA itself; without the feature an AVIF paints as the placeholder, and a corrupt AVIF
 //! (no pixels) paints nothing, as in Chrome (turbo-dom#107).
 
 use turbo_dom_layout::image::Rgba8Image;
@@ -59,7 +59,7 @@ pub(crate) struct Frame {
 
 #[cfg(feature = "avif")]
 mod av1 {
-    //! The `rav1d` C-ABI calls: open a two-frame-context decoder, feed one temporal unit,
+    //! The `rav1d` C-ABI calls: open a single-threaded decoder, feed one temporal unit,
     //! take the picture, copy its planes out, release everything.
     use std::ptr::NonNull;
 
@@ -79,23 +79,37 @@ mod av1 {
     const AGAIN: i32 = -libc::EAGAIN;
 
     /// Decode one AV1 still frame (an AVIF item's OBU stream).
+    ///
+    /// rav1d 1.1.0 panics on some malformed streams (memorysafety/rav1d#1476, #1497).
+    /// Behind its `extern "C"` API such a panic cannot unwind and aborts the process
+    /// (miaskiewicz/turbo-dom#94, #535); turbo-dom-rav1d declares that API
+    /// `extern "C-unwind"`, so the panic is caught here and the image is broken (`None`).
+    /// A context rav1d panicked inside is leaked, never reused or closed: its state is
+    /// unknown, and a second panic while unwinding would abort. This needs the default
+    /// `panic = "unwind"`; under `panic = "abort"` a decoder panic still aborts.
     pub(crate) fn decode(stream: &[u8]) -> Option<Frame> {
         if stream.is_empty() {
             return None;
         }
+        std::panic::catch_unwind(|| decode_stream(stream))
+            .ok()
+            .flatten()
+    }
+
+    fn decode_stream(stream: &[u8]) -> Option<Frame> {
         let mut settings = std::mem::MaybeUninit::<Dav1dSettings>::uninit();
         // SAFETY: `settings` is valid to write the default settings into.
         unsafe { dav1d_default_settings(NonNull::new(settings.as_mut_ptr())?) };
         // SAFETY: `dav1d_default_settings` initialized every field.
         let mut settings = unsafe { settings.assume_init() };
-        // Two frame contexts (frame delay 2, two worker threads): with exactly one, rav1d
-        // 1.1.0 tears a frame down twice on a decode error and panics inside its
-        // `extern "C"` API, which aborts the process (miaskiewicz/turbo-dom#94, upstream
-        // memorysafety/rav1d#1496, fixed after 1.1.0; 1.1.1 is unpublished). With two, a
-        // decode error comes back as an error result. AV1 decoding is bit-exact, so the
-        // pixels do not depend on the thread count.
-        settings.n_threads = 2;
-        settings.max_frame_delay = 2;
+        // One thread, one frame context: everything runs on the calling thread, so every
+        // rav1d panic reaches `decode`'s `catch_unwind` (a worker thread's panic would
+        // leave the caller waiting for its frame), and no worker outlives `dav1d_close`.
+        // turbo-dom-rav1d carries the fix for the single-context decode-error panic
+        // (memorysafety/rav1d#1497) that made 1.1.0 need two. AV1 decoding is bit-exact,
+        // so the pixels do not depend on the thread count.
+        settings.n_threads = 1;
+        settings.max_frame_delay = 1;
         // Bound the frame like every other format's decode (the `image` crate's 512 MiB
         // `max_alloc`, as RGBA): unbounded, a 1.8 KB 12000 x 12000 still peaks at ~2.8 GB.
         // An over-budget frame is a decode error: laid out at its size, painting nothing.
@@ -543,7 +557,10 @@ mod progress {
                     })
                 })
                 .collect();
-            threads.into_iter().flat_map(|t| t.join().unwrap()).collect()
+            threads
+                .into_iter()
+                .flat_map(|t| t.join().unwrap())
+                .collect()
         });
         let created: Vec<_> = paths.into_iter().collect::<io::Result<_>>().unwrap();
         assert_eq!(created.len(), 16 * 64);
