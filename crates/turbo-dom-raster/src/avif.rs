@@ -918,6 +918,18 @@ mod tests {
         assert!(av1::decode(&good[..n / 8]).is_none(), "header only");
     }
 
+    /// A stream that makes rav1d panic is a broken image, not a process abort
+    /// (miaskiewicz/turbo-dom#535). This ITU-T T.35 metadata OBU underflows rav1d 1.1.0's
+    /// payload size (memorysafety/rav1d#1476): the panic used to cross its `extern "C"`
+    /// API and abort the process.
+    #[test]
+    fn a_stream_that_panics_rav1d_is_a_broken_image_not_an_abort() {
+        let itut_t35_underflow = [47, 47, 5, 4, 128, 0, 0, 0];
+        assert!(av1::decode(&itut_t35_underflow).is_none());
+        // The decoder still works afterwards.
+        assert!(av1::decode(&stream()).is_some());
+    }
+
     /// A one-row frame of `bits` depth with the given planes.
     fn frame(bits: u32, chroma: Option<(usize, usize)>, planes: [Vec<u16>; 3]) -> Frame {
         Frame {
