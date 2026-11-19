@@ -10,7 +10,7 @@ from before 0.6.0; see [BENCHMARKS-history](../../docs/BENCHMARKS-history.md)).
 
 ## Where it sits
 
-The base of the turbo-dom crate family (0.8.5)
+The base of the turbo-dom crate family (0.8.6, local unreleased candidate)
 ([docs/CONSOLIDATION.md](../../docs/CONSOLIDATION.md)):
 
 ```

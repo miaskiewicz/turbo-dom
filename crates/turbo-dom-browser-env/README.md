@@ -48,7 +48,7 @@ turbo-dom-browser-env = "0.8"                       # embedders: features = ["ho
 turbo-dom-browser-env = { version = "0.8", features = ["test-support"] }
 ```
 
-MSRV 1.91. v0.8.5 requires `turbo-dom-v8` `~150.4.2`, which downloads the prebuilt rusty_v8
+MSRV 1.91. The v0.8.6 candidate requires `turbo-dom-v8` `~150.4.2`, which downloads the prebuilt rusty_v8
 150.4.0 static library unless `RUSTY_V8_ARCHIVE` points at one. A dependency graph holds
 exactly one turbo-dom-v8 (`links = "rusty_v8"`).
 

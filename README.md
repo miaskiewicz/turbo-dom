@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.5**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.6** (local unreleased candidate). turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -17,20 +17,21 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## Packages in this release
+## Packages in this candidate
 
-The DOM packages share version 0.8.5. The independently versioned V8 fork is
-150.4.2 and uses the official V8 150.4.0 archive; the AVIF decoder fork
-`turbo-dom-rav1d` is 1.1.0. After installing the published release, consumers can
-remove their pre-release `[patch.crates-io]` overrides.
+The 0.8.6 DOM packages are under local development; the published release is
+0.8.5. Local consumers need pre-release `[patch.crates-io]` overrides for this
+candidate. The independently versioned V8 fork remains published at 150.4.2
+and uses the official V8 150.4.0 archive; the AVIF decoder fork `turbo-dom-rav1d`
+remains 1.1.0.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.5 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.5 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.5 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.5 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.5 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.6 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.6 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.6 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.6 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.6 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.2 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -112,10 +113,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.8.5"
-turbo-dom-layout = "0.8.5"                 # bundled fonts on by default
-turbo-dom-raster = "0.8.5"
-turbo-dom-browser-env = "0.8.5"            # needs a V8 archive, see its README
+turbo-dom = "0.8.6"
+turbo-dom-layout = "0.8.6"                 # bundled fonts on by default
+turbo-dom-raster = "0.8.6"
+turbo-dom-browser-env = "0.8.6"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -161,7 +162,13 @@ features (for example `simdutf`).
 
 ## Status
 
-- **0.8.5 (unreleased):** reduce cascade declaration cloning, winner-map lookups
+- **0.8.6 (unreleased):** the `parseBuffer` parser builds its flat buffer from an
+  index-arena tree sink instead of a reference-counted tree, and gates
+  `<selectedcontent>` with a SIMD scan: Rust-level `parse_html_soa` is 9-25% faster
+  across the bench fixtures. Grid baseline items lay out on their natural lines and
+  align on their first text line again (#537).
+
+- **0.8.5:** reduce cascade declaration cloning, winner-map lookups
   and inherited-value allocations. See the changelog and the reproducible cascade
   performance harness.
 
