@@ -57,6 +57,7 @@ crate-type = ["cdylib", "rlib"]
 html5ever = "0.39"
 markup5ever_rcdom = "0.39"
 rustc-hash = "2"   # fast non-crypto FxHashMap for string interning (parse hot path)
+memchr = "2"       # SIMD byte search for the per-parse <selectedcontent> gate (already in the graph)
 
 # napi-rs front-end (native addon). Gated so the wasm build doesn't pull it.
 napi = { version = "2", default-features = false, features = ["napi6"], optional = true }

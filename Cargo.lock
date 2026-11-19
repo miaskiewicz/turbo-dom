@@ -2832,6 +2832,7 @@ version = "0.8.5"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",
+ "memchr",
  "napi",
  "napi-build",
  "napi-derive",

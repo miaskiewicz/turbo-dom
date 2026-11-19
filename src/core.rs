@@ -127,9 +127,15 @@ fn parse_document_dom(html: &str, opts: ParseOpts) -> RcDom {
 /// Does `html` mention `<selectedcontent>` (ASCII case-insensitive)? Gates [`fill_selectedcontent`].
 #[must_use]
 pub fn mentions_selectedcontent(html: &str) -> bool {
-    html.as_bytes()
-        .windows(15)
-        .any(|w| w.eq_ignore_ascii_case(b"selectedcontent"))
+    // Runs on every document parse: jump between candidate first letters with SIMD
+    // `memchr2` instead of comparing a 15-byte window at every offset.
+    const NEEDLE: &[u8; 15] = b"selectedcontent";
+    let bytes = html.as_bytes();
+    memchr::memchr2_iter(b's', b'S', bytes).any(|at| {
+        bytes
+            .get(at..at + NEEDLE.len())
+            .is_some_and(|window| window.eq_ignore_ascii_case(NEEDLE))
+    })
 }
 
 /// Chrome 156 fills every `<selectedcontent>` of a non-`multiple` `<select>` with a clone of
@@ -969,6 +975,9 @@ mod tests {
         assert!(mentions_selectedcontent("<b></b><SelectedContent>"));
         assert!(mentions_selectedcontent("xSELECTEDCONTENTx"));
         assert!(!mentions_selectedcontent("selectedconten"));
+        // A false start on an earlier `s` does not end the scan; a match may end the input.
+        assert!(mentions_selectedcontent("<s>sselectedcontent"));
+        assert!(mentions_selectedcontent("s s s SelectedContent"));
         assert!(!mentions_selectedcontent("<select><option>"));
         assert!(!mentions_selectedcontent(""));
     }
