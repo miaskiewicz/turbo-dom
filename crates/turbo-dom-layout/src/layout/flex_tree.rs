@@ -5,6 +5,7 @@ mod column_intrinsic;
 use std::cell::{Cell, RefCell};
 #[path = "flex_column_padding.rs"]
 mod column_padding;
+use taffy::prelude::{TaffyMaxContent, TaffyMinContent};
 use taffy::{
     AvailableSpace, Cache, CacheTree, Layout, LayoutFlexboxContainer, LayoutGridContainer,
     LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, RoundTree, RunMode, Size, Style,
@@ -240,6 +241,7 @@ impl<C> View<'_, C> {
                 result
             };
         }
+        let inputs = baseline_probe_offer(inputs);
         taffy::compute_leaf_layout(inputs, &node.style, resolve_calc, |known, avail| {
             (self.measure)(
                 known,
@@ -252,6 +254,28 @@ impl<C> View<'_, C> {
         })
     }
 }
+/// Taffy 0.8's grid baseline pass (`resolve_item_baselines`) is the only full layout
+/// that offers a leaf min-content in both axes with nothing known. It wants the
+/// item's baseline, not its min-content contribution: measured at its min-content
+/// width a label wraps word by word (or, under `overflow-wrap: break-word`, letter by
+/// letter) and the row shifts down to that tall item's baseline, which Chrome never
+/// does (miaskiewicz/turbo-dom#537). Offer it the max-content space instead, so the
+/// shared measurement lays the item on its natural lines as before the min-content
+/// offers of `54167bbc`; the track-sizing contributions (`ComputeSize`) keep them.
+fn baseline_probe_offer(inputs: LayoutInput) -> LayoutInput {
+    let probe = inputs.run_mode == RunMode::PerformLayout
+        && inputs.known_dimensions == Size::NONE
+        && inputs.available_space == Size::MIN_CONTENT;
+    if probe {
+        LayoutInput {
+            available_space: Size::MAX_CONTENT,
+            ..inputs
+        }
+    } else {
+        inputs
+    }
+}
+
 impl<C> CacheTree for View<'_, C> {
     fn cache_get(
         &self,
