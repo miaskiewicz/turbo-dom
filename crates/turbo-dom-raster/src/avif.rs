@@ -347,12 +347,16 @@ mod progress {
     impl Breadcrumb {
         pub(super) fn new() -> io::Result<Self> {
             use std::os::unix::fs::OpenOptionsExt;
+            // The clock separates runs; the counter separates breadcrumbs made in one
+            // clock tick by parallel tests (macOS clocks tick in microseconds).
+            static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let nonce = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos();
+            let sequence = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let path = std::env::temp_dir().join(format!(
-                "turbo-dom-avif-{}-{nonce}.progress",
+                "turbo-dom-avif-{}-{nonce}-{sequence}.progress",
                 std::process::id()
             ));
             let file = std::fs::OpenOptions::new()
