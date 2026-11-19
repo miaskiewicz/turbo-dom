@@ -43,8 +43,12 @@ impl Breadcrumb {
     }
 
     pub(super) fn child() -> io::Result<Self> {
-        match std::env::var_os(ENV) {
-            Some(path) => Self::open(path.into()),
+        Self::child_path(std::env::var_os(ENV).map(std::path::PathBuf::from))
+    }
+
+    fn child_path(path: Option<std::path::PathBuf>) -> io::Result<Self> {
+        match path {
+            Some(path) => Self::open(path),
             None => Self::new(),
         }
     }
@@ -77,11 +81,7 @@ impl Breadcrumb {
         if memory == libc::MAP_FAILED {
             return Err(io::Error::last_os_error());
         }
-        let Some(pointer) = std::ptr::NonNull::new(memory.cast()) else {
-            // SAFETY: mmap succeeded; reject address zero rather than forming a reference.
-            unsafe { libc::munmap(memory, std::mem::size_of::<std::sync::atomic::AtomicU64>()) };
-            return Err(io::Error::other("null AVIF progress mapping"));
-        };
+        let pointer = mapping_pointer(memory, unmap)?;
         Ok(Self {
             pointer,
             path,
@@ -109,15 +109,29 @@ impl Breadcrumb {
 }
 
 #[cfg(unix)]
+fn mapping_pointer(
+    memory: *mut libc::c_void,
+    release: impl FnOnce(*mut libc::c_void),
+) -> io::Result<std::ptr::NonNull<std::sync::atomic::AtomicU64>> {
+    let Some(pointer) = std::ptr::NonNull::new(memory.cast()) else {
+        // A successful address-zero mapping must be released before rejection;
+        // never form an AtomicU64 reference at that address.
+        release(memory);
+        return Err(io::Error::other("null AVIF progress mapping"));
+    };
+    Ok(pointer)
+}
+
+#[cfg(unix)]
+fn unmap(memory: *mut libc::c_void) {
+    // SAFETY: callers supply exactly the live atomic-sized mapping from mmap.
+    unsafe { libc::munmap(memory, std::mem::size_of::<std::sync::atomic::AtomicU64>()) };
+}
+
+#[cfg(unix)]
 impl Drop for Breadcrumb {
     fn drop(&mut self) {
-        // SAFETY: this is exactly the live mapping created by mmap above.
-        unsafe {
-            libc::munmap(
-                self.pointer.as_ptr().cast(),
-                std::mem::size_of::<std::sync::atomic::AtomicU64>(),
-            )
-        };
+        unmap(self.pointer.as_ptr().cast());
         if self.owner {
             let _ = std::fs::remove_file(&self.path);
         }
@@ -196,4 +210,43 @@ fn truncated_progress_storage_is_rejected_before_mapping() {
         .set_len(0)
         .unwrap();
     assert!(Breadcrumb::open(parent.path.clone()).is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn absent_parent_progress_path_creates_owned_storage_without_changing_environment() {
+    let child = Breadcrumb::child_path(None).unwrap();
+    let path = child.path.clone();
+    assert!(child.owner);
+    child.record(3, 4, 5);
+    assert_eq!(child.read(""), case_id(3, 4, 5));
+    assert!(path.exists());
+    drop(child);
+    assert!(!path.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn shared_writable_mapping_rejects_a_read_only_file_descriptor() {
+    let parent = Breadcrumb::new().unwrap();
+    let read_only = std::fs::File::open(&parent.path).unwrap();
+    let error = Breadcrumb::map(&read_only, parent.path.clone(), false)
+        .err()
+        .expect("MAP_SHARED with PROT_WRITE requires a writable descriptor");
+    assert_eq!(error.raw_os_error(), Some(libc::EACCES));
+    assert_eq!(parent.read(""), 0);
+    assert!(parent.path.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn address_zero_mapping_is_released_once_before_rejection() {
+    let releases = std::cell::Cell::new(0);
+    let error = mapping_pointer(std::ptr::null_mut(), |memory| {
+        assert!(memory.is_null());
+        releases.set(releases.get() + 1);
+    })
+    .unwrap_err();
+    assert_eq!(releases.get(), 1);
+    assert_eq!(error.to_string(), "null AVIF progress mapping");
 }
