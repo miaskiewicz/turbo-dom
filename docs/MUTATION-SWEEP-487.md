@@ -50,6 +50,27 @@ unchanged. The full painter shards at 840 / 415 took at most 23 minutes per job 
 still inside the 32-minute step bound, and 12 is already the per-target ceiling. These
 are re-enumerated counts, not mutation results: the new 0.8.5 mutants still need a
 full sweep and a review of any survivors.
+
+**v0.8.5 painter sweep results (runs 44573588337 / 44573593907, main `59d9d650`).**
+`paint_svg`: all 411 mutants caught. Shards 0–4 caught 345 in the primary pass. Shard
+5's primary pass caught 62 and left 4 (the right border band, `paint_svg.rs:976`); its
+full-suite fallback hit the 32-minute step bound. Re-run locally against the whole
+turbo-dom-raster suite, all 4 are caught by `a_currentcolor_border_paints_in_the_elements_color_like_chrome_156`
+and `inset_and_outset_borders_shade_their_sides_like_chrome_156`. `paint_png`: 905 caught,
+16 unviable (each with its compiler log), and 8 left by the primary pass. 6 of those are
+caught by the full suite. The other 2 were equivalent mutants, `> 0` → `>= 0` on unsigned
+values:
+- `s.color.a` in `paint_outer_layers`: an alpha-0 shadow composites nothing.
+- `s.width` in `paint_round_border`: a zero-width side paints nothing, and `paint_ring`
+  paints a single colour exactly as the one fill does.
+
+Both comparisons are now `!= 0`. That is the same behaviour, and its only mutant (`==`) is
+caught. The test `png11_a_zero_width_sides_colour_never_changes_a_rounded_border` pins the
+invariant that makes the second one safe. That leaves `paint_png` at **925** mutants, and the
+plan pins 925. So nothing survives the full suite. Still open: shards whose primary pass
+leaves survivors can exceed the 32-minute bound in the full-suite fallback (svg-5,
+png-8). Splitting those files into more shards, or moving the catching Chrome-control
+tests into the primary targets, would let CI record the fallback's verdict itself.
 The approved scoped PNG/SVG workflows may run four jobs each concurrently.
 The plan records the source reference and reviewed per-file counts; an actual
 inventory with extra, missing or duplicate mutants stops before any baseline or

@@ -1253,7 +1253,9 @@ fn paint_outer_layers(
     };
     let local = Transform::from_translate(-x as f32, -y as f32).pre_concat(xf);
     let mut layer = Pixmap::new(w, h).expect("shadow layer within canvas");
-    for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a > 0) {
+    // An alpha-0 shadow would composite nothing; skipping it only saves the work. `!= 0`
+    // (not `> 0` on the unsigned alpha) leaves no equivalent `>=` mutant (turbo-dom#487).
+    for sh in shadows.iter().rev().filter(|s| !s.inset && s.color.a != 0) {
         paint_box_shadow(&mut layer, f, radii, sh, local);
     }
     let mut mask = Mask::new(w, h).expect("shadow mask within canvas");
@@ -1674,7 +1676,10 @@ fn paint_round_border(
     let painted: Vec<(usize, Rgba)> = sides
         .iter()
         .enumerate()
-        .filter(|(_, s)| s.width > 0)
+        // A zero-width side paints nothing whatever its colour, and `paint_ring` paints a
+        // single colour exactly as the one fill does, so this split is only a fast path.
+        // `!= 0` on the unsigned width leaves no equivalent `>=` mutant (turbo-dom#487).
+        .filter(|(_, s)| s.width != 0)
         .filter_map(|(i, s)| s.color.map(|c| (i, c)))
         .collect();
     let widths = rrect::widths(b);
@@ -4752,6 +4757,37 @@ mod exact_tests {
             [hole.red(), hole.green(), hole.blue(), hole.alpha()],
             [255; 4]
         );
+    }
+
+    /// A zero-width side paints nothing, so its colour cannot change a rounded border: the
+    /// three painted sides keep their single translucent fill (no per-side diagonal seams)
+    /// whether the hidden side carries a colour or none (miaskiewicz/turbo-dom#487).
+    #[test]
+    fn png11_a_zero_width_sides_colour_never_changes_a_rounded_border() {
+        let red = Rgba::new(255, 0, 0, 128);
+        let paint = |hidden: Option<Rgba>| {
+            let side = |width| BorderSide {
+                width,
+                color: Some(red),
+            };
+            let borders = BorderEdges {
+                top: BorderSide {
+                    width: 0,
+                    color: hidden,
+                },
+                right: side(3),
+                bottom: side(3),
+                left: side(3),
+            };
+            let f = boxed(2.0, 3.0, 20.0, 10.0, 0.0, None);
+            let mut pm = white(26, 17);
+            paint_round_border(&mut pm, &f, &borders, &4.0.into(), Transform::identity());
+            pm.data().to_vec()
+        };
+        let uncoloured = paint(None);
+        assert_ne!(uncoloured, white(26, 17).data(), "the border paints");
+        assert_eq!(paint(Some(red)), uncoloured, "same colour");
+        assert_eq!(paint(Some(RED)), uncoloured, "opaque colour");
     }
 
     #[test]
