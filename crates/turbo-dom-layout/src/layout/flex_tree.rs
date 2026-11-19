@@ -16,6 +16,32 @@ thread_local! { static CALCS: RefCell<Vec<(f32, f32, f32)>> = const { RefCell::n
 
 thread_local! { static SCALE: Cell<f32> = const { Cell::new(1.0) }; }
 
+/// The leaf baseline exchange for Taffy's grid baseline probe (miaskiewicz/turbo-dom#537).
+#[derive(Clone, Copy, PartialEq)]
+enum BaselineProbe {
+    /// No probe is being answered.
+    Idle,
+    /// The adapter asks the measurement for the item's first baseline.
+    Requested,
+    /// The measurement's answer: the first baseline, if the item has a text line.
+    Answered(Option<f32>),
+}
+
+thread_local! {
+    static BASELINE: Cell<BaselineProbe> = const { Cell::new(BaselineProbe::Idle) };
+}
+
+/// Whether the leaf being measured answers the grid baseline probe. Taking the request
+/// keeps it from the nested layouts that measurement runs.
+pub(super) fn take_baseline_request() -> bool {
+    BASELINE.replace(BaselineProbe::Idle) == BaselineProbe::Requested
+}
+
+/// Hand the probed item's first baseline (below its border-box top) back to Taffy.
+pub(super) fn report_baseline(baseline: Option<f32>) {
+    BASELINE.set(BaselineProbe::Answered(baseline));
+}
+
 pub(super) struct CalcScope(usize, f32);
 impl CalcScope {
     pub fn new(scale: Option<f32>) -> Self {
@@ -241,17 +267,29 @@ impl<C> View<'_, C> {
                 result
             };
         }
-        let inputs = baseline_probe_offer(inputs);
-        taffy::compute_leaf_layout(inputs, &node.style, resolve_calc, |known, avail| {
-            (self.measure)(
-                known,
-                avail,
-                id,
-                node.context.as_mut(),
-                &node.style,
-                inputs.parent_size,
-            )
-        })
+        let (inputs, probe) = baseline_probe_offer(inputs);
+        let previous = BASELINE.replace(if probe {
+            BaselineProbe::Requested
+        } else {
+            BaselineProbe::Idle
+        });
+        let mut output =
+            taffy::compute_leaf_layout(inputs, &node.style, resolve_calc, |known, avail| {
+                (self.measure)(
+                    known,
+                    avail,
+                    id,
+                    node.context.as_mut(),
+                    &node.style,
+                    inputs.parent_size,
+                )
+            });
+        // Taffy aligns on `first_baselines.y`, else the item's height: a leaf reports
+        // its first text line, so a larger neighbour lowers it by the baseline gap.
+        if let BaselineProbe::Answered(Some(baseline)) = BASELINE.replace(previous) {
+            output.first_baselines.y = Some(baseline);
+        }
+        output
     }
 }
 /// Taffy 0.8's grid baseline pass (`resolve_item_baselines`) is the only full layout
@@ -262,17 +300,19 @@ impl<C> View<'_, C> {
 /// does (miaskiewicz/turbo-dom#537). Offer it the max-content space instead, so the
 /// shared measurement lays the item on its natural lines as before the min-content
 /// offers of `54167bbc`; the track-sizing contributions (`ComputeSize`) keep them.
-fn baseline_probe_offer(inputs: LayoutInput) -> LayoutInput {
+/// Returns the inputs to measure with and whether this is that probe.
+fn baseline_probe_offer(inputs: LayoutInput) -> (LayoutInput, bool) {
     let probe = inputs.run_mode == RunMode::PerformLayout
         && inputs.known_dimensions == Size::NONE
         && inputs.available_space == Size::MIN_CONTENT;
     if probe {
-        LayoutInput {
+        let offer = LayoutInput {
             available_space: Size::MAX_CONTENT,
             ..inputs
-        }
+        };
+        (offer, true)
     } else {
-        inputs
+        (inputs, false)
     }
 }
 

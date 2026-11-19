@@ -1151,17 +1151,10 @@ fn measure_item(
     // times per solve, and each probe recurses a full layout, so nested flex is
     // exponential without this. `fs` (the flex container's font size) is stable per
     // item. Percentage frames also depend on the current containing-block basis.
-    let probe = || {
-        let padding = measured_style.padding;
-        let key = [
-            w.to_bits(),
-            padding.top.to_bits(),
-            padding.right.to_bits(),
-            padding.bottom.to_bits(),
-            padding.left.to_bits(),
-            u32::from(content_basis),
-        ];
-        item.measure_cached(key, || {
+    let wants_baseline = native_tree::take_baseline_request();
+    // The scratch layout: the item at width `w`, its own containing block at origin.
+    let scratch = || {
+        {
             let mut bs = measured_style.clone();
             if content_basis {
                 bs.height = LengthPct::Auto;
@@ -1200,13 +1193,36 @@ fn measure_item(
                 sticky: crate::layout::sticky::StickyState::default(),
                 writing: crate::layout::writing::WritingMode::default(),
             };
-            let frag = block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx);
+            block::layout_box_sized_isolated(item, &bs, 0.0, 0.0, w, &mut mctx)
+        }
+    };
+    let probe = || {
+        let padding = measured_style.padding;
+        let key = [
+            w.to_bits(),
+            padding.top.to_bits(),
+            padding.right.to_bits(),
+            padding.bottom.to_bits(),
+            padding.left.to_bits(),
+            u32::from(content_basis),
+        ];
+        item.measure_cached(key, || {
+            let frag = scratch();
             (frag.width, frag.height)
         })
     };
-    // A relabelled copy's own cache starts empty: share the measurement with the copies
-    // made the same way (R2 review #4), keyed by everything the scratch layout reads.
-    let (cw, ch) = if item.relabel_memo.is_copy() {
+    // Taffy's grid baseline probe needs the item's first line, which the size caches
+    // do not keep: lay it out once more and report that baseline (#537).
+    let (cw, ch) = if wants_baseline {
+        let frag = scratch();
+        native_tree::report_baseline(super::list_marker::first_baseline(std::slice::from_ref(
+            &frag,
+        )));
+        (frag.width, frag.height)
+    } else if item.relabel_memo.is_copy() {
+        // A relabelled copy's own cache starts empty: share the measurement with the
+        // copies made the same way (R2 review #4), keyed by everything the scratch
+        // layout reads.
         let mut inputs = super::boxgen::measure_inputs(item, fonts);
         inputs.extend([
             u64::from(w.to_bits()),
