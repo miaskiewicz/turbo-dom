@@ -320,7 +320,12 @@ pub(crate) mod yuv {
 }
 
 #[cfg(all(test, feature = "avif"))]
+#[path = "avif_progress.rs"]
+mod progress;
+
+#[cfg(all(test, feature = "avif"))]
 mod tests {
+    use super::progress::Breadcrumb;
     use super::yuv::{to_rgba, weights};
     use super::{av1, Frame};
 
@@ -374,13 +379,15 @@ mod tests {
         variants
     }
 
-    fn fuzz_container(label: &str, avif: &[u8]) -> (usize, usize) {
+    fn fuzz_container(
+        label: &str,
+        avif: &[u8],
+        progress: &Breadcrumb,
+        fixture: usize,
+    ) -> (usize, usize) {
         let (mut decoded, mut rejected) = (0, 0);
         for (index, v) in byte_flip_variants(avif, 3).into_iter().enumerate() {
-            eprintln!(
-                "FUZZ-CASE container {label} variant={index} bytes={}",
-                v.len()
-            );
+            progress.record(fixture, 0, index);
             match super::decode(&v) {
                 Some(img) => {
                     assert_eq!(
@@ -396,7 +403,13 @@ mod tests {
         (decoded, rejected)
     }
 
-    fn fuzz_stream(label: &str, stream: Vec<u8>) -> (usize, usize) {
+    fn fuzz_stream(
+        label: &str,
+        stream: Vec<u8>,
+        progress: &Breadcrumb,
+        fixture: usize,
+        plane: usize,
+    ) -> (usize, usize) {
         let (mut decoded, mut rejected) = (0, 0);
         let n = stream.len();
         let mut variants = byte_flip_variants(&stream, 1);
@@ -404,7 +417,7 @@ mod tests {
         ones[n / 2..].fill(0xff);
         variants.push(ones);
         for (index, v) in variants.into_iter().enumerate() {
-            eprintln!("FUZZ-CASE stream {label} variant={index} bytes={}", v.len());
+            progress.record(fixture, plane + 1, index);
             match av1::decode(&v) {
                 Some(frame) => {
                     assert_eq!(frame.planes[0].len(), frame.width * frame.height, "{label}");
@@ -420,8 +433,9 @@ mod tests {
     #[ignore = "run in a child process by corrupt_avifs_are_broken_images_never_a_process_abort"]
     fn corrupt_avif_fuzz_child() {
         let (mut decoded, mut rejected) = (0, 0);
-        for (label, avif) in fixtures() {
-            let (d, r) = fuzz_container(&label, &avif);
+        let progress = Breadcrumb::child().unwrap();
+        for (fixture, (label, avif)) in fixtures().into_iter().enumerate() {
+            let (d, r) = fuzz_container(&label, &avif, &progress, fixture);
             decoded += d;
             rejected += r;
             // Most container-level variants fail in the demuxer before rav1d sees them, so
@@ -435,7 +449,7 @@ mod tests {
                 .chain(payload.alpha)
                 .enumerate()
             {
-                let (d, r) = fuzz_stream(&format!("{label} plane={index}"), stream);
+                let (d, r) = fuzz_stream(&label, stream, &progress, fixture, index);
                 decoded += d;
                 rejected += r;
             }
@@ -448,7 +462,10 @@ mod tests {
     /// `extern "C"` API on a decode error with one frame context, aborting).
     #[test]
     fn corrupt_avifs_are_broken_images_never_a_process_abort() {
-        let out = std::process::Command::new(std::env::current_exe().unwrap())
+        let progress = Breadcrumb::new().unwrap();
+        let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+        progress.configure(&mut command);
+        let out = command
             .env("RUST_BACKTRACE", "1")
             .args([
                 "--exact",
@@ -467,27 +484,55 @@ mod tests {
             let saved = std::fs::create_dir_all(path.parent().unwrap())
                 .and_then(|()| std::fs::write(&path, &out.stderr));
             panic!(
-                "child {:?}\n{stdout}\nfull stderr: {} ({saved:?})\n{}",
+                "child {:?}\n{stdout}\nfull stderr: {} ({saved:?})\n{}\n{}",
                 out.status,
                 path.display(),
+                describe_case(progress.read(&stderr)),
                 fuzz_failure_details(&stderr)
             );
         }
     }
 
+    fn describe_case(id: u64) -> String {
+        if id == 0 {
+            return "last mutation unavailable".into();
+        }
+        let fixture = usize::try_from(id >> 48).unwrap();
+        let plane = (id >> 32) & 0xffff;
+        let variant = (id & 0xffff_ffff) - 1;
+        let inputs = fixtures();
+        let label = &inputs[fixture].0;
+        let kind = if plane == 0 {
+            "container".to_string()
+        } else {
+            format!("stream plane={}", plane - 1)
+        };
+        format!("FUZZ-CASE {kind} {label} variant={variant}")
+    }
+
+    #[test]
+    fn packed_progress_identifies_container_color_and_alpha_mutations() {
+        use super::progress::case_id;
+        assert_eq!(describe_case(0), "last mutation unavailable");
+        for (plane, expected) in [
+            (0, "container"),
+            (1, "stream plane=0"),
+            (2, "stream plane=1"),
+        ] {
+            let description = describe_case(case_id(0, plane, 127));
+            assert!(description.contains(expected));
+            assert!(description.contains("q-alpha.avif variant=127"));
+        }
+    }
+
     fn fuzz_failure_details(stderr: &str) -> String {
-        let case = stderr
-            .lines()
-            .rev()
-            .find(|line| line.starts_with("FUZZ-CASE"))
-            .unwrap_or("FUZZ-CASE unavailable");
         let panic = stderr
             .lines()
             .find(|line| line.contains("panicked at") || line.contains("memory allocation"))
             .unwrap_or("no Rust panic/allocation message");
         let tail: Vec<_> = stderr.lines().rev().take(120).collect();
         format!(
-            "last mutation: {case}\nfirst failure: {panic}\nstderr tail:\n{}",
+            "first failure: {panic}\nstderr tail:\n{}",
             tail.into_iter().rev().collect::<Vec<_>>().join("\n")
         )
     }
