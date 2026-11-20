@@ -309,3 +309,36 @@ fn chrome156_documents_and_fragments() {
     );
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
+
+/// The arena sink builds exactly the `Soa` the `RcDom` path builds (every array, string
+/// table and compatibility mode) for every html5lib-tests document and every Chrome control
+/// document the dispatch sends to it (those not mentioning `<selectedcontent>`).
+#[test]
+fn arena_soa_equals_the_rcdom_soa() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("vendor/html5lib-tests");
+    let mut inputs: Vec<String> = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("vendored html5lib-tests") {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|x| x == "dat") {
+            let cases = parse_dat(&std::fs::read_to_string(&path).unwrap());
+            inputs.extend(
+                cases
+                    .into_iter()
+                    .filter(|c| c.context.is_none())
+                    .map(|c| c.data),
+            );
+        }
+    }
+    let fixture: serde_json::Value = serde_json::from_str(CHROME).unwrap();
+    for row in fixture["documents"].as_array().unwrap() {
+        if row["context"].is_null() {
+            inputs.push(row["html"].as_str().unwrap().to_string());
+        }
+    }
+    let mut compared = 0;
+    for html in inputs.iter().filter(|html| !mentions_selectedcontent(html)) {
+        compared += 1;
+        assert_eq!(soa_from_arena(html), soa_from_rcdom(html), "{html:?}");
+    }
+    assert!(compared > 1500, "compared {compared} documents");
+}

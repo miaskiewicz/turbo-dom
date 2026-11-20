@@ -1,0 +1,47 @@
+# Public Rust API diff, v0.8.5 -> v0.8.6 release candidate
+# Previous: v0.8.5 annotated tag 5a6454a3cdf6f8758cbbba148e827876886e9263,
+#   peeled commit b96cf92ae65ba70f26e87d1f61114cbe5da23889.
+# Candidate source: 2561ff2034e4de38ebc12058b671bf0d192fbe50 plus the uncommitted release edits of the commit that adds
+#   this file (src/core.rs: the parser's Arena tree sink made private; docs only otherwise).
+# Tool: cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02).
+# Host/target: aarch64-apple-darwin, identical toolchain at both source revisions.
+# cargo public-api -sss omits blanket, auto-trait and auto-derived implementations.
+# Commands, run in separate worktrees at both revisions (default features enabled):
+#   cargo +nightly public-api -sss --color never -p turbo-dom
+#   cargo +nightly public-api -sss --color never -p turbo-dom-parser
+#   cargo +nightly public-api -sss --color never -p turbo-dom-layout --features svg,perf,serde,test-support
+#   cargo +nightly public-api -sss --color never -p turbo-dom-raster --features avif,jxl
+#   cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# Supplemental host seam (standard rustdoc omits #[doc(hidden)] modules):
+#   RUSTDOCFLAGS=--document-hidden-items cargo +nightly public-api -sss --color never -p turbo-dom-browser-env --features host-internals,test-support
+# RUSTY_V8_ARCHIVE uses the unchanged official V8 150.4.0 prebuilt archive.
+# All commands completed successfully; Cargo manifests/lockfiles were not modified.
+# Summary: turbo-dom 0/0 (1357 lines), parser 0/0 (58), layout 0/0 (1906), raster 0/0 (77),
+#   browser-env standard 0/0 (450); supplemental hidden host seam 0/0 (740).
+# Breaking assessment: none. No public Rust API line was added, removed or changed.
+# turbo-dom-parser's Soa gained derived Debug and PartialEq impls (auto-derived, outside
+# -sss); the crate is publish = false and ships only inside the npm package.
+# Behavioral corrections are recorded separately in CHANGELOG.md.
+# Scope/limitations: this is a textual Rust signature audit, not an ABI, runtime,
+# semver-proof or consumer-execution check. It follows the prior release's CI-feature
+# matrix above; platform-only coretext/gpu-metal surfaces, simdutf, startup-snapshot,
+# split-install and native-SDK overlay feature combinations were not separately diffed.
+# turbo-dom-v8 stays at the already-published 150.4.2; turbo-dom-rav1d stays 1.1.0.
+
+## turbo-dom
+(no changes)
+
+## turbo-dom-parser
+(no changes)
+
+## turbo-dom-layout
+(no changes)
+
+## turbo-dom-raster
+(no changes)
+
+## turbo-dom-browser-env
+(no changes)
+
+## turbo-dom-browser-env (doc-hidden host seam)
+(no changes)

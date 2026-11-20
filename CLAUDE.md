@@ -4,7 +4,7 @@ Dev guide for this repo. See `turbo-dom-spec.md` for the full design and `README
 
 ## What this is
 
-The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.8.5):
+The shared browser-engine base of turbo-test, turbo-html2pdf and turbo-surf (0.8.6):
 
 - the npm package `@miaskiewicz/turbo-dom` — a lazy JS DOM runtime (`src/runtime/`) over a
   native html5ever parser (`turbo-dom-parser`: napi-rs addon + wasm-bindgen fallback over one
@@ -142,6 +142,10 @@ package or publish workflow.
 
 - `src/core.rs` — the only place html5ever is touched. `parse_html_document`,
   `parse_html_fragment_context`. Returns `core::Node` (plain, no binding deps).
+  `parse_html_soa` (napi `parseBuffer`) builds through `Arena`, an index-linked tree sink
+  read into the `Soa` in one pass (0.8.6); a document mentioning `<selectedcontent>` keeps
+  the `RcDom` path for `fill_selectedcontent`. `arena_soa_equals_the_rcdom_soa` asserts both
+  paths build identical buffers, so a sink change must keep `RcDom`'s semantics.
 - `src/lib.rs` — feature-gated front-ends: `napi-bind` (default), `wasm-bind`, the Phase-1
   `wasm-runtime` spike (`src/spike.rs`). The napi/wasm ones
   are thin `From<core::Node>` / serde conversions — keep logic in core, not here.

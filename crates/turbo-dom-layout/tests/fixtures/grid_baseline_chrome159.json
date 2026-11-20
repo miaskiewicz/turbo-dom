@@ -1,0 +1,964 @@
+{
+ "browser": "159.0.8154.6",
+ "probe_sha256": "d778b99ae00957897f584d9eaa173e4f8b0e768c82a6c81bdcd282dce1fd3306",
+ "font_sha256": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4",
+ "cases": [
+  {
+   "id": "fr-auto-baseline@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-break-word@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "auto-fr-baseline-break-word@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">$1,000.00</span><span data-cid=\"second\">Total percepciones</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 40,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "minmax-auto-baseline@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-start@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-center@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:center;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-fr-baseline@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 372,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 380,
+     "y": 0,
+     "width": 372,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps-break-word@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-self-baseline@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"align-self:baseline\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 712,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 720,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-bigger-value@752",
+   "width": 752,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\"><span style=\"font-size:16px\">$1,000.00</span></span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 752,
+     "height": 22.390625
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 8,
+     "width": 680,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 688,
+     "y": 0,
+     "width": 64,
+     "height": 22.390625
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-break-word@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "auto-fr-baseline-break-word@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">$1,000.00</span><span data-cid=\"second\">Total percepciones</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 40,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "minmax-auto-baseline@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-start@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-center@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:center;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-fr-baseline@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 191,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 199,
+     "y": 0,
+     "width": 191,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps-break-word@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-self-baseline@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"align-self:baseline\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 350,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 358,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-bigger-value@390",
+   "width": 390,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\"><span style=\"font-size:16px\">$1,000.00</span></span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 390,
+     "height": 22.390625
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 8,
+     "width": 318,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 326,
+     "y": 0,
+     "width": 64,
+     "height": 22.390625
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-break-word@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "auto-fr-baseline-break-word@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">$1,000.00</span><span data-cid=\"second\">Total percepciones</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 40,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "minmax-auto-baseline@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-start@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-center@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:center;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-fr-baseline@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 22.375
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 56,
+     "height": 22.375
+    },
+    {
+     "cid": "second",
+     "x": 64,
+     "y": 0,
+     "width": 56,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 44.75
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 44.75
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-wraps-break-word@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"overflow-wrap:break-word\">Total percepciones gravadas y exentas del periodo de pago quincenal</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 44.75
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 44.75
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-self-baseline@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:start;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"align-self:baseline\">Total percepciones</span><span data-cid=\"second\">$1,000.00</span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 11.1875
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 0,
+     "width": 80,
+     "height": 11.1875
+    },
+    {
+     "cid": "second",
+     "x": 88,
+     "y": 0,
+     "width": 32,
+     "height": 11.1875
+    }
+   ]
+  },
+  {
+   "id": "fr-auto-baseline-bigger-value@120",
+   "width": 120,
+   "height": 992,
+   "html": "<!doctype html><style>*{margin:0;padding:0}body{font-family:'Liberation Serif'}</style><div data-cid=\"grid\" style=\"display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:baseline;font-size:8px;line-height:1.4\"><span data-cid=\"first\" style=\"\">Total percepciones</span><span data-cid=\"second\"><span style=\"font-size:16px\">$1,000.00</span></span></div>",
+   "boxes": [
+    {
+     "cid": "grid",
+     "x": 0,
+     "y": 0,
+     "width": 120,
+     "height": 30.375
+    },
+    {
+     "cid": "first",
+     "x": 0,
+     "y": 8,
+     "width": 48,
+     "height": 22.375
+    },
+    {
+     "cid": "second",
+     "x": 56,
+     "y": 0,
+     "width": 64,
+     "height": 22.390625
+    }
+   ]
+  }
+ ]
+}

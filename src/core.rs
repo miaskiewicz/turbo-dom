@@ -127,9 +127,15 @@ fn parse_document_dom(html: &str, opts: ParseOpts) -> RcDom {
 /// Does `html` mention `<selectedcontent>` (ASCII case-insensitive)? Gates [`fill_selectedcontent`].
 #[must_use]
 pub fn mentions_selectedcontent(html: &str) -> bool {
-    html.as_bytes()
-        .windows(15)
-        .any(|w| w.eq_ignore_ascii_case(b"selectedcontent"))
+    // Runs on every document parse: jump between candidate first letters with SIMD
+    // `memchr2` instead of comparing a 15-byte window at every offset.
+    const NEEDLE: &[u8; 15] = b"selectedcontent";
+    let bytes = html.as_bytes();
+    memchr::memchr2_iter(b's', b'S', bytes).any(|at| {
+        bytes
+            .get(at..at + NEEDLE.len())
+            .is_some_and(|window| window.eq_ignore_ascii_case(NEEDLE))
+    })
 }
 
 /// Chrome 156 fills every `<selectedcontent>` of a non-`multiple` `<select>` with a clone of
@@ -292,7 +298,7 @@ pub fn parse_html_document(html: &str) -> Node {
     derive(serde::Serialize),
     serde(rename_all = "camelCase")
 )]
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Soa {
     pub node_type: Vec<u8>,    // DOM nodeType
     pub ns: Vec<u8>,           // 0 html, 1 svg, 2 math
@@ -373,10 +379,9 @@ impl SoaBuilder {
         id
     }
 
-    // Allocate this node + descendants; return its index.
-    fn alloc_node(&mut self, handle: &Handle, parent: i32) -> (i32, Option<Handle>) {
+    /// Push one node's slots (placeholders the caller fills) and return its index.
+    fn push_slots(&mut self, parent: i32) -> usize {
         let idx = self.soa.node_type.len();
-        // push placeholders; fill scalars below
         self.soa.node_type.push(0);
         self.soa.ns.push(0);
         self.soa.tag_id.push(0);
@@ -388,7 +393,61 @@ impl SoaBuilder {
         self.soa.sys_id.push(-1);
         self.soa.attr_start.push(-1);
         self.soa.attr_count.push(0);
+        idx
+    }
 
+    /// Fill node `idx` as the element `name` with `attrs`.
+    fn set_element(&mut self, idx: usize, name: &QualName, attrs: &[html5ever::Attribute]) {
+        self.soa.node_type[idx] = ELEMENT_NODE;
+        self.soa.ns[idx] = if name.ns == ns!(svg) {
+            1
+        } else if name.ns == ns!(mathml) {
+            2
+        } else {
+            0
+        };
+        self.soa.tag_id[idx] = self.intern_tag(&name.local);
+        if attrs.is_empty() {
+            return;
+        }
+        self.soa.attr_start[idx] = self.soa.attr_name_id.len() as i32;
+        self.soa.attr_count[idx] = attrs.len() as u16;
+        for attr in attrs {
+            let nid = self.intern_attr_name(&attr.name.local);
+            self.soa.attr_name_id.push(nid);
+            let vid = self.intern_attr_value(&attr.value);
+            self.soa.attr_value_id.push(vid);
+            let prefix = attr.name.prefix.as_deref().unwrap_or_default();
+            let pid = self.intern_attr_prefix(prefix);
+            self.soa.attr_prefix_id.push(pid);
+        }
+    }
+
+    /// Link node `index` as `parent`'s next child (`last_child[parent]` tracks the
+    /// previous one; -1 for none). A template's `content` fragment is a
+    /// `DOCUMENT_FRAGMENT_NODE` named `content`.
+    fn link(&mut self, last_child: &mut Vec<i32>, (index, parent, content): (i32, i32, bool)) {
+        last_child.push(-1);
+        if content {
+            self.soa.node_type[index as usize] = DOCUMENT_FRAGMENT_NODE;
+            self.soa.tag_id[index as usize] = self.intern_tag("content");
+        }
+        if parent < 0 {
+            return;
+        }
+        let previous = last_child[parent as usize];
+        // (-1: no child yet; index 0 is the root, never anyone's child)
+        if previous < 0 {
+            self.soa.first_child[parent as usize] = index;
+        } else {
+            self.soa.next_sib[previous as usize] = index;
+        }
+        last_child[parent as usize] = index;
+    }
+
+    // Allocate this node + descendants; return its index.
+    fn alloc_node(&mut self, handle: &Handle, parent: i32) -> (i32, Option<Handle>) {
+        let idx = self.push_slots(parent);
         let mut template_content: Option<Handle> = None;
 
         match &handle.data {
@@ -418,34 +477,7 @@ impl SoaBuilder {
                 template_contents,
                 ..
             } => {
-                self.soa.node_type[idx] = ELEMENT_NODE;
-                self.soa.ns[idx] = if name.ns == ns!(svg) {
-                    1
-                } else if name.ns == ns!(mathml) {
-                    2
-                } else {
-                    0
-                };
-                self.soa.tag_id[idx] = self.intern_tag(&name.local);
-                let borrowed = attrs.borrow();
-                if !borrowed.is_empty() {
-                    self.soa.attr_start[idx] = self.soa.attr_name_id.len() as i32;
-                    self.soa.attr_count[idx] = borrowed.len() as u16;
-                    for attr in borrowed.iter() {
-                        let nid = self.intern_attr_name(&attr.name.local);
-                        self.soa.attr_name_id.push(nid);
-                        let vid = self.intern_attr_value(&attr.value);
-                        self.soa.attr_value_id.push(vid);
-                        let pfx = attr
-                            .name
-                            .prefix
-                            .as_ref()
-                            .map(std::string::ToString::to_string)
-                            .unwrap_or_default();
-                        let pid = self.intern_attr_prefix(&pfx);
-                        self.soa.attr_prefix_id.push(pid);
-                    }
-                }
+                self.set_element(idx, name, &attrs.borrow());
                 if &*name.local == "template" {
                     if let Some(c) = &*template_contents.borrow() {
                         template_content = Some(c.clone());
@@ -463,21 +495,7 @@ impl SoaBuilder {
         let first = self.soa.node_type.len() as i32;
         while let Some((handle, parent, content)) = pending.pop() {
             let (index, template) = self.alloc_node(&handle, parent);
-            last_child.push(-1);
-            if content {
-                self.soa.node_type[index as usize] = DOCUMENT_FRAGMENT_NODE;
-                self.soa.tag_id[index as usize] = self.intern_tag("content");
-            }
-            if parent >= 0 {
-                let previous = last_child[parent as usize];
-                // (-1: no child yet; index 0 is the root, never anyone's child)
-                if previous < 0 {
-                    self.soa.first_child[parent as usize] = index;
-                } else {
-                    self.soa.next_sib[previous as usize] = index;
-                }
-                last_child[parent as usize] = index;
-            }
+            self.link(&mut last_child, (index, parent, content));
             if let Some(template) = template {
                 pending.push((template, index, true));
             }
@@ -496,34 +514,462 @@ pub fn parse_html_soa(html: &str) -> Soa {
 }
 
 /// Parse once and retain html5ever's document compatibility mode.
+///
+/// html5ever builds straight into an index [`Arena`] whose nodes the `SoA` is read off
+/// in one pass: no `Rc` node, `RefCell` child list or owned teardown per node. A
+/// document that mentions `<selectedcontent>` keeps the `RcDom` path, because
+/// [`fill_selectedcontent`] completes that tree through its handles.
 #[must_use]
 pub fn parse_html_soa_with_compat_mode(html: &str) -> (Soa, &'static str) {
-    let dom = parse_document_dom(html, opts());
-    let mut b = SoaBuilder {
-        soa: Soa::default(),
+    if mentions_selectedcontent(html) {
+        return soa_from_rcdom(html);
+    }
+    soa_from_arena(html)
+}
+
+fn soa_builder(nodes: usize) -> SoaBuilder {
+    let mut soa = Soa::default();
+    // Every arena node but detached ones lands in the buffer: size the slots once.
+    soa.node_type.reserve(nodes);
+    soa.ns.reserve(nodes);
+    soa.tag_id.reserve(nodes);
+    soa.parent.reserve(nodes);
+    soa.first_child.reserve(nodes);
+    soa.next_sib.reserve(nodes);
+    soa.text_id.reserve(nodes);
+    soa.pub_id.reserve(nodes);
+    soa.sys_id.reserve(nodes);
+    soa.attr_start.reserve(nodes);
+    soa.attr_count.reserve(nodes);
+    soa.strings.reserve(nodes / 2);
+    let fx = |capacity| {
+        rustc_hash::FxHashMap::with_capacity_and_hasher(capacity, rustc_hash::FxBuildHasher)
+    };
+    SoaBuilder {
+        soa,
         // pre-reserve typical intern-table sizes so the build loop doesn't rehash:
         // tag/attr-name sets are small + bounded; values vary more.
-        tag_map: rustc_hash::FxHashMap::with_capacity_and_hasher(32, rustc_hash::FxBuildHasher),
-        attr_name_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
-            64,
-            rustc_hash::FxBuildHasher,
-        ),
-        attr_prefix_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
-            8,
-            rustc_hash::FxBuildHasher,
-        ),
-        attr_value_map: rustc_hash::FxHashMap::with_capacity_and_hasher(
-            128,
-            rustc_hash::FxBuildHasher,
-        ),
-    };
-    b.alloc(&dom.document, -1);
-    let mode = if dom.quirks_mode.get() == html5ever::tree_builder::QuirksMode::Quirks {
+        tag_map: fx(32),
+        attr_name_map: fx(64),
+        attr_prefix_map: fx(8),
+        attr_value_map: fx(128),
+    }
+}
+
+fn compat_mode(mode: html5ever::tree_builder::QuirksMode) -> &'static str {
+    if mode == html5ever::tree_builder::QuirksMode::Quirks {
         "BackCompat"
     } else {
         "CSS1Compat"
-    };
-    (b.soa, mode)
+    }
+}
+
+/// The `RcDom` path: html5ever's reference-counted tree, completed by
+/// [`fill_selectedcontent`], then walked into the `SoA`.
+fn soa_from_rcdom(html: &str) -> (Soa, &'static str) {
+    let dom = parse_document_dom(html, opts());
+    let mut b = soa_builder(0);
+    b.alloc(&dom.document, -1);
+    (b.soa, compat_mode(dom.quirks_mode.get()))
+}
+
+/// The arena path: html5ever builds into an [`Arena`], read into the `SoA` in one pass.
+fn soa_from_arena(html: &str) -> (Soa, &'static str) {
+    let builder = TreeBuilder::new(Arena::new(), opts().tree_builder);
+    let tokenizer = Tokenizer::new(ChromeTokens(builder), opts().tokenizer);
+    let input = BufferQueue::default();
+    input.push_back(StrTendril::from_slice(html));
+    while !matches!(tokenizer.feed(&input), TokenizerResult::Done) {}
+    tokenizer.end();
+    let arena = html5ever::tree_builder::TreeSink::finish(tokenizer.sink.0.sink);
+    let nodes = arena.nodes.borrow();
+    let mut b = soa_builder(nodes.len());
+    b.alloc_arena(&nodes);
+    drop(nodes);
+    (b.soa, compat_mode(arena.quirks.get()))
+}
+
+// ============================ Arena tree sink ============================
+// The tree html5ever builds for `parse_html_soa`: nodes in one `Vec`, linked by index
+// (`NIL` = none), so building is pushes and index writes and dropping it is one free.
+// Node 0 is the document. Its sink semantics are `markup5ever_rcdom`'s: appended text
+// merges into a text node just before the insertion point, and a node moved in front
+// of a sibling leaves its old parent first.
+
+const NIL: u32 = u32::MAX;
+
+enum ArenaData {
+    Document,
+    Doctype {
+        name: StrTendril,
+        public_id: StrTendril,
+        system_id: StrTendril,
+    },
+    Text(StrTendril),
+    Comment(StrTendril),
+    Element {
+        /// Boxed once by `create_element` and freed by `Arena`'s `Drop`, so
+        /// `elem_name` can lend it to html5ever without cloning (see [`arena_name`]).
+        name: std::ptr::NonNull<QualName>,
+        attrs: Vec<html5ever::Attribute>,
+        /// The template's content fragment (a detached `Document` node), else `NIL`.
+        template: u32,
+        annotation_xml_point: bool,
+    },
+}
+
+struct ArenaNode {
+    data: ArenaData,
+    parent: u32,
+    first: u32,
+    last: u32,
+    prev: u32,
+    next: u32,
+}
+
+impl ArenaNode {
+    fn new(data: ArenaData) -> Self {
+        Self {
+            data,
+            parent: NIL,
+            first: NIL,
+            last: NIL,
+            prev: NIL,
+            next: NIL,
+        }
+    }
+}
+
+/// An element's name. html5ever asks for it on every open element at every start tag
+/// (its in-scope checks), so lending it beats cloning three atoms each time (an 88%
+/// slower `deep-nested` parse when cloned).
+///
+/// # Safety
+/// `name` must come from an `ArenaData::Element` of a live `Arena`. Each name is boxed
+/// once in `create_element` and freed only by `Arena`'s `Drop`; it is never moved or
+/// mutated in between, so the reference is valid for as long as the arena is borrowed.
+unsafe fn arena_name<'a>(name: std::ptr::NonNull<QualName>) -> &'a QualName {
+    // SAFETY: guaranteed by the caller, as documented above.
+    unsafe { name.as_ref() }
+}
+
+/// html5ever's tree sink for the `SoA` fast path (see the section comment).
+struct Arena {
+    nodes: std::cell::RefCell<Vec<ArenaNode>>,
+    quirks: std::cell::Cell<html5ever::tree_builder::QuirksMode>,
+}
+
+impl Drop for Arena {
+    fn drop(&mut self) {
+        for node in self.nodes.get_mut() {
+            if let ArenaData::Element { name, .. } = node.data {
+                // SAFETY: `create_element` boxed this name; this is its only free.
+                drop(unsafe { Box::from_raw(name.as_ptr()) });
+            }
+        }
+    }
+}
+
+impl Arena {
+    fn new() -> Self {
+        Self {
+            nodes: std::cell::RefCell::new(vec![ArenaNode::new(ArenaData::Document)]),
+            quirks: std::cell::Cell::new(html5ever::tree_builder::QuirksMode::NoQuirks),
+        }
+    }
+}
+
+fn arena_push(nodes: &mut Vec<ArenaNode>, data: ArenaData) -> u32 {
+    nodes.push(ArenaNode::new(data));
+    (nodes.len() - 1) as u32
+}
+
+/// Append the parentless `child` as `parent`'s last child.
+fn arena_link_last(nodes: &mut [ArenaNode], parent: u32, child: u32) {
+    let last = nodes[parent as usize].last;
+    let node = &mut nodes[child as usize];
+    node.parent = parent;
+    node.prev = last;
+    node.next = NIL;
+    if last == NIL {
+        nodes[parent as usize].first = child;
+    } else {
+        nodes[last as usize].next = child;
+    }
+    nodes[parent as usize].last = child;
+}
+
+/// Insert the parentless `child` just before `sibling`.
+fn arena_link_before(nodes: &mut [ArenaNode], sibling: u32, child: u32) {
+    let (parent, prev) = (nodes[sibling as usize].parent, nodes[sibling as usize].prev);
+    let node = &mut nodes[child as usize];
+    node.parent = parent;
+    node.prev = prev;
+    node.next = sibling;
+    nodes[sibling as usize].prev = child;
+    if prev == NIL {
+        nodes[parent as usize].first = child;
+    } else {
+        nodes[prev as usize].next = child;
+    }
+}
+
+/// Detach `child` from its parent, if it has one.
+fn arena_unlink(nodes: &mut [ArenaNode], child: u32) {
+    let ArenaNode {
+        parent, prev, next, ..
+    } = nodes[child as usize];
+    if parent == NIL {
+        return;
+    }
+    if prev == NIL {
+        nodes[parent as usize].first = next;
+    } else {
+        nodes[prev as usize].next = next;
+    }
+    if next == NIL {
+        nodes[parent as usize].last = prev;
+    } else {
+        nodes[next as usize].prev = prev;
+    }
+    let node = &mut nodes[child as usize];
+    node.parent = NIL;
+    node.prev = NIL;
+    node.next = NIL;
+}
+
+/// Merge `text` into node `at` when it is a text node (`NIL` is not).
+fn arena_merge_text(nodes: &mut [ArenaNode], at: u32, text: &str) -> bool {
+    match nodes.get_mut(at as usize).map(|node| &mut node.data) {
+        Some(ArenaData::Text(contents)) => {
+            contents.push_slice(text);
+            true
+        }
+        _ => false,
+    }
+}
+
+impl html5ever::tree_builder::TreeSink for Arena {
+    type Handle = u32;
+    type Output = Self;
+    type ElemName<'a> = html5ever::ExpandedName<'a>;
+
+    fn finish(self) -> Self {
+        self
+    }
+    fn parse_error(&self, _msg: std::borrow::Cow<'static, str>) {}
+    fn get_document(&self) -> u32 {
+        0
+    }
+    fn elem_name<'a>(&'a self, target: &'a u32) -> html5ever::ExpandedName<'a> {
+        let ArenaData::Element { name, .. } = self.nodes.borrow()[*target as usize].data else {
+            unreachable!("html5ever names only elements")
+        };
+        // SAFETY: an element of this arena, which `&'a self` keeps alive.
+        unsafe { arena_name(name) }.expanded()
+    }
+    fn create_element(
+        &self,
+        name: QualName,
+        attrs: Vec<html5ever::Attribute>,
+        flags: html5ever::tree_builder::ElementFlags,
+    ) -> u32 {
+        let mut nodes = self.nodes.borrow_mut();
+        let template = if flags.template {
+            arena_push(&mut nodes, ArenaData::Document)
+        } else {
+            NIL
+        };
+        let element = ArenaData::Element {
+            name: std::ptr::NonNull::from(Box::leak(Box::new(name))),
+            attrs,
+            template,
+            annotation_xml_point: flags.mathml_annotation_xml_integration_point,
+        };
+        arena_push(&mut nodes, element)
+    }
+    fn create_comment(&self, text: StrTendril) -> u32 {
+        arena_push(&mut self.nodes.borrow_mut(), ArenaData::Comment(text))
+    }
+    fn create_pi(&self, _target: StrTendril, _data: StrTendril) -> u32 {
+        unreachable!("{NO_PI}")
+    }
+    fn append(&self, parent: &u32, child: html5ever::tree_builder::NodeOrText<u32>) {
+        let nodes = &mut *self.nodes.borrow_mut();
+        let child = match child {
+            html5ever::tree_builder::AppendNode(node) => node,
+            html5ever::tree_builder::AppendText(text) => {
+                let last = nodes[*parent as usize].last;
+                if arena_merge_text(nodes, last, &text) {
+                    return;
+                }
+                arena_push(nodes, ArenaData::Text(text))
+            }
+        };
+        arena_link_last(nodes, *parent, child);
+    }
+    fn append_based_on_parent_node(
+        &self,
+        element: &u32,
+        _prev_element: &u32,
+        child: html5ever::tree_builder::NodeOrText<u32>,
+    ) {
+        // html5ever fosters into the last open `<table>`, and nothing here can detach a
+        // table: only a script could (scripting is off), and the one removal the parser
+        // makes itself (`<frameset>` replacing `<body>`) is disabled by any `<table>`
+        // (the frameset-ok flag). So the insertion is always in front of the table.
+        assert_ne!(
+            self.nodes.borrow()[*element as usize].parent,
+            NIL,
+            "a foster parent is attached"
+        );
+        self.append_before_sibling(element, child);
+    }
+    fn append_doctype_to_document(
+        &self,
+        name: StrTendril,
+        public_id: StrTendril,
+        system_id: StrTendril,
+    ) {
+        let nodes = &mut *self.nodes.borrow_mut();
+        let doctype = ArenaData::Doctype {
+            name,
+            public_id,
+            system_id,
+        };
+        let id = arena_push(nodes, doctype);
+        arena_link_last(nodes, 0, id);
+    }
+    fn get_template_contents(&self, target: &u32) -> u32 {
+        match &self.nodes.borrow()[*target as usize].data {
+            ArenaData::Element { template, .. } => *template,
+            _ => unreachable!("html5ever asks only templates for their contents"),
+        }
+    }
+    fn same_node(&self, x: &u32, y: &u32) -> bool {
+        x == y
+    }
+    fn set_quirks_mode(&self, mode: html5ever::tree_builder::QuirksMode) {
+        self.quirks.set(mode);
+    }
+    fn append_before_sibling(
+        &self,
+        sibling: &u32,
+        child: html5ever::tree_builder::NodeOrText<u32>,
+    ) {
+        let nodes = &mut *self.nodes.borrow_mut();
+        let child = match child {
+            html5ever::tree_builder::AppendNode(node) => {
+                arena_unlink(nodes, node);
+                node
+            }
+            html5ever::tree_builder::AppendText(text) => {
+                let prev = nodes[*sibling as usize].prev;
+                if arena_merge_text(nodes, prev, &text) {
+                    return;
+                }
+                arena_push(nodes, ArenaData::Text(text))
+            }
+        };
+        arena_link_before(nodes, *sibling, child);
+    }
+    fn add_attrs_if_missing(&self, target: &u32, attrs: Vec<html5ever::Attribute>) {
+        let ArenaData::Element {
+            attrs: existing, ..
+        } = &mut self.nodes.borrow_mut()[*target as usize].data
+        else {
+            unreachable!("html5ever adds attributes only to elements")
+        };
+        // As `RcDom`: only the names present before this call are skipped.
+        let present = existing.len();
+        for attr in attrs {
+            if !existing[..present].iter().any(|e| e.name == attr.name) {
+                existing.push(attr);
+            }
+        }
+    }
+    fn remove_from_parent(&self, target: &u32) {
+        arena_unlink(&mut self.nodes.borrow_mut(), *target);
+    }
+    fn reparent_children(&self, node: &u32, new_parent: &u32) {
+        let nodes = &mut *self.nodes.borrow_mut();
+        let mut child = nodes[*node as usize].first;
+        while child != NIL {
+            let next = nodes[child as usize].next;
+            arena_unlink(nodes, child);
+            arena_link_last(nodes, *new_parent, child);
+            child = next;
+        }
+    }
+    fn is_mathml_annotation_xml_integration_point(&self, handle: &u32) -> bool {
+        matches!(
+            self.nodes.borrow()[*handle as usize].data,
+            ArenaData::Element {
+                annotation_xml_point: true,
+                ..
+            }
+        )
+    }
+}
+
+impl SoaBuilder {
+    /// Fill a fresh slot from arena node data; returns the slot and its template content.
+    fn arena_node(&mut self, data: &ArenaData, parent: i32) -> (i32, u32) {
+        let idx = self.push_slots(parent);
+        let mut template_content = NIL;
+        match data {
+            ArenaData::Document => self.soa.node_type[idx] = DOCUMENT_NODE,
+            ArenaData::Doctype {
+                name,
+                public_id,
+                system_id,
+            } => {
+                self.soa.node_type[idx] = DOCUMENT_TYPE_NODE;
+                self.soa.text_id[idx] = self.push_string(name);
+                self.soa.pub_id[idx] = self.push_string(public_id);
+                self.soa.sys_id[idx] = self.push_string(system_id);
+            }
+            ArenaData::Text(contents) => {
+                self.soa.node_type[idx] = TEXT_NODE;
+                self.soa.text_id[idx] = self.push_string(contents);
+            }
+            ArenaData::Comment(contents) => {
+                self.soa.node_type[idx] = COMMENT_NODE;
+                self.soa.text_id[idx] = self.push_string(contents);
+            }
+            ArenaData::Element {
+                name,
+                attrs,
+                template,
+                ..
+            } => {
+                // SAFETY: an element of the arena whose nodes `alloc_arena` borrows.
+                self.set_element(idx, unsafe { arena_name(*name) }, attrs);
+                template_content = *template;
+            }
+        }
+        (idx as i32, template_content)
+    }
+
+    /// The arena's document in the same order as [`SoaBuilder::alloc`]: each node, its
+    /// children's subtrees, then a template's `content` fragment.
+    fn alloc_arena(&mut self, nodes: &[ArenaNode]) {
+        let mut pending = vec![(0_u32, -1_i32, false)];
+        let mut last_child = Vec::with_capacity(nodes.len());
+        while let Some((id, parent, content)) = pending.pop() {
+            let node = &nodes[id as usize];
+            let (index, template) = self.arena_node(&node.data, parent);
+            self.link(&mut last_child, (index, parent, content));
+            if template != NIL {
+                pending.push((template, index, true));
+            }
+            let mut child = node.last;
+            while child != NIL {
+                pending.push((child, index, false));
+                child = nodes[child as usize].prev;
+            }
+        }
+    }
 }
 
 /// Parse a document and return only the node count — no `core::Node` tree, no
@@ -969,6 +1415,9 @@ mod tests {
         assert!(mentions_selectedcontent("<b></b><SelectedContent>"));
         assert!(mentions_selectedcontent("xSELECTEDCONTENTx"));
         assert!(!mentions_selectedcontent("selectedconten"));
+        // A false start on an earlier `s` does not end the scan; a match may end the input.
+        assert!(mentions_selectedcontent("<s>sselectedcontent"));
+        assert!(mentions_selectedcontent("s s s SelectedContent"));
         assert!(!mentions_selectedcontent("<select><option>"));
         assert!(!mentions_selectedcontent(""));
     }

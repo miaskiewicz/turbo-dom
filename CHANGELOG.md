@@ -5,6 +5,35 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.6] — 2026-11-20
+
+Breaking changes: none. The public Rust API is unchanged from 0.8.5 in every crate,
+including the hidden host integration surface. The generated API comparison is recorded
+in `tools/release/public-api-0.8.6.txt`.
+
+- **Grid baseline items (#537, a 0.8.5 regression)**: a baseline-aligned grid item lays
+  out on its natural lines again. Since 0.8.5's shared min-content offers, Taffy's grid
+  baseline probe measured every baseline item at its min-content width, so a label/value
+  row grew from one line to many (190 px with `overflow-wrap: break-word`) and a payslip
+  went from 1 page to 2. The flex/grid Taffy adapter now offers that probe max-content
+  space. Baseline items also align on their first text line instead of their height. That
+  older gap (0.8.4 shifted a label beside a larger value by 11 px instead of Chromium's
+  8 px) is fixed by handing Taffy each probed item's first baseline. 33 independent
+  Chromium 159 controls (`scripts/grid-baseline-chrome-control.mjs`) pin the issue's
+  `1fr auto` / `auto 1fr` / `break-word` rows and their neighbours.
+- **Faster `parseBuffer`**: html5ever builds the flat SoA buffer through an index-arena
+  tree sink instead of a reference-counted `RcDom` walked a second time. That covers
+  documents not mentioning `<selectedcontent>`, which keep the `RcDom` path for their
+  fill step. The per-parse `<selectedcontent>` check uses a SIMD scan (about 3x
+  faster). Rust-level `parse_html_soa`, min of 6 ABBA rounds: 56 KB SSR page 16%
+  faster, 20 KB storybook page 15%, deep nesting 9%, small documents 19-25%. A new
+  test asserts the arena and `RcDom` paths build identical buffers for every
+  html5lib-tests and Chrome-control document.
+- **Release verification**: a differential run of v0.8.4 against the 0.8.6 release branch
+  over 5,445 layout cases (every Chrome-control snippet plus `align-items` variants of
+  each flex / grid one), arbitrated by Chromium 159, found #537 as 0.8.5's only
+  regression in that corpus. Every case 0.8.5 moved away from Chrome is back on it.
+
 ## [0.8.5] — 2026-11-19
 
 Breaking changes: no removed or changed public Rust API items relative to 0.8.4,
