@@ -654,7 +654,7 @@ unsafe fn arena_name<'a>(name: std::ptr::NonNull<QualName>) -> &'a QualName {
 }
 
 /// html5ever's tree sink for the `SoA` fast path (see the section comment).
-pub struct Arena {
+struct Arena {
     nodes: std::cell::RefCell<Vec<ArenaNode>>,
     quirks: std::cell::Cell<html5ever::tree_builder::QuirksMode>,
 }

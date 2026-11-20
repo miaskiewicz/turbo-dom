@@ -5,7 +5,11 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
-## [0.8.6] — Unreleased
+## [0.8.6] — 2026-11-20
+
+Breaking changes: none. The public Rust API is unchanged from 0.8.5 in every crate,
+including the hidden host integration surface. The generated API comparison is recorded
+in `tools/release/public-api-0.8.6.txt`.
 
 - **Grid baseline items (#537, a 0.8.5 regression)**: a baseline-aligned grid item lays
   out on its natural lines again. Since 0.8.5's shared min-content offers, Taffy's grid
@@ -25,7 +29,7 @@ at the time); this file reconstructs them from history.
   faster, 20 KB storybook page 15%, deep nesting 9%, small documents 19-25%. A new
   test asserts the arena and `RcDom` paths build identical buffers for every
   html5lib-tests and Chrome-control document.
-- **Release verification**: a differential run of v0.8.4 against the 0.8.6 candidate
+- **Release verification**: a differential run of v0.8.4 against the 0.8.6 release branch
   over 5,445 layout cases (every Chrome-control snippet plus `align-items` variants of
   each flex / grid one), arbitrated by Chromium 159, found #537 as 0.8.5's only
   regression in that corpus. Every case 0.8.5 moved away from Chrome is back on it.
