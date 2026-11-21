@@ -65,6 +65,27 @@ honest conclusion is the signal is below the current load's measurement floor,
 not that this experiment is a net loss. Still dropped from v0.8.7: a tweak the
 harness can't prove non-regressing at the 2 % bar does not ship.
 
+### Exp 3 — remove `SoaBuilder` upfront `reserve(nodes)` — **DROP (also: current reserves earn their keep)**
+
+Opposite angle from Exp 1/2: maybe the per-field `reserve(nodes)` block on 12
+Vecs is wasted work on big inputs (`nodes` is only an upper bound). Took them
+all out. 8 ABBA rounds, load spike 5–15 during run (noisier than Exp 2).
+
+| fixture | count Δ | soa Δ | soa+cm Δ | doc Δ |
+|---|---:|---:|---:|---:|
+| deep-nested | −1.2% | +0.2% | +0.3% | +0.2% |
+| malformed | +0.0% | **+18.9%** | **+18.9%** | +0.0% |
+| real-storybook | +2.0% | +3.0% | +1.8% | +1.7% |
+| small | +0.0% | **+16.1%** | **+12.9%** | +0.0% |
+| ssr-large | −1.1% | +3.0% | +2.6% | +0.4% |
+
+Clear negative signal on the SoA path for tiny inputs (12–19% slower) and ~3 %
+on real-storybook / ssr-large. The small / malformed regression is mechanical:
+without the pre-reserve the 12 Vecs each start at capacity 0 and reallocate
+several times, which dominates a 3 µs parse. `count` / `doc` paths don't change
+because they use the `RcDom` tree (no `SoaBuilder`). Reverted. The current
+reserves are correctly sized; don't remove them.
+
 ### Not run
 
 Session ran out of honest measurement time: load swung from 3 → 7 mid-sweep on
