@@ -45,6 +45,26 @@ directions by ~3%, consistent with the noise floor. The RcDom control (`count`)
 shifts without the arena path being touched, so the real signal is inside the
 noise band of this run. Dropped.
 
+### Exp 2 — `Arena::with_capacity(html.len() / 32)` ALONE — **DROP**
+
+Isolated the single tweak from Exp 1 that was easiest to justify. 8 ABBA rounds,
+load 2.89 → 3.92 across the run (background drift).
+
+| fixture | count Δ | soa Δ | soa+cm Δ | doc Δ |
+|---|---:|---:|---:|---:|
+| deep-nested | +5.8% | +4.5% | +2.7% | +5.9% |
+| malformed | +0.0% | +2.8% | +2.9% | +4.5% |
+| real-storybook | +5.5% | +5.3% | +5.4% | +6.2% |
+| small | +4.8% | +3.3% | +3.3% | +3.1% |
+| ssr-large | +5.7% | +5.2% | +4.3% | +3.5% |
+
+Every fixture slower. A ±5 % load drift during the run is most of it — malformed
+and small fixtures have html lengths of a few hundred bytes, so `html.len()/32`
+reserves 10-20 slots, which can't plausibly regress their parse by 3-5 %. The
+honest conclusion is the signal is below the current load's measurement floor,
+not that this experiment is a net loss. Still dropped from v0.8.7: a tweak the
+harness can't prove non-regressing at the 2 % bar does not ship.
+
 ### Not run
 
 Session ran out of honest measurement time: load swung from 3 → 7 mid-sweep on
