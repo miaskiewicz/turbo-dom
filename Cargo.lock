@@ -2770,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -2786,7 +2786,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-browser-env"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "cssparser",
  "lightningcss",
@@ -2804,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-layout"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "core-foundation",
  "core-text",
@@ -2828,7 +2828,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-parser"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "html5ever",
  "markup5ever_rcdom",
@@ -2845,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "turbo-dom-raster"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "base64",
  "core-foundation",

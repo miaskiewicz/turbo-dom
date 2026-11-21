@@ -5,6 +5,10 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.7] — Unreleased
+
+(experiments landing)
+
 ## [0.8.6] — 2026-11-20
 
 Breaking changes: none. The public Rust API is unchanged from 0.8.5 in every crate,
