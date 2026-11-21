@@ -1,3 +1,8 @@
+// The single-element array expectations `ranges(...) == [a..=b]` are what the test
+// is measuring: that *exactly one* range comes back. Rewriting them as a longer
+// `Vec<RangeInclusive<_>>` to satisfy `single_range_in_vec_init` would hide the
+// assertion. The one-element form is intentional in this file only.
+#![allow(clippy::single_range_in_vec_init)]
 //! `@font-face` `unicode-range` support (miaskiewicz/turbo-dom#539, CSS Fonts 4 §4.5).
 //!
 //! A page that registers Next.js-style split webfonts under one family — the latin-basic
@@ -15,42 +20,33 @@ fn web_face(bytes: &[u8], family: &str, weight: u16) -> FontFace {
         .expect("fixture font parses")
 }
 
-const LIBERATION_SERIF: &[u8] = include_bytes!(
-    "../assets/fonts/liberation-serif/LiberationSerif-Regular.ttf"
-);
+const LIBERATION_SERIF: &[u8] =
+    include_bytes!("../assets/fonts/liberation-serif/LiberationSerif-Regular.ttf");
 const INTER: &[u8] = include_bytes!("../assets/fonts/inter/Inter-Regular.otf");
+
+fn ranges(css: &str) -> Vec<RangeInclusive<u32>> {
+    parse_unicode_range(css).unwrap_or_else(|| panic!("parse_unicode_range({css:?}) returned None"))
+}
 
 #[test]
 fn parse_unicode_range_single_hex_codepoint() {
-    assert_eq!(parse_unicode_range("U+26").as_deref(), Some(&[0x26..=0x26][..]));
-    assert_eq!(parse_unicode_range("U+0041").as_deref(), Some(&[0x41..=0x41][..]));
+    assert_eq!(ranges("U+26"), [0x26..=0x26]);
+    assert_eq!(ranges("U+0041"), [0x41..=0x41]);
 }
 
 #[test]
 fn parse_unicode_range_explicit_range() {
-    assert_eq!(
-        parse_unicode_range("U+0-7F").as_deref(),
-        Some(&[0x00..=0x7F][..]),
-    );
-    assert_eq!(
-        parse_unicode_range("U+0100-02BA").as_deref(),
-        Some(&[0x0100..=0x02BA][..]),
-    );
+    assert_eq!(ranges("U+0-7F"), [0x00..=0x7F]);
+    assert_eq!(ranges("U+0100-02BA"), [0x0100..=0x02BA]);
 }
 
 #[test]
 fn parse_unicode_range_wildcard_shorthand() {
     // `U+??` is CSS Fonts 4's shorthand for U+00-FF, `U+4??` for U+400-4FF; a full
     // `U+????` covers the whole BMP (CSS Fonts 4 §4.5 "Character range").
-    assert_eq!(parse_unicode_range("U+??").as_deref(), Some(&[0x00..=0xFF][..]));
-    assert_eq!(
-        parse_unicode_range("U+4??").as_deref(),
-        Some(&[0x400..=0x4FF][..]),
-    );
-    assert_eq!(
-        parse_unicode_range("U+????").as_deref(),
-        Some(&[0x0000..=0xFFFF][..]),
-    );
+    assert_eq!(ranges("U+??"), [0x00..=0xFF]);
+    assert_eq!(ranges("U+4??"), [0x400..=0x4FF]);
+    assert_eq!(ranges("U+????"), [0x0000..=0xFFFF]);
 }
 
 #[test]
@@ -67,7 +63,7 @@ fn parse_unicode_range_comma_separated_list() {
 #[test]
 fn parse_unicode_range_is_ascii_case_insensitive() {
     // Browsers accept both `U+` and `u+`, both `A-F` and `a-f` in the hex digits.
-    assert_eq!(parse_unicode_range("u+0-7f").as_deref(), Some(&[0x00..=0x7F][..]));
+    assert_eq!(ranges("u+0-7f"), [0x00..=0x7F]);
 }
 
 #[test]
@@ -76,7 +72,10 @@ fn parse_unicode_range_rejects_malformed_input() {
     assert!(parse_unicode_range("0-7F").is_none(), "missing U+ prefix");
     assert!(parse_unicode_range("U+").is_none(), "no digits after U+");
     assert!(parse_unicode_range("U+GH").is_none(), "non-hex digits");
-    assert!(parse_unicode_range("U+110000").is_none(), "above Unicode max");
+    assert!(
+        parse_unicode_range("U+110000").is_none(),
+        "above Unicode max"
+    );
     assert!(parse_unicode_range("U+10-5").is_none(), "start > end");
     assert!(parse_unicode_range("U+1-2-3").is_none(), "two dashes");
 }
@@ -111,8 +110,8 @@ fn resolve_glyph_picks_the_face_whose_range_covers_the_codepoint() {
     // `A` (U+0041) must resolve to the latin-basic face even though BOTH cmaps have
     // the glyph. Before the fix the latin-extended face wins by its registration
     // position and emits glyph 0 for `A`.
-    let basic = web_face(INTER, "Inter", 400)
-        .with_unicode_range(parse_unicode_range("U+00-7F").unwrap());
+    let basic =
+        web_face(INTER, "Inter", 400).with_unicode_range(parse_unicode_range("U+00-7F").unwrap());
     let extended = web_face(LIBERATION_SERIF, "Inter", 400)
         .with_unicode_range(parse_unicode_range("U+0100-02BA").unwrap());
     let mut registry = FontRegistry::new();
@@ -133,8 +132,8 @@ fn resolve_glyph_picks_the_face_whose_range_covers_the_codepoint() {
 fn resolve_glyph_falls_through_to_an_installed_face_when_no_range_covers() {
     // A codepoint outside every registered `unicode-range` must not match the family
     // at all; `resolve_glyph` then walks installed families / bundled faces.
-    let a = web_face(INTER, "Inter", 400)
-        .with_unicode_range(parse_unicode_range("U+00-7F").unwrap());
+    let a =
+        web_face(INTER, "Inter", 400).with_unicode_range(parse_unicode_range("U+00-7F").unwrap());
     let mut registry = FontRegistry::new();
     registry.add(a);
     // '一' (U+4E00) is outside the declared ASCII range: the Inter face must not
@@ -185,16 +184,18 @@ fn registry_add_allows_two_web_faces_of_the_same_family_with_different_ranges() 
     // (nothing deduplicates by `(family, weight, italic)`) and each is addressable
     // by range. Before the fix the registry accepted them too — but once we route
     // per range, the retained count must still be two.
-    let a = web_face(INTER, "Inter", 400)
-        .with_unicode_range(parse_unicode_range("U+00-7F").unwrap());
+    let a =
+        web_face(INTER, "Inter", 400).with_unicode_range(parse_unicode_range("U+00-FF").unwrap());
     let b = web_face(LIBERATION_SERIF, "Inter", 400)
         .with_unicode_range(parse_unicode_range("U+0100-02BA").unwrap());
     let mut registry = FontRegistry::new();
     registry.add(a);
     registry.add(b);
+    // 'A' (U+0041) lives in a's basic range, 'ā' (U+0101) lives in b's extended range.
     let picked_a = registry.resolve_glyph(&["Inter"], 400, false, 'A').unwrap();
-    let picked_b = registry.resolve_glyph(&["Inter"], 400, false, 'é').unwrap();
-    assert_ne!(picked_a.data().len(), picked_b.data().len(), "two faces live");
+    let picked_b = registry.resolve_glyph(&["Inter"], 400, false, 'ā').unwrap();
+    assert_eq!(picked_a.data().len(), INTER.len());
+    assert_eq!(picked_b.data().len(), LIBERATION_SERIF.len());
 }
 
 // A direct check that the declared `Vec<RangeInclusive<u32>>` lives on the face
@@ -204,7 +205,10 @@ fn registry_add_allows_two_web_faces_of_the_same_family_with_different_ranges() 
 fn unicode_range_is_a_public_getter_on_face() {
     let ranges: Vec<RangeInclusive<u32>> = vec![0x00..=0x7F, 0x100..=0x2BA];
     let face = web_face(INTER, "Inter", 400).with_unicode_range(ranges.clone());
-    assert_eq!(face.unicode_range().collect::<Vec<_>>(), [&ranges[0], &ranges[1]]);
+    assert_eq!(
+        face.unicode_range().collect::<Vec<_>>(),
+        [&ranges[0], &ranges[1]]
+    );
     let unranged = web_face(INTER, "Inter", 400);
     assert_eq!(unranged.unicode_range().count(), 0);
 }

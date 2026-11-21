@@ -142,6 +142,10 @@ pub struct FontFace {
     /// Set for an `@font-face` face ([`FontFace::from_web_font_bytes`]): Chrome's metrics
     /// for it. `None` for an installed (or otherwise caller-supplied) face.
     web: Option<WebMetrics>,
+    /// Declared `unicode-range` descriptor (miaskiewicz/turbo-dom#539, CSS Fonts 4 §4.5).
+    /// Empty = the browser default (every codepoint). Shared via `Arc` so an added range
+    /// does not re-parse the font program or duplicate its shape cache.
+    unicode_range: Arc<[std::ops::RangeInclusive<u32>]>,
     /// Memoizes shaping by run text. Shaping is real per-run work, and layout
     /// shapes each run at least twice (measuring its width, then emitting its
     /// glyphs) plus once more for every repeated string (table cells, labels);
@@ -318,6 +322,7 @@ impl FontFace {
             line_gap,
             mac_ascent_adjustment,
             web: None,
+            unicode_range: Arc::from(Vec::new()),
             shape_cache: Arc::new(Mutex::new(ShapeCache::default())),
         })
     }
@@ -505,10 +510,33 @@ impl FontFace {
         self.ttf().glyph_index(ch).map(|g| g.0)
     }
 
-    /// Whether the face has a glyph for `ch`.
+    /// Whether the face has a glyph for `ch`. A declared `unicode-range` descriptor
+    /// (CSS Fonts 4 §4.5, miaskiewicz/turbo-dom#539) restricts coverage further: a
+    /// Latin-Extended subset whose cmap still lists `A` must advertise as unusable
+    /// for it, so `FontRegistry` falls through to the latin-basic face of the same
+    /// family instead of emitting `.notdef`.
     #[must_use]
     pub fn has_glyph(&self, ch: char) -> bool {
-        self.glyph_index(ch).is_some()
+        super::unicode_range::covers(&self.unicode_range, ch) && self.glyph_index(ch).is_some()
+    }
+
+    /// The `unicode-range`s declared on this face by its `@font-face` rule. Empty
+    /// iterator for an installed face or a face without the descriptor (the CSS
+    /// default, `U+0-10FFFF`).
+    pub fn unicode_range(&self) -> impl Iterator<Item = &std::ops::RangeInclusive<u32>> {
+        self.unicode_range.iter()
+    }
+
+    /// Attach a parsed `unicode-range` descriptor to this face (Google Fonts /
+    /// Next.js split-font pattern, miaskiewicz/turbo-dom#539). Cheap: the font
+    /// program and shape cache are shared via `Arc`, only the range vector moves.
+    #[must_use]
+    pub fn with_unicode_range(
+        mut self,
+        ranges: impl Into<Vec<std::ops::RangeInclusive<u32>>>,
+    ) -> FontFace {
+        self.unicode_range = Arc::from(ranges.into());
+        self
     }
 
     /// Shape a run of text into positioned glyphs (design units). Memoized by

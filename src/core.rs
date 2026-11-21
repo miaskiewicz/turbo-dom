@@ -410,17 +410,35 @@ impl SoaBuilder {
         if attrs.is_empty() {
             return;
         }
+        // The empty-prefix id is interned once lazily and cached, so HTML attrs
+        // (which never carry one) skip a hashmap lookup per attr. `intern_attr_prefix`
+        // normalises a missing prefix to the empty string too (same cache key).
+        let empty_prefix = self.empty_prefix_id();
         self.soa.attr_start[idx] = self.soa.attr_name_id.len() as i32;
         self.soa.attr_count[idx] = attrs.len() as u16;
+        // Reserve for this element's attrs in one check instead of per-push.
+        let n = attrs.len();
+        self.soa.attr_name_id.reserve(n);
+        self.soa.attr_value_id.reserve(n);
+        self.soa.attr_prefix_id.reserve(n);
         for attr in attrs {
             let nid = self.intern_attr_name(&attr.name.local);
             self.soa.attr_name_id.push(nid);
             let vid = self.intern_attr_value(&attr.value);
             self.soa.attr_value_id.push(vid);
-            let prefix = attr.name.prefix.as_deref().unwrap_or_default();
-            let pid = self.intern_attr_prefix(prefix);
+            let pid = match attr.name.prefix.as_deref() {
+                None | Some("") => empty_prefix,
+                Some(prefix) => self.intern_attr_prefix(prefix),
+            };
             self.soa.attr_prefix_id.push(pid);
         }
+    }
+
+    fn empty_prefix_id(&mut self) -> u32 {
+        if let Some(&id) = self.attr_prefix_map.get("") {
+            return id;
+        }
+        self.intern_attr_prefix("")
     }
 
     /// Link node `index` as `parent`'s next child (`last_child[parent]` tracks the
