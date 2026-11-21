@@ -86,6 +86,44 @@ several times, which dominates a 3 µs parse. `count` / `doc` paths don't change
 because they use the `RcDom` tree (no `SoaBuilder`). Reverted. The current
 reserves are correctly sized; don't remove them.
 
+### Exps 4–10 — various micro-opts, all dropped
+
+Load during this session ranged 3 – 38. Measurements only usable at the lower
+end, and even then the ±2 % bar was within noise. Each experiment ran 4–6 ABBA
+rounds, and most promising-looking first runs did not replicate on a second
+pass with different load timing.
+
+| # | change | verdict |
+|---|---|---|
+| 4 | pre-populate `tag_map`/`attr_name_map` with common HTML idents at `soa_builder()` | DROP — kills small/malformed (+35 %, +45 % on soa) from 45 upfront `to_string` allocations |
+| 5 | cache `empty_prefix_id` as `Option<u32>` field, skip hashmap lookup in `set_element` | DROP — ±1 % both ways, within noise |
+| 6 | `Vec::with_capacity(nodes.len())` for `pending` in `alloc_arena` | DROP — one run −16 % on ssr-large, another run +20 %; pure ABBA-vs-load bias |
+| 7 | `#[inline]` on `arena_push`, `arena_link_last`, `arena_merge_text` | DROP — looked ±3 % win on one run, invalidated by a second ABBA vs base (flat ±1 %) |
+| 8 | #7 + `#[inline]` on all four `intern_*` fns | DROP — vs base flat, i.e. the #7 win was noise |
+| 9 | bigger fx-hashmap initial capacities (tag/attr-name → 256, values → 512) | DROP — first run looked −9 % across the board (load bias), replication flat ±2 % |
+| 10 | `Vec::with_capacity(64)` for `pending` alone | DROP — ssr-large −1.9 % / −2.4 %, right at the 2 % bar, not reliable |
+
+### html5ever patch inspection
+
+`html5ever::tree_builder::TreeBuilder::insert_element` (and five sibling call sites
+at lines 839, 872, 1020, 1454, 1545) does `attrs.clone()` before calling
+`create_element_with_flags`, then still iterates `attrs` for the form-associatable
+check and drops it at end of scope. A `[patch.crates-io]` fork could reorder the
+form check to run first on `&attrs` and then move the Vec into `create_element`
+with no clone. From the baseline profile this would save ≈1 % total (24+58
+samples / 8363 = 1 %), i.e. the clone + its subsequent free are a 1 % band and a
+patch would not clear the 2 % bar on its own either. Shelved — the patch is a
+multi-site refactor of an upstream crate for sub-2 % return, and would add a
+lockfile divergence that CI, PUBLISHING and downstream crates (turbo-dom, -layout,
+-raster, -browser-env) would all have to track.
+
+### Honest conclusion
+
+The parser is tight after 0.8.6's arena work. Under the measurement conditions
+this session had, nothing cleared the 2 % reliable-win bar. Ship v0.8.7 on the
+#539 fix alone; perf work belongs in a dedicated sweep on a cold machine (no
+other sessions mid-benchmark, idle load < 2).
+
 ### Not run
 
 Session ran out of honest measurement time: load swung from 3 → 7 mid-sweep on
