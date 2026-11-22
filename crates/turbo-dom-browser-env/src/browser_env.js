@@ -4046,7 +4046,24 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     seen.length--;return output;
   }
   function exportLiveSheet(sheet){return cssHostSheet(sheet,cssHostArray(),{__proto__:null,rules:20000,sheets:1024,bytes:2000000});}
-  var documentCSSRecord=collectionGet(d)||{kind:'Document'};documentCSSRecord.cssHost={exportSheet:exportLiveSheet,looksLikeCSS:function(text){return !String(text).trim()||!!cssNativeParse(String(text)).trim();},sheet:function(element){return cssApply(currentSheetGetter,element,[]);},readRules:function(sheet){var source=cssItems(sheetRecord(sheet).rules),snapshot=[];cssSetPrototype(snapshot,null);for(var index=0;index<source.length;index++)snapshot[index]=source[index];return snapshot;},readRule:function(rule){var record=cssRuleRecord(rule);return {type:record.type,href:record.href||null};},attachLinked:attachLinkedStyleSheet,attachImport:attachImportStyleSheet};collectionSet(d,documentCSSRecord);
+  // A renderer may reuse raw snapshots with an unchanged CSSOM epoch and these
+  // canonical flags. Import graphs stay uncached: their child owner metadata is live.
+  function cssHostCacheableRules(list){
+    var pending=cssHostArray(),remaining=20000;pending[0]=cssItems(list);
+    while(pending.length){
+      var last=pending.length-1,rules=pending[last];pending.length=last;
+      for(var index=0;index<rules.length;index++){
+        if(--remaining<0)return false;
+        var record=cssRuleRecord(rules[index]);
+        if(record.type===3)return false;
+        if(record.cssRules)pending[pending.length]=cssItems(record.cssRules);
+      }
+    }
+    return true;
+  }
+  function readLiveSheetState(sheet){var record=sheetRecord(sheet);return {__proto__:null,cacheable:cssHostCacheableRules(record.rules),disabled:record.disabled,media:cssHostMedia(record.media)};}
+
+  var documentCSSRecord=collectionGet(d)||{kind:'Document'};documentCSSRecord.cssHost={exportSheet:exportLiveSheet,readSheetState:readLiveSheetState,looksLikeCSS:function(text){return !String(text).trim()||!!cssNativeParse(String(text)).trim();},sheet:function(element){return cssApply(currentSheetGetter,element,[]);},readRules:function(sheet){var source=cssItems(sheetRecord(sheet).rules),snapshot=[];cssSetPrototype(snapshot,null);for(var index=0;index<source.length;index++)snapshot[index]=source[index];return snapshot;},readRule:function(rule){var record=cssRuleRecord(rule);return {type:record.type,href:record.href||null};},attachLinked:attachLinkedStyleSheet,attachImport:attachImportStyleSheet};collectionSet(d,documentCSSRecord);
   // ObservableArray adoption has a stable identity and authoritative backing
   // state. Renderer exports never consult a page-defined document getter.
   var adoptionStates=cssMap('adoption'),adoptionDocumentCheck=__ns.domAccessor('nodeType',false,'Document'),adoptionNodeCheck=__ns.domAccessor('nodeType',false,'Node'),adoptionShadowCheck=__ns.domAccessor('__isShadowRoot',false,'Node'),adoptionOwner=__ns.domAccessor('ownerDocument',false,'Node'),adoptionDOMException=__ns.DOMException,adoptionDefine=Reflect.defineProperty,adoptionSet=Reflect.set,adoptionDelete=Reflect.deleteProperty,adoptionOwn=Object.hasOwn,adoptionProxy=Proxy,adoptionFloor=Math.floor;

@@ -193,6 +193,71 @@ fn native_style_text_ignores_own_getters_and_preserves_sheet_identity_until_actu
 }
 
 #[test]
+fn private_sheet_state_reads_canonical_metadata_without_public_hooks() {
+    let value = run(
+        "<style id=s media=print>.real {color:red}</style>",
+        r#"(()=>{
+      const element=document.getElementById('s'),sheet=element.sheet;
+      const first=__cssTestHost.readSheetState(sheet);
+      element.setAttribute('media','screen and (min-width: 10px)');sheet.disabled=true;
+      let reads=0;
+      for(const [object,key] of [[element,'getAttribute'],[sheet,'cssRules'],[sheet,'disabled'],[sheet,'media']])Object.defineProperty(object,key,{configurable:true,get(){reads++;throw Error('public hook');}});
+      const savedMap=Map.prototype.get,savedPop=Array.prototype.pop,savedPush=Array.prototype.push;
+      Map.prototype.get=Array.prototype.pop=Array.prototype.push=function(){reads++;throw Error('prototype hook');};
+      let current;try{current=__cssTestHost.readSheetState(sheet);}finally{Map.prototype.get=savedMap;Array.prototype.pop=savedPop;Array.prototype.push=savedPush;}
+      let forged='';try{__cssTestHost.readSheetState({});}catch(error){forged=error.name;}
+      return JSON.stringify({first,current,reads,forged,publicMethod:typeof CSSStyleSheet.prototype.readSheetState});
+    })()"#,
+    );
+    assert_eq!(
+        value["first"],
+        serde_json::json!({"cacheable":true,"disabled":false,"media":"print"})
+    );
+    assert_eq!(
+        value["current"],
+        serde_json::json!({"cacheable":true,"disabled":true,"media":"screen and (min-width: 10px)"})
+    );
+    assert_eq!(value["reads"], 0);
+    assert_eq!(value["forged"], "TypeError");
+    assert_eq!(value["publicMethod"], "undefined");
+}
+
+#[test]
+fn private_sheet_state_excludes_import_graphs_until_the_import_is_removed() {
+    let value = run(
+        "<style id=s>@import url('child.css'); @media screen { .real {color:red} }</style>",
+        r#"(()=>{
+      const sheet=document.getElementById('s').sheet;
+      const before=__cssTestHost.readSheetState(sheet);
+      __cssTestHost.attachImport(sheet.cssRules[0],sheet,'https://sheet.test/cycle.css',undefined,true);
+      const cyclic=__cssTestHost.readSheetState(sheet);
+      const exportCycle=__cssTestHost.exportSheet(sheet).rules[0].styleSheet.cycle;
+      sheet.deleteRule(0);
+      return JSON.stringify({before,cyclic,after:__cssTestHost.readSheetState(sheet),exportCycle});
+    })()"#,
+    );
+    assert_eq!(value["before"]["cacheable"], false);
+    assert_eq!(value["cyclic"]["cacheable"], false);
+    assert_eq!(value["after"]["cacheable"], true);
+    assert_eq!(value["exportCycle"], true);
+}
+
+#[test]
+fn private_sheet_state_preserves_the_existing_export_rule_budget() {
+    let value = run(
+        "",
+        r#"(()=>{
+      const sheet=new CSSStyleSheet();sheet.replaceSync('.x{color:red}'.repeat(20001));
+      const state=__cssTestHost.readSheetState(sheet);
+      let refusal='';try{__cssTestHost.exportSheet(sheet);}catch(error){refusal=error.name;}
+      return JSON.stringify({state,refusal});
+    })()"#,
+    );
+    assert_eq!(value["state"]["cacheable"], false);
+    assert_eq!(value["refusal"], "RangeError");
+}
+
+#[test]
 fn private_css_export_reads_real_mutations_disabled_and_media_without_public_hooks() {
     let value = run(
         "<style id=s media=screen>.real {color:red}</style>",
