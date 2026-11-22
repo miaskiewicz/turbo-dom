@@ -56,7 +56,11 @@ fn capture(hidden: Node) -> Result<LayoutSnapshot, TextSnapshotError> {
                 path: vec![1, 0],
             },
         ],
-        &build_cascade("script{display:none}", "", Default::default()),
+        &build_cascade(
+            "script{display:none}",
+            "",
+            turbo_dom_layout::style::TokenSet::default(),
+        ),
         &SnapshotInputs {
             width: 200.0,
             height: 100.0,
@@ -90,7 +94,7 @@ fn inert_script_source_does_not_spend_rendered_glyph_allowance() {
     let snapshot = capture(element(
         "script",
         "",
-        vec![Node::Text("x".repeat(1_000_100).into())],
+        vec![Node::Text("x".repeat(1_000_100))],
     ))
     .unwrap();
     assert_visible_sibling(&snapshot);
@@ -104,7 +108,7 @@ fn a_display_none_ancestor_keeps_descendants_out_of_the_glyph_allowance() {
         vec![element(
             "span",
             "display:block",
-            vec![Node::Text("x".repeat(1_000_100).into())],
+            vec![Node::Text("x".repeat(1_000_100))],
         )],
     ))
     .unwrap();
@@ -117,7 +121,7 @@ fn hidden_source_still_obeys_the_original_raw_byte_budget() {
         capture(element(
             "div",
             "display:none",
-            vec![Node::Text(" ".repeat(16 * 1024 * 1024 + 1).into(),)]
+            vec![Node::Text(" ".repeat(16 * 1024 * 1024 + 1),)]
         )),
         Err(TextSnapshotError::Budget)
     ));
@@ -129,7 +133,7 @@ fn an_author_display_override_restores_the_rendered_character_budget() {
         capture(element(
             "script",
             "display:block",
-            vec![Node::Text("x".repeat(1_000_100).into(),)]
+            vec![Node::Text("x".repeat(1_000_100),)]
         )),
         Err(TextSnapshotError::Budget)
     ));
@@ -141,7 +145,7 @@ fn visibility_hidden_still_spends_rendered_character_allowance() {
         capture(element(
             "div",
             "visibility:hidden",
-            vec![Node::Text("x".repeat(1_000_100).into(),)]
+            vec![Node::Text("x".repeat(1_000_100),)]
         )),
         Err(TextSnapshotError::Budget)
     ));
