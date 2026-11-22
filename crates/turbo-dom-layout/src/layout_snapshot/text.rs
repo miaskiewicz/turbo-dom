@@ -207,17 +207,23 @@ pub(crate) fn validate_source_budget(
     styled: &[crate::StyledNode],
 ) -> Result<(), super::TextSnapshotError> {
     let mut counts = (0, 0);
-    count_source_bytes(styled, &mut counts)
+    count_source_bytes(styled, &mut counts, true)
 }
 
 fn count_source_bytes(
     nodes: &[crate::StyledNode],
     counts: &mut (usize, usize),
+    rendered: bool,
 ) -> Result<(), super::TextSnapshotError> {
     for node in nodes {
         match node {
-            crate::StyledNode::Text(text) => charge_source_input(counts, text)?,
-            crate::StyledNode::Element(element) => count_source_bytes(&element.children, counts)?,
+            crate::StyledNode::Text(text) => charge_source_input(counts, text, rendered)?,
+            crate::StyledNode::Element(element) => {
+                let rendered = rendered
+                    && crate::layout::value::display_of(&element.style)
+                        != crate::layout::value::Display::None;
+                count_source_bytes(&element.children, counts, rendered)?;
+            }
         }
     }
     Ok(())
@@ -226,9 +232,14 @@ fn count_source_bytes(
 fn charge_source_input(
     counts: &mut (usize, usize),
     text: &str,
+    rendered: bool,
 ) -> Result<(), super::TextSnapshotError> {
     charge_source_count(&mut counts.0, text.len(), 16 * 1024 * 1024)?;
-    charge_source_count(&mut counts.1, text.chars().count(), 1_000_000)
+    // Hidden sources retain their byte/UTF-16 provenance but cannot generate glyphs.
+    if rendered {
+        charge_source_count(&mut counts.1, text.chars().count(), 1_000_000)?;
+    }
+    Ok(())
 }
 
 fn charge_source_count(
