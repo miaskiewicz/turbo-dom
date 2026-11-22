@@ -712,6 +712,7 @@ fn next_version_base() -> u64 {
 #[derive(Default)]
 pub(crate) struct QueryCache {
     pub version: u64,
+    pub candidates: Option<std::rc::Rc<super::query::CandidateIndex>>,
     /// Shared so a cache hit is a pointer bump, not a Vec copy (repeated qSA is hot).
     pub map: FxHashMap<String, std::rc::Rc<[Handle]>>,
 }

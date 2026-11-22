@@ -23,12 +23,26 @@
 //! in `query_cascade.rs`; matching is generic over a [`Navigator`].
 
 use super::tree::{FormProp, Handle, NodeType, Tree};
+#[path = "query_candidates.rs"]
+mod candidates;
+pub(crate) use candidates::CandidateIndex;
 
 /// Max distinct entries held in the version-keyed query cache (`Tree.qcache`)
 /// before it is cleared wholesale. Mirrors the JS `__selectorCache` cap (10000):
 /// the cache exists for the repeated-query RTL pattern, not to memoize an
 /// unbounded stream of unique selectors, so a hard ceiling keeps it from leaking.
 const CACHE_CAP: usize = 10_000;
+
+#[cfg(test)]
+thread_local! { static QUERY_CANDIDATE_MATCHES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+
+fn query_candidate_matches(tree: &Tree, node: Handle, selectors: &[Complex]) -> bool {
+    #[cfg(test)]
+    QUERY_CANDIDATE_MATCHES.with(|count| count.set(count.get() + 1));
+    selectors
+        .iter()
+        .any(|selector| tree.matches_complex(node, selector))
+}
 
 const HTML_NS: &str = "http://www.w3.org/1999/xhtml";
 
@@ -2274,6 +2288,7 @@ impl Tree {
             if cache.version != self.version {
                 cache.version = self.version;
                 cache.map.clear();
+                cache.candidates = None;
             }
             if let Some(hit) = cache.map.get(selector) {
                 return hit.clone();
@@ -2281,6 +2296,20 @@ impl Tree {
         }
         let selectors = self.parse_selector_cached(selector);
         let mut out = Vec::new();
+        if let Some(nodes) = candidates::select(self, &selectors) {
+            out.extend(
+                nodes
+                    .into_iter()
+                    .filter(|&node| query_candidate_matches(self, node, &selectors)),
+            );
+            let rc: std::rc::Rc<[Handle]> = out.into();
+            bounded_insert(
+                &mut self.qcache.borrow_mut().map,
+                selector.to_owned(),
+                rc.clone(),
+            );
+            return rc;
+        }
         let mut stack = vec![self.root()];
         // document-order DFS
         let mut order = Vec::new();
@@ -2294,7 +2323,7 @@ impl Tree {
         }
         for h in order {
             if self.node_type(h) == NodeType::Element
-                && selectors.iter().any(|cx| self.matches_complex(h, cx))
+                && query_candidate_matches(self, h, &selectors)
             {
                 out.push(h);
             }
@@ -2368,6 +2397,7 @@ impl Tree {
             if cache.version != self.version {
                 cache.version = self.version;
                 cache.map.clear();
+                cache.candidates = None;
             }
             if let Some(hit) = cache.map.get(&key) {
                 return hit.first().copied();
@@ -2422,6 +2452,89 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use super::super::tree::Tree;
+
+    fn assert_candidate_queries(tree: &Tree) {
+        let mut pending = vec![tree.root()];
+        let mut order = Vec::new();
+        while let Some(node) = pending.pop() {
+            if tree.node_type(node) == super::NodeType::Element {
+                order.push(node);
+            }
+            let base = pending.len();
+            tree.for_each_light_child(node, |child| pending.push(child));
+            pending[base..].reverse();
+        }
+        for selector in [
+            ".x",
+            "#same",
+            ".scope .x",
+            ".scope > .x",
+            ".x ~ .x",
+            ":is(.x,.y)",
+            "#same, .x",
+            ".x, .scope",
+            r".foo\:bar",
+            "#same:not(.y)",
+            "input.x:checked",
+            ".absent",
+            ".x:has(+.y)",
+            "template .inside",
+            "svg .x",
+        ] {
+            let expected = order
+                .iter()
+                .copied()
+                .filter(|&node| tree.matches(node, selector))
+                .collect::<Vec<_>>();
+            assert_eq!(
+                &*tree.query_selector_all(selector),
+                expected.as_slice(),
+                "{selector}"
+            );
+        }
+    }
+
+    #[test]
+    fn indexed_queries_preserve_order_duplicates_escapes_and_live_mutations() {
+        use super::super::tree::FormProp;
+        let mut tree = Tree::parse("<!doctype html><section class=scope><div id=same class='x foo:bar'></div><span class=y></span><input id=check class=x type=checkbox><div id=same class='x y'></div><template><i class=inside></i></template><svg><g class=x></g></svg></section>");
+        assert_candidate_queries(&tree);
+        let input = tree.get_element_by_id("check").unwrap();
+        tree.set_form_property(input, FormProp::Checked, true);
+        assert_candidate_queries(&tree);
+        tree.set_attribute(input, "class", "y");
+        // getElementById can be the first operation to advance the shared cache version.
+        assert_eq!(tree.get_element_by_id("check"), Some(input));
+        assert_candidate_queries(&tree);
+        let new = tree.create_element("div");
+        tree.set_attribute(new, "id", "same");
+        tree.set_attribute(new, "class", "x");
+        tree.append_child(tree.root(), new);
+        assert_candidate_queries(&tree);
+        assert_eq!(tree.query_selector_all("#same").len(), 3);
+    }
+
+    #[test]
+    fn query_candidate_work_is_shared_across_distinct_selectors() {
+        use std::fmt::Write;
+        let mut html = String::from("<!doctype html>");
+        for index in 0..1000 {
+            write!(html, "<div class=other{index}></div>").unwrap();
+        }
+        for index in 0..100 {
+            write!(html, "<span class=pick{index}></span>").unwrap();
+        }
+        let tree = Tree::parse(&html);
+        super::QUERY_CANDIDATE_MATCHES.with(|count| count.set(0));
+        for index in 0..100 {
+            assert_eq!(tree.query_selector_all(&format!(".pick{index}")).len(), 1);
+        }
+        let matches = super::QUERY_CANDIDATE_MATCHES.with(std::cell::Cell::get);
+        assert!(
+            matches <= 100,
+            "distinct class queries matched {matches} candidates"
+        );
+    }
 
     #[test]
     fn qsa_compound_and_descendant() {
