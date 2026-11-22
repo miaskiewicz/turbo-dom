@@ -653,15 +653,19 @@ pub(super) fn schedule_after(
     callback: v8::Local<v8::Function>,
     delay: u32,
 ) -> bool {
-    let current = || DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone());
-    // An inert document (template contents, DOMParser, createHTMLDocument) has no event
-    // loop of its own: its tasks run on its creating window's (turbo-dom#171).
-    let scheduler = current().or_else(|| {
-        let context = scope.get_current_context();
-        let _owner = DomScope::enter(context.get_slot::<DomContextId>().map_or(0, |id| id.0));
-        current()
-    });
-    let Some(scheduler) = scheduler else {
+    // turbo-dom#540: resolve ownership from the current V8 context, not from the
+    // TLS DomScope. A native frame that enters here on document B's turn can carry
+    // a stale TLS naming a prior document A whose captured scheduler's weak owner
+    // is already dead (navigation between documents on the same Page), which would
+    // then panic in `dom_ownership::local` below. The V8 context's `DomContextId`
+    // is always the live document this callback belongs to; the inert-document
+    // case (template contents / DOMParser / createHTMLDocument, turbo-dom#171)
+    // still resolves because an inert document has no V8 context of its own and
+    // the current context's owner is the creating window. This mirrors the
+    // "resolve from the realm here" pattern `capture_scheduler` uses below.
+    let context = scope.get_current_context();
+    let _owner = DomScope::enter(context.get_slot::<DomContextId>().map_or(0, |id| id.0));
+    let Some(scheduler) = DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone()) else {
         return false;
     };
     let scheduler = dom_ownership::local(scope, &scheduler);
