@@ -552,7 +552,8 @@ struct DomState {
 }
 
 thread_local! {
-    static DOM: RefCell<Option<DomState>> = const { RefCell::new(None) };
+    // Receiver dispatch parks this state frequently; move only its owning pointer.
+    static DOM: RefCell<Option<Box<DomState>>> = const { RefCell::new(None) };
     static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
 }
 
@@ -600,9 +601,9 @@ fn next_tree_serial() -> u64 {
 /// has no tree, or its state is borrowed mutably right now.
 fn with_dom_state<R>(id: u64, f: impl FnOnce(&DomState) -> R) -> Option<R> {
     if id == DOM_ID.with(|current| current.get()) {
-        return DOM.with(|dom| dom.try_borrow().ok()?.as_ref().map(f));
+        return DOM.with(|dom| dom.try_borrow().ok()?.as_deref().map(f));
     }
-    OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_ref().map(f))
+    OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_deref().map(f))
 }
 
 thread_local! {
@@ -698,7 +699,7 @@ fn_slots!([
 
 #[derive(Default)]
 struct SavedDom {
-    dom: Option<DomState>,
+    dom: Option<Box<DomState>>,
     styles: HashMap<Handle, v8::Weak<v8::Object>>,
     listeners: HashMap<(Handle, String), Vec<event_listeners::Listener>>,
     active: Option<Handle>,
@@ -926,7 +927,7 @@ fn parse_html_tree_with<'s>(
     let template = build_el_template(scope);
     let template = v8::Global::new(scope, template);
     DOM.with(|dom| {
-        *dom.borrow_mut() = Some(DomState {
+        *dom.borrow_mut() = Some(Box::new(DomState {
             serial: next_tree_serial(),
             scripts: script_state::initial(&tree),
             parser_scripts: Vec::new(),
@@ -954,7 +955,7 @@ fn parse_html_tree_with<'s>(
             custom_elements_active: false,
             form_submission_blocked: false,
             form_submission_handler: None,
-        })
+        }))
     });
     script_state::initialize_inert();
     let context = scope.get_current_context();
@@ -9423,7 +9424,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         v8::Global::new(scope, t)
     };
     let state = window_dom_state(tree, parser_scripts, el_template);
-    DOM.with(|d| *d.borrow_mut() = Some(state));
+    DOM.with(|d| *d.borrow_mut() = Some(Box::new(state)));
 
     let context = scope.get_current_context();
     let global = v8::Weak::new(scope, context);
