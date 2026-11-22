@@ -4,6 +4,8 @@ use rustc_hash::FxHashMap;
 use std::rc::Rc;
 
 const MAX_PAIRS: usize = 10_000;
+#[cfg(test)]
+thread_local! { static INDEXED_NODES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 const MAX_BYTES: usize = 2_000_000;
 const MAX_NODES: usize = 50_000;
 type Entries = FxHashMap<String, Vec<(usize, Handle)>>;
@@ -23,6 +25,11 @@ fn seed(selector: &Complex) -> Option<String> {
 }
 
 pub(super) fn select(tree: &Tree, selectors: &[Complex]) -> Option<Vec<Handle>> {
+    // A first query after mutation is cheaper as a walk. Build only once a
+    // revision has demonstrated enough query reuse to amortize the index.
+    if tree.qcache.borrow().map.len() < 4 {
+        return None;
+    }
     let seeds = selectors.iter().map(seed).collect::<Option<Vec<_>>>()?;
     let cached = tree.qcache.borrow().candidates.clone();
     let index = cached.unwrap_or_else(|| {
@@ -50,6 +57,8 @@ fn build(tree: &Tree) -> Option<Entries> {
     let mut stack = vec![tree.root()];
     while let Some(node) = stack.pop() {
         order += 1;
+        #[cfg(test)]
+        INDEXED_NODES.with(|count| count.set(count.get() + 1));
         if order > MAX_NODES {
             return None;
         }
@@ -106,12 +115,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn isolated_queries_after_mutations_do_not_rebuild_an_unused_index() {
+        use std::fmt::Write;
+        let mut html = String::from("<!doctype html><main id=touch><i class=pick></i>");
+        for index in 0..2000 {
+            write!(html, "<div class=other{index}></div>").unwrap();
+        }
+        let mut tree = Tree::parse(&html);
+        let root = tree.get_element_by_id("touch").unwrap();
+        INDEXED_NODES.with(|count| count.set(0));
+        let started = std::time::Instant::now();
+        for index in 0..50 {
+            tree.set_attribute(root, "data-revision", &index.to_string());
+            assert_eq!(tree.query_selector_all(".pick").len(), 1);
+        }
+        let visits = INDEXED_NODES.with(std::cell::Cell::get);
+        eprintln!(
+            "cold-query diagnostic: {:?}, indexed nodes {visits}",
+            started.elapsed()
+        );
+        assert_eq!(visits, 0, "one query per revision cannot amortize an index");
+    }
+
+    #[test]
     fn oversized_candidate_indexes_fall_back_without_rejecting_queries() {
         let classes = (0..=MAX_PAIRS)
             .map(|index| format!("x{index}"))
             .collect::<Vec<_>>()
             .join(" ");
         let tree = Tree::parse(&format!("<!doctype html><div class='{classes}'></div>"));
+        for selector in ["html", "head", "body", "div"] {
+            tree.query_selector_all(selector);
+        }
         assert_eq!(tree.query_selector_all(".x10000").len(), 1);
         assert!(tree
             .qcache
@@ -143,6 +178,9 @@ mod tests {
         )
         .is_none());
         let tree = Tree::parse(&"<div></div>".repeat(MAX_NODES));
+        for selector in ["html", "head", "body", "div"] {
+            tree.query_selector_all(selector);
+        }
         assert_eq!(tree.query_selector_all(".absent").len(), 0);
         assert!(tree
             .qcache

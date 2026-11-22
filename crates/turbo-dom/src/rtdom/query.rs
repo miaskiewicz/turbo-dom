@@ -2525,6 +2525,9 @@ mod tests {
             write!(html, "<span class=pick{index}></span>").unwrap();
         }
         let tree = Tree::parse(&html);
+        for selector in ["html", "head", "body", "div"] {
+            tree.query_selector_all(selector);
+        }
         super::QUERY_CANDIDATE_MATCHES.with(|count| count.set(0));
         for index in 0..100 {
             assert_eq!(tree.query_selector_all(&format!(".pick{index}")).len(), 1);
