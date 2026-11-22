@@ -940,9 +940,7 @@ mod tests {
         let timers = "globalThis.tasks=[];globalThis.setTimeout=callback=>{tasks.push(callback);return tasks.length};";
         run_js(scope, timers);
         capture_popover_scheduler(scope);
-        let doc_a_id = doc_a
-            .get_slot::<DomContextId>()
-            .map_or(0, |id| id.0);
+        let doc_a_id = doc_a.get_slot::<DomContextId>().map_or(0, |id| id.0);
         let doc_b = v8::Context::new(scope, Default::default());
         doc_b.set_security_token(doc_a.get_security_token(scope));
         {

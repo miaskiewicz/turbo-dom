@@ -209,6 +209,7 @@ fn host_internals_cover_native_layout_capture_and_link_discovery() {
     let policy: StylePolicy = cascade_policy(scope);
     assert!(policy.inline_overrides.is_empty());
     assert_eq!(zoom_value("150%"), Some(("150%".into(), 1.5)));
+    assert_style_revisions(scope);
     drop(_entered);
 
     // Entering by context, then retiring the frame's document.
@@ -234,4 +235,29 @@ fn snapshot_params() -> v8::CreateParams {
         Some(blob) => blob.create_params(),
         None => Default::default(),
     }
+}
+
+fn assert_style_revisions(scope: &mut v8::PinScope) {
+    let initial = style_revisions();
+    assert_eq!(style_revisions(), initial);
+    eval(
+        scope,
+        "document.getElementById('s').sheet.insertRule('p{height:9px}',0)",
+    );
+    let inserted = style_revisions();
+    assert!(inserted.cssom > initial.cssom);
+    eval(
+        scope,
+        "document.getElementById('s').sheet.cssRules[0].style.height='11px'",
+    );
+    assert!(style_revisions().cssom > inserted.cssom);
+    eval(scope, "globalThis.revisionControl=document.createElement('input');document.body.appendChild(revisionControl)");
+    let before_state = style_revisions();
+    eval(scope, "revisionControl.indeterminate=true");
+    assert!(style_revisions().live_state > before_state.live_state);
+    assert!(eval(
+        scope,
+        "typeof __cssomEpoch==='undefined'&&typeof __styleStateEpoch==='undefined'"
+    )
+    .is_true());
 }

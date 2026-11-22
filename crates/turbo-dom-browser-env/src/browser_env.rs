@@ -8289,6 +8289,13 @@ pub(super) fn bump_style_state() {
     STYLE_STATE_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
 }
 
+pub(super) fn host_style_revisions() -> (u64, u64) {
+    (
+        CSSOM_EPOCH.with(std::cell::Cell::get),
+        STYLE_STATE_EPOCH.with(std::cell::Cell::get),
+    )
+}
+
 /// The current live-state epoch (see `STYLE_STATE_EPOCH`).
 fn style_state_epoch(
     scope: &mut v8::PinScope,

@@ -184,5 +184,24 @@ pub fn cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     css_policy::cascade_policy(scope)
 }
 
+/// Thread-wide invalidation revisions used by the binding's native cascade.
+/// These conservatively include changes made in another document on the thread.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StyleRevisions {
+    /// Stylesheets, rules, declarations, adoption and animation-model changes.
+    pub cssom: u64,
+    /// Selector state that need not change the native tree's version.
+    pub live_state: u64,
+}
+
+/// Read cascade invalidation revisions without running guest JavaScript.
+/// Hosts must also key cached results by owner document, tree version and any
+/// relevant composition, viewport or presentation inputs.
+#[must_use]
+pub fn style_revisions() -> StyleRevisions {
+    let (cssom, live_state) = crate::browser_env::host_style_revisions();
+    StyleRevisions { cssom, live_state }
+}
+
 /// Typed result writer for native setter/definer callbacks over the selected V8 ABI.
 pub use crate::browser_env::mutation_result::NamedMutationResult;
