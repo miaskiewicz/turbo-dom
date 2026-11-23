@@ -12,6 +12,12 @@ surface with **no JavaScript DOM implementation**:
   instructions, XPath (fragment and shadow-root contexts included), CSS animations and
   transitions in `getAnimations()`, the CSSOM grouping / condition rule interfaces
   (`CSSContainerRule`, `CSSMediaRule`, `CSSLayerBlockRule`, …).
+- `DOMParser.parseFromString` for HTML and all four XML MIME types, with inert
+  native documents, UTF-16 preservation and Trusted Types enforcement;
+- same-document `history.pushState` / `replaceState` on the standalone default
+  window, with cloned state and synchronized Location fields. Back/forward traversal
+  uses the host's captured task scheduler; reloading requires a navigation host.
+  Embedders that supply navigation objects retain their own History and Location.
 - a `getComputedStyle` cascade that orders rules by Selectors 4 specificity, cascade
   layer and `@scope` proximity, and applies the rules nested in `@media`, `@supports`,
   `@layer` and `@scope` (`@container` / `@starting-style` children never apply);

@@ -1,0 +1,71 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "971db48f97eed59ae64556025df409c52593faeb4f2b6605fce3fb942228822b",
+  "result": {
+    "html": [
+      "hi",
+      "text/html",
+      true,
+      true,
+      true
+    ],
+    "xml": [
+      "r",
+      true,
+      "application/xml",
+      true
+    ],
+    "replace": [
+      "/adapters",
+      "?x=1",
+      "",
+      1,
+      0
+    ],
+    "push": [
+      "/adapters",
+      "?x=1",
+      "#two",
+      2,
+      1
+    ],
+    "errors": [
+      "SecurityError",
+      "SecurityError",
+      "DataCloneError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError",
+      "TypeError"
+    ],
+    "afterErrors": [
+      "/adapters",
+      "#two",
+      2,
+      1
+    ],
+    "clone": [
+      true,
+      true,
+      3,
+      true
+    ],
+    "interfaces": [
+      "[object History]",
+      true,
+      "[object DOMParser]",
+      true,
+      2,
+      2
+    ],
+    "restoration": [
+      "manual",
+      null
+    ]
+  },
+  "traversal": [
+    0,
+    1
+  ]
+}
