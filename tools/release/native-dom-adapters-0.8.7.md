@@ -99,3 +99,14 @@ was weakened.
 - Pinned oxlint 1.87.0 with the repository complexity configuration, including the
   new JS adapters, probe and control script: passed.
 - `git diff --check`: passed.
+- Native-binding LLVM tarpaulin, the CI feature set, source filter and 2,400-second
+  timeout, unchanged `--fail-under 97.6`: **97.63%**, 22,657/23,206 covered lines.
+  It ran with two jobs in an independent local target, offline and locked.
+- The isolated core churn allocation gate: **372 allocations/op**, 82,270 bytes/op,
+  below the unchanged 380/85,000 ceilings.
+- Version agreement and retired selector-dual guards: passed.
+
+The producer implementation checkpoint is
+`5672e9fca1c2668f78fbc4d90d4c4090f3e55589`. The two host reports #544/#545 were
+subsequently closed as `not_planned` by the host owner after being reclassified
+into turbo-test #463/#462; that is an ownership correction, not a producer fix.
