@@ -186,17 +186,10 @@ fn view_transitions_match_chrome_156() {
     // KNOWN_GAP: a bare V8 isolate has no host promise-rejection tracker, so this binding
     // harness never fires unhandledrejection (nor, today, does the turbo-surf render tier).
     assert_eq!(actual["unhandled"], serde_json::json!([]));
-    // KNOWN_GAP: DOMParser is provided by the turbo-surf runtime, not this binding; the
-    // render tier runs it against Chrome. parseHTMLUnsafe is in this binding
-    // (Sanitizer batch) and is compared against the Chrome fixture below.
-    assert_eq!(
-        actual["documents"]["domParser"][0], "unavailable",
-        "domParser"
-    );
     let mut differences = compare(
         &actual,
         control["result"].as_object().unwrap(),
-        &[("unhandled", ""), ("documents", "domParser")],
+        &[("unhandled", "")],
     );
     let actual_hidden = run_probe(
         hidden,

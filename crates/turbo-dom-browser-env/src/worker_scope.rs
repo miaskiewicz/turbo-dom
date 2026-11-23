@@ -88,7 +88,7 @@ impl v8::ValueDeserializerImpl for StructuredCloneDeserializerDelegate {}
 /// `value`. Throws `DataCloneError` for values the HTML spec declines
 /// (functions, Symbols, WeakMap, etc.). Transferables are not supported
 /// (callers that need them route through the message-port path).
-fn structured_clone<'a, 'i>(
+pub(super) fn structured_clone<'a, 'i>(
     scope: &mut v8::PinScope<'a, 'i>,
     args: v8::FunctionCallbackArguments<'a>,
     mut rv: v8::ReturnValue<'a>,

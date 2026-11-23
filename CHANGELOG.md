@@ -7,7 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
-(experiments landing)
+- **Native test-window adapters (#542, #543):** `DOMParser.parseFromString`
+  now parses HTML and XML through the native inert-document APIs and enforces
+  Trusted Types. The default standalone window now has History with cloned state,
+  same-origin URL validation, synchronized Location fields and queued same-document
+  traversal. Navigation-capable embedders keep their own objects. New regressions
+  include independent Chromium 159 controls and the existing XML, Trusted Types
+  and inert-document view-transition controls.
 
 ## [0.8.6] — 2026-11-20
 

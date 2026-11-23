@@ -525,7 +525,9 @@ fn record_key<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Private
     v8::Private::for_api(scope, Some(name))
 }
 /// The current realm's document, for Trusted Types enforcement of static sinks.
-fn realm_document<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Local<'s, v8::Object>> {
+pub(super) fn realm_document<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+) -> Option<v8::Local<'s, v8::Object>> {
     let owner = scope
         .get_current_context()
         .get_slot::<DomContextId>()

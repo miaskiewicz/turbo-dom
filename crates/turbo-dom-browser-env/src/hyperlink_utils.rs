@@ -5,7 +5,7 @@
 //! The JS half owns brand checks and writes the re-serialised URL back to the `href` attribute.
 use super::*;
 
-fn component(url: &url::Url, name: &str) -> String {
+pub(super) fn component(url: &url::Url, name: &str) -> String {
     use url::quirks;
     match name {
         "origin" => quirks::origin(url),

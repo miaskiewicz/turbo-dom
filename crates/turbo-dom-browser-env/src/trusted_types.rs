@@ -552,31 +552,22 @@ mod tests {
             );
             let callback = v8::Local::<v8::Function>::try_from(eval(scope, &source)).unwrap();
             assert!(install_trusted_types_policy(scope, callback));
-            // Binding tests have no host timers or HTML parser API. The independently
-            // recorded oracle still contains those rows for the production consumer gate.
+            // Binding tests have no host timers; drain the probe's report tasks inline.
             eval(scope, "globalThis.setTimeout=function(callback){callback()};document.addEventListener=function(){};");
-            let probe = include_str!("trusted_types_sinks_probe.js").replace("['DOMParser',()=>new DOMParser().parseFromString('<b>parse</b>','text/html').body.innerHTML],", "");
+            let probe = include_str!("trusted_types_sinks_probe.js");
             let probe = probe.trim().trim_end_matches(';');
             eval(scope, &format!("({probe}).then(value=>globalThis.ttResult=JSON.stringify(value),error=>globalThis.ttResult='ERROR '+String(error.stack));"));
             scope.perform_microtask_checkpoint();
             let result = eval(scope, "ttResult").to_rust_string_lossy(scope);
             let actual: serde_json::Value =
                 serde_json::from_str(&result).unwrap_or_else(|_| panic!("{} {result}", case["id"]));
-            let mut expected = oracle["result"]
+            let expected = oracle["result"]
                 .as_array()
                 .unwrap()
                 .iter()
                 .find(|row| row["id"] == case["id"])
                 .unwrap()["result"]
                 .clone();
-            expected["rows"]
-                .as_array_mut()
-                .unwrap()
-                .retain(|row| row[0] != "DOMParser");
-            expected["trace"]
-                .as_array_mut()
-                .unwrap()
-                .retain(|row| row[2][1] != "DOMParser parseFromString");
             assert_eq!(actual["rows"], expected["rows"], "{}", case["id"]);
             assert_eq!(actual["trace"], expected["trace"], "{}", case["id"]);
         }

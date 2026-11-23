@@ -2277,6 +2277,7 @@
   function installLocationFallback(){
     if (typeof g.location === 'undefined' || g.location == null) {
       g.location = { href: 'http://localhost/', origin: 'http://localhost', protocol: 'http:', host: 'localhost', hostname: 'localhost', port: '', pathname: '/', search: '', hash: '', assign: function(){}, replace: function(){}, reload: function(){}, toString: function(){ return this.href; } };
+      __ns.defaultLocation = g.location;
     }
   }
   installLocationFallback();

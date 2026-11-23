@@ -154,6 +154,13 @@ mod dom_implementation;
 pub use dom_implementation::set_initializer as set_inert_document_initializer;
 #[path = "document_xpath.rs"]
 mod document_xpath;
+#[path = "dom_parser.rs"]
+mod dom_parser;
+#[cfg(test)]
+#[path = "native_dom_adapters_tests.rs"]
+mod native_dom_adapters_tests;
+#[path = "window_history.rs"]
+mod window_history;
 #[path = "xml_documents.rs"]
 mod xml_documents;
 pub use document_xpath::is_native_xpath_object;
@@ -9530,6 +9537,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     shadow_slots::install(scope);
     shadow_html::install(scope);
     sanitizer::install(scope);
+    dom_parser::install(scope);
     script_state::install(scope);
     range_contents::install(scope);
     bind_method(scope, global, "__htmlTextNative", html_text::dispatch);
@@ -9583,6 +9591,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     // sees the dunder (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`).
     capture_bootstrap_callback::<EngineTaskScope>(scope, global, "__engineTaskScope");
     event_handlers::install(scope, None, "about:blank");
+    window_history::install(scope);
     custom_elements::install(scope);
     element_internals::install(scope);
     // After custom_elements re-creates the HTML constructors, so static members stay on them.
