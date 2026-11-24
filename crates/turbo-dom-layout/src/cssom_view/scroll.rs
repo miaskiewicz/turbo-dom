@@ -123,6 +123,7 @@ fn is_zero_scroll_source(
     source: &crate::layout_snapshot::SnapshotSource,
 ) -> bool {
     source.excluded_from_layout
+        || snapshot.svg_without_css_box(id)
         || inline_box(snapshot, source)
         || styles
             .get(&id)
@@ -1728,7 +1729,7 @@ mod tests {
     #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
-            "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+            "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><foreignObject id=s width=5 height=5></foreignObject></svg><span id=i>x</span></body>",
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();

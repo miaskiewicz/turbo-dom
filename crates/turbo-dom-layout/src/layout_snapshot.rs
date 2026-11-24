@@ -186,6 +186,7 @@ pub struct LayoutSnapshot {
     collapsed_text_sources: std::collections::BTreeSet<SourceId>,
     html_layout_scale: Option<f32>,
     unsupported_svg_sources: std::collections::BTreeSet<SourceId>,
+    svg_without_css_box: std::collections::BTreeSet<SourceId>,
     unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
     /// The fragments of list markers (miaskiewicz/turbo-dom#128) -> their list item.
     list_markers: BTreeMap<usize, SourceId>,
@@ -232,6 +233,17 @@ impl LayoutSnapshot {
     #[must_use]
     pub fn unsupported_svg_source_geometry(&self, source: SourceId) -> bool {
         self.unsupported_svg_sources.contains(&source)
+    }
+
+    pub(crate) fn svg_without_css_box(&self, source: SourceId) -> bool {
+        self.svg_without_css_box.contains(&source)
+    }
+
+    pub(crate) fn certify_svg_without_css_box(
+        &mut self,
+        sources: std::collections::BTreeSet<SourceId>,
+    ) {
+        self.svg_without_css_box = sources;
     }
 
     /// Why the native HTML inline producer cannot supply this source's geometry: it is
@@ -642,6 +654,7 @@ fn capture_styled_with_plan(
         collapsed_text_sources,
         html_layout_scale: font_layout_scale,
         unsupported_svg_sources,
+        svg_without_css_box: std::collections::BTreeSet::new(),
         unsupported_inline_sources,
         list_markers,
         sticky,
