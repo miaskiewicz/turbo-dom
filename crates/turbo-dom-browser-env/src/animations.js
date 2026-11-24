@@ -2518,7 +2518,7 @@
     return intrinsic.some(frames, frame => frame.composite !== 'auto' && frame.composite !== 'replace');
   }
   function presentedBaseSupported(property, read, context, last) {
-    if (INHERITED[property] || intrinsic.slice(property, 0, 2) === '--') return false;
+    if (presentedContextProperty(property)) return false;
     const base = presentedText(property, read(property) || initialValue(property), context);
     return !!base && presentedFrameCompatible(last, base);
   }
@@ -2552,12 +2552,14 @@
     if (!presentedNeedsRawBounds(property)) return true;
     return raw.start && raw.end;
   }
-  function presentedFramesSupported(entry, property, read, context) {
+  function presentedFramesSupported(entry, property, read, context, changingContext) {
     const frames = entry.effect.frames.byProperty[property];
     if (!frames) return true;
     if (!presentedRawCssSupported(entry, property, context)) return false;
     if (!presentedFrameValuesSupported(frames, property, context)) return false;
     if (!presentedNeedsBase(entry, frames)) return true;
+    const css = entry.record.css;
+    if (changingContext || (css && css.kind === CSS_TRANSITION)) return false;
     const last = presentedText(property, frames[frames.length - 1].text, context);
     return presentedBaseSupported(property, read, context, last);
   }
@@ -2584,13 +2586,13 @@
     if (!css.rule) return false;
     return presentedRulePropertiesPresent(css.rule, entry);
   }
-  function presentedStackSupported(stack, read) {
+  function presentedStackSupported(stack, read, changingContext) {
     const context = { fontSize: fontSize(read), currentColor: () => null };
     for (let i = 0; i < stack.length; i++) if (!presentedCssModelComplete(stack[i])) return false;
     const properties = stackResultProperties(stack);
     for (let i = 0; i < properties.length; i++) {
       for (let j = 0; j < stack.length; j++)
-        if (!presentedFramesSupported(stack[j], properties[i], read, context)) return false;
+        if (!presentedFramesSupported(stack[j], properties[i], read, context, changingContext)) return false;
     }
     return true;
   }
@@ -2634,10 +2636,10 @@
     if (typeof ns.effectHasPropertyRules !== 'function') return false;
     return !ns.effectHasPropertyRules(element);
   }
-  function presentedState(element, snapshot, entries) {
+  function presentedState(element, snapshot, entries, changingContext) {
     const read = property => ns.computedStyleValue(snapshot, property), result = create(null);
     if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, read) ||
-        !presentedCustomPropertiesSupported(element, entries) || !presentedStackSupported(entries, read)) {
+        !presentedCustomPropertiesSupported(element, entries) || !presentedStackSupported(entries, read, changingContext)) {
       result.status = 'unknown'; result.properties = presentedSourceProperties(entries); setPrototype(result.properties, null);
       return result;
     }
@@ -2651,26 +2653,50 @@
     result.transition = presentedPairs(transition, read);
     return result;
   }
-  function presentedTargetData(element, snapshot) {
+  function presentedTargetData(element, snapshot, changingContext) {
     const data = create(null), indexed = targets.get(element) || [], entries = [];
     setPrototype(entries, null);
     for (let i = 0; i < indexed.length; i++) entries[entries.length] = effectInspectionEntry(indexed[i], element, !!animations.get(indexed[i]).css);
     data.effects = entries;
-    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : []);
+    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : [], changingContext);
     return data;
   }
-  function presentedRows(selected) {
-    const rows = []; setPrototype(rows, null);
+  function presentedContextProperty(property) {
+    return !!INHERITED[property] || intrinsic.test(/^(?:font|stroke|fill)(?:-|$)/, property) || property === 'zoom' || intrinsic.slice(property, 0, 2) === '--';
+  }
+  function presentedChangingContext(selected) {
+    if (!animationPresentationOn) return false;
+    let contributingTargets = 0;
+    for (let i = 0; i < selected.length; i++) {
+      const entries = presentedEntries(selected[i]);
+      if (entries.length) contributingTargets++;
+      if (contributingTargets > 1) return true;
+      const properties = presentedSourceProperties(entries);
+      if (intrinsic.some(properties, presentedContextProperty)) return true;
+    }
+    return false;
+  }
+  function preparePresentedTargets(selected) {
+    const snapshots = [];
     for (let i = 0; i < selected.length; i++) {
       const element = selected[i];
       if (cssBusy.get(element)) return null;
       inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false;
       const snapshot = ns.refreshCssEffectInputs(element);
       if (!snapshot || inspectionUnavailable) return null;
-      const row = [element, apply(stringifyEffects, null, [presentedTargetData(element, snapshot)])];
-      setPrototype(row, null); rows[rows.length] = row;
+      push(snapshots, snapshot);
       const expanded = presentedTargets(selected);
       for (let j = 0; j < expanded.length; j++) if (!contains(selected, expanded[j])) push(selected, expanded[j]);
+    }
+    return snapshots;
+  }
+  function presentedRows(selected) {
+    const snapshots = preparePresentedTargets(selected);
+    if (!snapshots) return null;
+    const changingContext = presentedChangingContext(selected), rows = []; setPrototype(rows, null);
+    for (let i = 0; i < selected.length; i++) {
+      const row = [selected[i], apply(stringifyEffects, null, [presentedTargetData(selected[i], snapshots[i], changingContext)])];
+      setPrototype(row, null); rows[rows.length] = row;
     }
     return rows;
   }
@@ -2678,7 +2704,7 @@
     if (document !== realmDocument) return null;
     if (inspectingEffects || suppressStyle || !safeInspectionPrototypes()) return null;
     const time = clock();
-    if (host && time === null) return null;
+    if (host && (time === null || !isFinite(time))) return null;
     inspectionClock = time; inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
     try {
       const rows = presentedRows(presentedTargets(candidates));

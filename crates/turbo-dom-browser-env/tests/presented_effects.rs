@@ -476,3 +476,23 @@ fn simultaneous_isolates_keep_animation_ownership_separate() {
     // A replacement isolate must not inherit weak handles from either destroyed isolate.
     discovers_paused_waapi_without_css_candidates_and_never_calls_layout();
 }
+
+#[test]
+fn inherited_animated_context_cannot_certify_a_suppressed_additive_base() {
+    with_dom(|scope| {
+        eval(scope, "document.body.style.fontSize='10px';target=document.getElementById('target');target.style.width='calc(10em * sibling-index())';let parentEffect=document.body.animate([{fontSize:'10px'},{fontSize:'30px'}],{duration:1000,fill:'both'});parentEffect.pause();parentEffect.currentTime=500;let childEffect=target.animate([{width:'10px'},{width:'20px'}],{duration:1000,fill:'both',composite:'add'});childEffect.pause();childEffect.currentTime=500");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        let target = sample
+            .targets
+            .iter()
+            .find(|target| target.element == handle)
+            .unwrap();
+        assert!(
+            matches!(target.presentation, PresentedTargetState::Unknown { .. }),
+            "suppressed 10em base cannot certify presented inherited font: {target:?}"
+        );
+    });
+}

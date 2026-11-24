@@ -33,3 +33,12 @@ thread reset nor another isolate can clear or traverse it. All 18 public host
 controls pass, including same-thread nested isolates, cancellation after restoring
 the outer isolate, replacement-isolate teardown and existing foreign/adoption
 refusals. These focused results do not replace the remaining release gates.
+
+A subsequent actual Chromium159 oracle and producer RED prove a context-dependent
+base error: parent font10→30px at midpoint plus child calc(10em * sibling-index())
+and additive width10→20px produced a false Certified115px instead of Chrome215px.
+Sampling now prepares the complete expanded target set before emitting rows.
+Base-dependent entries refuse changed inherited/font/SVG-paint/custom context,
+multiple contributing targets, and independently composed transition bases.
+Complete absolute frames and standalone additive width stacks keep their existing
+certification. All19 host tests pass; the new context case remains explicit Unknown.
