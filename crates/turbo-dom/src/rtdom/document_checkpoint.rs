@@ -29,11 +29,11 @@ impl CheckpointState {
 
 impl Tree {
     /// A connected-document checkpoint, or `None` for an unaccounted version or
-    /// shadow-bearing tree. Full [`Self::version`] checks still guard live reads.
+    /// uncertain shadow graph. Full [`Self::version`] checks still guard live reads.
     #[must_use]
     pub fn document_checkpoint(&self) -> Option<DocumentCheckpoint> {
         (self.checkpoint.accounted_version == self.version
-            && !self.has_shadow_roots()
+            && self.checkpoint_shadow_graph_valid()
             && self.parent(self.root()).is_none())
         .then_some(self.checkpoint.checkpoint)
     }
@@ -57,11 +57,14 @@ impl Tree {
     }
 
     pub(super) fn proven_detached(&self, h: Handle) -> bool {
-        if !self.is_live(h) || self.has_shadow_roots() || self.parent(self.root()).is_some() {
+        if !self.is_live(h)
+            || !self.checkpoint_shadow_graph_valid()
+            || self.parent(self.root()).is_some()
+        {
             return false;
         }
         let mut root = h;
-        while let Some(parent) = self.parent(root) {
+        while let Some(parent) = self.parent(root).or_else(|| self.shadow_host(root)) {
             root = parent;
         }
         root != self.root() && self.node_type(root) != NodeType::Document

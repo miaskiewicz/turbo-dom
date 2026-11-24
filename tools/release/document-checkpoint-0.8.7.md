@@ -8,7 +8,7 @@ The actual consumer trace had reusable strict geometry (`queryIndependent=true`)
 
 Core `turbo_dom::rtdom::Tree::document_checkpoint() -> Option<DocumentCheckpoint>` and `document_unchanged_since(checkpoint) -> bool` provide opaque tree-incarnation/connected-change identity. Host `turbo_dom_browser_env::host_internals::document_checkpoint(scope, native_document) -> Option<DocumentCheckpoint>` additionally validates the exact native Document, installed creation realm and browsing ownership under explicit microtask checkpoints. The host token has `Clone`, `Copy`, `Debug`, `Eq` and `PartialEq`; it holds no V8 handles. No guest API is added.
 
-Compare freshly acquired `Some` tokens for native connected-input cache equivalence. `None` retains the previous full-version cache behavior. Shadow-bearing/inert/retired/uncertain owners, unaccounted versions and malformed document ancestry do not supply proof. Native field/private ownership reads do not invoke guest properties, cascade, resources, lifecycle or layout.
+Compare freshly acquired `Some` tokens for native connected-input cache equivalence. `None` retains the previous full-version cache behavior. Uncertain-shadow/inert/retired/uncertain owners, unaccounted versions and malformed document ancestry do not supply proof. Native field/private ownership reads do not invoke guest properties, cascade, resources, lifecycle or layout.
 
 `Tree.version` and selector counters retain their existing mutation increments. Audited detached allocation/attributes/text/form-state/child construction preserve the new checkpoint. Connected changes, global or unknown invalidation, quiet style invalidation and successful storage collection invalidate it. Detaching from a connected parent invalidates before ownership is lost; inserting the detached component invalidates normally. Full mutation audit and hashed consumer baseline receipts are under `.evidence/document-checkpoint/`.
 
@@ -33,3 +33,5 @@ coverage **13,479/13,479 (100%)**; binding **22,742/23,291 (97.642866%)**, above
 unchanged 97.6% floor. Allocation controls match the prior receipt: churn 372
 allocations / 82,270 bytes per operation (ceilings 380 / 85,000); warmed sibling
 ranks 0 allocations / 0 bytes for 1,024 matches. No budgets or assertions changed.
+
+Connected-shadow capability is extended under #554; see [the shadow ownership receipt](document-checkpoint-shadow-0.8.7.md). The original implementation/gate identity above records the initial conservative contract.

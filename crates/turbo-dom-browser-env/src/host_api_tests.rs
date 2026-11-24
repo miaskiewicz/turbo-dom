@@ -968,8 +968,10 @@ fn document_checkpoint_preserves_detached_construction_and_rejects_connected_cha
                 let invalid = object(scope, source);
                 assert!(document_checkpoint(scope, invalid).is_none(), "{source}");
             }
+            let before = document_checkpoint(scope, document).unwrap();
             eval(scope, "anchor.attachShadow({mode:'open'})");
-            assert!(document_checkpoint(scope, document).is_none());
+            assert_ne!(document_checkpoint(scope, document), Some(before));
+            assert!(document_checkpoint(scope, document).is_some());
         },
     );
 }
@@ -1001,4 +1003,61 @@ fn document_checkpoint_is_owned_by_exact_native_realm_and_refuses_retirement() {
         assert_eq!(current_document_id(), main_id);
         assert_eq!(document_checkpoint(scope, main), Some(saved));
     });
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_tracks_open_closed_nested_shadow_and_slot_mutations() {
+    use crate::host_internals::document_checkpoint;
+    for mode in ["open", "closed"] {
+        with_page(
+            "<!doctype html><section id=host><span id=light slot=one>light</span></section>",
+            |scope| {
+                scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+                let document = object(scope, "document");
+                eval(scope,&format!("globalThis.host=document.getElementById('host');globalThis.light=document.getElementById('light');globalThis.root=host.attachShadow({{mode:'{mode}'}});root.innerHTML='<slot name=one></slot><section id=nested></section>';globalThis.nested=root.querySelector('#nested').attachShadow({{mode:'closed'}});nested.innerHTML='<input id=check><b id=text>x</b>';globalThis.check=nested.querySelector('#check');globalThis.text=nested.querySelector('#text')"));
+                let saved = document_checkpoint(scope, document).unwrap();
+                let version = with_tree(|tree| tree.version).unwrap();
+                eval(scope,"globalThis.detached=[];for(let i=0;i<6;i++){const d=document.createElement('div');d.style.width='100px';d.textContent='unrelated';d.appendChild(document.createElementNS('http://www.w3.org/2000/svg','svg'));detached.push(d)}");
+                assert_eq!(document_checkpoint(scope, document), Some(saved), "{mode}");
+                assert!(with_tree(|tree| tree.version).unwrap() > version);
+                for action in [
+                    "text.textContent='new'",
+                    "text.style.width='20px'",
+                    "check.checked=true",
+                    "light.slot='two'",
+                    "root.querySelector('slot').name='two'",
+                    "nested.appendChild(detached[0])",
+                    "host.remove()",
+                ] {
+                    let before = document_checkpoint(scope, document).unwrap();
+                    eval(scope, action);
+                    assert_ne!(
+                        document_checkpoint(scope, document),
+                        Some(before),
+                        "{mode}: {action}"
+                    );
+                }
+                let saved = document_checkpoint(scope, document).unwrap();
+                eval(scope, "text.style.width='40px';check.checked=false");
+                assert_eq!(
+                    document_checkpoint(scope, document),
+                    Some(saved),
+                    "detached nested shadow changes"
+                );
+                eval(scope, "document.body.appendChild(host)");
+                assert_ne!(document_checkpoint(scope, document), Some(saved));
+                let saved = document_checkpoint(scope, document).unwrap();
+                eval(
+                    scope,
+                    "document.implementation.createHTMLDocument('other').adoptNode(host)",
+                );
+                assert_ne!(
+                    document_checkpoint(scope, document),
+                    Some(saved),
+                    "adoption removes connected shadow host"
+                );
+            },
+        );
+    }
 }

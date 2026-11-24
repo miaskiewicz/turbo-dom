@@ -316,6 +316,7 @@ fn cached_own_box_survives_startup_snapshot_rehydration() {
 
 fn assert_public_document_checkpoint(scope: &mut v8::PinScope) {
     let document = object(scope, "document");
+    eval(scope,"globalThis.checkpointShadow=document.querySelector('main').attachShadow({mode:'closed'});checkpointShadow.innerHTML='<slot></slot><span>shadow</span>'");
     let saved: DocumentCheckpoint = document_checkpoint(scope, document).unwrap();
     let full_version = with_tree(|tree| tree.version).unwrap();
     for _ in 0..6 {
@@ -326,6 +327,12 @@ fn assert_public_document_checkpoint(scope: &mut v8::PinScope) {
     eval(
         scope,
         "document.querySelector('main').textContent='connected change'",
+    );
+    assert_ne!(document_checkpoint(scope, document), Some(saved));
+    let saved = document_checkpoint(scope, document).unwrap();
+    eval(
+        scope,
+        "checkpointShadow.querySelector('span').textContent='shadow mutation'",
     );
     assert_ne!(document_checkpoint(scope, document), Some(saved));
 }
