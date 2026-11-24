@@ -126,6 +126,11 @@ enum AttrMatch {
 #[path = "selector_source.rs"]
 mod source;
 
+/// Retain the old raw cascade's comment elision while sharing quote/escape handling.
+pub(crate) fn legacy_css_source(source: &str) -> std::borrow::Cow<'_, str> {
+    source::normalize_str(source, source::Mode::LegacyCss)
+}
+
 #[cfg(test)]
 #[path = "query_internal_tests.rs"]
 mod internal_tests;
@@ -137,8 +142,8 @@ use units::UnitAttrMatch;
 #[path = "query_cascade.rs"]
 mod cascade;
 pub use cascade::{
-    match_for_cascade, parse_for_cascade, parse_for_supports, CascadeSelector, PositionCache,
-    SelectorList, SiblingGroup, Specificity,
+    match_for_cascade, parse_for_cascade, parse_for_cascade_units, parse_for_supports,
+    CascadeSelector, PositionCache, SelectorList, SiblingGroup, Specificity,
 };
 
 impl AttrMatch {
