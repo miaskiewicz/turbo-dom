@@ -82,3 +82,7 @@ extraction passed strict all-target workspace clippy and all nine focused
 contracts plus both external API/snapshot tests again. Formatting, Rust/JS
 complexity limits, version synchronization, the single-V8 graph, churn and sibling
 allocation controls passed. Core LLVM line coverage is 100% (13,447/13,447).
+Binding LLVM line coverage is 97.64% (22,724/23,273), above the unchanged
+97.6% floor. No budget, assertion, coverage floor or complexity limit changed.
+Implementation commit: `5bc2d42359c93885ac11202823405034bab41867`.
+The final committed example repeated all four eligibility results above.
