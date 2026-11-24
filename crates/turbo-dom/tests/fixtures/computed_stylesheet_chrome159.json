@@ -1,0 +1,221 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "6571a8d86192f4e927632d053f8f8eec2abc3bcf72e23d695e5020d53f501fb9",
+  "result": {
+    "selectors": [
+      {
+        "id": "quoted-raw",
+        "selector": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          55296,
+          34,
+          93
+        ],
+        "query": [
+          "raw"
+        ],
+        "styled": [
+          [
+            "raw",
+            "rgb(0, 0, 255)"
+          ],
+          [
+            "repaired",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "marker",
+            "rgb(255, 0, 0)"
+          ]
+        ],
+        "serialized": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          92,
+          48,
+          32,
+          34,
+          93
+        ]
+      },
+      {
+        "id": "quoted-escaped",
+        "selector": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          92,
+          100,
+          56,
+          48,
+          48,
+          32,
+          34,
+          93
+        ],
+        "query": [
+          "repaired"
+        ],
+        "styled": [
+          [
+            "raw",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "repaired",
+            "rgb(0, 0, 255)"
+          ],
+          [
+            "marker",
+            "rgb(255, 0, 0)"
+          ]
+        ],
+        "serialized": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          65533,
+          34,
+          93
+        ]
+      },
+      {
+        "id": "quoted-marker",
+        "selector": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          56192,
+          56320,
+          56194,
+          56320,
+          34,
+          93
+        ],
+        "query": [
+          "marker"
+        ],
+        "styled": [
+          [
+            "raw",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "repaired",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "marker",
+            "rgb(0, 0, 255)"
+          ]
+        ],
+        "serialized": [
+          91,
+          100,
+          97,
+          116,
+          97,
+          45,
+          120,
+          61,
+          34,
+          56192,
+          56320,
+          56194,
+          56320,
+          34,
+          93
+        ]
+      },
+      {
+        "id": "identifier-raw",
+        "selector": [
+          46,
+          120,
+          55296
+        ],
+        "query": [
+          "repaired"
+        ],
+        "styled": [
+          [
+            "raw",
+            "rgb(255, 0, 0)"
+          ],
+          [
+            "repaired",
+            "rgb(0, 0, 255)"
+          ],
+          [
+            "marker",
+            "rgb(255, 0, 0)"
+          ]
+        ],
+        "serialized": [
+          46,
+          120,
+          65533
+        ]
+      }
+    ],
+    "syntax": [
+      {
+        "payload": "\"a; } { ; b\"",
+        "css": "#raw{--token:\"a; } { ; b\";color:rgb(1, 2, 3)}",
+        "token": "\"a; } { ; b\"",
+        "color": "rgb(1, 2, 3)"
+      },
+      {
+        "payload": "\"/* literal comment */\"",
+        "css": "#raw{--token:\"/* literal comment */\";color:rgb(1, 2, 3)}",
+        "token": "\"/* literal comment */\"",
+        "color": "rgb(1, 2, 3)"
+      },
+      {
+        "payload": "url(\"data:text/plain;a{b}:c\")",
+        "css": "#raw{--token:url(\"data:text/plain;a{b}:c\");color:rgb(1, 2, 3)}",
+        "token": "url(\"data:text/plain;a{b}:c\")",
+        "color": "rgb(1, 2, 3)"
+      },
+      {
+        "payload": "\"/* literal */\"",
+        "css": "#raw{color:/* note */red;--token:\"/* literal */\"}",
+        "token": "\"/* literal */\"",
+        "color": "rgb(255, 0, 0)"
+      }
+    ]
+  }
+}

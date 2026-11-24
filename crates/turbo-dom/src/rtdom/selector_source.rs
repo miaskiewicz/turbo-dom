@@ -20,6 +20,13 @@ pub(super) enum Mode {
     Dom,
     /// A stylesheet prelude or `selector()` condition: comments only.
     Sheet,
+    /// Historic raw-cascade comment elision; not selector preprocessing or full CSS policy.
+    LegacyCss,
+}
+
+struct NormalizationContext {
+    mode: Mode,
+    open: Vec<u8>,
 }
 
 /// One code unit of selector source.
@@ -68,7 +75,10 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
     let unit = |i: usize| source.get(i).map(|&u| u.code());
     let is = |i: usize, b: u8| unit(i) == Some(u32::from(b));
     let mut out = Vec::with_capacity(source.len());
-    let mut open: Vec<u8> = Vec::new();
+    let mut context = NormalizationContext {
+        mode,
+        open: Vec::new(),
+    };
     let mut quote: Option<u32> = None;
     let mut changed = false;
     let mut i = 0;
@@ -84,7 +94,7 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
             source,
             &mut i,
             &mut out,
-            &mut open,
+            &mut context,
             &mut quote,
             &mut changed,
             is,
@@ -99,7 +109,7 @@ pub(super) fn normalize<T: Unit>(source: &[T], mode: Mode) -> Option<Vec<T>> {
             out.push(T::ascii(if q == u32::from(b'"') { b'"' } else { b'\'' }));
             changed = true;
         }
-        while let Some(close) = open.pop() {
+        while let Some(close) = context.open.pop() {
             out.push(T::ascii(close));
             changed = true;
         }
@@ -123,7 +133,7 @@ fn normalize_consume<T: Unit, F: Fn(usize, u8) -> bool>(
     source: &[T],
     i: &mut usize,
     out: &mut Vec<T>,
-    open: &mut Vec<u8>,
+    context: &mut NormalizationContext,
     quote: &mut Option<u32>,
     changed: &mut bool,
     is: F,
@@ -136,10 +146,10 @@ fn normalize_consume<T: Unit, F: Fn(usize, u8) -> bool>(
     } else if code == u32::from(b'"') || code == u32::from(b'\'') {
         *quote = Some(code);
     } else if code == u32::from(b'/') && is(*i + 1, b'*') {
-        skip_comment(source, i, out, open, changed);
+        skip_comment(source, i, out, context, changed);
         return true;
     } else {
-        normalize_bracket(code, open);
+        normalize_bracket(code, &mut context.open);
     }
     false
 }
@@ -170,7 +180,7 @@ fn skip_comment<T: Unit>(
     source: &[T],
     i: &mut usize,
     out: &mut Vec<T>,
-    open: &[u8],
+    context: &NormalizationContext,
     changed: &mut bool,
 ) {
     let is = |p: usize, b: u8| source.get(p).map(|u| u.code()) == Some(u32::from(b));
@@ -184,8 +194,8 @@ fn skip_comment<T: Unit>(
         .last()
         .is_some_and(|prev: &T| name_like(prev.code()) || prev.code() == u32::from(b'#'))
         && source.get(after).map(|u| u.code()).is_some_and(name_like);
-    if joins {
-        out.push(T::ascii(if open.last() == Some(&b']') {
+    if joins && context.mode != Mode::LegacyCss {
+        out.push(T::ascii(if context.open.last() == Some(&b']') {
             b' '
         } else {
             b'!'
@@ -197,7 +207,7 @@ fn skip_comment<T: Unit>(
 /// [`normalize`] for the string API, borrowing when nothing changes.
 pub(super) fn normalize_str(source: &str, mode: Mode) -> std::borrow::Cow<'_, str> {
     if !source.contains("/*")
-        && (mode == Mode::Sheet || !source.contains(['[', '(', '"', '\'', '\\']))
+        && (mode != Mode::Dom || !source.contains(['[', '(', '"', '\'', '\\']))
     {
         return std::borrow::Cow::Borrowed(source);
     }
@@ -216,6 +226,16 @@ mod tests {
     }
     fn sheet(s: &str) -> String {
         normalize_str(s, Mode::Sheet).into_owned()
+    }
+
+    #[test]
+    fn legacy_css_elision_preserves_quoted_comments_and_open_source() {
+        assert_eq!(
+            normalize_str("color:/**/red;--x:\"/* literal */\"", Mode::LegacyCss),
+            "color:red;--x:\"/* literal */\""
+        );
+        assert_eq!(normalize_str("r/**/ed", Mode::LegacyCss), "red");
+        assert_eq!(normalize_str("f(\"open", Mode::LegacyCss), "f(\"open");
     }
 
     #[test]
