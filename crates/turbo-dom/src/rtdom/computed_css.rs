@@ -2,6 +2,10 @@
 //! Raw declaration payloads retain DOM code units; the scalar view is only a
 //! structural tokenizer input, never a replacement for authored custom tokens.
 use std::ops::Range;
+mod variables;
+pub use variables::{
+    compute_custom_properties, substitute, ComputationLimits, ComputedCssError, CustomProperties,
+};
 
 /// Original CSS text, including any unpaired UTF-16 units.
 #[derive(Clone, Debug, Eq, PartialEq)]
