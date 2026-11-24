@@ -29,6 +29,16 @@ fn verify_case(case: &Value) {
     let body = source_id(testing::DOCUMENT, tree.query_selector("body").unwrap());
     let want = &case["read"];
     let own = want["bodyScroll"] == 90;
+    if name == "body-display-none" || name == "html-display-none" {
+        assert!(
+            !propagated_body(&styles, body),
+            "{name}: hidden propagation"
+        );
+    }
+    if name == "body-display-none" {
+        assert!(!element_scroller(&styles, body));
+    }
+
     if want["bodyHeight"] == 40 {
         assert_eq!(propagated_body(&styles, body), !own, "{name}: propagation");
         assert_eq!(
