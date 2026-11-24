@@ -80,3 +80,13 @@ complexity limit, resource budget or existing assertion is relaxed.
 - Rustfmt, Rust complexity at max 9 (including the new module/test), pinned
   oxlint 1.87.0 complexity, version agreement and diff whitespace checks: passed.
 - The graph retains one turbo-dom-v8 150.4.2.
+- LLVM tarpaulin default: **99.86%**, 19,617/19,644 covered lines.
+- LLVM tarpaulin all-feature CI variant: **99.85%**, 19,796/19,826 covered lines.
+  Both passed the unchanged `--fail-under 99.8` and 600-second binary timeout,
+  offline/locked, in an independent repository-local target with two jobs.
+  The new positioned adapter has 53/53 lines covered in the default run.
+
+The implementation checkpoint is
+`14ab69e5bf90373174aba7d8f23f126360aad53c`. The validation receipt is a subsequent
+documentation-only commit; no implementation changed after the passing coverage
+runs. No tag, publication or main merge is authorized by this work.
