@@ -1,0 +1,708 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "a1964272f6d8ac44b659e15c143847575f2a6f0d7421ac85e1bbf57612fe33e1",
+  "result": [
+    {
+      "name": "propagated-body",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}body{height:40px;overflow:hidden}#space{height:100px}",
+      "body": "<div id=\"space\"></div><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "independent-body-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}html{overflow:hidden}body{height:40px;overflow:hidden}#space{height:100px}",
+      "body": "<div id=\"space\"></div><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "contained-body-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}body{height:40px;overflow:hidden;contain:paint}#space{height:100px}",
+      "body": "<div id=\"space\"></div><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "contained-body-scrolled",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}body{height:40px;overflow:hidden;contain:paint}#space{height:100px}",
+      "body": "<div id=\"space\"></div><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div>",
+      "point": [
+        108,
+        36
+      ],
+      "scroll": 100,
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 28,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 100
+      }
+    },
+    {
+      "name": "fixed-escapes-ordinary-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#root{position:fixed;top:300px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        328
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 320,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-escapes-nested-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip,#inner{height:40px;overflow:hidden}#root{position:fixed;top:300px}",
+      "body": "<div id=\"clip\"><div id=\"inner\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div></div>",
+      "point": [
+        108,
+        328
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 320,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-descendant-escapes-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#fixed{position:fixed;top:300px}",
+      "body": "<div id=\"clip\"><div id=\"fixed\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div></div>",
+      "point": [
+        108,
+        328
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 320,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-inner-clip-stays",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#fixed{position:fixed;top:300px}#clip{height:20px;overflow:clip}",
+      "body": "<div id=\"fixed\"><div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div></div>",
+      "point": [
+        108,
+        328
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 320,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-paint-containing-clip-stays",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:paint}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "absolute-escapes-intermediate-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}body{position:relative}#clip{height:40px;overflow:clip}#root{position:absolute;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "absolute-containing-clip-stays",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;position:relative}#root{position:absolute;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "ordinary-clip-stays",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#root{top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "contents-does-not-clip",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{display:contents;overflow:clip}#root{top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "transformed-fixed-remains-unsupported",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;transform:translate(0px)}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        136
+      ],
+      "unsupported": true,
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-none",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:none}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-size",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:size}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-inline-size",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:inline-size}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-style",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:style}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-layout",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:layout}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-content",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:content}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contain-strict",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;contain:strict}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-content-visibility-visible",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;content-visibility:visible}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-content-visibility-auto",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;content-visibility:auto}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-content-visibility-hidden",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;content-visibility:hidden}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-container-type-normal",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;container-type:normal}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-container-type-inline-size",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;container-type:inline-size}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-container-type-size",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;container-type:size}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-container-type-inline-size scroll-state",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip;container-type:inline-size scroll-state}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-inline-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:inline;contain:paint}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-inline-layout",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:inline;contain:layout}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-atomic-inline-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:inline-block;contain:paint;width:200px;height:40px}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-contents-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:contents;contain:paint}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "control",
+        "controlHit": true,
+        "rect": {
+          "x": 8,
+          "y": 120,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-blockified-inline-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:inline;position:absolute;contain:paint;width:200px;height:40px}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-floated-inline-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#inline{display:inline;float:left;contain:paint;width:200px;height:40px}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    },
+    {
+      "name": "fixed-flex-item-paint",
+      "css": "body{margin:8px}#root{position:relative;width:200px;height:56px}label{display:block;height:20px}#control{height:36px}#clip{height:40px;overflow:clip}#flex{display:flex}#inline{display:inline;contain:paint;width:200px;height:40px}#root{position:fixed;top:100px}",
+      "body": "<div id=\"clip\"><div id=\"flex\"><span id=\"inline\"><div id=\"root\"><label>Schedule</label><div id=\"control\" role=\"combobox\">Control</div></div></span></div></div>",
+      "point": [
+        108,
+        128
+      ],
+      "read": {
+        "hit": "HTML",
+        "controlHit": false,
+        "rect": {
+          "x": 8,
+          "y": 128,
+          "width": 200,
+          "height": 36
+        },
+        "bodyScroll": 0
+      }
+    }
+  ]
+}

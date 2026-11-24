@@ -20,3 +20,6 @@ pub mod visibility;
 
 #[cfg(test)]
 mod body_propagation_tests;
+
+#[cfg(test)]
+mod hit_clip_ownership_tests;

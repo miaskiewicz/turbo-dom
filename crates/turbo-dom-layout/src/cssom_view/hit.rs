@@ -321,7 +321,7 @@ pub fn hidden_by_clip(
             return Ok(true);
         }
     }
-    clipped(snapshot, styles, ancestors, offsets, point)
+    clipped_for_owner(snapshot, styles, (ancestors, own), offsets, point)
 }
 
 /// Whether a single ancestor's overflow clips the point. Returns `Ok(None)` when this
@@ -352,7 +352,7 @@ fn ancestor_overflow_clips(
     offsets: &BTreeMap<SourceId, [f64; 2]>,
     point: [f64; 2],
 ) -> Result<Option<bool>, String> {
-    if ancestor_clips_axis(styles, ancestor)? != Some(true) {
+    if !ancestor_has_clip(snapshot, styles, ancestor)? {
         return Ok(None);
     }
     let source = snapshot
@@ -377,6 +377,22 @@ fn ancestor_overflow_clips(
     Ok(if inside { None } else { Some(true) })
 }
 
+fn ancestor_has_clip(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    id: SourceId,
+) -> Result<bool, String> {
+    if let Some(entry) = styles.get(&id) {
+        if paint_containment(&entry.style) && has_containment_box(snapshot, &entry.style, id)? {
+            return Ok(true);
+        }
+    }
+    if viewport_overflow(styles, id) {
+        return Ok(false);
+    }
+    Ok(ancestor_clips_axis(styles, id)? == Some(true))
+}
+
 /// Whether an ancestor's `overflow` clips `point` away.
 pub fn clipped(
     snapshot: &LayoutSnapshot,
@@ -385,12 +401,121 @@ pub fn clipped(
     offsets: &BTreeMap<SourceId, [f64; 2]>,
     point: [f64; 2],
 ) -> Result<bool, String> {
-    for ancestor in ancestors {
+    clipped_for_owner(snapshot, styles, (ancestors, None), offsets, point)
+}
+
+fn clipped_for_owner(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    (ancestors, own): (&[SourceId], Option<SourceId>),
+    offsets: &BTreeMap<SourceId, [f64; 2]>,
+    point: [f64; 2],
+) -> Result<bool, String> {
+    for (index, ancestor) in ancestors.iter().enumerate() {
+        if viewport_overflow(styles, *ancestor) {
+            let (width, height) = snapshot.viewport();
+            if !point_in_viewport(point, width, height) {
+                return Ok(true);
+            }
+        }
+        if !overflow_owns_chain(snapshot, styles, &ancestors[index..], own)? {
+            continue;
+        }
         if let Some(true) = ancestor_overflow_clips(snapshot, styles, *ancestor, offsets, point)? {
             return Ok(true);
         }
     }
     Ok(false)
+}
+
+fn viewport_overflow(styles: &SourceStyles, id: SourceId) -> bool {
+    super::scroll::propagated_body(styles, id)
+        || styles
+            .get(&id)
+            .is_some_and(|entry| entry.parent.is_none() && entry.tag.eq_ignore_ascii_case("html"))
+}
+
+fn contain_word(style: &crate::ComputedStyle, words: &[&str]) -> bool {
+    style.get("contain").is_some_and(|value| {
+        value.split_ascii_whitespace().any(|word| {
+            words
+                .iter()
+                .any(|keyword| word.eq_ignore_ascii_case(keyword))
+        })
+    })
+}
+
+fn paint_containment(style: &crate::ComputedStyle) -> bool {
+    contain_word(style, &["paint", "content", "strict"])
+        || matches!(style.get("content-visibility"), Some("auto" | "hidden"))
+}
+
+fn fixed_containment(style: &crate::ComputedStyle) -> bool {
+    paint_containment(style) || contain_word(style, &["layout"])
+}
+
+fn has_containment_box(
+    snapshot: &LayoutSnapshot,
+    style: &crate::ComputedStyle,
+    id: SourceId,
+) -> Result<bool, String> {
+    if crate::layout::value::display_of(style) != crate::layout::value::Display::Inline {
+        return Ok(true);
+    }
+    let source = snapshot
+        .source(id)
+        .ok_or("native hit containment source missing")?;
+    for &index in &source.fragment_indices {
+        let fragment = &snapshot.fragments()[index];
+        if fragment.source_id == Some(id) && fragment.kind == GeometryKind::BorderBox {
+            let used = fragment
+                .used_box
+                .ok_or("native hit containment used box missing")?;
+            if !used.inline_fragment {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+// Overflow clips descendants whose containing blocks remain inside that box.
+// An out-of-flow descendant may escape an intermediate clip; clips inside its
+// fixed/absolute subtree still apply. This consumes native source ancestry only.
+fn overflow_owns_chain(
+    snapshot: &LayoutSnapshot,
+    styles: &SourceStyles,
+    ancestors: &[SourceId],
+    own: Option<SourceId>,
+) -> Result<bool, String> {
+    let own = own.filter(|id| ancestors.last() != Some(id));
+    let (mut absolute, mut fixed) = (false, false);
+    for (index, id) in ancestors.iter().chain(own.iter()).enumerate() {
+        let Some(entry) = styles
+            .get(id)
+            .filter(|entry| entry.style.get("display") != Some("contents"))
+        else {
+            continue;
+        };
+        let position = entry.style.get("position").unwrap_or("static");
+        if index > 0
+            && matches!(
+                (position, absolute, fixed),
+                ("absolute", false, _) | ("fixed", _, false)
+            )
+        {
+            return Ok(false);
+        }
+        let transformed = entry
+            .style
+            .get("transform")
+            .is_some_and(|value| !value.trim().eq_ignore_ascii_case("none"));
+        let contained =
+            fixed_containment(&entry.style) && has_containment_box(snapshot, &entry.style, *id)?;
+        absolute |= transformed || contained || position != "static";
+        fixed |= transformed || contained;
+    }
+    Ok(true)
 }
 /// Whether `id`'s `clip: rect()` (it and its descendants) leaves `point` out.
 fn clip_rect_excludes(
