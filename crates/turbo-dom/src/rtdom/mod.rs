@@ -13,6 +13,7 @@
 pub mod canvas;
 pub mod cascade;
 pub mod color;
+pub mod computed_css;
 pub mod css_shorthand;
 pub mod css_values;
 pub mod cssom;
