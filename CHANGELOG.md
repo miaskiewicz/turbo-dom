@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **Scroll and hit-clip ownership (#550, #551):** containment on HTML or BODY
+  retains BODY's independent scrollport. Hit testing applies viewport overflow
+  at the viewport boundary and preserves containing-block ownership when fixed
+  or absolute descendants escape intermediate clips. Genuine contained clips
+  and existing unsupported-capability errors remain enforced.
+
 - **Cached own-box proof (#549):** host embedders can inspect an already-valid,
   invariant own `display:none` cache entry before requesting visual rectangles.
   The host-only probe computes no style or layout and returns `Unknown` for cold,
