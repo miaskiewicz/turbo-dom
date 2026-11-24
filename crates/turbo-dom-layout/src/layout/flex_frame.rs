@@ -60,6 +60,20 @@ pub(super) fn edges(value: Rect<f32>) -> Edges {
     }
 }
 
+pub(super) fn container(mut style: Style, bs: &BoxStyle) -> Style {
+    // The solver needs the positioned padding box for absolute descendants,
+    // while its in-flow items still consume the native content-box dimensions.
+    style.box_sizing = taffy::BoxSizing::ContentBox;
+    let padding = bs.padding;
+    style.padding = rect(
+        [padding.top, padding.right, padding.bottom, padding.left].map(LengthPercentage::length),
+    );
+    let border = bs.border.widths();
+    style.border =
+        rect([border.top, border.right, border.bottom, border.left].map(LengthPercentage::length));
+    style
+}
+
 fn normal_alignment(value: Option<&str>, parent: Option<&str>) -> bool {
     match value.map(str::trim) {
         None | Some("auto") => parent.is_none_or(|value| value.trim() == "normal"),

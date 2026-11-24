@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **Absolute flex checkbox geometry (#546):** positioned percentage children
+  use the flex container's finalized padding box. Center-aligned checkbox inputs
+  retain their solved height instead of collapsing to zero. Normal-flow size
+  constraints and percentage definiteness remain on the existing solve path;
+  48 independent Chromium 159 controls cover both public layout pipelines.
+
 - **Native test-window adapters (#542, #543):** `DOMParser.parseFromString`
   now parses HTML and XML through the native inert-document APIs and enforces
   Trusted Types. The default standalone window now has History with cloned state,

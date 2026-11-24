@@ -2874,7 +2874,7 @@ fn layout_content(
                 (suppress_first, keep_last, quirky),
             )
         }
-        BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
+        BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Table(kids) if super::table::is_wrapper(lb) => {
             super::table::layout_wrapper(kids, cx, cy, cw, bs.font_size, ctx)
