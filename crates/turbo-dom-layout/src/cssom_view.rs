@@ -17,3 +17,6 @@ pub mod range;
 pub mod scroll;
 pub mod text;
 pub mod visibility;
+
+#[cfg(test)]
+mod body_propagation_tests;

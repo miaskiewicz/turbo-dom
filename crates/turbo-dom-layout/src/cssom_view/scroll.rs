@@ -746,7 +746,41 @@ fn fixed_ancestor(styles: &SourceStyles, ancestors: &[SourceId], own: SourceId) 
     })
 }
 
-/// A body whose overflow propagated to the viewport is not its own scroll container.
+fn has_word(style: &ComputedStyle, property: &str, words: &[&str]) -> bool {
+    style.get(property).is_some_and(|value| {
+        value.split_ascii_whitespace().any(|word| {
+            words
+                .iter()
+                .any(|keyword| word.eq_ignore_ascii_case(keyword))
+        })
+    })
+}
+
+// CSS Containment also includes containment activated by other properties.
+fn containment_blocks_propagation(style: &ComputedStyle) -> bool {
+    has_word(
+        style,
+        "contain",
+        &[
+            "size",
+            "inline-size",
+            "layout",
+            "style",
+            "paint",
+            "content",
+            "strict",
+        ],
+    ) || has_value(style, "content-visibility", "auto")
+        || has_value(style, "content-visibility", "hidden")
+        || has_word(style, "container-type", &["size", "inline-size"])
+}
+
+fn permits_body_propagation(style: &ComputedStyle) -> bool {
+    !has_value(style, "display", "none") && !containment_blocks_propagation(style)
+}
+
+/// CSS Overflow viewport propagation excludes hidden roots/bodies and active
+/// containment on either element (including containment from other properties).
 #[must_use]
 pub fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
     let Some(entry) = styles.get(&id) else {
@@ -757,6 +791,9 @@ pub fn propagated_body(styles: &SourceStyles, id: SourceId) -> bool {
     };
     entry.tag.eq_ignore_ascii_case("body")
         && parent.parent.is_none()
+        && parent.tag.eq_ignore_ascii_case("html")
+        && permits_body_propagation(&entry.style)
+        && permits_body_propagation(&parent.style)
         && overflow(&parent.style, "overflow-x") == "visible"
         && overflow(&parent.style, "overflow-y") == "visible"
         && (overflow(&entry.style, "overflow-x") != "visible"
@@ -771,6 +808,7 @@ pub fn element_scroller(styles: &SourceStyles, id: SourceId) -> bool {
     };
     !is_root(styles, id)
         && !propagated_body(styles, id)
+        && !has_value(&entry.style, "display", "none")
         && !has_value(&entry.style, "display", "contents")
         && (permits_scroll(overflow(&entry.style, "overflow-x"))
             || permits_scroll(overflow(&entry.style, "overflow-y")))
@@ -1426,6 +1464,31 @@ mod tests {
         assert!(!element_scroller(&case.styles, SourceId(3)));
         assert!(!propagated_body(&case.styles, SourceId(3)));
         assert!(!is_root(&case.styles, SourceId(3)));
+    }
+
+    #[test]
+    fn containment_retains_the_body_element_scrollport() {
+        for css in ["body{contain:paint}", "html{contain:paint}"] {
+            let (tree, snapshot, styles) = crate::live::testing::layout_with_fonts(
+                "<!doctype html><body><div style='height:130px'></div></body>",
+                &format!("body{{margin:8px;height:40px;overflow:hidden}}{css}"),
+                (400.0, 300.0),
+                Some(1.0),
+                |_| {},
+                &crate::test_support::fixture_fonts(),
+            );
+            let body = crate::live::source_id(
+                crate::live::testing::DOCUMENT,
+                tree.query_selector("body").unwrap(),
+            );
+            assert!(!propagated_body(&styles, body), "{css}");
+            assert!(element_scroller(&styles, body), "{css}");
+            assert_eq!(
+                scroll_metrics(&snapshot, &styles, body).unwrap().max_y,
+                90.0,
+                "{css}"
+            );
+        }
     }
 
     /// miaskiewicz/turbo-dom#147: neither a block's inline-end margin nor a transformed
