@@ -283,12 +283,33 @@ pub(super) fn selector(
     source: &str,
     subject_local: bool,
 ) -> Option<String> {
+    selector_impl(scope, anchor, source, subject_local, false)
+}
+
+pub(super) fn selector_strict(
+    scope: &mut v8::PinScope,
+    anchor: Handle,
+    source: &str,
+) -> Option<String> {
+    selector_impl(scope, anchor, source, false, true)
+}
+
+fn selector_impl(
+    scope: &mut v8::PinScope,
+    anchor: Handle,
+    source: &str,
+    subject_local: bool,
+    strict: bool,
+) -> Option<String> {
     #[cfg(test)]
     SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();
-    if pseudo_ranges(&mut parser, &mut ranges).is_err() || ranges.is_empty() {
+    if pseudo_ranges(&mut parser, &mut ranges).is_err() {
+        return (!strict).then(|| source.to_owned());
+    }
+    if ranges.is_empty() {
         return Some(source.to_owned());
     }
     let mut names: Vec<&'static str> = Vec::new();
@@ -318,6 +339,7 @@ pub(super) fn selector(
             .flatten();
         match classify(scope, root, candidates, &names) {
             Some(sets) => sets,
+            None if strict => return None,
             None => return Some(source.to_owned()),
         }
     };
@@ -378,4 +400,71 @@ pub(super) fn install(scope: &mut v8::PinScope) {
         context_rehydrate::capture::<Classifier>(scope, callback);
     }
     global.delete(scope, key.into());
+}
+
+#[cfg(all(test, feature = "host-internals"))]
+mod host_projection_tests {
+    use super::*;
+    use crate::host_internals::{prepare_selector, SelectorPreparationError};
+
+    #[test]
+    fn strict_projection_refuses_missing_failed_and_throwing_classifier() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><input>");
+        let source = v8::String::new(scope, "document").unwrap();
+        let document = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+        context.remove_slot::<Classifier>();
+        assert_eq!(
+            prepare_selector(scope, document, "input:invalid").unwrap_err(),
+            SelectorPreparationError::Unavailable
+        );
+        assert_eq!(
+            prepare_selector(scope, document, "input")
+                .unwrap()
+                .match_selector(),
+            "input"
+        );
+        for body in ["()=>null", "()=>[null]", "()=>[[{}]]"] {
+            let source = v8::String::new(scope, &format!("({body})")).unwrap();
+            let callback = v8::Script::compile(scope, source, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            let callback = v8::Local::<v8::Function>::try_from(callback).unwrap();
+            context.set_slot(std::rc::Rc::new(Classifier(v8::Weak::new(scope, callback))));
+            assert_eq!(
+                prepare_selector(scope, document, "input:invalid").unwrap_err(),
+                SelectorPreparationError::Unavailable
+            );
+        }
+        let source = v8::String::new(scope, "(()=>{throw Error('classifier failure')})").unwrap();
+        let callback = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let callback = v8::Local::<v8::Function>::try_from(callback).unwrap();
+        context.set_slot(std::rc::Rc::new(Classifier(v8::Weak::new(scope, callback))));
+        v8::tc_scope!(let scope, scope);
+        assert_eq!(
+            prepare_selector(scope, document, "input:invalid").unwrap_err(),
+            SelectorPreparationError::Exception
+        );
+        assert!(scope
+            .exception()
+            .unwrap()
+            .to_rust_string_lossy(scope)
+            .contains("classifier failure"));
+        scope.reset();
+        reset();
+    }
 }
