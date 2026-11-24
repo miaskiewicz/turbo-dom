@@ -17,10 +17,20 @@ Neither provider internals nor snapshot nodes become page-visible. Only genuine
 native nodes are returned through the public result facade.
 
 The hard limits are 4,096 nodes including attributes, ancestor/tree depth 128,
-1 MiB of UTF-8 snapshot strings, expression length 4,096 UTF-16 units, 256 lexical
+1 MiB of UTF-8 snapshot metadata and demanded values, expression length 4,096 UTF-16 units, 256 lexical
 tokens, nesting 32, and 200,000 snapshot reads per evaluation. Traversal executes
 inside V8 and remains interruptible by the embedding runtime's guest watchdog.
 Limits fail with `NotSupportedError`; they do not change the document.
+
+Text and attribute values are read only when XPath consumes them and are charged
+once per node against the same cumulative byte allowance. Relative parent/ancestor/
+descendant navigation does not serialize unrelated script, style or module
+payloads. Explicit string/attribute-value consumption still enforces the limit;
+no tag's content is omitted from XPath semantics. Each value read validates the
+captured native document/version. The topology snapshot remains subject to the
+same whole-owner-document node/depth bounds. Independent Chromium 159 controls
+cover the relative date-picker helper axes with large unrelated payloads
+(`xpath_value_admission_chrome159.json`).
 
 Contexts inside a DocumentFragment, a shadow root or a detached subtree evaluate
 like Chrome 156: `/` is the context's highest `parentNode` ancestor (the fragment
@@ -34,7 +44,7 @@ namespace-aware foreign elements, and XML documents from the binding's own XML
 parser (`DOMParser` XML types, turbo-dom#186; `xml_documents.rs`). The separate turbo-surf view crate's deliberately
 minimal XPath helper is unchanged.
 
-Eight deterministic Rust/V8 fixtures cover the authored Chrome 155 path/scalar/
+Deterministic Rust/V8 fixtures cover the authored Chrome 155 path/scalar/
 axis matrix; native attributes/text; namespace callbacks and case; snapshot and
 iterator mutation/adoption; receiver/result brands; hard budgets and recovery;
 page builtin poisoning; real XPathEvaluator behavior; and borrowed foreign
