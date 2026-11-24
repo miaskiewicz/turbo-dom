@@ -1,0 +1,34 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "71090e718fe76baf1a0edb5bb2c6fa27ded5b55b9f63d0e4ae3d886d5597221a",
+  "result": [
+    {
+      "mode": "control",
+      "css": true,
+      "parent": "parent",
+      "count": 1,
+      "date": 1
+    },
+    {
+      "mode": "script",
+      "css": true,
+      "parent": "parent",
+      "count": 1,
+      "date": 1
+    },
+    {
+      "mode": "style",
+      "css": true,
+      "parent": "parent",
+      "count": 1,
+      "date": 1
+    },
+    {
+      "mode": "attribute",
+      "css": true,
+      "parent": "parent",
+      "count": 1,
+      "date": 1
+    }
+  ]
+}

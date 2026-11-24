@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **XPath value admission (#548):** relative queries no longer spend their byte allowance
+  on unrelated script, style or module values. The private native adapter admits
+  values only when XPath consumes them, once per node, with the same cumulative
+  byte limit and owner/version guards. Topology and evaluation bounds are unchanged.
+
 - **Live sibling selector ranks (#547):** repeated `nth-child` and `nth-of-type`
   checks share lazy, tree-version-owned sibling ranks instead of rebuilding and
   filtering sibling vectors per element. Mutation invalidation, exact namespace

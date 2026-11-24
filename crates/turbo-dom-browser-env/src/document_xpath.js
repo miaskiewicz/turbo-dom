@@ -106,7 +106,11 @@
   function adapter(data){
     let remaining=200000;
     const spend=()=>{if(--remaining<0)throw failure('NotSupportedError','XPath evaluation exceeds its operation budget');};
-    const rows=data.rows,children=rows.map(()=>[]),proxies=[];
+    const rows=data.rows,children=rows.map(()=>[]),proxies=[],values=[];
+    let remainingBytes=data.remaining;
+    // Values are admitted only when XPath consumes them, once per node. Topology,
+    // names and attribute identities retain the native snapshot's original bounds.
+    const readNodeValue=index=>{spend();if(values[index]!==undefined)return values[index];const read=native('value',data.nodes[index],remainingBytes,data.stamp);remainingBytes-=read[1];return values[index]=read[0];};
     rows.forEach((row,index)=>{if(row[6]!=null)children[row[6]].push(index);});
     const docIndex=rows.findIndex(row=>row[0]===9);
     const parent=index=>rows[index][0]===2?rows[index][8]:rows[index][6];
@@ -122,11 +126,11 @@
       // The proxy's members, split by kind: node fields, tree links, siblings, then methods.
       const methodMember=key=>{
         switch(key){
-          case 'getAttribute':return name=>{const id=attribute(index,undefined,name);return id==null?null:rows[id][5];};
-          case 'getAttributeNS':return (namespace,name)=>{const id=attribute(index,namespace,name);return id==null?null:rows[id][5];};
+          case 'getAttribute':return name=>{const id=attribute(index,undefined,name);return id==null?null:readNodeValue(id);};
+          case 'getAttributeNS':return (namespace,name)=>{const id=attribute(index,namespace,name);return id==null?null:readNodeValue(id);};
           case 'getAttributeNode':return name=>{const id=attribute(index,undefined,name);return id==null?null:proxies[id];};
           case 'hasAttribute':return name=>attribute(index,undefined,name)!=null;
-          case 'getElementById':return value=>{const id=descendants(index).find(id=>rows[id][0]===1&&rows[id][7].some(attr=>{spend();return rows[attr][1]==='id'&&rows[attr][5]===value;}));return proxies[id]||null;};
+          case 'getElementById':return value=>{const id=descendants(index).find(id=>rows[id][0]===1&&rows[id][7].some(attr=>{spend();return rows[attr][1]==='id'&&readNodeValue(attr)===value;}));return proxies[id]||null;};
           case 'contains':return other=>{const id=proxies.indexOf(other);return id===index||id>=0&&ancestor(index,id);};
           case 'compareDocumentPosition':return other=>{spend();const id=proxies.indexOf(other);if(id===index)return 0;if(id<0)return 1;if(ancestor(index,id))return 20;if(ancestor(id,index))return 10;return id>index?4:2;};
           default:return undefined;
@@ -151,7 +155,7 @@
       const fieldMember=key=>{
         switch(key){
           case 'nodeType':return row[0];case 'nodeName':return nodeNameOf();
-          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return row[5];
+          case 'tagName':return row[1];case 'localName':return row[2];case 'namespaceURI':return row[3];case 'prefix':return row[4];case 'nodeValue':case 'value':case 'data':return readNodeValue(index);
           default:return undefined;
         }
       };
