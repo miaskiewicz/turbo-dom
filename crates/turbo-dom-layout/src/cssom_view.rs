@@ -23,3 +23,6 @@ mod body_propagation_tests;
 
 #[cfg(test)]
 mod hit_clip_ownership_tests;
+
+#[cfg(test)]
+mod svg_metrics_tests;

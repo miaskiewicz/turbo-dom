@@ -36,6 +36,7 @@
 
 mod capture;
 mod style;
+mod svg_cssom;
 
 use std::collections::HashMap;
 
@@ -226,13 +227,14 @@ pub fn snapshot<T>(
         svg_viewports: &capture.svg_viewports,
         layout_scale: options.layout_scale,
     };
-    let snapshot = crate::layout_snapshot::snapshot_html_styled_tree_with_native_text(
+    let mut snapshot = crate::layout_snapshot::snapshot_html_styled_tree_with_native_text(
         &styled,
         &capture.identities,
         &options,
         inputs,
         diagnostics,
     )?;
+    snapshot.certify_svg_without_css_box(svg_cssom::classify(&style.tree, capture, &styled));
     Ok((snapshot, collected))
 }
 
