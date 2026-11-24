@@ -24,6 +24,10 @@ fn init_v8() {
 }
 
 fn with_dom_using(independent: bool, test: impl FnOnce(&mut v8::PinScope)) {
+    with_dom_lifecycle(independent, true, test);
+}
+
+fn with_dom_lifecycle(independent: bool, reset: bool, test: impl FnOnce(&mut v8::PinScope)) {
     init_v8();
     let isolate = &mut v8::Isolate::new(snapshot_params());
     isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
@@ -49,7 +53,9 @@ fn with_dom_using(independent: bool, test: impl FnOnce(&mut v8::PinScope)) {
     )
     .unwrap();
     test(scope);
-    browser_env::reset();
+    if reset {
+        browser_env::reset();
+    }
 }
 
 fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
@@ -449,4 +455,24 @@ fn unregistered_custom_names_do_not_inherit_standard_property_interpolation_type
         assert_eq!(animated_value(&sample.targets[0], "--width"), "200px");
         assert!(eval(scope, "__layoutCalls===0").is_true());
     });
+}
+
+#[test]
+fn simultaneous_isolates_keep_animation_ownership_separate() {
+    with_dom(|outer| {
+        eval(outer, "globalThis.effect=document.getElementById('target').animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500");
+        // Creating a nested isolate enters it; dropping it restores the outer isolate.
+        with_dom_lifecycle(true, false, |inner| {
+            eval(inner, "globalThis.effect=document.getElementById('target').animate([{width:'100px'},{width:'300px'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500");
+            let document = object(inner, "document");
+            let snapshot = sample_presented_effects(inner, document, &[]).unwrap();
+            assert_eq!(snapshot.targets.len(), 1);
+            assert!(matches!(&snapshot.targets[0].presentation,
+                PresentedTargetState::Certified { animation, .. }
+                if animation.iter().any(|pair| pair.name == "width" && pair.value == "200px")));
+        });
+        assert!(eval(outer, "effect.cancel();effect.playState==='idle'").is_true());
+    });
+    // A replacement isolate must not inherit weak handles from either destroyed isolate.
+    discovers_paused_waapi_without_css_candidates_and_never_calls_layout();
 }

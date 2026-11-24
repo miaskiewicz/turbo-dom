@@ -9793,8 +9793,6 @@ pub fn flush_ownership(scope: &mut v8::PinScope) {
 pub fn reset() {
     // An embedding's cached runtime may be destroyed after a binding TLS cell.
     // That cell has already released its handles; clear every cell still alive.
-    #[cfg(feature = "host-internals")]
-    animation_ownership::reset();
     dom_ownership::forget_deferred();
     let _ = OTHER_DOMS.try_with(|d| d.borrow_mut().clear());
     let _ = DOM_CONTEXTS.try_with(|d| d.borrow_mut().clear());

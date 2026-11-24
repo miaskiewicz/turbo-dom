@@ -1,6 +1,6 @@
 //! Weak ownership evidence for realm-local canonical effect registries.
 use super::{dom_id_of, DomScope};
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 
 struct TargetOwner {
     animation: v8::Weak<v8::Object>,
@@ -8,8 +8,18 @@ struct TargetOwner {
     document: v8::Weak<v8::Object>,
 }
 
-thread_local! {
-    static TARGETS: RefCell<Vec<TargetOwner>> = const { RefCell::new(Vec::new()) };
+#[derive(Default)]
+struct TargetOwners(RefCell<Vec<TargetOwner>>);
+
+fn owners(scope: &mut v8::PinScope) -> Rc<TargetOwners> {
+    if let Some(owners) = scope.get_slot::<Rc<TargetOwners>>() {
+        return owners.clone();
+    }
+    // Weak handles may only be localized in their creating isolate. The isolate
+    // owns this registry, including its teardown, rather than the current thread.
+    let owners = Rc::new(TargetOwners::default());
+    scope.set_slot(owners.clone());
+    owners
 }
 
 pub(crate) fn update(
@@ -18,8 +28,9 @@ pub(crate) fn update(
     target: Option<v8::Local<v8::Object>>,
     document: v8::Local<v8::Object>,
 ) {
-    TARGETS.with(|owners| {
-        let mut owners = owners.borrow_mut();
+    {
+        let registry = owners(scope);
+        let mut owners = registry.0.borrow_mut();
         owners.retain(|owner| live_owner(scope, owner));
         owners.retain(|owner| owner.animation.to_local(scope) != Some(animation));
         if let Some(target) = target {
@@ -29,7 +40,7 @@ pub(crate) fn update(
                 document: v8::Weak::new(scope, document),
             });
         }
-    });
+    }
 }
 
 fn live_owner(scope: &mut v8::PinScope, owner: &TargetOwner) -> bool {
@@ -59,15 +70,12 @@ pub(crate) fn owns_all_targets(
     document_id: u64,
 ) -> bool {
     let _owner = DomScope::for_object(scope, document);
-    TARGETS.with(|owners| {
-        let mut owners = owners.borrow_mut();
+    {
+        let registry = owners(scope);
+        let mut owners = registry.0.borrow_mut();
         owners.retain(|owner| live_owner(scope, owner));
         owners
             .iter()
             .all(|owner| owns_target(scope, owner, document, document_id))
-    })
-}
-
-pub(crate) fn reset() {
-    let _ = TARGETS.try_with(|owners| owners.borrow_mut().clear());
+    }
 }

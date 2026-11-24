@@ -24,3 +24,12 @@ source and all other guards are still required; no application success is claime
 Underlying-dependent/cross-origin/context and unsupported-value certification is
 still being audited before shipping. The local checkpoint is not permission to
 weaken any consumer refusal, resource limit, coverage floor or assertion.
+
+The simultaneous-isolate consumer control exposed a real ownership-index defect:
+a thread-local registry attempted to localize another isolate's weak handle.
+The producer regression reproduced an abort before the fix. The registry now
+belongs to an isolate slot and retains only weak page references; neither a
+thread reset nor another isolate can clear or traverse it. All 18 public host
+controls pass, including same-thread nested isolates, cancellation after restoring
+the outer isolate, replacement-isolate teardown and existing foreign/adoption
+refusals. These focused results do not replace the remaining release gates.
