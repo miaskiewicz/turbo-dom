@@ -139,12 +139,29 @@ Also in the crate:
   - `current_document_id`, `document_id_of`, `is_browsing_context`,
     `current_document_context`, `retire_context`;
   - `interface_record`, `cascade_policy`;
+  - `cached_own_box(scope, element)` and `CachedOwnBox`: cache-only own
+    `display:none` admission for visual bounding/client rectangles;
   - `css_effect_lifecycle(scope, element)` and `CssEffectSnapshot`: trusted per-element
     CSS/Web Animations lifecycle inspection for native geometry (see below);
   - re-exports of `Tree`, `Handle`, `StylePolicy`, `zoom_value` and the snapshot types.
 - `test_support` has 98 constants named after their files (for example
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
+
+**Cache-only visual rectangles (#549).** `cached_own_box(scope, element)` returns
+`CachedOwnBox::DisplayNone` only when a valid private computed-style snapshot
+proves invariant own `display:none`. `Unknown` retains the embedder's normal
+geometry path and errors. Cold/stale entries, animation, uncertain CSS groups,
+foreign or detached ownership, shadow trees, `display:contents` and ancestor-only
+hiding do not grant a proof. Capability metadata considers potentially applicable
+declarations even inside currently inactive media/supports branches. The probe
+does not evaluate media, recompute style, inspect animation lifecycle, call layout
+providers or access guest getters. Use explicit microtask checkpoints for the
+isolate and any attached context queue, and consume the result synchronously
+without guest reentry. It permits empty bounding/client rectangles only, never
+substitutes for used-size, client, offset, scroll or viewport metrics. The public
+offline capture example and validation receipt are documented in
+[`cached-own-box-0.8.7.md`](../../tools/release/cached-own-box-0.8.7.md).
 
 **Native geometry and animations (#507).** With `host-internals`,
 `css_effect_lifecycle(scope, element)` enters the wrapper's creation realm and native

@@ -261,3 +261,55 @@ fn assert_style_revisions(scope: &mut v8::PinScope) {
     )
     .is_true());
 }
+
+#[test]
+fn cached_own_box_is_a_public_host_only_visual_rect_proof() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    {
+        v8::scope!(let scope,isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        browser_env::install_html(
+            scope,
+            "<!doctype html><style id=module>/* module */</style>",
+        );
+        let element = object(scope, "document.getElementById('module')");
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+        eval(
+            scope,
+            "getComputedStyle(document.getElementById('module')).position",
+        );
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::DisplayNone);
+        eval(
+            scope,
+            "document.getElementById('module').style.display='block'",
+        );
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+    }
+    browser_env::reset();
+}
+
+#[test]
+fn cached_own_box_survives_startup_snapshot_rehydration() {
+    init_v8();
+    let mut window =
+        browser_env::install_from_snapshot("<!doctype html><style id=module>/* module */</style>")
+            .unwrap();
+    let (isolate, context) = window.parts();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    {
+        v8::scope!(let scope,isolate);
+        let context = v8::Local::new(scope, context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        let element = object(scope, "document.getElementById('module')");
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+        eval(
+            scope,
+            "getComputedStyle(document.getElementById('module')).position",
+        );
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::DisplayNone);
+    }
+    browser_env::reset();
+}

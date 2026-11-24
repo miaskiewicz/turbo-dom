@@ -35,6 +35,10 @@ pub use css_effect_lifecycle::{
     css_effect_lifecycle, CssEffectKind, CssEffectLifecycle, CssEffectPhase, CssEffectSnapshot,
 };
 
+#[path = "cached_own_box.rs"]
+mod cached_own_box;
+pub use cached_own_box::{cached_own_box, CachedOwnBox};
+
 pub use crate::browser_env::auxiliary_contexts::{
     commit_isolated_navigation as commit_isolated_auxiliary_navigation,
     commit_navigation as commit_auxiliary_navigation,

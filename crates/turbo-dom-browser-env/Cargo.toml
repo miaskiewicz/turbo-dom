@@ -62,3 +62,7 @@ required-features = ["host-internals"]
 [[test]]
 name = "test_support_api"
 required-features = ["test-support"]
+
+[[example]]
+name = "cached_own_box_capture"
+required-features = ["host-internals"]
