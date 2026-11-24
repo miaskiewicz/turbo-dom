@@ -192,7 +192,8 @@ fn resolve_data_image(
     data: std::sync::Arc<Vec<u8>>,
     options: &usvg::Options,
 ) -> Result<Option<usvg::ImageKind>, SvgResourceError> {
-    // Classify raster headers before the decoder can allocate pixel buffers.
+    // Reuse the shared byte classifier and usvg's signature-based resolver: MIME
+    // aliases such as img/png do not change the embedded image's actual format.
     let raster = matches!(
         crate::image::sniff(&data),
         Some(
@@ -207,7 +208,7 @@ fn resolve_data_image(
             return Ok(None);
         }
         return Ok(usvg::ImageHrefResolver::default_data_resolver()(
-            mime,
+            "text/plain",
             data,
             options,
         ));
