@@ -23,3 +23,13 @@ Capture refresh and every new live-tree layout still check the original full `Tr
 Final per-command test/coverage/commit receipts are recorded in `.evidence/document-checkpoint/FINAL-GATES.json` and `INTEGRATION.json`. The floors remain core 100% and binding 97.6%, with the existing CC9 limit. Producer API controls include detached React-like HTML/SVG construction, connected attribute/text/UTF16/form/custom state, quiet/global invalidation, old/new parent transitions, storage collection/replacement, independent trees/realms, invalid brands, inert/retired/shadow owners, unaccounted versions, malformed low-level root reparenting, default install and startup-snapshot rehydration.
 
 Producer validation does not establish that the original application mapping step fits its unchanged consumer execution budget. Surf owns coherent repinning, actual artifact rebuild and that acceptance replay.
+
+Verified implementation: `5dd8ef9d42974d4eb52f2c2d5519c13292443f9a`.
+Final frozen-source workspace: **3,219 passed, 0 failed, 13 existing ignored**;
+default binding: **838 passed, 0 failed, 4 existing ignored**;
+all-feature layout: **1,299 passed, 0 failed, 0 ignored**. Strict workspace and
+all-feature Clippy, formatting, CC9, version/single-V8 guards passed. Core LLVM
+coverage **13,479/13,479 (100%)**; binding **22,742/23,291 (97.642866%)**, above the
+unchanged 97.6% floor. Allocation controls match the prior receipt: churn 372
+allocations / 82,270 bytes per operation (ceilings 380 / 85,000); warmed sibling
+ranks 0 allocations / 0 bytes for 1,024 matches. No budgets or assertions changed.
