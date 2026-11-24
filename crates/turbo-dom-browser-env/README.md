@@ -168,10 +168,13 @@ offline capture example and validation receipt are documented in
 **Connected-document checkpoints (#552).** `document_checkpoint(scope, native_document)`
 returns an opaque `Some` token only for the exact native document and its live creation
 realm under explicit microtask checkpoints. Compare fresh tokens to recognize audited
-unrelated detached construction. `None` (including shadow-bearing trees, inert/retired
+unrelated detached construction. `None` (including uncertain native shadow ownership, inert/retired
 owners and unaccounted native versions) keeps ordinary full-version handling. Connected
 attribute/text/child/form/custom-state mutations, global invalidation and storage
-collection invalidate the token conservatively. It reads no guest properties, cascade,
+collection invalidate the token conservatively. Open and closed shadow trees use
+native shadow-inclusive ownership; slot/name/light-DOM changes invalidate as connected
+mutations. Detached construction remains unrelated even when a connected shadow root
+exists. Malformed or nonreciprocal native shadow mappings never supply proof. It reads no guest properties, cascade,
 resources or layout. The host must retain every CSSOM, live-state, composition,
 resource, viewport and query-admission check. `Tree.version` remains the broad storage
 revision: recapture normally and check that full version before every live layout;

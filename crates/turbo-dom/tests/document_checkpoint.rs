@@ -59,7 +59,7 @@ fn connected_changes_and_detach_invalidate_before_ownership_is_lost() {
 }
 
 #[test]
-fn foreign_tree_untracked_version_and_shadow_refuse_equivalence() {
+fn foreign_tree_untracked_version_and_malformed_shadow_refuse_equivalence() {
     let mut tree = Tree::parse("<div id=host></div>");
     let saved = checkpoint(&tree);
     let other = Tree::parse("<div id=host></div>");
@@ -69,8 +69,8 @@ fn foreign_tree_untracked_version_and_shadow_refuse_equivalence() {
     assert!(!tree.document_unchanged_since(saved));
     tree.create_element("div");
     assert!(!tree.document_unchanged_since(saved));
-    let host = tree.get_element_by_id("host").unwrap();
-    tree.attach_shadow(host);
+    let non_element = tree.create_text_node("invalid shadow host");
+    tree.attach_shadow(non_element);
     assert!(tree.document_checkpoint().is_none());
 }
 
@@ -187,5 +187,156 @@ fn malformed_low_level_document_reparenting_never_proves_equivalence() {
     assert!(tree.document_checkpoint().is_none());
     assert!(!tree.document_unchanged_since(saved));
     tree.remove_child(detached, tree.root());
+    assert!(!tree.document_unchanged_since(saved));
+}
+
+#[test]
+fn detached_shadow_component_does_not_hide_unchanged_document_inputs() {
+    let mut tree = Tree::parse("<main id=live>connected</main>");
+    let host = tree.create_element("div");
+    let shadow = tree.attach_shadow(host);
+    let saved = checkpoint(&tree);
+    let version = tree.version;
+    for _ in 0..6 {
+        let wrapper = tree.create_element("span");
+        tree.set_attribute(wrapper, "class", "MuiAutocomplete-inputRoot");
+        tree.set_text_content(wrapper, "detached");
+        tree.append_child(shadow, wrapper);
+        assert!(tree.document_unchanged_since(saved));
+    }
+    assert!(tree.version > version);
+    let live = tree.get_element_by_id("live").unwrap();
+    tree.append_child(shadow, live);
+    assert!(
+        !tree.document_unchanged_since(saved),
+        "old connected parent invalidates"
+    );
+    let saved = checkpoint(&tree);
+    let body = tree.query_selector("body").unwrap();
+    tree.append_child(body, host);
+    assert!(
+        !tree.document_unchanged_since(saved),
+        "connected host insertion invalidates"
+    );
+    tree.remove_child(body, host);
+    assert!(
+        !tree.document_unchanged_since(saved),
+        "host attachment cannot resurrect old proof"
+    );
+}
+
+#[test]
+fn connected_shadow_preserves_unrelated_detached_construction_and_tracks_slots() {
+    let mut tree = Tree::parse("<div id=host><span id=light slot=one>light</span></div>");
+    let host = tree.get_element_by_id("host").unwrap();
+    let light = tree.get_element_by_id("light").unwrap();
+    let shadow = tree.attach_shadow(host);
+    let slot = tree.create_element("slot");
+    tree.set_attribute(slot, "name", "one");
+    tree.append_child(shadow, slot);
+    let saved = checkpoint(&tree);
+    let version = tree.version;
+    for _ in 0..6 {
+        let detached = tree.create_element("div");
+        tree.set_attribute(detached, "class", "MuiAutocomplete-inputRoot");
+        tree.set_attribute(detached, "style", "width:100px");
+        tree.set_text_content(detached, "unrelated");
+        assert!(tree.document_unchanged_since(saved));
+    }
+    assert!(tree.version > version);
+    tree.set_attribute(light, "slot", "two");
+    assert!(!tree.document_unchanged_since(saved));
+    let saved = checkpoint(&tree);
+    tree.set_attribute(slot, "name", "two");
+    assert!(!tree.document_unchanged_since(saved));
+    let saved = checkpoint(&tree);
+    tree.set_text_content(slot, "fallback");
+    assert!(!tree.document_unchanged_since(saved));
+}
+
+#[test]
+fn nested_shadow_changes_and_moves_follow_shadow_including_ownership() {
+    let mut tree = Tree::parse("<main id=live><div id=host></div></main>");
+    let host = tree.get_element_by_id("host").unwrap();
+    let shadow = tree.attach_shadow(host);
+    let nested_host = tree.create_element("section");
+    tree.append_child(shadow, nested_host);
+    let nested = tree.attach_shadow(nested_host);
+    let child = tree.create_element("input");
+    tree.append_child(nested, child);
+    let mut saved = checkpoint(&tree);
+    tree.set_attribute(child, "style", "width:25px");
+    assert!(!tree.document_unchanged_since(saved));
+    saved = checkpoint(&tree);
+    tree.set_form_property(child, FormProp::Checked, true);
+    assert!(!tree.document_unchanged_since(saved));
+    saved = checkpoint(&tree);
+    tree.set_custom_state_utf16(child, &[97], true);
+    assert!(!tree.document_unchanged_since(saved));
+    let detached = tree.create_element("div");
+    let detached_shadow = tree.attach_shadow(detached);
+    saved = checkpoint(&tree);
+    tree.append_child(detached_shadow, child);
+    assert!(
+        !tree.document_unchanged_since(saved),
+        "old shadow parent invalidates removal"
+    );
+    saved = checkpoint(&tree);
+    tree.set_attribute(child, "style", "width:50px");
+    assert!(
+        tree.document_unchanged_since(saved),
+        "detached shadow contents are unrelated"
+    );
+    tree.append_child(nested, child);
+    assert!(
+        !tree.document_unchanged_since(saved),
+        "new connected shadow parent invalidates"
+    );
+    let live = tree.get_element_by_id("live").unwrap();
+    saved = checkpoint(&tree);
+    tree.remove_child(live, host);
+    assert!(!tree.document_unchanged_since(saved));
+    saved = checkpoint(&tree);
+    tree.set_attribute(child, "style", "width:75px");
+    assert!(tree.document_unchanged_since(saved));
+    tree.append_child(live, host);
+    assert!(!tree.document_unchanged_since(saved));
+}
+
+#[test]
+fn malformed_shadow_replacement_refuses_checkpoint() {
+    let mut tree = Tree::parse("<div id=host></div>");
+    let host = tree.get_element_by_id("host").unwrap();
+    tree.attach_shadow(host);
+    let saved = checkpoint(&tree);
+    tree.attach_shadow(host);
+    assert!(
+        tree.document_checkpoint().is_none(),
+        "unsupported duplicate attachment loses graph provenance"
+    );
+    assert!(!tree.document_unchanged_since(saved));
+}
+
+#[test]
+fn connected_shadow_collection_preserves_graph_but_invalidates_old_checkpoint() {
+    use turbo_dom::rtdom::tree::CollectionBudget;
+    let mut tree = Tree::parse("<div id=host></div>");
+    let host = tree.get_element_by_id("host").unwrap();
+    let shadow = tree.attach_shadow(host);
+    let child = tree.create_element("input");
+    tree.append_child(shadow, child);
+    let saved = checkpoint(&tree);
+    tree.collect_unreachable(
+        &[],
+        CollectionBudget {
+            max_nodes: 100,
+            max_edges: 1000,
+            max_payload_bytes: 10000,
+        },
+    )
+    .unwrap();
+    assert!(!tree.document_unchanged_since(saved));
+    let saved = checkpoint(&tree);
+    tree.set_form_property(child, FormProp::Checked, true);
     assert!(!tree.document_unchanged_since(saved));
 }

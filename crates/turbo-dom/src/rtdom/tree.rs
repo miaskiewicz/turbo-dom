@@ -1810,6 +1810,20 @@ impl Tree {
         !self.shadow_root_of_host.is_empty()
     }
 
+    /// Only native, reciprocal shadow ownership is checkpoint evidence. Low-level
+    /// unsupported attachments (including replacing a root) retain the fallback.
+    pub(super) fn checkpoint_shadow_graph_valid(&self) -> bool {
+        self.shadow_root_of_host.len() == self.host_of_shadow_root.len()
+            && self.shadow_root_of_host.iter().all(|(host, root)| {
+                self.is_live(*host)
+                    && self.node_type(*host) == NodeType::Element
+                    && self.is_live(*root)
+                    && self.node_type(*root) == NodeType::Fragment
+                    && self.parent(*root).is_none()
+                    && self.host_of_shadow_root.get(root) == Some(host)
+            })
+    }
+
     fn record_event(
         &mut self,
         record: crate::rtdom::mutations::MutationRecord,

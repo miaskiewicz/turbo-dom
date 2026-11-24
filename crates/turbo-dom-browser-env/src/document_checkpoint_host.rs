@@ -12,7 +12,7 @@ pub struct DocumentCheckpoint {
 
 /// Read an exact native Document's checkpoint, without invoking guest code or layout.
 /// Compare fresh `Some` tokens only; `None` requires normal full-version handling.
-/// The isolate must use explicit microtask checkpoints. Shadow, inert, retired,
+/// The isolate must use explicit microtask checkpoints. Unproven shadow graphs, inert, retired,
 /// foreign-owner and unaccounted native-version states are conservatively refused.
 #[must_use]
 pub fn document_checkpoint(
