@@ -11,6 +11,7 @@ use cssparser::{
     parse_important, AtRuleParser, CowRcStr, DeclarationParser, ParseError, Parser, ParserInput,
     ParserState, QualifiedRuleParser, RuleBodyItemParser, RuleBodyParser,
 };
+use std::ops::Range;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Entry {
@@ -351,7 +352,7 @@ impl DeclarationBlock {
 struct DeclarationList;
 
 impl<'i> DeclarationParser<'i> for DeclarationList {
-    type Declaration = (String, String, bool);
+    type Declaration = (String, Range<usize>, bool);
     type Error = ();
     fn parse_value<'t>(
         &mut self,
@@ -365,23 +366,23 @@ impl<'i> DeclarationParser<'i> for DeclarationList {
             Ok::<_, ParseError<'i, ()>>(())
         });
         value?;
-        let text = input.slice_from(start).trim().to_string();
+        let range = start.byte_index()..input.position().byte_index();
         let important = input.try_parse(parse_important).is_ok();
         input.expect_exhausted()?;
-        Ok((name.to_string(), text, important))
+        Ok((name.to_string(), range, important))
     }
 }
 impl AtRuleParser<'_> for DeclarationList {
     type Prelude = ();
-    type AtRule = (String, String, bool);
+    type AtRule = (String, Range<usize>, bool);
     type Error = ();
 }
 impl QualifiedRuleParser<'_> for DeclarationList {
     type Prelude = ();
-    type QualifiedRule = (String, String, bool);
+    type QualifiedRule = (String, Range<usize>, bool);
     type Error = ();
 }
-impl RuleBodyItemParser<'_, (String, String, bool), ()> for DeclarationList {
+impl RuleBodyItemParser<'_, (String, Range<usize>, bool), ()> for DeclarationList {
     fn parse_declarations(&self) -> bool {
         true
     }
@@ -393,10 +394,27 @@ impl RuleBodyItemParser<'_, (String, String, bool), ()> for DeclarationList {
 /// A declaration list's `(name, value, important)` declarations, in order.
 #[must_use]
 pub fn declarations(text: &str) -> Vec<(String, String, bool)> {
+    collect_declarations(text, |(name, range, important)| {
+        (name, text[range].trim().to_string(), important)
+    })
+}
+
+/// Raw declaration values (including surrounding whitespace) as scalar byte ranges. The same
+/// parser serves DOM-string adapters that retain code units outside its view.
+#[must_use]
+pub fn declaration_ranges(text: &str) -> Vec<(String, Range<usize>, bool)> {
+    collect_declarations(text, std::convert::identity)
+}
+
+fn collect_declarations<T>(
+    text: &str,
+    map: impl FnMut((String, Range<usize>, bool)) -> T,
+) -> Vec<T> {
     let mut source = ParserInput::new(text);
     let mut input = Parser::new(&mut source);
     let mut parser = DeclarationList;
     RuleBodyParser::new(&mut input, &mut parser)
         .filter_map(Result::ok)
+        .map(map)
         .collect()
 }

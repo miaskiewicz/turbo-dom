@@ -18,7 +18,8 @@ mod shape;
 mod table;
 
 pub use block::{
-    declarations, longhand_alias, DeclarationBlock, LonghandSpelling, LONGHAND_ALIASES,
+    declaration_ranges, declarations, longhand_alias, DeclarationBlock, LonghandSpelling,
+    LONGHAND_ALIASES,
 };
 use components::{components, has_substitution, substitution_text, CSS_WIDE};
 pub use longhand::{longhand_value, Spelled};
