@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **Cached own-box proof (#549):** host embedders can inspect an already-valid,
+  invariant own `display:none` cache entry before requesting visual rectangles.
+  The host-only probe computes no style or layout and returns `Unknown` for cold,
+  stale, animated or uncertain entries. Existing geometry and metric APIs retain
+  their normal behavior.
+
 - **XPath value admission (#548):** relative queries no longer spend their byte allowance
   on unrelated script, style or module values. The private native adapter admits
   values only when XPath consumes them, once per node, with the same cumulative

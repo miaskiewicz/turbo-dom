@@ -7287,6 +7287,17 @@ fn parse_css_native(
     }
     if args.get(1).is_string() {
         let mode = args.get(1).to_rust_string_lossy(scope);
+        if mode == "ordinary-type" {
+            let name = args.get(2).to_rust_string_lossy(scope);
+            let may_target =
+                turbo_dom_parser::rtdom::query::parse_for_cascade(&source).map_or(true, |list| {
+                    list.selectors()
+                        .iter()
+                        .any(|selector| selector.may_target_ordinary_type(&name))
+                });
+            rv.set_bool(may_target);
+            return;
+        }
         if parse_css_string_mode(scope, &source, &mode, &mut rv) {
             return;
         }
@@ -8174,6 +8185,10 @@ fn computed_font_context<'s>(
 
 pub fn register_css_parser(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
+    if let Some(namespace) = engine_namespace(scope) {
+        let own_box = v8::Boolean::new(scope, cfg!(feature = "host-internals"));
+        set_prop(scope, namespace, "cachedOwnBoxEnabled", own_box.into());
+    }
     bind_method(scope, global, "__parseCssNative", parse_css_native);
     css_shorthand::register(scope, global);
     bind_method(

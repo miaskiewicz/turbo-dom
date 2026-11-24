@@ -84,6 +84,32 @@ impl CascadeSelector {
         self.specificity
     }
 
+    /// A necessary ordinary-element type constraint, ignoring state and namespace.
+    /// `true` includes uncertain/composed pseudo-elements; it is not a match verdict.
+    #[must_use]
+    pub fn may_target_ordinary_type(&self, local_name: &str) -> bool {
+        if local_name.is_empty() {
+            return true;
+        }
+        match &self.pseudo_element {
+            Some(PseudoElement::Inert(name)) if matches!(name.as_str(), "before" | "after") => {
+                false
+            }
+            Some(_) => true,
+            None => {
+                let subject = self
+                    .complex
+                    .rest
+                    .last()
+                    .map_or(&self.complex.first, |(_, compound)| compound);
+                subject
+                    .tag
+                    .as_deref()
+                    .is_none_or(|tag| tag.eq_ignore_ascii_case(local_name))
+            }
+        }
+    }
+
     /// The pseudo-element it targets (lowercase name, e.g. `before`), if any.
     #[must_use]
     pub fn pseudo_element(&self) -> Option<&str> {
@@ -1676,5 +1702,37 @@ mod tests {
             &lonely,
             &cache.group(ul, Vec::<(Handle, u8)>::new)
         ));
+    }
+    #[test]
+    fn ordinary_subject_type_is_a_conservative_necessary_condition() {
+        let may = |source: &str, name: &str| {
+            parse_for_cascade(source)
+                .unwrap()
+                .selectors()
+                .iter()
+                .any(|selector| selector.may_target_ordinary_type(name))
+        };
+        for source in [
+            ".x > span",
+            ".x h1",
+            "input:checked::before",
+            "style::before",
+            "style::after",
+        ] {
+            assert!(!may(source, "style"), "{source}");
+        }
+        for source in [
+            "STYLE",
+            "s\\74 yle",
+            ":is(span, .x)",
+            "slot::slotted(span)",
+            "div::part(label)",
+            "input::first-letter",
+            "span, style",
+        ] {
+            assert!(may(source, "style"), "{source}");
+        }
+        assert!(may("span", ""));
+        assert!(may("span", "SPAN"));
     }
 }

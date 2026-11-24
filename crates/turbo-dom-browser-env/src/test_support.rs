@@ -25,6 +25,11 @@ pub fn frame_read_should_throw(
     crate::browser_env::interceptor_mode::frame_read_should_throw(scope, args)
 }
 
+/// Independent cached own-box geometry control (Chromium 159).
+pub const CACHED_OWN_BOX_CHROME159_JSON: &str = include_str!("cached_own_box_chrome159.json");
+/// Shared offline geometry fixture/probe for host admission controls.
+pub const CACHED_OWN_BOX_PROBE_JS: &str = include_str!("cached_own_box_probe.js");
+
 /// `src/abstract_ranges_chrome155.json`.
 pub const ABSTRACT_RANGES_CHROME155_JSON: &str = include_str!("abstract_ranges_chrome155.json");
 /// `src/abstract_ranges_frames_chrome155.json`.
@@ -356,6 +361,14 @@ pub const FILES: &[(&str, &[u8])] = &[
     (
         "auxiliary_window_names_probe.js",
         AUXILIARY_WINDOW_NAMES_PROBE_JS.as_bytes(),
+    ),
+    (
+        "cached_own_box_chrome159.json",
+        CACHED_OWN_BOX_CHROME159_JSON.as_bytes(),
+    ),
+    (
+        "cached_own_box_probe.js",
+        CACHED_OWN_BOX_PROBE_JS.as_bytes(),
     ),
     ("computed_defaults_cases.json", COMPUTED_DEFAULTS_CASES_JSON),
     (

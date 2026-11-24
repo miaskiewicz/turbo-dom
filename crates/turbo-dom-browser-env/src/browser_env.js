@@ -152,6 +152,7 @@
   var styleShareOff=g.__styleShareOff;delete g.__styleShareOff;
   // Test builds only: counts CSS animation / transition update passes (animations.js cssUpdate).
   if(g.__noteCssUpdatePass){__tsNs.noteCssUpdatePass=g.__noteCssUpdatePass;delete g.__noteCssUpdatePass;}
+  var cachedOwnBoxEnabled=__tsNs.cachedOwnBoxEnabled===true;
   var cssomEpoch=g.__cssomEpoch,bumpCssomEpoch=g.__bumpCssomEpoch;delete g.__cssomEpoch;delete g.__bumpCssomEpoch;
   var cssomStructureEpoch=g.__cssomStructureEpoch,bumpCssomStructure=g.__bumpCssomStructure;delete g.__cssomStructureEpoch;delete g.__bumpCssomStructure;
   // The native live-state epoch (form / popover / dialog state the tree version misses); the
@@ -461,7 +462,7 @@
     ['audio:not([controls])', 'none'],
     ['details > summary:first-of-type', 'list-item'],
   ];
-  function computedNativeMatches(el, selector){ try { return !!cssApply(computedStyleNativeMatches, el, [selector]); } catch(e){ return false; } }
+  function computedNativeMatches(el, selector){ try { return !!cssApply(computedStyleNativeMatches, el, [selector]); } catch(e){ computedBoxFailure=true;return false; } }
   function computedUserAgentMathBox(el, namespace){
     var parent = null; try { var context = computedFontContext(el); parent = context ? context[2] : null; } catch(e){}
     var parentNamespace = ''; try { if (parent) parentNamespace = cssApply(computedStyleNativeNamespace, parent, []); } catch(e){}
@@ -1295,7 +1296,7 @@
   // something outside the key is volatile and never reused: a rule over view-transition or
   // interest state that could match, an animated element, the fullscreen element
   // (viewport-sized), an @import's media query.
-  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false;
+  var computedStyleCache=new computedSnapshotMap(),computedVolatile=false,computedStateRead=false,computedBoxFailure=false;
   function invalidateComputedStyles(){bumpCssomStructure();}
   __ns.invalidateComputedStyles=invalidateComputedStyles;
   // What a CSS animation / transition update reads beyond the element's own values
@@ -1372,8 +1373,9 @@
   function computedWorldStamp(el){var full,selector;try{full=computedStyleVersion(el);selector=computedStyleSelectorVersion(el);}catch(e){return null;}return typeof full==='number'&&typeof selector==='number'?[full,selector,cssomEpoch(),styleStateEpoch()]:null;}
   function computedStampEqual(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]&&a[3]===b[3];}
   function computedMarkStable(el,entry){
-    var stamp=computedWorldStamp(el);entry.stable=null;if(!stamp)return;
+    var stamp=computedWorldStamp(el);entry.stable=null;entry.ownNone=false;if(!stamp)return;
     for(var index=0;index<entry.deps.length;index+=2){var dep=computedSnapshotGet(computedStyleCache,entry.deps[index]);if(!dep||dep.snapshot!==entry.deps[index+1]||!computedStampEqual(dep.stable,computedWorldStamp(entry.deps[index])))return;}
+    if(!ownBoxRefreshStable(el,entry,stamp))return;
     entry.stable=stamp;
   }
   function computedStableHit(el){
@@ -1383,6 +1385,94 @@
     if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return null;
     return entry.snapshot;
   }
+  function ownBoxRefreshStable(el,entry,stamp){
+    if(!cachedOwnBoxEnabled)return true;
+    if(entry.boxFailed)return false;
+    entry.ownNone=computedSnapshotValue(entry.snapshot,'display')==='none'&&ownBoxCapability(el,entry);
+    if(!computedStampEqual(stamp,computedWorldStamp(el))){entry.ownNone=false;return false;}
+    return true;
+  }
+  // A display-none proof is invariant across media/supports only when every
+  // potentially applicable declaration can keep, but never reveal, the own box.
+  var ownBoxImpacts=new computedSnapshotMap();
+  function ownBoxDeclarationRisk(style){
+    var record=declarationRecord(style);
+    for(var index=0;index<record.names.length;index++){
+      var name=$c.toLowerCase(record.names[index]),value=$c.get(record.values,name);
+      if(name==='all'||$c.test(/^(?:-webkit-)?(?:animation|transition)(?:-|$)/,name))return true;
+      if(name==='display'&&(!value||$c.trim(value.text)!=='none'))return true;
+    }
+    return false;
+  }
+  function ownBoxStyleImpact(record,index){
+    if(ownBoxDeclarationRisk(record.style)){
+      var selector=record.effectiveSelector||record.selectorText;
+      $c.push(index.rules,{__proto__:null,selector:selector,keys:cssRuleKeys(selector),tag:null,may:true});
+    }
+    if(record.cssRules)ownBoxImpactRules(record.cssRules,index);
+  }
+  var ownBoxGroups={__proto__:null,media:1,supports:1,layer:1,scope:1};
+  var ownBoxIgnored={__proto__:null,5:1,7:1};
+  function ownBoxImpactRules(rules,index){
+    var items=cssItems(rules);
+    for(var at=0;at<items.length&&!index.unsafe;at++){
+      var record=cssRuleRecord(items[at]),kind=record.kind;
+      if(record.type===1)ownBoxStyleImpact(record,index);
+      else if(ownBoxIgnored[record.type]||kind==='layer-statement')continue;
+      else if(ownBoxGroups[kind])ownBoxImpactRules(record.cssRules,index);
+      else index.unsafe=true;
+    }
+  }
+  function ownBoxImpactIndex(sheets){
+    var epoch=cssomEpoch(),index=computedSnapshotGet(ownBoxImpacts,sheets);
+    if(index&&index.epoch===epoch)return index;
+    index={__proto__:null,epoch:epoch,rules:[],unsafe:false,signature:null,result:false};
+    for(var at=0;at<sheets.length&&!index.unsafe;at++){
+      var record=sheetRecord(sheets[at]);
+      if(!record.originClean){index.unsafe=true;break;}
+      ownBoxImpactRules(record.rules,index);
+    }
+    computedSnapshotSet(ownBoxImpacts,sheets,index);
+    return index;
+  }
+  function ownBoxRulePossible(rule,own,tag){
+    if(rule.keys){var found=false;for(var at=0;at<rule.keys.length;at++)if(own[rule.keys[at]]){found=true;break;}if(!found)return false;}
+    if(rule.tag!==tag){rule.tag=tag;rule.may=true;rule.may=cssNativeParse(rule.selector,'ordinary-type',tag)!==false;}
+    return rule.may;
+  }
+  function ownBoxSignature(tag,own){
+    var signature=tag.length+':'+tag;
+    for(var key in own)signature+=key.length+':'+key;
+    return signature;
+  }
+  function ownBoxIndexAllows(index,own,tag){
+    if(index.unsafe)return false;
+    var signature=ownBoxSignature(tag,own);
+    if(index.signature===signature)return index.result;
+    index.signature=signature;index.result=false;
+    for(var at=0;at<index.rules.length;at++)if(ownBoxRulePossible(index.rules[at],own,tag))return false;
+    index.result=true;return true;
+  }
+  function ownBoxOwnerEligible(el,key){
+    return key.owner===d&&!computedAdopted(d)&&computedFrameRoot(el)===null&&cssApply(computedStyleNativeRoot,el,[])===d;
+  }
+  function ownBoxCapability(el,key){
+    try{
+      if(!ownBoxOwnerEligible(el,key))return false;
+      var inline=key.inline===null?$c.call(appliedInlineRead,el):key.inline;
+      if(typeof inline!=='string'||inline&&ownBoxDeclarationRisk(cssDeclaration(inline)))return false;
+      var own=cssElementKeys(el);if(!own)return false;
+      var tag=$c.toLowerCase(cssApply(computedStyleNativeTag,el,[]));
+      return ownBoxIndexAllows(ownBoxImpactIndex(computedSheets(el)),own,tag);
+    }catch(e){return false;}
+  }
+  __ns.peekCachedOwnBox=function(el){
+    if(computedEffectInspection)return false;
+    var entry=computedSnapshotGet(computedStyleCache,el);
+    if(!entry||!entry.ownNone||!entry.stable||!computedStampEqual(entry.stable,computedWorldStamp(el)))return false;
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el)))return false;
+    return computedSnapshotValue(entry.snapshot,'display')==='none';
+  };
   // turbo-test#227 part 2: the cascaded declarations (rules, UA tables, inline style; before
   // inheritance, animations and used values) of an element whose computed style is volatile
   // only after them, reused under the same key as a computed style while it holds.
@@ -1399,7 +1489,7 @@
     return entry.base;
   }
   function computedBaseCapture(decl,priorities,uaValues,decoration){
-    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,decoration:decoration,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead};
+    var out={__proto__:null,decl:{__proto__:null},priorities:{__proto__:null},ua:null,decoration:decoration,media:{__proto__:null},volatile:computedVolatile,stateRead:computedStateRead,boxFailed:computedBoxFailure};
     for(var name in decl)if(typeof decl[name]!=='function'&&name!=='length')out.decl[name]=decl[name];
     for(var name in priorities)out.priorities[name]=priorities[name];
     if(uaValues){out.ua={__proto__:null};for(var name in uaValues)out.ua[name]=uaValues[name];}
@@ -1409,7 +1499,7 @@
   function computedBaseRestore(base,decl,priorities){
     for(var name in base.decl)decl[name]=base.decl[name];
     for(var name in base.priorities)priorities[name]=base.priorities[name];
-    computedMergeMedia(base.media);if(base.stateRead)computedStateRead=true;
+    computedMergeMedia(base.media);if(base.stateRead)computedStateRead=true;if(base.boxFailed)computedBoxFailure=true;
   }
   // Style sharing (turbo-dom#307 part 2, after Blink's): a new element takes the cascaded
   // declarations of a recently cascaded sibling (same parent, unchanged since: the parent's
@@ -1485,22 +1575,22 @@
     record.signatures[probe.signature]={__proto__:null,base:base,tests:tests};
   }
   function computeStyleSnapshotRun(el,snapshots,sink,pseudo,key){
-    var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,media={__proto__:null},snapshot,volatile,stateRead,state=styleStateEpoch();
-    computedVolatile=false;computedStateRead=false;computedMediaReads=media;
+    var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure,media={__proto__:null},snapshot,volatile,stateRead,boxFailed,state=styleStateEpoch();
+    computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads=media;
     var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
-    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;}
-    finally{computedVolatile=outer;computedStateRead=outerState;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
-    return {snapshot:snapshot,volatile:volatile,stateRead:stateRead,state:state,media:media,deps:deps,base:base,before:before};
+    try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;boxFailed=computedBoxFailure;}
+    finally{computedVolatile=outer;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
+    return {snapshot:snapshot,volatile:volatile,stateRead:stateRead,state:state,media:media,deps:deps,base:base,before:before,boxFailed:boxFailed};
   }
   // Host lifecycle inspection resolves the underlying cascade without composing effects or
   // asking the embedder for geometry. These temporary snapshots never enter the shared cache.
   var computedEffectInspection=false;
   __ns.refreshCssEffectInputs=function(el){
     if(computedEffectInspection)return false;
-    var outerVolatile=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads;
-    computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedMediaReads={__proto__:null};
+    var outerVolatile=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure;
+    computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads={__proto__:null};
     try{computeStyleSnapshot(el,new computedSnapshotMap());return true;}
-    finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedMediaReads=outerMedia;}
+    finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
   };
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
@@ -1513,7 +1603,7 @@
     if(key){var hit=computedCacheHit(el,key,snapshots);if(hit){computedSnapshotSet(snapshots,el,hit);return hit;}}
     var ctx=computeStyleSnapshotRun(el,snapshots,sink,pseudo,key);
     var snapshot=ctx.snapshot,volatile=ctx.volatile,stateRead=ctx.stateRead,state=ctx.state,media=ctx.media,deps=ctx.deps,base=ctx.base,before=ctx.before;
-    if(key)computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before);
+    if(key)computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before,ctx.boxFailed);
     return snapshot;
   }
   function computeStyleSnapshotStoreVolatile(el,key,state,base,unchanged){
@@ -1522,11 +1612,11 @@
     if(out&&unchanged&&!out.volatile)computedSnapshotSet(computedBaseCache,el,{__proto__:null,base:out,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:out.stateRead?state:null,media:out.media});
     else if(!base.use)computedSnapshotSet(computedBaseCache,el,null);
   }
-  function computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before){
+  function computeStyleSnapshotStore(el,key,state,stateRead,media,deps,base,snapshot,volatile,before,boxFailed){
     var after=computedCacheKey(el);
     var unchanged=computedKeyEqual(after,key)&&!(stateRead&&styleStateEpoch()!==state);
     if(volatile||!unchanged){computeStyleSnapshotStoreVolatile(el,key,state,base,unchanged);return;}
-    var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null};
+    var stored={__proto__:null,snapshot:snapshot,epoch:key.epoch,version:key.version,inline:key.inline,owner:key.owner,state:stateRead?state:null,media:media,probe:computedCacheProbe(el),deps:deps,stable:null,ownNone:false,boxFailed:boxFailed};
     computedSnapshotSet(computedStyleCache,el,stored);
     if(computedStampEqual(before,computedWorldStamp(el)))computedMarkStable(el,stored);
   }
@@ -1904,7 +1994,7 @@
       if(cs.bucketOrder)computedBucketMatches(el,sheets,cs.bucketIndex,cs.bucketOrder,cs.pseudo,matched);
       else computedSheetMatches(el,sheets,build,cs.pseudo,matched);
       cascadeEntries(matched,layers,function(entry,only){cascadeApplyDeclarations(cs,declarationRecord(entry.rule.style),info&&info.accepts,only);});
-    } catch(e){}
+    } catch(e){computedBoxFailure=true;}
   }
   // UA declarations, presentational hints, author rules, then inline declarations (own props
   // React/components set: background, height, display, ...) and the !important UA ones
@@ -2098,7 +2188,7 @@
       var fontMatch = cssApply(cssZoomExec, /^([0-9.e+-]+)px$/, [String(decl['font-size'] == null ? '' : decl['font-size'])]);
       var resolvedTransform = __ns.resolveTransform(decl.transform, cs.el, fontMatch ? cssFontNumber(fontMatch[1]) : 16);
       if (typeof resolvedTransform === 'string') cs.setProp('transform', resolvedTransform);
-    } catch(e){}
+    } catch(e){computedBoxFailure=true;}
   }
   // Initial computed values of properties Web Animations commonly animate.
   function computedTransformValues(cs){
@@ -3984,9 +4074,9 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     if(noteRuleProbe)noteRuleProbe();
     // A nested rule's cascade selector resolves `&` and nesting scope; see nestedCascadeSelector.
     var selector=entry.rule.effectiveSelector||entry.rule.selectorText,matched=false,specificity=0,proximity=Infinity;
-    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){return false;}});}
+    if(pseudo){try{matched=pseudoRuleMatches(el,selector,pseudo);}catch(e){computedBoxFailure=true;}if(matched)specificity=cssMatchedSpecificity(selector,function(item){try{return pseudoRuleMatches(el,item,pseudo);}catch(e){computedBoxFailure=true;return false;}});}
     else if(entry.scopes){var scoped=cssScopedMatch(el,entry);if(scoped){matched=true;specificity=scoped[0];proximity=scoped[1];}}
-    else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
+    else{try{matched=cssApply(computedStyleNativeMatches,el,[frameSelector(el,selector)]);}catch(e){computedBoxFailure=true;}computedStateVolatile(el,selector,matched);if(matched)specificity=cssMatchedSpecificity(selector,function(item){return computedNativeMatches(el,frameSelector(el,item));});}
     return appliedEntryMatchFinish(entry, matched, specificity, proximity, order);
   }
   // Is `a` weaker than `b` once their layers tie: lower specificity, then farther from its
