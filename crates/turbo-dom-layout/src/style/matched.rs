@@ -12,13 +12,19 @@ pub enum CascadeOrigin {
     UserAgent,
     User,
     Author,
+    /// Sampled animation/WAAPI contributions, below every important declaration.
+    Animation,
+    /// Sampled transition contributions, above important declarations.
+    Transition,
 }
 impl CascadeOrigin {
-    fn rank(self, important: bool) -> u8 {
+    fn rank(self, important: bool) -> u16 {
         let normal = match self {
             Self::UserAgent => 0,
             Self::User => 1,
             Self::Author => 2,
+            Self::Animation => return 4,
+            Self::Transition => return 256,
         };
         if important {
             2 - normal
@@ -44,15 +50,23 @@ pub struct MatchedDeclaration {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Rank {
     important: bool,
-    origin: u8,
+    origin: u16,
     scope: u32,
     inline: bool,
     specificity: (u32, u32, u32),
     order: usize,
 }
 impl MatchedDeclaration {
+    fn importance(&self) -> bool {
+        match self.origin {
+            CascadeOrigin::Animation => false,
+            CascadeOrigin::Transition => true,
+            _ => self.declaration.important,
+        }
+    }
+
     fn rank(&self) -> Rank {
-        let important = self.declaration.important;
+        let important = self.importance();
         Rank {
             important,
             origin: self.origin.rank(important),
@@ -104,7 +118,7 @@ fn resolve_matched_style_impl(
         .enumerate()
         .map(|(order, matched)| Cand {
             key: (
-                matched.declaration.important,
+                matched.importance(),
                 candidate_origin(matched),
                 (0, 0, 0),
                 order,
@@ -125,11 +139,17 @@ fn resolve_matched_style_impl(
 
 /// This monotonic remapping retains origin identity without changing the sorted
 /// cascade order: UA normal is 0 and UA important uses the ordinary cascade's
-/// sentinel; the other origins occupy the intervening ranks.
-fn candidate_origin(matched: &MatchedDeclaration) -> u8 {
-    let important = matched.declaration.important;
+/// sentinel; animation sits above normal author rules and transitions above that
+/// sentinel. Keeping transition distinct also preserves UA paragraph provenance.
+fn candidate_origin(matched: &MatchedDeclaration) -> u16 {
+    let important = matched.importance();
     if matched.origin == CascadeOrigin::UserAgent {
         origin_rank(important, 0)
+    } else if matches!(
+        matched.origin,
+        CascadeOrigin::Animation | CascadeOrigin::Transition
+    ) {
+        matched.origin.rank(important)
     } else {
         matched.origin.rank(important) + 1
     }
@@ -373,3 +393,6 @@ mod paragraph_origin_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod presented_origin_tests;

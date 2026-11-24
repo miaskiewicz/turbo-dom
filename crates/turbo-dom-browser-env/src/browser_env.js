@@ -1589,7 +1589,7 @@
     if(computedEffectInspection)return false;
     var outerVolatile=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure;
     computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads={__proto__:null};
-    try{computeStyleSnapshot(el,new computedSnapshotMap());return true;}
+    try{return computeStyleSnapshot(el,new computedSnapshotMap());}
     finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
   };
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
@@ -5319,6 +5319,38 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // sibling nor ancestor shadow sheets supply a missing local definition.
       function scopeSheets(target){var sheets=computedSheets(target);for(var si=0;si<sheets.length;si++){var sheet=sheetRecord(sheets[si]);if(!sheet.disabled)visit(sheet.rules);}}
       if(element)scopeSheets(element);else{var sheets=cssRecord(documentSheets).items;for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}}return out;};
+    function effectPropertyRule(record){return record.kind==='property'||$c.test(/^@property(?:\s|$)/i,record.prelude||'');}
+    function effectRulesHaveProperty(rules){
+      var pending=[rules];
+      while(pending.length){
+        var next=pending[pending.length-1];pending.length--;
+        var items=cssItems(next);
+        for(var at=0;at<items.length;at++){
+          var record=cssRuleRecord(items[at]);
+          if(effectPropertyRule(record))return true;
+          if(record.cssRules)$c.push(pending,record.cssRules);
+        }
+      }
+      return false;
+    }
+    function effectSheetsHaveProperty(sheets){
+      for(var at=0;at<sheets.length;at++){
+        var sheet=sheetRecord(sheets[at]);
+        if(!sheet.originClean)return true;
+        if(effectRulesHaveProperty(sheet.rules))return true;
+      }
+      return false;
+    }
+    function effectDocumentHasPropertyRules(){
+      if(effectSheetsHaveProperty(documentCSSRecord.cssHost.readSheets()))return true;
+      var adopted=adoptionStates&&$c.get(adoptionStates,d);
+      return !!(adopted&&adopted.target&&effectSheetsHaveProperty(adopted.target));
+    }
+    __ns.effectHasPropertyRules=function(element){
+      if(effectDocumentHasPropertyRules())return true;
+      if(cssApply(computedStyleNativeRoot,element,[])===d)return false;
+      return effectSheetsHaveProperty(computedSheets(element));
+    };
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 

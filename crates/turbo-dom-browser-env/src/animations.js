@@ -20,6 +20,7 @@
   const sin = Math.sin, cos = Math.cos, tan = Math.tan, atan2 = Math.atan2, acos = Math.acos, PI = Math.PI;
   const isFinite = Number.isFinite, iteratorSymbol = Symbol.iterator;
   const realmDocument = g.document;
+  let trackTargetOwners = Native('targetTracking');
   const nodeTypeGetter = ns.domAccessor('nodeType', false, 'Node'), connectedGetter = ns.domAccessor('isConnected', false, 'Node');
   const ownerGetter = ns.domAccessor('ownerDocument', false, 'Node'), parentGetter = ns.domAccessor('parentElement', false, 'Node');
   const shadowMode = g.ShadowRoot && getOwnDescriptor(g.ShadowRoot.prototype, 'mode');
@@ -208,7 +209,7 @@
   const COLORS = { __proto__: null, color: 1, 'background-color': 1, 'border-top-color': 1, 'border-right-color': 1, 'border-bottom-color': 1, 'border-left-color': 1, 'outline-color': 1, 'text-decoration-color': 1, 'column-rule-color': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'flood-color': 1, 'lighting-color': 1, 'stop-color': 1, 'text-emphasis-color': 1 };
   const INHERITED = { __proto__: null, color: 1, visibility: 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'word-spacing': 1, 'text-indent': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'fill-opacity': 1, 'stroke-opacity': 1, orphans: 1, widows: 1, cursor: 1, 'pointer-events': 1 };
   const INITIAL = { __proto__: null, rotate: 'none', scale: 'none', translate: 'none', filter: 'none', opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
-  const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap)$/, name);
+  const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap|stroke-dashoffset)$/, name);
   const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : intrinsic.test(/^border-(top|right|bottom|left)-color$/, name) ? 'currentcolor' : intrinsic.test(/^(margin|padding)-/, name) ? '0px' : intrinsic.test(/-radius$/, name) ? '0px' : '';
 
   const LENGTH = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([a-z%]*)$/i;
@@ -224,6 +225,15 @@
     if (unit === '%') return { kind: 'length', value, unit: '%' };
     const factor = LENGTH_PX_FACTORS[unit];
     return factor === undefined ? null : { kind: 'length', value: value * factor, unit: 'px' };
+  }
+  function propertyLengthValue(property, text, context) {
+    const length = parseLength(text, context);
+    if (length) return length;
+    if (property === 'stroke-dashoffset') {
+      const value = parseNumber(text);
+      if (value !== null) return { kind: 'length', value, unit: 'px' };
+    }
+    return { kind: 'discrete', text };
   }
   // Colors in sRGB with straight alpha: hex, rgb()/hsl()/hwb() and named keywords.
   function hsl(h, s, l) {
@@ -543,15 +553,19 @@
     if (property === 'line-height') { const length = parseLength(text, context); if (length && length.unit === 'px') return length; }
     return { kind: 'discrete', text };
   }
-  // Typed value for a property's text; anything else animates discretely.
-  function parseValue(property, text, context) {
-    if (text === null || text === undefined) return null;
-    text = intrinsic.trim(string(text));
+  function typedPropertyValue(property, text, context) {
     if (property === 'transform') return parseTransform(text) || { kind: 'discrete', text };
     if (COLORS[property]) return parseColor(text, context) || { kind: 'discrete', text };
     if (UNIT_NUMBERS[property] || INTEGERS[property] || NUMBERS[property]) return numericValue(property, text, context);
-    if (lengthProperty(property)) return parseLength(text, context) || { kind: 'discrete', text };
+    if (lengthProperty(property)) return propertyLengthValue(property, text, context);
     return { kind: 'discrete', text };
+  }
+  // Unregistered custom tokens always interpolate discretely, regardless of their name.
+  function parseValue(property, text, context) {
+    if (text === null || text === undefined) return null;
+    text = intrinsic.trim(string(text));
+    if (intrinsic.slice(property, 0, 2) === '--') return { kind: 'discrete', text };
+    return typedPropertyValue(property, text, context);
   }
   function serializeValue(property, value) {
     switch (value.kind) {
@@ -1103,6 +1117,7 @@
     const find = (entries) => { for (let at = 0; at < entries.length; at++) if (entries[at] === animation) return at; return -1; };
     if (from) { const entries = targets.get(from); if (entries) { const at = find(entries); if (at >= 0) { for (let i = at; i + 1 < entries.length; i++) entries[i] = entries[i + 1]; entries.length--; } } }
     if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (find(entries) < 0) push(entries, animation); }
+    if (trackTargetOwners) Native('target', animation, to, realmDocument);
     // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
     if (ns.invalidateAnimatedStyles) ns.invalidateAnimatedStyles(from, to);
   }
@@ -1484,7 +1499,11 @@
     for (let i = 0; i < effect.keyframes.length; i++) {
       const frame = effect.keyframes[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite };
       const values = keyframeOrder(frame);
-      for (let j = 0; j < values.length; j++) object[values[j].idl] = values[j].text;
+      for (let j = 0; j < values.length; j++) {
+        // CSS models omit custom tokens here; script-created keyframes expose them.
+        if (effect.css && !effect.css.frames && intrinsic.slice(values[j].css, 0, 2) === '--') continue;
+        object[values[j].idl] = values[j].text;
+      }
       object.computedOffset = frame.computed;
       push(out, object);
     }
@@ -1887,6 +1906,7 @@
   const toUpper = String.prototype.toUpperCase;
   // A CSS property name as its IDL attribute (margin-left -> marginLeft).
   function idlName(css) {
+    if (intrinsic.slice(css, 0, 2) === '--') return css;
     let out = '';
     for (let i = 0; i < css.length; i++) out += css[i] === '-' && i > 0 && i + 1 < css.length ? apply(toUpper, css[++i], []) : css[i];
     return out;
@@ -2085,7 +2105,7 @@
     return cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue);
   }
   function cssAnimation(element, name, rule, lists, i, underlying) {
-    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, index: i, rangeSet: [false, false] });
+    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, rule, index: i, rangeSet: [false, false] });
     cssRange(animations.get(animation), lists, i);
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
@@ -2095,6 +2115,7 @@
   function cssRefresh(element, animation, rule, lists, i, underlying) {
     const record = animations.get(animation), effect = record.effect && effects.get(record.effect);
     if (!effect || !effect.css) return;
+    record.css.rule = rule;
     const timed = cssRefreshTiming(effect, cssTiming(lists, i));
     const framed = !effect.css.frames && cssRefreshFrames(effect, cssFrames(element, rule, lists, i, underlying));
     if (timed || framed) ownerTouched(effect);
@@ -2333,6 +2354,7 @@
   // V8 may materialize new native builtin methods while deserializing a startup
   // snapshot. Rust calls this only at trusted rehydration, before any guest runs.
   ns.rehydrateCssEffectTrust = function () {
+    trackTargetOwners = Native('targetTracking');
     delete ns.rehydrateCssEffectTrust;
     // Never forgive a modified original property if an embedder tries to attach
     // after page code. Only newly materialized keys on original builtin objects
@@ -2439,6 +2461,235 @@
       (entry.fill === 'none' || entry.fill === 'auto') && record.rate > 0;
     return entry;
   }
+  function presentedTargets(candidates) {
+    const out = [], seen = new WeakSetType();
+    const add = element => {
+      if (!element || nodeType(element) !== 1 || apply(ownerGetter, element, []) !== realmDocument) return;
+      if (apply(weakSetHas, seen, [element])) return;
+      apply(weakSetAdd, seen, [element]); push(out, element);
+    };
+    for (let i = 0; i < candidates.length; i++) add(candidates[i]);
+    const active = list();
+    for (let i = 0; i < active.length; i++) {
+      const record = animations.get(active[i]), effect = record.effect && effects.get(record.effect);
+      if (effect) add(effect.target);
+    }
+    return out;
+  }
+  function presentedEntries(element) {
+    const indexed = targets.get(element), entries = [];
+    if (!indexed) return entries;
+    const ordered = byComposite(intrinsic.map(indexed, animation => animation));
+    for (let i = 0; i < ordered.length; i++) {
+      const entry = effectStackEntry(ordered[i], element, null);
+      if (entry) push(entries, entry);
+    }
+    return entries;
+  }
+  function presentedText(property, text, context) {
+    // Legacy scalar value adapters cannot certify repaired DOM-string payloads.
+    if (intrinsic.indexOf(text, '\ufffd') >= 0) return null;
+    if (intrinsic.test(/(?:var|env|calc)\(|currentcolor|(?:[\d.])(?:em|rem|ex|ch|lh|rlh|vw|vh|vmin|vmax)\b/i, text)) return null;
+    const value = parseValue(property, text, context);
+    if (!value) return null;
+    if (value.kind !== 'discrete') return value;
+    if (intrinsic.slice(property, 0, 2) === '--') return value;
+    if (property === 'display' || property === 'visibility') return value;
+    return null;
+  }
+  function presentedFrameCompatible(left, right) {
+    if (left.kind !== right.kind) return false;
+    if (left.kind === 'length') return left.unit === right.unit;
+    return true;
+  }
+  function presentedFrameValuesSupported(frames, property, context) {
+    let previous = null;
+    for (let i = 0; i < frames.length; i++) {
+      const value = presentedText(property, frames[i].text, context);
+      if (!value) return false;
+      if (previous && !presentedFrameCompatible(previous, value)) return false;
+      previous = value;
+    }
+    return true;
+  }
+  function presentedNeedsBase(entry, frames) {
+    if (frames[0].offset !== 0 || frames[frames.length - 1].offset !== 1) return true;
+    if (entry.effect.composite !== 'replace') return true;
+    return intrinsic.some(frames, frame => frame.composite !== 'auto' && frame.composite !== 'replace');
+  }
+  function presentedBaseSupported(property, read, context, last) {
+    if (INHERITED[property] || intrinsic.slice(property, 0, 2) === '--') return false;
+    const base = presentedText(property, read(property) || initialValue(property), context);
+    return !!base && presentedFrameCompatible(last, base);
+  }
+  function presentedRawBoundary(rule, property, context) {
+    const result = { found: false, start: false, end: false, valid: true };
+    for (let i = 0; i < rule.length; i++) {
+      const offsets = keyframeOffsets(rule[i].selector), values = rule[i].values;
+      for (let j = 0; j < values.length; j++) {
+        if (values[j][0] !== property) continue;
+        result.found = true;
+        if (!presentedText(property, values[j][1], context)) result.valid = false;
+        if (contains(offsets, 0)) result.start = true;
+        if (contains(offsets, 1)) result.end = true;
+      }
+    }
+    return result;
+  }
+  function presentedCssRule(entry) {
+    if (!entry.effect.css) return null;
+    if (entry.effect.css.frames) return null;
+    return entry.record.css.rule || null;
+  }
+  const presentedNeedsRawBounds = property => INHERITED[property] || intrinsic.slice(property, 0, 2) === '--';
+  function presentedRawCssSupported(entry, property, context) {
+    const css = entry.record.css;
+    if (!css || css.kind !== CSS_ANIMATION) return true;
+    const rule = presentedCssRule(entry);
+    if (!rule) return false;
+    const raw = presentedRawBoundary(rule, property, context);
+    if (!raw.found || !raw.valid) return false;
+    if (!presentedNeedsRawBounds(property)) return true;
+    return raw.start && raw.end;
+  }
+  function presentedFramesSupported(entry, property, read, context) {
+    const frames = entry.effect.frames.byProperty[property];
+    if (!frames) return true;
+    if (!presentedRawCssSupported(entry, property, context)) return false;
+    if (!presentedFrameValuesSupported(frames, property, context)) return false;
+    if (!presentedNeedsBase(entry, frames)) return true;
+    const last = presentedText(property, frames[frames.length - 1].text, context);
+    return presentedBaseSupported(property, read, context, last);
+  }
+  function presentedRawPropertyPresent(entry, property, text) {
+    if (Native('nonAnimatable', property)) return true;
+    if (Native('property', idlName(property)) !== property) return false;
+    if (entry.effect.frames.byProperty[property]) return true;
+    let expanded = false, complete = true;
+    expand(property, text, name => { expanded = true; if (!entry.effect.frames.byProperty[name]) complete = false; });
+    return expanded && complete;
+  }
+  function presentedRulePropertiesPresent(rule, entry) {
+    for (let i = 0; i < rule.length; i++) {
+      const values = rule[i].values;
+      for (let j = 0; j < values.length; j++)
+        if (!presentedRawPropertyPresent(entry, values[j][0], values[j][1])) return false;
+    }
+    return true;
+  }
+  function presentedCssModelComplete(entry) {
+    const css = entry.record.css;
+    if (!css || css.kind !== CSS_ANIMATION) return true;
+    if (entry.effect.css && entry.effect.css.frames) return true;
+    if (!css.rule) return false;
+    return presentedRulePropertiesPresent(css.rule, entry);
+  }
+  function presentedStackSupported(stack, read) {
+    const context = { fontSize: fontSize(read), currentColor: () => null };
+    for (let i = 0; i < stack.length; i++) if (!presentedCssModelComplete(stack[i])) return false;
+    const properties = stackResultProperties(stack);
+    for (let i = 0; i < properties.length; i++) {
+      for (let j = 0; j < stack.length; j++)
+        if (!presentedFramesSupported(stack[j], properties[i], read, context)) return false;
+    }
+    return true;
+  }
+  function presentedPairs(stack, read) {
+    const out = []; setPrototype(out, null);
+    if (!stack.length) return out;
+    const pairs = stackResult(stack, read, () => '');
+    for (let i = 0; i < pairs.length; i++) {
+      const property = create(null); property.name = pairs[i][0]; property.value = pairs[i][1];
+      out[out.length] = property;
+    }
+    return out;
+  }
+  function presentedMissingCssNames(element, read) {
+    if (!cssAnimationsOn) return false;
+    const names = intrinsic.filter(splitList(read('animation-name') || 'none'), name => name !== 'none');
+    const state = cssStates.get(element), owned = state ? state.animations : [];
+    return names.length !== owned.length;
+  }
+  function presentedTimelineSupported(read) {
+    const timeline = read('animation-timeline');
+    if (timeline && timeline !== 'auto') return false;
+    const composition = splitList(read('animation-composition') || 'replace');
+    return !intrinsic.some(composition, value => value !== 'replace');
+  }
+  function presentedSourceProperties(entries) {
+    const properties = stackResultProperties(entries);
+    for (let i = 0; i < entries.length; i++) {
+      const css = entries[i].record.css, rule = css && css.rule;
+      if (!rule) continue;
+      for (let j = 0; j < rule.length; j++) {
+        const values = rule[j].values;
+        for (let k = 0; k < values.length; k++) if (!contains(properties, values[k][0])) push(properties, values[k][0]);
+      }
+    }
+    return properties;
+  }
+  function presentedCustomPropertiesSupported(element, entries) {
+    const properties = presentedSourceProperties(entries);
+    if (!intrinsic.some(properties, property => intrinsic.slice(property, 0, 2) === '--')) return true;
+    if (typeof ns.effectHasPropertyRules !== 'function') return false;
+    return !ns.effectHasPropertyRules(element);
+  }
+  function presentedState(element, snapshot, entries) {
+    const read = property => ns.computedStyleValue(snapshot, property), result = create(null);
+    if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, read) ||
+        !presentedCustomPropertiesSupported(element, entries) || !presentedStackSupported(entries, read)) {
+      result.status = 'unknown'; result.properties = presentedSourceProperties(entries); setPrototype(result.properties, null);
+      return result;
+    }
+    const animation = [], transition = [];
+    for (let i = 0; i < entries.length; i++) {
+      const css = entries[i].record.css;
+      push(css && css.kind === CSS_TRANSITION ? transition : animation, entries[i]);
+    }
+    result.status = 'certified';
+    result.animation = presentedPairs(animation, read);
+    result.transition = presentedPairs(transition, read);
+    return result;
+  }
+  function presentedTargetData(element, snapshot) {
+    const data = create(null), indexed = targets.get(element) || [], entries = [];
+    setPrototype(entries, null);
+    for (let i = 0; i < indexed.length; i++) entries[entries.length] = effectInspectionEntry(indexed[i], element, !!animations.get(indexed[i]).css);
+    data.effects = entries;
+    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : []);
+    return data;
+  }
+  function presentedRows(selected) {
+    const rows = []; setPrototype(rows, null);
+    for (let i = 0; i < selected.length; i++) {
+      const element = selected[i];
+      if (cssBusy.get(element)) return null;
+      inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false;
+      const snapshot = ns.refreshCssEffectInputs(element);
+      if (!snapshot || inspectionUnavailable) return null;
+      const row = [element, apply(stringifyEffects, null, [presentedTargetData(element, snapshot)])];
+      setPrototype(row, null); rows[rows.length] = row;
+      const expanded = presentedTargets(selected);
+      for (let j = 0; j < expanded.length; j++) if (!contains(selected, expanded[j])) push(selected, expanded[j]);
+    }
+    return rows;
+  }
+  ns.samplePresentedEffects = function (document, candidates) {
+    if (document !== realmDocument) return null;
+    if (inspectingEffects || suppressStyle || !safeInspectionPrototypes()) return null;
+    const time = clock();
+    if (host && time === null) return null;
+    inspectionClock = time; inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
+    try {
+      const rows = presentedRows(presentedTargets(candidates));
+      if (!rows) return null;
+      const metadata = create(null), result = create(null);
+      metadata.sample_time = time; metadata.css_animations_enabled = cssAnimationsOn;
+      metadata.css_transitions_enabled = cssTransitionsOn; metadata.presentation_suppressed = !animationPresentationOn;
+      result.metadata = apply(stringifyEffects, null, [metadata]); result.targets = rows;
+      return result;
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
+  };
   ns.inspectElementCssEffects = function (element) {
     if (inspectingEffects || suppressStyle || cssBusy.get(element) || !safeInspectionPrototypes()) return null;
     if (nodeType(element) !== 1 || (apply(ownerGetter, element, []) || realmDocument) !== realmDocument) return null;

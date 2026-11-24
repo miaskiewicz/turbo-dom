@@ -35,6 +35,13 @@ pub use css_effect_lifecycle::{
     css_effect_lifecycle, CssEffectKind, CssEffectLifecycle, CssEffectPhase, CssEffectSnapshot,
 };
 
+#[path = "presented_effects.rs"]
+mod presented_effects;
+pub use presented_effects::{
+    sample_presented_effects, PresentedEffectsSnapshot, PresentedProperty, PresentedTarget,
+    PresentedTargetState,
+};
+
 #[path = "cached_own_box.rs"]
 mod cached_own_box;
 pub use cached_own_box::{cached_own_box, CachedOwnBox};

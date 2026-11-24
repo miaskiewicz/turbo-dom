@@ -569,6 +569,16 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             None => rv.set(v8::null(scope).into()),
         };
     match arg_str(scope, &args, 0).as_str() {
+        "targetTracking" => rv.set_bool(cfg!(feature = "host-internals")),
+        "target" => {
+            #[cfg(feature = "host-internals")]
+            {
+                let animation = v8::Local::<v8::Object>::try_from(args.get(1)).expect("animation");
+                let target = v8::Local::<v8::Object>::try_from(args.get(2)).ok();
+                let document = v8::Local::<v8::Object>::try_from(args.get(3)).expect("document");
+                super::animation_ownership::update(scope, animation, target, document);
+            }
+        }
         "dispatch" => {
             // animations.js dispatches its Animation objects' events.
             let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("animation");
@@ -580,6 +590,10 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             // which would read the page-replaceable Promise[@@species] (turbo-dom#199).
             let promise = v8::Local::<v8::Promise>::try_from(args.get(1)).expect("promise");
             promise.mark_as_handled();
+        }
+        "nonAnimatable" => {
+            let name = arg_str(scope, &args, 1);
+            rv.set_bool(NOT_ANIMATABLE.contains(&name.as_str()));
         }
         "property" => {
             let name = arg_str(scope, &args, 1);
