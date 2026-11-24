@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **Live sibling selector ranks (#547):** repeated `nth-child` and `nth-of-type`
+  checks share lazy, tree-version-owned sibling ranks instead of rebuilding and
+  filtering sibling vectors per element. Mutation invalidation, exact namespace
+  and UTF-16 element identity, and live filtered/state matching are preserved.
+  Custom/composed navigators retain their existing rank semantics.
+
 - **Absolute flex checkbox geometry (#546):** positioned percentage children
   use the flex container's finalized padding box. Center-aligned checkbox inputs
   retain their solved height instead of collapsing to zero. Normal-flow size

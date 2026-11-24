@@ -640,3 +640,36 @@ fn churn_alloc_gate() {
         "churn bytes/op regressed: {bytes:.0} > {MAX_BYTES_PER_OP}"
     );
 }
+
+/// Structural selector reads over an unchanged sibling group must reuse ranks.
+/// Run alone because the allocator counts allocations from the whole process.
+#[test]
+#[ignore = "allocation gate — run in isolation"]
+fn sibling_rank_alloc_gate() {
+    let tree = Tree::parse(&format!("<main>{}</main>", "<span></span>".repeat(512)));
+    let scope = tree.query_selector("main").unwrap();
+    let nodes = tree.query_selector_all("main > span");
+    let selectors = [
+        "span:nth-of-type(odd)",
+        "span:nth-last-of-type(even)",
+        "span:nth-child(odd)",
+        "span:nth-last-child(even)",
+    ];
+    for selector in selectors {
+        std::hint::black_box(tree.matches_scoped(nodes[0], selector, scope));
+    }
+    reset();
+    let mut matched = 0;
+    for &node in nodes.iter() {
+        for selector in selectors {
+            matched += usize::from(tree.matches_scoped(node, selector, scope));
+        }
+    }
+    let (allocations, bytes, _) = snapshot();
+    println!("warm sibling ranks: {allocations} allocations, {bytes} bytes, {matched} matches");
+    assert_eq!(matched, 1024);
+    assert_eq!(
+        allocations, 0,
+        "unchanged sibling matches allocated rank vectors"
+    );
+}

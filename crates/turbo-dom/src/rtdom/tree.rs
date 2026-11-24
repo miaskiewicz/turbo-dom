@@ -630,6 +630,7 @@ pub struct Tree {
     global_style_gen: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
+    pub(crate) sibling_ranks: RefCell<super::query::SiblingRanks>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
     /// element loop re-parses the SAME selector per element; this memoizes the parse
     /// (shared `Rc` so a hit is a pointer bump). Version-independent — a parsed
@@ -753,6 +754,7 @@ impl Tree {
             style_filter: None,
             global_style_gen: 0,
             qcache: RefCell::new(QueryCache::default()),
+            sibling_ranks: RefCell::new(super::query::SiblingRanks::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
             mutation_log: None,
