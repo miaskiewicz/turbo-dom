@@ -1,64 +1,66 @@
 (async () => {
-	const cases = [];
-	const add = (name, css, extra = {}) => cases.push({ name, css, ...extra });
-	add("baseline", "");
-	for (const target of ["body", "html"]) {
-		for (const value of [
-			"none",
-			"paint",
-			"style",
-			"layout",
-			"size",
-			"inline-size",
-			"content",
-			"strict",
-			"size style paint",
-		])
-			add(`${target}-contain-${value}`, `${target}{contain:${value}}`);
-		for (const value of ["none", "contents"])
-			add(`${target}-display-${value}`, `${target}{display:${value}}`);
-		for (const value of ["auto", "hidden", "visible"])
-			add(
-				`${target}-content-visibility-${value}`,
-				`${target}{content-visibility:${value}}`,
-			);
-		for (const value of [
-			"normal",
-			"inline-size",
-			"size",
-			"scroll-state",
-			"inline-size scroll-state",
-			"size scroll-state",
-		])
-			add(
-				`${target}-container-type-${value}`,
-				`${target}{container-type:${value}}`,
-			);
+	function addModeCases(add) {
+		for (const mode of ["quirks", "frame"])
+			for (const target of ["none", "body", "html"])
+				add(
+					`${mode}-${target}`,
+					target === "none" ? "" : `${target}{contain:paint}`,
+					{ [mode]: true },
+				);
 	}
-	for (const value of [
-		"hidden",
-		"clip",
-		"visible hidden",
-		"hidden visible",
-		"visible clip",
-	])
-		add(`root-overflow-${value}`, `html{overflow:${value}}`);
-	add("body-overflow-clip", "body{overflow:clip}");
-	for (const mode of ["quirks", "frame"])
-		for (const target of ["none", "body", "html"])
-			add(
-				`${mode}-${target}`,
-				target === "none" ? "" : `${target}{contain:paint}`,
-				{ [mode]: true },
-			);
-	for (const target of ["body", "html"])
-		for (const display of ["contents", "inline"])
-			add(
-				`${target}-${display}-paint`,
-				`${target}{display:${display};contain:paint}`,
-			);
-	const result = [];
-	for (const item of cases) {
+	function buildCases() {
+		const cases = [];
+		const add = (name, css, extra = {}) => cases.push({ name, css, ...extra });
+		add("baseline", "");
+		const variants = {
+			contain: [
+				"none",
+				"paint",
+				"style",
+				"layout",
+				"size",
+				"inline-size",
+				"content",
+				"strict",
+				"size style paint",
+			],
+			display: ["none", "contents"],
+			"content-visibility": ["auto", "hidden", "visible"],
+			"container-type": [
+				"normal",
+				"inline-size",
+				"size",
+				"scroll-state",
+				"inline-size scroll-state",
+				"size scroll-state",
+			],
+		};
+		for (const target of ["body", "html"])
+			for (const [property, values] of Object.entries(variants))
+				for (const value of values)
+					add(
+						`${target}-${property}-${value}`,
+						`${target}{${property}:${value}}`,
+					);
+		for (const value of [
+			"hidden",
+			"clip",
+			"visible hidden",
+			"hidden visible",
+			"visible clip",
+		])
+			add(`root-overflow-${value}`, `html{overflow:${value}}`);
+		add("body-overflow-clip", "body{overflow:clip}");
+		addModeCases(add);
+		for (const target of ["body", "html"])
+			for (const display of ["contents", "inline"])
+				add(
+					`${target}-${display}-paint`,
+					`${target}{display:${display};contain:paint}`,
+				);
+		return cases;
+	}
+	async function measure(item) {
 		let parent = document.body;
 		let outer;
 		if (item.frame) {
@@ -106,9 +108,12 @@
 			scrollY: w.scrollY,
 			targetTop: t.getBoundingClientRect().top,
 		};
-		result.push({ ...item, before, read, into });
+		const result = { ...item, before, read, into };
 		f.remove();
 		outer?.remove();
+		return result;
 	}
+	const result = [];
+	for (const item of buildCases()) result.push(await measure(item));
 	return result;
 })();
