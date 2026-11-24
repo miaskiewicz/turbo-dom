@@ -5319,7 +5319,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       // sibling nor ancestor shadow sheets supply a missing local definition.
       function scopeSheets(target){var sheets=computedSheets(target);for(var si=0;si<sheets.length;si++){var sheet=sheetRecord(sheets[si]);if(!sheet.disabled)visit(sheet.rules);}}
       if(element)scopeSheets(element);else{var sheets=cssRecord(documentSheets).items;for(var s=0;s<sheets.length;s++){var sheet=sheetRecord(sheets[s]);if(!sheet.disabled)visit(sheet.rules);}}return out;};
-    function effectPropertyRule(record){return record.kind==='property'||$c.test(/^@property(?:\s|$)/i,record.prelude||'');}
+    function effectPropertyRule(record){return record.type===3||record.kind==='property'||$c.test(/^@property(?:\s|$)/i,record.prelude||'');}
     function effectRulesHaveProperty(rules){
       var pending=[rules];
       while(pending.length){

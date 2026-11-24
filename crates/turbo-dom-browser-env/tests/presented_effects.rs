@@ -496,3 +496,22 @@ fn inherited_animated_context_cannot_certify_a_suppressed_additive_base() {
         );
     });
 }
+
+#[test]
+fn imported_registration_cannot_certify_unregistered_custom_interpolation() {
+    with_dom(|scope| {
+        eval(
+            scope,
+            r#"let sheet=document.createElement('style');sheet.textContent='@import url("data:text/css,@property%20--size%7Bsyntax:%22%3Clength%3E%22;inherits:false;initial-value:0px%7D");';document.head.appendChild(sheet);target=document.getElementById('target');let effect=target.animate([{'--size':'100px'},{'--size':'200px'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500"#,
+        );
+        let document = object(scope, "document");
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        assert!(
+            matches!(
+                sample.targets[0].presentation,
+                PresentedTargetState::Unknown { .. }
+            ),
+            "imported registration completeness is unknown: {sample:?}"
+        );
+    });
+}

@@ -38,3 +38,11 @@ shadow, CSS/WAAPI discovery, one-clock batch, important transitions, inherited
 absolute fonts, discrete unregistered custom tokens, unsupported/refused paths and
 throwing layout providers. CSS model getKeyframes keeps Chromium's custom-token
 omission while script keyframes retain their existing reflection behavior.
+
+Underlying-dependent frames are additionally conservative: multiple contributing
+targets or animated inherited/font/SVG-paint/custom context prevent certification
+of a suppressed underlying value. Base-dependent transitions remain Unknown until
+cross-origin composition can certify their base. Complete absolute frames retain
+their ordinary path. Opaque CSS imports prevent custom-registration absence proof;
+no import I/O is performed by the sampler. Ownership evidence is isolate-owned and
+weak, so concurrent isolates on the same thread never localize each other's handles.

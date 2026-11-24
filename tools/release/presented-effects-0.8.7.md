@@ -42,3 +42,10 @@ Base-dependent entries refuse changed inherited/font/SVG-paint/custom context,
 multiple contributing targets, and independently composed transition bases.
 Complete absolute frames and standalone additive width stacks keep their existing
 certification. All19 host tests pass; the new context case remains explicit Unknown.
+
+Imported @property completeness has its own causal control: an opaque import
+previously certified --size200px as unregistered/discrete, while the source-hashed
+Chromium data-import oracle loads a registered length and computes150px.
+Custom-property certification now refuses any import without fetching or entering
+imported guest properties.20 public host controls pass; unsupported import state
+is Unknown. The host sampler also rejects non-finite clock samples before JSON.
