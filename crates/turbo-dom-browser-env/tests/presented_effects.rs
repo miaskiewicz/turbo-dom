@@ -515,3 +515,27 @@ fn imported_registration_cannot_certify_unregistered_custom_interpolation() {
         );
     });
 }
+
+#[test]
+fn canonical_sampling_preserves_internal_exceptions() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(
+            scope,
+            "__tsNs.refreshCssEffectInputs=()=>{throw Error('canonical sampling sentinel')}",
+        )
+        .unwrap();
+        let document = object(scope, "document");
+        let target = object(scope, "document.getElementById('target')");
+        let handle = handle_of(scope, target).unwrap();
+        v8::tc_scope!(let scope, scope);
+        assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+        assert!(
+            scope.has_caught(),
+            "canonical failures must not become an unavailable certificate"
+        );
+        let exception = scope.exception().unwrap();
+        assert!(exception
+            .to_rust_string_lossy(scope)
+            .contains("canonical sampling sentinel"));
+    });
+}

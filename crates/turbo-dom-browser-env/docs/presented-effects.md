@@ -2,7 +2,10 @@
 
 This host-internals API samples the binding's canonical CSS/Web Animations records.
 It does not add an interpolator to a consumer. Call `sample_presented_effects` with
-an exact native browsing Document and native CSS-candidate handles. The batch also
+an exact native browsing Document and a complete current-cascade superset of
+potential CSS effect targets, including ancestors and shadow scopes. Candidate
+completeness is the trusted layout host's responsibility; passing only the queried
+element does not establish document-wide effect independence. The batch also
 discovers canonical script targets without an animation-name. An unavailable sample
 is `None`; unsupported per-target presentation is `PresentedTargetState::Unknown`.
 An empty Unknown property list is not an inactive-effect certificate.
@@ -46,3 +49,8 @@ cross-origin composition can certify their base. Complete absolute frames retain
 their ordinary path. Opaque CSS imports prevent custom-registration absence proof;
 no import I/O is performed by the sampler. Ownership evidence is isolate-owned and
 weak, so concurrent isolates on the same thread never localize each other's handles.
+
+If canonical sampling throws, the seam returns None with the original V8 exception
+re-thrown to the caller's scope. Hosts must preserve that pending exception (for
+example with their enclosing TryCatch) before constructing an unavailable-capability
+error. A canonical error is not a successful empty or underlying presentation.

@@ -92,8 +92,13 @@ pub fn sample_presented_effects(
     }
     let candidates = native_candidates(scope, css_candidates)?;
     v8::tc_scope!(let scope, scope);
-    let value = invoke_sampler(scope, document, candidates)?;
-    decode_snapshot(scope, value, owner)
+    let snapshot = invoke_sampler(scope, document, candidates)
+        .and_then(|value| decode_snapshot(scope, value, owner));
+    if scope.has_caught() || scope.has_terminated() {
+        scope.rethrow();
+        return None;
+    }
+    snapshot
 }
 
 fn native_candidates<'s>(

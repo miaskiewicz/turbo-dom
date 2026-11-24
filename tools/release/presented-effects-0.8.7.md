@@ -49,3 +49,8 @@ Chromium data-import oracle loads a registered length and computes150px.
 Custom-property certification now refuses any import without fetching or entering
 imported guest properties.20 public host controls pass; unsupported import state
 is Unknown. The host sampler also rejects non-finite clock samples before JSON.
+
+The final host error control exposed a swallowed internal canonical exception.
+The producer RED lost a sentinel throw; the sampler now rethrows it to the caller
+instead of converting it into ordinary unavailable state.21 host controls pass.
+The host must preserve the pending exception before reporting its own refusal.
