@@ -38,6 +38,9 @@ pub use css_effect_lifecycle::{
 #[path = "cached_own_box.rs"]
 mod cached_own_box;
 pub use cached_own_box::{cached_own_box, CachedOwnBox};
+#[path = "document_checkpoint_host.rs"]
+mod document_checkpoint_host;
+pub use document_checkpoint_host::{document_checkpoint, DocumentCheckpoint};
 
 pub use crate::browser_env::auxiliary_contexts::{
     commit_isolated_navigation as commit_isolated_auxiliary_navigation,

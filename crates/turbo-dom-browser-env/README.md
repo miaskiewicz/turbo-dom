@@ -141,6 +141,8 @@ Also in the crate:
   - `interface_record`, `cascade_policy`;
   - `cached_own_box(scope, element)` and `CachedOwnBox`: cache-only own
     `display:none` admission for visual bounding/client rectangles;
+  - `document_checkpoint(scope, native_document)` and opaque `DocumentCheckpoint`:
+    conservative connected native-input identity for host solved-layout cache reuse;
   - `css_effect_lifecycle(scope, element)` and `CssEffectSnapshot`: trusted per-element
     CSS/Web Animations lifecycle inspection for native geometry (see below);
   - re-exports of `Tree`, `Handle`, `StylePolicy`, `zoom_value` and the snapshot types.
@@ -162,6 +164,18 @@ without guest reentry. It permits empty bounding/client rectangles only, never
 substitutes for used-size, client, offset, scroll or viewport metrics. The public
 offline capture example and validation receipt are documented in
 [`cached-own-box-0.8.7.md`](../../tools/release/cached-own-box-0.8.7.md).
+
+**Connected-document checkpoints (#552).** `document_checkpoint(scope, native_document)`
+returns an opaque `Some` token only for the exact native document and its live creation
+realm under explicit microtask checkpoints. Compare fresh tokens to recognize audited
+unrelated detached construction. `None` (including shadow-bearing trees, inert/retired
+owners and unaccounted native versions) keeps ordinary full-version handling. Connected
+attribute/text/child/form/custom-state mutations, global invalidation and storage
+collection invalidate the token conservatively. It reads no guest properties, cascade,
+resources or layout. The host must retain every CSSOM, live-state, composition,
+resource, viewport and query-admission check. `Tree.version` remains the broad storage
+revision: recapture normally and check that full version before every live layout;
+a checkpoint never grants permission to read an outdated `LiveCapture`.
 
 **Native geometry and animations (#507).** With `host-internals`,
 `css_effect_lifecycle(scope, element)` enters the wrapper's creation realm and native

@@ -343,6 +343,7 @@ impl Tree {
         // The parse buffer goes away: keep the creation-time custom element state it implies.
         self.record_parsed_states(retained.iter().copied());
         let (nodes, parents, children, attrs) = self.materialize_retained_overlays(&retained);
+        self.invalidate_document_checkpoint();
         self.buf = document_buffer();
         self.buf_len = 1;
         self.new_nodes = NodeArena::Sparse(nodes);

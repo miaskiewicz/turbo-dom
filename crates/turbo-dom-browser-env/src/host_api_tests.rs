@@ -925,3 +925,80 @@ fn cached_own_box_proofs_agree_with_independent_chrome159_geometry() {
         });
     }
 }
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_preserves_detached_construction_and_rejects_connected_changes() {
+    use crate::host_internals::document_checkpoint;
+    with_page(
+        "<!doctype html><main><input id=control><div id=anchor>old</div></main>",
+        |scope| {
+            let document = object(scope, "document");
+            assert!(document_checkpoint(scope, document).is_none());
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let saved = document_checkpoint(scope, document).unwrap();
+            eval(scope,"globalThis.anchor=document.getElementById('anchor');globalThis.control=document.getElementById('control')");
+            let version = with_tree(|tree| tree.version).unwrap();
+            eval(scope, "globalThis.held=[];for(let i=0;i<6;i++){const d=document.createElement('div'),input=document.createElement('input');d.className='MuiAutocomplete-inputRoot';d.style.width='100px';d.removeAttribute('hidden');d.textContent='detached';d.appendChild(input);d.appendChild(document.createElementNS('http://www.w3.org/2000/svg','svg'));input.defaultChecked=true;held.push(d)}");
+            assert_eq!(document_checkpoint(scope, document), Some(saved));
+            assert!(with_tree(|tree| tree.version).unwrap() > version);
+            for action in [
+                "anchor.style.width='360px'",
+                "anchor.textContent='new'",
+                "control.checked=true",
+                "anchor.appendChild(held[0])",
+                "held[0].remove()",
+            ] {
+                let before = document_checkpoint(scope, document).unwrap();
+                eval(scope, action);
+                assert_ne!(
+                    document_checkpoint(scope, document),
+                    Some(before),
+                    "{action}"
+                );
+            }
+            eval(scope,"Object.defineProperty(document,'ownerDocument',{get(){throw Error('guest getter')}});globalThis.getComputedStyle=()=>{throw Error('style')};globalThis.__layout=()=>{throw Error('layout')}");
+            assert!(document_checkpoint(scope, document).is_some());
+            for source in [
+                "({})",
+                "Object.create(Document.prototype)",
+                "document.createElement('div')",
+                "new DOMParser().parseFromString('<p>x</p>','text/html')",
+            ] {
+                let invalid = object(scope, source);
+                assert!(document_checkpoint(scope, invalid).is_none(), "{source}");
+            }
+            eval(scope, "anchor.attachShadow({mode:'open'})");
+            assert!(document_checkpoint(scope, document).is_none());
+        },
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_is_owned_by_exact_native_realm_and_refuses_retirement() {
+    use crate::host_internals::{current_document_id, document_checkpoint, retire_context};
+    with_page("<!doctype html><p>main</p>", |scope| {
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        let main = object(scope, "document");
+        let saved = document_checkpoint(scope, main).unwrap();
+        let main_id = current_document_id();
+        let child = v8::Context::new(scope, Default::default());
+        let held = {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<!doctype html><p>child</p>");
+            let document = object(scope, "document");
+            assert_ne!(document_checkpoint(scope, document), Some(saved));
+            v8::Global::new(scope, document)
+        };
+        let _main = crate::host_internals::enter_context_document(scope.get_current_context());
+        let document = v8::Local::new(scope, &held);
+        let child_saved = document_checkpoint(scope, document).unwrap();
+        assert_ne!(child_saved, saved);
+        assert_eq!(current_document_id(), main_id);
+        retire_context(child);
+        assert!(document_checkpoint(scope, document).is_none());
+        assert_eq!(current_document_id(), main_id);
+        assert_eq!(document_checkpoint(scope, main), Some(saved));
+    });
+}

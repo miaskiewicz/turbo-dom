@@ -313,3 +313,45 @@ fn cached_own_box_survives_startup_snapshot_rehydration() {
     }
     browser_env::reset();
 }
+
+fn assert_public_document_checkpoint(scope: &mut v8::PinScope) {
+    let document = object(scope, "document");
+    let saved: DocumentCheckpoint = document_checkpoint(scope, document).unwrap();
+    let full_version = with_tree(|tree| tree.version).unwrap();
+    for _ in 0..6 {
+        eval(scope,"{const d=document.createElement('div');d.style.width='42px';d.appendChild(document.createElementNS('http://www.w3.org/2000/svg','svg'));}");
+        assert_eq!(document_checkpoint(scope, document), Some(saved));
+    }
+    assert!(with_tree(|tree| tree.version).unwrap() > full_version);
+    eval(
+        scope,
+        "document.querySelector('main').textContent='connected change'",
+    );
+    assert_ne!(document_checkpoint(scope, document), Some(saved));
+}
+
+#[test]
+fn document_checkpoint_is_public_and_survives_startup_snapshot_rehydration() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    {
+        v8::scope!(let scope,isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        browser_env::install_html(scope, "<!doctype html><main>connected</main>");
+        assert_public_document_checkpoint(scope);
+    }
+    browser_env::reset();
+    let mut window =
+        browser_env::install_from_snapshot("<!doctype html><main>connected</main>").unwrap();
+    let (isolate, context) = window.parts();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    {
+        v8::scope!(let scope,isolate);
+        let context = v8::Local::new(scope, context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        assert_public_document_checkpoint(scope);
+    }
+    browser_env::reset();
+}
