@@ -250,6 +250,12 @@ fn probe_gif(bytes: &[u8]) -> Option<Intrinsic> {
     (w > 0 && h > 0).then_some(Intrinsic::new(u32::from(w), u32::from(h), false))
 }
 
+/// The first decoded GIF frame, independently of its logical screen size.
+#[cfg(feature = "svg-rasterize")]
+pub(crate) fn gif_frame_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    formats::gif_frame_size(bytes)
+}
+
 /// WebP intrinsic size across the three chunk layouts (lossy `VP8 `, lossless
 /// `VP8L`, extended `VP8X`). Reads only the header dimensions — no pixel decode.
 fn probe_webp(bytes: &[u8]) -> Option<Intrinsic> {

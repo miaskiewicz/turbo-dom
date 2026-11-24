@@ -77,9 +77,9 @@ png = "0.18.1"
 jpeg-decoder = { version = "0.3.2", default-features = false }
 encoding_rs = "0.8"
 # `svg-rasterize` feature only. `default-features = false` drops `system-fonts` (the only
-# non-deterministic input) plus the `text`/raster-image decoders; resvg re-exports `usvg`
-# and `tiny-skia`. See src/svg.rs.
-resvg = { version = "=0.45.1", default-features = false, optional = true }
+# non-deterministic input) and `text`; embedded raster images use the same data-only
+# resolver as nested SVG images. resvg re-exports `usvg` and `tiny-skia`. See src/svg.rs.
+resvg = { version = "=0.45.1", default-features = false, features = ["raster-images"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 # `hyphenation` feature only: the embedded en-US dictionary (every language under
 # `hyphenation-languages`).

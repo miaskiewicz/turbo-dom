@@ -1,0 +1,21 @@
+{
+  "chromiumVersion": "159.0.8154.6",
+  "probeSHA256": "137588e9c2ea922d33708e47b16f36d4c777484a3cabd6d793846d4e9c96e1fe",
+  "captureSHA256": "fb4325e5e45083c41379a2313bcd7c0722e13bd288cbc186cb93ffe48822b04a",
+  "expectedRGBA": [
+    238,
+    34,
+    68,
+    255
+  ],
+  "assets": {
+    "actual-href.svg": "0448a39db29169e463b84697c2aa817899b787134c8378a9eb13b8f9434b2e6b",
+    "pattern.svg": "97750637e95acad667405938cee8797ceb1e8669249c36220ad7cf1feee96592",
+    "canonical-xlink-href.svg": "b68da7bc91ecb0d296cc8d6f21254fe25a83bd6384742f64784f18f35de63f5e",
+    "pixel.png": "a569dc56d047f534a0a2b4931d43eae3b8820588f4e01cdd1490e502e7bf0ca7",
+    "use-mask.svg": "fd8ea31921399692f8c4948ac65e5fa8bcd77d85086f77e8935256ac6953e342",
+    "canonical-href.svg": "ae63d5b2b2fbf781b754f0fe9729832d8aa5c47c2c3a6ad2e0c6032bfa447b05",
+    "actual-xlink-href.svg": "579d67ce5aeb92bd242cc3fffa0adaf5bef6dab1c68be97ed9789dde4022c8d6"
+  },
+  "sourceProducer": "eb040c84c150b30e30c2483a39b8784e44a4da93"
+}
