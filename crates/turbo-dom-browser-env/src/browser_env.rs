@@ -3818,6 +3818,16 @@ fn rewrite_pseudo_selector<'s>(
     scalar: &str,
     subject_local: bool,
 ) -> Option<String> {
+    rewrite_pseudo_selector_impl(scope, node, scalar, subject_local, false)
+}
+
+fn rewrite_pseudo_selector_impl(
+    scope: &mut v8::PinScope,
+    node: Handle,
+    scalar: &str,
+    subject_local: bool,
+    strict: bool,
+) -> Option<String> {
     let mask = transform_mask(scalar);
     let mut transformed = scalar.to_owned();
     let mut rewritten = false;
@@ -3828,7 +3838,9 @@ fn rewrite_pseudo_selector<'s>(
         let next = match bit {
             0 => html_popover::selector(scope, node, &transformed)?,
             1 => html_dialog::selector(scope, node, &transformed)?,
+            2 if strict => interest_invokers::selector_strict(scope, node, &transformed)?,
             2 => interest_invokers::selector(scope, node, &transformed)?,
+            3 if strict => form_pseudo::selector_strict(scope, node, &transformed)?,
             3 => form_pseudo::selector(scope, node, &transformed, subject_local)?,
             _ => view_transitions::selector(scope, node, &transformed)?,
         };
