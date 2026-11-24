@@ -63,6 +63,19 @@ fn valid_local_png_paths_and_http_are_not_loaded() {
 }
 
 #[test]
+fn raster_signature_resolves_mime_aliases_without_rewriting_svg() {
+    for svg in [
+        include_str!("fixtures/svg-raster/actual-href.svg"),
+        include_str!("fixtures/svg-raster/actual-xlink-href.svg"),
+    ] {
+        assert_red(svg);
+    }
+    assert_red(&CANONICAL.replace("image/png", "application/octet-stream"));
+    let wrong_svg_type = CANONICAL.replace("image/png", "image/svg+xml");
+    assert!(rgba(&wrong_svg_type).iter().all(|&b| b == 0));
+}
+
+#[test]
 fn malformed_riff_and_non_raster_xml_do_not_bypass_svg_guards() {
     for href in [
         "data:text/plain,RIFFnot-a-webp",
