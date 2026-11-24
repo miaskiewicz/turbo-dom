@@ -26,6 +26,9 @@ use super::tree::{FormProp, Handle, NodeType, Tree};
 #[path = "query_candidates.rs"]
 mod candidates;
 pub(crate) use candidates::CandidateIndex;
+#[path = "query_ranks.rs"]
+mod ranks;
+pub(crate) use ranks::SiblingRanks;
 
 /// Max distinct entries held in the version-keyed query cache (`Tree.qcache`)
 /// before it is cleared wholesale. Mirrors the JS `__selectorCache` cap (10000):
@@ -1572,6 +1575,12 @@ impl Navigator for ScopedNavigator<'_> {
     fn same_type(&self, a: Handle, b: Handle) -> bool {
         self.live.same_type(a, b)
     }
+    fn child_position(&self, h: Handle) -> (usize, usize) {
+        self.live.child_position(h)
+    }
+    fn type_position(&self, h: Handle) -> (usize, usize) {
+        self.live.type_position(h)
+    }
     fn type_name(&self, h: Handle) -> Option<&str> {
         self.live.type_name(h)
     }
@@ -1620,6 +1629,16 @@ impl Navigator for LiveNavigator<'_> {
     }
     fn same_type(&self, a: Handle, b: Handle) -> bool {
         self.0.same_element_type(a, b)
+    }
+    fn child_position(&self, h: Handle) -> (usize, usize) {
+        self.0.sibling_ranks.borrow_mut().position(self.0, h).child
+    }
+    fn type_position(&self, h: Handle) -> (usize, usize) {
+        self.0
+            .sibling_ranks
+            .borrow_mut()
+            .position(self.0, h)
+            .of_type
     }
     fn type_name(&self, h: Handle) -> Option<&str> {
         self.0.local_name_scalar(h)
