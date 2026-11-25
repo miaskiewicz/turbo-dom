@@ -337,8 +337,9 @@ fn border(snapshot: &LayoutSnapshot, node: Handle) -> (f32, f32) {
 
 #[test]
 fn explicit_context_evidence_survives_post_cascade_reconstruction_without_css_markers() {
-    let doc =
-        Styled::new("<body><div id='subject'><div id='inner'></div></div><div id='cover'></div>");
+    let doc = Styled::new(
+        "<body>before<div id='subject'>inside<div id='inner'></div></div><div id='cover'></div>after",
+    );
     let [subject, inner, cover] = ["subject", "inner", "cover"].map(|id| doc.el(id));
     let rules = [
         rule(
@@ -373,6 +374,13 @@ fn explicit_context_evidence_survives_post_cascade_reconstruction_without_css_ma
                 Ok(super::testing::collect(styled))
             })
             .unwrap();
+        let mut text: Vec<_> = snapshot
+            .text_sources()
+            .iter()
+            .map(|source| source.text.as_str())
+            .collect();
+        text.sort_unstable();
+        assert_eq!(text, ["after", "before", "inside"]);
         let hits = crate::cssom_view::hit::elements_at_point(
             &snapshot,
             &styles,

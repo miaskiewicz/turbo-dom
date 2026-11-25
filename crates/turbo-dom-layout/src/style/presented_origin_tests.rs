@@ -55,6 +55,75 @@ fn presented_origins_follow_all_css_cascade_strata_in_either_source_order() {
 }
 
 #[test]
+fn ordered_matched_declarations_preserve_origin_strata_and_owned_candidates() {
+    use CascadeOrigin::{Animation, Author, Transition, User, UserAgent};
+    let strata = [
+        (UserAgent, "width:10px"),
+        (User, "width:20px"),
+        (Author, "width:30px"),
+        (Animation, "width:40px"),
+        (Author, "width:50px!important"),
+        (User, "width:60px!important"),
+        (UserAgent, "width:70px!important"),
+        (Transition, "width:80px"),
+    ];
+    let mut matched: Vec<_> = strata
+        .into_iter()
+        .rev()
+        .flat_map(|(origin, css)| group(origin, css))
+        .collect();
+    let ordered = ordered_matched_declarations(&matched);
+    assert_eq!(
+        ordered
+            .iter()
+            .map(|declaration| declaration.value.as_str())
+            .collect::<Vec<_>>(),
+        ["10px", "20px", "30px", "40px", "50px", "60px", "70px", "80px"]
+    );
+    assert_eq!(
+        resolve_matched_style(&ComputedStyle::default(), &matched).get("width"),
+        Some("80px")
+    );
+    matched[0].declaration.value = "changed after collection".into();
+    assert_eq!(ordered.last().unwrap().value, "80px");
+}
+
+#[test]
+fn ordered_matched_declarations_keep_scope_inline_specificity_and_source_order() {
+    let mut matched = Vec::new();
+    for (value, depth, important, inline, specificity, order) in [
+        (10, 2, false, true, (9, 9, 9), 99),
+        (20, 0, false, false, (0, 0, 1), 0),
+        (30, 0, false, false, (1, 0, 0), 0),
+        (40, 0, false, false, (1, 0, 0), 1),
+        (50, 0, false, true, (0, 0, 0), 0),
+        (60, 0, true, true, (9, 9, 9), 99),
+        (70, 2, true, false, (0, 0, 0), 0),
+    ] {
+        let mut declaration = group(CascadeOrigin::Author, &format!("width:{value}px")).remove(0);
+        declaration.declaration.important = important;
+        declaration.scope_depth = depth;
+        declaration.inline = inline;
+        declaration.specificity = specificity;
+        declaration.order = order;
+        matched.push(declaration);
+    }
+    matched.reverse();
+    let ordered = ordered_matched_declarations(&matched);
+    assert_eq!(
+        ordered
+            .iter()
+            .map(|declaration| declaration.value.as_str())
+            .collect::<Vec<_>>(),
+        ["10px", "20px", "30px", "40px", "50px", "60px", "70px"]
+    );
+    assert_eq!(
+        resolve_matched_style(&ComputedStyle::default(), &matched).get("width"),
+        Some("70px")
+    );
+}
+
+#[test]
 fn sampled_animation_cannot_acquire_importance_from_its_transport_declaration() {
     use CascadeOrigin::{Animation, Author};
     let style = resolve(&[

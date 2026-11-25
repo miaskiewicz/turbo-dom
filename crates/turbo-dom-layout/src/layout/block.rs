@@ -4215,6 +4215,71 @@ mod tests {
     }
 
     #[test]
+    fn anonymous_break_preserves_inline_membership_boundaries() {
+        use crate::layout::boxgen::InlineItem;
+        use crate::NodeId;
+        let style = ComputedStyle::default();
+        let items = [
+            InlineItem::Boundary {
+                node_id: NodeId(1),
+                style: style.clone(),
+                start: true,
+            },
+            InlineItem::Text {
+                node_id: NodeId(2),
+                style: style.clone(),
+                text: "before".into(),
+            },
+            InlineItem::LineBreak,
+            InlineItem::Text {
+                node_id: NodeId(3),
+                style: style.clone(),
+                text: "after".into(),
+            },
+            InlineItem::Boundary {
+                node_id: NodeId(1),
+                style: style.clone(),
+                start: false,
+            },
+            InlineItem::Text {
+                node_id: NodeId(4),
+                style,
+                text: "outside".into(),
+            },
+        ];
+        let members = super::inline_members(&items, NodeId(1));
+        assert_eq!(
+            members,
+            [NodeId(1), NodeId(2), NodeId(3)].into_iter().collect()
+        );
+    }
+
+    #[test]
+    fn fontless_breaks_do_not_manufacture_sticky_fragments() {
+        use crate::live::testing::{id, layout_with_fonts};
+        use crate::text::FontRegistry;
+        let html = "<div style='width:100px;line-height:20px'><span id=sticky style='position:sticky;top:0'><br><br></span></div>";
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &FontRegistry::default(),
+        );
+        assert!(snapshot.sticky_constraint(id(&tree, "#sticky")).is_none());
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &FontRegistry::new(),
+        );
+        assert!(snapshot.sticky_constraint(id(&tree, "#sticky")).is_some());
+    }
+
+    #[test]
     fn line_strut_prefers_line_height_then_face_then_fallback() {
         use super::line_strut;
         use crate::layout::value::{resolve_box_style, ResolveCtx};

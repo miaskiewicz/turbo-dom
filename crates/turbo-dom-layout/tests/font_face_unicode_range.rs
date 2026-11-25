@@ -81,6 +81,17 @@ fn parse_unicode_range_rejects_malformed_input() {
 }
 
 #[test]
+fn wildcard_blocks_reject_overlong_interleaved_and_nonhex_prefixes() {
+    for (css, reason) in [
+        ("U+000000?", "wildcard block exceeds six hex digits"),
+        ("U+4?0", "a hex digit follows the first wildcard"),
+        ("U+G?", "wildcard prefix is not hexadecimal"),
+    ] {
+        assert!(parse_unicode_range(css).is_none(), "{css}: {reason}");
+    }
+}
+
+#[test]
 fn face_without_a_declared_range_covers_every_codepoint_its_cmap_has() {
     // No declared range = inherit "U+0-10FFFF" default (CSS Fonts 4), the current
     // behaviour; changing it would regress every face registered before #539.

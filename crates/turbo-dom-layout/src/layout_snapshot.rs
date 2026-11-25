@@ -13,6 +13,8 @@
 //! cluster's embedding level); complete caret boxes, whitespace mapping, scrollbars,
 //! clipping and fragmented inline borders remain separate.
 
+#[cfg(test)]
+mod caret_inline_provenance_tests;
 mod fixed_containing;
 mod geometry;
 mod hit_geometry;
