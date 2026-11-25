@@ -66,10 +66,28 @@ Unknown presentation still follows the existing strict unsupported path.
   painter controls, 31 canonical host controls, 1 strict wire-format control).
   Actual binary hashes and source/toolchain manifests are preserved in
   `.evidence/hit-stacking/198-FOCUSED.json` and `SOURCE-MANIFEST.json`.
-- Normative Rust1.98 full workspace and coverage: running/pending at this checkpoint.
+- Normative Rust1.98 full workspace on `620b17b02273cc64a6fb9d3f9d2301e90dbd4801`:
+  **3,358 passed, zero failed, 13 existing ignored**, 240 binaries, exit zero.
+- Compatibility follow-up: disabling automatic CSS creation after an existing
+  CSS effect is paused must retain its canonical relevant context; disabling it
+  before creation still produces no effect/context. Baseline RED0/1, fixed full
+  canonical host suite **32/32 passed** on Rust1.98. Creation switches were not
+  reinterpreted as cancellation/presentation switches.
+- Latest combined workspace rerun and coverage floors remain pending at this
+  checkpoint; no floor was lowered or asserted green without measurement.
   Every normative invocation pins both `RUSTUP_TOOLCHAIN=1.98.0` and
   `cargo +1.98.0`; the shell default is1.99. Its newer preexisting raster test
   lint failure was retained as extra evidence without changing the test/flags.
+
+## Consumer cross-check
+
+The Surf owner reports private integration against exact producer `620b17b0`:
+previously red delayed CSS/WAAPI context controls are green at ordinary zoom,
+zoom2 and clamped1e30 (six Chromium fixtures); geometry matrix26/26, MUI5/5,
+policy13/13, selector3/3 and SVG3/3 pass. Typed metadata survives both scaling
+reconstruction paths. An exact property/context/policy cache key retains one
+solve and eleven hits for a constant effect. This is a private integration
+receipt, not an application E2E or packaged release-artifact success claim.
 
 No app services, fixtures, source or consumer package pins were changed here.
 These controls establish producer behavior; they do not claim an application E2E

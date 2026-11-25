@@ -180,6 +180,33 @@ fn context_metadata_obeys_presentation_policy_and_live_css_rule_ownership() {
     });
 }
 
+#[test]
+fn context_metadata_preserves_existing_effects_when_css_creation_is_disabled() {
+    with_dom(|scope| {
+        eval(scope, "globalThis.target=document.getElementById('target');const style=document.createElement('style');style.textContent='@keyframes context{from{opacity:.5}to{opacity:1}}';document.head.append(style);target.style.animation='context 1000ms 1000ms linear';globalThis.motion=target.getAnimations()[0];motion.pause();motion.currentTime=500");
+        browser_env::set_css_animations(scope, false);
+        assert!(eval(scope, "document.getAnimations().includes(motion)").is_true());
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        assert!(
+            sample.targets[0].establishes_stacking_context,
+            "canonical retained before-phase effect: {sample:?}"
+        );
+    });
+    with_dom(|scope| {
+        browser_env::set_css_animations(scope, false);
+        eval(scope, "globalThis.target=document.getElementById('target');const style=document.createElement('style');style.textContent='@keyframes context{from{opacity:.5}to{opacity:1}}';document.head.append(style);target.style.animation='context 1000ms 1000ms linear'");
+        assert!(eval(scope, "document.getAnimations().length===0").is_true());
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        assert!(!sample.targets[0].establishes_stacking_context);
+    });
+}
+
 fn snapshot_params() -> v8::CreateParams {
     match std::env::var_os("TURBO_DOM_SNAPSHOT_PATH").and(browser_env::snapshot_blob()) {
         Some(blob) => blob.create_params(),
