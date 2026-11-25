@@ -17,6 +17,23 @@ const presentationGet = WeakMap.prototype.get,
 const presentationOwn = Object.hasOwn;
 const presentationApply = Reflect.apply;
 const plainPresentationPrototype = Object.prototype;
+const createRecord = Object.create,
+  resultEntries = Object.entries,
+  NativeWeakMap = WeakMap,
+  NativeSet = Set,
+  NativeU16 = Uint16Array;
+const weakGet = WeakMap.prototype.get,
+  weakSet = WeakMap.prototype.set,
+  weakDelete = WeakMap.prototype.delete;
+const ownerAdd = Set.prototype.add,
+  ownerDelete = Set.prototype.delete,
+  ownerForEach = Set.prototype.forEach,
+  ownerClear = Set.prototype.clear;
+const DefaultWeak = globalThis.WeakRef,
+  DefaultFinalizer = globalThis.FinalizationRegistry;
+const defaultDeref = DefaultWeak?.prototype.deref,
+  defaultRegister = DefaultFinalizer?.prototype.register,
+  defaultUnregister = DefaultFinalizer?.prototype.unregister;
 function dataProperty(target, key, value) {
   presentationDefine(target, key, { __proto__: null, value, writable: true, enumerable: true, configurable: true });
 }
@@ -25,7 +42,7 @@ function presentationContainer(value) {
     proto = presentationPrototype(value);
   if (!array && proto !== plainPresentationPrototype && proto !== null)
     throw new TypeError('turbo-dom: lazy property context cannot retain native or opaque handles');
-  return array ? [] : Object.create(null);
+  return array ? [] : createRecord(null);
 }
 function cloneData(value, seen, created) {
   if (typeof value === 'function') throw new TypeError('turbo-dom: lazy property context must be stateless data');
@@ -35,7 +52,11 @@ function cloneData(value, seen, created) {
   const owned = presentationContainer(value);
   presentationApply(presentationSet, seen, [value, owned]);
   dataProperty(created, created.length, value);
-  for (const [key, entry] of presentationEntries(value)) dataProperty(owned, key, cloneData(entry, seen, created));
+  const entries = presentationEntries(value);
+  for (let index = 0; index < entries.length; index++) {
+    const pair = entries[index];
+    dataProperty(owned, pair[0], cloneData(pair[1], seen, created));
+  }
   return freezePresentation(owned);
 }
 function immutableData(value, seen) {
@@ -48,8 +69,9 @@ function immutableData(value, seen) {
   }
 }
 function immutableReadContext(context) {
-  const copy = Object.create(null);
-  for (const [key, value] of presentationEntries(context)) dataProperty(copy, key, value);
+  const copy = createRecord(null),
+    entries = presentationEntries(context);
+  for (let index = 0; index < entries.length; index++) dataProperty(copy, entries[index][0], entries[index][1]);
   return freezePresentation(copy);
 }
 function propertyContext(resolved, request, context, snapshots) {
@@ -88,9 +110,10 @@ export class SharedCssCapabilityError extends Error {
 function release(compiled, prepared) {
   let failed = false,
     failure;
-  for (const owner of [prepared, compiled]) {
+  const owners = [prepared, compiled];
+  for (let index = 0; index < owners.length; index++) {
     try {
-      owner?.dispose();
+      owners[index]?.dispose();
     } catch (error) {
       if (!failed) {
         failed = true;
@@ -105,25 +128,35 @@ function registry(intrinsics) {
     Finalizer = intrinsics.FinalizationRegistry;
   if (typeof Weak !== 'function' || typeof Finalizer !== 'function')
     throw new SharedCssCapabilityError('requires WeakRef and FinalizationRegistry');
-  const entries = new Set();
-  const finalizer = new Finalizer((reference) => entries.delete(reference));
+  const entries = new NativeSet();
+  const finalizer = new Finalizer((reference) => presentationApply(ownerDelete, entries, [reference]));
+  const unregister = (reference) =>
+    Finalizer === DefaultFinalizer ? presentationApply(defaultUnregister, finalizer, [reference]) : finalizer.unregister(reference);
   return {
     add(resources) {
       const reference = new Weak(resources);
-      entries.add(reference);
-      finalizer.register(resources, reference, reference);
+      presentationApply(ownerAdd, entries, [reference]);
+      if (Finalizer === DefaultFinalizer) presentationApply(defaultRegister, finalizer, [resources, reference, reference]);
+      else finalizer.register(resources, reference, reference);
       return reference;
     },
     remove(reference) {
-      entries.delete(reference);
-      finalizer.unregister(reference);
+      presentationApply(ownerDelete, entries, [reference]);
+      unregister(reference);
     },
     all() {
-      return Array.from(entries, (reference) => reference.deref()).filter(Boolean);
+      const resources = [];
+      presentationApply(ownerForEach, entries, [
+        (reference) => {
+          const resource = Weak === DefaultWeak ? presentationApply(defaultDeref, reference, []) : reference.deref();
+          if (resource) dataProperty(resources, resources.length, resource);
+        },
+      ]);
+      return resources;
     },
     clear() {
-      for (const reference of entries) finalizer.unregister(reference);
-      entries.clear();
+      presentationApply(ownerForEach, entries, [unregister]);
+      presentationApply(ownerClear, entries, []);
     },
   };
 }
@@ -136,8 +169,19 @@ function retire(resources, owners) {
 }
 function newState(owners) {
   const resources = { compiled: null, prepared: null };
-  resources.reference = owners.add(resources);
-  return { resources, compileKey: null, prepareKey: null, backend: null, targets: new WeakMap(), generation: {} };
+  dataProperty(resources, 'reference', owners.add(resources));
+  return {
+    resources,
+    compileKey: null,
+    prepareKey: null,
+    backend: null,
+    targets: new NativeWeakMap(),
+    generation: {},
+  };
+}
+function assignData(target, values) {
+  const entries = resultEntries(values);
+  for (let index = 0; index < entries.length; index++) dataProperty(target, entries[index][0], entries[index][1]);
 }
 function replacement(state, backend, compileKey, prepareKey, createFacts, decode) {
   const fresh = state.backend !== backend || state.compileKey !== compileKey;
@@ -175,8 +219,11 @@ function synchronize(state, backend, compileKey, prepareKey, createFacts, decode
     state.compileKey = state.prepareKey = null;
     throw error;
   }
-  Object.assign(state.resources, { compiled: next.compiled, prepared: next.prepared });
-  Object.assign(state, {
+  assignData(state.resources, {
+    compiled: next.compiled,
+    prepared: next.prepared,
+  });
+  assignData(state, {
     compileKey,
     prepareKey,
     backend,
@@ -197,13 +244,21 @@ function cachedResult(entry, context, generation, key) {
     entry.key === key
   );
 }
+function resultKey(pseudo, value, encoder = encode) {
+  const data = createRecord(null);
+  if (pseudo !== undefined) dataProperty(data, 'pseudo', pseudo);
+  if (value !== undefined) dataProperty(data, 'value', value);
+  return encoder(data);
+}
 function copyResultValues(values) {
-  const copy = Object.create(null);
-  for (const [name, units] of Object.entries(values ?? {})) {
-    if (!Array.isArray(units) && !(units instanceof Uint16Array))
-      throw new TypeError('turbo-dom: invalid UTF16 computed style result');
+  const copy = createRecord(null),
+    entries = resultEntries(values ?? {});
+  for (let pair = 0; pair < entries.length; pair++) {
+    const name = entries[pair][0],
+      units = entries[pair][1];
+    if (!presentationArray(units) && !(units instanceof NativeU16)) throw new TypeError('turbo-dom: invalid UTF16 computed style result');
     const owned = [];
-    for (let index = 0; index < units.length; index++) owned.push(units[index]);
+    for (let index = 0; index < units.length; index++) dataProperty(owned, index, units[index]);
     copy[name] = owned;
   }
   return copy;
@@ -222,9 +277,14 @@ function resultProxy(entry, version) {
 }
 function resolvedRow(prepared, request, encode, decode) {
   const output = decode(prepared.resolveBatch(encode(request.request)));
-  if (output.geometryOnly === true)
-    throw new SharedCssCapabilityError('geometry-only rows cannot become computed style');
-  const row = output.targets.find((row) => row.id === request.resultId);
+  if (output.geometryOnly === true) throw new SharedCssCapabilityError('geometry-only rows cannot become computed style');
+  let row;
+  for (let index = 0; index < output.targets.length; index++) {
+    if (output.targets[index].id === request.resultId) {
+      row = output.targets[index];
+      break;
+    }
+  }
   if (!row) throw new TypeError('turbo-dom: shared CSS result target missing');
   return { row, batch: output };
 }
@@ -232,9 +292,9 @@ function resolvedRow(prepared, request, encode, decode) {
 function retireAll(resources, owners) {
   let failed = false,
     failure;
-  for (const resource of resources) {
+  for (let index = 0; index < resources.length; index++) {
     try {
-      retire(resource, owners);
+      retire(resources[index], owners);
     } catch (error) {
       if (!failed) {
         failed = true;
@@ -257,14 +317,15 @@ export function createSharedComputedStyle({
   resolveProperty,
   createFacts,
   encodeRequest = encode,
+  encodeResultKey,
   decodeResponse = decode,
-  intrinsics = { WeakRef: globalThis.WeakRef, FinalizationRegistry: globalThis.FinalizationRegistry },
+  intrinsics = { WeakRef: DefaultWeak, FinalizationRegistry: DefaultFinalizer },
 }) {
   if (typeof finalizeResult !== 'function') throw new TypeError('turbo-dom: shared CSS requires finalizeResult');
   if (resolveProperty !== undefined && typeof resolveProperty !== 'function')
     throw new TypeError('turbo-dom: resolveProperty must be a function');
   const presentationSnapshots = resolveProperty === undefined ? null : new PresentationWeakMap();
-  let documents = new WeakMap(),
+  let documents = new NativeWeakMap(),
     owners,
     closed = false;
   function get(element, pseudo) {
@@ -274,10 +335,10 @@ export function createSharedComputedStyle({
     owners ??= registry(intrinsics);
     const context = readContext(element, pseudo);
     if (!object(context.document) || !object(element)) throw new TypeError('turbo-dom: shared CSS invalid owner');
-    let state = documents.get(context.document);
+    let state = presentationApply(weakGet, documents, [context.document]);
     if (!state) {
       state = newState(owners);
-      documents.set(context.document, state);
+      presentationApply(weakSet, documents, [context.document, state]);
     }
     // Every read captures exact sources. Current mechanical snapshots explicitly
     // require scanning; an opaque document stamp never skips unknown CSS stores.
@@ -286,8 +347,8 @@ export function createSharedComputedStyle({
     const compileKey = encodeRequest(compileRequest(sources, context));
     const prepareKey = encodeRequest(prepareRequest(sources, context));
     synchronize(state, backend, compileKey, prepareKey, createFacts, decodeResponse);
-    const key = encode({ pseudo, value: context.resultKey });
-    let entry = state.targets.get(element);
+    const key = resultKey(pseudo, context.resultKey, encodeResultKey);
+    let entry = presentationApply(weakGet, state.targets, [element]);
     if (!cachedResult(entry, context, state.generation, key)) {
       const request = resolveRequest({
         element,
@@ -325,21 +386,21 @@ export function createSharedComputedStyle({
         renderToken: context.renderToken,
         environmentKey: context.environmentKey,
       };
-      state.targets.set(element, entry);
+      presentationApply(weakSet, state.targets, [element, entry]);
     }
     return resultProxy(entry, context.version);
   }
   function reset(document) {
     if (document !== undefined) {
-      const state = documents.get(document);
+      const state = presentationApply(weakGet, documents, [document]);
       if (state) {
-        documents.delete(document);
+        presentationApply(weakDelete, documents, [document]);
         retire(state.resources, owners);
       }
       return;
     }
     const resources = owners?.all() ?? [];
-    documents = new WeakMap();
+    documents = new NativeWeakMap();
     retireAll(resources, owners);
   }
   return {

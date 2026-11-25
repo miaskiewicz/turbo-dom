@@ -17,6 +17,7 @@ const array = Array.isArray,
   valuesIterator = Array.prototype.values;
 const define = Object.defineProperty;
 const Failure = TypeError;
+const NativeProxy = Proxy;
 function append(array, value) {
   define(array, array.length, { __proto__: null, value, writable: true, enumerable: true, configurable: true });
 }
@@ -50,8 +51,10 @@ function decodeUnits(units) {
 }
 function copyValues(result) {
   const map = new NativeMap();
-  for (const values of [result.values, result.custom]) {
-    for (const [name, units] of entries(values ?? {})) apply(mapSet, map, [name, decodeUnits(units)]);
+  const groups = [result.values, result.custom];
+  for (let group = 0; group < groups.length; group++) {
+    const pairs = entries(groups[group] ?? {});
+    for (let index = 0; index < pairs.length; index++) apply(mapSet, map, [pairs[index][0], decodeUnits(pairs[index][1])]);
   }
   return map;
 }
@@ -102,7 +105,7 @@ export function createComputedStyleProxy(result, version, options) {
   const context = callback === undefined ? undefined : options.propertyContext;
   const map = copyValues(result),
     getValue = presentation(result, map, callback, context);
-  return new Proxy(
+  return new NativeProxy(
     {},
     {
       get(_target, key) {
