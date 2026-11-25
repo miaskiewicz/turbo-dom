@@ -72,6 +72,96 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn private_token_abi_rejects_malformed_values_without_coercion() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,r#"
+          const ns=__tsNs;let conversions=0;
+          const opaque={toString(){conversions++;throw Error('unexpected coercion')}};
+          const calls=[
+            ()=>ns.computeEffectCustomTokens({},[]),
+            ()=>ns.computeEffectCustomTokens([],['--x',opaque]),
+            ()=>ns.computeEffectCustomTokens(['--x'],[]),
+            ()=>ns.computeEffectCustomTokens([],['--x']),
+            ()=>ns.substituteEffectTokens(opaque,[]),
+            ()=>ns.substituteEffectTokens('var(--x)',['--x']),
+            ()=>ns.computeEffectCustomTokens([],['--x','revert']),
+            ()=>ns.computeEffectCustomTokens([],['--x','revert-layer'])
+          ];
+          globalThis.malformedTokens=calls.every(call=>call()===null)&&conversions===0;
+          const sentinel=new Error('original private array getter'),array=['--x','value'];let reads=0;
+          Object.defineProperty(array,'0',{get(){reads++;throw sentinel}});
+          let original=false;try{ns.computeEffectCustomTokens([],array)}catch(error){original=error===sentinel}
+          globalThis.tokenGetterPreserved=original&&reads===1;
+          const nested='calc('.repeat(17)+'1px'+')'.repeat(17);
+          globalThis.tokenScanUnproved=ns.substituteEffectTokens(nested,null)===undefined;
+        "#).unwrap();
+        assert!(eval(
+            scope,
+            "malformedTokens&&tokenGetterPreserved&&tokenScanUnproved"
+        )
+        .is_true());
+    });
+}
+
+#[test]
+fn private_token_abi_bounds_sparse_arrays_and_real_substitution_expansion() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,r#"
+          const ns=__tsNs,overlong=new Array(1048577);
+          let arrayError=false;try{ns.computeEffectCustomTokens([],overlong)}catch(error){arrayError=error instanceof RangeError}
+          const payload='x'.repeat(600000),source='var(--unit)var(--unit)';
+          let substitutionError=false;
+          try{ns.substituteEffectTokens(source,['--unit',payload])}catch(error){substitutionError=error instanceof RangeError}
+          let customError=false;
+          try{ns.computeEffectCustomTokens([],['--unit',payload,'--double',source])}catch(error){customError=error instanceof RangeError}
+          globalThis.tokenExpansionBounded=arrayError&&substitutionError&&customError;
+        "#).unwrap();
+        assert!(eval(scope, "tokenExpansionBounded").is_true());
+    });
+}
+
+#[test]
+fn public_presentation_refuses_auto_queues_text_candidates_and_inert_documents() {
+    with_dom(|scope| {
+        let document = object(scope, "document");
+        let target = object(scope, "document.getElementById('target')");
+        let handle = handle_of(scope, target).unwrap();
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Auto);
+        assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+        let text = object(scope, "document.createTextNode('real text candidate')");
+        let text = handle_of(scope, text).unwrap();
+        assert!(sample_presented_effects(scope, document, &[text]).is_none());
+        let inert = object(scope, "document.implementation.createHTMLDocument('inert')");
+        assert!(sample_presented_effects(scope, inert, &[]).is_none());
+        assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn public_presentation_rejects_duplicate_and_foreign_rows_from_a_host_callback() {
+    for mutation in [
+        "result.targets[result.targets.length]=result.targets[0]",
+        "result.targets[0][0]=foreignElement",
+    ] {
+        with_dom(|scope| {
+            let document = object(scope, "document");
+            let target = object(scope, "document.getElementById('target')");
+            let handle = handle_of(scope, target).unwrap();
+            assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+            browser_env::run_engine_script(scope,&format!("const original=__tsNs.samplePresentedEffects;const foreignElement=document.implementation.createHTMLDocument('foreign').createElement('span');__tsNs.samplePresentedEffects=function(...args){{const result=Reflect.apply(original,this,args);{mutation};return result;}};globalThis.restorePresentationRows=()=>{{__tsNs.samplePresentedEffects=original;}};")).unwrap();
+            let refused = sample_presented_effects(scope, document, &[handle]).is_none();
+            browser_env::run_engine_script(scope, "restorePresentationRows();").unwrap();
+            assert!(refused, "{mutation}");
+            assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
 fn badge_transition_resolves_custom_tokens_and_keeps_symbolic_reference_lengths() {
     with_html(
         true,
