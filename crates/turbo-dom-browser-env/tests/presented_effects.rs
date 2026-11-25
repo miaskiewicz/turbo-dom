@@ -28,13 +28,21 @@ fn with_dom_using(independent: bool, test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 fn with_dom_lifecycle(independent: bool, reset: bool, test: impl FnOnce(&mut v8::PinScope)) {
+    with_html(
+        independent,
+        reset,
+        "<!doctype html><div id=target style='width:100px;height:20px'></div>",
+        test,
+    );
+}
+
+fn with_html(independent: bool, reset: bool, html: &str, test: impl FnOnce(&mut v8::PinScope)) {
     init_v8();
     let isolate = &mut v8::Isolate::new(snapshot_params());
     isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);
-    let html = "<!doctype html><div id=target style='width:100px;height:20px'></div>";
     if independent {
         browser_env::install_independent_html(scope, html);
     } else {
@@ -537,5 +545,283 @@ fn canonical_sampling_preserves_internal_exceptions() {
         assert!(exception
             .to_rust_string_lossy(scope)
             .contains("canonical sampling sentinel"));
+    });
+}
+
+fn presented_animation_pairs(scope: &mut v8::PinScope) -> Vec<PresentedProperty> {
+    let document = object(scope, "document");
+    let sample = sample_presented_effects(scope, document, &[]).expect("owned canonical sample");
+    assert_eq!(sample.targets.len(), 1);
+    let PresentedTargetState::Certified { animation, .. } = &sample.targets[0].presentation else {
+        panic!("modeled absolute effect must be certified: {sample:?}");
+    };
+    animation.clone()
+}
+
+#[test]
+fn actual_mui_svg_dasharray_uses_canonical_piecewise_list_interpolation() {
+    with_dom(|scope| {
+        eval(scope, "document.body.innerHTML='<svg width=100 height=100><circle id=subject cx=50 cy=50 r=30 fill=none stroke=red /></svg>';const s=document.createElement('style');s.textContent='@keyframes motion{0%{stroke-dasharray:1px,200px;stroke-dashoffset:0px}50%{stroke-dasharray:100px,200px;stroke-dashoffset:-15px}100%{stroke-dasharray:1px,200px;stroke-dashoffset:-126px}}#subject{animation:motion 1000ms linear both}';document.head.append(s);globalThis.subject=document.getElementById('subject');globalThis.effect=subject.getAnimations()[0];effect.pause();__layoutCalls=0");
+        for (time, array, offset) in [
+            (0, "1px, 200px", "0px"),
+            (250, "50.5px, 200px", "-7.5px"),
+            (500, "100px, 200px", "-15px"),
+            (750, "50.5px, 200px", "-70.5px"),
+            (1000, "1px, 200px", "-126px"),
+        ] {
+            eval(scope, &format!("effect.currentTime={time};__layoutCalls=0"));
+            let pairs = presented_animation_pairs(scope);
+            for (name, value) in [("stroke-dasharray", array), ("stroke-dashoffset", offset)] {
+                assert!(
+                    pairs.contains(&PresentedProperty {
+                        name: name.into(),
+                        value: value.into()
+                    }),
+                    "{time} {pairs:?}"
+                );
+            }
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+            assert!(eval(scope, &format!("getComputedStyle(subject).strokeDasharray==='{array}' && getComputedStyle(subject).strokeDashoffset==='{offset}'")).is_true());
+        }
+    });
+}
+
+#[test]
+fn repeatable_svg_lists_normalize_units_and_repeat_to_least_common_multiple() {
+    with_dom(|scope| {
+        eval(scope, "document.body.innerHTML='<svg><circle id=subject /></svg>';globalThis.subject=document.getElementById('subject')");
+        for (from, to, expected) in [
+            ("1 200", "100 200", "50.5px, 200px"),
+            ("2 4", "10 20 30", "6px, 12px, 16px, 7px, 11px, 17px"),
+            ("2", "10 20 30", "6px, 11px, 16px"),
+            ("1in 2px", "192px 4px", "144px, 3px"),
+            ("10% 20%", "30% 40%", "20%, 30%"),
+        ] {
+            eval(scope, &format!("if(globalThis.effect)effect.cancel();globalThis.effect=subject.animate([{{strokeDasharray:'{from}'}},{{strokeDasharray:'{to}'}}],{{duration:1000,fill:'both'}});effect.pause();effect.currentTime=500;__layoutCalls=0"));
+            let pairs = presented_animation_pairs(scope);
+            assert!(
+                pairs.contains(&PresentedProperty {
+                    name: "stroke-dasharray".into(),
+                    value: expected.into()
+                }),
+                "{from} -> {to}: {pairs:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+            assert!(eval(
+                scope,
+                &format!("getComputedStyle(subject).strokeDasharray==='{expected}'")
+            )
+            .is_true());
+        }
+    });
+}
+
+#[test]
+fn svg_list_uncertainties_remain_unknown_and_nonadditive_values_do_not_sum() {
+    with_dom(|scope| {
+        eval(scope, "document.body.innerHTML='<svg><circle id=subject style=\"stroke-dasharray:1,2\" /></svg>';globalThis.subject=document.getElementById('subject')");
+        for composite in ["add", "accumulate"] {
+            eval(scope, &format!("if(globalThis.effect)effect.cancel();globalThis.effect=subject.animate([{{strokeDasharray:'10 20'}},{{strokeDasharray:'30 40'}}],{{duration:1000,fill:'both',composite:'{composite}'}});effect.pause();effect.currentTime=500;__layoutCalls=0"));
+            let document = object(scope, "document");
+            let sample = sample_presented_effects(scope, document, &[]).unwrap();
+            assert!(matches!(
+                sample.targets[0].presentation,
+                PresentedTargetState::Unknown { .. }
+            ));
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+            assert!(eval(
+                scope,
+                "getComputedStyle(subject).strokeDasharray==='20px, 30px'"
+            )
+            .is_true());
+        }
+        eval(scope,"effect.cancel();effect=subject.animate([{strokeDasharray:'10% 20px'},{strokeDasharray:'30px 40%'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500");
+        let document = object(scope, "document");
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        assert!(matches!(
+            sample.targets[0].presentation,
+            PresentedTargetState::Unknown { .. }
+        ));
+    });
+}
+
+#[test]
+fn chrome_ignored_ms_transform_does_not_hide_supported_css_effects() {
+    with_dom(|scope| {
+        for (from, to, expected) in [
+            (
+                "-ms-transform:rotate(0deg);transform:rotate(0deg)",
+                "-ms-transform:rotate(360deg);transform:rotate(360deg)",
+                "matrix(-1, 0, 0, -1, 0, 0)",
+            ),
+            (
+                "-ms-transform:scale(0);transform:scale(0);opacity:0.1",
+                "-ms-transform:scale(1);transform:scale(1);opacity:0.3",
+                "matrix(0.5, 0, 0, 0.5, 0, 0)",
+            ),
+        ] {
+            eval(scope, &format!("{{document.head.innerHTML='';const s=document.createElement('style');s.textContent='@keyframes motion{{from{{{from}}}to{{{to}}}}}#target{{animation:motion 1000ms linear both}}';document.head.append(s);globalThis.effect=document.getElementById('target').getAnimations()[0];effect.pause();effect.currentTime=500;__layoutCalls=0}}"));
+            assert!(eval(scope, "document.styleSheets[0].cssRules[0].cssRules[0].style.getPropertyValue('-ms-transform')==='' && !('-ms-transform' in effect.effect.getKeyframes()[0])").is_true());
+            let pairs = presented_animation_pairs(scope);
+            let transform = pairs.iter().find(|pair| pair.name == "transform").unwrap();
+            assert_matrix_close(&transform.value, expected);
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        }
+    });
+}
+
+#[test]
+fn repeatable_svg_list_expansion_is_bounded_before_composition() {
+    with_dom(|scope| {
+        eval(scope,"document.body.innerHTML='<svg><circle id=subject /></svg>';globalThis.subject=document.getElementById('subject');globalThis.effect=subject.animate([{strokeDasharray:Array(17).fill('1').join(' ')},{strokeDasharray:Array(19).fill('2').join(' ')}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500;__layoutCalls=0");
+        let document = object(scope, "document");
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        assert!(matches!(
+            sample.targets[0].presentation,
+            PresentedTargetState::Unknown { .. }
+        ));
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+        assert!(eval(scope, "(()=>{try{getComputedStyle(subject).strokeDasharray;return false}catch(error){return error instanceof RangeError && /source-derived work budget/.test(error.message)}})()").is_true());
+    });
+}
+
+#[test]
+fn captured_mui_effect_sources_are_certified_at_all_fifteen_oracle_samples() {
+    use sha2::{Digest, Sha256};
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/captured_mui_animation_chrome159.json"
+    ))
+    .unwrap();
+    assert_eq!(fixture["oracleVersion"], "159.0.8154.6");
+    for case in fixture["cases"].as_array().unwrap() {
+        let html = case["html"].as_str().unwrap();
+        assert_eq!(
+            format!("{:x}", Sha256::digest(html)),
+            case["htmlSHA256"].as_str().unwrap()
+        );
+        with_html(true, true, html, |scope| {
+            eval(scope,"globalThis.subject=document.getElementById('subject');globalThis.fixtureEffects=document.getAnimations();for(const effect of fixtureEffects)effect.pause()");
+            for sample in case["samples"].as_array().unwrap() {
+                let time = sample["time"].as_u64().unwrap();
+                eval(scope, &format!("for(const effect of fixtureEffects)effect.currentTime={time};__layoutCalls=0"));
+                let pairs = presented_animation_pairs(scope);
+                assert!(eval(scope, "__layoutCalls===0").is_true());
+                if case["kind"] == "svg" {
+                    let array = pairs
+                        .iter()
+                        .find(|pair| pair.name == "stroke-dasharray")
+                        .unwrap();
+                    let values: Vec<f64> = array
+                        .value
+                        .split(',')
+                        .map(|value| value.trim().trim_end_matches("px").parse().unwrap())
+                        .collect();
+                    let expected: Vec<f64> = sample["observation"]["dasharray"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|value| value.as_f64().unwrap())
+                        .collect();
+                    assert_eq!(values, expected, "{} time{time}", case["id"]);
+                    let offset = pairs
+                        .iter()
+                        .find(|pair| pair.name == "stroke-dashoffset")
+                        .unwrap()
+                        .value
+                        .trim_end_matches("px")
+                        .parse::<f64>()
+                        .unwrap();
+                    assert_eq!(
+                        offset,
+                        sample["observation"]["dashoffset"].as_f64().unwrap()
+                    );
+                } else {
+                    assert!(
+                        pairs.iter().any(|pair| pair.name == "transform"),
+                        "{} time{time} {pairs:?}",
+                        case["id"]
+                    );
+                    assert!(eval(scope,"Array.from(document.styleSheets[0].cssRules).find(rule=>rule.type===7).cssRules[0].style.getPropertyValue('-ms-transform')===''").is_true());
+                    assert!(browser_env::run_engine_script(
+                        scope,
+                        "return __tsNs.cssSupportsProperty('-ms-transform','rotate(1deg)')===false"
+                    )
+                    .unwrap()
+                    .is_true());
+                }
+            }
+        });
+    }
+}
+
+fn assert_matrix_close(actual: &str, expected: &str) {
+    let values = |text: &str| -> Vec<f64> {
+        text.trim_start_matches("matrix(")
+            .trim_end_matches(')')
+            .split(',')
+            .map(|part| part.trim().parse().unwrap())
+            .collect()
+    };
+    let actual = values(actual);
+    let expected = values(expected);
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(expected) {
+        assert!(
+            (actual - expected).abs() < 0.00001,
+            "matrix component {actual} != {expected}"
+        );
+    }
+}
+
+#[test]
+fn captured_mui_effects_are_certified_without_pausing_or_seeking() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/captured_mui_animation_chrome159.json"
+    ))
+    .unwrap();
+    for case in fixture["cases"].as_array().unwrap() {
+        with_html(true, true, case["html"].as_str().unwrap(), |scope| {
+            let document = object(scope, "document");
+            let subject = object(scope, "document.getElementById('subject')");
+            let handle = handle_of(scope, subject).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert_eq!(sample.targets.len(), 1);
+            assert!(
+                matches!(&sample.targets[0].presentation, PresentedTargetState::Certified { animation,.. } if !animation.is_empty()),
+                "{} {sample:?}",
+                case["id"]
+            );
+            assert!(sample.targets[0]
+                .effects
+                .iter()
+                .all(|effect| !effect.script_modified));
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn legacy_vendor_admission_preserves_webkit_and_custom_controls() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/vendor_animation_properties_chrome159.json"
+    ))
+    .unwrap();
+    with_dom(|scope| {
+        for row in fixture["output"].as_array().unwrap() {
+            let name = serde_json::to_string(row["property"].as_str().unwrap()).unwrap();
+            let supported = browser_env::run_engine_script(
+                scope,
+                &format!("return __tsNs.cssSupportsProperty({name},'rotate(1deg)')"),
+            )
+            .unwrap();
+            assert_eq!(
+                supported.is_true(),
+                row["supports"].as_bool().unwrap(),
+                "{}",
+                row["property"]
+            );
+            let expected = serde_json::to_string(row["value"].as_str().unwrap()).unwrap();
+            assert!(eval(scope,&format!("(()=>{{const el=document.createElement('div');el.style.setProperty({name},'rotate(1deg)');return el.style.getPropertyValue({name})==={expected}}})()")).is_true(),"{}",row["property"]);
+        }
     });
 }

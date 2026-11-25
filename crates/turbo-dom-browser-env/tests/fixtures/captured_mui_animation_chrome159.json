@@ -1,0 +1,473 @@
+{
+  "oracleVersion": "159.0.8154.6",
+  "probeSHA256": "b8a5a37035d96fb5b68a377494124e707cb2822f6410b9be37a90d4bd3bfadfe",
+  "capturedRuleSHA256": {
+    "animation-61bdi0": "7a2b35734a39a2ff9cd854b4d23fba0e0f815a65b3762921004de739efb117c2",
+    "animation-1o38n3e": "64ca93462651506c96465d5bf72a3bce3b9de220d36c436330378f0621fe5c15",
+    "animation-1taevns": "47433bd93dbf142cc4368cf573f25da098ca0a78f4ff2992d43d962859a820cd"
+  },
+  "cases": [
+    {
+      "id": "rotation",
+      "kind": "box",
+      "html": "<!doctype html><style>html,body{margin:0;padding:0}@keyframes animation-61bdi0 { \n  0% { -ms-transform: rotate(0deg); transform: rotate(0deg); }\n  100% { -ms-transform: rotate(360deg); transform: rotate(360deg); }\n}\n#subject{animation:animation-61bdi0 1000ms linear infinite}\n#subject{position:absolute;left:10px;top:20px;width:20px;height:10px}</style><div id=\"subject\"></div>",
+      "samples": [
+        {
+          "time": 0,
+          "observation": {
+            "rect": [
+              10,
+              20,
+              20,
+              10
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 0,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 125,
+          "observation": {
+            "rect": [
+              9.39339828491211,
+              14.39339828491211,
+              21.21320343017578,
+              21.21320343017578
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 125,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 250,
+          "observation": {
+            "rect": [
+              15,
+              15,
+              10,
+              20
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 250,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 500,
+          "observation": {
+            "rect": [
+              10,
+              20,
+              20,
+              10
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 500,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 750,
+          "observation": {
+            "rect": [
+              15,
+              15,
+              10,
+              20
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 750,
+                "state": "paused"
+              }
+            ]
+          }
+        }
+      ],
+      "htmlSHA256": "4b550c2f790c6e6710fb53d2e00801b52ad913cda7a9ea67d78bd22dc8ebfc93",
+      "vendorSupport": false
+    },
+    {
+      "id": "ripple",
+      "kind": "box",
+      "html": "<!doctype html><style>html,body{margin:0;padding:0}@keyframes animation-1taevns { \n  0% { -ms-transform: scale(0); transform: scale(0); opacity: 0.1; }\n  100% { -ms-transform: scale(1); transform: scale(1); opacity: 0.3; }\n}\n#subject{animation:animation-1taevns 1000ms linear infinite}\n#subject{position:absolute;left:10px;top:20px;width:20px;height:10px}</style><div id=\"subject\"></div>",
+      "samples": [
+        {
+          "time": 0,
+          "observation": {
+            "rect": [
+              20,
+              25,
+              0,
+              0
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 0.1,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 0,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 125,
+          "observation": {
+            "rect": [
+              18.75,
+              24.375,
+              2.5,
+              1.25
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 0.125,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 125,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 250,
+          "observation": {
+            "rect": [
+              17.5,
+              23.75,
+              5,
+              2.5
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 0.15,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 250,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 500,
+          "observation": {
+            "rect": [
+              15,
+              22.5,
+              10,
+              5
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 0.2,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 500,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 750,
+          "observation": {
+            "rect": [
+              12.5,
+              21.25,
+              15,
+              7.5
+            ],
+            "client": [
+              20,
+              10
+            ],
+            "scroll": [
+              20,
+              10
+            ],
+            "opacity": 0.25,
+            "dasharray": [],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 750,
+                "state": "paused"
+              }
+            ]
+          }
+        }
+      ],
+      "htmlSHA256": "69e6bd46d9b428a18e366c0c29255e9ebf5a151175387bd773d36c82d143b77b",
+      "vendorSupport": false
+    },
+    {
+      "id": "circle",
+      "kind": "svg",
+      "html": "<!doctype html><style>html,body{margin:0;padding:0}@keyframes animation-1o38n3e { \n  0% { stroke-dasharray: 1px, 200px; stroke-dashoffset: 0px; }\n  50% { stroke-dasharray: 100px, 200px; stroke-dashoffset: -15px; }\n  100% { stroke-dasharray: 1px, 200px; stroke-dashoffset: -126px; }\n}\n#subject{animation:animation-1o38n3e 1000ms linear infinite}</style><svg id=\"target\" width=\"100\" height=\"100\"><circle id=\"subject\" cx=\"50\" cy=\"50\" r=\"30\" fill=\"none\" stroke=\"red\"/></svg>",
+      "samples": [
+        {
+          "time": 0,
+          "observation": {
+            "rect": [
+              0,
+              0,
+              100,
+              100
+            ],
+            "client": [
+              100,
+              100
+            ],
+            "scroll": [
+              100,
+              100
+            ],
+            "opacity": 1,
+            "dasharray": [
+              1,
+              200
+            ],
+            "dashoffset": 0,
+            "effects": [
+              {
+                "time": 0,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 125,
+          "observation": {
+            "rect": [
+              0,
+              0,
+              100,
+              100
+            ],
+            "client": [
+              100,
+              100
+            ],
+            "scroll": [
+              100,
+              100
+            ],
+            "opacity": 1,
+            "dasharray": [
+              25.75,
+              200
+            ],
+            "dashoffset": -3.75,
+            "effects": [
+              {
+                "time": 125,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 250,
+          "observation": {
+            "rect": [
+              0,
+              0,
+              100,
+              100
+            ],
+            "client": [
+              100,
+              100
+            ],
+            "scroll": [
+              100,
+              100
+            ],
+            "opacity": 1,
+            "dasharray": [
+              50.5,
+              200
+            ],
+            "dashoffset": -7.5,
+            "effects": [
+              {
+                "time": 250,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 500,
+          "observation": {
+            "rect": [
+              0,
+              0,
+              100,
+              100
+            ],
+            "client": [
+              100,
+              100
+            ],
+            "scroll": [
+              100,
+              100
+            ],
+            "opacity": 1,
+            "dasharray": [
+              100,
+              200
+            ],
+            "dashoffset": -15,
+            "effects": [
+              {
+                "time": 500,
+                "state": "paused"
+              }
+            ]
+          }
+        },
+        {
+          "time": 750,
+          "observation": {
+            "rect": [
+              0,
+              0,
+              100,
+              100
+            ],
+            "client": [
+              100,
+              100
+            ],
+            "scroll": [
+              100,
+              100
+            ],
+            "opacity": 1,
+            "dasharray": [
+              50.5,
+              200
+            ],
+            "dashoffset": -70.5,
+            "effects": [
+              {
+                "time": 750,
+                "state": "paused"
+              }
+            ]
+          }
+        }
+      ],
+      "htmlSHA256": "4895bc764c33efde01f24dfc2a2a4262ffa60cf391247182ca4194dea6629e8f",
+      "vendorSupport": false
+    }
+  ]
+}
