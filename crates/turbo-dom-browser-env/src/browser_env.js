@@ -2059,14 +2059,23 @@
     return $c.test(/^[a-z-]+(?: [a-z-]+)*$/,value)?value:'';
   }
   // Web Animations compose over cascaded and inline values; !important declarations win.
+  // This inherited keyword controls whether intrinsic size endpoints are a
+  // genuine transition candidate; it is needed before canonical CSS updates.
+  function computedInterpolateSize(cs){
+    if(!computedConnectedForStyle(cs.el,cs.inFrame))return;
+    var value=computedCascadedValue(cs,'interpolate-size'),key=computedWideKeyword(value);
+    if(value&&!key)return;
+    value=key==='initial'?'numeric-only':cs.inheritedValue('interpolate-size')||'numeric-only';
+    cs.decl['interpolate-size']=value;cs.decl.interpolateSize=value;
+  }
   function computedApplyAnimations(cs){
     var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
     if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
     if(computedEffectInspection){
-      if(!pseudo&&el&&__ns.syncCssEffectInputs)__ns.syncCssEffectInputs(el,function(name){var value=decl[name];return value==null?'':$String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);});
+      if(!pseudo&&el&&__ns.syncCssEffectInputs)__ns.syncCssEffectInputs(el,function(name){var value=decl[name];return value==null?'':$String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display);
       return;
     }
-    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);}):null;
+    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display):null;
     if(animated)for(var ai=0;ai<animated.length;ai++)if(!cs.priorities[animated[ai][0]])cs.setProp(animated[ai][0],animated[ai][1]);
   }
   function highlightInheritsKey(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); }
@@ -2306,6 +2315,7 @@
     computedCascadeDecls(cs);
     if (sink) { sink.values = computedSinkValues(decl); return null; }
     computedInheritance(cs);
+    computedInterpolateSize(cs);
     computedApplyAnimations(cs);
     // Tree-counting functions take this element's counts; their style follows its siblings.
     var treeNames=treeCountingValues(decl,el,pseudo);

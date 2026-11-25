@@ -1421,9 +1421,9 @@
     if (!count(translate.min, translate.max) || !(v = lengths(translate.bases(borderW, borderH)))) return null;
     return translate.build(v);
   }
-  ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay) {
+  ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (suppressStyle) return null;
-    cssUpdate(element, read, inherited, snapshots, ownDisplay);
+    cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant);
     if (!animationPresentationOn) return null;
     const stack = effectStack(element, null);
     return stack ? stackResult(stack, read, inherited) : null;
@@ -2310,25 +2310,65 @@
     }
     const properties = transitionedFor(read('transition-property'));
     const context = { fontSize: fontSize(read), currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) };
-    const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
+    const lists = transitionLists(read);
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
     for (const property in properties) {
-      const i = properties[property];
       seen[property] = true;
-      const value = cssComputed(property, underlying(property), context), before = state.values[property];
-      state.values[property] = value;
-      const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
-      if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
-      if (state.transitions[property]) cssCancel(state.transitions[property]);
-      const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
-      from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
-      to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
-      const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
-      state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
+      cssTransitionProperty(element, property, properties[property], { state, read, underlying, context, lists, generation });
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
     cssDropTransitions(state, seen);
+  }
+  function transitionLists(read) {
+    return { durations: splitList(read('transition-duration')), delays: splitList(read('transition-delay')),
+      easings: splitList(read('transition-timing-function')), behaviors: splitList(read('transition-behavior')) };
+  }
+  function cssTransitionProperty(element, property, index, update) {
+    const { state, read, underlying, context, lists, generation } = update;
+    const value = cssComputed(property, underlying(property), context), before = state.values[property];
+    state.values[property] = value;
+    const duration = milliseconds(pickList(lists.durations, index, '0s')), delay = milliseconds(pickList(lists.delays, index, '0s'));
+    if (before === undefined || before === value || max(duration, 0) + delay <= 0) return;
+    if (state.transitions[property]) cssCancel(state.transitions[property]);
+    const behavior = intrinsic.toLowerCase(pickList(lists.behaviors, index, 'normal'));
+    if (behavior !== 'allow-discrete' && transitionPair(property, before, value, context, read) === false) return;
+    const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(lists.easings, index, 'ease') };
+    state.transitions[property] = startCssTransition(element, property, before, value, underlying, timing, generation);
+  }
+  function startCssTransition(element, property, before, value, underlying, timing, generation) {
+    const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
+    from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
+    to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
+    return cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
+  }
+  // Only a proven discrete pair is suppressed under normal behavior. A parser
+  // limitation remains a real candidate for strict presented-value admission.
+  function transitionPair(property, before, after, context, read) {
+    if (property === 'visibility') return before === 'visible' || after === 'visible';
+    if (property === 'display') return false;
+    const from = parseValue(property, before, context), to = parseValue(property, after, context);
+    if (!from || !to) return null;
+    if (transitionTypedPair(from, to)) return true;
+    return transitionSizeKeyword(property, from, to, read);
+  }
+  function transitionTypedPair(from, to) {
+    return lengthPercentageValue(from) && lengthPercentageValue(to) || from.kind === to.kind && from.kind !== 'discrete';
+  }
+  function transitionNoMaximum(property, keyword) {
+    return keyword === 'none' && intrinsic.test(/^max-(?:width|height|inline-size|block-size)$/, property);
+  }
+  function transitionSizeKeyword(property, from, to, read) {
+    const keyword = from.kind === 'discrete' ? from : to;
+    const number = from.kind === 'discrete' ? to : from;
+    if (keyword.kind !== 'discrete' || !lengthPercentageValue(number)) return null;
+    if (transitionNoMaximum(property, keyword.text)) return false;
+    if (keyword.text !== 'auto' || !intrinsicSizeProperty(property)) return null;
+    return read('interpolate-size') === 'numeric-only' ? false : null;
+  }
+  function intrinsicSizeProperty(property) {
+    return contains(['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+      'inline-size', 'block-size', 'min-inline-size', 'min-block-size', 'max-inline-size', 'max-block-size', 'flex-basis'], property);
   }
   // A transition whose property is no longer transitioned (or, without `kept`, every one) is
   // dropped; a running one is cancelled.
@@ -2347,14 +2387,14 @@
   // unchanged, an update would keep every animation and start no transition, so it is skipped:
   // the update runs once per style change, not once per computed-style read (a running
   // animation recomputes the style on every read).
-  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end'];
+  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end', 'transition-behavior', 'interpolate-size'];
   let cssUpdates = store();
   function cssInputs(element, read, underlying) {
     const out = [];
     for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
-    const names = cssAnimationNames(out[0]);
+    const names = cssAnimationNames(read('animation-name'));
     for (let i = 0; i < names.length; i++) push(out, names[i] !== null && !!keyframesRule(names[i], element));
-    const properties = transitionedFor(out[8]);
+    const properties = transitionedFor(read('transition-property'));
     for (const property in properties) { push(out, property); push(out, underlying(property)); }
     return out;
   }
@@ -2363,28 +2403,70 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   }
-  function cssUpdateUnderlying(read, inherited) {
-    return property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
+  function cssUpdateUnderlying(read, inherited, displayBase) {
+    return property => { const text = read(property); if (text !== '') return text; if (property === 'display' && displayBase) return displayBase(); if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
   }
-  function cssUpdateBody(element, read, inherited, snapshots, ownDisplay) {
-    const underlying = cssUpdateUnderlying(read, inherited);
+  function cssUpdateCached(last, stamp, inputs) {
+    return !!stamp && !!last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs);
+  }
+  function cssUpdateBody(element, read, inherited, snapshots, ownDisplay, displayImportant) {
+    let own;
+    const displayBase = () => { if (own === undefined) own = ownDisplay ? ownDisplay() : read('display'); return own; };
+    const underlying = cssUpdateUnderlying(read, inherited, displayBase);
     const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(element, read, underlying), last = cssUpdates.get(element);
-    if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
+    if (cssUpdateCached(last, stamp, inputs)) return;
     if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-    cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
+    const rendering = transitionRendering(element, read, snapshots, displayBase(), displayImportant);
+    if (rendering === null) { if (inspectingEffects) inspectionUnavailable = true; return; }
+    cssRun(element, read, underlying, rendering.hidden);
+    cssState(element).display = rendering.base;
     // Stamped after the update: the invalidation its own animations cause is not a new input.
     cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
   }
-  function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
+  function transitionDisplayResolved(value) {
+    if (!value || !intrinsic.test(/^[a-z-]+(?: [a-z-]+)*$/, value)) return false;
+    if (contains(['inherit', 'initial', 'unset', 'revert', 'revert-layer'], value)) return false;
+    return Native('value', 'display', value) !== null;
+  }
+  // Only scalar display is composed while synchronizing rendering state. This
+  // reuses canonical private frames/easing; no transform/size/base-style reads.
+  function transitionPresentedDisplay(element, base, important) {
+    const entries = presentedEntries(element);
+    const stack = important ? intrinsic.filter(entries, entry => entry.record.css && entry.record.css.kind === CSS_TRANSITION) : entries;
+    if (!stack.length) return base;
+    const value = stackValue(stack, 'display', { kind: 'discrete', text: base }, {});
+    const display = serializeValue('display', value);
+    return transitionDisplayResolved(display) ? display : null;
+  }
+  function transitionRendering(element, read, snapshots, base, displayImportant) {
+    if (!transitionDisplayResolved(base)) return null;
+    let own = base === 'none' ? transitionPresentedDisplay(element, base, displayImportant) : base;
+    if (own === null) return null;
+    if (own === 'none' && transitionCanExit(element, read)) own = cssState(element).display;
+    return { base, hidden: !renderedFrom(element, snapshots, own) };
+  }
+  function transitionCanExit(element, read) {
+    if (!cssTransitionsOn) return false;
+    const state = cssState(element), before = state.display;
+    if (state.hidden !== false || !transitionDisplayResolved(before) || before === 'none') return false;
+    const properties = transitionedFor(read('transition-property')), index = properties.display;
+    if (index === undefined) return false;
+    const lists = transitionLists(read);
+    if (intrinsic.toLowerCase(pickList(lists.behaviors, index, 'normal')) !== 'allow-discrete') return false;
+    const duration = milliseconds(pickList(lists.durations, index, '0s')), delay = milliseconds(pickList(lists.delays, index, '0s'));
+    return max(duration, 0) + delay > 0;
+  }
+  function cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (!cssAnyOn || cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy.set(element, true);
-    try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay); }
+    try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay, displayImportant); }
     finally { cssBusy.set(element, false); }
   }
-  // Private native-geometry seam. Never compose/interpolate an effect here: resolving
-  // a percentage transform can call native layout, whose capture is asking this question.
+  // Private native-geometry seam. Never compose transforms/sizes here: their
+  // reference boxes can call native layout, whose capture is asking this question.
+  // Canonical synchronization may read scalar display alone to retain an exit box.
   // CSS synchronization is canonical and bounded to the target and its style dependencies.
   let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false, inspectionRenderingUncertain = false;
   const stringifyEffects = JSON.stringify;
@@ -2496,7 +2578,7 @@
     }
     return true;
   }
-  ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay) {
+  ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (cssBusy.get(element) || suppressStyle || !safeOwnedAnimationPromises(element)) { inspectionUnavailable = true; return; }
     if (element === inspectionTarget) {
       inspectionNames = cssAnimationNames(read('animation-name'));
@@ -2505,7 +2587,7 @@
       const timeline = read('animation-timeline');
       if (timeline && timeline !== 'auto') inspectionUnsupported = true;
     }
-    cssUpdate(element, read, inherited, snapshots, ownDisplay);
+    cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant);
   };
   function effectInspectionEntry(animation, element, owned) {
     const record = animations.get(animation), effect = record.effect ? effects.get(record.effect) : null;

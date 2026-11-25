@@ -242,9 +242,9 @@ fn symbolic_math_bridge_refuses_nonfinite_or_nonlinear_coefficients() {
 }
 
 #[test]
-fn none_to_length_transition_is_not_certified_as_a_symbolic_length() {
+fn discrete_none_to_length_transition_is_not_certified_as_a_symbolic_length() {
     with_dom(|scope| {
-        eval(scope,"globalThis.target=document.getElementById('target');target.style.maxWidth='none';target.style.transition='max-width 1000ms linear';getComputedStyle(target).maxWidth;target.style.maxWidth='100px';__layoutCalls=0;");
+        eval(scope,"globalThis.target=document.getElementById('target');target.style.maxWidth='none';target.style.transition='max-width 1000ms linear allow-discrete';getComputedStyle(target).maxWidth;target.style.maxWidth='100px';__layoutCalls=0;");
         let document = object(scope, "document");
         let target = object(scope, "target");
         let handle = handle_of(scope, target).unwrap();

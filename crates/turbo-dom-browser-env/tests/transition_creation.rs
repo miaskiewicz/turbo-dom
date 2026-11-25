@@ -118,3 +118,187 @@ fn transition_creation_matches_chrome159_before_any_sampling_admission() {
         mismatches.join("\n")
     );
 }
+
+fn public_json(scope: &mut v8::PinScope, source: &str) -> serde_json::Value {
+    let text = eval(scope, source).to_rust_string_lossy(scope);
+    serde_json::from_str(&text).unwrap()
+}
+
+fn sampled(scope: &mut v8::PinScope) -> PresentedEffectsSnapshot {
+    let document = object(scope, "document");
+    let target = object(scope, "target");
+    let handle = handle_of(scope, target).unwrap();
+    sample_presented_effects(scope, document, &[handle]).unwrap()
+}
+
+#[test]
+fn inherited_intrinsic_policy_preserves_real_unknown_effects_and_numeric_override() {
+    for numeric in [false, true] {
+        with_dom(|scope| {
+            let result = public_json(
+                scope,
+                &format!(
+                    r#"(()=>{{
+                const parent=document.getElementById('parent'),grand=document.createElement('div');
+                parent.before(grand);grand.append(parent);grand.style.interpolateSize='allow-keywords';
+                const target=globalThis.target=document.getElementById('target');
+                if({numeric})target.style.interpolateSize='numeric-only';
+                target.style.transitionProperty='none';target.style.width='auto';getComputedStyle(target).opacity;
+                target.style.transitionProperty='width';target.style.transitionDuration='10000ms';getComputedStyle(target).opacity;
+                const before=target.getAnimations().length;
+                target.style.width='100px';getComputedStyle(target).opacity;
+                return JSON.stringify({{before,policy:getComputedStyle(target).interpolateSize,count:target.getAnimations().length}});
+            }})()"#
+                ),
+            );
+            assert_eq!(result["before"], 0);
+            assert_eq!(result["count"], u32::from(!numeric));
+            assert_eq!(
+                result["policy"],
+                if numeric {
+                    "numeric-only"
+                } else {
+                    "allow-keywords"
+                }
+            );
+            let sample = sampled(scope);
+            if !numeric {
+                assert!(
+                    matches!(
+                        sample.targets[0].presentation,
+                        PresentedTargetState::Unknown { .. }
+                    ),
+                    "genuine intrinsic effect stays explicit: {sample:?}"
+                );
+            }
+        });
+    }
+}
+
+#[test]
+fn transition_behavior_lists_follow_the_property_index() {
+    for (behavior, expected) in [
+        ("allow-discrete,normal", "max-width"),
+        ("normal,allow-discrete", "width"),
+    ] {
+        with_dom(|scope| {
+            let result = public_json(
+                scope,
+                &format!(
+                    r#"(()=>{{
+                const target=globalThis.target=document.getElementById('target');
+                target.style.interpolateSize='numeric-only';target.style.transitionProperty='none';
+                target.style.width='auto';target.style.maxWidth='none';getComputedStyle(target).opacity;
+                target.style.transitionProperty='max-width,width';target.style.transitionDuration='10000ms';
+                target.style.transitionBehavior='{behavior}';getComputedStyle(target).opacity;
+                target.getAnimations();target.style.width='100px';target.style.maxWidth='100px';getComputedStyle(target).opacity;
+                return JSON.stringify(target.getAnimations().map(a=>a.transitionProperty).sort());
+            }})()"#
+                ),
+            );
+            assert_eq!(result, serde_json::json!([expected]));
+        });
+    }
+}
+
+#[test]
+fn a_nontransitionable_replacement_cancels_the_old_record_without_script_modification() {
+    with_dom(|scope| {
+        let result = public_json(
+            scope,
+            r#"(()=>{
+            const target=globalThis.target=document.getElementById('target');
+            target.style.transitionProperty='none';target.style.width='50px';getComputedStyle(target).opacity;
+            target.style.transitionProperty='width';target.style.transitionDuration='10000ms';getComputedStyle(target).opacity;
+            target.getAnimations();target.style.width='100px';getComputedStyle(target).opacity;
+            globalThis.motion=target.getAnimations()[0];const before=target.getAnimations().length;
+            target.style.width='auto';getComputedStyle(target).opacity;
+            return JSON.stringify({before,after:target.getAnimations().length,state:motion.playState});
+        })()"#,
+        );
+        assert_eq!(
+            result,
+            serde_json::json!({"before":1,"after":0,"state":"idle"})
+        );
+        let sample = sampled(scope);
+        assert_eq!(sample.targets[0].effects.len(), 1);
+        assert!(
+            !sample.targets[0].effects[0].script_modified,
+            "automatic cancellation stays automatic: {sample:?}"
+        );
+        assert!(matches!(
+            sample.targets[0].effects[0].phase,
+            CssEffectPhase::Idle
+        ));
+    });
+}
+
+#[test]
+fn hidden_ancestors_cannot_acquire_an_own_display_exit_transition() {
+    for initially_hidden in [false, true] {
+        with_dom(|scope| {
+            let result = public_json(
+                scope,
+                &format!(
+                    r#"(()=>{{
+                const target=globalThis.target=document.getElementById('target'),parent=document.getElementById('parent');
+                if({initially_hidden})parent.style.display='none';
+                target.style.display='block';target.style.transitionProperty='display';target.style.transitionDuration='10000ms';target.style.transitionBehavior='allow-discrete';
+                getComputedStyle(target).opacity;target.getAnimations();
+                parent.style.display='none';target.style.display='none';getComputedStyle(target).opacity;
+                return JSON.stringify(target.getAnimations().length);
+            }})()"#
+                ),
+            );
+            assert_eq!(result, 0);
+        });
+    }
+}
+
+#[test]
+fn scalar_display_sampling_does_not_resolve_the_other_properties_of_a_mixed_effect() {
+    with_dom(|scope| {
+        eval(
+            scope,
+            r#"globalThis.target=document.getElementById('target');
+            globalThis.motion=target.animate([{display:'block',transform:'translateX(0%)'},{display:'block',transform:'translateX(50%)'}],{duration:10000,fill:'both'});
+            motion.pause();motion.currentTime=5000;target.style.display='none';target.getAnimations();"#,
+        );
+        browser_env::run_engine_script(scope, r#"
+            globalThis.__layoutCalls=0;globalThis.__transformCalls=0;
+            __tsNs.layoutUsedSize=()=>{__layoutCalls++;throw Error('poisoned used-size provider')};
+            __tsNs.resolveTransform=()=>{__transformCalls++;throw Error('poisoned transform resolver')};
+        "#).unwrap();
+        eval(scope, "target.style.transitionDelay='1ms'");
+        let sample = sampled(scope);
+        assert!(
+            matches!(
+                sample.targets[0].presentation,
+                PresentedTargetState::Unknown { .. }
+            ),
+            "real unresolved reference-box effect remains Unknown: {sample:?}"
+        );
+        assert!(eval(scope, "__layoutCalls===0 && __transformCalls===0").is_true());
+    });
+}
+
+#[test]
+fn display_exit_preserves_independent_creation_and_presentation_switches() {
+    with_dom(|scope| {
+        eval(scope, "globalThis.target=document.getElementById('target');target.style.transitionProperty='display';target.style.transitionDuration='10000ms';target.style.transitionBehavior='allow-discrete';getComputedStyle(target).opacity;target.getAnimations();target.style.display='none';getComputedStyle(target).opacity;globalThis.motion=target.getAnimations()[0]");
+        assert!(eval(scope, "motion.effect.getKeyframes()[0].display==='block'").is_true());
+        browser_env::set_css_animations(scope, false);
+        set_animation_presentation(scope, AnimationPresentation::Disabled);
+        assert!(eval(scope, "target.getAnimations().includes(motion)").is_true());
+        let sample = sampled(scope);
+        assert!(sample.presentation_suppressed);
+        assert_eq!(sample.targets[0].effects.len(), 1);
+        assert!(
+            matches!(&sample.targets[0].presentation, PresentedTargetState::Certified { animation, transition } if animation.is_empty() && transition.is_empty())
+        );
+    });
+    with_dom(|scope| {
+        browser_env::set_css_transitions(scope, false);
+        assert!(eval(scope, "const target=document.getElementById('target');target.style.transitionProperty='display';target.style.transitionDuration='10000ms';target.style.transitionBehavior='allow-discrete';getComputedStyle(target).opacity;target.style.display='none';target.getAnimations().length===0").is_true());
+    });
+}
