@@ -72,3 +72,29 @@ and refreshed binding coverage continue independently; the last410 binding
 measurement97.61% is not claimed for this changed source. Layout/Core production
 source is unchanged by these two fixes; existing floor receipts remain identified
 separately. No tag, publication or main merge occurs.
+
+
+## Completed exact workspace and binding floor
+
+The exact final ad55 source subsequently completes the full default workspace
+with **3250 reported passes, zero failures and13 ignores**, exit0, across243
+summaries (`workspace-ad55-exact.log`, `WORKSPACE-AD55-RESULT.json`).
+
+The first changed-source binding measurement is retained RED at23211/23800
+(97.53%). Test-only checkpoint `c10b61dc472dd325d5a7c83f5420180caa5b62ff`
+adds four real boundary controls without production edits. Its focused87/87,
+strict all-target Clippy, fmt and scopedCC9 pass. Exact LLVM tarpaulin then passes
+the unchanged97.6% floor: **23231/23800 =97.61%**, exit0. Twenty net lines are
+covered; no impossible OOM input or fabricated geometry was introduced. Hashed
+receipts and raw reports: `.worktrees/animation-token-coverage-087/.evidence/token-coverage/`
+(`RECEIPT.json`, `NEW-COVERED.json`, `COVERAGE.log`, `coverage/tarpaulin-report.json`).
+The test-only follow-up does not require a consumer dependency repin.
+
+Surf's actual optimized ad55 addon has SHA256
+`d8d3e23ae678b8f179afe2d9f3f32e11c5fa1865bfd82f5f706452716b416bd9`.
+Build exit0/sourceUnchangedtrue; normalized421 discovery returns8/8 in729/33ms,
+images pass18/18, and original+retarget Badge geometry matches all10 frozen
+Chromium rectangles. Actual auth acceptance is separate: awake smoke currently
+shows a backend403/portal-legal state under investigation, with no producer cause
+attributed. The sleep-interrupted earlier attempt is explicitly invalidated.
+No authentication/full-E2E pass is claimed.
