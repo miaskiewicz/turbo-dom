@@ -1,0 +1,5 @@
+<!doctype html><style>
+#parent { --variant-containedBg: rgb(25, 118, 210); --variant-containedColor: rgb(255, 255, 255); }
+#target { color: rgba(0,0,0,.26); background-color: rgba(0,0,0,.12); transition: color 250ms linear, background-color 250ms linear; }
+#target.enabled { color: var(--variant-containedColor); background-color: var(--variant-containedBg); }
+</style><div id="parent"><button id="target">Public color control</button></div>
