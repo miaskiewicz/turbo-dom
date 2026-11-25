@@ -725,6 +725,7 @@ fn presented_sampling_survives_startup_snapshot_rehydration() {
         browser_env::run_engine_script(scope,"globalThis.__layoutCalls=0;__tsNs.layoutUsedSize=()=>{__layoutCalls++;throw Error('provider called')};__tsNs.resolveTransform=()=>{__layoutCalls++;throw Error('transform called')}").unwrap();
         eval(scope,"const target=document.getElementById('target');const a=target.animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'});a.pause();a.currentTime=500");
         let document = object(scope, "document");
+        recover_after_termination(scope).expect("rehydrated private recovery callback");
         let sample =
             sample_presented_effects(scope, document, &[]).expect("rehydrated canonical sampler");
         assert_eq!(sample.targets.len(), 1);
@@ -1703,5 +1704,222 @@ fn non_scalar_animation_name_payloads_never_alias_replacement_characters() {
             .unwrap()
             .to_rust_string_lossy(scope)
             .contains("cannot prove"));
+    });
+}
+
+thread_local! {
+    static TERMINATE_INSPECTION_ONCE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn terminate_inspection_once(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _result: v8::ReturnValue,
+) {
+    if TERMINATE_INSPECTION_ONCE.with(|armed| armed.replace(false)) {
+        scope.terminate_execution();
+    }
+}
+
+fn inspection_recovers_after_termination(hook: &str, animation: bool) {
+    inspection_recovers_after_termination_mode(hook, animation, false);
+}
+
+fn inspection_recovers_after_termination_mode(hook: &str, animation: bool, public: bool) {
+    with_html(
+        true,
+        true,
+        "<!doctype html><style>@media (min-width:1px){#target{width:100px}}@keyframes pulse{from{opacity:0.2}to{opacity:0.8}}</style><div id=target style='height:20px'></div>",
+        |scope| {
+            browser_env::set_css_animations(scope, animation);
+            if animation {
+                eval(scope, "document.getElementById('target').style.animation='pulse 1s linear both'");
+            }
+            let document = object(scope, "document");
+            let target = object(scope, "document.getElementById('target')");
+            let handle = handle_of(scope, target).unwrap();
+            let terminate = v8::Function::new(scope, terminate_inspection_once).unwrap();
+            let key = v8::String::new(scope, "__terminateInspectionOnce").unwrap();
+            scope.get_current_context().global(scope).set(scope, key.into(), terminate.into());
+            browser_env::run_engine_script(scope, &format!(
+                "__tsNs.__inspectionOriginal=__tsNs.{hook};__tsNs.{hook}=function(){{__terminateInspectionOnce();return __tsNs.__inspectionOriginal.apply(this,arguments)}}"
+            )).unwrap();
+            TERMINATE_INSPECTION_ONCE.with(|armed| armed.set(true));
+            {
+                v8::tc_scope!(let scope, scope);
+                if public {
+                    let source = v8::String::new(scope, "document.getAnimations()").unwrap();
+                    assert!(v8::Script::compile(scope, source, None).unwrap().run(scope).is_none());
+                } else {
+                    assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+                }
+                assert!(scope.has_terminated(), "inspection must reach native {hook} termination");
+                assert!(!TERMINATE_INSPECTION_ONCE.with(std::cell::Cell::get));
+                // Only the host which owns this terminated operation cancels it, after
+                // the public sampler has returned. The document and realm stay alive.
+                scope.cancel_terminate_execution();
+                scope.reset();
+            }
+            recover_after_termination(scope).unwrap();
+            browser_env::run_engine_script(scope, &format!(
+                "__tsNs.{hook}=__tsNs.__inspectionOriginal;delete __tsNs.__inspectionOriginal"
+            )).unwrap();
+            let recovered = sample_presented_effects(scope, document, &[handle]);
+            assert!(recovered.is_some(), "same-document inspection must recover after {hook} termination");
+            eval(scope, "getComputedStyle(document.getElementById('target')).width;document.getAnimations()");
+        },
+    );
+}
+
+#[test]
+fn presented_inspection_recovers_after_native_termination_in_refresh() {
+    inspection_recovers_after_termination("refreshCssEffectInputs", false);
+}
+
+#[test]
+fn computed_effect_inspection_recovers_after_native_termination_in_media() {
+    inspection_recovers_after_termination("mediaTextMatches", false);
+}
+
+#[test]
+fn css_update_busy_guard_recovers_after_native_termination_in_update() {
+    inspection_recovers_after_termination("noteCssUpdatePass", true);
+}
+
+#[test]
+fn presented_inspection_still_refuses_genuine_nested_reentry() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope, r#"
+            __tsNs.__inspectionOriginal=__tsNs.refreshCssEffectInputs;
+            __tsNs.__nestedInspectionRefused=false;
+            __tsNs.refreshCssEffectInputs=function(element){
+                __tsNs.__nestedInspectionRefused=__tsNs.samplePresentedEffects(document,[element])===null;
+                return __tsNs.__inspectionOriginal(element);
+            };
+        "#).unwrap();
+        let document = object(scope, "document");
+        let target = object(scope, "document.getElementById('target')");
+        let handle = handle_of(scope, target).unwrap();
+        assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+        browser_env::run_engine_script(
+            scope,
+            r#"
+            __tsNs.refreshCssEffectInputs=__tsNs.__inspectionOriginal;
+            delete __tsNs.__inspectionOriginal;
+            if(!__tsNs.__nestedInspectionRefused)throw Error('nested inspection was not refused');
+            delete __tsNs.__nestedInspectionRefused;
+        "#,
+        )
+        .unwrap();
+        assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+    });
+}
+
+#[test]
+fn public_get_animations_interruption_recovers_in_same_document() {
+    inspection_recovers_after_termination_mode("noteCssUpdatePass", true, true);
+}
+
+#[test]
+fn termination_recovery_preserves_live_effects_and_inert_document_aliases() {
+    with_dom(|scope| {
+        eval(scope, "globalThis.kept=document.getElementById('target').animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'});kept.pause();kept.currentTime=500;globalThis.keptReady=kept.ready;globalThis.keptFinished=kept.finished;globalThis.inert=new DOMParser().parseFromString('<p>inert</p>','text/html')");
+        recover_after_termination(scope).unwrap();
+        assert!(eval(scope, "kept.currentTime===500&&kept.playState==='paused'&&kept.ready===keptReady&&kept.finished===keptFinished&&document.getElementById('target').getAnimations().includes(kept)&&inert.querySelector('p').textContent==='inert'").is_true());
+        let document = object(scope, "document");
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        assert_eq!(animated_value(&sample.targets[0], "width"), "150px");
+    });
+}
+
+fn attempted_live_recovery(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut result: v8::ReturnValue,
+) {
+    result.set_bool(
+        recover_after_termination(scope) == Err(TerminationRecoveryError::ActiveJavaScript),
+    );
+}
+
+#[test]
+fn termination_recovery_refuses_live_reentry_and_uncanceled_termination() {
+    with_dom(|scope| {
+        let callback = v8::Function::new(scope, attempted_live_recovery).unwrap();
+        let key = v8::String::new(scope, "__attemptRecovery").unwrap();
+        scope
+            .get_current_context()
+            .global(scope)
+            .set(scope, key.into(), callback.into());
+        assert!(eval(scope, "__attemptRecovery()").is_true());
+        scope.terminate_execution();
+        {
+            v8::tc_scope!(let catch, scope);
+            let code = v8::String::new(catch, "0").unwrap();
+            let script = v8::Script::compile(catch, code, None);
+            assert!(script.and_then(|script| script.run(catch)).is_none());
+            assert!(catch.has_terminated());
+            assert_eq!(
+                recover_after_termination(catch),
+                Err(TerminationRecoveryError::StillTerminating)
+            );
+            catch.cancel_terminate_execution();
+            catch.reset();
+        }
+        recover_after_termination(scope).unwrap();
+    });
+}
+
+#[test]
+fn termination_recovery_keeps_simultaneous_isolate_worlds_separate() {
+    with_dom(|outer| {
+        eval(outer, "globalThis.kept=document.getElementById('target').animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'});kept.pause();kept.currentTime=500");
+        with_dom_lifecycle(true, false, |inner| {
+            recover_after_termination(inner).unwrap();
+            eval(
+                inner,
+                "new DOMParser().parseFromString('<p>other inert</p>','text/html')",
+            );
+        });
+        recover_after_termination(outer).unwrap();
+        assert!(eval(outer, "kept.currentTime===500&&kept.playState==='paused'").is_true());
+    });
+}
+
+#[test]
+fn termination_recovery_visits_retained_non_browsing_realms() {
+    with_dom(|scope| {
+        let retained = v8::Context::new(scope, Default::default());
+        let before;
+        {
+            let inner = &mut v8::ContextScope::new(scope, retained);
+            browser_env::install_independent_html(inner, "<!doctype html><p>retained</p>");
+            let _owner = enter_context_document(retained).unwrap();
+            before = style_revisions();
+            retire_context(retained);
+            assert!(!is_browsing_context());
+        }
+        recover_after_termination(scope).unwrap();
+        let _owner = enter_context_document(retained).unwrap();
+        assert_ne!(
+            style_revisions(),
+            before,
+            "retained realm cleanup must invalidate incomplete cascade caches"
+        );
+        assert!(!is_browsing_context());
+    });
+}
+
+#[test]
+fn termination_recovery_refuses_an_uninstalled_isolate_before_weak_localization() {
+    with_dom(|_outer| {
+        let isolate = &mut v8::Isolate::new(Default::default());
+        v8::scope!(let inner, isolate);
+        let context = v8::Context::new(inner, Default::default());
+        let inner = &mut v8::ContextScope::new(inner, context);
+        assert_eq!(
+            recover_after_termination(inner),
+            Err(TerminationRecoveryError::IsolateUnavailable)
+        );
     });
 }

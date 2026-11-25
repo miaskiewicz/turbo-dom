@@ -452,3 +452,7 @@ mod contracts {
         assert_identity(&mut peer, "peer");
     }
 }
+
+pub(super) fn has_native_world(isolate: &v8::Isolate) -> bool {
+    isolate.get_slot::<Slot>().is_some()
+}

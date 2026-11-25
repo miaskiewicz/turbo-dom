@@ -225,3 +225,7 @@ pub fn style_revisions() -> StyleRevisions {
 
 /// Typed result writer for native setter/definer callbacks over the selected V8 ABI.
 pub use crate::browser_env::mutation_result::NamedMutationResult;
+
+#[path = "termination_recovery.rs"]
+mod termination_recovery;
+pub use termination_recovery::{recover_after_termination, TerminationRecoveryError};

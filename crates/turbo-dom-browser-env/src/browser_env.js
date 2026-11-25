@@ -1592,6 +1592,14 @@
     try{return computeStyleSnapshot(el,new computedSnapshotMap());}
     finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
   };
+  __ns.recoverComputedInspection=function(){
+    computedEffectInspection=false;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads=null;
+    computedStyleCache=new computedSnapshotMap();computedBaseCache=new computedSnapshotMap();
+    computedSheetCache=new computedSnapshotMap();computedEntryBuilds=new computedSnapshotMap();
+    computedSheetLists=new computedSnapshotMap();computedSheetScopes=new computedSnapshotMap();
+    invalidateComputedStyles();
+  };
+
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);

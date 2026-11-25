@@ -696,6 +696,7 @@ struct FormDataEventDispatcher(v8::Weak<v8::Function>);
 /// the dispatch looks like a page-script `target.dispatchEvent` — the realm
 /// IS at the top of the script settings stack for the task's duration.
 struct EngineTaskScope(v8::Weak<v8::Function>);
+struct TerminationRecovery(v8::Weak<v8::Function>);
 fn_slots!([
     FormSubmissionDispatcher,
     FormValueReader,
@@ -705,6 +706,7 @@ fn_slots!([
     HostEventDispatcher,
     InlineHandlerSetter,
     EngineTaskScope,
+    TerminationRecovery,
 ]);
 
 #[derive(Default)]
@@ -9590,6 +9592,11 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     file_inputs::install(scope);
     select_element::install(scope);
     animations::install(scope);
+    capture_bootstrap_callback::<TerminationRecovery>(
+        scope,
+        global,
+        "__captureTerminationRecovery",
+    );
     typed_om::install(scope);
     hyperlink_utils::install(scope);
     form_pseudo::install(scope);
