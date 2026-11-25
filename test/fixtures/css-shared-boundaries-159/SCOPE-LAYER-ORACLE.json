@@ -1,0 +1,915 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "6fa9d329a390723c456fa865916fd4f652118329da29854ed433c1a2acda66f4",
+  "cases": [
+    {
+      "id": "scope-outside-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){.outside .target{color:blue}}"
+    },
+    {
+      "id": "scope-anchor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:scope .target{color:blue}}"
+    },
+    {
+      "id": "scope-proximity",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@scope(.root){.target{color:blue}}.target{color:red}"
+    },
+    {
+      "id": "scope-limit-descendant",
+      "html": "<div class=root><div class=limit><div class=target>T</div></div></div>",
+      "css": ".target{color:red}@scope(.root) to(.limit){.target{color:blue}}"
+    },
+    {
+      "id": "scope-limit-subject",
+      "html": "<div class=root><div class=\"limit target\">T</div></div>",
+      "css": ".target{color:red}@scope(.root) to(.limit){.target{color:blue}}"
+    },
+    {
+      "id": "scope-root-subject",
+      "html": "<div class=\"root target\">T</div>",
+      "css": ".target{color:red}@scope(.root){:scope{color:blue}}"
+    },
+    {
+      "id": "scope-has-outside-sibling",
+      "html": "<div class=\"root target\">T</div><div class=outside-sibling>S</div>",
+      "css": ".target{color:red}@scope(.root){:scope:has(+.outside-sibling){color:blue}}"
+    },
+    {
+      "id": "scope-nested-anchor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){@scope(:scope .nested){:scope .target{color:blue}}}"
+    },
+    {
+      "id": "scope-functional-branch",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:is(.outside .target,:scope .target){color:blue}}"
+    },
+    {
+      "id": "layer-false-media-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@media(width>99999px){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-true-media-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@media(width>0px){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-important-reversal",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@layer x,y;@layer x{.target{color:red!important}}@layer y{.target{color:blue!important}}.target{color:green!important}"
+    },
+    {
+      "id": "layer-revert",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@layer x,y;@layer x{.target{color:red}}@layer y{.target{color:blue;color:revert-layer}}"
+    },
+    {
+      "id": "scope-outside-previous-sibling",
+      "html": "<div class=outside-sibling>S</div><div class=\"root target\">T</div>",
+      "css": ".target{color:red}@scope(.root){.outside-sibling+:scope{color:blue}}"
+    },
+    {
+      "id": "scope-is-outside-ancestor-only",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:is(.outside .target){color:blue}}"
+    },
+    {
+      "id": "scope-not-outside-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:not(.outside .target){color:blue}}"
+    },
+    {
+      "id": "scope-is-outside-previous-sibling",
+      "html": "<div class=outside-sibling>S</div><div class=\"root target\">T</div>",
+      "css": ".target{color:red}@scope(.root){:is(.outside-sibling+:scope){color:blue}}"
+    },
+    {
+      "id": "scope-has-is-outside-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".root{color:red}@scope(.root){:scope:has(:is(.outside .target)){color:blue}}"
+    },
+    {
+      "id": "layer-false-container-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".root{container-type:inline-size;width:400px}@container(width>99999px){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-true-container-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".root{container-type:inline-size;width:400px}@container(width>0px){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-missing-scope-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@scope(.missing){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-present-scope-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@scope(.root){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-false-supports-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@supports(color:definitely-not-a-color){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "layer-true-supports-order",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": "@supports(color:red){@layer x{}}@layer y;@layer x;@layer x{.target{color:red}}@layer y{.target{color:blue}}"
+    },
+    {
+      "id": "scope-root-class-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){.root .target{color:blue}}"
+    },
+    {
+      "id": "scope-root-type-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){section .target{color:blue}}"
+    },
+    {
+      "id": "scope-explicit-anchor-outside-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){.outside :scope .target{color:blue}}"
+    },
+    {
+      "id": "scope-where-outside-ancestor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:where(.outside .target){color:blue}}"
+    },
+    {
+      "id": "scope-outside-parent-explicit",
+      "html": "<div class=outside><div class=\"root target\">T</div></div>",
+      "css": ".target{color:red}@scope(.root){.outside>:scope{color:blue}}"
+    },
+    {
+      "id": "scope-outside-sibling-no-anchor",
+      "html": "<div class=outside-sibling>S</div><div class=\"root target\">T</div>",
+      "css": ".target{color:red}@scope(.root){.outside-sibling+.root{color:blue}}"
+    },
+    {
+      "id": "scope-root-subject-no-anchor",
+      "html": "<div class=\"root target\">T</div>",
+      "css": ".target{color:red}@scope(.root){.root{color:blue}}"
+    },
+    {
+      "id": "scope-where-outside-ancestor-equal-specificity",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ":where(.target){color:red}@scope(.root){:where(.outside .target){color:blue}}"
+    },
+    {
+      "id": "scope-anchor-in-is",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){:is(:scope) .target{color:blue}}"
+    },
+    {
+      "id": "scope-quoted-scope-not-anchor",
+      "html": "<div data-note=\":scope\"><section class=root><div class=target>T</div></section></div>",
+      "css": ".target{color:red}@scope(.root){[data-note=\":scope\"] .target{color:blue}}"
+    },
+    {
+      "id": "scope-quoted-ampersand-not-anchor",
+      "html": "<div data-note=\"&\"><section class=root><div class=target>T</div></section></div>",
+      "css": ".target{color:red}@scope(.root){[data-note=\"&\"] .target{color:blue}}"
+    },
+    {
+      "id": "scope-explicit-nesting-anchor",
+      "html": "<div class=\"outside\"><section class=\"root\"><div class=\"nested\"><div class=\"target\">T</div></div></section></div>",
+      "css": ".target{color:red}@scope(.root){& .target{color:blue}}"
+    }
+  ],
+  "result": [
+    {
+      "id": "scope-outside-ancestor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".outside .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-anchor",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":scope .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-proximity",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "scope-limit-descendant",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "scope-limit-subject",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "scope-root-subject",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":scope"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-has-outside-sibling",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":scope:has(+ .outside-sibling)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-nested-anchor",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-functional-branch",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":is(.outside .target, :scope .target)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-false-media-order",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSMediaRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-true-media-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSMediaRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-important-reversal",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "layer-revert",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-outside-previous-sibling",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".outside-sibling + :scope"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-is-outside-ancestor-only",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":is(.outside .target)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-not-outside-ancestor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":not(.outside .target)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-is-outside-previous-sibling",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":is(.outside-sibling + :scope)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-has-is-outside-ancestor",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".root",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":scope:has(:is(.outside .target))"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-false-container-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".root",
+          "children": []
+        },
+        {
+          "kind": "CSSContainerRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-true-container-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".root",
+          "children": []
+        },
+        {
+          "kind": "CSSContainerRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-missing-scope-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-present-scope-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-false-supports-order",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSSupportsRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer-true-supports-order",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSSupportsRule",
+          "children": [
+            null
+          ]
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerStatementRule"
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        },
+        {
+          "kind": "CSSLayerBlockRule",
+          "children": [
+            ".target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-root-class-ancestor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".root .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-root-type-ancestor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            "section .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-explicit-anchor-outside-ancestor",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".outside :scope .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-where-outside-ancestor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":where(.outside .target)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-outside-parent-explicit",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".outside > :scope"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-outside-sibling-no-anchor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".outside-sibling + .root"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-root-subject-no-anchor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ".root"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-where-outside-ancestor-equal-specificity",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ":where(.target)",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":where(.outside .target)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-anchor-in-is",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            ":is(:scope) .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-quoted-scope-not-anchor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            "[data-note=\":scope\"] .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-quoted-ampersand-not-anchor",
+      "color": "rgb(255, 0, 0)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            "[data-note=\"&\"] .target"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scope-explicit-nesting-anchor",
+      "color": "rgb(0, 0, 255)",
+      "rules": [
+        {
+          "kind": "CSSStyleRule",
+          "selector": ".target",
+          "children": []
+        },
+        {
+          "kind": "CSSScopeRule",
+          "children": [
+            "& .target"
+          ]
+        }
+      ]
+    }
+  ]
+}
