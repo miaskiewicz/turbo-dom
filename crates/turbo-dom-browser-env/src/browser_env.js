@@ -2151,13 +2151,35 @@
     if(probe===undefined){cs.effectTransformUncertain=true;return;}
     if(probe!==null)return;
     cs.effectTransformUncertain=true;
-    if(!computedEffectTransformAllowed(cs))return;
+    if(!computedEffectTokensAllowed(cs))return;
     var tokens=computedEffectTokens(cs.effectCustomSource);if(tokens===null)return;
     var resolved=__ns.substituteEffectTokens(value,tokens);
     resolved=computedAdmittedEffectTransform(resolved);
     if(resolved!==null){cs.setProp('transform',resolved,cs.priorities.transform);cs.effectTransformUncertain=false;}
   }
-  function computedEffectTransformAllowed(cs){return cs.effectCustomSource&&!cs.effectCustomSource.tainted&&typeof __ns.effectHasPropertyRules==='function'&&!__ns.effectHasPropertyRules(cs.el);}
+  function computedEffectColors(cs){
+    cs.effectColorUncertain={__proto__:null};
+    if(typeof __ns.isEffectColor!=='function'||typeof __ns.substituteEffectTokens!=='function')return;
+    for(var name in cs.decl)if(__ns.isEffectColor(name)&&typeof cs.decl[name]==='string')computedEffectColor(cs,name);
+  }
+  function computedEffectColor(cs,name){
+    var value=cs.decl[name],probe=__ns.substituteEffectTokens(value,null);
+    if(probe!==null&&probe!==undefined)return;
+    cs.effectColorUncertain[name]=true;
+    if(probe===undefined||!computedEffectTokensAllowed(cs))return;
+    var tokens=computedEffectTokens(cs.effectCustomSource);if(tokens===null)return;
+    var resolved=__ns.substituteEffectTokens(value,tokens);
+    if(typeof resolved!=='string'||typeof __ns.admitEffectColor!=='function')return;
+    var admitted=__ns.admitEffectColor(name,resolved);if(admitted===null)return;
+    cs.setProp(name,admitted,cs.priorities[name]);delete cs.effectColorUncertain[name];
+  }
+  __ns.effectColorsSupported=function(snapshot,properties){
+    var record=$c.get(declarationRecords,snapshot);if(!record)return false;
+    var uncertain=record.effectColorUncertain;if(!uncertain)return true;
+    for(var i=0;i<properties.length;i++)if(uncertain[properties[i]])return false;
+    return true;
+  };
+  function computedEffectTokensAllowed(cs){return cs.effectCustomSource&&!cs.effectCustomSource.tainted&&typeof __ns.effectHasPropertyRules==='function'&&!__ns.effectHasPropertyRules(cs.el);}
   function computedAdmittedEffectTransform(value){if(value===false)return 'none';return value!==null&&typeof __ns.admitEffectTransform==='function'?__ns.admitEffectTransform(value)||'none':value;}
   __ns.effectTransformSupported=function(snapshot){var record=$c.get(declarationRecords,snapshot);return !!record&&record.effectTransformUncertain!==true;};
   // The element's own display as the UA / initial resolution below will compute it ("" for
@@ -2429,6 +2451,7 @@
     if (sink) { sink.values = computedSinkValues(decl); return null; }
     computedInheritance(cs);
     computedEffectTransform(cs);
+    computedEffectColors(cs);
     computedInterpolateSize(cs);
     computedApplyAnimations(cs);
     // Tree-counting functions take this element's counts; their style follows its siblings.
@@ -2449,6 +2472,7 @@
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
     $c.get(declarationRecords,snapshot).effectCustomSource=cs.effectCustomSource;
     $c.get(declarationRecords,snapshot).effectTransformUncertain=cs.effectTransformUncertain;
+    $c.get(declarationRecords,snapshot).effectColorUncertain=cs.effectColorUncertain;
     if(computedStyleJsdom){var record=$c.get(declarationRecords,snapshot),decoration=cs.jsdomTextDecoration;$c.set(record.values,'text-decoration',{text:decoration?decoration.text:'',priority:'',pending:null,raw:null});}
     computeStyleFreshStore(el,pseudo,snapshots,snapshot);
     return snapshot;

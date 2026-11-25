@@ -208,6 +208,8 @@
   const INTEGERS = { __proto__: null, 'z-index': 1, order: 1, orphans: 1, widows: 1, 'column-count': 1 };
   const NUMBERS = { __proto__: null, 'flex-grow': 1, 'flex-shrink': 1, 'font-weight': 1, 'line-height': 1, 'stroke-miterlimit': 1 };
   const COLORS = { __proto__: null, color: 1, 'background-color': 1, 'border-top-color': 1, 'border-right-color': 1, 'border-bottom-color': 1, 'border-left-color': 1, 'outline-color': 1, 'text-decoration-color': 1, 'column-rule-color': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'flood-color': 1, 'lighting-color': 1, 'stop-color': 1, 'text-emphasis-color': 1 };
+  ns.isEffectColor=property=>!!COLORS[property];
+  ns.admitEffectColor=(property,text)=>COLORS[property]?Native('value',property,text):null;
   const INHERITED = { __proto__: null, color: 1, visibility: 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'word-spacing': 1, 'text-indent': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'fill-opacity': 1, 'stroke-opacity': 1, orphans: 1, widows: 1, cursor: 1, 'pointer-events': 1 };
   const INITIAL = { __proto__: null, rotate: 'none', scale: 'none', translate: 'none', filter: 'none', opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
   const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap|stroke-dashoffset)$/, name);
@@ -2632,14 +2634,31 @@
     for (let i = 0; i < promiseShapes.length; i++) if (!safePromiseShape(null, promiseShapes[i])) return;
     captureBuiltinShapes();
   };
+  function assignmentUndefinedStackHook(shape) {
+    const captured = builtinGlobals.Error;
+    if (!captured || shape.object !== captured.value || shape.descriptors.prepareStackTrace) return false;
+    const descriptor = getOwnDescriptor(shape.object, 'prepareStackTrace');
+    if (!descriptor || !getOwnDescriptor(descriptor, 'value')) return false;
+    return descriptor.value === undefined && descriptor.writable === true &&
+      descriptor.enumerable === true && descriptor.configurable === true;
+  }
+  function sameBuiltinShapeKeys(shape, keys) {
+    const ignoredStackHook = assignmentUndefinedStackHook(shape);
+    if (keys.length !== shape.keys.length + (ignoredStackHook ? 1 : 0)) return false;
+    let expected = 0;
+    for (let index = 0; index < keys.length; index++) {
+      const key = keys[index];
+      if (ignoredStackHook && key === 'prepareStackTrace') continue;
+      if (key !== shape.keys[expected++] || !samePrivateDescriptor(getOwnDescriptor(shape.object, key), shape.descriptors[key])) return false;
+    }
+    return true;
+  }
   function safeBuiltinShapes() {
     for (let i = 0; i < builtinNames.length; i++)
       if (!samePrivateDescriptor(getOwnDescriptor(g, builtinNames[i]), builtinGlobals[builtinNames[i]])) return false;
     for (let i = 0; i < builtinShapes.length; i++) {
-      const shape = builtinShapes[i], keys = ownKeys(shape.object);
-      if (keys.length !== shape.keys.length || getPrototype(shape.object) !== shape.prototype) return false;
-      for (let j = 0; j < keys.length; j++)
-        if (keys[j] !== shape.keys[j] || !samePrivateDescriptor(getOwnDescriptor(shape.object, keys[j]), shape.descriptors[keys[j]])) return false;
+      const shape = builtinShapes[i];
+      if (getPrototype(shape.object) !== shape.prototype || !sameBuiltinShapeKeys(shape, ownKeys(shape.object))) return false;
     }
     return true;
   }
@@ -2936,7 +2955,7 @@
     const read = property => ns.computedStyleValue(snapshot, property), result = create(null);
     if(!ns.effectTransformSupported(snapshot)){result.status='unknown';result.properties=presentedSourceProperties(entries);if(!contains(result.properties,'transform'))push(result.properties,'transform');setPrototype(result.properties,null);return result;}
     if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, names) ||
-        !presentedCustomPropertiesSupported(element, entries) || !presentedStackSupported(entries, read, changingContext)) {
+        !presentedCustomPropertiesSupported(element, entries) || !ns.effectColorsSupported(snapshot, presentedSourceProperties(entries)) || !presentedStackSupported(entries, read, changingContext)) {
       result.status = 'unknown'; result.properties = presentedSourceProperties(entries); setPrototype(result.properties, null);
       return result;
     }
