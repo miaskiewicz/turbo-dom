@@ -13,6 +13,14 @@ try{
   const first=getComputedStyle(target).transform;target.style.width='200px';const second=getComputedStyle(target).transform;
   return{rows,first,second};
  });
+ const shadowPage=await browser.newPage();await shadowPage.setContent('<!doctype html>');
+ const shadowResult=await shadowPage.evaluate(()=>{
+   const host=document.createElement('div');document.body.appendChild(host);const root=host.attachShadow({mode:'closed'});
+   root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}div{animation:probe 1s linear both paused}</style><div></div>';
+   const before=root.getAnimations().length;host.style.display='none';const after=root.getAnimations().length;
+   const script=root.querySelector('div').animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});script.pause();
+   return{cssBefore:before,cssAfterHiddenHost:after,waapiAfterHiddenHost:root.getAnimations().filter(a=>!(a instanceof CSSAnimation)).length};
+ });
  const source=await readFile(new URL(import.meta.url));const hash=value=>createHash('sha256').update(value).digest('hex');
- await writeFile(new URL('./reference_discovery_chrome159.json',import.meta.url),JSON.stringify({browser:browser.version(),probeSha256:hash(source),htmlSha256:hash(html),html,result},null,2)+'\n');
+ await writeFile(new URL('./reference_discovery_chrome159.json',import.meta.url),JSON.stringify({browser:browser.version(),probeSha256:hash(source),htmlSha256:hash(html),html,result,shadowResult},null,2)+'\n');
 }finally{await browser.close();}

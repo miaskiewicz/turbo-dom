@@ -1,6 +1,6 @@
 {
   "browser": "159.0.8154.6",
-  "probeSha256": "2ca0d9e9814a9e5bcbbf50f6f7f9ebdb85ef34766c332e90ee5e24920d5db0b9",
+  "probeSha256": "ff0f4dd67802b8f17558e7c1024393864450c8fa6d3fbf3ca0e7fe1a28c04da4",
   "htmlSha256": "394eafe582584f646f1dba9981d1a83959d3acfd7f2dbccf4b58218c00df6fe4",
   "html": "<!doctype html><style>@keyframes probe{from{opacity:.5}to{opacity:1}}</style><div style='font-size:24px'><div id=target style='width:100px;height:20px;transform:translateX(50%);animation:probe 1000ms linear both paused'></div></div>",
   "result": {
@@ -54,5 +54,10 @@
     ],
     "first": "matrix(1, 0, 0, 1, 50, 0)",
     "second": "matrix(1, 0, 0, 1, 100, 0)"
+  },
+  "shadowResult": {
+    "cssBefore": 1,
+    "cssAfterHiddenHost": 0,
+    "waapiAfterHiddenHost": 1
   }
 }

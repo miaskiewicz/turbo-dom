@@ -2408,6 +2408,11 @@ fn computed_effect_inspection_recovers_after_native_termination_in_media() {
 }
 
 #[test]
+fn public_lifecycle_discovery_recovers_after_native_termination_in_refresh() {
+    inspection_recovers_after_termination_mode("refreshCssLifecycleInputs", true, true);
+}
+
+#[test]
 fn css_update_busy_guard_recovers_after_native_termination_in_update() {
     inspection_recovers_after_termination("noteCssUpdatePass", true);
 }
