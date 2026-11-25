@@ -66,7 +66,7 @@ function newState(owners) {
   resources.reference = owners.add(resources);
   return { resources, compileKey: null, prepareKey: null, backend: null, targets: new WeakMap(), generation: {} };
 }
-function replacement(state, backend, compileKey, prepareKey, createFacts) {
+function replacement(state, backend, compileKey, prepareKey, createFacts, decode) {
   const fresh = state.backend !== backend || state.compileKey !== compileKey;
   let compiled = state.resources.compiled,
     prepared;
@@ -87,9 +87,9 @@ function replacement(state, backend, compileKey, prepareKey, createFacts) {
     throw error;
   }
 }
-function synchronize(state, backend, compileKey, prepareKey, createFacts) {
+function synchronize(state, backend, compileKey, prepareKey, createFacts, decode) {
   if (state.backend === backend && state.compileKey === compileKey && state.prepareKey === prepareKey) return;
-  const next = replacement(state, backend, compileKey, prepareKey, createFacts);
+  const next = replacement(state, backend, compileKey, prepareKey, createFacts, decode);
   try {
     release(next.fresh ? state.resources.compiled : null, state.resources.prepared);
   } catch (error) {
@@ -145,11 +145,13 @@ function resultProxy(entry, version) {
   }
   return entry.proxy;
 }
-function resolvedRow(prepared, request) {
+function resolvedRow(prepared, request, encode, decode) {
   const output = decode(prepared.resolveBatch(encode(request.request)));
+  if (output.geometryOnly === true)
+    throw new SharedCssCapabilityError('geometry-only rows cannot become computed style');
   const row = output.targets.find((row) => row.id === request.resultId);
   if (!row) throw new TypeError('turbo-dom: shared CSS result target missing');
-  return row;
+  return { row, batch: output };
 }
 
 function retireAll(resources, owners) {
@@ -178,6 +180,8 @@ export function createSharedComputedStyle({
   resolveRequest,
   finalizeResult,
   createFacts,
+  encodeRequest = encode,
+  decodeResponse = decode,
   intrinsics = { WeakRef: globalThis.WeakRef, FinalizationRegistry: globalThis.FinalizationRegistry },
 }) {
   if (typeof finalizeResult !== 'function') throw new TypeError('turbo-dom: shared CSS requires finalizeResult');
@@ -200,9 +204,9 @@ export function createSharedComputedStyle({
     // require scanning; an opaque document stamp never skips unknown CSS stores.
     const sources = captureSources(context.document, context);
     if (sources.status !== 'captured') throw new SharedCssCapabilityError('source capture unsupported');
-    const compileKey = encode(compileRequest(sources, context));
-    const prepareKey = encode(prepareRequest(sources, context));
-    synchronize(state, backend, compileKey, prepareKey, createFacts);
+    const compileKey = encodeRequest(compileRequest(sources, context));
+    const prepareKey = encodeRequest(prepareRequest(sources, context));
+    synchronize(state, backend, compileKey, prepareKey, createFacts, decodeResponse);
     const key = encode({ pseudo, value: context.resultKey });
     let entry = state.targets.get(element);
     if (!cachedResult(entry, context, state.generation, key)) {
@@ -213,10 +217,21 @@ export function createSharedComputedStyle({
         sources,
         metadata: state.metadata,
         preparedMetadata: state.preparedMetadata,
+        prepared: state.resources.prepared,
         facts: state.facts,
       });
-      const raw = resolvedRow(state.resources.prepared, request);
-      const row = ownResult(finalizeResult(raw, { element, pseudo, context, sources, backend }));
+      const resolved = resolvedRow(state.resources.prepared, request, encodeRequest, decodeResponse);
+      const row = ownResult(
+        finalizeResult(resolved.row, {
+          element,
+          pseudo,
+          context,
+          sources,
+          backend,
+          batch: resolved.batch,
+          providerContext: request.providerContext,
+        }),
+      );
       const proxy = createComputedStyleProxy(row, context.version);
       entry = {
         row,

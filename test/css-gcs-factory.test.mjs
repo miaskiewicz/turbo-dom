@@ -417,7 +417,7 @@ test('factory weak ownership never roots document or element through native owne
   const program = `
     const {createSharedComputedStyle}=await import(${JSON.stringify(module)});
     const backend={CompiledStylesV1:class{metadata(){return '{}';}prepare(){return {metadata:()=> '{}',resolveBatch:()=>JSON.stringify({targets:[{id:1,values:{color:[114,101,100]},custom:{}}]}),dispose(){}};}dispose(){}}};
-    const factory=createSharedComputedStyle({selectBackend:()=>backend,readContext:el=>el.context,captureSources:()=>({status:'captured'}),compileRequest:()=>({}),prepareRequest:()=>({}),resolveRequest:()=>({request:{},resultId:1}),finalizeResult:row=>row});
+    const factory=createSharedComputedStyle({selectBackend:()=>backend,readContext:el=>el.context,captureSources:()=>({status:'captured'}),compileRequest:()=>({}),prepareRequest:()=>({}),resolveRequest:({element})=>({request:{},resultId:1,providerContext:{element,document:element.context.document}}),finalizeResult:(row,{providerContext})=>({...row,providerContext})});
     let held,style;
     function scene(){const document={},element={context:{document,version:1,renderToken:{},environmentKey:{},resultKey:'x'}};style=factory.get(element);return [new WeakRef(document),new WeakRef(element)];}
     const weak=scene();await new Promise(resolve=>setImmediate(resolve));for(let index=0;index<3;index++)gc();
@@ -428,4 +428,136 @@ test('factory weak ownership never roots document or element through native owne
     encoding: 'utf8',
   });
   assert.equal(child.status, 0, child.stderr);
+});
+test('resolve request borrows the exact CSS-only prepared owner for explicit dependency providers', () => {
+  let prepared;
+  const f = fixture({
+    resolveRequest(input) {
+      prepared = input.prepared;
+      return { request: {}, resultId: 7 };
+    },
+  });
+  const first = f.factory.get(f.element);
+  assert.equal(first.color, 'red');
+  assert.equal(typeof prepared.metadata, 'function');
+  assert.equal(typeof prepared.resolveBatch, 'function');
+  assert.equal(prepared.metadata(), JSON.stringify({ request: JSON.stringify({ environment: 'screen' }) }));
+  assert.equal(f.factory.get(f.element), first);
+  assert.equal(f.calls.resolve, 1);
+  f.factory.reset(f.document);
+  assert.deepEqual(f.calls.dispose, ['prepared', 'compiled']);
+  assert.equal(first.color, 'red');
+});
+test('geometry-only intermediate responses are never finalized, returned or silently substituted for public styles', () => {
+  let geometryOnly = false,
+    finalized = 0;
+  const backend = {
+    CompiledStylesV1: class {
+      metadata() {
+        return '{}';
+      }
+      prepare() {
+        return {
+          metadata: () => '{}',
+          resolveBatch() {
+            return JSON.stringify({
+              geometryOnly,
+              targets: [{ id: 7, values: { color: [114, 101, 100] }, custom: {} }],
+            });
+          },
+          dispose() {},
+        };
+      }
+      dispose() {}
+    },
+  };
+  const f = fixture({
+    selectBackend: () => backend,
+    finalizeResult(row) {
+      finalized++;
+      return row;
+    },
+  });
+  const first = f.factory.get(f.element);
+  assert.equal(first.color, 'red');
+  assert.equal(finalized, 1);
+  geometryOnly = true;
+  f.context.renderToken = {};
+  assert.throws(
+    () => f.factory.get(f.element),
+    (error) => error instanceof SharedCssCapabilityError && /geometry-only/.test(error.message),
+  );
+  assert.equal(finalized, 1);
+  assert.equal(first.color, 'red');
+  geometryOnly = false;
+  assert.equal(f.factory.get(f.element).color, 'red');
+  assert.equal(finalized, 2);
+  f.factory.dispose();
+});
+test('finalization receives the complete original renderer batch and borrowed provider context only ephemerally', () => {
+  const providerContext = { snapshot: { originalNodes: ['parent', 'subject', 'sibling'] }, world: {} };
+  let observed;
+  const batch = {
+    geometryOnly: false,
+    targets: [
+      { id: 7, values: { color: [114, 101, 100] }, rendererValues: { width: [97, 117, 116, 111] }, custom: {} },
+      { id: 8, values: {}, rendererValues: { 'font-size': [50, 48, 112, 120] }, custom: {} },
+    ],
+  };
+  const backend = {
+    CompiledStylesV1: class {
+      metadata() {
+        return '{}';
+      }
+      prepare() {
+        return { metadata: () => '{}', resolveBatch: () => JSON.stringify(batch), dispose() {} };
+      }
+      dispose() {}
+    },
+  };
+  const f = fixture({
+    selectBackend: () => backend,
+    resolveRequest: () => ({ request: {}, resultId: 7, providerContext }),
+    finalizeResult(row, context) {
+      observed = context;
+      assert.equal(context.batch.targets.length, 2);
+      assert.deepEqual(context.batch.targets[1].rendererValues, batch.targets[1].rendererValues);
+      assert.equal(context.providerContext, providerContext);
+      return { ...row, providerContext: context.providerContext };
+    },
+  });
+  const first = f.factory.get(f.element);
+  assert.equal(first.color, 'red');
+  Object.defineProperty(providerContext, 'snapshot', {
+    get() {
+      throw Error('retired scene');
+    },
+  });
+  f.context.version++;
+  assert.equal(f.factory.get(f.element).color, 'red');
+  assert.equal(observed.batch.geometryOnly, false);
+  f.factory.dispose();
+  assert.equal(first.color, 'red');
+});
+test('provider-context errors preserve original identity without publishing a partially finalized row', () => {
+  const error = {};
+  let calls = 0;
+  const f = fixture({
+    resolveRequest: () => ({
+      request: {},
+      resultId: 7,
+      get providerContext() {
+        throw error;
+      },
+    }),
+    finalizeResult() {
+      calls++;
+    },
+  });
+  assert.throws(
+    () => f.factory.get(f.element),
+    (value) => value === error,
+  );
+  assert.equal(calls, 0);
+  f.factory.dispose();
 });
