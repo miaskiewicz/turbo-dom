@@ -33,6 +33,7 @@
 use resvg::tiny_skia;
 use resvg::usvg;
 
+mod custom_paint;
 mod resources;
 pub use resources::SvgResourceError;
 
@@ -114,8 +115,13 @@ pub fn parse_checked(bytes: &[u8]) -> Result<Option<usvg::Tree>, SvgResourceErro
         let Some(document) = parse_xml(bytes) else {
             return Ok(None);
         };
+        let prepared = custom_paint::prepare(&document)?;
+        let rewritten = prepared.as_deref().map(|source| {
+            parse_xml(source.as_bytes()).expect("escaped edits preserve validated SVG XML")
+        });
+        let document = rewritten.as_ref().unwrap_or(&document);
         let failure = std::sync::Arc::new(std::sync::Mutex::new(None));
-        let tree = usvg::Tree::from_xmltree(&document, &image_options(failure.clone())).ok();
+        let tree = usvg::Tree::from_xmltree(document, &image_options(failure.clone())).ok();
         if let Some(error) = *failure.lock().expect("SVG resolver failure lock") {
             return Err(error);
         }
@@ -214,9 +220,11 @@ fn resolve_data_image(
         ));
     }
     // Every possible nested SVG still passes the root and depth checks first.
-    if parse_xml(&data).is_none() {
+    let Some(document) = parse_xml(&data) else {
         return Ok(None);
-    }
+    };
+    let prepared = custom_paint::prepare(&document)?;
+    let data = prepared.map_or(data, |source| std::sync::Arc::new(source.into_bytes()));
     Ok(usvg::ImageHrefResolver::default_data_resolver()(
         mime, data, options,
     ))

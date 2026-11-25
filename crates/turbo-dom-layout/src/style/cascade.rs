@@ -1295,7 +1295,8 @@ mod matched;
 #[path = "tree_view.rs"]
 mod tree_view;
 pub use matched::{
-    presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
+    cascade_matched_tokens, ordered_matched_declarations, presentational_declarations,
+    resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };
 pub(crate) use matched::{presentational_declarations_of, resolve_matched_paragraph_style};
 pub use tree_view::{

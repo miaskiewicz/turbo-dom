@@ -19,9 +19,10 @@ pub(crate) fn expand_quad<'a>(
 mod token;
 
 pub use cascade::{
-    presentational_declarations, resolve_matched_style, style_input, Cascade, CascadeOrigin,
-    ComputedStyle, LeveledRule, MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput,
-    StyleOptions, StyledElement, StyledNode, StyledText, TreeView,
+    cascade_matched_tokens, ordered_matched_declarations, presentational_declarations,
+    resolve_matched_style, style_input, Cascade, CascadeOrigin, ComputedStyle, LeveledRule,
+    MatchedDeclaration, Navigator, Roots, SiblingPosition, StyleInput, StyleOptions, StyledElement,
+    StyledNode, StyledText, TreeView,
 };
 pub(crate) use cascade::{
     presentational_declarations_of, resolve_matched_paragraph_style, AUTHOR_BORDER,

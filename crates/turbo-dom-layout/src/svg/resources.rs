@@ -11,6 +11,12 @@ pub enum SvgResourceError {
     RasterBytes,
     /// The converted resource graph exceeds the SVG renderer's depth limit.
     ResourceDepth,
+    /// A custom-property computation exceeds the existing variable nesting bound.
+    CustomPropertyNesting,
+    /// Computed custom tokens or XML growth exceed the source-derived bound.
+    CustomPropertyBytes,
+    /// This variable-dependent cascade/property path is not certified.
+    UnsupportedCustomProperties,
 }
 
 impl std::fmt::Display for SvgResourceError {
@@ -19,6 +25,13 @@ impl std::fmt::Display for SvgResourceError {
             Self::RasterDimensions => "SVG embedded raster exceeds the dimension budget",
             Self::RasterBytes => "SVG embedded rasters exceed the decoded-byte budget",
             Self::ResourceDepth => "SVG resource graph exceeds the depth budget",
+            Self::CustomPropertyNesting => "SVG custom properties exceed the nesting budget",
+            Self::CustomPropertyBytes => {
+                "SVG custom properties exceed the source-derived token budget"
+            }
+            Self::UnsupportedCustomProperties => {
+                "SVG variable-dependent paint is not certified for this cascade or property"
+            }
         })
     }
 }

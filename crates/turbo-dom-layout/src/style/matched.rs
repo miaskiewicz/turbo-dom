@@ -111,9 +111,45 @@ fn resolve_matched_style_impl(
         matched.origin != CascadeOrigin::UserAgent
             && is_border_property(&matched.declaration.property)
     });
+    let candidates = matched_candidates(declarations);
+    let candidates = expand_quad_candidates(candidates, parent);
+    let style = if paragraph {
+        resolve_paragraph_style(candidates, parent)
+    } else {
+        inherit(pick_winners(candidates), parent)
+    };
+    mark_author_border(style, author_border)
+}
+
+/// Select raw winning declaration tokens with the same origin, encapsulation,
+/// specificity and source-order ranking as [`resolve_matched_style`]. This does
+/// not expand shorthands, apply inheritance/CSS-wide keywords or substitute vars;
+/// specialized adapters must perform those stages with their own property policy.
+#[must_use]
+pub fn cascade_matched_tokens(
+    declarations: &[MatchedDeclaration],
+) -> std::collections::BTreeMap<String, String> {
+    pick_winners(matched_candidates(declarations))
+}
+
+/// Raw matched declarations from lowest to highest native cascade rank.
+/// Retains invalid-value fallback candidates and shorthand/longhand source order.
+#[must_use]
+pub fn ordered_matched_declarations(declarations: &[MatchedDeclaration]) -> Vec<Declaration> {
+    ordered_matches(declarations)
+        .into_iter()
+        .map(|matched| matched.declaration.clone())
+        .collect()
+}
+
+fn ordered_matches(declarations: &[MatchedDeclaration]) -> Vec<&MatchedDeclaration> {
     let mut ordered: Vec<_> = declarations.iter().collect();
     ordered.sort_by_key(|declaration| declaration.rank());
-    let candidates = ordered
+    ordered
+}
+
+fn matched_candidates(declarations: &[MatchedDeclaration]) -> Vec<Cand> {
+    ordered_matches(declarations)
         .into_iter()
         .enumerate()
         .map(|(order, matched)| Cand {
@@ -127,14 +163,7 @@ fn resolve_matched_style_impl(
             property: matched.declaration.property.clone(),
             value: matched.declaration.value.clone(),
         })
-        .collect();
-    let candidates = expand_quad_candidates(candidates, parent);
-    let style = if paragraph {
-        resolve_paragraph_style(candidates, parent)
-    } else {
-        inherit(pick_winners(candidates), parent)
-    };
-    mark_author_border(style, author_border)
+        .collect()
 }
 
 /// This monotonic remapping retains origin identity without changing the sorted
