@@ -7,6 +7,7 @@ release payload, while `bundle` copies only an exact reviewed native matrix.
 """
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -170,7 +171,14 @@ def file_record(root, relative):
 def check(root, version):
     require_native_set(root, native_files())
     files = native_files()
-    for directory, stem in WASM_PACKAGES.items():
+    packages = WASM_PACKAGES
+    if (root / 'css-wasm').exists():
+        spec = importlib.util.spec_from_file_location('css_shared', Path(__file__).with_name('css-shared.py'))
+        shared = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(shared)
+        files.extend(shared.check(root))
+        packages = {key: value for key, value in packages.items() if key in ('pkg', 'pkg-web')}
+    for directory, stem in packages.items():
         manifest = Path(directory) / "package.json"
         file_record(root, manifest)
         package = json.loads((root / manifest).read_text())
@@ -234,6 +242,7 @@ def main():
                           "wasmTooling": "explicit cached executables" if tools else "wasm-pack"}, indent=2))
     elif args.command == "check":
         version = json.loads((REPO / "package.json").read_text())["version"]
+        if not (REPO / "css-wasm").exists(): raise ValueError("release requires assembled shared CSS payload")
         print(json.dumps({"version": version, "artifacts": check(REPO, version)}, indent=2))
     elif args.command == "bundle":
         if args.artifacts is None: parser.error("bundle requires --artifacts")

@@ -170,8 +170,10 @@ class SourceContracts(unittest.TestCase):
         self.assertNotIn("build:css", package["scripts"]["build"])
         self.assertIn("native-css/*.node", package["files"])
         for directory in ("pkg-css", "pkg-css-web"):
-            for suffix in ca.WASM_SUFFIXES:
+            for suffix in (".js", ".d.ts"):
                 self.assertIn(f"{directory}/turbo_dom_css{suffix}", package["files"])
+            self.assertNotIn(f"{directory}/turbo_dom_css_bg.wasm", package["files"])
+        self.assertIn("css-wasm/*", package["files"])
         self.assertEqual(package["exports"]["./css-wasm"]["import"], "./pkg-css-web/turbo_dom_css.js")
 
 

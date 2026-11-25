@@ -33,3 +33,6 @@ mutants.out.old/
 
 # Generated parser web payload (never source)
 /pkg-web
+
+# Shared derived CSS glue and one WASM payload
+/css-wasm

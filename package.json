@@ -55,13 +55,9 @@
     "pkg-css/package.json",
     "pkg-css/turbo_dom_css.js",
     "pkg-css/turbo_dom_css.d.ts",
-    "pkg-css/turbo_dom_css_bg.wasm",
-    "pkg-css/turbo_dom_css_bg.wasm.d.ts",
     "pkg-css-web/package.json",
     "pkg-css-web/turbo_dom_css.js",
     "pkg-css-web/turbo_dom_css.d.ts",
-    "pkg-css-web/turbo_dom_css_bg.wasm",
-    "pkg-css-web/turbo_dom_css_bg.wasm.d.ts",
     "src/**/*.mjs",
     "src/**/*.cjs",
     "src/**/*.d.ts",
@@ -82,8 +78,7 @@
     "crates/turbo-dom-layout/src/layout/Blink-layout-unit.LICENSE",
     "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-MIT",
     "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-APACHE",
-    "pkg-css/snippets/**/*.js",
-    "pkg-css-web/snippets/**/*.js"
+    "css-wasm/*"
   ],
   "napi": {
     "name": "turbo-dom-parser",
@@ -131,9 +126,10 @@
     "build:css:native": "python3 scripts/css-artifacts.py native",
     "build:css:wasm:pkg": "python3 scripts/css-artifacts.py nodejs",
     "build:css:wasm:web": "python3 scripts/css-artifacts.py web",
-    "build:css": "npm run build:css:native && npm run build:css:wasm:pkg && npm run build:css:wasm:web",
+    "build:css": "npm run build:css:native && npm run build:css:wasm:pkg && npm run build:css:wasm:web && npm run assemble:css",
     "check:css:host": "node scripts/check-css-host.cjs",
-    "check:artifacts": "python3 scripts/css-artifacts.py check"
+    "check:artifacts": "python3 scripts/css-artifacts.py check",
+    "assemble:css": "python3 scripts/css-shared.py assemble"
   },
   "keywords": [
     "dom",

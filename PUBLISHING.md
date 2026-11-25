@@ -234,3 +234,18 @@ CSS bytes, so parser-only download size is **not** claimed unchanged. Measure th
 full multi-platform tarball separately. Actual cold-load/retained-byte metrics and
 independent parser startup comparisons remain integration gates; logical
 `retainedBytes` is a shared CSS-payload lower bound, not a heap/RSS measurement.
+
+### Shared CSS WASM assembly
+
+`npm run build:css` builds both raw generated CSS WASM targets and then runs
+`npm run assemble:css`. Individual `build:css:wasm:*` commands are intermediate
+builds; run assembly after both before packing. The assembler preserves existing
+`pkg-css`/`pkg-css-web` loader and exact declaration paths while sharing one
+byte-identical WASM file under `css-wasm`. It changes only each generated loader's
+leading type-reference comment, records original/output/body hashes, and rejects
+unreviewed imports/snippets, mismatched binary bytes or declaration drift.
+`check:artifacts` requires this assembly and the complete native matrix. Raw
+private `pkg-css*/turbo_dom_css_bg.wasm` paths are no longer distributed; the
+exported web initializer and explicit bytes/module injection remain supported.
+See `tools/release/npm-css-dedup-review-0.8.7.md` for measured host-only receipts
+and the separate, unimplemented optional-platform-package proposal.
