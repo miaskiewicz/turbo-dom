@@ -297,3 +297,35 @@ test('artifact optional scene capability is retained and validated without peer 
   const cssOnly = createCssArtifactResolver({ require: loader(raw(), []) }).resolve(selection('native'));
   assert.equal(cssOnly.measureSceneV1, undefined);
 });
+test('artifact UA source capability is optional, strictly validated and not invoked during discovery', () => {
+  let reads = 0,
+    calls = 0;
+  const cssUserAgentSourceV1 = () => {
+    calls++;
+    return '{}';
+  };
+  const artifact = {
+    ...raw(),
+    get cssUserAgentSourceV1() {
+      reads++;
+      return cssUserAgentSourceV1;
+    },
+  };
+  assert.equal(normalizeCssArtifact(artifact).cssUserAgentSourceV1, cssUserAgentSourceV1);
+  assert.equal(reads, 1);
+  assert.equal(calls, 0);
+  assert.equal(normalizeCssArtifact(raw()).cssUserAgentSourceV1, undefined);
+  for (const cssUserAgentSourceV1 of [null, {}, 1])
+    assert.throws(() => normalizeCssArtifact({ ...raw(), cssUserAgentSourceV1 }), TypeError);
+  const error = {};
+  assert.throws(
+    () =>
+      normalizeCssArtifact({
+        ...raw(),
+        get cssUserAgentSourceV1() {
+          throw error;
+        },
+      }),
+    (value) => value === error,
+  );
+});

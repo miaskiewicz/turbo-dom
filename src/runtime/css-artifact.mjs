@@ -12,14 +12,21 @@ export function normalizeCssArtifact(binding) {
   const abi = binding.cssAbiVersion;
   const CompiledStylesV1 = binding.CompiledStylesV1;
   const measureSceneV1 = binding.measureSceneV1;
-  if (abi === undefined && CompiledStylesV1 === undefined && measureSceneV1 === undefined) return null;
+  const cssUserAgentSourceV1 = binding.cssUserAgentSourceV1;
+  if (
+    abi === undefined &&
+    CompiledStylesV1 === undefined &&
+    measureSceneV1 === undefined &&
+    cssUserAgentSourceV1 === undefined
+  )
+    return null;
   const cssAbiVersion = metadata(binding, abi);
   const version = binding.cssBackendVersion;
   const backendVersion = metadata(binding, version);
   if (cssAbiVersion !== 1 || typeof CompiledStylesV1 !== 'function' || backendVersion !== '0.8.7') {
     throw new TypeError('turbo-dom: incompatible CSS artifact (expected ABI 1, version 0.8.7)');
   }
-  return cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1);
+  return cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1, cssUserAgentSourceV1);
 }
 
 export function nativeCssSuffix(platform, arch, musl = false) {

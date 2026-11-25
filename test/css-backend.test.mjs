@@ -284,3 +284,14 @@ test('optional scene capability is retained, read once and never substituted acr
   const error = {};
   assert.throws(()=>createCssBackendResolver().resolve({mode:'auto',binding:{...capability(),get measureSceneV1(){throw error;}},revision:0}),e=>e===error);
 });
+test('optional canonical UA source function is discovered lazily without extending minimum binding',()=>{
+  let reads=0,calls=0;
+  const cssUserAgentSourceV1=()=>{calls++;return JSON.stringify({abiVersion:1,text:[65],fullscreenText:[66]});};
+  const binding={...capability(),get cssUserAgentSourceV1(){reads++;return cssUserAgentSourceV1;}};
+  const resolver=createCssBackendResolver({loadWasm:()=>binding,loadNative(){throw Error('forced wasm');}});
+  const selected=resolver.resolve({mode:'wasm',binding:null,revision:0});
+  assert.equal(selected.cssUserAgentSourceV1,cssUserAgentSourceV1);assert.equal(reads,1);assert.equal(calls,0);
+  assert.equal(selected.cssUserAgentSourceV1(),JSON.stringify({abiVersion:1,text:[65],fullscreenText:[66]}));assert.equal(calls,1);
+  for(const cssUserAgentSourceV1 of [null,{},1])assert.throws(()=>createCssBackendResolver().resolve({mode:'auto',binding:{...capability(),cssUserAgentSourceV1},revision:0}),TypeError);
+  const error={};assert.throws(()=>createCssBackendResolver().resolve({mode:'auto',binding:{...capability(),get cssUserAgentSourceV1(){throw error;}},revision:0}),value=>value===error);
+});

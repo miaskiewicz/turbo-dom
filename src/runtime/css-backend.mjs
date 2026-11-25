@@ -3,15 +3,15 @@
 
 function capability(binding) {
 	if (binding == null) return null;
-	const { cssAbiVersion, CompiledStylesV1, measureSceneV1 } = binding;
-	if (cssAbiVersion === undefined && CompiledStylesV1 === undefined && measureSceneV1 === undefined)
+	const { cssAbiVersion, CompiledStylesV1, measureSceneV1, cssUserAgentSourceV1 } = binding;
+	if (cssAbiVersion === undefined && CompiledStylesV1 === undefined && measureSceneV1 === undefined && cssUserAgentSourceV1 === undefined)
 		return null;
 	if (cssAbiVersion !== 1 || typeof CompiledStylesV1 !== "function") {
 		throw new TypeError(
 			"turbo-dom: incompatible CSS backend ABI (expected ABI 1 and CompiledStylesV1)",
 		);
 	}
-	return cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1);
+	return cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1, cssUserAgentSourceV1);
 }
 
 function load(loader) {
@@ -51,9 +51,12 @@ export function createCssBackendResolver({ loadNative, loadWasm } = {}) {
 }
 
 // Shared optional descriptor normalization for raw artifact and injected bindings.
-export function cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1) {
+export function cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1, cssUserAgentSourceV1) {
   if (measureSceneV1 !== undefined && typeof measureSceneV1 !== 'function') {
     throw new TypeError('turbo-dom: incompatible CSS backend ABI (measureSceneV1 must be a function)');
   }
-  return Object.freeze({ cssAbiVersion, CompiledStylesV1, ...(measureSceneV1 === undefined ? {} : { measureSceneV1 }) });
+  if (cssUserAgentSourceV1 !== undefined && typeof cssUserAgentSourceV1 !== 'function') {
+    throw new TypeError('turbo-dom: incompatible CSS backend ABI (cssUserAgentSourceV1 must be a function)');
+  }
+  return Object.freeze({ cssAbiVersion, CompiledStylesV1, ...(measureSceneV1 === undefined ? {} : { measureSceneV1 }), ...(cssUserAgentSourceV1 === undefined ? {} : { cssUserAgentSourceV1 }) });
 }

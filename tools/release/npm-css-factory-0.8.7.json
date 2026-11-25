@@ -1,0 +1,61 @@
+{
+  "scope": "Optional shared-CSS orchestration foundation; published getComputedStyle default unchanged; #296 open.",
+  "base": "ab78ae275a3c8237503af197381ee8e3025f0cb1",
+  "sourceSha256": {
+    "src/runtime/css-artifact.mjs": "409ca55f9e0126e3bd3f34d4c6a2011aef85802555f5fe58687d75a100d05919",
+    "src/runtime/css-backend.mjs": "79bd4f92c042ae4504fbb26dc790c1c8b44a9ce11b23ab2816fbdca49d7d822a",
+    "src/runtime/css-gcs-factory.mjs": "5162a5c65481b967271a79b08ab2fb62c78dffc468080903f7c73acd647f4b3e",
+    "test/css-artifact.test.mjs": "dc9c2f2a44fc943f2d09f225c5160c52371253891184f5f0d53e30b9b5135df3",
+    "test/css-backend.test.mjs": "7c1e8ba732d3d0d93c7993acb7460cbc8670f505eb6338e6ef40e5f9d7063ff7",
+    "test/css-gcs-factory.test.mjs": "ee211d6d44c55bccf0af5bad2af40afb9f4811068e9b38003dabcc9f23523e4a"
+  },
+  "validation": {
+    "toolchain": "1.98.0",
+    "plainParserBuild": "native plus optimized node/web WASM, one job",
+    "tests": 901,
+    "fail": 0,
+    "skip": 0,
+    "runtimeCoverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.62
+    },
+    "jsComplexity": 9
+  },
+  "componentProofs": {
+    "native": {
+      "nativeSha256": "e59bda925c3e9063f4c339013731afe60f5a3b3798616c702dd4ea384dc8483c",
+      "counts": {
+        "compile": 2,
+        "prepare": 2,
+        "resolve": 3,
+        "capture": 6,
+        "finalize": 3,
+        "disposed": [
+          "prepared",
+          "compiled",
+          "prepared",
+          "compiled"
+        ]
+      },
+      "scope": "Real native ABI; explicit fixture caller limits/context/static matching facts; literal color already finalized by Rust; no default GCS switch."
+    },
+    "wasm": {
+      "nativeSha256": "eae00e1f8e8c7b74dfdd07715049be9c04b6957e60e67dd2cd8c86ac6413102a",
+      "counts": {
+        "compile": 2,
+        "prepare": 2,
+        "resolve": 3,
+        "capture": 6,
+        "finalize": 3,
+        "disposed": [
+          "prepared",
+          "compiled",
+          "prepared",
+          "compiled"
+        ]
+      },
+      "scope": "Real native ABI; explicit fixture caller limits/context/static matching facts; literal color already finalized by Rust; no default GCS switch."
+    }
+  }
+}
