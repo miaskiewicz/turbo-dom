@@ -1,0 +1,312 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSHA256": "9de71ed3d3545c0156feae0abe6c72dbdbc4287f3ee544ec078af0bd8d7398dc",
+  "casesSHA256": "3302902aa9e0d2ffd7ab4dd083fc837a7789a2202ac666fe75e8fe8490f85ba9",
+  "cases": [
+    {
+      "id": "quoted-longhand",
+      "rule": "'wide card'",
+      "declaration": "animation-name:'wide card';animation-duration:100s"
+    },
+    {
+      "id": "quoted-shorthand",
+      "rule": "'wide card'",
+      "declaration": "animation:100s linear 'wide card'"
+    },
+    {
+      "id": "quoted-comma",
+      "rule": "\"wide, card\"",
+      "declaration": "animation-name:\"wide, card\";animation-duration:100s"
+    },
+    {
+      "id": "escaped-space",
+      "rule": "wide\\ card",
+      "declaration": "animation-name:wide\\ card;animation-duration:100s"
+    },
+    {
+      "id": "escaped-name",
+      "rule": "w\\69 de",
+      "declaration": "animation-name:wide;animation-duration:100s"
+    },
+    {
+      "id": "case-sensitive-missing",
+      "rule": "Spin",
+      "declaration": "animation-name:spin;animation-duration:100s"
+    },
+    {
+      "id": "quoted-none",
+      "rule": "\"none\"",
+      "declaration": "animation-name:\"none\";animation-duration:100s"
+    },
+    {
+      "id": "keyword-none",
+      "rule": "\"none\"",
+      "declaration": "animation-name:none;animation-duration:100s"
+    },
+    {
+      "id": "quoted-initial",
+      "rule": "\"initial\"",
+      "declaration": "animation-name:\"initial\";animation-duration:100s"
+    },
+    {
+      "id": "empty-string",
+      "rule": "\"\"",
+      "declaration": "animation-name:\"\";animation-duration:100s"
+    },
+    {
+      "id": "missing-list",
+      "rule": "Spin",
+      "declaration": "animation-name:spin,Spin;animation-duration:100s,100s"
+    }
+  ],
+  "results": [
+    {
+      "id": "quoted-longhand",
+      "rule": "@keyframes wide\\ card { \n  100% { width: 100px; }\n}",
+      "animationName": "wide\\ card",
+      "effects": [
+        {
+          "name": "wide card",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "quoted-shorthand",
+      "rule": "@keyframes wide\\ card { \n  100% { width: 100px; }\n}",
+      "animationName": "wide\\ card",
+      "effects": [
+        {
+          "name": "wide card",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "linear",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "linear",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.3906px",
+      "rect": 20.390625
+    },
+    {
+      "id": "quoted-comma",
+      "rule": "@keyframes wide\\,\\ card { \n  100% { width: 100px; }\n}",
+      "animationName": "wide\\,\\ card",
+      "effects": [
+        {
+          "name": "wide, card",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "escaped-space",
+      "rule": "@keyframes wide\\ card { \n  100% { width: 100px; }\n}",
+      "animationName": "wide\\ card",
+      "effects": [
+        {
+          "name": "wide card",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "escaped-name",
+      "rule": "@keyframes wide { \n  100% { width: 100px; }\n}",
+      "animationName": "wide",
+      "effects": [
+        {
+          "name": "wide",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "case-sensitive-missing",
+      "rule": "@keyframes Spin { \n  100% { width: 100px; }\n}",
+      "animationName": "spin",
+      "effects": [],
+      "width": "20px",
+      "rect": 20
+    },
+    {
+      "id": "quoted-none",
+      "rule": "@keyframes none { \n  100% { width: 100px; }\n}",
+      "animationName": "\"none\"",
+      "effects": [
+        {
+          "name": "none",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "keyword-none",
+      "rule": "@keyframes none { \n  100% { width: 100px; }\n}",
+      "animationName": "none",
+      "effects": [],
+      "width": "20px",
+      "rect": 20
+    },
+    {
+      "id": "quoted-initial",
+      "rule": "@keyframes initial { \n  100% { width: 100px; }\n}",
+      "animationName": "\"initial\"",
+      "effects": [
+        {
+          "name": "initial",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    },
+    {
+      "id": "empty-string",
+      "rule": "#target { width: 20px; height: 10px; animation-duration: 100s; }",
+      "animationName": "none",
+      "effects": [],
+      "width": "20px",
+      "rect": 20
+    },
+    {
+      "id": "missing-list",
+      "rule": "@keyframes Spin { \n  100% { width: 100px; }\n}",
+      "animationName": "spin, Spin",
+      "effects": [
+        {
+          "name": "Spin",
+          "frames": [
+            {
+              "offset": 0,
+              "easing": "ease",
+              "composite": "replace",
+              "width": "20px",
+              "computedOffset": 0
+            },
+            {
+              "offset": 1,
+              "easing": "ease",
+              "composite": "auto",
+              "width": "100px",
+              "computedOffset": 1
+            }
+          ]
+        }
+      ],
+      "width": "20.1562px",
+      "rect": 20.15625
+    }
+  ]
+}

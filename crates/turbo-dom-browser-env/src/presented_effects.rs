@@ -29,6 +29,8 @@ pub enum PresentedTargetState {
 #[derive(Clone, Debug)]
 pub struct PresentedTarget {
     pub element: Handle,
+    /// Current declared CSS names, decoded in order; excludes only the `none` keyword.
+    pub css_animation_names: Vec<String>,
     pub effects: Vec<CssEffectLifecycle>,
     pub presentation: PresentedTargetState,
     /// Context established by canonical effect ownership/timing, including a
@@ -59,6 +61,7 @@ struct Header {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct TargetData {
+    css_animation_names: Vec<String>,
     effects: Vec<CssEffectLifecycle>,
     presentation: PresentedTargetState,
     establishes_stacking_context: bool,
@@ -72,7 +75,7 @@ mod context_wire_tests {
     fn absent_context_evidence_is_not_a_false_certificate() {
         let old = r#"{"effects":[],"presentation":{"status":"certified","animation":[],"transition":[]}}"#;
         assert!(serde_json::from_str::<TargetData>(old).is_err());
-        let explicit = r#"{"effects":[],"presentation":{"status":"certified","animation":[],"transition":[]},"establishes_stacking_context":false}"#;
+        let explicit = r#"{"effects":[],"presentation":{"status":"certified","animation":[],"transition":[]},"css_animation_names":[],"establishes_stacking_context":false}"#;
         assert!(
             !serde_json::from_str::<TargetData>(explicit)
                 .unwrap()
@@ -240,6 +243,7 @@ fn read_target(
     let data: TargetData = decode(scope, value)?;
     Some(PresentedTarget {
         element: handle,
+        css_animation_names: data.css_animation_names,
         effects: data.effects,
         presentation: data.presentation,
         establishes_stacking_context: data.establishes_stacking_context,

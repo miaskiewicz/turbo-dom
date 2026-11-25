@@ -1050,7 +1050,8 @@ fn hidden_unmodeled_css_stays_inactive_but_visible_unsupported_sources_stay_unkn
         assert!(matches!(visible.targets[0].presentation,PresentedTargetState::Unknown{..}),"{visible:?}");
         eval(scope,"document.getElementById('target').style.animationName='missing-definition'");
         let missing = sample_presented_effects(scope,document,&[handle]).unwrap();
-        assert!(matches!(missing.targets[0].presentation,PresentedTargetState::Unknown{..}),"visible missing definitions remain conservative: {missing:?}");
+        assert!(matches!(&missing.targets[0].presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty()),"complete missing-definition proof: {missing:?}");
+        assert_eq!(missing.targets[0].css_animation_names,["missing-definition"]);
     });
 }
 
@@ -1239,5 +1240,279 @@ fn presentation_policy_suppresses_rendering_context_effects_independently() {
         assert!(sample.presentation_suppressed && sample.css_animations_enabled && sample.css_transitions_enabled);
         assert!(sample.targets.iter().all(|target|matches!(&target.presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty())),"{sample:?}");
         assert!(eval(scope,"__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn canonical_quoted_escaped_and_case_sensitive_names_match_chrome() {
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/keyframe_names_chrome159.json")).unwrap();
+    for (case, oracle) in fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(fixture["results"].as_array().unwrap())
+    {
+        let html=format!("<style>@keyframes {}{{to{{width:100px}}}}#target{{width:20px;height:10px;{}}}</style><div id=target></div>",case["rule"].as_str().unwrap(),case["declaration"].as_str().unwrap());
+        with_html(true, true, &html, |scope| {
+            let expected_names: Vec<&str> = oracle["effects"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|effect| effect["name"].as_str().unwrap())
+                .collect();
+            let names=eval(scope,"JSON.stringify(document.getElementById('target').getAnimations().map(effect=>effect.animationName))").to_rust_string_lossy(scope);
+            assert_eq!(
+                serde_json::from_str::<Vec<String>>(&names).unwrap(),
+                expected_names,
+                "{}",
+                case["id"]
+            );
+            eval(scope,"globalThis.target=document.getElementById('target');globalThis.effects=target.getAnimations();for(const effect of effects){effect.pause();effect.currentTime=500};__layoutCalls=0");
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert!(
+                matches!(
+                    sample.targets[0].presentation,
+                    PresentedTargetState::Certified { .. }
+                ),
+                "{} {sample:?}",
+                case["id"]
+            );
+            let actual_names: Vec<&str> = sample.targets[0]
+                .effects
+                .iter()
+                .filter(|effect| effect.contributes)
+                .map(|effect| effect.name.as_str())
+                .collect();
+            assert_eq!(actual_names, expected_names, "{} {sample:?}", case["id"]);
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn unchanged_unused_resource_inputs_never_create_a_canonical_effect() {
+    use sha2::{Digest, Sha256};
+    let source = include_str!("fixtures/resource_definitions_probe.js");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(source)),
+        "ef222738cd556f339e0321ba1e31828338ac6d883e9a6c2ef4bb0f6b5f1eafe0"
+    );
+    let mut cases = Vec::<String>::new();
+    with_dom(|scope| {
+        let prefix = source.split_once("  const result = cases.map").unwrap().0;
+        let json = eval(
+            scope,
+            &format!("JSON.stringify({prefix}return cases;}})())"),
+        )
+        .to_rust_string_lossy(scope);
+        cases = serde_json::from_str(&json).unwrap();
+    });
+    assert_eq!(cases.len(), 10);
+    for css in cases {
+        with_html(true,true,&format!("<style>#target{{width:43px;height:17px}}{css}</style><div id=target></div><div id=hidden><span>hidden</span></div>"),|scope|{
+            let document=object(scope,"document");
+            let target=object(scope,"document.getElementById('target')");
+            let handle=handle_of(scope,target).unwrap();
+            let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+            assert!(matches!(&sample.targets[0].presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty()),"{css}: {sample:?}");
+            assert!(sample.targets[0].effects.iter().all(|effect|!effect.contributes));
+            assert!(eval(scope,"__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn missing_names_do_not_certify_uncertain_import_or_container_definitions() {
+    for group in [
+        "@import url('/possible-keyframes.css');",
+        "@container(min-width:1px){@keyframes missing{to{opacity:1}}}",
+    ] {
+        with_html(
+            true,
+            true,
+            &format!("<style>{group}#target{{animation:missing 1s}}</style><div id=target></div>"),
+            |scope| {
+                let document = object(scope, "document");
+                let target = object(scope, "document.getElementById('target')");
+                let handle = handle_of(scope, target).unwrap();
+                let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+                assert!(
+                    matches!(
+                        sample.targets[0].presentation,
+                        PresentedTargetState::Unknown { .. }
+                    ),
+                    "{sample:?}"
+                );
+            },
+        );
+    }
+}
+
+#[test]
+fn unresolved_animation_name_functions_keep_their_cannot_prove_exception() {
+    with_html(true,true,"<style>@keyframes Spin{to{width:100px}}#target{animation-name:env(unknown)}</style><div id=target></div>",|scope|{
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        {
+            v8::tc_scope!(let scope,scope);
+            assert!(sample_presented_effects(scope,document,&[handle]).is_none());
+            assert!(scope.has_caught(),"unresolved syntax is not an inactive-effect certificate");
+            let exception=scope.exception().unwrap().to_rust_string_lossy(scope);
+            assert!(exception.contains("cannot prove"),"{exception}");
+        }
+        eval(scope,"document.getElementById('target').style.animationName='none'");
+        let healthy=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(&healthy.targets[0].presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty()));
+    });
+}
+
+#[test]
+fn current_css_names_do_not_duplicate_canceled_spinner_history() {
+    with_html(
+        true,
+        true,
+        include_str!("fixtures/clipped_spinner.html"),
+        |scope| {
+            let document = object(scope, "document");
+            let spin = object(scope, "document.getElementById('spin')");
+            let circle = object(scope, "document.querySelector('circle')");
+            let handles = [
+                handle_of(scope, spin).unwrap(),
+                handle_of(scope, circle).unwrap(),
+            ];
+            let first = sample_presented_effects(scope, document, &handles).unwrap();
+            assert_eq!(first.targets[0].css_animation_names, ["spin"]);
+            assert_eq!(first.targets[1].css_animation_names, ["dash"]);
+            eval(scope,"document.getElementById('spin').style.animation='none';document.querySelector('circle').style.animation='none'");
+            let canceled = sample_presented_effects(scope, document, &handles).unwrap();
+            assert!(canceled
+                .targets
+                .iter()
+                .all(|target| target.css_animation_names.is_empty()));
+            eval(scope,"document.getElementById('spin').style.removeProperty('animation');document.querySelector('circle').style.removeProperty('animation')");
+            let restarted = sample_presented_effects(scope, document, &handles).unwrap();
+            for (target, name) in restarted.targets.iter().zip(["spin", "dash"]) {
+                assert_eq!(target.css_animation_names, [name]);
+                assert!(
+                    target
+                        .effects
+                        .iter()
+                        .filter(|effect| effect.name == name)
+                        .count()
+                        >= 2,
+                    "lifecycle provenance must remain intact: {target:?}"
+                );
+            }
+            eval(scope,"globalThis.currentName=getComputedStyle(document.getElementById('spin')).animationName;__layoutCalls=0");
+            let after_read = sample_presented_effects(scope, document, &handles).unwrap();
+            assert_eq!(after_read.targets[0].css_animation_names, ["spin"]);
+            assert_eq!(after_read.targets[1].css_animation_names, ["dash"]);
+            assert!(
+                after_read.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{after_read:?}"
+            );
+            assert!(eval(scope, "currentName==='spin' && __layoutCalls===0").is_true());
+        },
+    );
+}
+
+#[test]
+fn current_css_names_preserve_duplicates_and_ignore_only_the_none_keyword() {
+    with_html(true,true,"<style>@keyframes repeated{from{opacity:.3}to{opacity:1}}@keyframes 'none'{from{width:20px}to{width:40px}}#target{width:20px;animation-name:none,repeated,repeated,'none';animation-duration:1s,2s,3s,4s}</style><div id=target></div>",|scope|{
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert_eq!(sample.targets[0].css_animation_names,["repeated","repeated","none"]);
+        assert_eq!(sample.targets[0].effects.len(),3);
+    });
+}
+
+#[test]
+fn current_css_name_wire_field_is_required_instead_of_defaulting_empty() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,"const original=__tsNs.samplePresentedEffects;__tsNs.samplePresentedEffects=function(document,candidates){const snapshot=original(document,candidates);for(let i=0;i<snapshot.targets.length;i++){const row=snapshot.targets[i],data=JSON.parse(row[1]);delete data.css_animation_names;row[1]=JSON.stringify(data)}return snapshot}").unwrap();
+        let document = object(scope, "document");
+        let target = object(scope, "document.getElementById('target')");
+        let handle = handle_of(scope, target).unwrap();
+        v8::tc_scope!(let scope,scope);
+        assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+        assert!(!scope.has_caught());
+    });
+}
+
+#[test]
+fn a_missing_canonical_keyframe_resolver_never_proves_absence() {
+    with_html(true,true,"<style>@keyframes present{to{opacity:1}}#target{animation:present 1s}</style><div id=target></div>",|scope|{
+        browser_env::run_engine_script(scope,"__tsNs.cssKeyframeName=undefined").unwrap();
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert_eq!(sample.targets[0].css_animation_names,["present"]);
+        assert!(matches!(sample.targets[0].presentation,PresentedTargetState::Unknown{..}),"{sample:?}");
+    });
+}
+
+#[test]
+fn current_css_names_follow_all_seven_retained_restart_reorder_and_cancel_states() {
+    with_html(true,true,"<!doctype html><style>@keyframes first{from{width:100px}to{width:200px}}@keyframes second{from{height:20px}to{height:40px}}#target{width:100px;height:20px;animation:first 1000ms linear}</style><div id=target></div>",|scope|{
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        eval(scope,"globalThis.target=document.getElementById('target');globalThis.retained=[]");
+        let steps=[
+            (None,vec!["first"],Some("150px"),None),
+            (Some("none"),vec![],None,None),
+            (Some("first 1000ms linear"),vec!["first"],Some("150px"),None),
+            (Some("first 1000ms linear,second 1000ms linear"),vec!["first","second"],Some("150px"),Some("30px")),
+            (Some("second 1000ms linear,first 1000ms linear"),vec!["second","first"],Some("150px"),Some("30px")),
+            (Some("first 1000ms linear,first 2000ms linear"),vec!["first","first"],Some("125px"),None),
+        ];
+        for (style,names,width,height) in steps {
+            if let Some(style)=style {eval(scope,&format!("target.style.animation='{style}'"));}
+            if !names.is_empty() {eval(scope,"for(const animation of target.getAnimations()){retained.push(animation);animation.pause();animation.currentTime=500}");}
+            eval(scope,"__layoutCalls=0");
+            let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+            let target=&sample.targets[0];
+            assert_eq!(target.css_animation_names,names,"{sample:?}");
+            let PresentedTargetState::Certified{animation,..}=&target.presentation else {panic!("{sample:?}")};
+            for (property,value) in [("width",width),("height",height)] {
+                assert_eq!(animation.iter().find(|pair|pair.name==property).map(|pair|pair.value.as_str()),value,"{sample:?}");
+            }
+            assert!(eval(scope,"__layoutCalls===0").is_true());
+        }
+        eval(scope,"for(const animation of target.getAnimations())animation.cancel();__layoutCalls=0");
+        let canceled=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert_eq!(canceled.targets[0].css_animation_names,["first","first"]);
+        assert!(matches!(&canceled.targets[0].presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty()));
+        assert!(canceled.targets[0].effects.iter().all(|effect|!effect.contributes));
+        assert!(eval(scope,"__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn non_scalar_animation_name_payloads_never_alias_replacement_characters() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,"const original=__tsNs.computedStyleValue;__tsNs.computedStyleValue=(style,name)=>name==='animation-name'?String.fromCharCode(0xd800):original(style,name)").unwrap();
+        let document = object(scope, "document");
+        let target = object(scope, "document.getElementById('target')");
+        let handle = handle_of(scope, target).unwrap();
+        v8::tc_scope!(let scope,scope);
+        assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+        assert!(scope.has_caught());
+        assert!(scope
+            .exception()
+            .unwrap()
+            .to_rust_string_lossy(scope)
+            .contains("cannot prove"));
     });
 }
