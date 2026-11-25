@@ -2120,11 +2120,14 @@
     cs.inheritedValue = function(name){ return cs.inheritSnapshot ? computedSnapshotValue(cs.inheritSnapshot,name) : cs.inheritParent ? computedSnapshotValue(cs.parentStyle(cs.inheritParent),name) : ''; };
   }
   var emptyEffectTokenSource={__proto__:null,tokens:[],tainted:false};
-  function computedEffectTokenSource(cs){
+  function computedEffectParentSource(cs){
     var parent=cs.inheritSnapshot||(cs.inheritParent?cs.parentStyle(cs.inheritParent):null),record=parent&&$c.get(declarationRecords,parent);
-    var inherited=record?record.effectCustomSource:emptyEffectTokenSource,own=[];
-    if(inherited===null||inherited===undefined)return null;
-    for(var name in cs.decl)if($c.slice(name,0,2)==='--'&&typeof cs.decl[name]==='string'){$c.push(own,name);$c.push(own,cs.decl[name]);}
+    return record?record.effectCustomSource:emptyEffectTokenSource;
+  }
+  function computedOwnEffectTokens(decl){var own=[];for(var name in decl)if($c.slice(name,0,2)==='--'&&typeof decl[name]==='string'){$c.push(own,name);$c.push(own,decl[name]);}return own;}
+  function computedEffectTokenSource(cs){
+    var inherited=computedEffectParentSource(cs);if(inherited===null||inherited===undefined)return null;
+    var own=computedOwnEffectTokens(cs.decl);
     var tainted=inherited.tainted||typeof __ns.effectOwnCustomUncertain!=='function'||__ns.effectOwnCustomUncertain(cs.el,cs.decl['animation-name']);
     return own.length||tainted!==inherited.tainted?{__proto__:null,parent:inherited,own:own,tokens:undefined,tainted:tainted}:inherited;
   }
@@ -2144,15 +2147,18 @@
     cs.effectTransformUncertain=false;
     var value=cs.decl.transform;
     if(typeof value!=='string'||typeof __ns.substituteEffectTokens!=='function')return;
-    if(__ns.substituteEffectTokens(value,null)!==null)return;
+    var probe=__ns.substituteEffectTokens(value,null);
+    if(probe===undefined){cs.effectTransformUncertain=true;return;}
+    if(probe!==null)return;
     cs.effectTransformUncertain=true;
-    if(!cs.effectCustomSource||cs.effectCustomSource.tainted||typeof __ns.effectHasPropertyRules!=='function'||__ns.effectHasPropertyRules(cs.el))return;
+    if(!computedEffectTransformAllowed(cs))return;
     var tokens=computedEffectTokens(cs.effectCustomSource);if(tokens===null)return;
     var resolved=__ns.substituteEffectTokens(value,tokens);
-    if(resolved===false)resolved='none';
-    else if(resolved!==null&&typeof __ns.admitEffectTransform==='function')resolved=__ns.admitEffectTransform(resolved)||'none';
+    resolved=computedAdmittedEffectTransform(resolved);
     if(resolved!==null){cs.setProp('transform',resolved,cs.priorities.transform);cs.effectTransformUncertain=false;}
   }
+  function computedEffectTransformAllowed(cs){return cs.effectCustomSource&&!cs.effectCustomSource.tainted&&typeof __ns.effectHasPropertyRules==='function'&&!__ns.effectHasPropertyRules(cs.el);}
+  function computedAdmittedEffectTransform(value){if(value===false)return 'none';return value!==null&&typeof __ns.admitEffectTransform==='function'?__ns.admitEffectTransform(value)||'none':value;}
   __ns.effectTransformSupported=function(snapshot){var record=$c.get(declarationRecords,snapshot);return !!record&&record.effectTransformUncertain!==true;};
   // The element's own display as the UA / initial resolution below will compute it ("" for
   // a value it cannot tell before then), and this read's snapshot map: a transition update

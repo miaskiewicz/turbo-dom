@@ -1,0 +1,55 @@
+{
+  "browser": "159.0.8154.6",
+  "sha256": "f0fc7d1bb2606862b0126d5010797b5813999c232e5444b0c9f49eb1197d585e",
+  "result": {
+    "before": [
+      {
+        "offset": 0,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(0) translate(50%, -50%)",
+        "computedOffset": 0
+      },
+      {
+        "offset": 1,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(1) translate(50%, -50%)",
+        "computedOffset": 1
+      }
+    ],
+    "after": [
+      {
+        "offset": 0,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(0) translate(50%, -50%)",
+        "computedOffset": 0
+      },
+      {
+        "offset": 1,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(1) translate(50%, -50%)",
+        "computedOffset": 1
+      }
+    ],
+    "next": [
+      {
+        "offset": 0,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(0) translate(50%, -50%)",
+        "computedOffset": 0
+      },
+      {
+        "offset": 1,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "scale(1) translate(25%, -25%)",
+        "computedOffset": 1
+      }
+    ],
+    "state": "idle"
+  }
+}

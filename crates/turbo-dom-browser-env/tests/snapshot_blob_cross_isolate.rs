@@ -47,6 +47,21 @@ fn a_snapshot_blob_isolate_runs_alongside_a_plain_isolate() {
             .unwrap()
             .to_rust_string_lossy(scope);
         assert_eq!(out, "object");
+        turbo_dom_browser_env::browser_env::install_with_html(
+            scope,
+            include_str!("fixtures/mui_badge_transition.html"),
+        );
+        let code=v8::String::new(scope,"const badge=document.getElementById('badge');getComputedStyle(badge).transform;badge.className='visible';const frames=badge.getAnimations()[0].effect.getKeyframes();JSON.stringify(frames.map(frame=>frame.transform))").unwrap();
+        let frames = v8::Script::compile(scope, code, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_rust_string_lossy(scope);
+        assert!(
+            frames.contains("50%"),
+            "restored native token callbacks: {frames}"
+        );
+        assert!(!frames.contains("var("));
     }
 
     release_tx.send(()).ok();

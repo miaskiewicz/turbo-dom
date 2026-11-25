@@ -98,6 +98,211 @@ fn badge_transition_resolves_custom_tokens_and_keeps_symbolic_reference_lengths(
 }
 
 #[test]
+fn badge_transition_freezes_variable_endpoints_before_restart() {
+    let oracle: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/mui_badge_model_chrome159.json")).unwrap();
+    let html = include_str!("fixtures/mui_badge_transition.html");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(html)),
+        oracle["sha256"].as_str().unwrap()
+    );
+    with_html(true, true, html, |scope| {
+        let value=eval(scope,"globalThis.badge=document.getElementById('badge');getComputedStyle(badge).transform;badge.className='visible';globalThis.oldBadge=badge.getAnimations().find(a=>a instanceof CSSTransition);oldBadge.pause();oldBadge.currentTime=0;globalThis.beforeBadge=oldBadge.effect.getKeyframes();badge.style.setProperty('--Badge-translate','25%,-25%');getComputedStyle(badge).transform;JSON.stringify({before:beforeBadge,after:oldBadge.effect.getKeyframes(),next:badge.getAnimations().find(a=>a instanceof CSSTransition&&a!==oldBadge).effect.getKeyframes()})");
+        let actual: serde_json::Value =
+            serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap();
+        assert_eq!(actual["before"], actual["after"]);
+        for field in ["before", "after", "next"] {
+            for index in 0..2 {
+                let actual = actual[field][index]["transform"]
+                    .as_str()
+                    .unwrap()
+                    .replace(' ', "");
+                let expected = oracle["result"][field][index]["transform"]
+                    .as_str()
+                    .unwrap()
+                    .replace(' ', "");
+                assert_eq!(actual, expected, "{field}/{index}");
+            }
+        }
+    });
+}
+
+#[test]
+fn badge_variables_use_parent_computed_tokens_and_real_fallbacks() {
+    for (parent, own, reference) in [
+        (
+            "--pair:50%,-50%;--alias:var(--pair)",
+            "--pair:25%,-25%",
+            "var(--alias)",
+        ),
+        ("", "", "var(--missing,50%,-50%)"),
+        ("--pair:50%,-50%", "", "var(--pair)"),
+    ] {
+        let html=format!("<!doctype html><div style='{parent}'><span id=target style='{own};transform:scale(0) translate({reference});transition:transform 225ms linear'></span></div>");
+        with_html(true, true, &html, |scope| {
+            eval(scope,&format!("globalThis.target=document.getElementById('target');getComputedStyle(target).transform;target.style.transform='scale(1) translate({reference})';__layoutCalls=0;"));
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            let PresentedTargetState::Certified { transition, .. } =
+                &sample.targets[0].presentation
+            else {
+                panic!("{sample:?}")
+            };
+            let transform = &transition
+                .iter()
+                .find(|pair| pair.name == "transform")
+                .unwrap()
+                .value;
+            assert!(
+                transform.replace(' ', "").contains("translate(50%,-50%)"),
+                "{transform}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn badge_invalid_custom_cycles_use_the_canonical_initial_transform() {
+    with_dom(|scope| {
+        let value=eval(scope,"globalThis.target=document.getElementById('target');target.style.cssText='--a:var(--b);--b:var(--a);transform:translate(var(--a));transition:transform 225ms linear';getComputedStyle(target).transform");
+        assert_eq!(value.to_rust_string_lossy(scope), "none");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        let PresentedTargetState::Certified {
+            animation,
+            transition,
+        } = &sample.targets[0].presentation
+        else {
+            panic!("{sample:?}")
+        };
+        assert!(animation.is_empty() && transition.is_empty());
+    });
+}
+
+#[test]
+fn repeated_badge_tokens_below_the_operation_ceiling_are_valid() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');target.style.setProperty('--piece','translate(50%,-50%)');target.style.setProperty('--many','var(--piece) '.repeat(32));target.style.cssText+=';transform:scale(0) var(--many);transition:transform 225ms linear';getComputedStyle(target).transform;target.style.transform='scale(1) var(--many)';__layoutCalls=0;");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        let PresentedTargetState::Certified { transition, .. } = &sample.targets[0].presentation
+        else {
+            panic!("{sample:?}")
+        };
+        assert_eq!(
+            transition
+                .iter()
+                .find(|pair| pair.name == "transform")
+                .unwrap()
+                .value
+                .matches("translate(")
+                .count(),
+            32
+        );
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn token_bridge_preserves_utf16_and_scopes_its_new_operation_ceiling() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,r#"
+          const ns=__tsNs,cap=1048576;
+          const tokens=ns.computeEffectCustomTokens([],['--raw','\ud800','--pair','50%,-50%']);
+          globalThis.tokenUnits=tokens[Array.prototype.indexOf.call(tokens,'--raw')+1].charCodeAt(0);
+          const literal='translate(0px)'+ ' '.repeat(cap);
+          globalThis.largeLiteral=ns.substituteEffectTokens(literal,null)===literal;
+          let typed=false;try{ns.substituteEffectTokens('var(--pair)'+ ' '.repeat(cap),[]);}catch(error){typed=error instanceof RangeError;}
+          globalThis.largeVariable=typed;
+          const exact=ns.computeEffectCustomTokens([],['--x','x'.repeat(cap-3)]);
+          globalThis.exactTokenCap=exact[1].length===cap-3;
+          typed=false;try{ns.computeEffectCustomTokens([],['--x','x'.repeat(cap-2)]);}catch(error){typed=error instanceof RangeError;}
+          globalThis.overTokenCap=typed;
+        "#).unwrap();
+        assert!(eval(
+            scope,
+            "tokenUnits===0xd800&&largeLiteral&&largeVariable&&exactTokenCap&&overTokenCap"
+        )
+        .is_true());
+    });
+}
+
+#[test]
+fn numeric_retargets_start_from_the_same_clock_presented_value() {
+    for (property, from, to, next, expected) in [
+        ("width", "100px", "200px", "300px", "150px"),
+        ("opacity", "0", "1", "0.25", "0.5"),
+    ] {
+        with_dom(|scope| {
+            eval(scope,&format!("globalThis.target=document.getElementById('target');target.style.setProperty('{property}','{from}');target.style.transition='{property} 1000ms linear';getComputedStyle(target).getPropertyValue('{property}');target.style.setProperty('{property}','{to}');globalThis.old=target.getAnimations().find(a=>a instanceof CSSTransition);old.pause();old.currentTime=500;target.style.setProperty('{property}','{next}');getComputedStyle(target).getPropertyValue('{property}');globalThis.newMotion=target.getAnimations().find(a=>a instanceof CSSTransition&&a!==old);"));
+            let text = eval(
+                scope,
+                &format!("newMotion.effect.getKeyframes()[0]['{property}']"),
+            )
+            .to_rust_string_lossy(scope);
+            assert_eq!(text, expected);
+        });
+    }
+}
+
+#[test]
+fn symbolic_transform_decomposition_with_different_lists_stays_unknown() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');globalThis.motion=target.animate([{transform:'rotate(0deg)'},{transform:'translateX(50%)'}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;__layoutCalls=0;");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        assert!(
+            matches!(
+                sample.targets[0].presentation,
+                PresentedTargetState::Unknown { .. }
+            ),
+            "{sample:?}"
+        );
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn percentage_zero_is_not_an_absolute_z_coordinate() {
+    with_dom(|scope| {
+        assert!(eval(scope,"const target=document.getElementById('target');['translateZ(0%)','translate3d(0,0,0%)'].every(transform=>{const a=target.animate([{transform},{transform}],{duration:1000,fill:'both'});const dropped=a.effect.getKeyframes().every(frame=>frame.transform===undefined);a.cancel();return dropped;})").is_true());
+        assert!(eval(scope,"['translate(0%,0%)','translateZ(0px)','translate3d(0%,0%,0px)'].every(transform=>{const a=target.animate([{transform},{transform}],{duration:1000,fill:'both'});const kept=a.effect.getKeyframes().every(frame=>frame.transform!==undefined);a.cancel();return kept;})").is_true());
+    });
+}
+
+#[test]
+fn animated_custom_properties_on_open_and_closed_hosts_remain_unproved() {
+    for mode in ["open", "closed"] {
+        with_dom(|scope| {
+            eval(scope,&format!("globalThis.host=document.createElement('div');document.body.append(host);host.style.setProperty('--pair','50%,-50%');globalThis.root=host.attachShadow({{mode:'{mode}'}});root.innerHTML='<span id=badge style=\"transform:scale(0) translate(var(--pair));transition:transform 225ms linear\"></span>';globalThis.badge=root.getElementById('badge');globalThis.custom=host.animate([{{'--pair':'50%,-50%'}},{{'--pair':'25%,-25%'}}],{{duration:1000,fill:'both'}});custom.pause();custom.currentTime=500;getComputedStyle(badge).transform;badge.style.transform='scale(1) translate(var(--pair))';__layoutCalls=0;"));
+            let document = object(scope, "document");
+            let badge = object(scope, "badge");
+            let handle = handle_of(scope, badge).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            let target = sample
+                .targets
+                .iter()
+                .find(|target| target.element == handle)
+                .unwrap();
+            assert!(
+                matches!(target.presentation, PresentedTargetState::Unknown { .. }),
+                "{mode}: {sample:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
 fn captured_auth_label_length_percentage_transitions_are_certified() {
     with_html(
         true,
@@ -239,7 +444,7 @@ fn unproved_length_and_transform_bases_remain_unknown() {
         ("width", "max(10%, 20px)"),
         ("width", "clamp(10px, 20%, 30px)"),
         ("width", "calc(1em + 10%)"),
-        ("transform", "translateX(50%)"),
+        ("transform", "translateX(calc(50% + 1em))"),
     ] {
         with_dom(|scope| {
             eval(scope,&format!("globalThis.target=document.getElementById('target');globalThis.motion=target.animate([{{'{property}':'{value}'}},{{'{property}':'{value}'}}],{{duration:1000,fill:'both'}});motion.pause();motion.currentTime=500;__layoutCalls=0;"));
@@ -504,15 +709,26 @@ fn entire_target_batch_uses_one_canonical_clock_sample() {
 }
 
 #[test]
-fn unsupported_reference_box_interpolation_remains_unknown_without_layout() {
+fn reference_box_translation_stays_symbolic_without_layout() {
     with_dom(|scope| {
         eval(scope,"const target=document.getElementById('target');const a=target.animate([{transform:'translateX(0%)'},{transform:'translateX(50%)'}],{duration:1000,fill:'both'});a.pause();a.currentTime=500");
         let document = object(scope, "document");
         let sample = sample_presented_effects(scope, document, &[]).unwrap();
-        let PresentedTargetState::Unknown { properties } = &sample.targets[0].presentation else {
-            panic!("uncertified reference-box transform must stay Unknown");
+        let PresentedTargetState::Certified {
+            animation,
+            transition,
+        } = &sample.targets[0].presentation
+        else {
+            panic!("matching symbolic reference-box transform must be certified: {sample:?}");
         };
-        assert_eq!(properties, &["transform"]);
+        assert!(transition.is_empty());
+        assert_eq!(
+            animation,
+            &[PresentedProperty {
+                name: "transform".into(),
+                value: "translate(25%, 0px)".into()
+            }]
+        );
         assert!(eval(scope, "__layoutCalls===0").is_true());
     });
 }

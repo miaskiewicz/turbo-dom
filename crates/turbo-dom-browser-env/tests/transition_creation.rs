@@ -261,7 +261,7 @@ fn scalar_display_sampling_does_not_resolve_the_other_properties_of_a_mixed_effe
         eval(
             scope,
             r#"globalThis.target=document.getElementById('target');
-            globalThis.motion=target.animate([{display:'block',transform:'translateX(0%)'},{display:'block',transform:'translateX(50%)'}],{duration:10000,fill:'both'});
+            globalThis.motion=target.animate([{display:'block',transform:'translateX(calc(0% + 1em))'},{display:'block',transform:'translateX(calc(50% + 1em))'}],{duration:10000,fill:'both'});
             motion.pause();motion.currentTime=5000;target.style.display='none';target.getAnimations();"#,
         );
         browser_env::run_engine_script(scope, r#"

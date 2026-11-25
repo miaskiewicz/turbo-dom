@@ -419,10 +419,16 @@
     return argCount(args, a, b) ? build(values) : null;
   };
   const angleFunction = build => args => { const a = argCount(args, 1, 1) ? angle(args[0]) : null; return a === null ? null : build(a); };
+  function absoluteTranslateZ(args){if(args.length!==1)return null;const z=transformLength(args[0]);return z===null?null:translateZ([z]);}
+  function absoluteTranslate3d(args){
+    if(args.length!==3)return null;
+    const x=transformCoordinate(args[0]),y=transformCoordinate(args[1]),z=transformLength(args[2]);
+    return x&&y&&z!==null?translate3d([x,y,z]):null;
+  }
   const rotateZ = angleFunction(a => ({ type: 'rotate', v: [0, 0, 1, a] }));
   const TRANSFORM_FUNCTIONS = { __proto__: null,
     translate: lengthFunction(1, 2, translateXY), translatex: lengthFunction(1, 1, translateX), translatey: lengthFunction(1, 1, translateY),
-    translatez: lengthFunction(1, 1, translateZ), translate3d: lengthFunction(3, 3, translate3d),
+    translatez: absoluteTranslateZ, translate3d: absoluteTranslate3d,
     scale: scaleFunction(1, 2, values => ({ type: 'scale', v: [values[0], values.length > 1 ? values[1] : values[0], 1] })),
     scalex: scaleFunction(1, 1, values => ({ type: 'scale', v: [values[0], 1, 1] })),
     scaley: scaleFunction(1, 1, values => ({ type: 'scale', v: [1, values[0], 1] })),
@@ -454,7 +460,11 @@
     return out;
   }
   function functionMatrix(fn) {
-    if(fn.percent&&intrinsic.some(fn.percent,value=>value!==0))throw new Exception('Reference-dependent transform matrix is unsupported','NotSupportedError');
+    if(symbolicTranslate(fn))throw new Exception('Reference-dependent transform matrix is unsupported','NotSupportedError');
+    return absoluteFunctionMatrix(fn);
+  }
+  function symbolicTranslate(fn){return !!fn.percent&&intrinsic.some(fn.percent,value=>value!==0);}
+  function absoluteFunctionMatrix(fn){
     const m = identity(), v = fn.v;
     switch (fn.type) {
       case 'translate': m[12] = v[0]; m[13] = v[1]; m[14] = v[2]; return m;
@@ -485,12 +495,23 @@
   function serializeSymbolicTransform(list) {
     return intrinsic.join(intrinsic.map(list, fn => {
       if (fn.type === 'translate') {
+        if(intrinsic.some(fn.v,value=>!isFinite(value))||fn.percent&&intrinsic.some(fn.percent,value=>!isFinite(value)))throw new Exception('Non-finite symbolic transform is unsupported','NotSupportedError');
         const values = intrinsic.map(fn.v, (px, index) => serializeLengthPercentage({ px, percent: fn.percent ? fn.percent[index] : 0 }));
         return fn.three ? `translate3d(${intrinsic.join(values, ', ')})` : `translate(${values[0]}, ${values[1]})`;
       }
-      if (fn.type === 'scale') return fn.three ? `scale3d(${intrinsic.join(intrinsic.map(fn.v, format), ', ')})` : `scale(${format(fn.v[0])}, ${format(fn.v[1])})`;
-      return serializeTransform({ kind: 'transform', list: [fn] });
+      if (fn.type === 'scale') return symbolicScale(fn);
+      return symbolicTransformPrimitive(fn);
     }), ' ');
+  }
+  function symbolicTransformPrimitive(fn){
+    if(fn.type==='rotate')return fn.three?`rotate3d(${format(fn.v[0])}, ${format(fn.v[1])}, ${format(fn.v[2])}, ${format(fn.v[3])}rad)`:`rotate(${format(fn.v[3])}rad)`;
+    if(fn.type==='skew')return `skew(${format(fn.v[0])}rad, ${format(fn.v[1])}rad)`;
+    if(fn.type==='perspective')return `perspective(${fn.v[0]===Infinity?'none':format(fn.v[0])+'px'})`;
+    return serializeTransform({kind:'transform',list:[fn]});
+  }
+  function symbolicScale(fn){
+    if(fn.three)return `scale3d(${intrinsic.join(intrinsic.map(fn.v,format),', ')})`;
+    return fn.v[0]===fn.v[1]?`scale(${format(fn.v[0])})`:`scale(${format(fn.v[0])}, ${format(fn.v[1])})`;
   }
   // CSS Transforms 2 matrix decomposition, interpolation and recomposition.
   function decomposePerspective(m) {
@@ -591,23 +612,25 @@
     return { type: 'perspective', v: [inverse ? 1 / inverse : Infinity], three: true };
   }
   function interpolateFunction(a, b, p) {
-    if (a.type === 'translate') {
+    if (a.type === 'translate') return interpolateTranslate(a,b,p);
+    return interpolateOtherFunction(a,b,p);
+  }
+  function interpolateTranslate(a,b,p){
       const fn = { type: 'translate', v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
       const left = a.percent || [0, 0, 0], right = b.percent || [0, 0, 0];
       if (a.percent || b.percent) fn.percent = intrinsic.map(left, (value, i) => value + (right[i] - value) * p);
       return fn;
-    }
+  }
+  function interpolateOtherFunction(a,b,p){
     if (interpolateAsMatrix(a, b, p)) return { type: 'matrix', m: interpolateMatrix(functionMatrix(a), functionMatrix(b), p), three: a.three || b.three };
     if (a.type === 'perspective') return interpolatePerspective(a, b, p);
     if (a.type === 'rotate') { const axis = sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2]) ? a.v : b.v; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a.v[3] + (b.v[3] - a.v[3]) * p], three: a.three || b.three }; }
     return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
   }
   function interpolateTransform(from, to, p) {
-    if((transformReferences(from)||transformReferences(to))&&!symbolicTransformCompatible(from,to))throw new Exception('Reference-dependent transform decomposition is unsupported','NotSupportedError');
-    let a = from.list, b = to.list;
+    if(referenceTransformMismatch(from,to))throw new Exception('Reference-dependent transform decomposition is unsupported','NotSupportedError');
+    let [a,b]=paddedTransformLists(from.list,to.list);
     if (!a.length && !b.length) return from;
-    if (!a.length) a = intrinsic.map(b, identityOf);
-    if (!b.length) b = intrinsic.map(a, identityOf);
     let prefix = 0;
     while (prefix < min(a.length, b.length) && a[prefix].type === b[prefix].type) prefix++;
     const out = [];
@@ -615,16 +638,22 @@
     if (prefix < max(a.length, b.length)) push(out, { type: 'matrix', m: interpolateMatrix(listMatrix(intrinsic.slice(a, prefix)), listMatrix(intrinsic.slice(b, prefix)), p) });
     return { kind: 'transform', list: out };
   }
+  function referenceTransformMismatch(from,to){return (transformReferences(from)||transformReferences(to))&&!symbolicTransformCompatible(from,to);}
+  function paddedTransformLists(a,b){if(!a.length)a=intrinsic.map(b,identityOf);if(!b.length)b=intrinsic.map(a,identityOf);return [a,b];}
   function accumulateFunction(a, b) {
-    if(a.type==='translate'){
+    if(a.type==='translate')return accumulateTranslate(a,b);
+    return accumulateOtherFunction(a,b);
+  }
+  function accumulateTranslate(a,b){
       const fn={type:'translate',v:intrinsic.map(a.v,(value,i)=>value+b.v[i]),three:a.three||b.three};
       const left=a.percent||[0,0,0],right=b.percent||[0,0,0];
       if(a.percent||b.percent)fn.percent=intrinsic.map(left,(value,i)=>value+right[i]);
       return fn;
-    }
+  }
+  function accumulateOtherFunction(a,b){
     if (a.type === 'scale') return { type: 'scale', v: intrinsic.map(a.v, (value, i) => value + b.v[i] - 1), three: a.three || b.three };
     if (a.type === 'rotate') return sameAxis(a.v, b.v) ? { type: 'rotate', v: [a.v[0], a.v[1], a.v[2], a.v[3] + b.v[3]], three: a.three || b.three } : null;
-    if (a.type === 'translate' || a.type === 'skew') return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + b.v[i]), three: a.three || b.three };
+    if (a.type === 'skew') return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + b.v[i]), three: a.three || b.three };
     return null;
   }
 
@@ -1363,18 +1392,26 @@
   // Whether any animation targets `element`: its computed style follows the timeline, so
   // getComputedStyle never reuses it (turbo-test#125).
   ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
-  ns.effectOwnCustomUncertain=function(element,namesText){
+  function ownCustomFramesActive(element){
       const indexed=targets.get(element)||[];
       for(let i=0;i<indexed.length;i++){
         const record=animations.get(indexed[i]),effect=record.effect&&effects.get(record.effect);
         if(effect&&intrinsic.some(effect.frames.order,name=>intrinsic.slice(name,0,2)==='--')&&effectStackEntry(indexed[i],element,null))return true;
       }
+      return false;
+  }
+  function ownCssCustomDeclared(element,namesText){
       const names=cssAnimationNames(namesText||'');
       for(let i=0;i<names.length;i++){
         const rule=names[i]!==null&&keyframesRule(names[i],element);
         if(rule)for(let j=0;j<rule.length;j++)if(intrinsic.some(rule[j].values,pair=>intrinsic.slice(pair[0],0,2)==='--'))return true;
       }
     return false;
+  }
+  ns.effectOwnCustomUncertain=function(element,namesText){
+    if(!animationPresentationOn)return false;
+    if(ownCustomFramesActive(element))return true;
+    return cssAnimationsOn&&ownCssCustomDeclared(element,namesText);
   };
   // `transform` resolves to the matrix the declared function list computes to (Chrome 156:
   // matrix(...) for a 2D list, matrix3d(...) for any 3D function; `none` for an empty list).
@@ -2385,15 +2422,24 @@
   }
   function cssTransitionProperty(element, property, index, update) {
     const { state, read, underlying, context, lists, generation } = update;
-    const value = cssComputed(property, underlying(property), context), before = state.values[property];
+    const value = cssComputed(property, underlying(property), context), previous = state.values[property];
     state.values[property] = value;
     const duration = milliseconds(pickList(lists.durations, index, '0s')), delay = milliseconds(pickList(lists.delays, index, '0s'));
-    if (before === undefined || before === value || max(duration, 0) + delay <= 0) return;
+    if (previous === undefined || previous === value || max(duration, 0) + delay <= 0) return;
+    const before=cssTransitionStartValue(element,property,previous,context,state.transitions[property]);
     if (state.transitions[property]) cssCancel(state.transitions[property]);
     const behavior = intrinsic.toLowerCase(pickList(lists.behaviors, index, 'normal'));
     if (behavior !== 'allow-discrete' && transitionPair(property, before, value, context, read) === false) return;
     const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(lists.easings, index, 'ease') };
     state.transitions[property] = startCssTransition(element, property, before, value, underlying, timing, generation);
+  }
+  function cssTransitionStartValue(element,property,previous,context,animation){
+    if(!animation)return previous;
+    const entry=effectStackEntry(animation,element,null);
+    if(!entry)return previous;
+    const frames=entry.effect.frames.byProperty[property];
+    if(!frames)return previous;
+    return serializeValue(property,effectValue(entry,frames,property,parseValue(property,previous,context),context));
   }
   function startCssTransition(element, property, before, value, underlying, timing, generation) {
     const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
@@ -2713,7 +2759,7 @@
     return null;
   }
   function presentedFrameCompatible(left, right) {
-    if (left.kind === 'transform' && right.kind === 'transform' && (transformReferences(left) || transformReferences(right)))
+    if (referenceTransformPair(left,right))
       return symbolicTransformCompatible(left, right);
     if (lengthPercentageValue(left) && lengthPercentageValue(right)) return true;
     if (left.kind !== right.kind) return false;
@@ -2724,6 +2770,7 @@
     }
     return true;
   }
+  function referenceTransformPair(left,right){return left.kind==='transform'&&right.kind==='transform'&&(transformReferences(left)||transformReferences(right));}
   function symbolicTransformCompatible(left, right) {
     if (!left.list.length || !right.list.length) return true;
     if (left.list.length !== right.list.length) return false;
@@ -2787,12 +2834,13 @@
     if (!presentedRawCssSupported(entry, property, context)) return false;
     if (!presentedFrameValuesSupported(frames, property, context)) return false;
     if (!presentedNeedsBase(entry, frames)) return true;
-    if(property==='transform'&&intrinsic.some(frames,frame=>{const value=presentedText(property,frame.text,context);return value&&transformReferences(value);}))return false;
+    if(presentedReferenceFrames(property,frames,context))return false;
     const css = entry.record.css;
     if (changingContext || (css && css.kind === CSS_TRANSITION)) return false;
     const last = presentedText(property, frames[frames.length - 1].text, context);
     return presentedBaseSupported(property, read, context, last);
   }
+  function presentedReferenceFrames(property,frames,context){return property==='transform'&&intrinsic.some(frames,frame=>{const value=presentedText(property,frame.text,context);return value&&transformReferences(value);});}
   function presentedRawPropertyPresent(entry, property, text) {
     if (Native('nonAnimatable', property)) return true;
     if (Native('property', idlName(property)) !== property) return false;

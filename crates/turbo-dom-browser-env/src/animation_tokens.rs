@@ -128,22 +128,27 @@ fn substitute(
     mut rv: v8::ReturnValue,
 ) {
     rv.set(v8::null(scope).into());
-    if !preflight(scope, &[], Some(args.get(0))) {
-        return;
-    }
     let Some(source) = text(scope, args.get(0)) else {
         return;
     };
-    match computed_css::has_variable_references(&source, POLICY) {
+    let scan = ComputationLimits {
+        max_output_units: source.as_units().len(),
+        max_total_units: source.as_units().len(),
+        ..POLICY
+    };
+    match computed_css::has_variable_references(&source, scan) {
         Ok(false) => {
             rv.set(args.get(0));
             return;
         }
         Ok(true) => {}
-        Err(error) => {
-            failure(scope, error);
+        Err(_) => {
+            rv.set(v8::undefined(scope).into());
             return;
         }
+    }
+    if !preflight(scope, &[], Some(args.get(0))) {
+        return;
     }
     if !preflight(scope, &[args.get(1)], Some(args.get(0))) {
         return;
