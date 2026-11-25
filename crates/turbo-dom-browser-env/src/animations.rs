@@ -560,6 +560,38 @@ fn pseudo_element(value: &str) -> Option<String> {
     admitted.text.starts_with("div::").then_some(normalized)
 }
 
+fn animation_source(
+    scope: &mut v8::PinScope,
+    args: &v8::FunctionCallbackArguments,
+) -> Option<String> {
+    let text = v8::Local::<v8::String>::try_from(args.get(1)).ok()?;
+    String::from_utf16(&super::string_code_units(scope, text)).ok()
+}
+
+fn animation_name_list(
+    scope: &mut v8::PinScope,
+    args: &v8::FunctionCallbackArguments,
+    rv: &mut v8::ReturnValue,
+) {
+    let names =
+        animation_source(scope, args).and_then(|text| super::cssom_parser::animation_names(&text));
+    let Some(names) = names else {
+        rv.set(v8::null(scope).into());
+        return;
+    };
+    let values: Vec<v8::Local<v8::Value>> = names
+        .iter()
+        .map(|name| match name {
+            Some(name) => {
+                let value = v8::String::new(scope, name);
+                super::string_or_range_error(scope, value).into()
+            }
+            None => v8::null(scope).into(),
+        })
+        .collect();
+    rv.set(v8::Array::new_with_elements(scope, &values).into());
+}
+
 fn ordinary_rendering_path(scope: &mut v8::PinScope, element: v8::Local<v8::Object>) -> bool {
     let _owner = DomScope::for_object(scope, element);
     let Some(mut cursor) = handle_of(scope, element) else {
@@ -592,13 +624,20 @@ fn ordinary_rendering_path(scope: &mut v8::PinScope, element: v8::Local<v8::Obje
 
 fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     let set_string =
-        |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value
-            .and_then(|value| v8::String::new(scope, &value))
-        {
-            Some(value) => rv.set(value.into()),
+        |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value {
+            Some(value) => {
+                let value = v8::String::new(scope, &value);
+                rv.set(super::string_or_range_error(scope, value).into());
+            }
             None => rv.set(v8::null(scope).into()),
         };
     match arg_str(scope, &args, 0).as_str() {
+        "animationNames" => animation_name_list(scope, &args, &mut rv),
+        "keyframeName" => {
+            let name = animation_source(scope, &args)
+                .and_then(|text| super::cssom_parser::keyframe_prelude_name(&text));
+            set_string(scope, &mut rv, name);
+        }
         "ordinaryRenderingPath" => {
             let element = v8::Local::<v8::Object>::try_from(args.get(1)).expect("native candidate");
             rv.set_bool(ordinary_rendering_path(scope, element));

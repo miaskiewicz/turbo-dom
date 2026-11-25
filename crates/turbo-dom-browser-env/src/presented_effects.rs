@@ -29,6 +29,8 @@ pub enum PresentedTargetState {
 #[derive(Clone, Debug)]
 pub struct PresentedTarget {
     pub element: Handle,
+    /// Current declared CSS names, decoded in order; excludes only the `none` keyword.
+    pub css_animation_names: Vec<String>,
     pub effects: Vec<CssEffectLifecycle>,
     pub presentation: PresentedTargetState,
 }
@@ -56,6 +58,7 @@ struct Header {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct TargetData {
+    css_animation_names: Vec<String>,
     effects: Vec<CssEffectLifecycle>,
     presentation: PresentedTargetState,
 }
@@ -219,6 +222,7 @@ fn read_target(
     let data: TargetData = decode(scope, value)?;
     Some(PresentedTarget {
         element: handle,
+        css_animation_names: data.css_animation_names,
         effects: data.effects,
         presentation: data.presentation,
     })

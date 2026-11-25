@@ -5314,7 +5314,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
     // read from the rule records (never page-visible properties); a later rule of a name wins.
     __ns.cssKeyframes=function(element){var out={__proto__:null};
       function frames(record){var list=[],kids=cssItems(record.cssRules);for(var k=0;k<kids.length;k++){var kid=cssRuleRecord(kids[k]);if(kid.type!==1)continue;var decl=declarationRecord(kid.style),values=[];for(var n=0;n<decl.names.length;n++)$c.push(values,[decl.names[n],cssMapGet(decl.values,decl.names[n]).text]);$c.push(list,{selector:kid.selectorText,values:values});}return list;}
-      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules&&(name=$c.exec(/^@(?:-webkit-)?keyframes\s+["']?([^"']+?)["']?\s*$/i,record.prelude)))out[name[1]]=frames(record);else if(record.cssRules&&record.grouping){if(record.kind==='media'&&cssMediaState(record,0)===2)continue;if(record.kind==='supports'&&!cssSupportsMatches(preludeRest(record),element))continue;if(record.kind==='container'||record.kind==='starting-style')continue;visit(record.cssRules);}}}
+      function visit(rules){var items=cssItems(rules);for(var i=0;i<items.length;i++){var record=cssRuleRecord(items[i]),name;if(record.type===7&&record.cssRules){name=typeof __ns.cssKeyframeName==='function'?__ns.cssKeyframeName(record.prelude):null;if(name!==null)out[name]=frames(record);}else if(record.cssRules&&record.grouping){if(record.kind==='media'&&cssMediaState(record,0)===2)continue;if(record.kind==='supports'&&!cssSupportsMatches(preludeRest(record),element))continue;if(record.kind==='container'||record.kind==='starting-style')continue;visit(record.cssRules);}}}
       // Chrome 156 resolves these names in the target's native root only: neither
       // sibling nor ancestor shadow sheets supply a missing local definition.
       function scopeSheets(target){var sheets=computedSheets(target);for(var si=0;si<sheets.length;si++){var sheet=sheetRecord(sheets[si]);if(!sheet.disabled)visit(sheet.rules);}}
@@ -5351,7 +5351,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(cssApply(computedStyleNativeRoot,element,[])===d)return false;
       return effectSheetsHaveProperty(computedSheets(element));
     };
-    __ns.effectRenderingScopeSupported=function(element){return !ownBoxImpactIndex(computedSheets(element)).unsafe;};
+    __ns.effectRenderingScopeSupported=function(element){return typeof __ns.cssKeyframeName==='function'&&!ownBoxImpactIndex(computedSheets(element)).unsafe;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 

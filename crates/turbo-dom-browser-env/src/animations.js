@@ -1936,6 +1936,13 @@
     }
     return push(out, intrinsic.trim(intrinsic.slice(text, start)));
   }
+  function cssAnimationNames(text) {
+    const names = Native('animationNames', text || 'none');
+    if (names === null) throw new Exception('cannot prove native CSS animation-name values', 'NotSupportedError');
+    setPrototype(names, null);
+    return names;
+  }
+  ns.cssKeyframeName = text => Native('keyframeName', text);
   const pickList = (values, i, fallback) => values.length ? values[i % values.length] : fallback;
   function milliseconds(text) {
     const match = intrinsic.exec(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(m?s)$/i, text);
@@ -2206,7 +2213,7 @@
     return null;
   }
   function cssAnimations(element, read, underlying, hidden) {
-    const state = cssState(element), names = splitList(read('animation-name'));
+    const state = cssState(element), names = cssAnimationNames(read('animation-name'));
     const lists = {};
     const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state', 'range-start', 'range-end'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
@@ -2214,7 +2221,7 @@
     // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
     for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
-      if (name === 'none') continue;
+      if (name === null) continue;
       const rule = keyframesRule(name, element);
       if (!rule) continue;
       let entry = ownedAnimation(state, name, kept);
@@ -2317,8 +2324,8 @@
   function cssInputs(element, read, underlying) {
     const out = [];
     for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
-    const names = splitList(out[0]);
-    for (let i = 0; i < names.length; i++) push(out, names[i] !== "none" && !!keyframesRule(names[i], element));
+    const names = cssAnimationNames(out[0]);
+    for (let i = 0; i < names.length; i++) push(out, names[i] !== null && !!keyframesRule(names[i], element));
     const properties = transitionedFor(out[8]);
     for (const property in properties) { push(out, property); push(out, underlying(property)); }
     return out;
@@ -2464,7 +2471,7 @@
   ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay) {
     if (cssBusy.get(element) || suppressStyle || !safeOwnedAnimationPromises(element)) { inspectionUnavailable = true; return; }
     if (element === inspectionTarget) {
-      inspectionNames = splitList(read('animation-name') || 'none');
+      inspectionNames = cssAnimationNames(read('animation-name'));
       const composition = splitList(read('animation-composition') || 'replace');
       for (let i = 0; i < composition.length; i++) if (composition[i] !== 'replace') inspectionUnsupported = true;
       const timeline = read('animation-timeline');
@@ -2654,14 +2661,24 @@
     if (typeof ns.effectRenderingScopeSupported !== 'function' || !ns.effectRenderingScopeSupported(element)) return false;
     return Native('ordinaryRenderingPath', element);
   }
-  function presentedMissingCssNames(element, read) {
+  function presentedMissingDefinitionsSupported(element, names, owned) {
+    if (typeof ns.effectRenderingScopeSupported !== 'function' || !ns.effectRenderingScopeSupported(element)) return false;
+    if (!Native('ordinaryRenderingPath', element)) return false;
+    const unmatched = intrinsic.map(owned, entry => entry.name);
+    for (let i = 0; i < names.length; i++) {
+      const at = intrinsic.indexOf(unmatched, names[i]);
+      if (at >= 0) unmatched[at] = null;
+      else if (keyframesRule(names[i], element)) return false;
+    }
+    return !intrinsic.some(unmatched, name => name !== null);
+  }
+  function presentedMissingCssNames(element, names) {
     if (!cssAnimationsOn) return false;
-    const names = intrinsic.filter(splitList(read('animation-name') || 'none'), name => name !== 'none');
     const state = cssStates.get(element), owned = state ? state.animations : [];
     if (names.length === owned.length) return false;
     // Canonical CSS synchronization removes animations from display-suppressed
     // elements while computed animation-name deliberately retains its declaration.
-    return !presentedCssSuppressionSupported(element, state);
+    return !presentedCssSuppressionSupported(element, state) && !presentedMissingDefinitionsSupported(element, names, owned);
   }
   function presentedTimelineSupported(read) {
     const timeline = read('animation-timeline');
@@ -2687,9 +2704,9 @@
     if (typeof ns.effectHasPropertyRules !== 'function') return false;
     return !ns.effectHasPropertyRules(element);
   }
-  function presentedState(element, snapshot, entries, changingContext) {
+  function presentedState(element, snapshot, entries, changingContext, names) {
     const read = property => ns.computedStyleValue(snapshot, property), result = create(null);
-    if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, read) ||
+    if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, names) ||
         !presentedCustomPropertiesSupported(element, entries) || !presentedStackSupported(entries, read, changingContext)) {
       result.status = 'unknown'; result.properties = presentedSourceProperties(entries); setPrototype(result.properties, null);
       return result;
@@ -2709,7 +2726,9 @@
     setPrototype(entries, null);
     for (let i = 0; i < indexed.length; i++) entries[entries.length] = effectInspectionEntry(indexed[i], element, !!animations.get(indexed[i]).css);
     data.effects = entries;
-    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : [], changingContext);
+    data.css_animation_names = intrinsic.filter(cssAnimationNames(ns.computedStyleValue(snapshot, 'animation-name')), name => name !== null);
+    setPrototype(data.css_animation_names, null);
+    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : [], changingContext, data.css_animation_names);
     return data;
   }
   function presentedContextProperty(property) {
@@ -2797,7 +2816,7 @@
         entries[entries.length] = effectInspectionEntry(indexed[i], element, false);
       const names = []; setPrototype(names, null);
       if (!inspectionNames) return null;
-      for (let i = 0; i < inspectionNames.length; i++) if (inspectionNames[i] !== 'none') names[names.length] = inspectionNames[i];
+      for (let i = 0; i < inspectionNames.length; i++) if (inspectionNames[i] !== null) names[names.length] = inspectionNames[i];
       result.unsupported = inspectionUnsupported;
       result.animation_names = names;
       result.sample_time = inspectionClock;

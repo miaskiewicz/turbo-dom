@@ -54,3 +54,17 @@ If canonical sampling throws, the seam returns None with the original V8 excepti
 re-thrown to the caller's scope. Hosts must preserve that pending exception (for
 example with their enclosing TryCatch) before constructing an unavailable-capability
 error. A canonical error is not a successful empty or underlying presentation.
+
+`PresentedTarget::css_animation_names` is required snapshot data: the current computed
+CSS animation-name list, token-decoded in order with duplicates preserved. Only the
+unquoted `none` keyword is omitted; quoted `"none"` is a real name. This list remains
+present for canceled/suppressed CSS animations and is independent of lifecycle history.
+Consumers compare/cache this current list rather than reconstructing it from `effects`.
+A missing wire field is unavailable, never a default empty list.
+
+Name parsing and keyframe-prelude lookup share CSS Syntax token decoding, including
+escaped spaces/commas and case-sensitive identities. Known absent definitions can be
+certified only with the supported private stylesheet graph and ordinary native owner
+path; imported/container/unknown scopes and a missing resolver remain unproven.
+Unresolved name functions and non-scalar bridge inputs preserve a cannot-prove
+exception instead of becoming an inactive-effect certificate.

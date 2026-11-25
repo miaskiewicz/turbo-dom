@@ -368,22 +368,52 @@ fn keyframe_keys(prelude: &str) -> Option<String> {
     Some(keys.join(", "))
 }
 
-/// A @keyframes name as Chrome serializes it: a `<string>` name becomes an identifier
-/// (escaped as needed: `"a b"` -> `a\ b`); an identifier keeps its case.
+fn animation_name_token<'i>(
+    input: &mut Parser<'i, '_>,
+) -> Result<(String, bool), ParseError<'i, ()>> {
+    match input.next()?.clone() {
+        cssparser::Token::Ident(name) => Ok((name.to_string(), false)),
+        cssparser::Token::QuotedString(name) if !name.is_empty() => Ok((name.to_string(), true)),
+        _ => Err(input.new_custom_error(())),
+    }
+}
+
+pub(super) fn animation_names(source: &str) -> Option<Vec<Option<String>>> {
+    let mut source = ParserInput::new(source);
+    let mut input = Parser::new(&mut source);
+    input
+        .parse_comma_separated(|input| {
+            let (name, quoted) = animation_name_token(input)?;
+            input.expect_exhausted()?;
+            Ok((quoted || !name.eq_ignore_ascii_case("none")).then_some(name))
+        })
+        .ok()
+}
+
+pub(super) fn keyframe_prelude_name(source: &str) -> Option<String> {
+    let mut source = ParserInput::new(source);
+    let mut input = Parser::new(&mut source);
+    match input.next().ok()? {
+        cssparser::Token::AtKeyword(name)
+            if name.eq_ignore_ascii_case("keyframes")
+                || name.eq_ignore_ascii_case("-webkit-keyframes") => {}
+        _ => return None,
+    }
+    let (name, _) = animation_name_token(&mut input).ok()?;
+    input.expect_exhausted().ok()?;
+    Some(name)
+}
+
+/// CSSOM serializes every keyframes name as an identifier, preserving case and
+/// escaping decoded spaces/commas from either a string or an escaped identifier.
 fn keyframes_name(prelude: &str) -> Option<String> {
     let mut source = ParserInput::new(prelude);
     let mut input = Parser::new(&mut source);
-    let name = match input.next().ok()?.clone() {
-        cssparser::Token::Ident(name) => name.to_string(),
-        cssparser::Token::QuotedString(name) if !name.is_empty() => {
-            let mut text = String::new();
-            cssparser::serialize_identifier(&name, &mut text).ok()?;
-            text
-        }
-        _ => return None,
-    };
+    let (name, _) = animation_name_token(&mut input).ok()?;
     input.expect_exhausted().ok()?;
-    Some(name)
+    let mut text = String::new();
+    cssparser::serialize_identifier(&name, &mut text).ok()?;
+    Some(text)
 }
 
 /// The animation properties a keyframe block drops (Blink's IsValidForKeyframe).
