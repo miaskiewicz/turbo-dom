@@ -62,3 +62,27 @@ The last all-feature layout result is99.82% against99.8%. Latest binding coverag
 and the combined full workspace gate still have separate follow-ups; the optional
 #296 kernel feature is not part of this passing default-layout measurement.
 Actual optimized Surf cost/auth acceptance remains pending.
+
+
+## Final 410 producer gate refresh
+
+For behavior SHA `410045a001a80ee0098fd30259e11b3604a629a6`, the default
+workspace completes with 3249 passed, zero failed and 13 ignored tests across
+243 suites. Rust 1.98.0 strict workspace all-target Clippy (`-D warnings`),
+formatting and the configured Rust/JS CC9 gates pass.
+
+The host-internals/test-support binding measurement passes its unchanged97.6%
+floor: **23081 / 23647 lines, 97.61%**, exit0. Command:
+`cargo +1.98.0 tarpaulin --offline --locked --engine llvm -p turbo-dom-browser-env
+--features host-internals,test-support --include-files 'crates/turbo-dom-browser-env/src/*'
+--timeout 2400 --out Json --out Stdout --fail-under 97.6`, one build job.
+Raw local receipts: `.evidence/presented-effects/workspace-410.log`,
+`clippy-410.log`, `complexity-{rust,js}-410.log`, and `coverage-binding-410*`.
+
+The optimized consumer 421-element discovery control also passes, as recorded
+in the batch/transform receipts. Broader consumer acceptance remains incomplete:
+its unchanged interrupted-frame bootstrap test exposes a registered partial
+realm without the late-captured recovery callback. Issue #567 is reopened for
+that narrow regression. A separate auth transform-transition refusal awaits
+exact endpoints; neither is waived by these producer quality measurements.
+The optional npm #296 feature and default cutover remain independently pending.
