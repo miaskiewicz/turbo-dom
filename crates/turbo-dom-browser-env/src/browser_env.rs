@@ -8335,6 +8335,16 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
         note_effect_validation,
     );
     #[cfg(test)]
+    {
+        if scope.get_slot::<EffectRefreshCounts>().is_none() {
+            scope.set_slot(EffectRefreshCounts {
+                values: std::cell::Cell::new([0; 19]),
+                action: std::cell::Cell::new(None),
+            });
+        }
+        bind_method(scope, global, "__noteEffectRefresh", note_effect_refresh);
+    }
+    #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
@@ -8453,6 +8463,48 @@ fn note_presented_membership(
         let old = total.get();
         total.set((old.0 + count, old.1 + probes));
     });
+}
+
+#[cfg(test)]
+struct EffectRefreshCounts {
+    values: std::cell::Cell<[u64; 19]>,
+    action: std::cell::Cell<Option<fn(&mut v8::PinScope)>>,
+}
+
+#[cfg(test)]
+fn effect_refresh_counts(isolate: &v8::Isolate) -> [u64; 19] {
+    isolate
+        .get_slot::<EffectRefreshCounts>()
+        .map_or([0; 19], |counts| counts.values.get())
+}
+
+#[cfg(test)]
+fn note_effect_refresh(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    let index = v8::Local::<v8::Number>::try_from(args.get(0))
+        .unwrap()
+        .value() as usize;
+    // Snapshot callbacks survive in V8 while Rust isolate slots do not.
+    if scope.get_slot::<EffectRefreshCounts>().is_none() {
+        scope.set_slot(EffectRefreshCounts {
+            values: std::cell::Cell::new([0; 19]),
+            action: std::cell::Cell::new(None),
+        });
+    }
+    let action = scope.get_slot::<EffectRefreshCounts>().and_then(|counts| {
+        let mut values = counts.values.get();
+        if let Some(value) = values.get_mut(index) {
+            *value += 1;
+        }
+        counts.values.set(values);
+        (index == 18).then(|| counts.action.take()).flatten()
+    });
+    if let Some(action) = action {
+        action(scope);
+    }
 }
 
 /// Counts one fresh computed-style calculation (the test-only `__noteCascadeRun` hook).
@@ -12443,6 +12495,9 @@ mod viewport_cssom_tests;
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
 mod css_live_tests;
+#[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_refresh_tests.rs"]
+mod sampler_refresh_tests;
 
 #[cfg(test)]
 #[path = "dom_projection_tests.rs"]

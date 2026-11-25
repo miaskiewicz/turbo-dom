@@ -144,6 +144,7 @@
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
   var noteEffectValidation=g.__noteEffectValidation;delete g.__noteEffectValidation;
+  var noteEffectRefresh=g.__noteEffectRefresh;delete g.__noteEffectRefresh;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   var noteSheetRead=g.__noteSheetRead;delete g.__noteSheetRead;
@@ -600,7 +601,27 @@
   }
   // An inherited property whose initial value is currentcolor: the nearest declared value of the
   // element's ancestors, else the element's color.
-  function computedDefaultSnapshots(record,node){
+  // CSS-wide/inherited defaults stay in the current inspection read only after
+  // the same batch-entry validation used by ordinary ancestor imports. No map
+  // escapes on a declaration record or survives as a cross-call certificate.
+  function computedDefaultEntry(context,node,snapshots){
+    if(node===context.root)return null;
+    var entry=computedSnapshotGet(context.batch.entries,node),local=computedSnapshotGet(snapshots,node);
+    return entry&&(!local||local===entry.snapshot)?entry:null;
+  }
+  function computedDefaultInspectionMap(node,snapshots){
+    if(!computedEffectInspection||!snapshots)return null;
+    var context=computedSnapshotGet(computedEffectMaps,snapshots);
+    if(!context)return null;
+    var entry=computedDefaultEntry(context,node,snapshots);
+    if(!entry)return null;
+    if(noteEffectRefresh)noteEffectRefresh(18);
+    if(!computedEffectEntryValid(node,snapshots,entry))return null;
+    return snapshots;
+  }
+  function computedDefaultSnapshots(record,node,inspectionSnapshots){
+    var current=computedEffectInspection&&inspectionSnapshots&&computedDefaultInspectionMap(node,inspectionSnapshots);
+    if(current)return current;
     var snapshots=new computedSnapshotMap();
     if(computedEffectInspection&&record.effectLifecycle){
       var batch={__proto__:null,entries:new computedSnapshotMap(),lifecycle:true};
@@ -608,36 +629,36 @@
     }
     return snapshots;
   }
-  function computedInheritedColor(record, name){
+  function computedInheritedColor(record, name, inspectionSnapshots){
     for (var node = record.defaultsParent; node; node = computedParentElement(node)) {
-      var declared = $c.get($c.get(declarationRecords, computeStyleSnapshot(node, computedDefaultSnapshots(record,node))).values, name);
+      var declared = $c.get($c.get(declarationRecords, computeStyleSnapshot(node, computedDefaultSnapshots(record,node,inspectionSnapshots))).values, name);
       if (declared) return declared.text;
     }
-    return propertyValue(record, 'color');
+    return propertyValue(record, 'color',inspectionSnapshots);
   }
   // The parent a connected element's snapshot inherits unset properties from (null at the
   // root), or undefined for snapshots without defaults (pseudo-elements, disconnected).
   function defaultsParentOf(el, pseudo, connected, parent){ return connected && !pseudo && el ? parent : undefined; }
   // `border-<side>-width` reads 0px when the matching style is none/hidden (Chrome).
-  function computedDefaultBorderWidth(record, name, entry){
-    return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'))) ? '0px' : entry[0];
+  function computedDefaultBorderWidth(record, name, entry, inspectionSnapshots){
+    return $c.test(/^(none|hidden)$/, propertyValue(record, $c.replace(name, 'width', 'style'),inspectionSnapshots)) ? '0px' : entry[0];
   }
   // `auto` top/right/bottom/left reads '' when position is not `static` (used value).
-  function computedDefaultSideAuto(record, name, entry){
-    return entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position') !== 'static';
+  function computedDefaultSideAuto(record, name, entry, inspectionSnapshots){
+    return entry[0] === 'auto' && $c.test(/^(top|right|bottom|left)$/, name) && propertyValue(record, 'position',inspectionSnapshots) !== 'static';
   }
   // The computed value of `name` for a connected element's snapshot no declaration set, or ''.
-  function computedDefault(record, name){
+  function computedDefault(record, name, inspectionSnapshots){
     var entry = computedInitialValues[name];
     if (!entry) return '';
     var ua = computedUserAgentDefault(record, name, computedNativeTag(record.defaultsOf));
     if (ua !== undefined) return ua;
     // caret-color: auto inherits as auto and resolves to each element's own color.
-    if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name);
-    if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, computedDefaultSnapshots(record,record.defaultsParent))), name);
-    if (entry[0] === 'currentcolor') return propertyValue(record, 'color');
-    if ($c.test(/^border-[a-z]+-width$/, name)) return computedDefaultBorderWidth(record, name, entry);
-    if (computedDefaultSideAuto(record, name, entry)) return '';
+    if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name,inspectionSnapshots);
+    if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, computedDefaultSnapshots(record,record.defaultsParent,inspectionSnapshots))), name,inspectionSnapshots);
+    if (entry[0] === 'currentcolor') return propertyValue(record, 'color',inspectionSnapshots);
+    if ($c.test(/^border-[a-z]+-width$/, name)) return computedDefaultBorderWidth(record, name, entry,inspectionSnapshots);
+    if (computedDefaultSideAuto(record, name, entry,inspectionSnapshots)) return '';
     return entry[0];
   }
   // CSS-wide keywords compute to the value they select (turbo-dom#317; computed_defaults case
@@ -649,12 +670,12 @@
   var wideKeywordInitials = { __proto__: null, width: ['auto', false], height: ['auto', false] };
   // The value `inherit` / `initial` resolves to (currentcolor -> the element's `color`),
   // or undefined for any other key (which the caller skips).
-  function wideKeywordValue(key, entry, parentRecord, decl, name){
-    if (key === 'inherit' && parentRecord) return propertyValue(parentRecord, name);
+  function wideKeywordValue(key, entry, parentRecord, decl, name, inspectionSnapshots){
+    if (key === 'inherit' && parentRecord) return propertyValue(parentRecord, name,inspectionSnapshots);
     if (key === 'inherit' || key === 'initial') return entry[0] === 'currentcolor' ? decl.color : entry[0];
     return undefined;
   }
-  function resolveWideKeywords(decl, parentRecord, setProp, drop){
+  function resolveWideKeywords(decl, parentRecord, setProp, drop, inspectionSnapshots){
     var widths = [];
     $c.forEach($O.keys(decl), function(name){
       var entry = computedInitialValues[name] || wideKeywordInitials[name], value = decl[name];
@@ -662,7 +683,7 @@
       var key = $c.toLowerCase($c.trim(value));
       if (key === 'revert') { drop(name); return; }
       if (key === 'unset') key = entry[1] ? 'inherit' : 'initial';
-      var resolved = wideKeywordValue(key, entry, parentRecord, decl, name);
+      var resolved = wideKeywordValue(key, entry, parentRecord, decl, name,inspectionSnapshots);
       if (resolved === undefined) return;
       setProp(name, resolved);
       if ($c.test(/^border-[a-z]+-width$/, name)) $c.push(widths, name);
@@ -1615,19 +1636,29 @@
     for(var index=0;index<deps.length;index+=2){
       var node=deps[index],snapshot=deps[index+1];
       var entry=computedSnapshotGet(batch.entries,node);
-      if(!entry||entry.snapshot!==snapshot)return false;
+      if(!entry){if(noteEffectRefresh)noteEffectRefresh(10);return false;}
+      if(entry.snapshot!==snapshot){if(noteEffectRefresh)noteEffectRefresh(11);return false;}
       if(!computedEffectEntryValid(node,snapshots,entry))return false;
     }
     return true;
   }
   function computedEffectProbeMatches(el,entry,stamp){
-    return entry.owner===computedEffectOwner(el)&&computedStampEqual(entry.stamp,stamp)&&computedProbeEqual(entry.probe,computedCacheProbe(el));
+    if(entry.owner!==computedEffectOwner(el)){if(noteEffectRefresh)noteEffectRefresh(6);return false;}
+    if(!computedStampEqual(entry.stamp,stamp)){if(noteEffectRefresh)noteEffectRefresh(7);return false;}
+    if(!computedProbeEqual(entry.probe,computedCacheProbe(el))){if(noteEffectRefresh)noteEffectRefresh(8);return false;}
+    return true;
   }
   function computedEffectOwner(el){
     try{return cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
   }
+  function computedEffectRefusal(reason){if(noteEffectRefresh)noteEffectRefresh(reason);return false;}
   function computedEffectEntryReusable(entry,snapshots){
-    return !!entry&&!entry.checking&&!entry.volatile&&!entry.boxFailed&&entry.lifecycle===computedLifecycleInputs(snapshots);
+    if(!entry)return computedEffectRefusal(2);
+    if(entry.checking)return computedEffectRefusal(3);
+    if(entry.volatile)return computedEffectRefusal(4);
+    if(entry.boxFailed)return computedEffectRefusal(5);
+    if(entry.lifecycle!==computedLifecycleInputs(snapshots))return computedEffectRefusal(15);
+    return true;
   }
   function computedEffectEntryValid(el,snapshots,entry){
     if(noteEffectValidation)noteEffectValidation();
@@ -1636,17 +1667,21 @@
     if(!computedEffectProbeMatches(el,entry,stamp))return false;
     entry.checking=true;
     try{
-      if(!computedMediaUnchanged(entry.media))return false;
+      if(!computedMediaUnchanged(entry.media)){if(noteEffectRefresh)noteEffectRefresh(9);return false;}
       if(!computedEffectDependenciesValid(snapshots,entry.deps))return false;
-      return computedEffectProbeMatches(el,entry,computedWorldStamp(el));
+      var unchanged=computedEffectProbeMatches(el,entry,computedWorldStamp(el));
+      if(!unchanged&&noteEffectRefresh)noteEffectRefresh(12);
+      return unchanged;
     }finally{entry.checking=false;}
   }
   function computedEffectSnapshot(el,snapshots){
     var stamp=computedWorldStamp(el),probe=computedCacheProbe(el),owner=computedEffectOwner(el);
     var ctx=computeStyleSnapshotRun(el,snapshots,undefined,undefined,null);
     var entry=null;
+    if(ctx.volatile&&noteEffectRefresh)noteEffectRefresh(17);
     if(owner&&owner===computedEffectOwner(el)&&computedStampEqual(stamp,computedWorldStamp(el))&&computedProbeEqual(probe,computedCacheProbe(el)))
       entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false,lifecycle:computedLifecycleInputs(snapshots)};
+    if(!entry&&noteEffectRefresh)noteEffectRefresh(16);
     computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).batch.entries,el,entry);
     return ctx.snapshot;
   }
@@ -1678,18 +1713,27 @@
 
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
   function computedUncachedRequest(el,sink,pseudo){return pseudo||sink||!el||typeof el!=='object';}
+  function computedEffectLookupNote(root,shared){if(root)noteEffectRefresh(0);else if(!shared)noteEffectRefresh(2);}
   function computeEffectInspectionSnapshot(el,snapshots,sink,pseudo){
     var context=computedSnapshotGet(computedEffectMaps,snapshots);
     if(context){
-      var shared=el!==context.root&&computedSnapshotGet(context.batch.entries,el);
-      if(shared&&computedEffectEntryValid(el,snapshots,shared)){computedSnapshotSet(snapshots,el,shared.snapshot);return shared.snapshot;}
+      var root=el===context.root;
+      var shared=!root&&computedSnapshotGet(context.batch.entries,el);
+      if(noteEffectRefresh)computedEffectLookupNote(root,shared);
+      if(shared&&computedEffectEntryValid(el,snapshots,shared)){if(noteEffectRefresh)noteEffectRefresh(14);computedSnapshotSet(snapshots,el,shared.snapshot);return shared.snapshot;}
       return computedEffectSnapshot(el,snapshots);
     }
+    if(noteEffectRefresh)noteEffectRefresh(13);
     return computeStyleFresh(el,snapshots,sink,pseudo,null);
+  }
+  function computedSnapshotLocal(el,snapshots){
+    var local=computedSnapshotGet(snapshots,el);
+    if(local&&computedEffectInspection&&noteEffectRefresh)noteEffectRefresh(1);
+    return local;
   }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(computedUncachedRequest(el,sink,pseudo))return computeStyleFresh(el,snapshots,sink,pseudo,null);
-    var local=computedSnapshotGet(snapshots,el);if(local)return local;
+    var local=computedSnapshotLocal(el,snapshots);if(local)return local;
     if(computedEffectInspection)return computeEffectInspectionSnapshot(el,snapshots,sink,pseudo);
     if(noteStyleLookup)noteStyleLookup();
     var stable=computedStableHit(el);if(stable){computedSnapshotSet(snapshots,el,stable);return stable;}
@@ -2279,7 +2323,7 @@
     color = computedColorKeyword(cs, color);
     cs.connected = computedConnectedForStyle(el, cs.inFrame);
     cs.setProp('color', cs.connected ? normalizeComputedColor(color) : '');
-    if (cs.connected) resolveWideKeywords(decl, cs.inheritParent ? $c.get(declarationRecords, cs.parentStyle(cs.inheritParent)) : null, cs.setProp, function(name){ delete decl[name]; delete decl[computedCamel(name)]; });
+    if (cs.connected) resolveWideKeywords(decl, cs.inheritParent ? $c.get(declarationRecords, cs.parentStyle(cs.inheritParent)) : null, cs.setProp, function(name){ delete decl[name]; delete decl[computedCamel(name)]; },computedEffectInspection?cs.snapshots:null);
   }
   function computedCascadedValue(cs,name){
     var value = cs.decl[name];
@@ -3519,7 +3563,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   __ns.declarationAuthoredValue=function(style,name){var record=declarationRecord(style);if(record.fontFace||!cssShorthand)return propertyValue(record,name);name=propertyAlias(cssString(name));var value=$c.get(record.values,name);if(value)return value.pending||!value.raw?value.text:colorText(name,value.raw);return shorthandName(name)?shorthandValue(record,name):'';};
   // getPropertyValue: a shorthand serializes from its longhands (a computed declaration's own
   // shorthand entry wins); a pending longhand reads ''.
-  function propertyValue(record,name){var used=record.computed?computedUsedSize(record,name):null;if(used!==null)return used;if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;var text=shorthandName(name)?shorthandValue(record,name):'';return !text&&record.defaultsOf?computedDefault(record,name):text;}var value=$c.get(record.values,name);return value?value.text:record.defaultsOf?computedDefault(record,name):'';}
+  function propertyValue(record,name,inspectionSnapshots){var used=record.computed?computedUsedSize(record,name):null;if(used!==null)return used;if(!record.fontFace&&cssShorthand){name=propertyAlias(name);var value=$c.get(record.values,name);if(value)return value.text;var text=shorthandName(name)?shorthandValue(record,name):'';return !text&&record.defaultsOf?computedDefault(record,name,inspectionSnapshots):text;}var value=$c.get(record.values,name);return value?value.text:record.defaultsOf?computedDefault(record,name,inspectionSnapshots):'';}
   var declarationConstructor=__ns.makeNativeFunction(function(){throw new TypeError('Illegal constructor');},'CSSStyleDeclaration',0,true);
   declarationConstructor.prototype={};$O.defineProperty(declarationConstructor.prototype,'constructor',{value:declarationConstructor,writable:true,configurable:true});$O.defineProperty(declarationConstructor.prototype,Symbol.toStringTag,{value:'CSSStyleDeclaration',configurable:true});$O.defineProperty(declarationConstructor,'prototype',{writable:false});$O.defineProperty(g,'CSSStyleDeclaration',{value:declarationConstructor,writable:true,configurable:true,enumerable:false});
   var declarationPrototype=declarationConstructor.prototype;
