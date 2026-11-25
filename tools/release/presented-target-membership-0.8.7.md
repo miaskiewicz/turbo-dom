@@ -54,3 +54,27 @@ actual live candidate count and modal latency attribution remain consumer work.
 
 Raw source/count receipts are retained locally under
 `.worktrees/presented-membership-scaling-087/.evidence/selection-scaling/`.
+
+## Integrated and actual consumer outcomes
+
+Production source `ea29941bd66ce302343abb18d5834b5483ffd4cb` completed the
+default Rust1.98 workspace gate: 3,281 reported passes, zero failures and 13
+ignored across 286 summaries. Full workspace all-target Clippy (`-D warnings`)
+and fmt pass. The first Clippy attempt was interrupted during the shared disk
+outage; the resumed full command exited0. Local receipts: `WORKSPACE-MEMBERSHIP-576.json`,
+`workspace-membership-576.log`, `clippy-membership-576-resumed.log`.
+
+Surf private clean controls passed30/30. The optimized actual Git build exited0
+with source unchanged in747.67 seconds: native SHA256
+`133e7c76a62fc55d80f361cd4acc519487d1c7aed3ff908b529583e2854de47f`,
+MCP SHA256 `b4a2b4a075e4f3cdc20a2d4a34cb8ec2f04df1d4d978a93136ea17be619d76e6`.
+Actual images18/18, Badge ten rectangles,421-element discovery eight records on
+both reads (836.36ms first/32.95ms second) and smoke2/2 passed.
+
+The first affected FluxSuper case still failed the original15-second
+wait-for-hidden assertion (0/1,106 seconds overall); #576 does not resolve that
+application failure. The frozen451-node static scene discovery1025.59ms and
+rectangle332.27ms are single observations, not a stable performance floor.
+Actual candidate count remains unknown; the874-rule frozen CSSOM has an
+approximation of138 candidates, not a substitute for the host scoped list.
+The separate discovery/reference-transform issue is tracked as#577.
