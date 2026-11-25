@@ -1,0 +1,80 @@
+{
+  "commit": "c3589b32780fe79f21258e97ef78eb5daca91030",
+  "worktree": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-core-safety-296",
+  "initialAndFinalGitStatus": "empty",
+  "commands": [
+    {
+      "command": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "turbo-dom",
+        "--locked"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "turbo-dom",
+        "--features",
+        "computed-style-grammar",
+        "--locked"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "turbo-dom",
+        "--all-targets",
+        "--features",
+        "computed-style-grammar",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--check",
+        "-p",
+        "turbo-dom"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "exit": 0
+    }
+  ],
+  "logs": {
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/1.log": "f44ba97779bdd7a119c75de3c9d9b729479dc69bb67e52fb50b57fcc906f240f",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/2.log": "4b149ffe68f1b90f8c2c8b32ccec666643f840d098972b8d63035623817391dc",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/3.log": "299f16a2c523be18fef769975d2df00e0505521db047540feea3a74b94666887",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/4.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-committed-validation/5.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "coverage": "Unchanged default and feature100% floors remain red as recorded in source checkpoint; this receipt does not override them."
+}
