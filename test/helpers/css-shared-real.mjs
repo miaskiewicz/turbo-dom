@@ -190,7 +190,8 @@ export async function loadRealCssBackend(mode) {
 		"node-wasm": "TURBO_DOM_CSS_TEST_WASM_NODE",
 		"web-wasm": "TURBO_DOM_CSS_TEST_WASM_WEB",
 	}[mode];
-	const artifact = process.env[variable] || packagedArtifact(mode);
+	const override = process.env[variable];
+	const artifact = override || packagedArtifact(mode);
 	if (!artifact || !existsSync(artifact))
 		throw new Error(
 			`Required actual CSS test artifact missing: ${variable} or packaged path ${artifact}`,
@@ -198,11 +199,11 @@ export async function loadRealCssBackend(mode) {
 	let backend;
 	if (mode === "web-wasm") {
 		backend = await import(pathToFileURL(artifact));
-		backend.initSync({
-			module: readFileSync(
-				new URL("./turbo_dom_css_bg.wasm", pathToFileURL(artifact)),
-			),
-		});
+		// Packaged wrappers share one binary; explicit fixture overrides stay paired.
+		const binary = override
+			? new URL("./turbo_dom_css_bg.wasm", pathToFileURL(artifact))
+			: new URL("../../css-wasm/turbo_dom_css_bg.wasm", import.meta.url);
+		backend.initSync({ module: readFileSync(binary) });
 	} else backend = require(artifact);
 	if (normalizeCssArtifact(backend) === null)
 		throw new Error("Required actual CSS artifact metadata missing");
