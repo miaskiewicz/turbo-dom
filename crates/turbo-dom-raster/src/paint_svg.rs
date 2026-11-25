@@ -8,6 +8,7 @@ mod border_opacity;
 
 use std::fmt::Write;
 
+use turbo_dom_layout::layout::paint::PaintNode;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
@@ -160,21 +161,75 @@ fn preblend_class(top: u32) -> [f32; 256] {
 }
 
 fn paint_fragment(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+    paint_scheduled(svg, &PaintNode::new(f), images);
+}
+
+fn paint_scheduled(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    if node.clips.iter().any(|ancestor| {
+        ancestor
+            .clip
+            .is_some_and(|clip| clip.width <= 0.0 || clip.height <= 0.0)
+            || ancestor
+                .overflow_clip
+                .is_some_and(|clip| clip.width <= 0.0 || clip.height <= 0.0)
+    }) {
+        return;
+    }
+    let mut count = 0;
+    for ancestor in &node.clips {
+        if let Some(clip) = ancestor.clip {
+            scope_clip(
+                svg,
+                (
+                    ancestor.x + clip.x,
+                    ancestor.y + clip.y,
+                    clip.width,
+                    clip.height,
+                ),
+                &clip.radii,
+            );
+            count += 1;
+        }
+        if let Some(clip) = ancestor.overflow_clip {
+            scope_clip(
+                svg,
+                crate::paint_png::overflow_region(ancestor, &clip),
+                &clip.radii,
+            );
+            count += 1;
+        }
+    }
+    paint_node(svg, node, images);
+    for _ in 0..count {
+        svg.push_str("</g>");
+    }
+}
+
+fn scope_clip(svg: &mut String, region: crate::rrect::Rect, radii: &BorderRadii) {
+    let id = svg.len();
+    let _ = write!(svg, "<clipPath id=\"scope{id}\">");
+    shape(svg, region, radii, "");
+    let _ = write!(svg, "</clipPath><g clip-path=\"url(#scope{id})\">");
+}
+
+fn paint_node(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     // CSS `opacity` (miaskiewicz/turbo-dom#206) is a group opacity over the box and
     // its subtree; `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
         if f.opacity > 0.0 {
             let _ = write!(svg, "<g opacity=\"{}\">", f.opacity);
-            paint_opaque(svg, f, images);
+            paint_opaque(svg, node, images);
             svg.push_str("</g>");
         }
         return;
     }
-    paint_opaque(svg, f, images);
+    paint_opaque(svg, node, images);
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
-fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+fn paint_opaque(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     // A CSS `transform` wraps this box + subtree in a `<g transform>` (applied about
     // the box's absolute transform-origin), so the SVG viewer transforms them as a unit.
     let transformed = matches!(
@@ -197,8 +252,8 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
         );
     }
     match f.clip {
-        Some(clip) => paint_clipped(svg, f, clip, images),
-        None => paint_subtree(svg, f, images),
+        Some(clip) => paint_clipped_node(svg, node, clip, images),
+        None => paint_subtree_node(svg, node, images),
     }
     if transformed {
         svg.push_str("</g>");
@@ -208,7 +263,18 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
 /// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52) inside a
 /// `<g clip-path>` of that region (in the box's own, possibly transformed, user space;
 /// the `clipPath` id is the document offset, unique); an empty region paints nothing.
+#[cfg(test)]
 fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl PaintInput) {
+    paint_clipped_node(svg, &PaintNode::new(f), clip, images);
+}
+
+fn paint_clipped_node(
+    svg: &mut String,
+    node: &PaintNode<'_>,
+    clip: ClipRect,
+    images: &impl PaintInput,
+) {
+    let f = node.fragment;
     if clip.width <= 0.0 || clip.height <= 0.0 {
         return;
     }
@@ -217,12 +283,17 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl P
     let region = (f.x + clip.x, f.y + clip.y, clip.width, clip.height);
     shape(svg, region, &clip.radii, "");
     let _ = write!(svg, "</clipPath><g clip-path=\"url(#clip{id})\">");
-    paint_subtree(svg, f, images);
+    paint_subtree_node(svg, node, images);
     svg.push_str("</g>");
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
 fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+    paint_subtree_node(svg, &PaintNode::new(f), images);
+}
+
+fn paint_subtree_node(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     match &f.content {
         FragmentContent::Box {
             background,
@@ -269,7 +340,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
         FragmentContent::ColumnRule { style, color } => paint_column_rule(svg, f, *style, *color),
         FragmentContent::Marker(_) => {}
     }
-    paint_children(svg, f, images);
+    paint_children(svg, node, images);
 }
 
 /// Paint a multicol `column-rule` fragment (`FragmentContent::ColumnRule`;
@@ -582,7 +653,8 @@ fn paint_tile_texture(
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
 /// region (miaskiewicz/turbo-dom#253) when it has one and they may paint past it (an empty
 /// region paints none of them).
-fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+fn paint_children(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     let clip = f.overflow_clip.filter(|c| {
         !f.children.is_empty()
             && (c.radii.is_rounded()
@@ -602,8 +674,8 @@ fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     }
     // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
     // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
-    for &i in &f.paint_order() {
-        paint_fragment(svg, &f.children[i], images);
+    for child in &node.children {
+        paint_scheduled(svg, child, images);
     }
     if clip.is_some() {
         svg.push_str("</g>");

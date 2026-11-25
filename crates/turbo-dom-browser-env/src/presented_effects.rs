@@ -31,6 +31,9 @@ pub struct PresentedTarget {
     pub element: Handle,
     pub effects: Vec<CssEffectLifecycle>,
     pub presentation: PresentedTargetState,
+    /// Context established by canonical effect ownership/timing, including a
+    /// non-filling delay with no sampled property contribution.
+    pub establishes_stacking_context: bool,
 }
 
 /// Owned data for one synchronous capture, not a reusable cache permission.
@@ -58,6 +61,24 @@ struct Header {
 struct TargetData {
     effects: Vec<CssEffectLifecycle>,
     presentation: PresentedTargetState,
+    establishes_stacking_context: bool,
+}
+
+#[cfg(test)]
+mod context_wire_tests {
+    use super::TargetData;
+
+    #[test]
+    fn absent_context_evidence_is_not_a_false_certificate() {
+        let old = r#"{"effects":[],"presentation":{"status":"certified","animation":[],"transition":[]}}"#;
+        assert!(serde_json::from_str::<TargetData>(old).is_err());
+        let explicit = r#"{"effects":[],"presentation":{"status":"certified","animation":[],"transition":[]},"establishes_stacking_context":false}"#;
+        assert!(
+            !serde_json::from_str::<TargetData>(explicit)
+                .unwrap()
+                .establishes_stacking_context
+        );
+    }
 }
 
 /// Sample one exact native browsing Document. Candidate handles belong to that
@@ -221,6 +242,7 @@ fn read_target(
         element: handle,
         effects: data.effects,
         presentation: data.presentation,
+        establishes_stacking_context: data.establishes_stacking_context,
     })
 }
 

@@ -65,6 +65,20 @@ fn sampled_animation_cannot_acquire_importance_from_its_transport_declaration() 
 }
 
 #[test]
+fn presentation_context_uses_contributing_origin_even_when_important_style_wins() {
+    use CascadeOrigin::{Animation, Author, Transition};
+    for origin in [Animation, Transition] {
+        let style = resolve(&[(Author, "opacity:1!important"), (origin, "opacity:1")]);
+        assert!(style.has_stacking_context());
+        assert_eq!(style.get("opacity"), Some("1"));
+        let child = resolve_matched_style(&style, &[]);
+        assert!(!child.has_stacking_context());
+    }
+    assert!(!resolve(&[(Author, "opacity:1")]).has_stacking_context());
+    assert!(!resolve(&[(Animation, "width:100px")]).has_stacking_context());
+}
+
+#[test]
 fn presented_parent_properties_resolve_before_child_inheritance_and_variables() {
     use CascadeOrigin::{Animation, Author};
     let parent = resolve(&[

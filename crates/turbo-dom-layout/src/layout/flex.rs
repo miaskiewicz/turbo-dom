@@ -1485,8 +1485,18 @@ fn place_one(
         height_basis,
         ctx,
     );
+    item_stacking_context(&mut frag, bs.z_index);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
+}
+
+// A non-positioned flex/grid item with a non-auto z-index establishes a
+// context too. Its in-flow identity remains unchanged for layout/baselines.
+fn item_stacking_context(fragment: &mut Fragment, z_index: Option<i32>) {
+    if z_index.is_some() {
+        fragment.z_index = z_index;
+        fragment.establishes_stacking_context = true;
+    }
 }
 
 fn item_height_basis(

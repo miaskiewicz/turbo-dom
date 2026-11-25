@@ -75,3 +75,20 @@ fn inherited_custom_properties_are_independent_after_cascade_resolution() {
     assert_eq!(child.get("font-size"), Some("20px"));
     assert_eq!(parent.get("--brand"), Some("blue"));
 }
+
+#[test]
+fn presentation_context_metadata_is_native_and_part_of_style_identity() {
+    let original = style();
+    let marked = original.clone().with_stacking_context();
+    assert!(Arc::ptr_eq(&original.map, &marked.map));
+    assert!(!original.same_storage(&marked));
+    assert!(marked.same_storage(&marked.clone()));
+    assert_eq!(
+        original.iter().collect::<Vec<_>>(),
+        marked.iter().collect::<Vec<_>>()
+    );
+    assert!(!marked.inherited_only().has_stacking_context());
+    let mut anonymous = marked;
+    anonymous.clear_stacking_context();
+    assert!(original.same_storage(&anonymous));
+}

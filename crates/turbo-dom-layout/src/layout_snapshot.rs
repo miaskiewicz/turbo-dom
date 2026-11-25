@@ -132,8 +132,8 @@ pub enum GeometryKind {
     Marker,
 }
 
-/// One native fragment. Indices follow native subtree paint order; the parent
-/// index retains the tree. Synthetic/anonymous fragments have no source ID.
+/// One native fragment. Indices retain native fragment storage/ancestry order;
+/// [`LayoutSnapshot::paint_order`] separately supplies context-owned paint order. Synthetic/anonymous fragments have no source ID.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SnapshotFragment {
     pub index: usize,
@@ -174,6 +174,7 @@ pub struct SnapshotSource {
 pub struct LayoutSnapshot {
     galley: Fragment,
     fragments: Vec<SnapshotFragment>,
+    paint_order: Vec<usize>,
     native_transforms: Vec<[f64; 6]>,
     native_hit_transforms: Vec<[f64; 6]>,
     native_own_transforms: Vec<[f64; 6]>,
@@ -340,6 +341,12 @@ impl LayoutSnapshot {
     pub fn galley(&self) -> &Fragment {
         &self.galley
     }
+    /// Context-owned back-to-front order, separate from fragment ancestry.
+    #[must_use]
+    pub fn paint_order(&self) -> &[usize] {
+        &self.paint_order
+    }
+
     #[must_use]
     pub fn fragments(&self) -> &[SnapshotFragment] {
         &self.fragments
@@ -668,9 +675,11 @@ fn capture_styled_with_plan(
     sources::index_fragments(&mut sources, &source_index, &fragments, &records);
     let exceeded = text.as_ref().is_some_and(|text| text.exceeded);
     let text_runs = text.map_or_else(Vec::new, |text| text.collect(&galley, &fragments));
+    let paint_order = geometry::paint_order(&galley);
     let mut snapshot = LayoutSnapshot {
         galley,
         fragments,
+        paint_order,
         native_transforms,
         native_hit_transforms,
         native_own_transforms,

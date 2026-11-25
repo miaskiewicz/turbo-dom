@@ -1628,6 +1628,9 @@ fn table_kind(el: &StyledElement, ids: &mut Ids) -> BoxKind {
 /// (margins, positioning, floating, stacking and transforms).
 fn grid_style(table: &ComputedStyle) -> ComputedStyle {
     let mut style = table.clone();
+    // The wrapper owns the element's presentation context; the anonymous table
+    // grid must not introduce a second one around its cells.
+    style.clear_stacking_context();
     for property in [
         "margin",
         "margin-top",

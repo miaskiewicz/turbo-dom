@@ -2963,6 +2963,7 @@ fn transformed_image(image: Fragment, bs: &BoxStyle) -> Fragment {
     };
     let mut image = image;
     (image.z_index, image.is_positioned) = (None, false);
+    image.establishes_stacking_context = false;
     outer.children.push(image);
     outer
 }
@@ -3364,8 +3365,11 @@ fn layout_box_sized_impl(
         content,
         break_meta: break_meta_of(bs),
         children,
-        z_index: bs.z_index,
+        z_index: (bs.position != Position::Static)
+            .then_some(bs.z_index)
+            .flatten(),
         is_positioned: bs.position != Position::Static,
+        establishes_stacking_context: super::paint::style_context(&lb.style, bs.position),
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
         overflow_clip,
         opacity: bs.opacity,
@@ -3891,8 +3895,11 @@ fn viewport_fragment(
         content_kind(lb, style, width, height),
     );
     fragment.break_meta = break_meta_of(style);
-    fragment.z_index = style.z_index;
+    fragment.z_index = (style.position != Position::Static)
+        .then_some(style.z_index)
+        .flatten();
     fragment.is_positioned = style.position != Position::Static;
+    fragment.establishes_stacking_context = super::paint::style_context(&lb.style, style.position);
     fragment.opacity = style.opacity;
     fragment
 }
@@ -3931,8 +3938,11 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         content: FragmentContent::Image(sized.placement.clone()),
         break_meta: break_meta_of(bs),
         children: Vec::new(),
-        z_index: bs.z_index,
+        z_index: (bs.position != Position::Static)
+            .then_some(bs.z_index)
+            .flatten(),
         is_positioned: bs.position != Position::Static,
+        establishes_stacking_context: super::paint::style_context(&lb.style, bs.position),
         clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
         overflow_clip: None,
         opacity: bs.opacity,

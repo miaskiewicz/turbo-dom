@@ -17,13 +17,33 @@ use turbo_dom::Handle;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ComputedStyle {
     map: Arc<BTreeMap<String, String>>,
+    presentation_context: bool,
 }
 
 impl ComputedStyle {
+    /// Mark a context established by certified native presentation evidence, even
+    /// when the sampled value is opaque/identity. This flag is not inherited.
+    #[must_use]
+    pub fn with_stacking_context(mut self) -> Self {
+        self.presentation_context = true;
+        self
+    }
+
+    /// Whether canonical presentation supplied a stacking-context certificate.
+    #[must_use]
+    pub fn has_stacking_context(&self) -> bool {
+        self.presentation_context
+    }
+
+    pub(crate) fn clear_stacking_context(&mut self) {
+        self.presentation_context = false;
+    }
+
     /// Retaining the source style makes mutation copy-on-write, so cached
     /// metrics can validate their declaration identity without rescanning values.
     pub(crate) fn same_storage(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.map, &other.map)
+            && self.presentation_context == other.presentation_context
     }
 
     /// The computed value of a property, if set.
@@ -106,7 +126,10 @@ impl ComputedStyle {
             .into_iter()
             .map(|(k, v)| (k.into(), v.into()))
             .collect();
-        ComputedStyle { map: Arc::new(map) }
+        ComputedStyle {
+            map: Arc::new(map),
+            presentation_context: false,
+        }
     }
 }
 
@@ -838,7 +861,10 @@ fn inherit(mut own: BTreeMap<String, String>, parent: &ComputedStyle) -> Compute
     resolve_explicit_inherit(&mut map, parent);
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
-    ComputedStyle { map: Arc::new(map) }
+    ComputedStyle {
+        map: Arc::new(map),
+        presentation_context: false,
+    }
 }
 
 fn inherit_value(

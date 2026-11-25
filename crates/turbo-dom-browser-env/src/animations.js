@@ -2701,7 +2701,33 @@
     for (let i = 0; i < indexed.length; i++) entries[entries.length] = effectInspectionEntry(indexed[i], element, !!animations.get(indexed[i]).css);
     data.effects = entries;
     data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : [], changingContext);
+    data.establishes_stacking_context = animationPresentationOn &&
+      intrinsic.some(indexed, animation => presentedEffectContext(animation, element));
     return data;
+  }
+  function establishesContextProperty(property) {
+    return contains(['opacity', 'transform', 'translate', 'rotate', 'scale', 'filter',
+      'backdrop-filter', 'perspective', 'clip-path', 'mask', 'mask-image',
+      'mix-blend-mode', 'isolation', 'contain'], property);
+  }
+  function presentedEffectContext(animation, element) {
+    const record = contextEffectRecord(animation, element);
+    if (!record) return false;
+    const effect = effects.get(record.effect), css = record.css;
+    if (css && !cssKindOn(css.kind)) return false;
+    if (!intrinsic.some(effect.frames.order, establishesContextProperty)) return false;
+    if (css && css.kind === CSS_ANIMATION && ownsContextAnimation(animation, element)) return true;
+    return relevant(record);
+  }
+  function contextEffectRecord(animation, element) {
+    const record = animations.get(animation);
+    if (!record || !record.effect || record.replace === 'removed') return null;
+    const effect = effects.get(record.effect);
+    return effect.target === element && effect.pseudo === null ? record : null;
+  }
+  function ownsContextAnimation(animation, element) {
+    const state = cssStates.get(element);
+    return !!state && intrinsic.some(state.animations, entry => entry.animation === animation);
   }
   function presentedContextProperty(property) {
     return !!INHERITED[property] || intrinsic.test(/^(?:font|stroke|fill)(?:-|$)/, property) || property === 'zoom' || intrinsic.slice(property, 0, 2) === '--';
