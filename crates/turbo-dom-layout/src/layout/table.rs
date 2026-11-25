@@ -2202,6 +2202,18 @@ mod percent_tests {
             BreakRule::AvoidColumn
         );
         // Two autos fall through to Auto.
+        assert_eq!(
+            stronger(BreakRule::AvoidPage, BreakRule::AvoidColumn),
+            BreakRule::AvoidPage
+        );
+        assert_eq!(
+            stronger(BreakRule::AvoidColumn, BreakRule::AvoidPage),
+            BreakRule::AvoidPage
+        );
+        assert_eq!(
+            stronger(BreakRule::Page, BreakRule::AvoidPage),
+            BreakRule::Page
+        );
         assert_eq!(stronger(BreakRule::Auto, BreakRule::Auto), BreakRule::Auto);
     }
 }

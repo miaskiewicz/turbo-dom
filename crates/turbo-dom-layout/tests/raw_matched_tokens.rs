@@ -48,3 +48,13 @@ fn raw_winners_preserve_css_wide_values_and_source_order() {
         Some("green")
     );
 }
+
+#[test]
+fn ordered_raw_candidates_retain_lower_fallback_before_important_winner() {
+    use turbo_dom_layout::style::ordered_matched_declarations;
+    let lower = declaration("blue", false, true, 9);
+    let higher = declaration("var(--missing)", true, false, 0);
+    let ordered = ordered_matched_declarations(&[higher.clone(), lower.clone()]);
+    assert_eq!(ordered, [lower.declaration, higher.declaration]);
+    assert!(ordered_matched_declarations(&[]).is_empty());
+}

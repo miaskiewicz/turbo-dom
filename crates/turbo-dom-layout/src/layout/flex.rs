@@ -2309,6 +2309,17 @@ mod coverage_tests {
     }
 
     #[test]
+    fn grid_tracks_and_zero_spans_keep_the_existing_native_bounds() {
+        let limit = grid_capacity::MAX_TRACKS;
+        let exact = "1px ".repeat(limit);
+        let overflowing = format!("{exact} 2px");
+        assert_eq!(grid_tracks(Some(&exact)).len(), limit);
+        assert_eq!(grid_tracks(Some(&overflowing)), grid_tracks(Some(&exact)));
+        assert_eq!(grid_placement("span 0"), GridPlacement::Auto);
+        assert_eq!(grid_placement("span 1"), span(1));
+    }
+
+    #[test]
     fn align_self_maps_every_keyword() {
         // unset / `auto` -> None (defer to the container's align-items).
         assert_eq!(align_self(&cs(&[])), None);
