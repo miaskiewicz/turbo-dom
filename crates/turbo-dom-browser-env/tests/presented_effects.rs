@@ -72,6 +72,22 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn dynamic_ancestor_discovery_preserves_first_seen_order_and_duplicate_inputs() {
+    with_html(true,true,"<!doctype html><style>@keyframes grow{from{width:100px}to{width:200px}}#parent{animation:grow 1s linear both}</style><div id=parent><div id=first></div><div id=second></div></div>",|scope|{
+        let document=object(scope,"document");
+        let first=object(scope,"document.getElementById('first')");let second=object(scope,"document.getElementById('second')");let parent=object(scope,"document.getElementById('parent')");
+        let first=handle_of(scope,first).unwrap();let second=handle_of(scope,second).unwrap();let parent=handle_of(scope,parent).unwrap();
+        eval(scope,"__clockCalls=0;__layoutCalls=0;");
+        let sample=sample_presented_effects(scope,document,&[second,first,second]).unwrap();
+        assert_eq!(sample.targets.iter().map(|target|target.element).collect::<Vec<_>>(),[second,first,parent]);
+        assert_eq!(sample.sample_time,Some(1000.0));
+        assert_eq!(sample.targets[2].css_animation_names,["grow"]);
+        assert!(matches!(&sample.targets[2].presentation,PresentedTargetState::Certified{animation,..}if animation.iter().any(|value|value.name=="width"&&value.value=="100px")));
+        assert!(eval(scope,"__clockCalls===1&&__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
 fn preexisting_error_stack_hook_descriptor_is_never_forgiven() {
     init_v8();
     let isolate = &mut v8::Isolate::new(Default::default());

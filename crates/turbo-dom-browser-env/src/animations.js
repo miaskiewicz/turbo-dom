@@ -3029,8 +3029,18 @@
     }
     return false;
   }
+  const notePresentedMembership=g.__notePresentedMembership;delete g.__notePresentedMembership;
+  function appendPresentedTargets(selected, seen, expanded) {
+    for (let index = 0; index < expanded.length; index++) {
+      if(notePresentedMembership)notePresentedMembership(0,1);
+      if (apply(weakSetHas, seen, [expanded[index]])) continue;
+      apply(weakSetAdd, seen, [expanded[index]]); push(selected, expanded[index]);
+    }
+  }
   function preparePresentedTargets(selected) {
-    const snapshots = [], batch = ns.createCssEffectInputBatch();
+    const snapshots = [], batch = ns.createCssEffectInputBatch(), seen = new WeakSetType();
+    for (let i = 0; i < selected.length; i++) apply(weakSetAdd, seen, [selected[i]]);
+    if(notePresentedMembership)notePresentedMembership(0,selected.length);
     for (let i = 0; i < selected.length; i++) {
       const element = selected[i];
       if (cssBusy.get(element)) return null;
@@ -3038,8 +3048,7 @@
       const snapshot = ns.refreshCssEffectInputs(element, batch);
       if (!snapshot || inspectionUnavailable) return null;
       push(snapshots, snapshot);
-      const expanded = presentedTargets(selected);
-      for (let j = 0; j < expanded.length; j++) if (!contains(selected, expanded[j])) push(selected, expanded[j]);
+      appendPresentedTargets(selected, seen, presentedTargets([]));
     }
     return snapshots;
   }

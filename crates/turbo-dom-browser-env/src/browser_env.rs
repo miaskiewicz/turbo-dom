@@ -8324,6 +8324,13 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     bind_method(
         scope,
         global,
+        "__notePresentedMembership",
+        note_presented_membership,
+    );
+    #[cfg(test)]
+    bind_method(
+        scope,
+        global,
         "__noteEffectValidation",
         note_effect_validation,
     );
@@ -8420,6 +8427,32 @@ thread_local! {
 #[cfg(test)]
 fn cascade_runs() -> u64 {
     CASCADE_RUNS.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+thread_local! {
+    static PRESENTED_MEMBERSHIP: std::cell::Cell<(u64,u64)> = const { std::cell::Cell::new((0,0)) };
+}
+#[cfg(test)]
+fn presented_membership() -> (u64, u64) {
+    PRESENTED_MEMBERSHIP.with(std::cell::Cell::get)
+}
+#[cfg(test)]
+fn note_presented_membership(
+    _scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    let count = v8::Local::<v8::Number>::try_from(args.get(0))
+        .unwrap()
+        .value() as u64;
+    let probes = v8::Local::<v8::Number>::try_from(args.get(1))
+        .ok()
+        .map_or(0, |value| value.value() as u64);
+    PRESENTED_MEMBERSHIP.with(|total| {
+        let old = total.get();
+        total.set((old.0 + count, old.1 + probes));
+    });
 }
 
 /// Counts one fresh computed-style calculation (the test-only `__noteCascadeRun` hook).
