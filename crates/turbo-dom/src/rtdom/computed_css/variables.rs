@@ -47,6 +47,23 @@ impl CustomProperties {
     }
 }
 
+/// The cascade operation requested by a resolved custom-property keyword.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RollbackKeyword {
+    Revert,
+    RevertLayer,
+}
+
+/// Computed custom tokens, or the exact property whose owner must retry cascade.
+#[derive(Debug)]
+pub enum CustomComputation {
+    Computed(CustomProperties),
+    RequiresCascade {
+        property: String,
+        keyword: RollbackKeyword,
+    },
+}
+
 struct Resolver<'a> {
     parent: &'a BTreeMap<String, CssText>,
     own: &'a BTreeMap<String, CssText>,
@@ -55,6 +72,7 @@ struct Resolver<'a> {
     cyclic: BTreeSet<String>,
     limits: ComputationLimits,
     retained_units: usize,
+    rollback: Option<(String, RollbackKeyword)>,
 }
 
 impl<'a> Resolver<'a> {
@@ -71,6 +89,7 @@ impl<'a> Resolver<'a> {
             cyclic: BTreeSet::new(),
             limits,
             retained_units: 0,
+            rollback: None,
         }
     }
 
@@ -116,15 +135,46 @@ impl<'a> Resolver<'a> {
         name: &str,
         depth: usize,
     ) -> Result<Option<CssText>, ComputedCssError> {
-        let Some(value) = self.own.get(name) else {
+        let own = self.own;
+        let Some(value) = own.get(name) else {
             return self.parent_value(name);
         };
-        match single_ident(value).as_deref() {
-            Some("initial") => Ok(None),
-            Some("inherit" | "unset") => self.parent_value(name),
-            Some("revert" | "revert-layer") => Err(ComputedCssError::RequiresCascade),
-            _ => self.value(value, depth),
+        if let Some(wide) = self.wide_value(name, value) {
+            return wide;
         }
+        let value = self.value(value, depth)?;
+        // Cyclic custom properties stay guaranteed-invalid even when a fallback
+        // spells a rollback keyword. Resolve before caching dependency values.
+        if self.cyclic.contains(name) {
+            return Ok(None);
+        }
+        match value {
+            Some(value) => self.wide_value(name, &value).unwrap_or(Ok(Some(value))),
+            None => Ok(None),
+        }
+    }
+
+    fn wide_value(
+        &mut self,
+        name: &str,
+        value: &CssText,
+    ) -> Option<Result<Option<CssText>, ComputedCssError>> {
+        match single_ident(value).as_deref() {
+            Some("initial") => Some(Ok(None)),
+            Some("inherit" | "unset") => Some(self.parent_value(name)),
+            Some("revert") => Some(self.request_rollback(name, RollbackKeyword::Revert)),
+            Some("revert-layer") => Some(self.request_rollback(name, RollbackKeyword::RevertLayer)),
+            _ => None,
+        }
+    }
+
+    fn request_rollback(
+        &mut self,
+        name: &str,
+        keyword: RollbackKeyword,
+    ) -> Result<Option<CssText>, ComputedCssError> {
+        self.rollback = Some((name.to_owned(), keyword));
+        Err(ComputedCssError::RequiresCascade)
     }
 
     fn parent_value(&self, name: &str) -> Result<Option<CssText>, ComputedCssError> {
@@ -399,6 +449,19 @@ pub fn compute_custom_properties(
     own: &BTreeMap<String, CssText>,
     limits: ComputationLimits,
 ) -> Result<CustomProperties, ComputedCssError> {
+    match compute_custom_properties_detailed(parent, own, limits)? {
+        CustomComputation::Computed(properties) => Ok(properties),
+        CustomComputation::RequiresCascade { .. } => Err(ComputedCssError::RequiresCascade),
+    }
+}
+
+/// Compute with rollback identity for a finite owner-side cascade retry.
+/// Each call owns a fresh dependency memo and cycle set; no partial result leaks.
+pub fn compute_custom_properties_detailed(
+    parent: &BTreeMap<String, CssText>,
+    own: &BTreeMap<String, CssText>,
+    limits: ComputationLimits,
+) -> Result<CustomComputation, ComputedCssError> {
     let mut resolver = Resolver::new(parent, own, limits);
     let names: BTreeSet<_> = parent
         .keys()
@@ -408,11 +471,22 @@ pub fn compute_custom_properties(
         .collect();
     let mut values = BTreeMap::new();
     for name in names {
-        if let Some(value) = resolver.property(&name, 0)? {
-            values.insert(name, value);
+        match resolver.property(&name, 0) {
+            Ok(Some(value)) => {
+                values.insert(name, value);
+            }
+            Ok(None) => {}
+            Err(ComputedCssError::RequiresCascade) => {
+                let (property, keyword) = resolver
+                    .rollback
+                    .take()
+                    .expect("only the wide-value handler requests cascade");
+                return Ok(CustomComputation::RequiresCascade { property, keyword });
+            }
+            Err(error) => return Err(error),
         }
     }
-    Ok(CustomProperties { values })
+    Ok(CustomComputation::Computed(CustomProperties { values }))
 }
 
 /// Substitute outside quoted strings/URLs, retaining raw custom token payloads.

@@ -5,9 +5,9 @@ use std::ops::Range;
 pub mod stylesheet;
 mod variables;
 pub use variables::{
-    check_component_limits, compute_custom_properties, has_function_reference,
-    has_variable_references, substitute, valid_custom_value_syntax, ComputationLimits,
-    ComputedCssError, CustomProperties,
+    check_component_limits, compute_custom_properties, compute_custom_properties_detailed,
+    has_function_reference, has_variable_references, substitute, valid_custom_value_syntax,
+    ComputationLimits, ComputedCssError, CustomComputation, CustomProperties, RollbackKeyword,
 };
 
 /// Original CSS text, including any unpaired UTF-16 units.
