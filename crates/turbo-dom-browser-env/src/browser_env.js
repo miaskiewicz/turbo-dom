@@ -143,6 +143,7 @@
   var computedStyleTouch=g.__computedStyleTouch;delete g.__computedStyleTouch;
   // Test builds only: counts fresh computed-style calculations (turbo-test#125 reuse tests).
   var noteCascadeRun=g.__noteCascadeRun;delete g.__noteCascadeRun;
+  var noteEffectValidation=g.__noteEffectValidation;delete g.__noteEffectValidation;
   var noteStyleLookup=g.__noteStyleLookup;delete g.__noteStyleLookup;
   var noteEntryBuild=g.__noteEntryBuild;delete g.__noteEntryBuild;
   var noteSheetRead=g.__noteSheetRead;delete g.__noteSheetRead;
@@ -1593,16 +1594,17 @@
   // can skip finally, but cannot leave a reader rooted for the following sample.
   __ns.createCssEffectInputBatch=function(){
     var token={__proto__:null};
-    var batch={__proto__:null,snapshots:new computedSnapshotMap(),entries:new computedSnapshotMap()};
-    computedSnapshotSet(computedEffectReaders,token,batch);computedSnapshotSet(computedEffectMaps,batch.snapshots,batch);
+    var batch={__proto__:null,entries:new computedSnapshotMap()};
+    computedSnapshotSet(computedEffectReaders,token,batch);
     return token;
   };
   function computedEffectDependenciesValid(snapshots,deps){
-    var batch=computedSnapshotGet(computedEffectMaps,snapshots);
+    var batch=computedSnapshotGet(computedEffectMaps,snapshots).batch;
     for(var index=0;index<deps.length;index+=2){
       var node=deps[index],snapshot=deps[index+1];
-      if(computedSnapshotGet(snapshots,node)!==snapshot)return false;
-      if(!computedEffectEntryValid(node,snapshots,computedSnapshotGet(batch.entries,node)))return false;
+      var entry=computedSnapshotGet(batch.entries,node);
+      if(!entry||entry.snapshot!==snapshot)return false;
+      if(!computedEffectEntryValid(node,snapshots,entry))return false;
     }
     return true;
   }
@@ -1613,6 +1615,7 @@
     try{return cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
   }
   function computedEffectEntryValid(el,snapshots,entry){
+    if(noteEffectValidation)noteEffectValidation();
     if(!entry||entry.checking||entry.volatile||entry.boxFailed)return false;
     var stamp=computedWorldStamp(el);
     if(!computedEffectProbeMatches(el,entry,stamp))return false;
@@ -1623,31 +1626,22 @@
       return computedEffectProbeMatches(el,entry,computedWorldStamp(el));
     }finally{entry.checking=false;}
   }
-  function computedLocalSnapshot(el,snapshots){
-    var snapshot=computedSnapshotGet(snapshots,el);
-    if(!snapshot||!computedEffectInspection)return snapshot;
-    var batch=computedSnapshotGet(computedEffectMaps,snapshots);if(!batch)return snapshot;
-    var entry=computedSnapshotGet(batch.entries,el);
-    if(entry&&entry.snapshot===snapshot&&computedEffectEntryValid(el,snapshots,entry))return snapshot;
-    computedSnapshotSet(snapshots,el,null);computedSnapshotSet(batch.entries,el,null);
-    return null;
-  }
   function computedEffectSnapshot(el,snapshots){
     var stamp=computedWorldStamp(el),probe=computedCacheProbe(el),owner=computedEffectOwner(el);
     var ctx=computeStyleSnapshotRun(el,snapshots,undefined,undefined,null);
     var entry=null;
     if(owner&&owner===computedEffectOwner(el)&&computedStampEqual(stamp,computedWorldStamp(el))&&computedProbeEqual(probe,computedCacheProbe(el)))
       entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false};
-    computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).entries,el,entry);
+    computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).batch.entries,el,entry);
     return ctx.snapshot;
   }
   __ns.refreshCssEffectInputs=function(el,token){
     if(computedEffectInspection)return false;
     var outerVolatile=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure;
-    var batch=token&&computedSnapshotGet(computedEffectReaders,token),snapshots=batch?batch.snapshots:new computedSnapshotMap();
+    var batch=token&&computedSnapshotGet(computedEffectReaders,token),snapshots=new computedSnapshotMap();
     // Root-specific CSS/name hooks must run even if a preceding target already
     // resolved this root as an ancestor. Only validated dependencies may be shared.
-    if(batch){computedSnapshotSet(snapshots,el,null);computedSnapshotSet(batch.entries,el,null);}
+    if(batch)computedSnapshotSet(computedEffectMaps,snapshots,{__proto__:null,batch:batch,root:el});
     computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads={__proto__:null};
     try{return computeStyleSnapshot(el,snapshots);}
     finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
@@ -1663,12 +1657,17 @@
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
   function computedUncachedRequest(el,sink,pseudo){return pseudo||sink||!el||typeof el!=='object';}
   function computeEffectInspectionSnapshot(el,snapshots,sink,pseudo){
-    if(computedSnapshotGet(computedEffectMaps,snapshots))return computedEffectSnapshot(el,snapshots);
+    var context=computedSnapshotGet(computedEffectMaps,snapshots);
+    if(context){
+      var shared=el!==context.root&&computedSnapshotGet(context.batch.entries,el);
+      if(shared&&computedEffectEntryValid(el,snapshots,shared)){computedSnapshotSet(snapshots,el,shared.snapshot);return shared.snapshot;}
+      return computedEffectSnapshot(el,snapshots);
+    }
     return computeStyleFresh(el,snapshots,sink,pseudo,null);
   }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
     if(computedUncachedRequest(el,sink,pseudo))return computeStyleFresh(el,snapshots,sink,pseudo,null);
-    var local=computedLocalSnapshot(el,snapshots);if(local)return local;
+    var local=computedSnapshotGet(snapshots,el);if(local)return local;
     if(computedEffectInspection)return computeEffectInspectionSnapshot(el,snapshots,sink,pseudo);
     if(noteStyleLookup)noteStyleLookup();
     var stable=computedStableHit(el);if(stable){computedSnapshotSet(snapshots,el,stable);return stable;}
@@ -2368,7 +2367,7 @@
     if (connected && !pseudo && cs.inheritParent) inheritCustomProperties(decl, cs.parentStyle(cs.inheritParent));
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
-    var cached=!pseudo&&el&&computedLocalSnapshot(el,snapshots);if(cached)return cached;
+    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
     if(noteCascadeRun)noteCascadeRun();
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.

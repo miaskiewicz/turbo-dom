@@ -28,3 +28,22 @@ application cost is solved. The normalized 421-element auth cost-only fixture
 and live Surf outcomes are consumer acceptance checks, not pixel-parity claims.
 
 Durable local logs and source hashes: `.evidence/batch-counts/`.
+
+## Preserve the original local-read tier
+
+The first implementation incorrectly applied cross-root eligibility checks to
+hits inside the same root read. An animated ancestor is volatile for sharing,
+but the original per-read map still resolved it only once. A public synthetic
+control proved that regression with exact values: active-ancestor cases grew
+to 60/2126/7568 cascades against original per-root bounds 12/25/46.
+
+Each selected root now owns a fresh ordinary local map with its original hit
+semantics. Only importing an ancestor into that map consults the separate shared
+entry validation. The same cases use 8/17/32 cascades and 5/14/32 validation
+visits (previously 645/23371/83242). Static inherited-context visits fall from
+144/252/540 to 12/18/30. No memo, cross-call cache, or weaker world/probe/media
+check was introduced. Test-only validation counters use the existing private
+native-counter pattern and are absent from the shipped native API.
+
+These source-derived work controls address a matched-debug-fixture regression;
+they are not an optimized-release timing floor or proof of live app success.
