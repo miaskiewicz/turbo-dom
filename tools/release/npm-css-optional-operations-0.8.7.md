@@ -1,0 +1,11 @@
+# Optional CSS operation forwarding
+
+This isolated increment extends the existing descriptor/normalizer with optional `serializeCssomV1`, `projectCssomPropertyV1` and `cssComputedPreferencesV1`. Existing four-argument descriptor calls and absent own keys stay unchanged. Function references and receiver semantics are preserved; optional methods do not become mandatory on minimal ParserBinding or old class-only CSS bindings. Partial/malformed capability and getter/init errors remain explicit, with no automatic fallback.
+
+Actual metadata evaluation uses captured Reflect.apply rather than a function's public `.call` property. A throwing own call getter is never read, while the original metadata function receiver/body/error remains intact. Descriptor construction uses captured own-data definitions with null-prototype descriptors, avoiding inherited operation setters. No broad Function-shape guard or new public mode is added.
+
+Base `c0475893` requires the four disjoint source dependencies listed in the JSON receipt: safe wire codec, optional used-proxy presentation and factory hardening. The initial missing-wire load error is preserved in local evidence; the final successful probes use the coherent LOCAL production adapter, not an external import.
+
+Source tests: nine causal baseline failures plus inverse; final focused 41 pass; full Node 980 pass, zero failures, 100% lines/functions and 97.72% branches. Vitest29/Jest2/CC9 pass. Real c018 old-capability and new preference native/WASM probes preserve forced selection: native executes without WebAssembly, WASM loads zero native modules. New preferences return the actual requested serif18.25 override through the normalized function, followed by canonical adapter color/custom/width projection. New fixture resource bounds are derived from actual UA units and are test-only; they are not production policy.
+
+Exact source/artifact/log hashes are in the JSON receipt. Required `scripts/agent/build-napi.sh` actually passed under an explicit Rust1.98/offline/one-job lease (4.81s). Index/RootRust/Cargo hashes remained unchanged; rebuilt parser remainsbc97. Exact before/after/log/artifact proof is embedded in JSON. Normal commit hook runs next. No Rust/Core/manifest/default runtime edits or performance/default acceptance are included.
