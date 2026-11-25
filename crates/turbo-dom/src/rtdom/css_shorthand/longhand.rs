@@ -824,6 +824,7 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "grid-template-areas" => grid_areas,
         "offset-path" => offset_path,
         "opacity" => opacity,
+        "visibility" => |c| keywords(c, &["visible", "hidden", "collapse"]),
         "display" => display,
         "animation-name" => animation_names,
         "box-shadow" => box_shadow,

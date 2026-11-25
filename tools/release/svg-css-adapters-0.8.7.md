@@ -25,3 +25,7 @@ The shared resolver now applies the same keyword handler before and after substi
 `compute_custom_properties_detailed` adds `CustomComputation::{Computed,RequiresCascade{property,keyword}}` and `RollbackKeyword::{Revert,RevertLayer}`. A request identifies the actual dependency property that produced rollback. Each retry creates a fresh memo/cycle set. The legacy API maps the request to its unchanged `ComputedCssError::RequiresCascade`; it never guesses a lower candidate.
 
 The legacy causal baseline had3failed tests and1quoted-word inverse passing; all6 new controls now pass, including dependency identity, cyclic rollback and fresh retry. Independent Chrome159 SVG controls confirm post-var inheritance/initial and dependency behavior. Full original core100 is13,879/13,879 lines with strict core all-target Clippy and CC9 passing. Neither the generic limits-only condition guard nor any runtime default/limit changed.
+
+## Visibility admission
+
+The canonical longhand keyword table now admits `visible`/`hidden`/`collapse` and rejects invalid visibility values, rather than leaving them Unchecked. Escaped/case-insensitive keywords and pending `var()` spelling are covered. This resolves the independent literal-hidden SVG inverse through shared CSSOM admission, without a renderer-specific value parser. Direct admission RED→GREEN, strict core Clippy and original core100 pass at13,880/13,880 lines.
