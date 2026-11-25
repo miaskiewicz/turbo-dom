@@ -53,3 +53,17 @@ geometry group. Receipt: `turbo-surf/.recovery/undefined-hook-7ba-private/ROOT-C
 Actual rebuilt package/auth acceptance remains owned by Surf; this receipt
 does not claim the full auth cohort passes. Private diagnostic APIs are absent
 from this production source.
+
+## Actual optimized consumer artifact
+
+Surf rebuilt the production-only Git `7ba48b05` graph (all four DOM-family
+patches coherent), source unchanged, build exit0 in734.75 seconds. Native addon
+SHA256: `74a1e14840cea441b9abb81e17cef25bdd4636252d341672acd25bf4a4dd259e`;
+MCP SHA256: `c1f6363909309c2c91585d3aeb8e9c92265bca779b57c533e255572d8b94bd73`.
+The original forbidden-route case passed1/1 in5.25 seconds and the original
+delegated-write case passed1/1 in111.17 seconds, with unchanged fixtures,
+assertions and budgets and no diagnostic APIs. Actual images18/18, Badge
+geometry (two controls/ten rectangles) and421-element discovery (eight records
+on both reads,834.97ms first/32.43ms second) passed. Receipts are under
+`turbo-surf/.recovery/presented-release-dom570-integration` and the focused404
+runner. Smoke/auth46 are subsequent consumer gates; no full-auth claim is made.
