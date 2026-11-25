@@ -1577,26 +1577,91 @@
   function computeStyleSnapshotRun(el,snapshots,sink,pseudo,key){
     var before=key?computedWorldStamp(el):null,deps=[],outer=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure,media={__proto__:null},snapshot,volatile,stateRead,boxFailed,state=styleStateEpoch();
     computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads=media;
-    var base={__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
+    // Inspection collects dependencies but never reads or populates ordinary
+    // cross-element style/base sharing through this collector.
+    var base=computedEffectInspection?null:{__proto__:null,use:key?computedBaseHit(el,key):null,out:null};
     try{snapshot=computeStyleFresh(el,snapshots,sink,pseudo,deps,base);volatile=computedVolatile;stateRead=computedStateRead;boxFailed=computedBoxFailure;}
     finally{computedVolatile=outer;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;if(outerMedia)for(var mediaText in media)if(outerMedia[mediaText]===undefined)outerMedia[mediaText]=media[mediaText];}
     return {snapshot:snapshot,volatile:volatile,stateRead:stateRead,state:state,media:media,deps:deps,base:base,before:before,boxFailed:boxFailed};
   }
   // Host lifecycle inspection resolves the underlying cascade without composing effects or
   // asking the embedder for geometry. These temporary snapshots never enter the shared cache.
-  var computedEffectInspection=false;
-  __ns.refreshCssEffectInputs=function(el){
+  var computedEffectInspection=false,computedEffectReaders=new computedSnapshotMap(),computedEffectMaps=new computedSnapshotMap();
+  // A private capability for one synchronous sample, never a cross-read cache.
+  // Ordinary computed style keeps its separate, composed-value cache policy.
+  // Weak capabilities, not a global active reader, own the maps: V8 termination
+  // can skip finally, but cannot leave a reader rooted for the following sample.
+  __ns.createCssEffectInputBatch=function(){
+    var token={__proto__:null};
+    var batch={__proto__:null,snapshots:new computedSnapshotMap(),entries:new computedSnapshotMap()};
+    computedSnapshotSet(computedEffectReaders,token,batch);computedSnapshotSet(computedEffectMaps,batch.snapshots,batch);
+    return token;
+  };
+  function computedEffectDependenciesValid(snapshots,deps){
+    var batch=computedSnapshotGet(computedEffectMaps,snapshots);
+    for(var index=0;index<deps.length;index+=2){
+      var node=deps[index],snapshot=deps[index+1];
+      if(computedSnapshotGet(snapshots,node)!==snapshot)return false;
+      if(!computedEffectEntryValid(node,snapshots,computedSnapshotGet(batch.entries,node)))return false;
+    }
+    return true;
+  }
+  function computedEffectProbeMatches(el,entry,stamp){
+    return entry.owner===computedEffectOwner(el)&&computedStampEqual(entry.stamp,stamp)&&computedProbeEqual(entry.probe,computedCacheProbe(el));
+  }
+  function computedEffectOwner(el){
+    try{return cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
+  }
+  function computedEffectEntryValid(el,snapshots,entry){
+    if(!entry||entry.checking||entry.volatile||entry.boxFailed)return false;
+    var stamp=computedWorldStamp(el);
+    if(!computedEffectProbeMatches(el,entry,stamp))return false;
+    entry.checking=true;
+    try{
+      if(!computedMediaUnchanged(entry.media))return false;
+      if(!computedEffectDependenciesValid(snapshots,entry.deps))return false;
+      return computedEffectProbeMatches(el,entry,computedWorldStamp(el));
+    }finally{entry.checking=false;}
+  }
+  function computedLocalSnapshot(el,snapshots){
+    var snapshot=computedSnapshotGet(snapshots,el);
+    if(!snapshot||!computedEffectInspection)return snapshot;
+    var batch=computedSnapshotGet(computedEffectMaps,snapshots);if(!batch)return snapshot;
+    var entry=computedSnapshotGet(batch.entries,el);
+    if(entry&&entry.snapshot===snapshot&&computedEffectEntryValid(el,snapshots,entry))return snapshot;
+    computedSnapshotSet(snapshots,el,null);computedSnapshotSet(batch.entries,el,null);
+    return null;
+  }
+  function computedEffectSnapshot(el,snapshots){
+    var stamp=computedWorldStamp(el),probe=computedCacheProbe(el),owner=computedEffectOwner(el);
+    var ctx=computeStyleSnapshotRun(el,snapshots,undefined,undefined,null);
+    var entry=null;
+    if(owner&&owner===computedEffectOwner(el)&&computedStampEqual(stamp,computedWorldStamp(el))&&computedProbeEqual(probe,computedCacheProbe(el)))
+      entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false};
+    computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).entries,el,entry);
+    return ctx.snapshot;
+  }
+  __ns.refreshCssEffectInputs=function(el,token){
     if(computedEffectInspection)return false;
     var outerVolatile=computedVolatile,outerState=computedStateRead,outerMedia=computedMediaReads,outerFailure=computedBoxFailure;
+    var batch=token&&computedSnapshotGet(computedEffectReaders,token),snapshots=batch?batch.snapshots:new computedSnapshotMap();
+    // Root-specific CSS/name hooks must run even if a preceding target already
+    // resolved this root as an ancestor. Only validated dependencies may be shared.
+    if(batch){computedSnapshotSet(snapshots,el,null);computedSnapshotSet(batch.entries,el,null);}
     computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads={__proto__:null};
-    try{return computeStyleSnapshot(el,new computedSnapshotMap());}
+    try{return computeStyleSnapshot(el,snapshots);}
     finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
   };
   __ns.computedStyleValue=function(style,name){return computedSnapshotValue(style,name);};
+  function computedUncachedRequest(el,sink,pseudo){return pseudo||sink||!el||typeof el!=='object';}
+  function computeEffectInspectionSnapshot(el,snapshots,sink,pseudo){
+    if(computedSnapshotGet(computedEffectMaps,snapshots))return computedEffectSnapshot(el,snapshots);
+    return computeStyleFresh(el,snapshots,sink,pseudo,null);
+  }
   function computeStyleSnapshot(el,snapshots,sink,pseudo){
-    if(pseudo||sink||!el||typeof el!=='object')return computeStyleFresh(el,snapshots,sink,pseudo,null);
-    var local=computedSnapshotGet(snapshots,el);if(local)return local;
-    if(computedEffectInspection)return computeStyleFresh(el,snapshots,sink,pseudo,null);
+    if(computedUncachedRequest(el,sink,pseudo))return computeStyleFresh(el,snapshots,sink,pseudo,null);
+    var local=computedLocalSnapshot(el,snapshots);if(local)return local;
+    if(computedEffectInspection)return computeEffectInspectionSnapshot(el,snapshots,sink,pseudo);
     if(noteStyleLookup)noteStyleLookup();
     var stable=computedStableHit(el);if(stable){computedSnapshotSet(snapshots,el,stable);return stable;}
     var key=computedCacheKey(el);
@@ -2295,7 +2360,7 @@
     if (connected && !pseudo && cs.inheritParent) inheritCustomProperties(decl, cs.parentStyle(cs.inheritParent));
   }
   function computeStyleFresh(el,snapshots,sink,pseudo,deps,base){
-    var cached=!pseudo&&el&&computedSnapshotGet(snapshots,el);if(cached)return cached;
+    var cached=!pseudo&&el&&computedLocalSnapshot(el,snapshots);if(cached)return cached;
     if(noteCascadeRun)noteCascadeRun();
     // Percentage lookup may visit several ancestors before font inheritance asks
     // for the immediate parent again. Reuse each resolved ancestor only in this read.

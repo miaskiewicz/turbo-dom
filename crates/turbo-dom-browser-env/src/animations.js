@@ -2900,12 +2900,12 @@
     return false;
   }
   function preparePresentedTargets(selected) {
-    const snapshots = [];
+    const snapshots = [], batch = ns.createCssEffectInputBatch();
     for (let i = 0; i < selected.length; i++) {
       const element = selected[i];
       if (cssBusy.get(element)) return null;
       inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false;
-      const snapshot = ns.refreshCssEffectInputs(element);
+      const snapshot = ns.refreshCssEffectInputs(element, batch);
       if (!snapshot || inspectionUnavailable) return null;
       push(snapshots, snapshot);
       const expanded = presentedTargets(selected);
