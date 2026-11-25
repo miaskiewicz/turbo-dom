@@ -538,3 +538,91 @@ fn mixed_host_and_ordinary_selector_items_keep_their_distinct_tree_routes() {
     assert_eq!(matched.rules().len(), 1);
     assert_eq!(matched.rules()[0].specificity(), (0, 3, 0));
 }
+
+#[test]
+fn shared_source_host_answers_require_exact_binding_context_without_legacy_fallback() {
+    use turbo_dom::rtdom::computed_css::rule_matches::{
+        matching_rules_with_context_answers, ContextAnswers, ContextSelectorAnswers,
+    };
+    let prepared = model("#host,:host{color:red}", &[1, 2]);
+    let mut input = route_facts(&[11, 10], 1);
+    input.host_of = Some(2);
+    let routes = validated(&input);
+    let legacy = answers(&prepared, 11, None);
+    let boundaries = BTreeMap::new();
+    let target = facts(&routes, &legacy, &boundaries);
+    assert_eq!(
+        matching_rules(&prepared, &target, 128)
+            .unwrap()
+            .rules()
+            .len(),
+        2
+    );
+    let mut selectors = ContextSelectorAnswers::new();
+    for key in legacy.keys() {
+        for scope in [1, 2] {
+            selectors.insert(
+                (scope, key.0, key.1, key.2),
+                MechanicalAnswer::new(
+                    AnswerDomain::new(vec![11]).unwrap(),
+                    if scope == 1 { vec![11] } else { vec![] },
+                )
+                .unwrap(),
+            );
+        }
+    }
+    let contextual_boundaries = BTreeMap::new();
+    let contextual = ContextAnswers {
+        selectors: &selectors,
+        boundaries: &contextual_boundaries,
+    };
+    let matched = matching_rules_with_context_answers(&prepared, &target, contextual, 128).unwrap();
+    assert_eq!(matched.rules().len(), 1);
+    assert_eq!(
+        prepared.metadata().rules[matched.rules()[0].prepared_rule()].tree_scope,
+        1
+    );
+    selectors.retain(|key, _| key.0 != 2);
+    assert!(matches!(
+        matching_rules_with_context_answers(
+            &prepared,
+            &target,
+            ContextAnswers {
+                selectors: &selectors,
+                boundaries: &contextual_boundaries
+            },
+            128
+        ),
+        Err(MatchError::MissingSelectorAnswer)
+    ));
+    for key in legacy.keys() {
+        selectors.insert(
+            (2, key.0, key.1, key.2),
+            MechanicalAnswer::new(AnswerDomain::new(vec![99]).unwrap(), vec![]).unwrap(),
+        );
+    }
+    assert!(matches!(
+        matching_rules_with_context_answers(
+            &prepared,
+            &target,
+            ContextAnswers {
+                selectors: &selectors,
+                boundaries: &contextual_boundaries
+            },
+            128
+        ),
+        Err(MatchError::MissingSelectorAnswer)
+    ));
+    assert!(matches!(
+        matching_rules_with_context_answers(
+            &prepared,
+            &target,
+            ContextAnswers {
+                selectors: &selectors,
+                boundaries: &contextual_boundaries
+            },
+            0
+        ),
+        Err(MatchError::ResourceLimit)
+    ));
+}

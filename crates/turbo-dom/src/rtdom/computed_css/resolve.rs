@@ -6,7 +6,10 @@ use super::computed_values::{
 use super::custom_cascade::CustomCascadeLimits;
 use super::inline_style::{InlineLimits, InlineStyle};
 use super::prepared::{CascadeOrigin, PreparedStyles};
-use super::rule_matches::{matching_rules, MatchError, TargetFacts};
+use super::rule_matches::{
+    matching_rules, matching_rules_with_context_answers, ContextAnswers, MatchError, MatchedRules,
+    TargetFacts,
+};
 use super::selection::{select_style, SelectionError};
 use super::{ComputedCssError, CssText, CustomProperties};
 use std::collections::{BTreeMap, BTreeSet};
@@ -123,12 +126,40 @@ pub fn compute_style(
 ) -> Result<ComputedStyle, ResolveError> {
     let matched = matching_rules(prepared, facts, limits.matching_decisions)
         .map_err(ResolveError::Matching)?;
+    finish_style(&matched, facts, inline, parent, context, limits)
+}
+
+/// Resolve using exact tree-context answer maps; legacy `TargetFacts` maps are ignored.
+pub fn compute_style_with_context_answers(
+    prepared: &PreparedStyles,
+    facts: &TargetFacts<'_>,
+    inline: Option<&CssText>,
+    parent: Option<&ComputedStyle>,
+    context: &TargetContext<'_>,
+    limits: ResolveLimits,
+    answers: ContextAnswers<'_>,
+) -> Result<ComputedStyle, ResolveError> {
+    let matched =
+        matching_rules_with_context_answers(prepared, facts, answers, limits.matching_decisions)
+            .map_err(ResolveError::Matching)?;
+    finish_style(&matched, facts, inline, parent, context, limits)
+}
+
+fn finish_style(
+    matched: &MatchedRules,
+    facts: &TargetFacts<'_>,
+    inline: Option<&CssText>,
+    parent: Option<&ComputedStyle>,
+    context: &TargetContext<'_>,
+    limits: ResolveLimits,
+) -> Result<ComputedStyle, ResolveError> {
+    let prepared = matched.prepared();
     let inline = inline
         .filter(|_| facts.pseudo.is_none())
         .map(|source| InlineStyle::compile(source, limits.inline))
         .transpose()
         .map_err(ResolveError::Inline)?;
-    let mut candidates = collect_candidates(&matched);
+    let mut candidates = collect_candidates(matched);
     if let Some(inline) = &inline {
         let layer_context = prepared
             .metadata()

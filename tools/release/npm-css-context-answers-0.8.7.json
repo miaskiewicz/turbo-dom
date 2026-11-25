@@ -1,0 +1,44 @@
+{
+  "base": "c018bd56b1de677044e8b4722664321415814cc4",
+  "scope": "Additive exact-context Core answer maps; no Root/JS/default/virtualhost edits",
+  "source": {
+    "crates/turbo-dom/src/rtdom/computed_css/resolve.rs": "2a2134ad26316358cf7d586547a093ae4fe4eb0564e97e59acf17478fc0fe6fd",
+    "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "c6cbc6aaf8ec3614f38639e2453cf058f860fdce1193c2206f3d7596824a4d52",
+    "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "1343b740e2320a3959e51a9dc8da43f84cad043eb169cdcd0949e6367abd6aa8",
+    "crates/turbo-dom/tests/computed_shadow_routing.rs": "e85fea6cceb6fa720da513ad36abb537ea99b163fcae84ace1bf7fd2ea9f1658",
+    "crates/turbo-dom/tests/computed_style_pipeline.rs": "667f34e16acdaedd19e1649b9bc0c0c79bbd2195b1ae17ab8fc39fd6f67e5ae5"
+  },
+  "fullDefault": {
+    "passed": 581,
+    "failed": 0,
+    "ignored": 9,
+    "resultBlocks": 86
+  },
+  "fullComputedStyleGrammar": {
+    "passed": 855,
+    "failed": 0,
+    "ignored": 9,
+    "resultBlocks": 86
+  },
+  "focused": {
+    "routing": 17,
+    "pipeline": 10,
+    "boundaryLookup": 4
+  },
+  "strictFeatureAllTargetClippy": true,
+  "changedFilesFmtCc9Diff": true,
+  "evidenceSha256": {
+    "CORE-DEFAULT.log": "85f3137623a8dbace999b648cb314006b6ee706a729a7cea2605d41b18a0cf98",
+    "CORE-FEATURE.log": "dd14c593b146adec4d2b8a9c65b29606171b45d7ea928df61b7573fd63f3202f",
+    "CLIPPY-03.log": "7cc3f63ac630723db821c7b09efff558ba6f806603cc404a25e5291bb028be3c",
+    "FOCUSED-FINAL.log": "3b5dc2189942ec2214c015a302005bb5d496d9437a4accd73bdf2073ff36755d",
+    "BOUNDARIES-01.log": "969805997422ff174e7a5efb0de46525081de4ca15b139fa27eceadb7cb66aa0",
+    "CC-02.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "coverage": "Optional Core100% NOT YET MEASURED on exact increment; combined integration floor remains required. No floors lowered/exclusions added.",
+  "remainingCapabilities": [
+    "Shadow scope host/proximity/actual30 authored inverse pending separate design",
+    "Root adapter contextual transport not wired",
+    "No native/WASM/default/performance claim"
+  ]
+}

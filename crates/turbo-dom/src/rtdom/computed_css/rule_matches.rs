@@ -8,13 +8,23 @@ use super::selector_policy::{
 };
 use super::shadow_routes::{selector_route, RouteError, RoutePath, ValidatedRouteFacts};
 use super::stylesheet::GroupKind;
-use super::target_scope::{scope_roots_with_owner_budget, BoundaryAnswers, ScopeError};
+use super::target_scope::{
+    scope_roots_with_answer_budget, BoundaryAnswerSource, BoundaryAnswers, ContextBoundaryAnswers,
+    ScopeError,
+};
 use super::ComputationLimits;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 
 pub use super::facts::MechanicalAnswer as SelectorAnswer;
 pub type SelectorAnswers = BTreeMap<(usize, usize, Option<u32>), SelectorAnswer>;
+/// Exact stylesheet tree context, selector, item and optional explicit scope root.
+pub type ContextSelectorAnswers = BTreeMap<(u32, usize, usize, Option<u32>), SelectorAnswer>;
+#[derive(Clone, Copy)]
+pub struct ContextAnswers<'a> {
+    pub selectors: &'a ContextSelectorAnswers,
+    pub boundaries: &'a ContextBoundaryAnswers,
+}
 /// Actual current content boxes and font metrics from the renderer, nearest-first.
 /// No measurement is inferred from authored CSS or synthetic DOM geometry.
 #[derive(Clone, Copy)]
@@ -103,6 +113,7 @@ struct MatchRead<'a, 'facts> {
     target: u32,
     remaining: usize,
     implicit_policy: ImplicitRootPolicy,
+    context: Option<ContextAnswers<'a>>,
 }
 fn generated(name: Option<&str>) -> Result<Option<GeneratedPseudo>, MatchError> {
     match name {
@@ -198,12 +209,15 @@ impl<'facts> MatchRead<'_, 'facts> {
             return Err(MatchError::UnsupportedScopedSlotted);
         }
         let path = route.path.ids();
-        let roots = scope_roots_with_owner_budget(
+        let roots = scope_roots_with_answer_budget(
             &compiled.groups,
             &groups,
             path,
             self.implicit_owner(binding),
-            self.facts.boundaries,
+            self.context.map_or(
+                BoundaryAnswerSource::Legacy(self.facts.boundaries),
+                |answers| BoundaryAnswerSource::Context(binding.tree_scope, answers.boundaries),
+            ),
             &mut self.remaining,
         )
         .map_err(|error| match error {
@@ -212,8 +226,7 @@ impl<'facts> MatchRead<'_, 'facts> {
         })?;
         let specificity = policy.specificity.unwrap_or_else(|| selector.specificity());
         self.roots(
-            rule.selector_id,
-            item,
+            (binding.tree_scope, rule.selector_id, item),
             path,
             &roots,
             !groups.is_empty(),
@@ -222,8 +235,7 @@ impl<'facts> MatchRead<'_, 'facts> {
     }
     fn roots(
         &mut self,
-        id: usize,
-        item: usize,
+        query: (u32, usize, usize),
         path: &[u32],
         roots: &[usize],
         scoped: bool,
@@ -235,8 +247,17 @@ impl<'facts> MatchRead<'_, 'facts> {
                 .remaining
                 .checked_sub(1)
                 .ok_or(MatchError::ResourceLimit)?;
-            let key = (id, item, scoped.then_some(path[*root]));
-            if selector_matches(self.facts.selectors, key, self.target)? {
+            let key = (query.1, query.2, scoped.then_some(path[*root]));
+            let matched = match self.context {
+                Some(context) => context
+                    .selectors
+                    .get(&(query.0, key.0, key.1, key.2))
+                    .ok_or(MatchError::MissingSelectorAnswer)?
+                    .matches(self.target)
+                    .map_err(|_| MatchError::MissingSelectorAnswer)?,
+                None => selector_matches(self.facts.selectors, key, self.target)?,
+            };
+            if matched {
                 let proximity = if scoped { *root } else { usize::MAX };
                 let rank = (specificity, Reverse(proximity));
                 best = Some(best.map_or(rank, |old: MatchRank| old.max(rank)));
@@ -357,6 +378,32 @@ pub fn matching_rules_with_implicit_policy(
     maximum_decisions: usize,
     implicit_policy: ImplicitRootPolicy,
 ) -> Result<MatchedRules, MatchError> {
+    match_with_answers(prepared, facts, maximum_decisions, implicit_policy, None)
+}
+
+/// Contextual facts must match the exact prepared binding; legacy maps are ignored.
+pub fn matching_rules_with_context_answers(
+    prepared: &PreparedStyles,
+    facts: &TargetFacts<'_>,
+    answers: ContextAnswers<'_>,
+    maximum_decisions: usize,
+) -> Result<MatchedRules, MatchError> {
+    match_with_answers(
+        prepared,
+        facts,
+        maximum_decisions,
+        ImplicitRootPolicy::PerStylesheetUse,
+        Some(answers),
+    )
+}
+
+fn match_with_answers(
+    prepared: &PreparedStyles,
+    facts: &TargetFacts<'_>,
+    maximum_decisions: usize,
+    implicit_policy: ImplicitRootPolicy,
+    context: Option<ContextAnswers<'_>>,
+) -> Result<MatchedRules, MatchError> {
     validate_route_facts(facts)?;
     let data = prepared.metadata();
     let compiled = data.compiled.metadata();
@@ -369,6 +416,7 @@ pub fn matching_rules_with_implicit_policy(
         target,
         remaining: maximum_decisions,
         implicit_policy,
+        context,
     };
     let mut matches = Vec::new();
     for (id, binding) in data.rules.iter().enumerate() {
