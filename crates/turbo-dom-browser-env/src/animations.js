@@ -1956,7 +1956,7 @@
   // The elements whose CSS update is running: a style read the update causes for the same
   // element does not update it again; other elements (ancestors resolved for `rendered`) update
   // as on any read, so each records its before-change style.
-  const cssBusy = store();
+  let cssBusy = store();
   let cssGeneration = 0, cssKeyframes = null;
   // A comma-separated computed list; commas inside functions do not split.
   function splitList(text) {
@@ -3188,4 +3188,12 @@
       task(callback) { apply(timer, g, [callback, 0]); },
     };
   }
+  const recoverComputedInspection = ns.recoverComputedInspection;
+  g.__captureTerminationRecovery = function () {
+    inspectingEffects = false; inspectionUnavailable = false; inspectionTarget = null;
+    inspectionNames = null; inspectionUnsupported = false; inspectionRenderingUncertain = false;
+    inspectionClock = null; cssKeyframes = null; suppressStyle = false;
+    cssBusy = store(); cssUpdates = store();
+    recoverComputedInspection();
+  };
 })();
