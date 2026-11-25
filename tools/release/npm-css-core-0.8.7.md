@@ -9,3 +9,5 @@ Validation: clean committed-source optional-feature Core774/0, default574/0, nin
 Actual old native artifact passes16/18 unchanged Chrome159 acceptance cases. Source controls cover the remaining content/container behavior; rebuilt native/WASM replay, ownership/performance and compatibility validation remain before default cutover. No Chrome158 migration or publication is claimed.
 
 Committed source: `ecf46101ebc54f0b2cb32b54900ff3ea89fe36dd`. Native binding delegation, Root CSS classes/artifacts and the optional Core/Root CSSOM serializer remain separate.
+
+This is **not zero default Core code change**. Shared default cascade parsing and custom-property detailed rollback/post-substitution CSS-wide behavior change in this snapshot; the latter carries the SVG shared-foundation provenance `069d8f1`/`015d94e`/`17c4df3` across this branch's older base. Unchanged npm GCS selection and unchanged dependency feature defaults are narrower claims. The clean default574 suite and source-hashed post-var controls provide local evidence; canonical Badge and native legacy variable controls remain required on future integration. Current Surf acceptance pins are untouched.

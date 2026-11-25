@@ -508,5 +508,15 @@
       "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },
-  "excluded": "Native binding delegation, Root CSS classes/artifacts, npm default switch and Core/Root optional CSSOM serializer are excluded."
+  "excluded": "Native binding delegation, Root CSS classes/artifacts, npm default switch and Core/Root optional CSSOM serializer are excluded.",
+  "defaultCodeChanges": {
+    "note": "This is not a zero-default-code-change checkpoint. Unchanged npm getComputedStyle backend selection and feature-dependency defaults are separate from these shared Core changes.",
+    "cascade": "Legacy core cascade reuses shared stylesheet parsing with its raw recovery projection.",
+    "variables": "Detailed custom-property rollback/post-substitution CSS-wide handling plus additive probes; semantic foundation provenance069d8f1/015d94e/17c4df3 from SVG lane, carried across this older branch base.",
+    "integrationControlsRequired": [
+      "canonical Badge presented-effects var controls",
+      "legacy native custom-property/rollback controls"
+    ],
+    "currentSurfAcceptancePinChanged": false
+  }
 }
