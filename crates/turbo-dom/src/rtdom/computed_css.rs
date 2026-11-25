@@ -6,7 +6,8 @@ pub mod stylesheet;
 mod variables;
 pub use variables::{
     check_component_limits, compute_custom_properties, has_function_reference,
-    has_variable_references, substitute, ComputationLimits, ComputedCssError, CustomProperties,
+    has_variable_references, substitute, valid_custom_value_syntax, ComputationLimits,
+    ComputedCssError, CustomProperties,
 };
 
 /// Original CSS text, including any unpaired UTF-16 units.
