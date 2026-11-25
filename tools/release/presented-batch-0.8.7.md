@@ -47,3 +47,23 @@ native-counter pattern and are absent from the shipped native API.
 
 These source-derived work controls address a matched-debug-fixture regression;
 they are not an optimized-release timing floor or proof of live app success.
+
+
+## Optimized consumer acceptance
+
+The immutable optimized Surf addon consuming producer
+`410045a001a80ee0098fd30259e11b3604a629a6` has native SHA256
+`708d3eff002ffc878e48e80d99194b3e4804abc3cda41716522a31480c7a893a`.
+On the unchanged normalized 421-element offline fixture, public animation
+discovery completes in 1600.106 ms on the first read and 66.439 ms on the second.
+Both return eight animations, matching the Chromium clock-zero oracle. The old
+optimized 89b artifact exceeded the unchanged 10000 ms read budget. No budget or
+capability guard changed. Consumer receipt:
+`turbo-surf/.recovery/sampler-offline-auth421/RESULT-DOM410-RELEASE.json`.
+
+This accepts the combined producer corrections, including the original per-root
+cache tier and context-independent transform path. It does not isolate either
+change's individual share of elapsed time or claim live application acceptance.
+The producer default workspace passes 3249 tests with zero failures and 13 ignored;
+strict workspace all-target Clippy and formatting pass. Binding coverage refresh
+and full consumer native/image/auth gates remain separate pending checks.
