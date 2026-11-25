@@ -2857,6 +2857,8 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "turbo-dom",
+ "turbo-dom-layout",
  "wasm-bindgen",
 ]
 

@@ -261,6 +261,9 @@ head { display: none }
 body { margin: 8px }
 ";
 
+/// Original document-only UA supplement for independent selector adapters.
+pub const DOCUMENT_USER_AGENT_CSS: &str = DOCUMENT_UA_CSS;
+
 static DOCUMENT_UA_SHEET: std::sync::LazyLock<Stylesheet> =
     std::sync::LazyLock::new(|| parse_stylesheet(DOCUMENT_UA_CSS));
 

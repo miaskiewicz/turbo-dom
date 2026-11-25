@@ -6,6 +6,12 @@
 //! Both expose the same logical API: parse(html) -> tree, parseFragment(html) -> tree.
 
 pub mod core;
+#[cfg(feature = "css-backend")]
+mod css_backend;
+#[cfg(feature = "css-backend")]
+mod css_resolve;
+#[cfg(feature = "css-backend")]
+mod css_scene;
 
 // Phase-1 boundary spike (Rust DOM runtime exported to JS via wasm-bindgen).
 #[cfg(feature = "wasm-runtime")]
