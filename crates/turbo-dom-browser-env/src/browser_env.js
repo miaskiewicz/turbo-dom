@@ -600,9 +600,17 @@
   }
   // An inherited property whose initial value is currentcolor: the nearest declared value of the
   // element's ancestors, else the element's color.
+  function computedDefaultSnapshots(record,node){
+    var snapshots=new computedSnapshotMap();
+    if(computedEffectInspection&&record.effectLifecycle){
+      var batch={__proto__:null,entries:new computedSnapshotMap(),lifecycle:true};
+      computedSnapshotSet(computedEffectMaps,snapshots,{__proto__:null,batch:batch,root:node});
+    }
+    return snapshots;
+  }
   function computedInheritedColor(record, name){
     for (var node = record.defaultsParent; node; node = computedParentElement(node)) {
-      var declared = $c.get($c.get(declarationRecords, computeStyleSnapshot(node, new computedSnapshotMap())).values, name);
+      var declared = $c.get($c.get(declarationRecords, computeStyleSnapshot(node, computedDefaultSnapshots(record,node))).values, name);
       if (declared) return declared.text;
     }
     return propertyValue(record, 'color');
@@ -626,7 +634,7 @@
     if (ua !== undefined) return ua;
     // caret-color: auto inherits as auto and resolves to each element's own color.
     if (entry[0] === 'currentcolor' && entry[1]) return computedInheritedColor(record, name);
-    if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, new computedSnapshotMap())), name);
+    if (entry[1] && record.defaultsParent) return propertyValue($c.get(declarationRecords, computeStyleSnapshot(record.defaultsParent, computedDefaultSnapshots(record,record.defaultsParent))), name);
     if (entry[0] === 'currentcolor') return propertyValue(record, 'color');
     if ($c.test(/^border-[a-z]+-width$/, name)) return computedDefaultBorderWidth(record, name, entry);
     if (computedDefaultSideAuto(record, name, entry)) return '';
@@ -1592,12 +1600,16 @@
   // Ordinary computed style keeps its separate, composed-value cache policy.
   // Weak capabilities, not a global active reader, own the maps: V8 termination
   // can skip finally, but cannot leave a reader rooted for the following sample.
-  __ns.createCssEffectInputBatch=function(){
+  __ns.createCssEffectInputBatch=function(lifecycle){
     var token={__proto__:null};
-    var batch={__proto__:null,entries:new computedSnapshotMap()};
+    var batch={__proto__:null,entries:new computedSnapshotMap(),lifecycle:lifecycle===true};
     computedSnapshotSet(computedEffectReaders,token,batch);
     return token;
   };
+  function computedLifecycleInputs(snapshots){
+    var context=computedSnapshotGet(computedEffectMaps,snapshots);
+    return !!context&&context.batch.lifecycle===true;
+  }
   function computedEffectDependenciesValid(snapshots,deps){
     var batch=computedSnapshotGet(computedEffectMaps,snapshots).batch;
     for(var index=0;index<deps.length;index+=2){
@@ -1614,9 +1626,12 @@
   function computedEffectOwner(el){
     try{return cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
   }
+  function computedEffectEntryReusable(entry,snapshots){
+    return !!entry&&!entry.checking&&!entry.volatile&&!entry.boxFailed&&entry.lifecycle===computedLifecycleInputs(snapshots);
+  }
   function computedEffectEntryValid(el,snapshots,entry){
     if(noteEffectValidation)noteEffectValidation();
-    if(!entry||entry.checking||entry.volatile||entry.boxFailed)return false;
+    if(!computedEffectEntryReusable(entry,snapshots))return false;
     var stamp=computedWorldStamp(el);
     if(!computedEffectProbeMatches(el,entry,stamp))return false;
     entry.checking=true;
@@ -1631,7 +1646,7 @@
     var ctx=computeStyleSnapshotRun(el,snapshots,undefined,undefined,null);
     var entry=null;
     if(owner&&owner===computedEffectOwner(el)&&computedStampEqual(stamp,computedWorldStamp(el))&&computedProbeEqual(probe,computedCacheProbe(el)))
-      entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false};
+      entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false,lifecycle:computedLifecycleInputs(snapshots)};
     computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).batch.entries,el,entry);
     return ctx.snapshot;
   }
@@ -1645,6 +1660,13 @@
     computedEffectInspection=true;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads={__proto__:null};
     try{return computeStyleSnapshot(el,snapshots);}
     finally{computedEffectInspection=false;computedVolatile=outerVolatile;computedStateRead=outerState;computedBoxFailure=outerFailure;computedMediaReads=outerMedia;}
+  };
+  __ns.refreshCssLifecycleInputs=function(el,token){
+    if(frameRootCount){
+      var view=computedFrameView(el);
+      if(view!==mediaView)return __ns.withMediaView(view,function(){return __ns.refreshCssEffectInputs(el,token);});
+    }
+    return __ns.refreshCssEffectInputs(el,token);
   };
   __ns.recoverComputedInspection=function(){
     computedEffectInspection=false;computedVolatile=false;computedStateRead=false;computedBoxFailure=false;computedMediaReads=null;
@@ -2203,15 +2225,23 @@
     value=key==='initial'?'numeric-only':cs.inheritedValue('interpolate-size')||'numeric-only';
     cs.decl['interpolate-size']=value;cs.decl.interpolateSize=value;
   }
+  function computedElementHasEffects(cs){return !cs.pseudo&&cs.el&&__ns.hasAnimations&&__ns.hasAnimations(cs.el);}
+  function computedSyncEffectInputs(cs){
+    __ns.syncCssEffectInputs(cs.el,function(name){var value=cs.decl[name];return value==null?'':$String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display);
+  }
+  function computedComposedAnimationValues(cs){
+    return !cs.pseudo&&cs.el&&__ns.animatedStyle?__ns.animatedStyle(cs.el,function(name){var value=cs.decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display):null;
+  }
+  function computedApplyAnimationPairs(cs,animated){
+    if(animated)for(var index=0;index<animated.length;index++)if(!cs.priorities[animated[index][0]])cs.setProp(animated[index][0],animated[index][1]);
+  }
   function computedApplyAnimations(cs){
-    var el=cs.el,pseudo=cs.pseudo,decl=cs.decl;
-    if(!pseudo&&el&&__ns.hasAnimations&&__ns.hasAnimations(el))computedVolatile=true;
-    if(computedEffectInspection){
-      if(!pseudo&&el&&__ns.syncCssEffectInputs)__ns.syncCssEffectInputs(el,function(name){var value=decl[name];return value==null?'':$String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display);
+    if(computedElementHasEffects(cs))computedVolatile=true;
+    if(computedEffectInspection&&!computedLifecycleInputs(cs.snapshots)){
+      if(!cs.pseudo&&cs.el&&__ns.syncCssEffectInputs)computedSyncEffectInputs(cs);
       return;
     }
-    var animated=!pseudo&&el&&__ns.animatedStyle?__ns.animatedStyle(el,function(name){var value=decl[name];return value==null?'':String(value);},cs.inheritedValue,cs.snapshots,function(){return computedOwnDisplay(cs);},!!cs.priorities.display):null;
-    if(animated)for(var ai=0;ai<animated.length;ai++)if(!cs.priorities[animated[ai][0]])cs.setProp(animated[ai][0],animated[ai][1]);
+    computedApplyAnimationPairs(cs,computedComposedAnimationValues(cs));
   }
   function highlightInheritsKey(value){ return !value || $c.test(/^(inherit|unset)$/i, $c.trim(String(value))); }
   // A highlight in highlight-inheritance mode inherits color / background-color from the
@@ -2471,6 +2501,7 @@
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
     $c.get(declarationRecords,snapshot).effectCustomSource=cs.effectCustomSource;
+    $c.get(declarationRecords,snapshot).effectLifecycle=computedLifecycleInputs(snapshots);
     $c.get(declarationRecords,snapshot).effectTransformUncertain=cs.effectTransformUncertain;
     $c.get(declarationRecords,snapshot).effectColorUncertain=cs.effectColorUncertain;
     if(computedStyleJsdom){var record=$c.get(declarationRecords,snapshot),decoration=cs.jsdomTextDecoration;$c.set(record.values,'text-decoration',{text:decoration?decoration.text:'',priority:'',pending:null,raw:null});}
