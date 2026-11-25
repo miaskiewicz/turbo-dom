@@ -63,3 +63,18 @@ comparison failure (`FOCUSED-03.log`) are retained. This fix changes no color ma
 and introduces no tolerance assertion: tests separately require exact boundary
 values, frozen frame text and exact token/literal equivalence. The one-channel
 precision discrepancy is not reported as fixed by #569.
+
+## Integrated workspace gate
+
+The production integration completed the default Rust workspace gate on Rust
+1.98.0: 3,249 reported passes, zero failures and 13 ignored tests across 242
+result summaries. Raw log: `.evidence/presented-effects/workspace-color-569.log`;
+aggregate receipt: `WORKSPACE-COLOR-569.json`. This count is the Cargo summary
+aggregate, not a distinct-case claim. Full application/auth acceptance remains
+with the Surf consumer.
+
+Strict Rust workspace all-target Clippy (`-D warnings`) and fmt also pass.
+Surf subsequently passed the original delegated-write case unchanged on the
+optimized private combined candidate (1/1, 117.56 seconds). A distinct employee
+404-case prototype-admission refusal remains under separate investigation; this
+receipt does not claim all 46 auth cases pass.
