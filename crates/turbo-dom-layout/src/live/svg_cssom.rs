@@ -133,4 +133,37 @@ mod tests {
         assert!(!classified.contains(&source_id(testing::DOCUMENT, html)));
         assert!(!classified.contains(&source_id(testing::DOCUMENT, detached)));
     }
+
+    #[test]
+    fn svg_cssom_refuses_imported_paths_onto_or_through_text() {
+        let tree =
+            Tree::parse("<!doctype html><svg><circle id=shape /></svg><p id=caption>text</p>");
+        let capture = captured(&tree);
+        let shape = source_id(testing::DOCUMENT, tree.query_selector("#shape").unwrap());
+        assert_eq!(classify_capture(&tree, &capture), BTreeSet::from([shape]));
+        let caption = tree.query_selector("#caption").unwrap();
+        let text = source_id(testing::DOCUMENT, tree.children(caption)[0]);
+        let text_path = capture
+            .identities
+            .iter()
+            .find(|identity| identity.id == text)
+            .unwrap()
+            .path
+            .clone();
+        for suffix in [None, Some(0)] {
+            let mut imported = capture.clone();
+            let path = &mut imported
+                .identities
+                .iter_mut()
+                .find(|identity| identity.id == shape)
+                .unwrap()
+                .path;
+            *path = text_path.clone();
+            path.extend(suffix);
+            // The public snapshot builder also validates these identity paths
+            // before publishing native geometry. This directly checks the
+            // classifier's own import boundary, not a new public DOM failure.
+            assert!(classify_capture(&tree, &imported).is_empty());
+        }
+    }
 }
