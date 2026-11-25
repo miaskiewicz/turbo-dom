@@ -4,7 +4,7 @@
   "sourceSha256": {
     "src/runtime/css-computed-proxy.mjs": "b9d26f206fdad7df23338995527d67407169e141a0271cf919c6978ee4be91ff",
     "src/runtime/css-gcs-factory.mjs": "36d3369565587a01624512e924348984611db4782b431ba28b1d513434d9e301",
-    "test/css-used-proxy.test.mjs": "07603432625b21af3391a8cc79c9aaf87d5cfd0ba5948ca618b32927a3143819"
+    "test/css-used-proxy.test.mjs": "251a82684a55ec18ca414bbe91c2ae8cd292cd5c29edaf6cd6d7947c5072f5e7"
   },
   "gates": {
     "focusedNode": {
@@ -24,12 +24,12 @@
     "format": "pass FORMAT.log",
     "diffCheck": "pass",
     "fullJavaScript": {
-      "pass": 998,
+      "pass": 1000,
       "fail": 0,
       "lines": 100,
       "functions": 100,
-      "branches": 97.3,
-      "log": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/.evidence/issue-296/used-proxy/FULL-COVERAGE-02.log",
+      "branches": 97.32,
+      "log": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/.evidence/issue-296/used-proxy/FULL-HOOK-CONCURRENCY-03.log",
       "source2filesUnchangedSinceFreeze": true
     },
     "vitest": {
@@ -232,5 +232,6 @@
       }
     ],
     "noDefaultSwitch": true
-  }
+  },
+  "hookThresholdAudit": "Firstnormalhook998passedbutreported97.29branches despite97.3CLIthreshold; noacceptancebasedonthatrounding. Test-onlyfactorymalformedname/nativefunctioncontextguardsadded; actualunlimitedhook-concurrencyfull1000now97.32. Noassertion/floor/source2filechanges."
 }

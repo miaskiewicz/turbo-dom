@@ -306,7 +306,10 @@ test('metadata-only admission preserves custom case and accepts null-prototype p
   provider.token = 'owned';
   let seen;
   const f = fixture(['--Case'], {
-    finalizeResult: () => ({ custom: { '--Case': units('base'), '--case': units('other') }, usedProperties: ['--Case'] }),
+    finalizeResult: () => ({
+      custom: { '--Case': units('base'), '--case': units('other') },
+      usedProperties: ['--Case'],
+    }),
     resolveRequest: () => ({ request: {}, resultId: 7, providerContext: provider }),
     resolveProperty(name, base, context) {
       seen = context;
@@ -321,5 +324,46 @@ test('metadata-only admission preserves custom case and accepts null-prototype p
   assert.equal(proxy.getPropertyValue('--Case'), 'presented');
   assert.equal(seen.providerContext.token, 'owned');
   assert.equal(Object.getPrototypeOf(seen.providerContext), null);
+  f.factory.dispose();
+});
+
+test('factory rejects malformed admitted names before copying provider context', () => {
+  for (const metadata of [[3], [''], ['missing']]) {
+    let reads = 0;
+    const provider = {};
+    Object.defineProperty(provider, 'scene', {
+      enumerable: true,
+      get() {
+        reads++;
+        throw Error('invalid metadata must stop before context copy');
+      },
+    });
+    const f = fixture(metadata, {
+      resolveProperty: () => 'unused',
+      resolveRequest: () => ({ request: {}, resultId: 7, providerContext: provider }),
+    });
+    assert.throws(() => f.factory.get(f.element), /usedProperties/);
+    assert.equal(reads, 0);
+    f.factory.dispose();
+  }
+});
+
+test('factory rejects function-bearing provider data and does not memoize failed projections', () => {
+  let reads = 0;
+  const provider = {};
+  Object.defineProperty(provider, 'scene', {
+    enumerable: true,
+    get() {
+      reads++;
+      return { hiddenOwner() {} };
+    },
+  });
+  const f = fixture(['width'], {
+    resolveProperty: () => 'unused',
+    resolveRequest: () => ({ request: {}, resultId: 7, providerContext: provider }),
+  });
+  assert.throws(() => f.factory.get(f.element), /stateless data/);
+  assert.throws(() => f.factory.get(f.element), /stateless data/);
+  assert.equal(reads, 2);
   f.factory.dispose();
 });
