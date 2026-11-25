@@ -200,3 +200,34 @@ fn charge(
         .ok_or(SvgResourceError::CustomPropertyBytes)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escaped_attribute_budget_is_checked_before_materialization() {
+        let source = "<svg xmlns='http://www.w3.org/2000/svg'/>";
+        let document = roxmltree::Document::parse(source).unwrap();
+        let root = document.root_element();
+        assert!(matches!(
+            attribute_edit(root, "style", "<&>", source, 12),
+            Err(SvgResourceError::CustomPropertyBytes)
+        ));
+        let edit = attribute_edit(root, "style", "<&>", source, 13).unwrap();
+        let output = apply(source, vec![edit], 32).unwrap().unwrap();
+        assert_eq!(
+            roxmltree::Document::parse(&output)
+                .unwrap()
+                .root_element()
+                .attribute("style"),
+            Some("<&>")
+        );
+    }
+
+    #[test]
+    fn no_edits_preserve_source_without_an_owned_replacement() {
+        let source = "<svg xmlns='http://www.w3.org/2000/svg'/>";
+        assert_eq!(apply(source, Vec::new(), 0).unwrap(), None);
+    }
+}
