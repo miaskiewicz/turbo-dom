@@ -1914,6 +1914,7 @@ fn termination_recovery_visits_retained_non_browsing_realms() {
 fn termination_recovery_refuses_an_uninstalled_isolate_before_weak_localization() {
     with_dom(|_outer| {
         let isolate = &mut v8::Isolate::new(Default::default());
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
         v8::scope!(let inner, isolate);
         let context = v8::Context::new(inner, Default::default());
         let inner = &mut v8::ContextScope::new(inner, context);
@@ -1921,5 +1922,32 @@ fn termination_recovery_refuses_an_uninstalled_isolate_before_weak_localization(
             recover_after_termination(inner),
             Err(TerminationRecoveryError::IsolateUnavailable)
         );
+    });
+}
+
+#[test]
+fn termination_recovery_never_runs_queued_guest_microtasks() {
+    with_dom(|scope| {
+        eval(
+            scope,
+            "globalThis.recoveryMicrotasks=0;Promise.resolve().then(()=>{recoveryMicrotasks++})",
+        );
+        let before = style_revisions();
+        recover_after_termination(scope).unwrap();
+        assert_ne!(style_revisions(), before);
+        assert!(eval(scope, "recoveryMicrotasks===0").is_true());
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Auto);
+        let before = style_revisions();
+        assert_eq!(
+            recover_after_termination(scope),
+            Err(TerminationRecoveryError::ImplicitMicrotasks)
+        );
+        // Restore the host's original policy before evaluating assertions: the
+        // rejected API must neither clear caches nor enter JS and drain the queue.
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        assert_eq!(style_revisions(), before);
+        assert!(eval(scope, "recoveryMicrotasks===0").is_true());
+        scope.perform_microtask_checkpoint();
+        assert!(eval(scope, "recoveryMicrotasks===1").is_true());
     });
 }
