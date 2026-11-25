@@ -417,6 +417,10 @@ mod native {
     pub fn serialize_cssom_v1(source: String) -> Result<String> {
         crate::css_serialize::serialize_batch(&source).map_err(error)
     }
+    #[napi(js_name = "projectCssomPropertyV1")]
+    pub fn project_cssom_property_v1(source: String) -> Result<String> {
+        crate::css_used::project_property(&source).map_err(error)
+    }
     #[napi(js_name = "measureSceneV1")]
     pub fn measure_scene_v1(request: String) -> Result<String> {
         super::measure_scene_v1(&request).map_err(error)
@@ -506,6 +510,10 @@ mod wasm {
     #[wasm_bindgen(js_name=serializeCssomV1)]
     pub fn serialize_cssom_v1(source: &str) -> Result<String, JsValue> {
         crate::css_serialize::serialize_batch(source).map_err(|error| JsValue::from_str(&error))
+    }
+    #[wasm_bindgen(js_name=projectCssomPropertyV1)]
+    pub fn project_cssom_property_v1(source: &str) -> Result<String, JsValue> {
+        crate::css_used::project_property(source).map_err(|error| JsValue::from_str(&error))
     }
     #[wasm_bindgen(js_name=measureSceneV1)]
     pub fn measure_scene_v1(request: String) -> Result<String, JsValue> {

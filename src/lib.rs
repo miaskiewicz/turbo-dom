@@ -9,11 +9,15 @@ pub mod core;
 #[cfg(feature = "css-backend")]
 mod css_backend;
 #[cfg(feature = "css-backend")]
+mod css_input;
+#[cfg(feature = "css-backend")]
 mod css_resolve;
 #[cfg(feature = "css-backend")]
 mod css_scene;
 #[cfg(feature = "css-backend")]
 mod css_serialize;
+#[cfg(feature = "css-backend")]
+mod css_used;
 
 // Phase-1 boundary spike (Rust DOM runtime exported to JS via wasm-bindgen).
 #[cfg(feature = "wasm-runtime")]

@@ -53,6 +53,8 @@ pub mod selection;
 pub mod stylesheet;
 #[cfg(feature = "computed-style-grammar")]
 pub mod target_scope;
+#[cfg(feature = "computed-style-grammar")]
+pub mod used_values;
 mod variables;
 pub use variables::{
     check_component_limits, compute_custom_properties, compute_custom_properties_detailed,

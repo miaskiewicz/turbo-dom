@@ -17,6 +17,8 @@ struct Request {
     abi_version: u32,
     targets: Vec<Target>,
     text_decoration: DecorationPolicy,
+    #[serde(default)]
+    include_used_properties: bool,
     limits: Limits,
 }
 #[derive(Clone, Copy, Deserialize)]
@@ -93,39 +95,23 @@ struct Row {
     id: u32,
     values: Vec<(String, Units)>,
     public_keys: BTreeSet<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    used_properties: Option<Vec<String>>,
 }
 fn fail(reason: &str) -> String {
     format!("CSSBackendSerialize:{reason}")
 }
 fn charge(remaining: &mut usize, amount: usize) -> Result<(), String> {
-    *remaining = remaining
-        .checked_sub(amount)
-        .ok_or_else(|| fail("ResourceLimit"))?;
-    Ok(())
+    super::css_input::charge(remaining, amount).map_err(|error| fail(&format!("{error:?}")))
 }
 fn ordinary(
     source: Vec<(String, Vec<u16>)>,
     input: &mut usize,
 ) -> Result<BTreeMap<String, CssText>, String> {
-    let mut values = BTreeMap::new();
-    for (name, units) in source {
-        charge(input, name.encode_utf16().count())?;
-        charge(input, units.len())?;
-        if values.insert(name, CssText::from_units(units)).is_some() {
-            return Err(fail("DuplicateProperty"));
-        }
-    }
-    Ok(values)
+    super::css_input::ordinary(source, input).map_err(|error| fail(&format!("{error:?}")))
 }
 fn provenance(source: Vec<String>, input: &mut usize) -> Result<BTreeSet<String>, String> {
-    let mut keys = BTreeSet::new();
-    for name in source {
-        charge(input, name.encode_utf16().count())?;
-        if !keys.insert(name) {
-            return Err(fail("DuplicatePublicKey"));
-        }
-    }
-    Ok(keys)
+    super::css_input::provenance(source, input).map_err(|error| fail(&format!("{error:?}")))
 }
 fn marker(
     source: Option<Marker>,
@@ -155,6 +141,7 @@ fn row(
     retained: &mut usize,
     limits: Limits,
     decoration: DecorationPolicy,
+    include_used: bool,
 ) -> Result<Row, String> {
     let marker = marker(target.declared_text_decoration, input)?;
     let values = ordinary(target.values, input)?;
@@ -179,6 +166,9 @@ fn row(
     )
     .map_err(|error| fail(&format!("{error:?}")))?;
     charge_result(&serialized, retained)?;
+    let used_properties = include_used
+        .then(|| used_properties(&serialized, retained))
+        .transpose()?;
     Ok(Row {
         id: target.id,
         values: serialized
@@ -188,7 +178,23 @@ fn row(
             .map(|(name, value)| (name, Units(value)))
             .collect(),
         public_keys: serialized.public_keys,
+        used_properties,
     })
+}
+fn used_properties(
+    serialized: &SerializedCssom,
+    retained: &mut usize,
+) -> Result<Vec<String>, String> {
+    let mut used = Vec::new();
+    for name in &serialized.public_keys {
+        if serialized.values.contains_key(name)
+            && turbo_dom_core::rtdom::computed_css::used_values::property_axis(name).is_some()
+        {
+            charge(retained, name.encode_utf16().count())?;
+            used.push(name.clone());
+        }
+    }
+    Ok(used)
 }
 pub(crate) fn serialize_batch(source: &str) -> Result<String, String> {
     let request: Request =
@@ -213,6 +219,7 @@ pub(crate) fn serialize_batch(source: &str) -> Result<String, String> {
             &mut retained,
             request.limits,
             request.text_decoration,
+            request.include_used_properties,
         )?);
     }
     serde_json::to_string(&serde_json::json!({"abiVersion":1,"targets":targets}))
@@ -365,5 +372,31 @@ mod tests {
         let mut unknown = request(vec![]);
         unknown["geometryOnly"] = json!(true);
         assert!(run(&unknown).is_err());
+    }
+    #[test]
+    fn optional_used_property_metadata_is_canonical_and_owns_its_budget() {
+        let mut input = request(vec![
+            json!({"id":1,"values":[["width",[53,48,37]]],"publicKeys":["width"]}),
+        ]);
+        assert!(run(&input).unwrap()["targets"][0]
+            .get("usedProperties")
+            .is_none());
+        input["includeUsedProperties"] = json!(true);
+        let result = run(&input).unwrap();
+        assert_eq!(result["targets"][0]["usedProperties"], json!(["width"]));
+        assert_eq!(
+            result["targets"][0]["values"],
+            json!([["width", [53, 48, 37]]])
+        );
+        input["limits"]["retainedUnits"] = json!(18);
+        assert!(run(&input).is_ok());
+        input["limits"]["retainedUnits"] = json!(17);
+        assert!(run(&input).unwrap_err().contains("ResourceLimit"));
+        input["limits"]["retainedUnits"] = json!(64);
+        input["targets"][0]["values"] = json!([]);
+        assert_eq!(
+            run(&input).unwrap()["targets"][0]["usedProperties"],
+            json!([])
+        );
     }
 }
