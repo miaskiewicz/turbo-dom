@@ -1,0 +1,332 @@
+[
+  {
+    "id": "fallback",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"var(--missing,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "defined",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "inherited",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><g style=\"--paint:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "local-override",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><g style=\"--paint:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--paint)\" style=\"--paint:#ee2244\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "computed-parent",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><g style=\"--a:#22cc44;--b:var(--a)\"><g style=\"--a:#ee2244\"><rect width=\"80\" height=\"80\" fill=\"var(--b)\" style=\"\"/></g></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "cycle-fallback",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--a:var(--b);--b:var(--a)\"><rect width=\"80\" height=\"80\" fill=\"var(--a,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "missing-unset-inherits",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--missing)\" style=\"\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "nested-fallback",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"var(--missing,var(--other,#ee2244))\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "important-custom",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44!important;--paint:#ee2244\"><rect width=\"80\" height=\"80\" fill=\"var(--paint)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "stylesheet-custom",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>svg{--paint:#22cc44}rect{fill:var(--paint)}</style><rect width=\"80\" height=\"80\" fill=\"#ee2244\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "stylesheet-important",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44\"><style>rect{fill:var(--paint)!important}</style><rect width=\"80\" height=\"80\" fill=\"#ee2244\" style=\"fill:#ee2244\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "inline-important",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#ee2244\"><style>rect{fill:#22cc44!important}</style><rect width=\"80\" height=\"80\" fill=\"var(--missing,#ee2244)\" style=\"fill:var(--paint)!important\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "current-color",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:currentColor;color:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--paint)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "escaped-custom",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--p\\61int,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "uppercase-var",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"VAR(--paint,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "unused-cycle",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:#22cc44;--cycle:var(--cycle)\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,var(--cycle))\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "initial-custom-fallback",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--paint:initial\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "literal-control",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"#ee2244\" style=\"\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "literal-use",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><defs><rect id='r' width='80' height='80' fill='#22cc44'/></defs><use href='#r'/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "variable-use",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><defs><rect id='r' width='80' height='80' fill='var(--paint,#ee2244)'/></defs><use href='#r' style='--paint:#22cc44'/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "conditional-variable",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>@media(min-width:1px){rect{fill:var(--paint,#ee2244)}}</style><rect width=\"80\" height=\"80\" fill=\"#22cc44\" style=\"\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "literal-gif",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><image width=\"80\" height=\"80\" href=\"data:image/gif;base64,R0lGODlhAQABAIAAAO4iRAAAACwAAAAAAQABAAACAkQBADs=\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "literal-clipped",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><defs><clipPath id=\"a\"><rect width=\"80\" height=\"80\"/></clipPath><clipPath id=\"b\" clip-path=\"url(#a)\"><rect width=\"80\" height=\"80\"/></clipPath></defs><rect width=\"80\" height=\"80\" fill=\"#ee2244\" clip-path=\"url(#b)\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "literal-nested-svg",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><image width=\"80\" height=\"80\" href=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZWUyMjQ0Ii8+PC9zdmc+\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "comment-boundary-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>rect{--paint:r/**/ed;fill:var(--paint)}</style><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "valid-empty-unsets",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"--paint:;fill:var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "escaped-definition",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"--p\\61int:#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--paint)\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "xml-root-and-class",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><style><![CDATA[:root{--paint:#22cc44}.Paint{fill:var(--paint)}.paint{fill:#ee2244}]]></style><rect class=\"Paint\" width=\"80\" height=\"80\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "fallback-initial",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--missing,initial)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "fallback-inherit",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--missing,inherit)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "fallback-unset",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" fill=\"var(--missing,unset)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "style-selector-freeze",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>rect[style*=\"fill\"]{opacity:.5}</style><rect width=\"80\" height=\"80\" style=\"fill:var(--paint,#ee2244)\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "empty-selector-freeze",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>style:not(:empty)+rect{opacity:.5}rect{fill:var(--paint,#ee2244)}</style><rect width=\"80\" height=\"80\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "xml-escaped-nonpaint",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style><![CDATA[rect[style*=\"a;b&c\"]{opacity:.5}]]></style><rect width=\"80\" height=\"80\" style='font-family:\"a;b&amp;c\";fill:var(--paint,#ee2244)'/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "nonpaint-env-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"opacity:env(no-such-env,.5)\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "all-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"all:initial\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "animation-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"animation:none\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "media-attribute-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style media=\"not all\">rect{fill:var(--paint,#ee2244)}</style><rect width=\"80\" height=\"80\" fill=\"#22cc44\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "dynamic-pseudo-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" ><style>rect:hover{fill:#22cc44}</style><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "prefixed-xml-root",
+    "svg": "<s:svg xmlns:s=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><s:style>:root{--paint:#22cc44}rect{fill:var(--paint)}</s:style><s:rect width=\"80\" height=\"80\"/></s:svg>",
+    "unsupported": false
+  },
+  {
+    "id": "nested-variable-image",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><image width=\"80\" height=\"80\" href=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSJ2YXIoLS1taXNzaW5nLCNlZTIyNDQpIi8+PC9zdmc+\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "nonpaint-invalid-fallback",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><style>rect{opacity:.5;opacity:invalid;fill:var(--paint,#ee2244)}</style><rect width=\"80\" height=\"80\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "literal-dtd",
+    "svg": "<!DOCTYPE svg [<!ENTITY paint \"#ee2244\">]><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><rect width=\"80\" height=\"80\" fill=\"&paint;\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "nonpaint-var-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><rect width=\"80\" height=\"80\" fill=\"#ee2244\" style=\"width:var(--width,80px)\"/></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "malformed-var-discarded-before-cascade",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"fill:#ee2244;fill:var(bad-name)\" /></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "malformed-custom-discarded-before-cascade",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"--paint:#ee2244;--paint:var(bad-name);fill:var(--paint)\" /></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "malformed-unused-fallback-discarded",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"--paint:#ee2244;fill:#ee2244;fill:var(--paint,var(bad-name))\" /></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "valid-cycle-unsets-after-cascade",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--paint);fill:#ee2244;fill:var(--paint)\" /></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "invalid-presentation-inherits",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g fill=\"#22cc44\"><rect width=\"80\" height=\"80\" style=\"\" fill=\"var(bad-name)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-inherit",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,inherit)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-unset",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,unset)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-initial",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,initial)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-dependency",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,inherit);--other:var(--paint)\" fill=\"var(--other)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-escaped",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,\\69nherit)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-revert",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,revert)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "custom-cycle-fallback-revert",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--paint,revert)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "custom-post-revert-layer",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--missing,revert-layer)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "custom-cycle-fallback-revert-layer",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g style=\"--paint:#22cc44;--other:#ee2244\"><rect width=\"80\" height=\"80\" style=\"--paint:var(--paint,revert-layer)\" fill=\"var(--paint,#ee2244)\"/></g></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "opacity-math-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g opacity=\".5\"><rect width=\"40\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"opacity:calc(.5)\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "opacity-inherit-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g opacity=\".5\"><rect width=\"40\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"opacity:inherit\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "css-geometry-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><g opacity=\".5\"><rect width=\"40\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"width:80px\"/></g></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "text-context-uncertified",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><text x=\"40\" y=\"40\" fill=\"var(--paint,#ee2244)\">X</text></svg>",
+    "unsupported": true
+  },
+  {
+    "id": "visibility-literal-hidden",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"visibility:HIDDEN\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "display-literal-none",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"display:none\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "opacity-literal-clamped",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><rect width=\"80\" height=\"80\" fill=\"var(--paint,#ee2244)\" style=\"opacity:2\"/></svg>",
+    "unsupported": false
+  },
+  {
+    "id": "root-display-block-faq",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" style=\"display:block\"><rect width=\"80\" height=\"80\" fill=\"var(--missing,#ee2244)\"/></svg>",
+    "unsupported": false
+  }
+]
