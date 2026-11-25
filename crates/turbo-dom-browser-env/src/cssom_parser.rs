@@ -18,19 +18,13 @@ use lightningcss::traits::ToCss;
 pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 
 pub fn is_supported_property(name: &str) -> bool {
-    // Chrome 156 refuses every `-moz-*` vendor-prefixed name, even the ones Lightning CSS
-    // maps to a known PropertyId (e.g. `-moz-appearance`): see turbo-dom#390.
-    //
-    // Review R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
-    // case-insensitive; `CSS.supports("-MOZ-appearance", "none")` and
-    // `-MOZ-APPEARANCE: none` in a stylesheet must be rejected like `-moz-`.
-    // Lightning CSS normalises for its own lookup, so without an
-    // ASCII-case-insensitive check here the rejection leaked. Match the
-    // `-moz-` prefix case-insensitively.
-    if name.len() > 5
-        && name.as_bytes()[0] == b'-'
-        && name.as_bytes()[1..5].eq_ignore_ascii_case(b"moz-")
-    {
+    // Lightning CSS models legacy vendor names that Chromium ignores. Keep the
+    // canonical property admission consistent across supports, declarations and
+    // keyframes, including ASCII-case-insensitive authored spellings.
+    if ["-moz-", "-ms-", "-o-"].iter().any(|prefix| {
+        name.get(..prefix.len())
+            .is_some_and(|text| text.eq_ignore_ascii_case(prefix))
+    }) {
         return false;
     }
     // turbo-dom#441: a -webkit-* name whose Chrome 156 acceptance disagrees with Lightning
@@ -38,7 +32,7 @@ pub fn is_supported_property(name: &str) -> bool {
     // properties Chrome serves but Lightning CSS models as Custom (ASCII case-insensitive
     // per CSS 2.2 §4.1.1 — the Chrome page admits `-WEBKIT-LINE-CLAMP`); reject
     // `-webkit-backdrop-filter`, the one Lightning CSS models but Chrome 156 does not.
-    if name.len() > 1 && name.as_bytes()[0] == b'-' {
+    if name.starts_with('-') {
         // R1 L3: match the -webkit-* allowlist case-insensitively on the borrowed
         // name instead of allocating a lowercase copy on this hot path.
         // CSS 2.2 §4.1.1 says property names are ASCII case-insensitive,

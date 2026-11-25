@@ -19,7 +19,12 @@ pub struct Rect {
     pub height: f32,
 }
 
-pub(crate) type CollectedGeometry = (Vec<SnapshotFragment>, Vec<[f64; 6]>, Vec<[f64; 6]>);
+pub(crate) type CollectedGeometry = (
+    Vec<SnapshotFragment>,
+    Vec<[f64; 6]>,
+    Vec<[f64; 6]>,
+    Vec<[f64; 6]>,
+);
 
 struct Capture<'a> {
     sources: &'a HashMap<NodeId, SourceRecord>,
@@ -42,7 +47,7 @@ pub(crate) fn collect(
     transforms: &HashMap<NodeId, crate::layout::value::NativeTransform>,
     scale: Option<f32>,
 ) -> CollectedGeometry {
-    let mut fragments = (Vec::new(), Vec::new(), Vec::new());
+    let mut fragments = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let capture = Capture {
         sources,
         metrics,
@@ -93,6 +98,7 @@ fn append(
     let index = out.0.len();
     out.1.push(matrix);
     out.2.push(hit);
+    out.3.push(own);
     out.0.push(SnapshotFragment {
         index,
         parent,
@@ -164,7 +170,7 @@ fn about_origin(transform: Transform2D, x: f32, y: f32) -> [f64; 6] {
     matrix
 }
 
-fn multiply(a: [f64; 6], b: [f64; 6]) -> [f64; 6] {
+pub(super) fn multiply(a: [f64; 6], b: [f64; 6]) -> [f64; 6] {
     [
         a[0] * b[0] + a[2] * b[1],
         a[1] * b[0] + a[3] * b[1],

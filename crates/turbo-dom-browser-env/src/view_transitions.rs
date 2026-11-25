@@ -538,9 +538,10 @@ fn visit_function_token<'i, 't>(
 /// transition and either parses with a range or fails the parse (a property of the text,
 /// memoized by `selector_argument`).
 pub(super) fn applies(source: &str) -> bool {
-    if !source
-        .to_ascii_lowercase()
-        .contains("active-view-transition")
+    if !source.contains('\\')
+        && !source
+            .to_ascii_lowercase()
+            .contains("active-view-transition")
     {
         return false;
     }
@@ -555,9 +556,10 @@ pub(super) fn applies(source: &str) -> bool {
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
     #[cfg(test)]
     SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
-    if !source
-        .to_ascii_lowercase()
-        .contains("active-view-transition")
+    if !source.contains('\\')
+        && !source
+            .to_ascii_lowercase()
+            .contains("active-view-transition")
     {
         return Some(source.to_owned());
     }
@@ -613,4 +615,43 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
         return None;
     }
     Some(result)
+}
+
+#[cfg(all(test, feature = "host-internals"))]
+mod host_projection_tests {
+    use super::*;
+    use crate::host_internals::{prepare_selector, selector_state_stamp};
+
+    #[test]
+    fn volatile_transition_projection_changes_without_a_revision_change() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><main id=target></main>");
+        let _owner = DomScope::enter(context.get_slot::<DomContextId>().unwrap().0);
+        let (root, target) =
+            with_tree(|tree| (tree.root(), tree.query_selector("#target").unwrap())).unwrap();
+        let document = wrap(scope, root);
+        let stamp = selector_state_stamp(scope, document).unwrap();
+        for source in [
+            ":active-view-transition",
+            ":is(:active-v\\69 ew-transition)",
+            ":active-view-transition-type(example)",
+        ] {
+            let inactive = prepare_selector(scope, document, source).unwrap();
+            assert!(inactive.is_volatile());
+            assert!(!with_tree(|tree| tree.matches(target, inactive.match_selector())).unwrap());
+            set_active(target, Some(vec!["example".into()]));
+            let active = prepare_selector(scope, document, source).unwrap();
+            assert!(active.is_volatile());
+            assert_eq!(stamp, active.stamp());
+            assert!(with_tree(|tree| tree.matches(target, active.match_selector())).unwrap());
+            set_active(target, None);
+            assert_eq!(stamp, selector_state_stamp(scope, document).unwrap());
+        }
+        reset();
+    }
 }

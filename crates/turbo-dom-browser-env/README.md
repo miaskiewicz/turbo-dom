@@ -139,6 +139,21 @@ Also in the crate:
   - `current_document_id`, `document_id_of`, `is_browsing_context`,
     `current_document_context`, `retire_context`;
   - `interface_record`, `cascade_policy`;
+  - `prepare_selector(scope, native_root, source)`: match-only canonical form,
+    popover, dialog, interest and view-transition state projection for native
+    stylesheet matchers. Retain authored specificity and scope metadata; never
+    rank the projected structural predicate. `SelectorPreparationError` distinguishes
+    invalid syntax, unavailable owner/state and pending exceptions. The genuine
+    root's creation realm is entered under explicit microtask checkpoints, without
+    guest getters or layout. `PreparedSelector::stamp` / `selector_state_stamp`
+    record capture provenance, not a standalone cache permission: fresh capture,
+    owner/composition and all host invalidation guards remain required. Connected
+    checkpoint reuse may separately justify detached-storage equivalence; local
+    or disconnected scopes still require full native-version validation.
+    `PreparedSelector::is_volatile()` marks interest/view-transition state, which
+    has no invalidation epoch and must be prepared afresh for each read. Stamp or
+    checkpoint equality cannot justify cached targets/geometry for these selectors;
+    a fresh complete projection-equality proof still needs every other host guard;
   - `cached_own_box(scope, element)` and `CachedOwnBox`: cache-only own
     `display:none` admission for visual bounding/client rectangles;
   - `document_checkpoint(scope, native_document)` and opaque `DocumentCheckpoint`:

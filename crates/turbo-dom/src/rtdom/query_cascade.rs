@@ -58,6 +58,7 @@ impl SelectorList {
 #[derive(Debug, Clone)]
 pub struct CascadeSelector {
     text: String,
+    source_units: Option<Vec<u16>>,
     complex: Complex,
     pseudo_element: Option<PseudoElement>,
     specificity: Specificity,
@@ -76,6 +77,16 @@ impl CascadeSelector {
     #[must_use]
     pub fn text(&self) -> &str {
         &self.text
+    }
+
+    /// Selector source units after CSS selector preprocessing. Unit-aware callers
+    /// retain raw quoted attribute strings; old scalar callers allocate only here.
+    #[must_use]
+    pub fn text_units(&self) -> std::borrow::Cow<'_, [u16]> {
+        self.source_units.as_deref().map_or_else(
+            || std::borrow::Cow::Owned(self.text.encode_utf16().collect()),
+            std::borrow::Cow::Borrowed,
+        )
     }
 
     /// Its specificity (Selectors 4).
@@ -108,6 +119,32 @@ impl CascadeSelector {
                     .is_none_or(|tag| tag.eq_ignore_ascii_case(local_name))
             }
         }
+    }
+
+    /// A conservative certificate for matching without live document state.
+    /// Static root/empty and their logical combinations are certified; other
+    /// pseudo classes and every pseudo element remain explicitly uncertain.
+    #[must_use]
+    pub fn certifies_structural_matching(&self) -> bool {
+        if self.pseudo_element.is_some() {
+            return false;
+        }
+        let mut pending = vec![&self.complex];
+        while let Some(complex) = pending.pop() {
+            for pseudo in std::iter::once(&complex.first)
+                .chain(complex.rest.iter().map(|(_, c)| c))
+                .flat_map(|compound| &compound.pseudos)
+            {
+                match pseudo {
+                    Pseudo::Root | Pseudo::Scope | Pseudo::Empty => {}
+                    Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::Not(list) => {
+                        pending.extend(list);
+                    }
+                    _ => return false,
+                }
+            }
+        }
+        true
     }
 
     /// The pseudo-element it targets (lowercase name, e.g. `before`), if any.
@@ -362,14 +399,43 @@ pub fn parse_for_cascade(src: &str) -> Result<SelectorList, SelectorError> {
 }
 
 fn parse_item(item: &str) -> Result<CascadeSelector, SelectorError> {
-    let complex = parse_complex_strict(item)?;
+    finish_selector(item.to_string(), None, parse_complex_strict(item)?)
+}
+
+/// Stylesheet selector compilation from original DOM-string code units.
+/// Identifiers follow CSS replacement rules; quoted attribute values retain units.
+///
+/// # Errors
+/// Returns the same stylesheet validity errors as [`parse_for_cascade`].
+pub fn parse_for_cascade_units(source: &[u16]) -> Result<SelectorList, SelectorError> {
+    let normalized = super::source::normalize(source, super::source::Mode::Sheet);
+    let source = normalized.as_deref().unwrap_or(source);
+    let selectors = units::split(source, 44)
+        .into_iter()
+        .map(|item| {
+            let item = units::trim(item);
+            let text = String::from_utf16_lossy(item);
+            validate_raw(&text)?;
+            let complex = units::complex(item).ok_or(SelectorError::EmptyCompound)?;
+            finish_selector(text, Some(item.to_vec()), check_complex(complex)?)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(SelectorList { selectors })
+}
+
+fn finish_selector(
+    text: String,
+    source_units: Option<Vec<u16>>,
+    complex: Complex,
+) -> Result<CascadeSelector, SelectorError> {
     let (complex, pseudo_element) = finish_subject(complex)?;
     let specificity = complex_specificity(&complex)
         + pseudo_element
             .as_ref()
             .map_or(Spec::default(), pseudo_element_specificity);
     Ok(CascadeSelector {
-        text: item.to_string(),
+        text,
+        source_units,
         complex,
         pseudo_element,
         specificity: specificity.into(),
@@ -427,7 +493,10 @@ fn unforgiving_pseudo(pseudo: &Pseudo) -> Result<(), SelectorError> {
 /// One complex selector (no top-level comma), checked like a stylesheet item and with every
 /// nested pseudo checked: `Err` when Chrome rejects it.
 fn parse_complex_strict(item: &str) -> Result<Complex, SelectorError> {
-    let mut complex = parse_raw(item)?;
+    check_complex(parse_raw(item)?)
+}
+
+fn check_complex(mut complex: Complex) -> Result<Complex, SelectorError> {
     check_compound(&mut complex.first, false)?;
     for (_, compound) in &mut complex.rest {
         check_compound(compound, false)?;
@@ -436,7 +505,7 @@ fn parse_complex_strict(item: &str) -> Result<Complex, SelectorError> {
 }
 
 /// One complex selector as the shared parser reads it, before the stylesheet checks.
-fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
+fn validate_raw(item: &str) -> Result<(), SelectorError> {
     if item.is_empty() {
         return Err(SelectorError::EmptyCompound);
     }
@@ -445,6 +514,11 @@ fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
     if matches!(tail.next(), Some('>' | '+' | '~')) && tail.next() != Some('\\') {
         return Err(SelectorError::EmptyCompound);
     }
+    Ok(())
+}
+
+fn parse_raw(item: &str) -> Result<Complex, SelectorError> {
+    validate_raw(item)?;
     if item.contains('\\') {
         let units: Vec<u16> = item.encode_utf16().collect();
         // one validated item is one complex selector

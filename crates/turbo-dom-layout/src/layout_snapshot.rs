@@ -176,6 +176,7 @@ pub struct LayoutSnapshot {
     fragments: Vec<SnapshotFragment>,
     native_transforms: Vec<[f64; 6]>,
     native_hit_transforms: Vec<[f64; 6]>,
+    native_own_transforms: Vec<[f64; 6]>,
     range_projection: Vec<range_projection::Projection>,
     sources: Vec<SnapshotSource>,
     source_index: BTreeMap<SourceId, usize>,
@@ -186,6 +187,7 @@ pub struct LayoutSnapshot {
     collapsed_text_sources: std::collections::BTreeSet<SourceId>,
     html_layout_scale: Option<f32>,
     unsupported_svg_sources: std::collections::BTreeSet<SourceId>,
+    svg_without_css_box: std::collections::BTreeSet<SourceId>,
     unsupported_inline_sources: BTreeMap<SourceId, SnapshotError>,
     /// The fragments of list markers (miaskiewicz/turbo-dom#128) -> their list item.
     list_markers: BTreeMap<usize, SourceId>,
@@ -227,11 +229,50 @@ impl LayoutSnapshot {
         self.native_hit_transforms.get(fragment_index).copied()
     }
 
+    /// Project only through the actual native descendant chain, excluding the container
+    /// and all its ancestors. A singular world prefix loses no local provenance here.
+    pub(crate) fn native_quad_relative_to(
+        &self,
+        fragment: usize,
+        container: usize,
+    ) -> Option<[Point; 4]> {
+        let matrix = self.native_relative_transform(fragment, container)?;
+        let quad = geometry::rect_quad(self.fragments.get(fragment)?.rect)
+            .map(|point| geometry::transform(point, matrix));
+        quad.iter()
+            .all(|point| point.x.is_finite() && point.y.is_finite())
+            .then_some(quad)
+    }
+
+    fn native_relative_transform(&self, mut fragment: usize, container: usize) -> Option<[f64; 6]> {
+        self.fragments.get(container)?;
+        let mut matrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        while fragment != container {
+            matrix = geometry::multiply(*self.native_own_transforms.get(fragment)?, matrix);
+            fragment = self.fragments.get(fragment)?.parent?;
+        }
+        matrix
+            .iter()
+            .all(|value| value.is_finite())
+            .then_some(matrix)
+    }
+
     /// SVG shape/nested-viewport identities stay present, but this viewport-only
     /// producer cannot supply their geometry. Absence is never a zero rectangle.
     #[must_use]
     pub fn unsupported_svg_source_geometry(&self, source: SourceId) -> bool {
         self.unsupported_svg_sources.contains(&source)
+    }
+
+    pub(crate) fn svg_without_css_box(&self, source: SourceId) -> bool {
+        self.svg_without_css_box.contains(&source)
+    }
+
+    pub(crate) fn certify_svg_without_css_box(
+        &mut self,
+        sources: std::collections::BTreeSet<SourceId>,
+    ) {
+        self.svg_without_css_box = sources;
     }
 
     /// Why the native HTML inline producer cannot supply this source's geometry: it is
@@ -614,7 +655,7 @@ fn capture_styled_with_plan(
         .flat_map(|capture| capture.collapsed_sources.iter())
         .filter_map(|node| records.get(node).and_then(|record| record.id))
         .collect();
-    let (fragments, native_transforms, native_hit_transforms) =
+    let (fragments, native_transforms, native_hit_transforms, native_own_transforms) =
         geometry::collect(&galley, &records, &metrics, &transforms, font_layout_scale);
     let range_projection =
         range_projection::collect(&fragments, &transforms, font_layout_scale.is_some());
@@ -632,6 +673,7 @@ fn capture_styled_with_plan(
         fragments,
         native_transforms,
         native_hit_transforms,
+        native_own_transforms,
         range_projection,
         sources,
         source_index,
@@ -642,6 +684,7 @@ fn capture_styled_with_plan(
         collapsed_text_sources,
         html_layout_scale: font_layout_scale,
         unsupported_svg_sources,
+        svg_without_css_box: std::collections::BTreeSet::new(),
         unsupported_inline_sources,
         list_markers,
         sticky,

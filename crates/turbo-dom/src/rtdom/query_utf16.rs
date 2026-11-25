@@ -78,7 +78,7 @@ pub(super) fn has_class_units(got: &[u16], value: &[u16]) -> bool {
             .split(|&unit| whitespace(unit))
             .any(|word| word == value)
 }
-fn trim(mut units: &[u16]) -> &[u16] {
+pub(super) fn trim(mut units: &[u16]) -> &[u16] {
     while units.first().is_some_and(|&u| whitespace(u)) {
         units = &units[1..];
     }
@@ -373,7 +373,7 @@ fn split_step(unit: u16, depth: &mut i32, quote: &mut u16, escaped: &mut bool) -
     true
 }
 
-fn split(units: &[u16], separator: u16) -> Vec<&[u16]> {
+pub(super) fn split(units: &[u16], separator: u16) -> Vec<&[u16]> {
     let mut parts = Vec::new();
     let (mut depth, mut quote, mut escaped, mut start) = (0, 0, false, 0);
     for (i, &unit) in units.iter().enumerate() {
@@ -575,7 +575,7 @@ fn parse_type_selector(source: &[u16], index: &mut usize, compound: &mut Compoun
     }
 }
 
-fn complex(source: &[u16]) -> Option<Complex> {
+pub(super) fn complex(source: &[u16]) -> Option<Complex> {
     let mut index = 0;
     let mut first = None;
     let mut rest = Vec::new();

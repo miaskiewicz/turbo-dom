@@ -2,6 +2,13 @@
 //! Raw declaration payloads retain DOM code units; the scalar view is only a
 //! structural tokenizer input, never a replacement for authored custom tokens.
 use std::ops::Range;
+pub mod stylesheet;
+mod variables;
+pub use variables::{
+    check_component_limits, compute_custom_properties, compute_custom_properties_detailed,
+    has_function_reference, has_variable_references, substitute, valid_custom_value_syntax,
+    ComputationLimits, ComputedCssError, CustomComputation, CustomProperties, RollbackKeyword,
+};
 
 /// Original CSS text, including any unpaired UTF-16 units.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -88,6 +95,23 @@ pub struct CssDeclaration {
     pub name: String,
     pub value: CssText,
     pub important: bool,
+}
+
+impl CssDeclaration {
+    /// Serialize a normalized name through CSS Syntax while retaining raw value units.
+    #[must_use]
+    pub fn serialized(&self) -> CssText {
+        let mut name = String::new();
+        cssparser::serialize_identifier(&self.name, &mut name).expect("String serialization");
+        let mut units: Vec<u16> = name.encode_utf16().collect();
+        units.push(u16::from(b':'));
+        units.extend_from_slice(self.value.as_units());
+        if self.important {
+            units.extend(" !important".encode_utf16());
+        }
+        units.push(u16::from(b';'));
+        CssText::from_units(units)
+    }
 }
 
 /// Parse declarations without normalizing their raw custom-property payloads.

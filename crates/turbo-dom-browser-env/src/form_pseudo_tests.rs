@@ -2,6 +2,33 @@ use super::*;
 use crate::browser_env::crate_surface::harness_tests::thrown;
 use sha2::{Digest, Sha256};
 
+#[test]
+fn native_cascade_validity_requires_canonical_binding_projection() {
+    super::tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, "<!doctype html><style>#target{width:20px}#host:has(input:invalid) #target{width:80px!important}</style><div id=host><input id=input type=checkbox><div id=target></div></div>");
+    let source = v8::String::new(scope, "(()=>{const input=document.getElementById('input'),target=document.getElementById('target');input.setCustomValidity('bad');return JSON.stringify([input.validity.valid,input.matches(':invalid'),document.querySelector('input:invalid')===input,getComputedStyle(target).width]);})()").unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    assert_eq!(
+        result.to_rust_string_lossy(scope),
+        "[false,true,true,\"80px\"]"
+    );
+    let _owner = DomScope::enter(context.get_slot::<DomContextId>().unwrap().0);
+    let (root, target) =
+        with_tree(|tree| (tree.root(), tree.query_selector("#target").unwrap())).unwrap();
+    let selector = "#host:has(input:invalid) #target";
+    assert!(!with_tree(|tree| tree.matches_scoped(target, selector, root)).unwrap());
+    let projected = rewrite_pseudo_selector(scope, root, selector, false).unwrap();
+    assert!(with_tree(|tree| tree.matches_scoped(target, &projected, root)).unwrap());
+    reset();
+}
+
 // Runs the SAME probe that scripts/select-element-chrome-control.mjs captured in Chrome 156 and
 // compares every phase and pseudo-class against the saved control.
 #[test]

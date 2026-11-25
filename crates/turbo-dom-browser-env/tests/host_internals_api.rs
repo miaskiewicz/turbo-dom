@@ -17,6 +17,175 @@ fn init_v8() {
     });
 }
 
+#[test]
+fn native_selector_preparation_projects_private_validity() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    browser_env::install_independent_html(
+        scope,
+        "<!doctype html><div id=host><input id=input><div id=target></div></div>",
+    );
+    eval(
+        scope,
+        "document.getElementById('input').setCustomValidity('bad')",
+    );
+    let document = object(scope, "document");
+    let prepared = prepare_selector(scope, document, "#host:has(input:invalid) #target").unwrap();
+    let _owner = enter_document_of(scope, document);
+    assert!(with_tree(|tree| {
+        let target = tree.query_selector("#target").unwrap();
+        tree.matches_scoped(target, prepared.match_selector(), tree.root())
+    })
+    .unwrap());
+    let before = prepared.stamp();
+    eval(
+        scope,
+        "document.getElementById('input').setCustomValidity('')",
+    );
+    assert_ne!(before, selector_state_stamp(scope, document).unwrap());
+    let cleared = prepare_selector(scope, document, "#host:has(input:invalid) #target").unwrap();
+    assert!(!with_tree(|tree| {
+        tree.matches_scoped(
+            tree.query_selector("#target").unwrap(),
+            cleared.match_selector(),
+            tree.root(),
+        )
+    })
+    .unwrap());
+    eval(scope, "document.getElementById('input').setCustomValidity('again'); Object.defineProperty(HTMLInputElement.prototype,'validity',{get(){throw Error('guest validity')}}); Element.prototype.matches=()=>{throw Error('guest matches')}; document.querySelectorAll=()=>{throw Error('guest query')}");
+    let protected = prepare_selector(scope, document, "#host:has(input:invalid) #target").unwrap();
+    assert!(with_tree(|tree| {
+        tree.matches_scoped(
+            tree.query_selector("#target").unwrap(),
+            protected.match_selector(),
+            tree.root(),
+        )
+    })
+    .unwrap());
+    browser_env::reset();
+}
+
+#[test]
+fn native_selector_preparation_checks_roots_policy_and_syntax() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    browser_env::install_independent_html(scope, "<!doctype html><div id=host></div>");
+    let document = object(scope, "document");
+    assert_eq!(
+        prepare_selector(scope, document, "div").unwrap_err(),
+        SelectorPreparationError::Unavailable
+    );
+    scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    for source in ["", "[", ":invalid(", "div:unknown"] {
+        assert_eq!(
+            prepare_selector(scope, document, source).unwrap_err(),
+            SelectorPreparationError::InvalidSelector
+        );
+    }
+    for source in [
+        "({})",
+        "document.createTextNode('text')",
+        "document.createComment('x')",
+        "new DOMParser().parseFromString('<div/>','text/html')",
+    ] {
+        let fake = object(scope, source);
+        assert_eq!(
+            prepare_selector(scope, fake, "div").unwrap_err(),
+            SelectorPreparationError::Unavailable
+        );
+    }
+    let unchanged = prepare_selector(scope, document, "#host").unwrap();
+    assert_eq!(unchanged.match_selector(), "#host");
+    for source in [
+        "document.getElementById('host')",
+        "document.createDocumentFragment()",
+        "document.getElementById('host').attachShadow({mode:'closed'})",
+    ] {
+        let root = object(scope, source);
+        let prepared = prepare_selector(scope, root, ":scope").unwrap();
+        let _owner = enter_document_of(scope, root);
+        let handle = handle_of(scope, root).unwrap();
+        let expected = with_tree(|tree| tree.node_type_id(handle) == 1).unwrap();
+        assert_eq!(
+            with_tree(|tree| tree.matches_scoped(handle, prepared.match_selector(), handle))
+                .unwrap(),
+            expected
+        );
+    }
+    retire_context(context);
+    assert_eq!(
+        prepare_selector(scope, document, "div").unwrap_err(),
+        SelectorPreparationError::Unavailable
+    );
+    browser_env::reset();
+}
+
+#[test]
+fn native_selector_preparation_shares_all_canonical_state_transforms() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    browser_env::install_independent_html(scope, "<!doctype html><input id=input type=checkbox><div id=pop popover=manual></div><dialog id=dialog></dialog><div id=shadow></div>");
+    eval(scope, "document.getElementById('input').checked=true;document.getElementById('pop').showPopover();document.getElementById('dialog').showModal();document.getElementById('shadow').attachShadow({mode:'open'}).innerHTML='<input required>'");
+    let document = object(scope, "document");
+    for source in [
+        ":checked",
+        ":popover-open",
+        ":modal",
+        ":open",
+        ":interest-source",
+        ":interest-target",
+        ":active-view-transition",
+        ":is(:checked,:popover-open,:modal,:interest-source,:active-view-transition)",
+    ] {
+        let authored = object(
+            scope,
+            &format!("Array.from(document.querySelectorAll({source:?}))"),
+        );
+        let authored = v8::Local::<v8::Array>::try_from(authored).unwrap();
+        let mut expected = Vec::new();
+        let _owner = enter_document_of(scope, document);
+        for index in 0..authored.length() {
+            let value = authored
+                .get_index(scope, index)
+                .unwrap()
+                .to_object(scope)
+                .unwrap();
+            expected.push(handle_of(scope, value).unwrap());
+        }
+        let prepared = prepare_selector(scope, document, source).unwrap();
+        assert_eq!(
+            prepared.is_volatile(),
+            source.contains("interest-") || source.contains("active-view-transition")
+        );
+        assert_eq!(
+            with_tree(|tree| tree.query_selector_all(prepared.match_selector()).to_vec()).unwrap(),
+            expected,
+            "{source}"
+        );
+    }
+    let shadow = object(scope, "document.getElementById('shadow').shadowRoot");
+    let prepared = prepare_selector(scope, shadow, "input:invalid").unwrap();
+    let _owner = enter_document_of(scope, shadow);
+    let root = handle_of(scope, shadow).unwrap();
+    assert!(with_tree(|tree| {
+        let input = tree.children(root)[0];
+        tree.matches_scoped(input, prepared.match_selector(), root)
+    })
+    .unwrap());
+    browser_env::reset();
+}
+
 fn eval<'s>(scope: &mut v8::PinScope<'s, '_>, source: &str) -> v8::Local<'s, v8::Value> {
     let code = v8::String::new(scope, source).unwrap();
     v8::Script::compile(scope, code, None)

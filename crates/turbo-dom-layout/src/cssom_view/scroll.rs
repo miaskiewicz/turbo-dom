@@ -5,6 +5,9 @@ use crate::layout_snapshot::{GeometryKind, LayoutSnapshot, SourceId};
 use crate::ComputedStyle;
 use std::collections::BTreeMap;
 
+type ProjectedExtent = ([f32; 2], f32);
+type ProjectionResult = Result<ProjectedExtent, String>;
+
 /// One element's used style as the embedder collected it after the cascade: its
 /// style, nearest source ancestor in the flat tree, local name and effective zoom.
 pub struct SourceStyle {
@@ -123,6 +126,7 @@ fn is_zero_scroll_source(
     source: &crate::layout_snapshot::SnapshotSource,
 ) -> bool {
     source.excluded_from_layout
+        || snapshot.svg_without_css_box(id)
         || inline_box(snapshot, source)
         || styles
             .get(&id)
@@ -201,15 +205,15 @@ fn extend_scroll_bounds(
     fragment: &crate::layout_snapshot::SnapshotFragment,
     id: SourceId,
     used: crate::layout_snapshot::UsedBoxMetrics,
-    projected: &dyn Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32),
+    projected: &dyn Fn(&crate::layout_snapshot::SnapshotFragment) -> ProjectionResult,
     scroll_container: bool,
     blocked_x: bool,
     blocked_y: bool,
     right: &mut f32,
     left: &mut f32,
     bottom: &mut f32,
-) {
-    let (transformed, leftmost) = projected(fragment);
+) -> Result<(), String> {
+    let (transformed, leftmost) = projected(fragment)?;
     let rect = fragment.rect;
     let out_of_flow = fragment
         .used_box
@@ -230,6 +234,7 @@ fn extend_scroll_bounds(
     if scroll_container {
         apply_in_flow_margins(fragment, used, blocked_x, blocked_y, right, left, bottom);
     }
+    Ok(())
 }
 
 fn scroll_metrics_preconditions<'a>(
@@ -288,13 +293,7 @@ pub fn scroll_metrics(
     let matrix = snapshot
         .native_world_transform(first.index)
         .ok_or("native scroll transform unavailable")?;
-    let determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
-    if determinant == 0.0 || !determinant.is_finite() {
-        return Err(
-            "native scroll degenerate-container relative transform provenance pending".into(),
-        );
-    }
-    let projected = projector_in_container_space(matrix, determinant);
+    let projected = projector(snapshot, first.index, matrix)?;
     let scroll_container = permits_scroll(x) || permits_scroll(y);
     let (left, right, bottom) = sweep_descendant_bounds(
         snapshot,
@@ -305,7 +304,7 @@ pub fn scroll_metrics(
         padding,
         &projected,
         scroll_container,
-    );
+    )?;
     build_scroll_metrics(rtl, left, right, bottom, padding, x, y)
 }
 
@@ -321,9 +320,9 @@ fn sweep_descendant_bounds<F>(
     padding: crate::layout_snapshot::Rect,
     projected: &F,
     scroll_container: bool,
-) -> (f32, f32, f32)
+) -> Result<(f32, f32, f32), String>
 where
-    F: Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32),
+    F: Fn(&crate::layout_snapshot::SnapshotFragment) -> ProjectionResult,
 {
     let mut right = padding.x + padding.width;
     let mut left = padding.x;
@@ -346,9 +345,51 @@ where
             &mut right,
             &mut left,
             &mut bottom,
+        )?;
+    }
+    Ok((left, right, bottom))
+}
+
+fn projector(
+    snapshot: &LayoutSnapshot,
+    container: usize,
+    matrix: [f64; 6],
+) -> Result<impl Fn(&crate::layout_snapshot::SnapshotFragment) -> ProjectionResult + '_, String> {
+    let determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
+    if !determinant.is_finite() || !matrix.iter().all(|value| value.is_finite()) {
+        return Err(
+            "native scroll degenerate-container relative transform provenance pending".into(),
         );
     }
-    (left, right, bottom)
+    let world = projector_in_container_space(matrix, determinant);
+    Ok(move |fragment: &crate::layout_snapshot::SnapshotFragment| {
+        if determinant != 0.0 {
+            return Ok(world(fragment));
+        }
+        let quad = snapshot
+            .native_quad_relative_to(fragment.index, container)
+            .ok_or("native scroll descendant relative transform provenance unavailable")?;
+        Ok(projected_extents(quad.map(|point| [point.x, point.y])))
+    })
+}
+
+fn projected_extents(points: [[f32; 2]; 4]) -> ProjectedExtent {
+    (
+        [
+            points
+                .iter()
+                .map(|point| point[0])
+                .fold(f32::NEG_INFINITY, f32::max),
+            points
+                .iter()
+                .map(|point| point[1])
+                .fold(f32::NEG_INFINITY, f32::max),
+        ],
+        points
+            .iter()
+            .map(|point| point[0])
+            .fold(f32::INFINITY, f32::min),
+    )
 }
 
 /// Return a closure that projects a fragment's world-space quad into the
@@ -357,7 +398,7 @@ where
 fn projector_in_container_space(
     matrix: [f64; 6],
     determinant: f64,
-) -> impl Fn(&crate::layout_snapshot::SnapshotFragment) -> ([f32; 2], f32) {
+) -> impl Fn(&crate::layout_snapshot::SnapshotFragment) -> ProjectedExtent {
     move |fragment: &crate::layout_snapshot::SnapshotFragment| {
         let points = fragment.quad.map(|point| {
             let x = f64::from(point.x) - matrix[4];
@@ -367,22 +408,7 @@ fn projector_in_container_space(
                 ((-matrix[1] * x + matrix[0] * y) / determinant) as f32,
             ]
         });
-        (
-            [
-                points
-                    .iter()
-                    .map(|point| point[0])
-                    .fold(f32::NEG_INFINITY, f32::max),
-                points
-                    .iter()
-                    .map(|point| point[1])
-                    .fold(f32::NEG_INFINITY, f32::max),
-            ],
-            points
-                .iter()
-                .map(|point| point[0])
-                .fold(f32::INFINITY, f32::min),
-        )
+        projected_extents(points)
     }
 }
 
@@ -1059,6 +1085,7 @@ pub(crate) mod chrome {
     use crate::live::testing::{self, DOCUMENT};
     use serde_json::Value;
     use std::collections::BTreeMap;
+
     use turbo_dom::Tree;
 
     const FIXTURE: &str = include_str!("../../tests/fixtures/cssom_view_chrome156.json");
@@ -1728,14 +1755,12 @@ mod tests {
     #[test]
     fn unsupported_scroll_geometry_is_an_error_not_a_guess() {
         let (tree, snapshot, styles) = laid_out(
-            "<body><div id=z style='transform:scale(0);overflow:auto'></div><svg><rect id=s width=5 height=5></rect></svg><span id=i>x</span></body>",
+            "<body><div id=z style='width:20px;height:10px;transform:scale(0);overflow:auto'></div><svg><foreignObject id=s width=5 height=5></foreignObject></svg><span id=i>x</span></body>",
         );
         let id = |selector| crate::live::testing::id(&tree, selector);
         let error = |selector| scroll_metrics(&snapshot, &styles, id(selector)).unwrap_err();
-        assert_eq!(
-            error("#z"),
-            "native scroll degenerate-container relative transform provenance pending"
-        );
+        let zero_scale = scroll_metrics(&snapshot, &styles, id("#z")).unwrap();
+        assert_eq!((zero_scale.width, zero_scale.height), (20, 10));
         assert_eq!(
             error("#s"),
             "native SVG descendant scroll geometry is unsupported"

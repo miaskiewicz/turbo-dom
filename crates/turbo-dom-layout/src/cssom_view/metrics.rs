@@ -26,6 +26,15 @@ pub struct ElementGeometry {
     pub offset: OffsetSize,
 }
 
+/// The untransformed client box, independently of bounding/offset geometry support.
+pub fn client_metrics(snapshot: &LayoutSnapshot, id: SourceId) -> Result<ClientMetrics, String> {
+    element_source(snapshot, id)?;
+    if snapshot.svg_without_css_box(id) {
+        return Ok(empty_geometry().client);
+    }
+    element_geometry(snapshot, id).map(|geometry| geometry.client)
+}
+
 fn inline_fragment_geometry(boxes: &[&SnapshotFragment]) -> Result<ElementGeometry, String> {
     let rects: Vec<_> = boxes
         .iter()
@@ -53,12 +62,7 @@ pub fn element_geometry(
     snapshot: &LayoutSnapshot,
     id: SourceId,
 ) -> Result<ElementGeometry, String> {
-    let source = snapshot
-        .source(id)
-        .ok_or("native layout source is missing")?;
-    if source.kind != SourceKind::Element {
-        return Err("native element geometry requires an Element receiver".into());
-    }
+    let source = element_source(snapshot, id)?;
     if source.excluded_from_layout {
         return Ok(empty_geometry());
     }
@@ -80,6 +84,19 @@ pub fn element_geometry(
         return inline_fragment_geometry(&boxes);
     }
     block_geometry(first, used, &boxes)
+}
+
+fn element_source(
+    snapshot: &LayoutSnapshot,
+    id: SourceId,
+) -> Result<&crate::layout_snapshot::SnapshotSource, String> {
+    let source = snapshot
+        .source(id)
+        .ok_or("native layout source is missing")?;
+    if source.kind != SourceKind::Element {
+        return Err("native element geometry requires an Element receiver".into());
+    }
+    Ok(source)
 }
 
 /// The non-inline arm of [`element_geometry`]: a block/replaced source's bounds,
