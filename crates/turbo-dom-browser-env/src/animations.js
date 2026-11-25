@@ -2714,9 +2714,10 @@
     const record = contextEffectRecord(animation, element);
     if (!record) return false;
     const effect = effects.get(record.effect), css = record.css;
-    if (css && !cssKindOn(css.kind)) return false;
     if (!intrinsic.some(effect.frames.order, establishesContextProperty)) return false;
-    if (css && css.kind === CSS_ANIMATION && ownsContextAnimation(animation, element)) return true;
+    if (css && css.kind === CSS_ANIMATION && cssKindOn(css.kind) && ownsContextAnimation(animation, element)) return true;
+    // Creation switches do not cancel an already indexed/script-controlled
+    // effect. Its context follows the same canonical relevance as presentation.
     return relevant(record);
   }
   function contextEffectRecord(animation, element) {
