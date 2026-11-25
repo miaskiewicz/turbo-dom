@@ -2317,3 +2317,62 @@ fn jsdom_media_mode_imports_follow_jsdom() {
         serde_json::json!({"a":"rgb(0, 0, 2)","b":"rgb(0, 0, 2)","c":"rgb(0, 0, 0)","d":"rgb(0, 0, 0)","e":"rgb(0, 0, 2)","f":"rgb(0, 0, 0)"})
     );
 }
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_selection_membership_scales_without_cubic_identity_work() {
+    use crate::host_internals as host;
+    let mut rows = Vec::new();
+    for (depth, count) in [
+        (4, 16),
+        (4, 32),
+        (4, 64),
+        (4, 128),
+        (4, 451),
+        (8, 16),
+        (12, 16),
+        (16, 16),
+    ] {
+        let html = presented_batch_fixture(depth, count)
+            .replace("animation:probe 1000ms linear both", "width:100px");
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..count)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            let before = super::cascade_runs();
+            let validation_before = super::effect_validations();
+            let membership_before = super::presented_membership();
+            let started = std::time::Instant::now();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let elapsed = started.elapsed();
+            let cascades = super::cascade_runs() - before;
+            let validations = super::effect_validations() - validation_before;
+            let membership_after = super::presented_membership();
+            let membership = membership_after.0 - membership_before.0;
+            let probes = membership_after.1 - membership_before.1;
+            assert_eq!(
+                sample
+                    .targets
+                    .iter()
+                    .map(|target| target.element)
+                    .collect::<Vec<_>>(),
+                targets
+            );
+            assert!(sample.targets.iter().all(|target|matches!(&target.presentation,host::PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty())));
+            eprintln!("selection-scaling depth={depth} targets={count} cascades={cascades} validations={validations} identity_comparisons={membership} set_operations={probes} elapsed_us={}",elapsed.as_micros());
+            rows.push((depth, count, membership + probes));
+        });
+    }
+    assert!(
+        rows.iter()
+            .all(|(_, count, membership)| *membership <= (*count as u64).pow(2)),
+        "quadratic upper bound for explicit selection identity comparisons: {rows:?}"
+    );
+}
