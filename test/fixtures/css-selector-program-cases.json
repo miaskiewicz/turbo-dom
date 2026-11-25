@@ -1,0 +1,119 @@
+{
+  "html": "<div class=outside><div class=outsideSibling></div><section class=\"root &\" id=r data-mark=\":scope&\"><div class=nested><button class=target id=t>T</button></div></section><div class=outsideSibling></div></div>",
+  "scope": [
+    {
+      "selector": ".outside .target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".root .target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": "section .target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".target:only-child",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ":is(.outside .target)",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ":not(.outside .target)",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".outside :scope .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": ".outside > :scope .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": ":scope .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": ":is(:scope) .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": ":not(:scope)",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": "& .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": ":is(&) .target",
+      "implicitScopeAnchor": false,
+      "target": "target"
+    },
+    {
+      "selector": "[data-mark=\":scope&\"] .target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".\\& .target",
+      "implicitScopeAnchor": true,
+      "target": "target"
+    },
+    {
+      "selector": ".root",
+      "implicitScopeAnchor": true,
+      "target": "root"
+    },
+    {
+      "selector": ":scope",
+      "implicitScopeAnchor": false,
+      "target": "root"
+    },
+    {
+      "selector": "&",
+      "implicitScopeAnchor": false,
+      "target": "root"
+    },
+    {
+      "selector": ":scope:has(+ .outsideSibling)",
+      "implicitScopeAnchor": false,
+      "target": "root"
+    },
+    {
+      "selector": ".outsideSibling + :scope",
+      "implicitScopeAnchor": false,
+      "target": "root"
+    }
+  ],
+  "units": [
+    "[data-x=\"\ud800\"]",
+    "[data-x=\"\\d800 \"]",
+    "[data-x=\"\udb80\udc00\udb82\udc00\"]",
+    ".x\ud800",
+    ".x\udc00",
+    ".x\\d800 ",
+    ".x\udb80\udc00\udb82\udc00"
+  ]
+}

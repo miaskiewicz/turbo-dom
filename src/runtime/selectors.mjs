@@ -91,11 +91,21 @@ function scanIdent(src, i) {
       value += e.ch;
       i = e.end;
     } else if (isNameChar(c)) {
-      value += c;
-      i++;
+      if (c >= '\ud800' && c <= '\udfff') {
+        const scalar = consumeNameScalar(src, i);
+        value += scalar.ch;
+        i = scalar.end;
+      } else { value += c; i++; }
     } else break;
   }
   return { value, end: i };
+}
+// CSS input preprocessing repairs lone name units, while quoted attribute values
+// keep their DOM-string units. Valid supplementary scalars remain one name character.
+function consumeNameScalar(src, i) {
+  const point = src.codePointAt(i);
+  const invalid = point >= 0xd800 && point <= 0xdfff;
+  return { ch: invalid ? '\uFFFD' : String.fromCodePoint(point), end: i + (point > 0xffff ? 2 : 1) };
 }
 // Is `s` (trimmed by the caller) exactly one identifier? Returns its decoded value or null.
 function identValue(s) {
@@ -494,7 +504,7 @@ function scanTypeToken(src, i, tokens) {
 }
 // The pseudo-class / pseudo-element at `i` (src[i] is `:`): pushes its token, returns the
 // next index.
-function scanPseudoToken(src, i, tokens) {
+function scanPseudoToken(src, i, tokens, options) {
   const n = src.length;
   i++;
   const element = src[i] === ':';
@@ -507,11 +517,15 @@ function scanPseudoToken(src, i, tokens) {
   if (src[i] === '(') {
     const { inner, end } = scanBalanced(src, i + 1, '(', ')');
     arg = inner;
-    i = end < n ? end + 1 : n; // an unterminated argument closes at the end (CSS)
+    i = pseudoArgumentEnd(src, end, options);
   }
   const legacy = !element && LEGACY_PSEUDO_ELEMENTS.has(name);
   tokens.push({ k: element || legacy ? 'pelem' : 'pseudo', name, arg, legacy });
   return i;
+}
+function pseudoArgumentEnd(src, end, options) {
+  if (options?.stylesheet && end >= src.length) throw syntax(src, 'unterminated stylesheet argument');
+  return end < src.length ? end + 1 : src.length;
 }
 // The attribute selector at `i` (src[i] is `[`): pushes its token, returns the next index.
 function scanAttrToken(src, i, tokens) {
@@ -531,24 +545,31 @@ function scanHashOrClassToken(src, i, tokens) {
 }
 const COMBINATORS = new Set(['>', '+', '~']);
 // One tokenize step: returns the next source index after consuming src[i].
-function tokenizeStep(src, i, tokens) {
+function tokenizeStep(src, i, tokens, options) {
   const c = src[i];
   if (isWs(c)) { tokens.push({ k: 'ws' }); return skipWsAt(src, i); }
   if (c === ',') { tokens.push({ k: 'comma' }); return i + 1; }
   if (COMBINATORS.has(c)) { tokens.push({ k: 'comb', v: c }); return i + 1; }
-  return tokenizeSimple(src, i, c, tokens);
+  return tokenizeSimple(src, i, c, tokens, options);
 }
-function tokenizeSimple(src, i, c, tokens) {
+function tokenizeSimple(src, i, c, tokens, options) {
   if (c === '*' || c === '|' || startsIdent(src, i)) return scanTypeToken(src, i, tokens);
   if (c === '#' || c === '.') return scanHashOrClassToken(src, i, tokens);
   if (c === '[') return scanAttrToken(src, i, tokens);
-  if (c === ':') return scanPseudoToken(src, i, tokens);
+  if (c === ':') return scanPseudoToken(src, i, tokens, options);
+  return tokenizeScopeReference(src, i, c, tokens, options);
+}
+function tokenizeScopeReference(src, i, c, tokens, options) {
+  if (c === '&' && options?.allowScopeReference) {
+    tokens.push({ k: 'pseudo', name: 'where', arg: ':scope' });
+    return i + 1;
+  }
   throw new SyntaxError(`unexpected '${c}' in selector`);
 }
-function tokenize(src) {
+function tokenize(src, options) {
   const tokens = [];
   const n = src.length;
-  for (let i = 0; i < n;) i = tokenizeStep(src, i, tokens);
+  for (let i = 0; i < n;) i = tokenizeStep(src, i, tokens, options);
   return tokens;
 }
 
@@ -566,7 +587,7 @@ function parsePseudo(tok, src, opts) {
   const { inHas, inCompound = false } = opts;
   const { name, arg } = tok;
   const p = { name, arg };
-  const parsed = arg === null ? parsePlainPseudo(name, src) : parseFunctionalPseudo(name, arg, src, inHas, inCompound);
+  const parsed = arg === null ? parsePlainPseudo(name, src) : parseFunctionalPseudo(name, arg, src, inHas, inCompound, opts);
   if (parsed) Object.defineProperty(p, 'parsed', { value: parsed });
   return p;
 }
@@ -578,11 +599,14 @@ function parsePlainPseudo(name, src) {
 }
 const NTH = new Set(['nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type']);
 // A nested selector-list pseudo (`:not` / `:is` / `:where` / `:-webkit-any`): its `parsed`.
-function parseListPseudo(name, arg, inHas, inCompound) {
-  if (name === 'not') return { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
-  if (name === 'is' || name === 'where') return { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
+function cssParseOptions(options) {
+  return { allowScopeReference: options?.allowScopeReference, stylesheet: options?.stylesheet };
+}
+function parseListPseudo(name, arg, inHas, inCompound, options) {
+  if (name === 'not') return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
+  if (name === 'is' || name === 'where') return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
   // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
-  return { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
+  return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
 }
 const LIST_PSEUDO = new Set(['not', 'is', 'where', '-webkit-any']);
 // A functional pseudo-class: its `parsed`.
@@ -591,15 +615,15 @@ function parseFunctionalPseudoValue(name, arg, src) {
   if (name === 'state') return { v: identArg(name, arg, src) };
   throw syntax(src, `unknown pseudo-class :${name}()`);
 }
-function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
+function parseFunctionalPseudo(name, arg, src, inHas, inCompound, options) {
   if (PLAIN.has(name)) throw syntax(src, `:${name}() takes no argument`);
   if (NEVER_FUNCTIONAL.has(name)) return { never: true };
-  if (LIST_PSEUDO.has(name)) return parseListPseudo(name, arg, inHas, inCompound);
+  if (LIST_PSEUDO.has(name)) return parseListPseudo(name, arg, inHas, inCompound, options);
   if (name === 'has') {
     if (inHas) throw syntax(src, ':has() inside :has()');
-    return { rel: parseRelative(arg, src) };
+    return { rel: parseRelative(arg, src, options) };
   }
-  if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound);
+  if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound, options);
   return parseFunctionalPseudoValue(name, arg, src);
 }
 // The one identifier argument of `:name()` (throws otherwise).
@@ -608,11 +632,11 @@ function identArg(name, arg, src) {
   if (v === null) throw syntax(src, `:${name}() takes one identifier`);
   return v;
 }
-function parseNthPseudo(name, arg, src, inHas, inCompound) {
+function parseNthPseudo(name, arg, src, inHas, inCompound, options) {
   const at = name.endsWith('child') ? nthOfPosition(arg) : -1;
   const anb = parseAnB(at === -1 ? arg : arg.slice(0, at));
   if (anb === null) throw syntax(src, `:${name}() argument`);
-  return { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas, inCompound }) };
+  return { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { ...cssParseOptions(options), nested: true, forgiving: false, inHas, inCompound }) };
 }
 
 // A view-transition pseudo-element argument (<pt-name-and-class-selector>): `*` or a name,
@@ -797,7 +821,7 @@ function parseList(src, opts) {
   const out = [];
   for (const item of splitTopLevel(src)) {
     try {
-      const tokens = tokenize(item);
+      const tokens = tokenize(item, opts);
       out.push(parseComplexTokens(tokens, 0, tokens.length, item, opts));
     } catch (e) {
       if (!opts.forgiving) throw e;
@@ -807,15 +831,15 @@ function parseList(src, opts) {
 }
 
 // `:has()` relative selector list (unforgiving): [{ combinator, complex }].
-function parseRelative(arg, src) {
+function parseRelative(arg, src, options) {
   const out = [];
   for (const item of splitTopLevel(arg)) {
-    const tokens = tokenize(item);
+    const tokens = tokenize(item, options);
     let lo = 0;
     while (lo < tokens.length && tokens[lo].k === 'ws') lo++;
     let combinator = ' ';
     if (lo < tokens.length && tokens[lo].k === 'comb') { combinator = tokens[lo].v; lo++; }
-    out.push({ combinator, complex: parseComplexTokens(tokens, lo, tokens.length, src, { nested: true, forgiving: false, inHas: true }) });
+    out.push({ combinator, complex: parseComplexTokens(tokens, lo, tokens.length, src, { ...cssParseOptions(options), nested: true, forgiving: false, inHas: true }) });
   }
   return out;
 }
@@ -840,10 +864,10 @@ export function parseSelectorList(selector) {
   return parsed;
 }
 // `closeAtEof`: a DOM-API selector string (a stylesheet prelude never ends inside a block).
-function parseSource(selector, closeAtEof) {
+function parseSource(selector, closeAtEof, options) {
   // CSS preprocessing: NUL becomes U+FFFD (a name code point); comments go
   const src = normalizeSource(String(selector).replace(/\0/g, '\uFFFD'), closeAtEof);
-  return parseList(src, { nested: false, forgiving: false, inHas: false });
+  return parseList(src, { ...options, nested: false, forgiving: false, inHas: false });
 }
 
 // The items of a style rule's selector list (top-level comma split), or [] when the list is
@@ -1172,6 +1196,8 @@ function matchAttr(el, a) {
 
 // The element `:scope` matches during the current match (null = stylesheet: `:root`).
 let currentScope = null;
+let currentCssContext = null;
+const EMPTY_CSS_CONTEXT = Object.freeze({});
 
 // matchPseudo dispatches by family: tree-structural here, then the selector-argument and
 // language ones (matchLogicalPseudo), then element state (matchStatePseudo).
@@ -1190,6 +1216,8 @@ const PSEUDO_TREE = {
   'scope': (el) => currentScope === null ? isRootElement(el) : el === currentScope,
 };
 function matchPseudo(el, p) {
+  const css = currentCssContext && cssLivePseudo(el, p.name);
+  if (css !== null && css !== undefined) return css;
   const tree = PSEUDO_TREE[p.name];
   if (tree) return tree(el);
   if (p.name === 'nth-child') return matchNthChild(el, p.parsed, false);
@@ -1382,16 +1410,134 @@ function someSelfOrDescendant(node, pred) {
   return someDescendant(node, pred);
 }
 
+// CSS-only program records contain no DOM references and never share a mutable
+// subject compound with the public DOM selector cache.
+const cssSelectorPrograms = new WeakMap();
+function cssSelectorSource(value) {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value) && !(value instanceof Uint16Array)) throw new TypeError('CSS selector source must be UTF16 units or a string');
+  const chunks = [];
+  for (let start = 0; start < value.length; start += 1024) {
+    const units = value.slice(start, start + 1024);
+    for (const unit of units) if (!Number.isInteger(unit) || unit < 0 || unit > 65535) throw new TypeError('invalid CSS selector UTF16 unit');
+    chunks.push(String.fromCharCode(...units));
+  }
+  return chunks.join('');
+}
+function cssPseudoName(value) {
+  if (value == null || value === '') return null;
+  const name = String(value).toLowerCase();
+  if (name.startsWith('::')) return name.slice(2);
+  return name.startsWith(':') ? name.slice(1) : name;
+}
+function cloneCssComplex(cx) {
+  return { first: { ...cx.first }, rest: cx.rest.map((part) => ({ combinator: part.combinator, compound: { ...part.compound } })) };
+}
+function cssPseudoSubject(cx, pseudo) {
+  const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
+  if (pseudo === null) return cx;
+  if (!subject.pe || subject.pe.name !== pseudo || subject.pe.chain) return null;
+  const clone = cloneCssComplex(cx);
+  const clonedSubject = clone.rest.length ? clone.rest[clone.rest.length - 1].compound : clone.first;
+  clonedSubject.pe = null;
+  return clone;
+}
+function anchorCssComplex(cx) {
+  const anchor = parseComplex(':where(:scope)').first;
+  return { first: anchor, rest: [{ combinator: ' ', compound: cx.first }, ...cx.rest] };
+}
+
+// `implicitScopeAnchor` is a mechanical instruction from the Rust scope compiler.
+// Root eligibility, limits, proximity, specificity and cascade order stay in Rust.
+export function compileCssSelectorProgram(source, metadata = {}) {
+  const pseudo = cssPseudoName(metadata.pseudo);
+  const implicitScopeAnchor = metadata.implicitScopeAnchor === true;
+  const parsed = parseSource(cssSelectorSource(source), false, { stylesheet: true, allowScopeReference: metadata.allowScopeReference === true });
+  const list = [];
+  for (const cx of parsed) {
+    const selector = cssPseudoSubject(cx, pseudo);
+    if (selector) list.push(implicitScopeAnchor ? anchorCssComplex(selector) : selector);
+  }
+  const program = Object.freeze({ pseudo, selectorCount: list.length });
+  cssSelectorPrograms.set(program, { list, implicitScopeAnchor });
+  return program;
+}
+
+export function matchesCssProgram(el, program, context) {
+  const record = cssSelectorPrograms.get(program);
+  if (!record) throw new TypeError('invalid CSS selector program');
+  const root = cssProgramRoot(el, record, context);
+  if (root === undefined) return false;
+  const savedScope = currentScope;
+  const savedCss = currentCssContext;
+  currentScope = root;
+  currentCssContext = context ?? EMPTY_CSS_CONTEXT;
+  try {
+    for (let i = 0; i < record.list.length; i++) if (matchComplex(el, record.list[i])) return true;
+    return false;
+  } finally {
+    currentScope = savedScope;
+    currentCssContext = savedCss;
+  }
+}
+
+function cssProgramRoot(el, record, context) {
+  const root = context?.scopeRoot ?? null;
+  if (record.implicitScopeAnchor && !root) throw new TypeError('CSS scope root is required');
+  if (root && root.ownerDocument !== el.ownerDocument) return undefined;
+  return root;
+}
+function cssFocusTarget(el) {
+  const read = currentCssContext.liveState?.focusTarget;
+  const target = typeof read === 'function' ? read(el.ownerDocument) : undefined;
+  if (target === undefined) throw new Error('turbo-dom: CSS focus state is unavailable');
+  if (target !== null && (target.nodeType !== 1 || target.ownerDocument !== el.ownerDocument)) throw new TypeError('invalid CSS focus target');
+  return target;
+}
+function cssFocusMatches(el, target) {
+  if (el === target) return true;
+  for (let node = target; node; node = node.parentNode || (node.__isShadowRoot ? node.host : null)) {
+    if (node.__isShadowRoot && node.host === el) return true;
+  }
+  return false;
+}
+function cssFocusWithin(el, target) {
+  for (let node = target; node; node = node.assignedSlot || node.parentNode || (node.__isShadowRoot ? node.host : null)) {
+    if (node === el) return true;
+  }
+  return false;
+}
+function cssTrustedPseudo(el, name) {
+  if (name === 'focus-visible' && !cssFocusMatches(el, cssFocusTarget(el))) return false;
+  const read = currentCssContext.liveState?.matchesPseudo;
+  if (typeof read === 'function') {
+    const result = read(el, name);
+    if (typeof result !== 'boolean') throw new Error(`turbo-dom: CSS ${name} state is unavailable`);
+    return result;
+  }
+  if (name === 'focus-visible') throw new Error('turbo-dom: CSS focus-visible modality is unavailable');
+  return false;
+}
+function cssLivePseudo(el, name) {
+  if (name === 'focus') return cssFocusMatches(el, cssFocusTarget(el));
+  if (name === 'focus-within') return cssFocusWithin(el, cssFocusTarget(el));
+  if (name === 'hover' || name === 'active' || name === 'focus-visible') return cssTrustedPseudo(el, name);
+  return null;
+}
+
 // `el.matches(selector)`; `scope` is the `:scope` element (`el` by default; null in a
 // stylesheet, where `:scope` is `:root`). Throws SyntaxError on an invalid selector.
 export function matchesSelector(el, selector, scope = el) {
   const list = parseSelectorList(selector);
   const saved = currentScope;
+  const savedCss = currentCssContext;
   currentScope = scope;
+  currentCssContext = null;
   try {
     return list.some((cx) => matchComplex(el, cx));
   } finally {
     currentScope = saved;
+    currentCssContext = savedCss;
   }
 }
 
@@ -1400,6 +1546,12 @@ export function matchesSelector(el, selector, scope = el) {
 // rest of the selector (`slot[name=a]::slotted(S)`, `div ::slotted(S)`). A sub-pseudo-
 // element (`::slotted(S)::before`) targets generated content, never `el` itself.
 export function matchesSlotted(el, slot, selector) {
+  const savedCss = currentCssContext;
+  currentCssContext = null;
+  try { return matchSlottedLegacy(el, slot, selector); }
+  finally { currentCssContext = savedCss; }
+}
+function matchSlottedLegacy(el, slot, selector) {
   const cx = parseSelectorList(selector)[0];
   const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
   const pe = subject.pe;
@@ -1453,7 +1605,9 @@ function queryWalk(root, selector, first) {
   const list = parseSelectorList(selector);
   const single = list.length === 1 ? list[0] : null;
   const saved = currentScope;
+  const savedCss = currentCssContext;
   currentScope = scopeOf(root);
+  currentCssContext = null;
   try {
     const visit = (node) => {
       const kids = rawChildren(node);
@@ -1468,6 +1622,7 @@ function queryWalk(root, selector, first) {
     visit(root);
   } finally {
     currentScope = saved;
+    currentCssContext = savedCss;
   }
   return out;
 }

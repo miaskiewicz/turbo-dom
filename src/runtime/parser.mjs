@@ -18,6 +18,7 @@ let _createRequire;
 try { ({ createRequire: _createRequire } = await import('node:module')); } catch { /* bare V8: parser must be injected */ }
 
 let _parser = null;
+let _revision = 0;
 let _mode = null; // 'wasm' | 'native' | 'auto' | null (consult env/global)
 
 function req(spec) {
@@ -34,11 +35,12 @@ const loadWasm = () => req('../../pkg/turbo_dom_parser.js');
 
 // Inject a ready parser binding ({parse, parseBuffer, parseFragment}). Pass null to
 // clear it (next getParser re-resolves). The node-free seam for embedders.
-export function setParser(binding) { _parser = binding || null; }
+export function setParser(binding) { _parser = binding || null; _revision++; }
 
 // Force a parser mode: 'wasm' | 'native' | 'auto' (or null to consult env/global).
 // Resets the resolved parser so the next parse honors the new mode.
 export function setParserMode(mode) {
+  _revision++;
   _mode = mode || null;
   _parser = null;
 }
@@ -63,4 +65,15 @@ export function getParser() {
   try { _parser = loadNative(); }
   catch (nativeErr) { try { _parser = loadWasm(); } catch { throw nativeErr; } }
   return _parser;
+}
+
+// Internal CSS selection does not force HTML parsing or artifact initialization.
+// Global/environment modes retain the same precedence as getParser().
+export function getParserSelection() {
+  return { mode: resolveMode(), binding: _parser || globalThis.__TURBO_DOM_PARSER__ || null, revision: _revision };
+}
+
+// Internal optional loader capability; preserves the existing guarded Node import.
+export function createParserRequire() {
+  return _createRequire ? _createRequire(import.meta.url) : null;
 }

@@ -13,15 +13,53 @@
 // are kept as their raw cssText; cascade.mjs parses them the same way it parses a
 // <style>'s textContent.
 
+import {
+  wrapCssRule, wrapCssSheet, finishCssRuleConstruction, finishCssSheetConstruction, emptyCssRules, closedCssRules, beginCssMutation, endCssApiMutation, spliceCssRules,
+  invalidateCssSheet, canOwnCssMap, replaceCssRules, privateCssRule, isObservedCssSheet,
+} from './cssom-state.mjs';
+export { cssSheetSnapshot } from './cssom-state.mjs';
+
+const observedToken = Symbol('observed document CSS store');
 export class CSSStyleRule {
-  constructor(cssText) {
-    this.cssText = String(cssText);
-    this.type = 1; // CSSRule.STYLE_RULE
+  constructor(cssText, token = undefined) {
+    const observed = token === observedToken;
+    const rule = observed ? wrapCssRule(this) : this;
+    rule.cssText = String(cssText);
+    rule.type = 1; // CSSRule.STYLE_RULE
+    if (observed) finishCssRuleConstruction(rule);
+    return rule;
   }
   get selectorText() {
     const i = this.cssText.indexOf('{');
     return i < 0 ? '' : this.cssText.slice(0, i).trim();
   }
+}
+
+const rulePrototype = CSSStyleRule.prototype;
+const objectPrototype = Object.prototype;
+const ownDescriptor = Object.getOwnPropertyDescriptor;
+const getPrototype = Object.getPrototypeOf;
+const createObject = Object.create;
+const cssString = String;
+function exposedInsertedRule(cssText) {
+  const rule = wrapCssRule(createObject(rulePrototype));
+  rule.cssText = cssText;
+  rule.type = 1;
+  finishCssRuleConstruction(rule);
+  return rule;
+}
+function insertedRule(value) {
+  const nativeString = String === cssString;
+  const cssText = String(value);
+  // No inherited assignment callback can observe this internal record before its
+  // first public array read. Customized constructor shapes keep the original path.
+  if (!nativeString || typeof cssText !== 'string' || getPrototype(rulePrototype) !== objectPrototype ||
+      ownDescriptor(rulePrototype, 'cssText') || ownDescriptor(rulePrototype, 'type') ||
+      ownDescriptor(objectPrototype, 'cssText') || ownDescriptor(objectPrototype, 'type')) return exposedInsertedRule(cssText);
+  const target = createObject(rulePrototype);
+  target.cssText = cssText;
+  target.type = 1;
+  return privateCssRule(target);
 }
 
 // Split a stylesheet string into top-level rule strings (brace-depth aware), used
@@ -50,18 +88,26 @@ function splitTopLevelRules(css) {
   return out;
 }
 
+let hasPlainSheetBrand;
 export class CSSStyleSheet {
+  static {
+    hasPlainSheetBrand = (value) => value !== null && (typeof value === 'object' || typeof value === 'function') && #invalidate in value;
+  }
   // ownerNode is the <style> element (null for constructed/adopted sheets).
-  constructor(ownerNode = null, init = {}) {
-    this.ownerNode = ownerNode;
-    this.cssRules = [];
-    this.type = 'text/css';
-    this.disabled = false;
-    this.media = init.media != null ? init.media : [];
-    this.title = init.title != null ? init.title : null;
-    this.href = null;
-    this.parentStyleSheet = null;
-    this.ownerRule = null;
+  constructor(ownerNode = null, init = {}, token = undefined) {
+    const observed = token === observedToken;
+    const sheet = observed ? wrapCssSheet(this, ownerNode) : this;
+    sheet.ownerNode = ownerNode;
+    sheet.cssRules = observed ? emptyCssRules(sheet) : [];
+    sheet.type = 'text/css';
+    sheet.disabled = false;
+    sheet.media = init.media != null ? init.media : [];
+    sheet.title = init.title != null ? init.title : null;
+    sheet.href = null;
+    sheet.parentStyleSheet = null;
+    sheet.ownerRule = null;
+    if (observed) finishCssSheetConstruction(sheet);
+    return sheet;
   }
 
   // legacy alias some libraries read
@@ -69,15 +115,38 @@ export class CSSStyleSheet {
 
   insertRule(rule, index = 0) {
     if (index < 0 || index > this.cssRules.length) throw new RangeError('insertRule: index out of bounds');
-    this.cssRules.splice(index, 0, new CSSStyleRule(rule));
-    this.#invalidate();
+    if (hasPlainSheetBrand(this) || !isObservedCssSheet(this)) {
+      this.cssRules.splice(index, 0, new CSSStyleRule(rule));
+      this.#invalidate();
+      return index;
+    }
+    const list = closedCssRules(this);
+    if (list) {
+      const value = insertedRule(rule);
+      const mutation = beginCssMutation(this, index, rule, list, value);
+      let completed = false;
+      try { spliceCssRules(list, index, 0, value); completed = true; }
+      finally { endCssApiMutation(mutation, completed); }
+    } else this.cssRules.splice(index, 0, new CSSStyleRule(rule, observedToken));
+    invalidateCssSheet(this);
     return index;
   }
 
   deleteRule(index) {
     if (index < 0 || index >= this.cssRules.length) throw new RangeError('deleteRule: index out of bounds');
-    this.cssRules.splice(index, 1);
-    this.#invalidate();
+    if (hasPlainSheetBrand(this) || !isObservedCssSheet(this)) {
+      this.cssRules.splice(index, 1);
+      this.#invalidate();
+      return;
+    }
+    const list = closedCssRules(this);
+    if (list) {
+      const mutation = beginCssMutation(this, index, undefined, list);
+      let completed = false;
+      try { spliceCssRules(list, index, 1); completed = true; }
+      finally { endCssApiMutation(mutation, completed); }
+    } else this.cssRules.splice(index, 1);
+    invalidateCssSheet(this);
   }
 
   // legacy IE-era APIs (some older libs still call these)
@@ -90,18 +159,28 @@ export class CSSStyleSheet {
 
   // constructable-stylesheet API (adoptedStyleSheets); replaceSync is synchronous.
   replaceSync(text) {
-    this.cssRules = splitTopLevelRules(String(text)).map((r) => new CSSStyleRule(r));
-    this.#invalidate();
+    if (hasPlainSheetBrand(this) || !isObservedCssSheet(this)) {
+      this.cssRules = splitTopLevelRules(String(text)).map((r) => new CSSStyleRule(r));
+      this.#invalidate();
+      return;
+    }
+    const pieces = splitTopLevelRules(String(text));
+    const trusted = canOwnCssMap(pieces);
+    const rules = pieces.map((r) => new CSSStyleRule(r, observedToken));
+    replaceCssRules(this, rules, trusted);
+    invalidateCssSheet(this);
   }
   replace(text) { this.replaceSync(text); return Promise.resolve(this); }
 
-  // Bump the owning Document's version so cascade.mjs's version-keyed style index
-  // (and any getComputedStyle cache) rebuilds. Constructed sheets (no ownerNode)
-  // have nothing to invalidate until adopted — a no-op, which is correct.
   #invalidate() {
-    const n = this.ownerNode;
-    if (n && n.__touch) n.__touch();
+    const node = this.ownerNode;
+    if (node && node.__touch) node.__touch();
   }
+}
+
+export function createObservedCssRule(text) { return new CSSStyleRule(text, observedToken); }
+export function createObservedCssSheet(owner, init = {}) {
+  return new CSSStyleSheet(owner, init, observedToken);
 }
 
 // Live StyleSheetList for document.styleSheets: a plain array (indexable +

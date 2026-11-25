@@ -1,0 +1,137 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "a6c4fa6e238add250d08a514de70e431ec894547a8cac7fceda8c75e4d659619",
+  "casesSha256": "48fc3d152529e8aae900a112ea3aef99f55fda59f0a6f0fcdd49a49c52d69a4c",
+  "result": {
+    "scope": [
+      {
+        "selector": ".outside .target",
+        "matches": false
+      },
+      {
+        "selector": ".root .target",
+        "matches": false
+      },
+      {
+        "selector": "section .target",
+        "matches": false
+      },
+      {
+        "selector": ".target",
+        "matches": true
+      },
+      {
+        "selector": ".target:only-child",
+        "matches": true
+      },
+      {
+        "selector": ":is(.outside .target)",
+        "matches": true
+      },
+      {
+        "selector": ":not(.outside .target)",
+        "matches": false
+      },
+      {
+        "selector": ".outside :scope .target",
+        "matches": true
+      },
+      {
+        "selector": ".outside > :scope .target",
+        "matches": true
+      },
+      {
+        "selector": ":scope .target",
+        "matches": true
+      },
+      {
+        "selector": ":is(:scope) .target",
+        "matches": true
+      },
+      {
+        "selector": ":not(:scope)",
+        "matches": true
+      },
+      {
+        "selector": "& .target",
+        "matches": true
+      },
+      {
+        "selector": ":is(&) .target",
+        "matches": true
+      },
+      {
+        "selector": "[data-mark=\":scope&\"] .target",
+        "matches": false
+      },
+      {
+        "selector": ".\\& .target",
+        "matches": false
+      },
+      {
+        "selector": ".root",
+        "matches": false
+      },
+      {
+        "selector": ":scope",
+        "matches": true
+      },
+      {
+        "selector": "&",
+        "matches": true
+      },
+      {
+        "selector": ":scope:has(+ .outsideSibling)",
+        "matches": true
+      },
+      {
+        "selector": ".outsideSibling + :scope",
+        "matches": true
+      }
+    ],
+    "units": [
+      {
+        "selector": "[data-x=\"\ud800\"]",
+        "matches": [
+          "raw"
+        ]
+      },
+      {
+        "selector": "[data-x=\"\\d800 \"]",
+        "matches": [
+          "repaired"
+        ]
+      },
+      {
+        "selector": "[data-x=\"󰀀󰠀\"]",
+        "matches": [
+          "marker"
+        ]
+      },
+      {
+        "selector": ".x\ud800",
+        "matches": [
+          "repaired"
+        ]
+      },
+      {
+        "selector": ".x\udc00",
+        "matches": [
+          "repaired"
+        ]
+      },
+      {
+        "selector": ".x\\d800 ",
+        "matches": [
+          "repaired"
+        ]
+      },
+      {
+        "selector": ".x󰀀󰠀",
+        "matches": [
+          "marker"
+        ]
+      }
+    ]
+  }
+}

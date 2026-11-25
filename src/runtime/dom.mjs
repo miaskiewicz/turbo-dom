@@ -7,6 +7,7 @@
 // across the boundary — a buffer-backed read and an owned read are indistinguishable.
 
 import { getParser } from './parser.mjs';
+import { installCssTrackingArm, noteCssMutation, noteCssStateChange } from './css-invalidation.mjs';
 import {
   EventTarget, Event, CustomEvent,
   UIEvent, MouseEvent, KeyboardEvent, FocusEvent,
@@ -14,7 +15,7 @@ import {
 import { liveNodeList, liveHTMLCollection, liveNamedNodeMap } from './collections.mjs';
 import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
-import { CSSStyleSheet, styleSheetList } from './cssom.mjs';
+import { CSSStyleSheet, createObservedCssSheet, styleSheetList } from './cssom.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
 import { blockText, canonical, declarations, expand, longhandAlias, longhands, longhandValue, shorthandValue } from './css-shorthand.mjs';
 import { SVGAnimatedString, SVGAnimatedLength, SVGAnimatedRect, SVG_LENGTH_ATTRS } from './svg.mjs';
@@ -77,6 +78,13 @@ const METHOD = {};
 // another document: a node adopted into another document cannot hit a cache entry (keyed on
 // its old document's version) by coincidence (miaskiewicz/turbo-dom#29 item 2).
 let VERSION = 0;
+let cssTrackingEnabled, cssFocusStatus, cssMarkFocus;
+const cssNodeDescriptor = Object.getOwnPropertyDescriptor;
+function touchCssState(document) { if (cssTrackingEnabled(document)) noteCssStateChange(document); }
+function trackedSheetOwner(element) {
+  try { return cssTrackingEnabled(cssNodeDescriptor(element, 'ownerDocument')?.value); }
+  catch { return false; }
+}
 
 export const ELEMENT_NODE = 1;
 export const TEXT_NODE = 3;
@@ -430,7 +438,7 @@ export class Node extends EventTarget {
   // bump the document version so getElementsBy* caches invalidate after direct
   // __kids reassignments (innerHTML/textContent/replaceChildren) that bypass
   // insertBefore/removeChild.
-  __touch() { const d = this.ownerDocument; if (d) d.__version = ++VERSION; }
+  __touch() { const d = this.ownerDocument; if (d) { const tracked = cssTrackingEnabled(d), previous = tracked ? d.__version : undefined; d.__version = ++VERSION; if (tracked) noteCssMutation(d, this, previous); } }
 
   // Clear the outgoing children's parentNode before a wholesale `__kids = []` rewrite
   // (innerHTML/textContent/replaceChildren) — removeChild does this one at a time, these
@@ -715,7 +723,7 @@ export class Element extends Node {
   // this.__sheet. Non-<style> elements have no sheet (null), matching the platform.
   get sheet() {
     if (this.localName !== 'style') return null;
-    return this.__sheet ?? (this.__sheet = new CSSStyleSheet(this));
+    return this.__sheet ?? (this.__sheet = trackedSheetOwner(this) ? createObservedCssSheet(this) : new CSSStyleSheet(this));
   }
 
   // ---- form-control properties (on the prototype so libraries that read
@@ -743,6 +751,7 @@ export class Element extends Node {
       this.__value = String(x);
     }
     if (this.__selStart != null) { this.__selStart = Math.min(this.__selStart, this.__value.length); this.__selEnd = Math.min(this.__selEnd, this.__value.length); }
+    touchCssState(this.ownerDocument);
   }
   get defaultValue() { return this.getAttribute('value') ?? ''; }
   set defaultValue(v) { this.setAttribute('value', v); }
@@ -764,7 +773,7 @@ export class Element extends Node {
   select() { this.__selStart = 0; this.__selEnd = (this.value ?? '').length; }
 
   get checked() { return this.__checked !== undefined ? this.__checked : this.hasAttribute('checked'); }
-  set checked(x) { this.__checked = !!x; }
+  set checked(x) { this.__checked = !!x; touchCssState(this.ownerDocument); }
   get defaultChecked() { return this.hasAttribute('checked'); }
   set defaultChecked(x) { if (x) this.setAttribute('checked', ''); else this.removeAttribute('checked'); }
 
@@ -828,6 +837,7 @@ export class Element extends Node {
   get selected() { return this.__selected !== undefined ? this.__selected : this.hasAttribute('selected'); }
   set selected(x) {
     this.__selected = !!x;
+    touchCssState(this.ownerDocument);
     // single-select: selecting one option deselects the others (exclusive)
     if (x && this.localName === 'option') {
       let sel = this.parentNode;
@@ -979,7 +989,8 @@ export class Element extends Node {
     // React's tracked value too, hiding the change and suppressing onChange.
     if (t === 'checkbox') {
       const old = this.checked; this.__checked = !old;
-      return { undo: () => { this.__checked = old; }, fireChange: true };
+      touchCssState(this.ownerDocument);
+      return { undo: () => { this.__checked = old; touchCssState(this.ownerDocument); }, fireChange: true };
     }
     if (t === 'radio') {
       if (this.checked) return null;
@@ -987,7 +998,8 @@ export class Element extends Node {
       const prev = group.find((r) => r.checked) || null;
       group.forEach((r) => { r.__checked = false; });
       this.__checked = true;
-      return { undo: () => { this.__checked = false; if (prev) prev.__checked = true; }, fireChange: true };
+      touchCssState(this.ownerDocument);
+      return { undo: () => { this.__checked = false; if (prev) prev.__checked = true; touchCssState(this.ownerDocument); }, fireChange: true };
     }
     return null;
   }
@@ -1012,10 +1024,11 @@ export class Element extends Node {
   focus() {
     const doc = this.ownerDocument;
     const prev = doc.__active;
-    if (prev === this) return;
+    if (prev === this) { if (cssFocusStatus(doc) === false) { cssMarkFocus(doc, true); touchCssState(doc); } return; }
     // moving focus blurs the previously-focused element first
     if (prev && prev !== doc.body && typeof prev.dispatchEvent === 'function') {
       doc.__active = null;
+      touchCssState(doc);
       prev.dispatchEvent(new FocusEvent('blur', { relatedTarget: this }));
       prev.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: this }));
     }
@@ -1026,7 +1039,7 @@ export class Element extends Node {
   blur() {
     const doc = this.ownerDocument;
     if (doc.__active !== this) return;
-    doc.__setActive(doc.body);
+    doc.__setActive(doc.body, false);
     this.dispatchEvent(new FocusEvent('blur'));
     this.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   }
@@ -1103,7 +1116,7 @@ export class Element extends Node {
     this.__shadow = root;
     if (root.mode === 'open') this.shadowRoot = root;
     const doc = this.ownerDocument;
-    if (doc) doc.__hasShadow = true;
+    if (doc) { doc.__hasShadow = true; touchCssState(doc); }
     return root;
   }
 
@@ -1143,6 +1156,7 @@ export class Element extends Node {
     if (this.localName !== 'form') return;
     if (!this.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }))) return;
     for (const el of this.elements) resetControl(el);
+    touchCssState(this.ownerDocument);
   }
 }
 
@@ -2254,6 +2268,8 @@ function adopt(node, doc) {
   const old = node.ownerDocument;
   adoptInto(node, doc);
   old.__version = ++VERSION;
+  touchCssState(old);
+  touchCssState(doc);
   if (old.__ceRegistry !== undefined || doc.__ceRegistry !== undefined) {
     if (doc.__ceRegistry === undefined) doc.__ceRegistry = null;
     adoptedNode(node, old, doc);
@@ -2277,7 +2293,9 @@ function notifyMutation(target, type, added, removed, nextSibling, attributeName
   if (!doc) return;
   // bump the DOM version on every structural/attribute mutation — invalidates
   // the document's getElementsBy* caches. Unconditional (independent of observers).
+  const tracked = cssTrackingEnabled(doc), previousVersion = tracked ? doc.__version : undefined;
   doc.__version = ++VERSION;
+  if (tracked) noteCssMutation(doc, target, previousVersion);
   const mo = doc.__mo;
   if (mo && mo.length !== 0) queueRecords(mo, doc, target, type, added, removed, nextSibling, attributeName, oldValue, previousSibling);
   // attributeChangedCallback: queued after the mutation record, like Chrome
@@ -2342,6 +2360,20 @@ export class MutationObserver {
 
 // ----------------------------------------------------------- Document ----
 export class Document extends Node {
+  #cssTracked = 0;
+  static {
+    cssTrackingEnabled = (document) => typeof document === 'object' && document !== null && #cssTracked in document && (document.#cssTracked & 1) !== 0;
+    cssFocusStatus = (document) => {
+      if (typeof document !== 'object' || document === null || !(#cssTracked in document)) return undefined;
+      return (document.#cssTracked & 2) !== 0;
+    };
+    cssMarkFocus = (document, focused) => {
+      const previous = (document.#cssTracked & 2) !== 0;
+      document.#cssTracked = (document.#cssTracked & 1) | (focused ? 2 : 0);
+      return previous !== !!focused;
+    };
+    installCssTrackingArm((document) => { document.#cssTracked |= 1; }, cssFocusStatus);
+  }
   constructor() {
     super(null);
     this.ownerDocument = this;
@@ -2430,6 +2462,7 @@ export class Document extends Node {
     this.__kids = null;      // drop overlay
     this.__cache = [];       // drop node cache
     this.__active = null;
+    this.#cssTracked &= 1;
     this.__mo = [];          // drop observers
     this.__moPending = null;
     this.__version = ++VERSION; // invalidate getElementsBy* caches
@@ -2437,6 +2470,7 @@ export class Document extends Node {
     this.__classCache = null;
     this.__ceRegistry = undefined; // the window's globals (customElements) reset with the document
     this.__inert = undefined;      // a new buffer gets a new template contents owner document
+    touchCssState(this);
   }
 
   get documentElement() { return this.__children().find((n) => n.nodeType === ELEMENT_NODE && n.localName === 'html') ?? null; }
@@ -2444,7 +2478,13 @@ export class Document extends Node {
   get head() { const html = this.documentElement; return html ? html.__children().find((n) => n.localName === 'head') ?? null : null; }
   get body() { const html = this.documentElement; return html ? html.__children().find((n) => n.localName === 'body') ?? null : null; }
   get activeElement() { return this.__active || this.body || null; }
-  __setActive(el) { this.__active = el; }
+  __setActive(el, focused = true) {
+    const tracked = (this.#cssTracked & 1) !== 0;
+    const previous = tracked ? cssNodeDescriptor(this, '__active') : undefined;
+    this.__active = el;
+    const changedFocus = cssMarkFocus(this, focused);
+    if (tracked && (previous?.value !== el || changedFocus)) noteCssStateChange(this);
+  }
 
   // Live StyleSheetList. emotion iterates this to find its own <style>'s sheet by
   // ownerNode. Touching `.sheet` here lazily creates a CSSStyleSheet per <style>

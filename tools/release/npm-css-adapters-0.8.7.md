@@ -1,0 +1,15 @@
+# npm CSS adapter checkpoint — v0.8.7
+
+This additive checkpoint prepares the JavaScript side of #296; the published getComputedStyle default remains the existing cascade. It does not claim that #296 is complete.
+
+The optional CSS backend resolves independently from the minimal HTML ParserBinding. Existing native/wasm/auto flags, global/environment precedence, parser injection, absence fallback and resets remain intact; loader/initialization errors propagate. A forced backend never substitutes the other backend. Native loading does not require WebAssembly.
+
+Connected-document checkpoints observe audited writes while preserving the broad DOM/query version. Detached construction preserves the connected token; connected DOM/form/focus/CSSOM changes invalidate it. Unknown ownership/source stores require ordinary source fingerprints rather than unsafe cache reuse. Tracking is armed per document only. Pre-arm, public constructed, foreign and adopted plain stores retain original identities and remain permanently uncertified: EVERY computed-style read must include their exact source/use/media fingerprint, never a document stamp alone. Only internal sheets created for an already-armed document receive observation wrappers. Tracking another document does not arm an unrelated document. The wrappers preserve original own-data properties, array behavior and weak ownership.
+
+Mechanical source capture reads physical STYLE text and injected rules exactly once. Mechanical selector facts use exhaustive sparse domains and conservative subject indexes, including duplicate IDs. CSS root/limit selection, specificity, layers, values and cascade remain Rust responsibilities. Existing resting DOM selectors and GCS remain unchanged.
+
+Computed-style result proxies own primitive UTF16 results, preserve custom-property case and retain their values after reset/disposal. They never call a native model from a getter. No extra CSS parser/value engine or mutable native DOM mirror is introduced.
+
+Validation: source-hashed Chromium159 selector controls; independent native/WASM/parse-only/bare-host loader and reset controls; CSSOM mutation/retirement controls; React+RTL mutation checks; strict CC9 and the original npm100% line/function and97.3% branch floors. Exact validation receipts accompany the commit. Actual Rust model/default cutover and used-size parity remain separate work.
+
+Performance gate: the original always-observed prototype regressed 300-rule insertion from about21µs to1.108ms; a partial optimization still cost about10× and was rejected. The accepted per-document design measured14.910µs baseline versus15.597µs unarmed (+2.29ns/rule),15.257µs after another document was armed, with zero observation allocations/traps in either unarmed case. Armed opt-in measured241.280µs/300 rules and remains an explicit cost. Repeated React/RTL controls showed no repeatable regression; no zero-cost or speedup claim is made. Historical RED receipts are retained.
