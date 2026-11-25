@@ -11,3 +11,9 @@ Dependencies are the validated shared variable kernel `a047a2fa` and owned raw s
 Validation: Rust1.98.0, one own compiler job; new7 public adapter controls and complete core suite pass; strict core all-target Clippy, fmt and CC≤9 pass. Original LLVM/Tarpaulin core floor100 passed with13,847/13,847 coverable lines. No floor, nesting/output budget or assertion was weakened. Durable raw logs are in the isolated SVG worktree's `.evidence/CORE-ADAPTER-*`; the instrumented report is `.evidence/core-coverage/tarpaulin-report.json`.
 
 These are shared prerequisites for #559 and #296, not a claim that either complete adapter is finished by this commit.
+
+## Strict declaration admission follow-up
+
+`valid_custom_value_syntax` reuses the existing strict component/variable grammar and returns false for malformed syntax before cascade selection. It does not substitute or decide whether a valid unresolved/cyclic variable later becomes guaranteed-invalid. Typed input/nesting failures propagate separately. The generic condition/resource guard remains limits-only.
+
+Independent SVG-as-image Chromium inverses distinguish malformed `var()`/malformed unused fallback declarations (discard before selection, preserving earlier red) from valid cycles (selected then unset, inheriting green). The three malformed-declaration cases were causally red before this accessor/admission stage. Core full strict Clippy and original LLVM floor100 pass at13,855/13,855 coverable lines; the new public adapter suite has8 passing tests. No embedding default or limit changed.

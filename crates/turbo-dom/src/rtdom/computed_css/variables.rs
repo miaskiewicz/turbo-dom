@@ -424,6 +424,22 @@ pub fn substitute(
     Resolver::new(&variables.values, &BTreeMap::new(), limits).value(value, 0)
 }
 
+/// Check declaration component syntax, including complete `var()` argument grammar.
+/// CSS-invalid syntax is `false`; caller computation limits remain typed failures.
+pub fn valid_custom_value_syntax(
+    value: &CssText,
+    limits: ComputationLimits,
+) -> Result<bool, ComputedCssError> {
+    checked_length(0, value.as_units().len(), limits.max_output_units)?;
+    let source = CssSource::new(value.as_units());
+    let mut input = ParserInput::new(source.scalar());
+    match validate_syntax(&mut Parser::new(&mut input), 0, limits) {
+        Ok(()) => Ok(true),
+        Err(ComputedCssError::InvalidSyntax) => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
 /// Check unchanged input size and every component block before a recursive consumer.
 /// This limits-only guard does not decide CSS or `var()` argument validity.
 pub fn check_component_limits(

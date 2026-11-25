@@ -181,3 +181,35 @@ fn structural_selector_certificate_is_conservative_through_logical_arguments() {
         );
     }
 }
+
+#[test]
+fn strict_value_syntax_is_distinct_from_limits_and_computed_invalidity() {
+    use turbo_dom::rtdom::computed_css::valid_custom_value_syntax;
+    let text = |source: &str| CssText::from_units(source.encode_utf16().collect());
+    for (source, valid) in [
+        ("var(--missing)", true),
+        ("var(--cycle)", true),
+        ("var(bad)", false),
+        ("var(--defined,var(bad))", false),
+        ("'bad\nstring'", false),
+        ("", true),
+    ] {
+        assert_eq!(
+            valid_custom_value_syntax(&text(source), limits()),
+            Ok(valid),
+            "{source}"
+        );
+    }
+    let mut policy = limits();
+    policy.max_nesting = 0;
+    assert_eq!(
+        valid_custom_value_syntax(&text("red"), policy),
+        Err(ComputedCssError::NestingLimit)
+    );
+    policy.max_nesting = 16;
+    policy.max_output_units = 2;
+    assert_eq!(
+        valid_custom_value_syntax(&text("red"), policy),
+        Err(ComputedCssError::ResourceLimit)
+    );
+}
