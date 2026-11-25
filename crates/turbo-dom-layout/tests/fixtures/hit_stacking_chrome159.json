@@ -1,0 +1,470 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "5c31d2499f5d3565f9ba98802c1654769d593c0a32ba9023e4ababca8108112d",
+  "result": [
+    {
+      "name": "auto",
+      "subjectStyle": "",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "inner",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "opaque-one",
+      "subjectStyle": "opacity:1",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;opacity:1}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "inner",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "static-z",
+      "subjectStyle": "position:static;z-index:0",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;position:static;z-index:0}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "inner",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          300,
+          150
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "zero",
+      "subjectStyle": "z-index:0",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;z-index:0}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "opacity-half",
+      "subjectStyle": "opacity:.5",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;opacity:.5}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "0.5"
+    },
+    {
+      "name": "identity-transform",
+      "subjectStyle": "transform:translateX(0px)",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;transform:translateX(0px)}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "fixed",
+      "subjectStyle": "position:fixed",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;position:fixed}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "sticky",
+      "subjectStyle": "position:sticky",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;position:sticky}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "isolation",
+      "subjectStyle": "isolation:isolate",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;isolation:isolate}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "contain",
+      "subjectStyle": "contain:paint",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;contain:paint}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "will-change",
+      "subjectStyle": "will-change:opacity",
+      "effect": null,
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;will-change:opacity}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "css-opacity",
+      "subjectStyle": "",
+      "effect": "css",
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "css-important",
+      "subjectStyle": "opacity:1!important",
+      "effect": "css",
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;opacity:1!important}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "waapi-opacity",
+      "subjectStyle": "",
+      "effect": "waapi",
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "waapi-important",
+      "subjectStyle": "opacity:1!important",
+      "effect": "waapi",
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;opacity:1!important}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "cover",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    },
+    {
+      "name": "css-width",
+      "subjectStyle": "",
+      "effect": "width",
+      "css": "html,body{margin:0}#subject{position:relative;width:100px;height:100px;}#inner{position:absolute;inset:0;z-index:100}#cover{position:absolute;left:0;top:0;width:100px;height:100px;z-index:1}",
+      "body": "<div id=\"subject\"><div id=\"inner\"></div></div><div id=\"cover\"></div>",
+      "hit": "inner",
+      "rects": [
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ],
+        [
+          0,
+          0,
+          100,
+          100
+        ]
+      ],
+      "opacity": "1"
+    }
+  ]
+}

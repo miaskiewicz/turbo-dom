@@ -246,3 +246,21 @@ fn used_box(
         None
     }
 }
+
+/// Map the shared paint schedule onto the unchanged geometry storage walk.
+pub(crate) fn paint_order(galley: &Fragment) -> Vec<usize> {
+    let mut indices = HashMap::new();
+    index_storage(galley, &mut indices);
+    let mut order = Vec::with_capacity(indices.len());
+    crate::layout::paint::PaintNode::new(galley).visit(&mut |fragment| {
+        order.push(indices[&std::ptr::from_ref(fragment)]);
+    });
+    order
+}
+
+fn index_storage(fragment: &Fragment, indices: &mut HashMap<*const Fragment, usize>) {
+    indices.insert(std::ptr::from_ref(fragment), indices.len());
+    for index in fragment.paint_order() {
+        index_storage(&fragment.children[index], indices);
+    }
+}

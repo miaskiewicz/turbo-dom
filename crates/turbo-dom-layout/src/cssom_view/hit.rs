@@ -61,7 +61,8 @@ pub fn elements_at_point(
         .iter()
         .map(|run| (run.fragment_index, run))
         .collect();
-    for fragment in snapshot.fragments().iter().rev() {
+    for &index in snapshot.paint_order().iter().rev() {
+        let fragment = &snapshot.fragments()[index];
         process_fragment_hit(
             snapshot,
             styles,

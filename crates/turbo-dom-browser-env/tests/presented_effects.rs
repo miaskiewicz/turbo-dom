@@ -1,4 +1,5 @@
 #![cfg(feature = "host-internals")]
+use sha2::{Digest, Sha256};
 use std::sync::Once;
 use turbo_dom_browser_env::{browser_env, host_internals::*};
 
@@ -97,6 +98,85 @@ fn discovers_paused_waapi_without_css_candidates_and_never_calls_layout() {
         );
         assert!(transition.is_empty());
         assert!(eval(scope, "__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn canonical_context_evidence_includes_delay_and_distinguishes_css_ownership() {
+    let probe = include_str!("fixtures/presented_context_phases_probe.js");
+    let control: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/presented_context_phases_chrome159.json"
+    ))
+    .unwrap();
+    assert!(control["browser"].as_str().unwrap().starts_with("159."));
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", Sha256::digest(probe.as_bytes()))
+    );
+    let cases = control["result"].as_array().unwrap();
+    assert_eq!(cases.len(), 14);
+    for case in cases {
+        let css = case["kind"] == "css";
+        let action = phase_action(&case["action"]);
+        with_dom(|scope| {
+            let setup = if css {
+                "const style=document.createElement('style');style.textContent='@keyframes context{from{opacity:.5}to{opacity:1}}';document.head.append(style);target.style.animation='context 1000ms 1000ms linear';globalThis.motion=target.getAnimations()[0]"
+            } else {
+                "globalThis.motion=target.animate([{opacity:.5},{opacity:1}],{duration:1000,delay:1000,fill:'none'})"
+            };
+            eval(scope, &format!("globalThis.target=document.getElementById('target');{setup};{action};__layoutCalls=0"));
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert_eq!(
+                sample.targets[0].establishes_stacking_context,
+                case["hit"] == "cover",
+                "{case:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+fn phase_action(action: &serde_json::Value) -> String {
+    if let Some(time) = action.as_i64() {
+        format!("motion.pause();motion.currentTime={time}")
+    } else if action == "finish" {
+        "motion.finish()".into()
+    } else {
+        "motion.cancel()".into()
+    }
+}
+
+#[test]
+fn context_metadata_obeys_presentation_policy_and_live_css_rule_ownership() {
+    with_dom(|scope| {
+        eval(scope, "globalThis.target=document.getElementById('target');const style=document.createElement('style');style.textContent='@keyframes context{from{opacity:1}to{opacity:1}}';document.head.append(style);target.style.animation='context 1000ms linear both';target.style.setProperty('opacity','1','important');globalThis.motion=target.getAnimations()[0];motion.pause();motion.currentTime=500");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        assert!(
+            sample_presented_effects(scope, document, &[handle])
+                .unwrap()
+                .targets[0]
+                .establishes_stacking_context
+        );
+        set_animation_presentation(scope, AnimationPresentation::Disabled);
+        assert!(
+            !sample_presented_effects(scope, document, &[handle])
+                .unwrap()
+                .targets[0]
+                .establishes_stacking_context
+        );
+        set_animation_presentation(scope, AnimationPresentation::Enabled);
+        eval(scope, "target.style.animation='none'");
+        assert!(
+            !sample_presented_effects(scope, document, &[handle])
+                .unwrap()
+                .targets[0]
+                .establishes_stacking_context
+        );
     });
 }
 

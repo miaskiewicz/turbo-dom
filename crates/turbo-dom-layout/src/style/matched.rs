@@ -118,7 +118,21 @@ fn resolve_matched_style_impl(
     } else {
         inherit(pick_winners(candidates), parent)
     };
-    mark_author_border(style, author_border)
+    let style = mark_author_border(style, author_border);
+    if declarations.iter().any(presented_context) {
+        style.with_stacking_context()
+    } else {
+        style
+    }
+}
+
+// A contributing animation creates its context even when an important rule wins
+// the sampled property. Canonical origin inputs already exclude inactive effects.
+fn presented_context(matched: &MatchedDeclaration) -> bool {
+    matches!(
+        matched.origin,
+        CascadeOrigin::Animation | CascadeOrigin::Transition
+    ) && crate::layout::paint::context_property(&matched.declaration.property)
 }
 
 /// Select raw winning declaration tokens with the same origin, encapsulation,

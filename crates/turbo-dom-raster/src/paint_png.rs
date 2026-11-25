@@ -7,6 +7,7 @@ use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
     Point, Rect, SpreadMode, Transform,
 };
+use turbo_dom_layout::layout::paint::PaintNode;
 use turbo_dom_layout::layout::value::BorderEdges;
 #[cfg(test)]
 use turbo_dom_layout::layout::value::BorderSide;
@@ -170,6 +171,58 @@ fn compose_transform(xf: Transform, f: &Fragment, t: &BoxTransform) -> Transform
 }
 
 fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_scheduled(pm, &PaintNode::new(f), images, xf, 0);
+}
+
+fn paint_scheduled(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+    index: usize,
+) {
+    let Some(ancestor) = node.clips.get(index) else {
+        paint_node(pm, node, images, xf);
+        return;
+    };
+    if let Some(clip) = ancestor.clip {
+        let region = (
+            ancestor.x + clip.x,
+            ancestor.y + clip.y,
+            clip.width,
+            clip.height,
+        );
+        if let Some(path) = rrect_path(region, &clip.radii) {
+            paint_masked(pm, &path, xf, |layer, local| {
+                paint_ancestor_overflow(layer, node, images, local, index);
+            });
+        }
+    } else {
+        paint_ancestor_overflow(pm, node, images, xf, index);
+    }
+}
+
+fn paint_ancestor_overflow(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+    index: usize,
+) {
+    let ancestor = node.clips[index];
+    if let Some(clip) = ancestor.overflow_clip {
+        if let Some(path) = rrect_path(overflow_region(ancestor, &clip), &clip.radii) {
+            paint_masked(pm, &path, xf, |layer, local| {
+                paint_scheduled(layer, node, images, local, index + 1);
+            });
+        }
+    } else {
+        paint_scheduled(pm, node, images, xf, index + 1);
+    }
+}
+
+fn paint_node(pm: &mut Pixmap, node: &PaintNode<'_>, images: &impl PaintInput, xf: Transform) {
+    let f = node.fragment;
     // CSS `opacity` (miaskiewicz/turbo-dom#206): the box and its subtree paint into
     // one canvas-sized layer composited at that alpha (a transparency group, so
     // overlapping descendants do not compound); `opacity: 0` paints nothing.
@@ -182,7 +235,7 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: T
             };
             let mut layer = Pixmap::new(w, h).expect("layer within the canvas");
             let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
-            paint_opaque(&mut layer, f, images, local);
+            paint_opaque_node(&mut layer, node, images, local);
             let paint = PixmapPaint {
                 opacity: f.opacity,
                 ..PixmapPaint::default()
@@ -191,7 +244,7 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: T
         }
         return;
     }
-    paint_opaque(pm, f, images, xf);
+    paint_opaque_node(pm, node, images, xf);
 }
 
 /// The device-pixel rectangle `(x, y, width, height)` an opacity group's layer covers on
@@ -286,7 +339,18 @@ fn shadow_ink_bounds(
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
+#[cfg(test)]
 fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_opaque_node(pm, &PaintNode::new(f), images, xf);
+}
+
+fn paint_opaque_node(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+) {
+    let f = node.fragment;
     // A CSS `transform` on this box applies to it AND its whole subtree.
     let xf = match &f.content {
         FragmentContent::Box {
@@ -295,8 +359,8 @@ fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tra
         _ => xf,
     };
     match f.clip {
-        Some(clip) => paint_clipped(pm, f, clip, images, xf),
-        None => paint_subtree(pm, f, images, xf),
+        Some(clip) => paint_clipped_node(pm, node, clip, images, xf),
+        None => paint_subtree_node(pm, node, images, xf),
     }
 }
 
@@ -304,13 +368,14 @@ fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tra
 /// subtree paint into a layer covering the clip region's device bounds (in the box's own,
 /// possibly transformed, space), masked to that region and composited source-over. An
 /// empty region paints nothing.
-fn paint_clipped(
+fn paint_clipped_node(
     pm: &mut Pixmap,
-    f: &Fragment,
+    node: &PaintNode<'_>,
     clip: ClipRect,
     images: &impl PaintInput,
     xf: Transform,
 ) {
+    let f = node.fragment;
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
         return;
     };
@@ -321,7 +386,7 @@ fn paint_clipped(
     )
     .expect("the outline of a valid region");
     paint_masked(pm, &path, xf, |layer, local| {
-        paint_subtree(layer, f, images, local);
+        paint_subtree_node(layer, node, images, local);
     });
 }
 
@@ -371,12 +436,13 @@ fn device_span(bounds: Rect, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
 /// Paint `f`'s children in stacking order, clipped to its `overflow` region
 /// (miaskiewicz/turbo-dom#253) when it has one: an empty region paints none of them, and
 /// children all inside a square region paint directly.
-fn paint_children(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+fn paint_children(pm: &mut Pixmap, node: &PaintNode<'_>, images: &impl PaintInput, xf: Transform) {
+    let f = node.fragment;
     let paint = |pm: &mut Pixmap, xf: Transform| {
         // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
         // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
-        for &i in &f.paint_order() {
-            paint_fragment(pm, &f.children[i], images, xf);
+        for child in &node.children {
+            paint_scheduled(pm, child, images, xf, 0);
         }
     };
     let Some(clip) = f.overflow_clip.filter(|_| !f.children.is_empty()) else {
@@ -420,6 +486,16 @@ pub(crate) fn within(f: &Fragment, (x, y, w, h): rrect::Rect) -> bool {
 
 /// Paint a fragment's own content, then its children in stacking order.
 fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_subtree_node(pm, &PaintNode::new(f), images, xf);
+}
+
+fn paint_subtree_node(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+) {
+    let f = node.fragment;
     match &f.content {
         FragmentContent::Box {
             background,
@@ -474,7 +550,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tr
         }
         FragmentContent::Marker(_) => {}
     }
-    paint_children(pm, f, images, xf);
+    paint_children(pm, node, images, xf);
 }
 
 /// Paint a multicol `column-rule` fragment ([`FragmentContent::ColumnRule`];

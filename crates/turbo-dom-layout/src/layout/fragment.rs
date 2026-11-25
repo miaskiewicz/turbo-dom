@@ -525,6 +525,9 @@ pub struct Fragment {
     /// positioned box paints above its in-flow siblings within the same stacking
     /// context, and (with a `z-index`) participates in z ordering.
     pub is_positioned: bool,
+    /// Native style/presentation evidence for a context independent of z-index,
+    /// opacity and transform (fixed/sticky, isolation, containment or effects).
+    pub establishes_stacking_context: bool,
     /// The box's `clip: rect()` region (`None` = unclipped): painters clip this fragment
     /// and its subtree to it.
     pub clip: Option<ClipRect>,
@@ -560,6 +563,7 @@ impl Fragment {
             children: Vec::new(),
             z_index: None,
             is_positioned: false,
+            establishes_stacking_context: false,
             clip: None,
             overflow_clip: None,
             opacity: 1.0,
@@ -577,7 +581,7 @@ impl Fragment {
     /// (an in-flow box stacks at level 0, ignoring any stray `z-index`).
     #[must_use]
     pub fn paint_z(&self) -> i32 {
-        if self.is_positioned {
+        if self.is_positioned || self.establishes_stacking_context {
             self.z_index.unwrap_or(0)
         } else {
             0
@@ -598,7 +602,22 @@ impl Fragment {
                 ..
             }
         );
-        self.is_positioned || self.opacity < 1.0 || transformed
+        self.is_positioned || self.establishes_stacking_context || self.opacity < 1.0 || transformed
+    }
+
+    /// A real stacking context keeps its descendants in one atomic paint layer.
+    #[must_use]
+    pub fn creates_stacking_context(&self) -> bool {
+        self.establishes_stacking_context
+            || (self.is_positioned && self.z_index.is_some())
+            || self.opacity < 1.0
+            || matches!(
+                &self.content,
+                FragmentContent::Box {
+                    transform: Some(_),
+                    ..
+                }
+            )
     }
 
     /// This fragment's child indices in back-to-front paint order (CSS 2.2 §9.9,

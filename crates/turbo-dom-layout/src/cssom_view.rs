@@ -29,3 +29,6 @@ mod svg_metrics_tests;
 
 #[cfg(test)]
 mod degenerate_scroll_tests;
+
+#[cfg(test)]
+mod hit_stacking_tests;
