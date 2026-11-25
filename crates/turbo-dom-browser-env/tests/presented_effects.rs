@@ -825,3 +825,312 @@ fn legacy_vendor_admission_preserves_webkit_and_custom_controls() {
         }
     });
 }
+
+fn auth_menu_candidates(scope: &mut v8::PinScope) -> Vec<Handle> {
+    [
+        ".dot:nth-child(1)",
+        ".dot:nth-child(2)",
+        ".dot:nth-child(3)",
+        "#message",
+        ".user-menu",
+    ]
+    .iter()
+    .map(|selector| {
+        let element = object(scope, &format!("document.querySelector('{selector}')"));
+        handle_of(scope, element).unwrap()
+    })
+    .collect()
+}
+
+#[test]
+fn exact_auth_fixture_certifies_display_suppression_across_phase_changes() {
+    use sha2::{Digest, Sha256};
+    const HTML: &str = include_str!("fixtures/auth_menu_animations.html");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(HTML)),
+        "e2134c7ad68f7eb63ca92e173985715c029c45be96e87a2440431fe6ae00d0d3"
+    );
+    with_html(true, true, HTML, |scope| {
+        let document = object(scope, "document");
+        let candidates = auth_menu_candidates(scope);
+        for phase in ["none", "typing", "message", "none", "typing"] {
+            eval(
+                scope,
+                &format!(
+                    "document.documentElement.setAttribute('data-phase','{phase}');__layoutCalls=0"
+                ),
+            );
+            let sample = sample_presented_effects(scope, document, &candidates).unwrap();
+            assert!(
+                sample.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{phase}: {sample:?}"
+            );
+            if phase != "typing" {
+                for handle in &candidates[..3] {
+                    let target = sample
+                        .targets
+                        .iter()
+                        .find(|target| target.element == *handle)
+                        .unwrap();
+                    assert!(
+                        matches!(&target.presentation,PresentedTargetState::Certified{animation,transition} if animation.is_empty()&&transition.is_empty()),
+                        "{phase}: {target:?}"
+                    );
+                    assert!(
+                        target
+                            .effects
+                            .iter()
+                            .all(|effect| !effect.contributes && !effect.script_modified),
+                        "canonical hiding is not guest script modification: {target:?}"
+                    );
+                }
+            }
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        }
+    });
+}
+
+#[test]
+fn canonical_css_cancellation_preserves_genuine_script_modification_evidence() {
+    with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#target{animation:fade 1s infinite}</style><div id=parent><div id=target></div></div>",|scope|{
+        let document = object(scope,"document");
+        let target = object(scope,"document.getElementById('target')");
+        let handle = handle_of(scope,target).unwrap();
+        let first = sample_presented_effects(scope,document,&[handle]).unwrap();
+        let identity = first.targets[0].effects[0].identity;
+        assert!(!first.targets[0].effects[0].script_modified);
+        eval(scope,"globalThis.effect=document.getElementById('target').getAnimations()[0];effect.pause();document.getElementById('parent').style.display='none';__layoutCalls=0");
+        let hidden = sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(&hidden.targets[0].presentation,PresentedTargetState::Certified{animation,transition} if animation.is_empty()&&transition.is_empty()));
+        let effect = hidden.targets[0].effects.iter().find(|effect|effect.identity==identity).unwrap();
+        assert!(effect.script_modified && !effect.contributes,"genuine pause must remain recorded: {effect:?}");
+        assert!(eval(scope,"__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn suppressed_css_animations_do_not_mask_unsupported_presented_rendering_context() {
+    for frames in [
+        "[{display:'block'},{display:'block'}]",
+        "[{'--box':'block'},{'--box':'block'}]",
+    ] {
+        with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#parent{--box:none;display:var(--box)}#target{animation:fade 1s infinite}</style><div id=parent><div id=target></div></div>",|scope|{
+            eval(scope,&format!("globalThis.effect=document.getElementById('parent').animate({frames},{{duration:1000,fill:'both'}});effect.pause();effect.currentTime=500;__layoutCalls=0"));
+            let document = object(scope,"document");
+            let target = object(scope,"document.getElementById('target')");
+            let handle = handle_of(scope,target).unwrap();
+            let sample = sample_presented_effects(scope,document,&[handle]).unwrap();
+            let target = sample.targets.iter().find(|target|target.element==handle).unwrap();
+            assert!(matches!(&target.presentation,PresentedTargetState::Unknown{..}) || matches!(&target.presentation,PresentedTargetState::Certified{animation,..}if animation.iter().any(|property|property.name=="opacity"&&property.value=="0.3")),"presented visibility must not become an empty hidden certificate: {sample:?}");
+            assert!(eval(scope,"__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn hidden_unmodeled_css_stays_inactive_but_visible_unsupported_sources_stay_unknown() {
+    with_html(true,true,"<style>@keyframes move{from{float:left}to{float:right}}#parent{display:none}#target{animation:move 1s infinite}</style><div id=parent><div id=target></div></div>",|scope|{
+        let document = object(scope,"document");
+        let target = object(scope,"document.getElementById('target')");
+        let handle = handle_of(scope,target).unwrap();
+        let hidden = sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(&hidden.targets[0].presentation,PresentedTargetState::Certified{animation,transition} if animation.is_empty()&&transition.is_empty()),"{hidden:?}");
+        eval(scope,"document.getElementById('parent').style.display='block'");
+        let visible = sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(visible.targets[0].presentation,PresentedTargetState::Unknown{..}),"{visible:?}");
+        eval(scope,"document.getElementById('target').style.animationName='missing-definition'");
+        let missing = sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(missing.targets[0].presentation,PresentedTargetState::Unknown{..}),"visible missing definitions remain conservative: {missing:?}");
+    });
+}
+
+const POISON_SCROLL_INTRINSICS: &str = r#"
+    globalThis.__poisonCalls=0;
+    Array.prototype.includes=Array.prototype.push=Array.prototype.splice=Array.prototype.indexOf=()=>{__poisonCalls++;throw Error('public array')};
+    Array.prototype[Symbol.iterator]=()=>{__poisonCalls++;throw Error('public iterator')};
+    globalThis.Event=function(){__poisonCalls++;throw Error('public Event')};
+    globalThis.setTimeout=()=>{__poisonCalls++;throw Error('public timer')};
+    Promise.prototype.then=Promise.prototype.then;
+"#;
+
+#[test]
+fn empty_presentation_uses_private_records_after_scroll_intrinsic_poisoning() {
+    with_html(true,true,"<!doctype html><body style='margin:0'><div id=box style='width:50px;height:50px;overflow:auto'><div style='height:500px'></div></div><div style='height:3000px'></div></body>",|scope|{
+        let document=object(scope,"document");
+        eval(scope,POISON_SCROLL_INTRINSICS);
+        let sample=sample_presented_effects(scope,document,&[]).expect("a proven empty canonical target set needs no guest prototype inspection");
+        assert!(sample.targets.is_empty());
+        assert!(eval(scope,"__poisonCalls===0 && __layoutCalls===0 && __clockCalls===1").is_true());
+    });
+}
+
+#[test]
+fn active_presentation_keeps_strict_prototype_guards_after_scroll_intrinsic_poisoning() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.effect=document.getElementById('target').animate([{opacity:0},{opacity:1}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500;__clockCalls=0;__layoutCalls=0");
+        let document = object(scope, "document");
+        eval(scope, POISON_SCROLL_INTRINSICS);
+        v8::tc_scope!(let scope,scope);
+        assert!(sample_presented_effects(scope, document, &[]).is_none());
+        assert!(
+            !scope.has_caught(),
+            "no public poisoned method should be invoked"
+        );
+        assert!(eval(scope, "__poisonCalls===0 && __layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn exact_auth_menu_transitions_and_new_ripple_remain_canonically_sampleable() {
+    with_html(
+        true,
+        true,
+        include_str!("fixtures/auth_menu_animations.html"),
+        |scope| {
+            let document = object(scope, "document");
+            let mut candidates = auth_menu_candidates(scope);
+            eval(
+                scope,
+                "document.documentElement.setAttribute('data-phase','none')",
+            );
+            let baseline = sample_presented_effects(scope, document, &candidates).unwrap();
+            assert!(
+                baseline.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{baseline:?}"
+            );
+            eval(scope,"const menu=document.querySelector('.user-menu');menu.style.opacity='1';menu.style.visibility='visible';const ripple=document.createElement('span');ripple.className='ripple';document.getElementById('ripple-root').append(ripple);globalThis.ripple=ripple;__layoutCalls=0");
+            let ripple = object(scope, "ripple");
+            let handle = handle_of(scope, ripple).unwrap();
+            candidates.push(handle);
+            let sample = sample_presented_effects(scope, document, &candidates).unwrap();
+            assert!(
+                sample.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{sample:?}"
+            );
+            let target = sample
+                .targets
+                .iter()
+                .find(|target| target.element == handle)
+                .unwrap();
+            assert!(
+                matches!(&target.presentation,PresentedTargetState::Certified{animation,..}if animation.iter().any(|property|property.name=="transform")),
+                "{target:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        },
+    );
+}
+
+#[test]
+fn empty_target_discovery_never_reads_public_weak_maps_or_descriptor_getters() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.effect=document.getElementById('target').animate([{opacity:0},{opacity:1}],{duration:1000});effect.effect.target=null;__clockCalls=0;__layoutCalls=0");
+        let document = object(scope, "document");
+        eval(scope, POISON_SCROLL_INTRINSICS);
+        eval(scope,"WeakMap.prototype.get=()=>{__poisonCalls++;throw Error('public WeakMap')};Object.defineProperty(Object.prototype,'get',{configurable:true,get(){__poisonCalls++;throw Error('public descriptor')}})");
+        v8::tc_scope!(let scope,scope);
+        let sample = sample_presented_effects(scope, document, &[])
+            .expect("untargeted private effects do not require guest prototype reads");
+        assert!(sample.targets.is_empty());
+        assert!(!scope.has_caught());
+        assert!(eval(
+            scope,
+            "__poisonCalls===0 && __layoutCalls===0 && __clockCalls===1"
+        )
+        .is_true());
+    });
+}
+
+#[test]
+fn active_target_discovery_refuses_poison_without_invoking_public_descriptor_getters() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.effect=document.getElementById('target').animate([{opacity:0},{opacity:1}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500;__clockCalls=0;__layoutCalls=0");
+        let document = object(scope, "document");
+        eval(scope, POISON_SCROLL_INTRINSICS);
+        eval(scope,"WeakMap.prototype.get=()=>{__poisonCalls++;throw Error('public WeakMap')};Object.defineProperty(Object.prototype,'get',{configurable:true,get(){__poisonCalls++;throw Error('public descriptor')}})");
+        v8::tc_scope!(let scope,scope);
+        assert!(sample_presented_effects(scope, document, &[]).is_none());
+        assert!(!scope.has_caught());
+        assert!(eval(scope, "__poisonCalls===0 && __layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn empty_presentation_bypasses_exact_runtime_descriptor_poisoning_without_conversion() {
+    with_dom(|scope| {
+        let document = object(scope, "document");
+        let forged = object(scope, "Object.create(Document.prototype)");
+        eval(scope,"globalThis.hooks=0;const define=Object.defineProperty,prototype=Object.prototype;define(prototype,'get',{get(){hooks++;throw Error('descriptor getter')},configurable:true});define(prototype,'set',{get(){hooks++;throw Error('descriptor setter')},configurable:true});__clockCalls=0;__layoutCalls=0");
+        v8::tc_scope!(let scope,scope);
+        assert!(sample_presented_effects(scope, forged, &[]).is_none());
+        let sample = sample_presented_effects(scope, document, &[]).unwrap();
+        assert!(sample.targets.is_empty() && !scope.has_caught());
+        assert!(eval(scope, "hooks===0 && __clockCalls===1 && __layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn suppressed_ordinary_animation_is_independent_of_an_unrelated_closed_shadow() {
+    with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#parent{display:none}#target{animation:fade 1s infinite}</style><div id=parent><div id=target></div></div><div id=host></div>",|scope|{
+        eval(scope,"document.getElementById('host').attachShadow({mode:'closed'}).innerHTML='<slot></slot>'");
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(&sample.targets[0].presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty()),"{sample:?}");
+    });
+}
+
+#[test]
+fn suppressed_shadow_and_closed_slot_paths_remain_unproven() {
+    for child in [false, true] {
+        with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#hidden{display:none}.animated{animation:fade 1s infinite}</style><div id=host><div id=hidden><div id=target class=animated></div></div></div>",|scope|{
+            if child {
+                eval(scope,"globalThis.root=document.getElementById('host').attachShadow({mode:'closed'});root.innerHTML='<style>@keyframes fade{from{opacity:.3}to{opacity:1}}.animated{animation:fade 1s infinite}</style><div style=display:none><div id=target class=animated></div></div>';globalThis.target=root.getElementById('target')");
+            } else {
+                eval(scope,"globalThis.root=document.getElementById('host').attachShadow({mode:'closed'});root.innerHTML='<slot></slot>';globalThis.target=document.getElementById('target');if(target.parentElement.assignedSlot!==null)throw Error('closed slot must not be exposed')");
+            }
+            let document=object(scope,"document");
+            let target=object(scope,"target");
+            let handle=handle_of(scope,target).unwrap();
+            let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+            assert!(matches!(sample.targets[0].presentation,PresentedTargetState::Unknown{..}),"unproven composed path: {sample:?}");
+        });
+    }
+}
+
+#[test]
+fn hidden_animation_does_not_certify_an_unsupported_container_cascade() {
+    with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#container{container-type:inline-size;width:100px}#parent{display:none}@container(min-width:1px){#parent{display:block}}#target{animation:fade 1s infinite}</style><div id=container><div id=parent><div id=target></div></div></div>",|scope|{
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(sample.targets[0].presentation,PresentedTargetState::Unknown{..}),"unsupported groups cannot supply rendering suppression: {sample:?}");
+        assert!(eval(scope,"__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
+fn presentation_policy_suppresses_rendering_context_effects_independently() {
+    with_html(true,true,"<style>@keyframes fade{from{opacity:.3}to{opacity:1}}#parent{--box:none;display:var(--box)}#target{animation:fade 1s infinite}</style><div id=parent><div id=target></div></div>",|scope|{
+        assert!(set_animation_presentation(scope,AnimationPresentation::Disabled));
+        eval(scope,"globalThis.effect=document.getElementById('parent').animate([{'--box':'block'},{'--box':'block'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500;__layoutCalls=0");
+        let document=object(scope,"document");
+        let target=object(scope,"document.getElementById('target')");
+        let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(sample.presentation_suppressed && sample.css_animations_enabled && sample.css_transitions_enabled);
+        assert!(sample.targets.iter().all(|target|matches!(&target.presentation,PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty())),"{sample:?}");
+        assert!(eval(scope,"__layoutCalls===0").is_true());
+    });
+}

@@ -560,6 +560,36 @@ fn pseudo_element(value: &str) -> Option<String> {
     admitted.text.starts_with("div::").then_some(normalized)
 }
 
+fn ordinary_rendering_path(scope: &mut v8::PinScope, element: v8::Local<v8::Object>) -> bool {
+    let _owner = DomScope::for_object(scope, element);
+    let Some(mut cursor) = handle_of(scope, element) else {
+        return false;
+    };
+    let Some((root, count)) = with_tree(|tree| (tree.root(), tree.node_count())) else {
+        return false;
+    };
+    for _ in 0..count {
+        let Some(parent) =
+            with_tree(|tree| tree.is_live(cursor).then(|| tree.parent(cursor))).flatten()
+        else {
+            return false;
+        };
+        if cursor == root {
+            return with_tree(|tree| tree.node_type_id(root) == 9).unwrap_or(false);
+        }
+        let Some(parent) = parent else {
+            return false;
+        };
+        let node = wrap(scope, cursor);
+        let composed = super::host_composed_parent(scope, node);
+        if composed.and_then(|node| handle_of(scope, node)) != Some(parent) {
+            return false;
+        }
+        cursor = parent;
+    }
+    false
+}
+
 fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     let set_string =
         |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value
@@ -569,6 +599,10 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             None => rv.set(v8::null(scope).into()),
         };
     match arg_str(scope, &args, 0).as_str() {
+        "ordinaryRenderingPath" => {
+            let element = v8::Local::<v8::Object>::try_from(args.get(1)).expect("native candidate");
+            rv.set_bool(ordinary_rendering_path(scope, element));
+        }
         "targetTracking" => rv.set_bool(cfg!(feature = "host-internals")),
         "target" => {
             #[cfg(feature = "host-internals")]

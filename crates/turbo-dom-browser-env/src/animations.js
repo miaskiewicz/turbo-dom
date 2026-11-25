@@ -35,7 +35,7 @@
   // Set iteration through the captured %SetIteratorPrototype%.next: for-of would look up the
   // page-replaceable %IteratorPrototype%[@@iterator] (turbo-dom#199).
   const setIteratorNext = Object.getPrototypeOf(apply(setValues, new SetType(), [])).next;
-  const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
+  const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { __proto__: null, value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
   const intrinsic = ns.intrinsics, toPrecision = Number.prototype.toPrecision;
   const push = (array, value) => { intrinsic.push(array, value); return array; };
   const contains = (array, value) => { for (let index = 0; index < array.length; index++) if (array[index] === value) return true; return false; };
@@ -1949,7 +1949,7 @@
     for (let i = 0; i < css.length; i++) out += css[i] === '-' && i > 0 && i + 1 < css.length ? apply(toUpper, css[++i], []) : css[i];
     return out;
   }
-  function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { animations: [], transitions: create(null), values: create(null) }); return state; }
+  function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { __proto__: null, animations: [], transitions: create(null), values: create(null) }); return state; }
   function cssCreate(constructor, element, keyframes, timing, css) {
     setPrototype(css, null);
     const effect = construct(function () {}, [], KeyframeEffect);
@@ -1983,7 +1983,7 @@
     }
     return out;
   }
-  const cssCancel = animation => { const record = animations.get(animation); mutate(animation, record, () => cancel(animation, record)); };
+  const cssCancel = animation => { const record = animations.get(animation); cancel(animation, record); track(animation); };
   // ---- CSS animation and transition events (turbo-dom#313) --------------------------------
   // Blink's CSSAnimations event delegates: each CSS animation remembers the phase (and the
   // iteration) it was last sampled in. A frame's update, and a cancel, compare them with the
@@ -2351,7 +2351,7 @@
   // Private native-geometry seam. Never compose/interpolate an effect here: resolving
   // a percentage transform can call native layout, whose capture is asking this question.
   // CSS synchronization is canonical and bounded to the target and its style dependencies.
-  let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false;
+  let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false, inspectionRenderingUncertain = false;
   const stringifyEffects = JSON.stringify;
   // Promise resolution observes `animation.then`. Reject hostile promise/prototype
   // shapes before canonical CSS synchronization could resolve a ready promise. Inspect
@@ -2501,6 +2501,7 @@
   }
   function presentedTargets(candidates) {
     const out = [], seen = new WeakSetType();
+    setPrototype(out, null);
     const add = element => {
       if (!element || nodeType(element) !== 1 || apply(ownerGetter, element, []) !== realmDocument) return;
       if (apply(weakSetHas, seen, [element])) return;
@@ -2648,11 +2649,19 @@
     }
     return out;
   }
+  function presentedCssSuppressionSupported(element, state) {
+    if (!state || state.hidden !== true || state.animations.length || inspectionRenderingUncertain) return false;
+    if (typeof ns.effectRenderingScopeSupported !== 'function' || !ns.effectRenderingScopeSupported(element)) return false;
+    return Native('ordinaryRenderingPath', element);
+  }
   function presentedMissingCssNames(element, read) {
     if (!cssAnimationsOn) return false;
     const names = intrinsic.filter(splitList(read('animation-name') || 'none'), name => name !== 'none');
     const state = cssStates.get(element), owned = state ? state.animations : [];
-    return names.length !== owned.length;
+    if (names.length === owned.length) return false;
+    // Canonical CSS synchronization removes animations from display-suppressed
+    // elements while computed animation-name deliberately retains its declaration.
+    return !presentedCssSuppressionSupported(element, state);
   }
   function presentedTimelineSupported(read) {
     const timeline = read('animation-timeline');
@@ -2718,6 +2727,14 @@
     }
     return false;
   }
+  function presentedRenderingUncertain(selected) {
+    if (!animationPresentationOn) return false;
+    for (let i = 0; i < selected.length; i++) {
+      const properties = presentedSourceProperties(presentedEntries(selected[i]));
+      if (intrinsic.some(properties, property => property === 'display' || intrinsic.slice(property, 0, 2) === '--')) return true;
+    }
+    return false;
+  }
   function preparePresentedTargets(selected) {
     const snapshots = [];
     for (let i = 0; i < selected.length; i++) {
@@ -2735,6 +2752,7 @@
   function presentedRows(selected) {
     const snapshots = preparePresentedTargets(selected);
     if (!snapshots) return null;
+    inspectionRenderingUncertain = presentedRenderingUncertain(selected);
     const changingContext = presentedChangingContext(selected), rows = []; setPrototype(rows, null);
     for (let i = 0; i < selected.length; i++) {
       const row = [selected[i], apply(stringifyEffects, null, [presentedTargetData(selected[i], snapshots[i], changingContext)])];
@@ -2744,19 +2762,21 @@
   }
   ns.samplePresentedEffects = function (document, candidates) {
     if (document !== realmDocument) return null;
-    if (inspectingEffects || suppressStyle || !safeInspectionPrototypes()) return null;
+    if (inspectingEffects || suppressStyle) return null;
+    const selected = presentedTargets(candidates);
+    if (selected.length && !safeInspectionPrototypes()) return null;
     const time = clock();
     if (host && (time === null || !isFinite(time))) return null;
     inspectionClock = time; inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
     try {
-      const rows = presentedRows(presentedTargets(candidates));
+      const rows = presentedRows(selected);
       if (!rows) return null;
       const metadata = create(null), result = create(null);
       metadata.sample_time = time; metadata.css_animations_enabled = cssAnimationsOn;
       metadata.css_transitions_enabled = cssTransitionsOn; metadata.presentation_suppressed = !animationPresentationOn;
       result.metadata = apply(stringifyEffects, null, [metadata]); result.targets = rows;
       return result;
-    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; inspectionRenderingUncertain = false; }
   };
   ns.inspectElementCssEffects = function (element) {
     if (inspectingEffects || suppressStyle || cssBusy.get(element) || !safeInspectionPrototypes()) return null;
@@ -2786,10 +2806,11 @@
       result.css_transitions_enabled = cssTransitionsOn;
       result.presentation_suppressed = !animationPresentationOn;
       return apply(stringifyEffects, null, [result]);
-    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; inspectionRenderingUncertain = false; }
   };
   // The switched-on kinds' update (set_css_animations / set_css_transitions).
   function cssRun(element, read, underlying, hidden) {
+    cssState(element).hidden = hidden;
     if (cssAnimationsOn) cssAnimations(element, read, underlying, hidden);
     if (cssTransitionsOn) cssTransitions(element, read, underlying, hidden);
   }

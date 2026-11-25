@@ -1,0 +1,64 @@
+<!doctype html>
+<html data-phase="typing">
+<head><style>
+body { margin:0; font:16px sans-serif; }
+header { height:64px; display:flex; align-items:center; }
+#user-menu { position:relative; display:inline-block; }
+#trigger { display:flex; align-items:center; width:100px; height:40px; cursor:pointer; }
+#trigger svg { width:20px; height:20px; }
+.user-menu { opacity:0; visibility:hidden; pointer-events:none; position:absolute; top:100%; left:0; min-width:220px; padding-top:12px; transition:opacity .2s ease-in-out,visibility .2s ease-in-out; }
+#user-menu:hover .user-menu { opacity:1; visibility:visible; pointer-events:auto; }
+#logout { position:relative; width:200px; height:40px; }
+#ripple-root { position:absolute; overflow:hidden; pointer-events:none; inset:0; }
+.ripple { position:absolute; width:30px; height:30px; animation:ripple-enter .55s ease-in-out; }
+#paper { overflow:hidden; width:400px; border:1px solid; }
+#collapse { height:auto; overflow:visible; }
+#region { min-height:300px; max-height:500px; width:100%; box-sizing:border-box; overflow-y:auto; overflow-x:hidden; padding:16px; }
+#typing, #message { display:flex; overflow:hidden; }
+#typing { gap:4px; padding:8px 0; }
+.dot { width:8px; height:8px; border-radius:50%; animation:typing-pulse 1.4s ease-in-out infinite; }
+.dot:nth-child(2) { animation-delay:.2s; }
+.dot:nth-child(3) { animation-delay:.4s; }
+#message { display:none; }
+html[data-phase="message"] #typing,html[data-phase="none"] #typing { display:none; }
+html[data-phase="message"] #message { display:flex; animation:fadeInUp .3s ease-out; }
+html[data-phase="none"] #message { display:flex; }
+#input-wrap { position:relative; width:100%; }
+textarea { box-sizing:border-box; width:100%; font:inherit; }
+#shadow { visibility:hidden; position:absolute; overflow:hidden; height:0; top:0; left:0; transform:translateZ(0); padding-top:0; padding-bottom:0; }
+@keyframes typing-pulse { 0%,60%,100% { opacity:.3; -ms-transform:scale(.8); transform:scale(.8); } 30% { opacity:1; -ms-transform:scale(1); transform:scale(1); } }
+@keyframes fadeInUp { from { opacity:0; -ms-transform:translateY(8px); transform:translateY(8px); } to { opacity:1; -ms-transform:translateY(0); transform:translateY(0); } }
+@keyframes ripple-enter { from { transform:scale(0); opacity:.1; } to { transform:scale(1); opacity:.3; } }
+</style></head>
+<body>
+<header><div id="user-menu"><div id="trigger" role="button" tabindex="0" aria-haspopup="true">Menu<svg id="icon" viewBox="0 0 20 20"><path d="M2 4h16L10 14z" /></svg></div><div class="user-menu"><button id="logout">Log out<span id="ripple-root"></span></button></div></div></header>
+<main><div id="paper"><div id="collapse"><div id="region"><div id="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div id="message">Welcome message</div><div id="messages-end"></div></div><div id="input-wrap"><textarea id="textarea" rows="1">Example input</textarea><textarea id="shadow" aria-hidden="true" tabindex="-1">Example input</textarea></div></div></div></main>
+<script>
+window.authEvents=[];
+function recordRead(read) { try { return {value:read()}; } catch(error) { return {error:error.message}; } }
+window.readAuthGeometry = function() {
+  const icon=document.getElementById('icon'),trigger=document.getElementById('trigger'),ripple=document.getElementById('ripple-root'),textarea=document.getElementById('textarea'),shadow=document.getElementById('shadow');
+  return {
+    iconRect:recordRead(()=>icon.getBoundingClientRect().width),
+    triggerRect:recordRead(()=>trigger.getBoundingClientRect().width),
+    rippleRect:recordRead(()=>ripple.getBoundingClientRect().width),
+    rippleClientWidth:recordRead(()=>ripple.clientWidth),
+    rippleClientHeight:recordRead(()=>ripple.clientHeight),
+    textareaUsedWidth:recordRead(()=>getComputedStyle(textarea).width),
+    textareaClientWidth:recordRead(()=>textarea.clientWidth),
+    textareaOffsetHeight:recordRead(()=>textarea.offsetHeight),
+    shadowScrollHeight:recordRead(()=>shadow.scrollHeight),
+    regionScrollHeight:recordRead(()=>document.getElementById('region').scrollHeight)
+  };
+};
+window.setAuthPhase = phase => document.documentElement.setAttribute('data-phase',phase);
+document.getElementById('trigger').addEventListener('mouseenter',event=>authEvents.push(['enter',event.isTrusted,event.clientX,event.clientY]));
+document.getElementById('logout').addEventListener('mousedown',event=>{
+  authEvents.push(['down',event.isTrusted]);
+  const root=document.getElementById('ripple-root');
+  window.rippleReads={rect:recordRead(()=>root.getBoundingClientRect().width),width:recordRead(()=>root.clientWidth),height:recordRead(()=>root.clientHeight)};
+  const ripple=document.createElement('span');ripple.className='ripple';root.append(ripple);
+});
+document.getElementById('logout').addEventListener('click',event=>authEvents.push(['click',event.isTrusted]));
+</script>
+</body></html>
