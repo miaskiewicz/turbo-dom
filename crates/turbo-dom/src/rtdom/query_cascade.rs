@@ -121,6 +121,32 @@ impl CascadeSelector {
         }
     }
 
+    /// A conservative certificate for matching without live document state.
+    /// Static root/empty and their logical combinations are certified; other
+    /// pseudo classes and every pseudo element remain explicitly uncertain.
+    #[must_use]
+    pub fn certifies_structural_matching(&self) -> bool {
+        if self.pseudo_element.is_some() {
+            return false;
+        }
+        let mut pending = vec![&self.complex];
+        while let Some(complex) = pending.pop() {
+            for pseudo in std::iter::once(&complex.first)
+                .chain(complex.rest.iter().map(|(_, c)| c))
+                .flat_map(|compound| &compound.pseudos)
+            {
+                match pseudo {
+                    Pseudo::Root | Pseudo::Scope | Pseudo::Empty => {}
+                    Pseudo::Is(list) | Pseudo::Where(list) | Pseudo::Not(list) => {
+                        pending.extend(list);
+                    }
+                    _ => return false,
+                }
+            }
+        }
+        true
+    }
+
     /// The pseudo-element it targets (lowercase name, e.g. `before`), if any.
     #[must_use]
     pub fn pseudo_element(&self) -> Option<&str> {

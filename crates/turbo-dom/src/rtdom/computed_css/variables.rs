@@ -35,6 +35,12 @@ impl CustomProperties {
         self.values.get(name)
     }
 
+    /// Borrow this immutable computed-token snapshot without cloning its payloads.
+    #[must_use]
+    pub fn as_map(&self) -> &BTreeMap<String, CssText> {
+        &self.values
+    }
+
     #[must_use]
     pub fn values(&self) -> BTreeMap<String, CssText> {
         self.values.clone()
@@ -209,10 +215,19 @@ fn validate_syntax(
     depth: usize,
     limits: ComputationLimits,
 ) -> Result<(), ComputedCssError> {
+    inspect_syntax(input, depth, limits, true)
+}
+
+fn inspect_syntax(
+    input: &mut Parser<'_, '_>,
+    depth: usize,
+    limits: ComputationLimits,
+    strict: bool,
+) -> Result<(), ComputedCssError> {
     check_depth(depth, limits)?;
     while let Ok(token) = input.next_including_whitespace_and_comments() {
         let token = token.clone();
-        validate_token(token, input, depth, limits)?;
+        validate_token(token, input, depth, limits, strict)?;
     }
     Ok(())
 }
@@ -222,9 +237,10 @@ fn validate_token(
     input: &mut Parser<'_, '_>,
     depth: usize,
     limits: ComputationLimits,
+    strict: bool,
 ) -> Result<(), ComputedCssError> {
     match token {
-        Token::Function(name) if name.eq_ignore_ascii_case("var") => input
+        Token::Function(name) if strict && name.eq_ignore_ascii_case("var") => input
             .parse_nested_block(|input| {
                 validate_variable_syntax(input, depth + 1, limits)
                     .map_err(|error| input.new_custom_error(error))
@@ -235,11 +251,11 @@ fn validate_token(
         | Token::SquareBracketBlock
         | Token::CurlyBracketBlock => input
             .parse_nested_block(|input| {
-                validate_syntax(input, depth + 1, limits)
+                inspect_syntax(input, depth + 1, limits, strict)
                     .map_err(|error| input.new_custom_error(error))
             })
             .map_err(|error| error_kind(&error)),
-        token if token.is_parse_error() => Err(ComputedCssError::InvalidSyntax),
+        token if strict && token.is_parse_error() => Err(ComputedCssError::InvalidSyntax),
         _ => Ok(()),
     }
 }
@@ -406,4 +422,82 @@ pub fn substitute(
     limits: ComputationLimits,
 ) -> Result<Option<CssText>, ComputedCssError> {
     Resolver::new(&variables.values, &BTreeMap::new(), limits).value(value, 0)
+}
+
+/// Check unchanged input size and every component block before a recursive consumer.
+/// This limits-only guard does not decide CSS or `var()` argument validity.
+pub fn check_component_limits(
+    value: &CssText,
+    limits: ComputationLimits,
+) -> Result<(), ComputedCssError> {
+    checked_length(0, value.as_units().len(), limits.max_output_units)?;
+    let source = CssSource::new(value.as_units());
+    let mut input = ParserInput::new(source.scalar());
+    inspect_syntax(&mut Parser::new(&mut input), 0, limits, false)
+}
+
+/// Inspect CSS component tokens for variable references without computing them.
+/// Quoted strings, comments and URL payloads remain inert; escaped function names
+/// use the same CSS tokenizer as substitution. Argument validity is checked later.
+pub fn has_variable_references(
+    value: &CssText,
+    limits: ComputationLimits,
+) -> Result<bool, ComputedCssError> {
+    has_function_reference(value, "var", limits)
+}
+
+/// Inspect component tokens for a named function, ignoring inert strings and URLs.
+pub fn has_function_reference(
+    value: &CssText,
+    function: &str,
+    limits: ComputationLimits,
+) -> Result<bool, ComputedCssError> {
+    let source = CssSource::new(value.as_units());
+    let mut input = ParserInput::new(source.scalar());
+    reference_stream(&mut Parser::new(&mut input), 0, function, limits)
+}
+
+fn reference_stream(
+    input: &mut Parser<'_, '_>,
+    depth: usize,
+    function: &str,
+    limits: ComputationLimits,
+) -> Result<bool, ComputedCssError> {
+    check_depth(depth, limits)?;
+    let mut found = false;
+    while let Ok(token) = input.next_including_whitespace_and_comments() {
+        let token = token.clone();
+        found |= reference_token(token, input, depth, function, limits)?;
+    }
+    Ok(found)
+}
+
+fn reference_token(
+    token: Token<'_>,
+    input: &mut Parser<'_, '_>,
+    depth: usize,
+    function: &str,
+    limits: ComputationLimits,
+) -> Result<bool, ComputedCssError> {
+    match token {
+        Token::Function(name) if name.eq_ignore_ascii_case(function) => {
+            input
+                .parse_nested_block(|input| {
+                    while input.next_including_whitespace_and_comments().is_ok() {}
+                    Ok::<_, ParseError<'_, ComputedCssError>>(())
+                })
+                .expect("all reference-probe component tokens were consumed");
+            Ok(true)
+        }
+        Token::Function(_)
+        | Token::ParenthesisBlock
+        | Token::SquareBracketBlock
+        | Token::CurlyBracketBlock => input
+            .parse_nested_block(|input| {
+                reference_stream(input, depth + 1, function, limits)
+                    .map_err(|error| input.new_custom_error(error))
+            })
+            .map_err(|error| error_kind(&error)),
+        _ => Ok(false),
+    }
 }
