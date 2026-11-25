@@ -12,6 +12,7 @@ use turbo_dom_core::rtdom::computed_css::{
     custom_cascade::CustomCascadeLimits,
     facts::{AnswerDomain, MechanicalAnswer},
     inline_style::InlineLimits,
+    preferences::renderer_initial_preferences,
     prepared::PreparedStyles,
     properties::InitialContext,
     resolve::{compute_style, ComputedStyle, ResolveLimits, TargetContext},
@@ -495,13 +496,15 @@ struct StyleInput<'a> {
     contexts: &'a [ContextRoot],
     route_budget: &'a mut RouteBudget,
 }
+type RendererDefaults = Vec<(&'static str, CssText)>;
 fn style(
     mut target: Target,
     prepared: &PreparedStyles,
     parent: Option<&ComputedStyle>,
     limits: Limits,
     input: StyleInput<'_>,
-) -> Result<ComputedStyle, String> {
+    usage: &mut Usage,
+) -> Result<(ComputedStyle, RendererDefaults), String> {
     let StyleInput {
         selectors,
         boundaries,
@@ -536,6 +539,7 @@ fn style(
             is_root: target.context.is_root,
         },
     };
+    let renderer_limits = limits;
     let computation = limits.computation.into();
     let limits = ResolveLimits {
         matching_decisions: limits.matching_decisions,
@@ -566,18 +570,42 @@ fn style(
                 routes: routes.as_ref(),
                 containers,
             };
-            compute_style(prepared, &facts, inline.as_ref(), parent, &context, limits)
-                .map_err(|error| format!("CSSBackendResolve:{error:?}"))
+            let computed =
+                compute_style(prepared, &facts, inline.as_ref(), parent, &context, limits)
+                    .map_err(|error| format!("CSSBackendResolve:{error:?}"))?;
+            usage.result(&computed, renderer_limits)?;
+            let mut retained: turbo_dom_core::rtdom::computed_css::ComputationLimits =
+                renderer_limits.computation.into();
+            retained.max_total_units = retained
+                .max_total_units
+                .min(renderer_limits.retained_result_units - usage.output);
+            let extra = renderer_initial_preferences(
+                &computed.values.values,
+                &context.values.initial,
+                retained,
+            )
+            .map_err(|error| format!("CSSBackendResolve:{error:?}"))?;
+            for (name, value) in &extra {
+                add(
+                    &mut usage.output,
+                    name.len() + value.as_units().len(),
+                    renderer_limits.retained_result_units,
+                )?;
+            }
+            Ok((computed, extra))
         },
     )
 }
-fn result_row(id: u32, style: &ComputedStyle) -> ResultRow {
-    let renderer_values = style
+fn result_row(id: u32, style: &ComputedStyle, extra: RendererDefaults) -> ResultRow {
+    let mut renderer_values: BTreeMap<_, _> = style
         .values
         .values
         .iter()
         .map(|(name, value)| (name.clone(), value.as_units().to_vec()))
         .collect();
+    for (name, value) in extra {
+        renderer_values.insert(name.to_owned(), value.as_units().to_vec());
+    }
     let values = style
         .public_keys
         .iter()
@@ -636,7 +664,7 @@ impl Batch<'_> {
             .parent_id
             .map(|id| self.styles.get(&id).ok_or_else(|| fail("MissingParent")))
             .transpose()?;
-        let computed = style(
+        let (computed, extra) = style(
             target,
             self.prepared,
             parent,
@@ -647,9 +675,9 @@ impl Batch<'_> {
                 contexts: &self.contexts,
                 route_budget: &mut self.route_budget,
             },
+            &mut self.usage,
         )?;
-        self.usage.result(&computed, self.limits)?;
-        self.output.push(result_row(id, &computed));
+        self.output.push(result_row(id, &computed, extra));
         self.styles.insert(id, computed);
         Ok(())
     }

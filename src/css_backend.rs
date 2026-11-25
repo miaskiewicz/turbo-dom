@@ -323,31 +323,35 @@ fn selector_items(
     }
 }
 fn user_agent_source_v1() -> Result<String, String> {
-    use turbo_dom_layout::style::{
-        fullscreen_user_agent_css, user_agent_css, DOCUMENT_USER_AGENT_CSS,
-    };
-    let context_free_initials: BTreeMap<_, _> = [
-        "container-name",
-        "container-type",
-        "writing-mode",
-        "box-sizing",
-        "float",
-        "position",
-        "display",
-    ]
-    .into_iter()
-    .filter_map(|name| {
-        turbo_dom_core::rtdom::computed_css::properties::context_free_initial(name)
-            .map(|value| (name, value.as_units().to_vec()))
-    })
-    .collect();
-    encode(&json!({
+    encode(&user_agent_source_value(
+        turbo_dom_layout::style::user_agent_css(),
+    ))
+}
+pub(super) const CONTEXT_FREE_INITIAL_NAMES: [&str; 7] = [
+    "container-name",
+    "container-type",
+    "writing-mode",
+    "box-sizing",
+    "float",
+    "position",
+    "display",
+];
+pub(super) fn user_agent_source_value(css: &str) -> Value {
+    use turbo_dom_layout::style::{fullscreen_user_agent_css, DOCUMENT_USER_AGENT_CSS};
+    let context_free_initials: BTreeMap<_, _> = CONTEXT_FREE_INITIAL_NAMES
+        .into_iter()
+        .filter_map(|name| {
+            turbo_dom_core::rtdom::computed_css::properties::context_free_initial(name)
+                .map(|value| (name, value.as_units().to_vec()))
+        })
+        .collect();
+    json!({
         "abiVersion":1,
         "contextFreeInitials":context_free_initials,
-        "text":user_agent_css().encode_utf16().collect::<Vec<_>>(),
+        "text":css.encode_utf16().collect::<Vec<_>>(),
         "documentText":DOCUMENT_USER_AGENT_CSS.encode_utf16().collect::<Vec<_>>(),
         "fullscreenText":fullscreen_user_agent_css().encode_utf16().collect::<Vec<_>>()
-    }))
+    })
 }
 fn selector_policy_metadata(
     policy: &turbo_dom_core::rtdom::computed_css::selector_policy::SelectorPolicyInspection,
@@ -412,6 +416,10 @@ mod native {
     #[napi(js_name = "cssUserAgentSourceV1")]
     pub fn css_user_agent_source_v1() -> Result<String> {
         super::user_agent_source_v1().map_err(error)
+    }
+    #[napi(js_name = "cssComputedPreferencesV1")]
+    pub fn css_computed_preferences_v1(source: String) -> Result<String> {
+        crate::css_preferences::preferences(&source).map_err(error)
     }
     #[napi(js_name = "serializeCssomV1")]
     pub fn serialize_cssom_v1(source: String) -> Result<String> {
@@ -506,6 +514,10 @@ mod wasm {
     #[wasm_bindgen(js_name=cssUserAgentSourceV1)]
     pub fn css_user_agent_source_v1() -> Result<String, JsValue> {
         super::user_agent_source_v1().map_err(|error| JsValue::from_str(&error))
+    }
+    #[wasm_bindgen(js_name=cssComputedPreferencesV1)]
+    pub fn css_computed_preferences_v1(source: &str) -> Result<String, JsValue> {
+        crate::css_preferences::preferences(source).map_err(error)
     }
     #[wasm_bindgen(js_name=serializeCssomV1)]
     pub fn serialize_cssom_v1(source: &str) -> Result<String, JsValue> {
@@ -614,6 +626,144 @@ mod tests {
     }
     fn request(id: u32, color: bool) -> Value {
         json!({"abiVersion":1,"targets":[target(id)],"domains":[{"id":0,"nodeIds":[id]}],"selectorAnswers":[{"selectorId":0,"itemId":0,"rootId":null,"domainId":0,"matches":if color {vec![id]} else {vec![]}}],"scopeAnswers":[],"limits":limits()})
+    }
+    #[test]
+    fn renderer_preferences_do_not_materialize_public_cssom_keys() {
+        let source = compiled(".x { color: red }");
+        let prepared = prepared(&source);
+        let mut input = request(2, false);
+        input["targets"][0]["context"]["initialFontFamily"] = json!("monospace");
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        let row = &output["targets"][0];
+        assert_eq!(
+            row["rendererValues"]["font-family"],
+            json!("monospace".encode_utf16().collect::<Vec<_>>())
+        );
+        assert_eq!(
+            row["rendererValues"]["color"],
+            json!("rgb(0, 0, 0)".encode_utf16().collect::<Vec<_>>())
+        );
+        assert!(row["values"].get("font-family").is_none());
+        assert!(row["values"].get("color").is_none());
+        assert_eq!(row["publicKeys"], json!([]));
+    }
+    #[test]
+    fn renderer_inherited_family_wins_over_child_initial_context() {
+        let source = compiled(".x { color: red }");
+        let prepared = prepared(&source);
+        let mut input = request(2, false);
+        input["targets"][0]["inline"] =
+            json!("font-family: monospace".encode_utf16().collect::<Vec<_>>());
+        let mut child = target(3);
+        child["parentId"] = json!(2);
+        child["context"]["initialFontFamily"] = json!("Times");
+        input["targets"].as_array_mut().unwrap().push(child);
+        input["domains"][0]["nodeIds"] = json!([2, 3]);
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        assert_eq!(
+            output["targets"][1]["rendererValues"]["font-family"],
+            json!("monospace".encode_utf16().collect::<Vec<_>>())
+        );
+        input["targets"][1]["inline"] =
+            json!("font-family: initial".encode_utf16().collect::<Vec<_>>());
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        assert_eq!(
+            output["targets"][1]["rendererValues"]["font-family"],
+            json!("Times".encode_utf16().collect::<Vec<_>>())
+        );
+        input["targets"][1]["inline"] =
+            json!("font-family: unset".encode_utf16().collect::<Vec<_>>());
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        assert_eq!(
+            output["targets"][1]["rendererValues"]["font-family"],
+            json!("monospace".encode_utf16().collect::<Vec<_>>())
+        );
+    }
+    #[test]
+    fn normalized_initial_context_is_inherited_before_relative_lengths() {
+        let source = compiled(".x { color: red }");
+        let prepared = prepared(&source);
+        let mut input = request(2, false);
+        input["targets"][0]["context"]["initialFontSize"] = json!("10000px");
+        input["targets"][0]["context"]["unitBases"] = json!([["rem", 10000.0]]);
+        let mut child = target(3);
+        child["parentId"] = json!(2);
+        child["inline"] = json!("font-size: inherit; width: 2em"
+            .encode_utf16()
+            .collect::<Vec<_>>());
+        input["targets"].as_array_mut().unwrap().push(child);
+        input["domains"][0]["nodeIds"] = json!([2, 3]);
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        assert_eq!(output["targets"][0]["fontSizePx"], 10000.0);
+        assert_eq!(output["targets"][1]["fontSizePx"], 10000.0);
+        assert_eq!(
+            output["targets"][1]["values"]["width"],
+            json!("20000px".encode_utf16().collect::<Vec<_>>())
+        );
+    }
+    fn profile_font_roundtrip(size: f64) -> (Value, Value) {
+        let profile: Value = serde_json::from_str(&crate::css_preferences::preferences(&json!({
+            "abiVersion":1,"hostPlatform":"macos","fontOverride":{"family":[65],"sizePx":size},
+            "limits":{"inputUnits":1024,"retainedUnits":100_000,"computation":computation()}
+        }).to_string()).unwrap()).unwrap();
+        let units: Vec<u16> =
+            serde_json::from_value(profile["initial"]["fontSizeInput"].clone()).unwrap();
+        let initial = String::from_utf16(&units).unwrap();
+        let source = compiled(".x { color: red }");
+        let prepared = prepared(&source);
+        let mut input = request(2, false);
+        input["targets"][0]["context"]["initialFontSize"] = json!(initial);
+        let mut child = target(3);
+        child["parentId"] = json!(2);
+        child["inline"] = json!("font-size: inherit; width: 2em"
+            .encode_utf16()
+            .collect::<Vec<_>>());
+        input["targets"].as_array_mut().unwrap().push(child);
+        input["domains"][0]["nodeIds"] = json!([2, 3]);
+        let output: Value =
+            serde_json::from_str(&prepared.resolve_batch(&input.to_string()).unwrap()).unwrap();
+        eprintln!(
+            "PROFILE_FONT_ROUNDTRIP {}",
+            json!({"raw":size,"profile":profile["initial"],"parent":output["targets"][0]["fontSizePx"],"child":output["targets"][1]["fontSizePx"],"width":output["targets"][1]["values"]["width"]})
+        );
+        (profile, output)
+    }
+    #[test]
+    fn fractional_profile_basis_survives_root_initial_context_and_inherited_em() {
+        let (profile, output) = profile_font_roundtrip(16.123_456_789);
+        assert_eq!(
+            output["targets"][0]["fontSizePx"],
+            profile["initial"]["computedFontSizePx"]
+        );
+        assert_eq!(
+            output["targets"][1]["fontSizePx"],
+            profile["initial"]["computedFontSizePx"]
+        );
+        assert_eq!(
+            output["targets"][1]["values"]["width"],
+            json!("32.2469px".encode_utf16().collect::<Vec<_>>())
+        );
+    }
+    #[test]
+    fn tiny_finite_profile_basis_survives_root_initial_context_and_inherited_em() {
+        let (profile, output) = profile_font_roundtrip(1e-300);
+        assert_eq!(
+            output["targets"][0]["fontSizePx"],
+            profile["initial"]["computedFontSizePx"]
+        );
+        assert_eq!(
+            output["targets"][1]["fontSizePx"],
+            profile["initial"]["computedFontSizePx"]
+        );
+        assert_eq!(
+            output["targets"][1]["values"]["width"],
+            json!("0px".encode_utf16().collect::<Vec<_>>())
+        );
     }
     #[test]
     fn ua_source_is_the_canonical_layout_source_without_a_second_table() {

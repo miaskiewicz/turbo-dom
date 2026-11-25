@@ -170,7 +170,10 @@ pub fn ensure_default_display(style: &mut ComputedStyle, tag: &str) {
 /// `layout::form_controls`. A `<progress>` / `<meter>` is an inline-block of html.css's
 /// `10em` / `5em` by `1em` logical size (the internal `-internal-ua-css-size`, which
 /// `appearance: none` keeps; miaskiewicz/turbo-dom#293).
-const UA_CSS: &str = "
+// Share all UA rules; only snapshot rendering adds its historical font preference.
+macro_rules! base_user_agent_css {
+    ($font_preference:literal) => {
+        concat!("
 address, article, aside, blockquote, body, center, dd, details, dialog, dir, div, dl, dt, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, html, legend, listing, main, menu, nav, ol, optgroup, option, p, plaintext, pre, search, section, ul, xmp { display: block }
 summary { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside }
 datalist { display: none }
@@ -179,8 +182,7 @@ slot { display: contents }
 rt { display: ruby-text }
 rtc { display: ruby-text-container }
 rp { display: none }
-body { font-family: sans-serif }
-code, kbd, samp, pre { font-family: monospace }
+", $font_preference, "code, kbd, samp, pre { font-family: monospace }
 pre, listing, xmp, plaintext { white-space: pre }
 b { font-weight: bold }
 strong { font-weight: bold }
@@ -249,7 +251,11 @@ video { object-fit: contain }
 bdo { unicode-bidi: bidi-override }
 bdo[dir=rtl i], bdo[dir=ltr i], bdo[dir=auto i] { unicode-bidi: isolate-override }
 textarea[dir=auto i], pre[dir=auto i] { unicode-bidi: plaintext }
-";
+")
+    };
+}
+const UA_CSS: &str = base_user_agent_css!("body { font-family: sans-serif }\n");
+const COMPUTED_DOCUMENT_UA_CSS: &str = base_user_agent_css!("");
 
 /// The user-agent rules a whole HTML document adds to [`UA_CSS`] when it is styled
 /// from its root element ([`Roots::Document`], the HTML drive): Chrome's `<head>` is
@@ -697,6 +703,13 @@ mod tests {
 #[must_use]
 pub fn user_agent_css() -> &'static str {
     UA_CSS
+}
+
+/// Chrome-document profile without the snapshot renderer's font preference.
+/// The historical layout profile and its source order remain unchanged.
+#[must_use]
+pub fn computed_document_user_agent_css() -> &'static str {
+    COMPUTED_DOCUMENT_UA_CSS
 }
 
 /// Add `sheet`'s rules at `level` in source order. A `@media` / `@supports` block

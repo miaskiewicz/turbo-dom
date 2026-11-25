@@ -1,0 +1,76 @@
+{
+  "issue": 296,
+  "scope": "Root CSS preferences and additive computed-document UA; no npm default switch or Native V8 wrapper",
+  "coreDependency": "47bd5f5281638f60c53d559338c5abe9c6cd6294",
+  "mapDependency": "3051a51549b009b6025e7050cd5b9d7684aa39e7",
+  "jsPrerequisites": [
+    "1be2e4f2d309eb767200778ca9738d43a37b39f0",
+    "5a0b68f7e38db747c3cbb4fdbbf827bc45511e52",
+    "9701a4d6f2ac83e6ef6990a034e6215de8df9067",
+    "f3236d0556a932002b53bead78830a81eff24d22",
+    "ae6c097f587dc47b27bba40c1a5d346757d8fbd8"
+  ],
+  "sourceFiles": {
+    "Cargo.toml": "71b40ddb09181a9876f5cf203aa55dca3f75d36fe16495f2c6ff5727ed3f8f8c",
+    "src/css_backend.rs": "34b8bb9314c8336ce4ac5d4830af1d54a77b4ec770fdf22f0af6cf44cfe93321",
+    "src/css_preferences.rs": "d7e00aa2c1eae66c8ae42af8076fe8391fce49e70625c1bce4c2c39266f57279",
+    "src/css_resolve.rs": "2b1752336e1976bb1b980f817ec5775fd5174fa1a6de07447060c3d9bb502c78",
+    "src/lib.rs": "7f429c1b790bb27e589020cf702a49582eabb08b799fcdcb1461211f8e1c3b39",
+    "crates/turbo-dom-layout/src/style/mod.rs": "897a2f0842dcbb038e63c4ad40689e1f9722809f5b1ee73371ee48cfebceebc2",
+    "crates/turbo-dom-layout/tests/computed_document_user_agent.rs": "c90b6ae07d4b9c3badb3ef9fb756098e97457049abb8dfe2a1e3916c765f2944",
+    "crates/turbo-dom-layout/tests/fixtures/renderer-user-agent-b31d.css": "85572e47f1bd72ed567834c0c5c3c886fff4a101e225fbbd1e9a1b14c7de79a2"
+  },
+  "gates": {
+    "rootTests": 62,
+    "strictClippy": "actual native napi-bind+css-backend and wasm32 wasm-bind+css-backend all-targets pass",
+    "layoutGolden": 1,
+    "formatCC": "pass, CC<=9",
+    "rust": "1.98.0",
+    "lockedOffline": true,
+    "jobs": 1,
+    "incremental": 0,
+    "requiredPlainNapiBuild": "scripts/agent/build-napi.sh pass; index.js/index.d.ts and all Root/Cargo hashes unchanged"
+  },
+  "numericTransport": {
+    "rawFiniteCasesPerMode": 138,
+    "before1ulpMismatches": 19,
+    "afterMismatches": 0,
+    "feature": "serde_json/float_roundtrip only through css-backend",
+    "plainNativeAndWasmNormalBuildGraphs": "byte-identical before/after",
+    "lockUnchanged": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e"
+  },
+  "actualArtifacts": {
+    "native": {
+      "sha256": "9e3288d7924a9fecfb35c605eb57ecdca94656b3b8cc36cdc2e79b9a56d33709",
+      "bytes": 20258336,
+      "baselineBytes": 20176944,
+      "deltaBytes": 81392,
+      "WebAssemblyReadsWithThrowingGetter": 0
+    },
+    "wasm": {
+      "sha256": "2e70c697ffd9b9ef07fff3dd104f3d7faebfeca1bb65e32bf4b902da6e577680",
+      "optimizedBytes": 16081874,
+      "baselineBytes": 15974936,
+      "deltaBytes": 106938,
+      "bindgen": "0.2.122",
+      "binaryen": "117 -Oz BINARYEN_CORES=1"
+    },
+    "allModes": "ABI/version/old UA/raw138/Unicode/errors/exact quotas/normalized fractional tiny huge/inherited2em pass",
+    "adapterRegression": "original18+publishedAPI15+inherit4 all3 modes and controls20groups pass, zero fail/skip",
+    "sizeAttribution": "combined context+profile+CSS numeric graph, not isolated float feature"
+  },
+  "oldUaSha256": "85572e47f1bd72ed567834c0c5c3c886fff4a101e225fbbd1e9a1b14c7de79a2",
+  "evidenceHashes": {
+    "strict": "fad5453207116a5b3e02321c5b98a032789eff25e2a8d3b496abbd69b720dfbb",
+    "actual": "0ec51430ab1e235c1381e36c866d5bd360697a4fa478691afa658e485c364817",
+    "requiredPlainBuild": "d55f35270bbfc00c0132586d87c6ae5853297aa1f316caed0528e0e67f381eb0"
+  },
+  "excluded": [
+    "unvalidated Core environment module",
+    "Native wrapper and fixtures",
+    "optional JS UA hook and tests",
+    "Node viewport/profile assembly",
+    "default runtime switch"
+  ],
+  "computedValueLaziness": "Whole selected-row computation retained; deferred used-size Scene projection is separate"
+}
