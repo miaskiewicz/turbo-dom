@@ -18,6 +18,8 @@ mod geometry;
 mod hit_geometry;
 mod metrics;
 mod range_projection;
+#[cfg(test)]
+mod scroll_provenance_tests;
 pub(crate) mod sources;
 mod svg_viewports;
 pub(crate) mod text;
