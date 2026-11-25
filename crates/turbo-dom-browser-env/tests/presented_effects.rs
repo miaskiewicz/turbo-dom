@@ -72,6 +72,32 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn badge_transition_resolves_custom_tokens_and_keeps_symbolic_reference_lengths() {
+    with_html(
+        true,
+        true,
+        include_str!("fixtures/mui_badge_transition.html"),
+        |scope| {
+            eval(scope,"globalThis.badge=document.getElementById('badge');getComputedStyle(badge).transform;badge.className='visible';__layoutCalls=0;");
+            let document = object(scope, "document");
+            let badge = object(scope, "badge");
+            let handle = handle_of(scope, badge).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            let PresentedTargetState::Certified {
+                animation,
+                transition,
+            } = &sample.targets[0].presentation
+            else {
+                panic!("{sample:?}")
+            };
+            assert!(animation.is_empty());
+            assert!(transition.iter().any(|pair| pair.name == "transform"));
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        },
+    );
+}
+
+#[test]
 fn captured_auth_label_length_percentage_transitions_are_certified() {
     with_html(
         true,

@@ -703,6 +703,7 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {
+    super::animation_tokens::install(scope);
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__animationsNative", native);
     run_js(scope, include_str!("animations.js"));
