@@ -46,7 +46,39 @@
       "baseline": 104,
       "candidate": 104
     },
-    "claims": "No zero-cost or speedup claim; near-baseline repeated unarmed controls, explicit armed cost."
+    "claims": "No zero-cost or speedup claim; near-baseline repeated unarmed controls, explicit armed cost.",
+    "historicalEvidence": {
+      "original52x": {
+        "summaryPreserved": true,
+        "rawPerRunJsonPreserved": false,
+        "reason": "The harness reused its JSON path during the final rerun. Original summary log and frozen source manifests survive; lost raw samples were not reconstructed.",
+        "summaryLog": "js-checkpoint-performance.log",
+        "baseline300AppendNs": 21136.68,
+        "candidate300AppendNs": 1108286.68
+      },
+      "independentFrozenSourceReplay": {
+        "record": "JS-CHECKPOINT-FROZEN-RED-REPLAY.json",
+        "medians": {
+          "baseline": {
+            "injectionNs": 14490,
+            "rtlNs": 220720.56
+          },
+          "candidate": {
+            "injectionNs": 694301.68,
+            "rtlNs": 205169.44
+          }
+        },
+        "allSamplesPreserved": true,
+        "sourceHashVerifiedAgainstOriginalFrozenManifest": {
+          "src/runtime/dom.mjs": "c0c1ff849cd9298fb32f9eae8613fb47349edbab19e92151f2e7061d7b942bca",
+          "src/runtime/cssom.mjs": "74f04915ea52c13ca86aef50eb83f655625352395f7526e0d33f00dc0810c774",
+          "src/runtime/cssom-state.mjs": "ea388382e20db4edaa23a27cb7fae587c49b48ad6a724030ca66b5931d78208c"
+        },
+        "label": "Independent replay, not the original raw samples."
+      },
+      "later10xPartialOptimization": "Separate child raw receipts retained; rejected and not landed.",
+      "harnessFix": "Explicit unique output path with exclusive creation prevents overwriting previous receipts."
+    }
   },
   "cacheProof": "Actual Rust class red-to-blue after pre-arm plain cssText edit despite unchanged document stamp; exact fingerprint every read, two compilations/preparations/resolves across four reads; unchanged warm reads add zero Rust calls. No default/runtime cutover claimed.",
   "files": {
@@ -79,6 +111,6 @@
     "test/fixtures/css-selector-program-cases.json": "48fc3d152529e8aae900a112ea3aef99f55fda59f0a6f0fcdd49a49c52d69a4c",
     "test/fixtures/css-selector-program-probe.mjs": "a6c4fa6e238add250d08a514de70e431ec894547a8cac7fceda8c75e4d659619",
     "test/fixtures/css_selector_program_chrome159.json": "406aa3bfa6769277179010b295af77872e9c1408290bdaac552ae3893aa097c9",
-    "tools/release/npm-css-adapters-0.8.7.md": "d674874a6fbb63057864e982171f416ce1ac92b64b1ece5e46d46c0ecac735ea"
+    "tools/release/npm-css-adapters-0.8.7.md": "fee85ea38cb067e1f27784e5d51b8375852056f2f303c5fe58648f6928ded30d"
   }
 }
