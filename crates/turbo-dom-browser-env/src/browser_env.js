@@ -2119,6 +2119,47 @@
     cs.inheritSnapshot = info && info.parentPseudo ? computeStyleSnapshot(el, cs.snapshots, undefined, info.parentPseudo) : null;
     cs.inheritedValue = function(name){ return cs.inheritSnapshot ? computedSnapshotValue(cs.inheritSnapshot,name) : cs.inheritParent ? computedSnapshotValue(cs.parentStyle(cs.inheritParent),name) : ''; };
   }
+  var emptyEffectTokenSource={__proto__:null,tokens:[],tainted:false};
+  function computedEffectParentSource(cs){
+    var parent=cs.inheritSnapshot||(cs.inheritParent?cs.parentStyle(cs.inheritParent):null),record=parent&&$c.get(declarationRecords,parent);
+    return record?record.effectCustomSource:emptyEffectTokenSource;
+  }
+  function computedOwnEffectTokens(decl){var own=[];for(var name in decl)if($c.slice(name,0,2)==='--'&&typeof decl[name]==='string'){$c.push(own,name);$c.push(own,decl[name]);}return own;}
+  function computedEffectTokenSource(cs){
+    var inherited=computedEffectParentSource(cs);if(inherited===null||inherited===undefined)return null;
+    var own=computedOwnEffectTokens(cs.decl);
+    var tainted=inherited.tainted||typeof __ns.effectOwnCustomUncertain!=='function'||__ns.effectOwnCustomUncertain(cs.el,cs.decl['animation-name']);
+    return own.length||tainted!==inherited.tainted?{__proto__:null,parent:inherited,own:own,tokens:undefined,tainted:tainted}:inherited;
+  }
+  function computedEffectTokens(source){
+    if(!source)return null;
+    var pending=[];
+    while(source.tokens===undefined){$c.push(pending,source);source=source.parent;}
+    var tokens=source.tokens;
+    for(var index=pending.length-1;index>=0;index--){
+      tokens=tokens===null?null:__ns.computeEffectCustomTokens(tokens,pending[index].own);
+      pending[index].tokens=tokens;
+    }
+    return tokens;
+  }
+  function computedEffectTransform(cs){
+    cs.effectCustomSource=computedEffectTokenSource(cs);
+    cs.effectTransformUncertain=false;
+    var value=cs.decl.transform;
+    if(typeof value!=='string'||typeof __ns.substituteEffectTokens!=='function')return;
+    var probe=__ns.substituteEffectTokens(value,null);
+    if(probe===undefined){cs.effectTransformUncertain=true;return;}
+    if(probe!==null)return;
+    cs.effectTransformUncertain=true;
+    if(!computedEffectTransformAllowed(cs))return;
+    var tokens=computedEffectTokens(cs.effectCustomSource);if(tokens===null)return;
+    var resolved=__ns.substituteEffectTokens(value,tokens);
+    resolved=computedAdmittedEffectTransform(resolved);
+    if(resolved!==null){cs.setProp('transform',resolved,cs.priorities.transform);cs.effectTransformUncertain=false;}
+  }
+  function computedEffectTransformAllowed(cs){return cs.effectCustomSource&&!cs.effectCustomSource.tainted&&typeof __ns.effectHasPropertyRules==='function'&&!__ns.effectHasPropertyRules(cs.el);}
+  function computedAdmittedEffectTransform(value){if(value===false)return 'none';return value!==null&&typeof __ns.admitEffectTransform==='function'?__ns.admitEffectTransform(value)||'none':value;}
+  __ns.effectTransformSupported=function(snapshot){var record=$c.get(declarationRecords,snapshot);return !!record&&record.effectTransformUncertain!==true;};
   // The element's own display as the UA / initial resolution below will compute it ("" for
   // a value it cannot tell before then), and this read's snapshot map: a transition update
   // decides "rendered" from them without resolving the element or its ancestors again
@@ -2387,6 +2428,7 @@
     computedCascadeDecls(cs);
     if (sink) { sink.values = computedSinkValues(decl); return null; }
     computedInheritance(cs);
+    computedEffectTransform(cs);
     computedInterpolateSize(cs);
     computedApplyAnimations(cs);
     // Tree-counting functions take this element's counts; their style follows its siblings.
@@ -2405,6 +2447,8 @@
     computedFontDependents(cs,fontState);
     // A connected element's unset properties compute lazily (computedDefault, turbo-dom#305).
     var snapshot=__ns.makeComputedStyleDeclaration(decl,el,fontState,pseudo,defaultsParentOf(el,pseudo,cs.connected,cs.inheritParent));
+    $c.get(declarationRecords,snapshot).effectCustomSource=cs.effectCustomSource;
+    $c.get(declarationRecords,snapshot).effectTransformUncertain=cs.effectTransformUncertain;
     if(computedStyleJsdom){var record=$c.get(declarationRecords,snapshot),decoration=cs.jsdomTextDecoration;$c.set(record.values,'text-decoration',{text:decoration?decoration.text:'',priority:'',pending:null,raw:null});}
     computeStyleFreshStore(el,pseudo,snapshots,snapshot);
     return snapshot;
