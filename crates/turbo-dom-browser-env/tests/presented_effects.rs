@@ -72,6 +72,199 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn deferred_background_tokens_do_not_certify_non_color_shorthand_values() {
+    with_html(true,true,"<!doctype html><style>#target{background-color:black;transition:background-color 250ms}#target.enabled{background:var(--theme)}</style><div id=target style='--theme:red padding-box'>Color</div>",|scope|{
+        eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).backgroundColor;target.className='enabled';");
+        let document=object(scope,"document");let target=object(scope,"target");let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(sample.targets[0].presentation,PresentedTargetState::Unknown{..}),"{sample:?}");
+    });
+}
+
+#[test]
+fn color_token_midpoint_preserves_the_existing_literal_color_model() {
+    let html = include_str!("fixtures/mui_color_transition.html");
+    let literal = html
+        .replace("var(--variant-containedColor)", "rgb(255,255,255)")
+        .replace("var(--variant-containedBg)", "rgb(25,118,210)");
+    let mut values = Vec::new();
+    for source in [html, literal.as_str()] {
+        with_html(true, true, source, |scope| {
+            eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';for(const a of target.getAnimations()){a.pause();a.currentTime=125;}__layoutCalls=0;");
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            let PresentedTargetState::Certified { transition, .. } =
+                &sample.targets[0].presentation
+            else {
+                panic!("{sample:?}")
+            };
+            values.push(transition.clone());
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+    assert_eq!(values[0], values[1]);
+}
+
+#[test]
+fn color_token_boundaries_match_chrome_and_old_endpoints_remain_frozen() {
+    let html = include_str!("fixtures/mui_color_transition.html");
+    let oracle: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/mui_color_transition_chrome159.json")).unwrap();
+    assert_eq!(
+        format!("{:x}", Sha256::digest(html)),
+        oracle["sha256"].as_str().unwrap()
+    );
+    with_html(true, true, html, |scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';globalThis.colorMotions=target.getAnimations();for(const a of colorMotions){a.pause();a.currentTime=0;}globalThis.oldColorFrames=JSON.stringify(colorMotions.map(a=>a.effect.getKeyframes()));");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        for row in oracle["result"]["samples"].as_array().unwrap() {
+            let time = row["time"].as_f64().unwrap();
+            if time == 125.0 {
+                continue;
+            }
+            eval(
+                scope,
+                &format!("for(const a of colorMotions)a.currentTime={time};__layoutCalls=0;"),
+            );
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            let PresentedTargetState::Certified { transition, .. } =
+                &sample.targets[0].presentation
+            else {
+                panic!("{sample:?}")
+            };
+            for (name, expected) in [
+                ("color", &row["color"]),
+                ("background-color", &row["background"]),
+            ] {
+                if time == 0.0 {
+                    assert_eq!(
+                        transition.iter().find(|v| v.name == name).unwrap().value,
+                        expected.as_str().unwrap()
+                    );
+                } else {
+                    assert!(transition.is_empty());
+                    let actual = eval(
+                        scope,
+                        &format!("getComputedStyle(target).getPropertyValue('{name}')"),
+                    );
+                    assert_eq!(
+                        actual.to_rust_string_lossy(scope),
+                        expected.as_str().unwrap()
+                    );
+                }
+            }
+            if time == 0.0 {
+                assert!(eval(scope, "__layoutCalls===0").is_true());
+            }
+        }
+        eval(scope,"for(const a of colorMotions)a.currentTime=125;target.style.setProperty('--variant-containedBg','rgb(200,30,40)');getComputedStyle(target).backgroundColor;");
+        assert!(eval(
+            scope,
+            "oldColorFrames===JSON.stringify(colorMotions.map(a=>a.effect.getKeyframes()))"
+        )
+        .is_true());
+    });
+}
+
+#[test]
+fn color_tokens_preserve_inline_fallback_and_currentcolor_resolution() {
+    with_html(true,true,"<!doctype html><style>#target{color:rgba(0,0,0,.26);background-color:rgba(0,0,0,.12);transition:color 250ms linear,background-color 250ms linear}#target.enabled{color:var(--inline,var(--missing,rgb(20,40,60)));background-color:var(--bg,currentcolor)}</style><button id=target style='--inline:rgb(20,40,60)'>Color</button>",|scope|{
+        eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';");
+        let document=object(scope,"document");let target=object(scope,"target");let handle=handle_of(scope,target).unwrap();
+        let sample=sample_presented_effects(scope,document,&[handle]).unwrap();
+        assert!(matches!(sample.targets[0].presentation,PresentedTargetState::Certified{..}),"{sample:?}");
+        assert!(eval(scope,"target.getAnimations().every(a=>{const end=a.effect.getKeyframes()[1];return (end.color||end.backgroundColor)==='rgb(20, 40, 60)'})").is_true());
+    });
+}
+
+#[test]
+fn color_tokens_keep_invalid_registered_and_dynamic_contexts_unknown() {
+    for extra in [
+        "--theme:var(--cycle);--cycle:var(--theme)",
+        "--theme:revert",
+    ] {
+        let html=format!("<!doctype html><style>#target{{color:black;transition:color 250ms}}#target.enabled{{color:var(--theme)}}</style><div id=target style='{extra}'>Color</div>");
+        with_html(true, true, &html, |scope| {
+            eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';");
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert!(
+                matches!(
+                    sample.targets[0].presentation,
+                    PresentedTargetState::Unknown { .. }
+                ),
+                "{extra}: {sample:?}"
+            );
+        });
+    }
+    for prefix in [
+        "@property --theme {syntax:'<color>';inherits:true;initial-value:red}",
+        "@keyframes theme {from{--theme:red}to{--theme:blue}} #parent{animation:theme 1s infinite}",
+    ] {
+        let html=format!("<!doctype html><style>{prefix}#target{{color:black;transition:color 250ms}}#target.enabled{{color:var(--theme)}}</style><div id=parent style='--theme:green'><div id=target>Color</div></div>");
+        with_html(true, true, &html, |scope| {
+            eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';");
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert!(
+                sample.targets.iter().any(|row| row.element == handle
+                    && matches!(row.presentation, PresentedTargetState::Unknown { .. })),
+                "{sample:?}"
+            );
+        });
+    }
+}
+
+#[test]
+fn color_transitions_freeze_inherited_variable_endpoints() {
+    with_html(
+        true,
+        true,
+        include_str!("fixtures/mui_color_transition.html"),
+        |scope| {
+            eval(scope, "globalThis.target=document.getElementById('target');getComputedStyle(target).color;target.className='enabled';__layoutCalls=0;");
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert!(
+                matches!(
+                    sample.targets[0].presentation,
+                    PresentedTargetState::Certified { .. }
+                ),
+                "{sample:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+            let value = eval(scope, "JSON.stringify(target.getAnimations().map(a=>({property:a.transitionProperty,frames:a.effect.getKeyframes()})))");
+            let rows: serde_json::Value =
+                serde_json::from_str(&value.to_rust_string_lossy(scope)).unwrap();
+            for row in rows.as_array().unwrap() {
+                let end = row["frames"][1].as_object().unwrap();
+                let name = if row["property"] == "color" {
+                    "color"
+                } else {
+                    "backgroundColor"
+                };
+                let expected = if name == "color" {
+                    "rgb(255, 255, 255)"
+                } else {
+                    "rgb(25, 118, 210)"
+                };
+                assert_eq!(end[name], expected);
+            }
+        },
+    );
+}
+
+#[test]
 fn private_token_abi_rejects_malformed_values_without_coercion() {
     with_dom(|scope| {
         browser_env::run_engine_script(scope,r#"

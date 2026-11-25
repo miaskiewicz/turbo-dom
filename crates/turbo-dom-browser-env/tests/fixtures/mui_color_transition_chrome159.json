@@ -1,0 +1,121 @@
+{
+  "browser": "159.0.8154.6",
+  "sha256": "306b3ece109afcc95cff36410084c3278a83c9bb97efed0fb267863b7c245381",
+  "result": {
+    "before": [
+      {
+        "property": "background-color",
+        "frames": [
+          {
+            "offset": 0,
+            "easing": "linear",
+            "composite": "auto",
+            "backgroundColor": "rgba(0, 0, 0, 0.12)",
+            "computedOffset": 0
+          },
+          {
+            "offset": 1,
+            "easing": "linear",
+            "composite": "auto",
+            "backgroundColor": "rgb(25, 118, 210)",
+            "computedOffset": 1
+          }
+        ]
+      },
+      {
+        "property": "color",
+        "frames": [
+          {
+            "offset": 0,
+            "easing": "linear",
+            "composite": "auto",
+            "color": "rgba(0, 0, 0, 0.26)",
+            "computedOffset": 0
+          },
+          {
+            "offset": 1,
+            "easing": "linear",
+            "composite": "auto",
+            "color": "rgb(255, 255, 255)",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "property": "background-color",
+        "frames": [
+          {
+            "offset": 0,
+            "easing": "linear",
+            "composite": "auto",
+            "backgroundColor": "rgba(0, 0, 0, 0.12)",
+            "computedOffset": 0
+          },
+          {
+            "offset": 1,
+            "easing": "linear",
+            "composite": "auto",
+            "backgroundColor": "rgb(25, 118, 210)",
+            "computedOffset": 1
+          }
+        ]
+      },
+      {
+        "property": "color",
+        "frames": [
+          {
+            "offset": 0,
+            "easing": "linear",
+            "composite": "auto",
+            "color": "rgba(0, 0, 0, 0.26)",
+            "computedOffset": 0
+          },
+          {
+            "offset": 1,
+            "easing": "linear",
+            "composite": "auto",
+            "color": "rgb(255, 255, 255)",
+            "computedOffset": 1
+          }
+        ]
+      }
+    ],
+    "samples": [
+      {
+        "time": 0,
+        "rect": [
+          8,
+          8,
+          128.625,
+          21
+        ],
+        "color": "rgba(0, 0, 0, 0.26)",
+        "background": "rgba(0, 0, 0, 0.12)"
+      },
+      {
+        "time": 125,
+        "rect": [
+          8,
+          8,
+          128.625,
+          21
+        ],
+        "color": "rgba(203, 203, 203, 0.63)",
+        "background": "rgba(22, 105, 187, 0.56)"
+      },
+      {
+        "time": 250,
+        "rect": [
+          8,
+          8,
+          128.625,
+          21
+        ],
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(25, 118, 210)"
+      }
+    ]
+  }
+}
