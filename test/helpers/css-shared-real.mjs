@@ -231,6 +231,9 @@ function selectHtmlParser(mode) {
 		throw new Error("Explicit HTML parser mode was not selected");
 	return selected;
 }
+function transformContext(transform, context) {
+	return transform === undefined ? context : transform(context);
+}
 export function createRealCssFixture(
 	real,
 	html,
@@ -240,6 +243,8 @@ export function createRealCssFixture(
 		sceneTransform = null,
 		snapshotTransform = null,
 		policy = {},
+		profile: profileOverrides,
+		contextTransform,
 	} = {},
 ) {
 	const htmlParserMode = selectHtmlParser(real.mode);
@@ -271,13 +276,14 @@ export function createRealCssFixture(
 		selectBackend: () => real.backend,
 		readContext(_element, pseudo) {
 			ensureCssState(doc);
-			return {
+			const context = {
 				document: doc,
 				version: doc.__version,
 				renderToken: cssStateSnapshot(doc),
 				environmentKey,
 				resultKey: { pseudo },
 			};
+			return transformContext(contextTransform, context);
 		},
 		captureSnapshot(document, context) {
 			snapshotCalls++;
@@ -298,6 +304,7 @@ export function createRealCssFixture(
 			}),
 			world: () => world,
 			backendIdentity: () => real.artifact,
+			...profileOverrides,
 		},
 		limits,
 		measureScene(request) {

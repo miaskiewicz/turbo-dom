@@ -333,13 +333,21 @@ export function createSharedCssAdapter({
 				scopeId: snapshot.nodeId,
 			});
 			const backend = selectedBackend;
-			const ua = decode(
-				sharedInvoke(
-					required(backend.cssUserAgentSourceV1, "cssUserAgentSourceV1"),
-					backend,
-					[],
-				),
-			);
+			const userAgentSource = profile.userAgentSource;
+			const ua =
+				userAgentSource === undefined
+					? decode(
+							sharedInvoke(
+								required(backend.cssUserAgentSourceV1, "cssUserAgentSourceV1"),
+								backend,
+								[],
+							),
+						)
+					: sharedInvoke(
+							required(userAgentSource, "profile.userAgentSource"),
+							profile,
+							[backend],
+						);
 			if (ua.abiVersion !== 1) throw new Error("CSS user agent ABI");
 			active = { snapshot, ua, backend, context };
 			return sources;
