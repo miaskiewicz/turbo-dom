@@ -5351,6 +5351,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
       if(cssApply(computedStyleNativeRoot,element,[])===d)return false;
       return effectSheetsHaveProperty(computedSheets(element));
     };
+    __ns.effectRenderingScopeSupported=function(element){return !ownBoxImpactIndex(computedSheets(element)).unsafe;};
     __ns.styleSheetList=function(refresh){return cssList('StyleSheetList',refresh);};
     try { Object.defineProperty(d, 'styleSheets', { configurable: true, get: function(){return documentSheets;} }); } catch(e){}
 
