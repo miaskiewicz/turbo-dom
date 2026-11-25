@@ -7,6 +7,18 @@ use lightningcss::selector::{Component, PseudoClass, PseudoElement, Selector, Se
 use lightningcss::stylesheet::ParserOptions;
 use lightningcss::traits::ParseWithOptions;
 
+fn parse_failure(
+    error: &cssparser::ParseError<'_, lightningcss::error::ParserError<'_>>,
+) -> Result<SelectorPolicyInspection, ComputedCssError> {
+    // Keep backend resource errors distinct even if a future pinned grammar
+    // introduces an edge not represented by the conservative preflight.
+    if super::grammar::parser_nesting(error) {
+        Err(ComputedCssError::NestingLimit)
+    } else {
+        Ok(SelectorPolicyInspection::Invalid)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GeneratedPseudo {
     Before,
@@ -48,10 +60,9 @@ pub fn inspect_selector_policy(
     }
     let mut input = ParserInput::new(source.scalar());
     let mut parser = Parser::new(&mut input);
-    let Ok(list) = SelectorList::parse_with_options(&mut parser, &ParserOptions::default()) else {
-        // The shared preflight already bounds opaque component recursion, so
-        // remaining parse errors represent invalid selector syntax.
-        return Ok(SelectorPolicyInspection::Invalid);
+    let list = match SelectorList::parse_with_options(&mut parser, &ParserOptions::default()) {
+        Ok(list) => list,
+        Err(error) => return parse_failure(&error),
     };
     // The pinned SelectorList parser exhausts each comma-delimited slice and
     // returns success only after its final input.next() reports end-of-input.
@@ -294,5 +305,23 @@ mod error_tests {
             inspect_selector_policy(&raw(":host(.x)"), limits(2, 9)),
             Ok(SelectorPolicyInspection::Items(_))
         ));
+    }
+}
+
+#[cfg(test)]
+mod backend_conversion_contract {
+    use super::*;
+    #[test]
+    fn structured_backend_error_is_not_downgraded_to_invalid_selector() {
+        // This tests the error-conversion contract, not a public-input parser RED.
+        let mut source = ParserInput::new("");
+        let parser = Parser::new(&mut source);
+        let error = parser.new_custom_error(lightningcss::error::ParserError::MaximumNestingDepth);
+        assert_eq!(parse_failure(&error), Err(ComputedCssError::NestingLimit));
+        let syntax = parser.new_error(cssparser::BasicParseErrorKind::EndOfInput);
+        assert_eq!(
+            parse_failure(&syntax),
+            Ok(SelectorPolicyInspection::Invalid)
+        );
     }
 }

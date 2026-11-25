@@ -642,3 +642,19 @@ pub fn parse_container_context(
         scroll_state,
     })
 }
+
+#[cfg(test)]
+mod backend_conversion_contract {
+    use super::*;
+    #[test]
+    fn structured_backend_error_preserves_the_resource_category() {
+        // No recursive backend input is executed: this is an error API contract.
+        let mut source = ParserInput::new("");
+        let parser = Parser::new(&mut source);
+        let error = parser.new_custom_error(lightningcss::error::ParserError::MaximumNestingDepth);
+        assert_eq!(
+            grammar_error(&error),
+            ContainerError::Computation(ComputedCssError::NestingLimit)
+        );
+    }
+}

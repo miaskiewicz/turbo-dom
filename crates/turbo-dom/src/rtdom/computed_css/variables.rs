@@ -220,7 +220,7 @@ fn single_ident(value: &CssText) -> Option<String> {
     Some(name.to_ascii_lowercase())
 }
 
-fn check_depth(depth: usize, limits: ComputationLimits) -> Result<(), ComputedCssError> {
+pub(super) fn check_depth(depth: usize, limits: ComputationLimits) -> Result<(), ComputedCssError> {
     if depth >= limits.max_nesting {
         Err(ComputedCssError::NestingLimit)
     } else {
@@ -249,7 +249,7 @@ fn append(
     Ok(())
 }
 
-fn error_kind(error: &ParseError<'_, ComputedCssError>) -> ComputedCssError {
+pub(super) fn error_kind<E: Copy>(error: &ParseError<'_, E>) -> E {
     match error.kind {
         ParseErrorKind::Custom(error) => error,
         // cssparser can add Basic only when a successful block callback leaves
@@ -520,8 +520,7 @@ pub fn check_component_limits(
     value: &CssText,
     limits: ComputationLimits,
 ) -> Result<(), ComputedCssError> {
-    checked_length(0, value.as_units().len(), limits.max_output_units)?;
-    let source = CssSource::new(value.as_units());
+    let source = checked_component_source(value, limits)?;
     let mut input = ParserInput::new(source.scalar());
     inspect_syntax(&mut Parser::new(&mut input), 0, limits, false)
 }
@@ -590,4 +589,13 @@ fn reference_token(
             .map_err(|error| error_kind(&error)),
         _ => Ok(false),
     }
+}
+
+// Reuse original-unit admission before allocating a scalar inspection source.
+pub(super) fn checked_component_source(
+    value: &CssText,
+    limits: ComputationLimits,
+) -> Result<CssSource, ComputedCssError> {
+    checked_length(0, value.as_units().len(), limits.max_output_units)?;
+    Ok(CssSource::new(value.as_units()))
 }

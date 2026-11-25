@@ -1,9 +1,10 @@
 //! Shared ordinary-property grammar, extracted from the native CSSOM adapter.
 //! This optional module validates scalar grammar and preserves admitted lexemes; raw
 //! custom-property DOM strings remain the separate UTF-16 computation contract.
+mod backend_limits;
 mod general_enclosed;
 
-use super::{check_component_limits, ComputationLimits, ComputedCssError, CssText};
+use super::{ComputationLimits, ComputedCssError, CssText};
 use crate::rtdom::css_values::zoom_value;
 use cssparser::{
     parse_important, CowRcStr, Delimiter, ParseError, ParseErrorKind, Parser, ParserInput,
@@ -598,11 +599,14 @@ fn condition_error(error: &ParseError<'_, lightningcss::error::ParserError<'_>>)
 }
 
 /// Parse a complete media query list using the shared canonical grammar.
+/// This raw AST helper applies its own pinned global backend component bound;
+/// use the context seam for an additional explicit caller quota.
 /// Unknown/general-enclosed nodes remain explicit in the returned AST.
 ///
 /// # Errors
 /// Returns [`ConditionError`] for invalid syntax or trailing input.
 pub fn parse_media_condition(source: &str) -> Result<MediaList<'_>, ConditionError> {
+    check_raw_ast_depth(source)?;
     let mut source = ParserInput::new(source);
     let mut input = Parser::new(&mut source);
     let authored_empty = input.is_exhausted();
@@ -632,10 +636,16 @@ pub fn parse_media_condition(source: &str) -> Result<MediaList<'_>, ConditionErr
 }
 
 /// Parse a complete supports condition without evaluating declaration/selector leaves.
+/// This raw AST helper applies its own pinned global backend component bound;
+/// use the context seam for an additional explicit caller quota.
 ///
 /// # Errors
 /// Returns [`ConditionError`] for invalid syntax or trailing input.
 pub fn parse_supports_condition(source: &str) -> Result<SupportsCondition<'_>, ConditionError> {
+    check_raw_ast_depth(source)?;
+    parse_supports_condition_body(source)
+}
+fn parse_supports_condition_body(source: &str) -> Result<SupportsCondition<'_>, ConditionError> {
     let mut source = ParserInput::new(source);
     let mut input = Parser::new(&mut source);
     input
@@ -1045,18 +1055,7 @@ pub fn check_grammar_limits(
     value: &CssText,
     limits: ComputationLimits,
 ) -> Result<(), GrammarLimitError> {
-    let backend_exclusive = BACKEND_MAX_COMPONENT_DEPTH + 1;
-    let effective = ComputationLimits {
-        max_nesting: limits.max_nesting.min(backend_exclusive),
-        ..limits
-    };
-    match check_component_limits(value, effective) {
-        Err(ComputedCssError::NestingLimit) if limits.max_nesting > backend_exclusive => {
-            Err(GrammarLimitError::NestingLimit)
-        }
-        Err(error) => Err(GrammarLimitError::Computation(error)),
-        Ok(()) => Ok(()),
-    }
+    backend_limits::check(value, limits)
 }
 
 /// Checked context supports grammar. The legacy raw parser remains available;
@@ -1073,5 +1072,33 @@ pub fn parse_supports_condition_context(
         &CssText::from_units(source.encode_utf16().collect()),
         limits,
     )?;
-    parse_supports_condition(source)
+    parse_supports_condition_body(source)
+}
+
+// Raw AST helpers have no caller quota. Bound only their own pinned backend
+// component depth, and derive the unit allowance from the actual source length.
+// The global component bound is deliberately conservative for condition wrappers
+// whose backend TokenList begins inside a subtree. Native legacy parsers are not
+// routed through these new optional-Core AST helpers.
+fn check_raw_ast_depth(source: &str) -> Result<(), GrammarLimitError> {
+    let value = CssText::from_units(source.encode_utf16().collect());
+    let limits = ComputationLimits {
+        max_nesting: usize::MAX,
+        max_output_units: value.as_units().len(),
+        max_total_units: 0,
+    };
+    check_grammar_limits(&value, limits)
+}
+
+#[cfg(test)]
+mod backend_conversion_contract {
+    use super::*;
+    #[test]
+    fn structured_backend_error_preserves_the_resource_category() {
+        // No recursive backend input is executed: this is an error API contract.
+        let mut source = ParserInput::new("");
+        let parser = Parser::new(&mut source);
+        let error = parser.new_custom_error(lightningcss::error::ParserError::MaximumNestingDepth);
+        assert_eq!(condition_error(&error), ConditionError::NestingLimit);
+    }
 }

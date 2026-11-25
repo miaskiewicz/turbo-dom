@@ -1,0 +1,62 @@
+{
+  "issue": 296,
+  "stage": "additive weighted backend recursion safety; runtime default unchanged",
+  "base": "e67719fb575bf5a64d48a045f99659de439e0447",
+  "toolchain": "1.98.0",
+  "jobs": 1,
+  "source": {
+    "crates/turbo-dom/src/rtdom/computed_css/container.rs": "05040d50520647239f9d7403e8867e66f3c428366a1304ff6860e5ec9e93fb5e",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar.rs": "e50c508cd01356774b960e9cc76f383e0b90740be9c8edaa3ebcc6267e0416d2",
+    "crates/turbo-dom/src/rtdom/computed_css/selector_policy.rs": "5a2e8b0b73b4dd13acd7a18437861bd0ff48a7c7cfb8ebf907faec68feb13dec",
+    "crates/turbo-dom/src/rtdom/computed_css/variables.rs": "01c2b7ed0c4d3a4042b4a4f2cbcb6a11f942869375286f51f2d2ab65ec2c244f",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/backend_limits.rs": "b879ad292249c05c0e9e0a6dfd0ab467ce49a85a2c5ae178fe73185126a71f55",
+    "crates/turbo-dom/tests/computed_css_raw_ast_backend.rs": "729a48fcafaa78bf3b231c940037e7a7d6487a07db7aa3dc022d512ca55dee81",
+    "crates/turbo-dom/tests/computed_css_weighted_backend.rs": "20acc71d9d570c2595deb3ef1b133ab2879333ba50af53933a3eebd9461f9206"
+  },
+  "receipts": {
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-minimal-first-guard.log": "9ea4fc31652c7b379e303c4ae4fe491fbcb5e677a91143b484f75b3379d83cfc",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-feature-tests.log": "f8df8416923c15c28a2583e7326f636f30785f004005daf2aa367e670e98f90d",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-default-tests.log": "775671a8d329223402d4f9d802202a2b8f440ee5dae7146a04d5c592e673b878",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-clippy-fixed.log": "69433f25efd4b54cb84ccbdb0d3ef8bb545f6370643ed874b01a9004494d06b2",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-complexity.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-default-coverage.log": "a614199a9f2a00fb152847e59272382132179eb153359af677bdb535df987289",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/safety-feature-coverage.log": "5305710791f7cb80de12e9a7d784ebe286bd0f5c8d4eede581fc88cb22490001",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/weighted-guard-baseline-red.log": "9bc14b692a7cb6f3e3ee7643c0ada5c6b308cb46f0e31454c342a243f9898af9"
+  },
+  "tests": {
+    "default": {
+      "passed": 574,
+      "failed": 0,
+      "ignored": 9
+    },
+    "computed-style-grammar": {
+      "passed": 785,
+      "failed": 0,
+      "ignored": 9
+    }
+  },
+  "strictClippy": true,
+  "fmt": true,
+  "complexityMax": 9,
+  "coverage": {
+    "default": {
+      "covered": 14195,
+      "coverable": 14326,
+      "floor": 100,
+      "pass": false
+    },
+    "computed-style-grammar": {
+      "covered": 17111,
+      "coverable": 17128,
+      "floor": 100,
+      "pass": false
+    }
+  },
+  "safety": "Known unsafe backend nesting inputs were only inspected by the resource guard; backend not invoked. Structured error-conversion tests construct errors without recursive parsing.",
+  "limitations": [
+    "Issue296 remains open; no runtime adapter/default cutover.",
+    "Both unchanged coverage floors remain red; no exclusion or floor changes.",
+    "Clean committed-source validation follows the checkpoint."
+  ]
+}
