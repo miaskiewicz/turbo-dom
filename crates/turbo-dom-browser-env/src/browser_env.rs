@@ -697,6 +697,50 @@ struct FormDataEventDispatcher(v8::Weak<v8::Function>);
 /// IS at the top of the script settings stack for the task's duration.
 struct EngineTaskScope(v8::Weak<v8::Function>);
 struct TerminationRecovery(v8::Weak<v8::Function>);
+
+#[cfg(feature = "host-internals")]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RecoveryAdmission {
+    Ready,
+    InterruptedBeforeCapture,
+}
+
+#[cfg(feature = "host-internals")]
+fn begin_recovery_install(context: v8::Local<v8::Context>) {
+    if context.get_slot::<TerminationRecovery>().is_some() {
+        context.set_slot(std::rc::Rc::new(RecoveryAdmission::Ready));
+    } else if interrupted_before_recovery_capture(context) {
+        // A retry starts a new install attempt; a prior interruption cannot
+        // excuse an ordinary failure in this attempt. Ready never downgrades.
+        context.remove_slot::<RecoveryAdmission>();
+    }
+}
+
+#[cfg(feature = "host-internals")]
+fn finish_recovery_install(scope: &mut v8::PinScope, context: v8::Local<v8::Context>) {
+    if context.get_slot::<TerminationRecovery>().is_some() {
+        context.set_slot(std::rc::Rc::new(RecoveryAdmission::Ready));
+        return;
+    }
+    if context
+        .get_slot::<RecoveryAdmission>()
+        .is_some_and(|state| *state == RecoveryAdmission::Ready)
+    {
+        return;
+    }
+    if SETUP_TERMINATED.with(std::cell::Cell::get) || scope.is_execution_terminating() {
+        context.set_slot(std::rc::Rc::new(
+            RecoveryAdmission::InterruptedBeforeCapture,
+        ));
+    }
+}
+
+#[cfg(feature = "host-internals")]
+fn interrupted_before_recovery_capture(context: v8::Local<v8::Context>) -> bool {
+    context
+        .get_slot::<RecoveryAdmission>()
+        .is_some_and(|state| *state == RecoveryAdmission::InterruptedBeforeCapture)
+}
 fn_slots!([
     FormSubmissionDispatcher,
     FormValueReader,
@@ -8960,7 +9004,9 @@ fn run_init_scripts(scope: &mut v8::PinScope) {
         // remaining scripts to no effect (and potentially hand a terminating
         // scope to a future hook). Break out at the top so setup reports the
         // termination through SETUP_TERMINATED without iterating further.
-        if scope.is_execution_terminating() {
+        // An install script's inner TryCatch may already have cleared V8's
+        // flag; that recorded interruption still forbids guest initialization.
+        if SETUP_TERMINATED.with(std::cell::Cell::get) || scope.is_execution_terminating() {
             break;
         }
         let Some(code) = v8::String::new(scope, &source) else {
@@ -9462,7 +9508,28 @@ fn try_capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
     true
 }
 
-fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
+fn recovery_capture_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
+    termination_checkpoint(scope, name);
+    // The deterministic watchdog can fire between scripts, before run_js has
+    // its own TryCatch. Record that real native interrupt before later setup
+    // catches consume V8's termination state.
+    #[cfg(test)]
+    if scope.is_execution_terminating() {
+        SETUP_TERMINATED.with(|terminated| terminated.set(true));
+    }
+}
+
+fn install_engine_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    #[cfg(feature = "host-internals")]
+    let context = scope.get_current_context();
+    #[cfg(feature = "host-internals")]
+    begin_recovery_install(context);
+    install_engine_body(scope, tree);
+    #[cfg(feature = "host-internals")]
+    finish_recovery_install(scope, context);
+}
+
+fn install_engine_body(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
     tree.set_processing_instructions(true);
@@ -9618,11 +9685,13 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     file_inputs::install(scope);
     select_element::install(scope);
     animations::install(scope);
+    recovery_capture_checkpoint(scope, "install:before-recovery-capture");
     capture_bootstrap_callback::<TerminationRecovery>(
         scope,
         global,
         "__captureTerminationRecovery",
     );
+    recovery_capture_checkpoint(scope, "install:after-recovery-capture");
     typed_om::install(scope);
     hyperlink_utils::install(scope);
     form_pseudo::install(scope);
