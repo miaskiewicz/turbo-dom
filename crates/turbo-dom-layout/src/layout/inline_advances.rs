@@ -197,6 +197,83 @@ mod tests {
     use super::super::{atom_word, break_word, place_line, InlineAtom, VAlign};
     use crate::text::Align;
 
+    fn arabic_words(text: &str, face: &crate::FontFace) -> Vec<super::super::Word> {
+        use super::super::{
+            build_pieces, InlineRun, Piece, SourcePolicy, UprightText, WordBreaking,
+        };
+        let run = InlineRun {
+            node_id: super::NodeId(7),
+            text: text.into(),
+            face: face.clone(),
+            families: vec!["Noto Sans Arabic".into()],
+            weight: 400,
+            italic: false,
+            font_size: 16.0,
+            line_height: None,
+            letter_spacing: 0.0,
+            color: crate::layout::value::Rgba {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 255,
+            },
+            valign: VAlign::Baseline,
+            nowrap: false,
+            preserve_spaces: false,
+            forced_newlines: false,
+            text_transform: crate::text::TextTransform::default(),
+            word_breaking: WordBreaking::default(),
+            upright: UprightText::None,
+        };
+        let mut fonts = crate::FontRegistry::new();
+        fonts.add(face.clone());
+        let mut words = build_pieces(
+            &[Piece::Run(run)],
+            &fonts,
+            &mut crate::Diagnostics::default(),
+            SourcePolicy {
+                capture: true,
+                advances: true,
+            },
+            None,
+        )
+        .words;
+        assert_eq!(words.len(), 2);
+        for word in &mut words {
+            super::prepare_word(word, 1.0);
+        }
+        words
+    }
+
+    #[test]
+    fn real_arabic_decomposition_is_not_treated_as_a_three_glyph_space_pair() {
+        let face = crate::FontFace::from_bytes(
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/fonts/noto-sans-arabic/NotoSansArabic-Regular.ttf"
+            ))
+            .to_vec(),
+            "Noto Sans Arabic",
+            400,
+            false,
+        )
+        .unwrap();
+        // This real face decomposes ALEF WITH MADDA ABOVE into a mark and base.
+        // The adjustment's one-glyph-per-character premise therefore does not hold.
+        assert!(face.shape("\u{0622}").len() > 1);
+        let decomposed = arabic_words("\u{0622} \u{0627}", &face);
+        assert!(super::space_kerning_pair(&decomposed[0], &decomposed[1]).is_some());
+        assert!(super::space_kerning(&decomposed[0], &decomposed[1], 1.0).is_none());
+
+        // The same source/face with ordinary ALEF on each side is a genuine
+        // three-glyph pair and must remain eligible for the adjustment.
+        assert_eq!(face.shape("\u{0627}").len(), 1);
+        assert_eq!(face.shape("\u{0627} \u{0627}").len(), 3);
+        let ordinary = arabic_words("\u{0627} \u{0627}", &face);
+        let deltas = super::space_kerning(&ordinary[0], &ordinary[1], 1.0).unwrap();
+        assert!(deltas.iter().all(|value| value.is_finite()));
+    }
+
     #[test]
     fn numeric_spacing_without_source_metadata_preserves_the_next_atomic_placement() {
         // A legacy item can carry a numeric gap without a text-source record.
