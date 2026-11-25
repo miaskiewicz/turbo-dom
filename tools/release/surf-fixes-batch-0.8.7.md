@@ -22,3 +22,24 @@ The user explicitly authorized pushing this integrated code to `release/0.8.7` w
 ## Independent npm work
 
 Issue#296 is still open: real native/WASM computed-style classes, runtime adapter/default cutover, payload builds and full parity/performance gates are in progress. Shared kernels are integrated, but this batch does not claim the published npm computed-style behavior is fixed. That independent runtime work does not block Surf's producer integration.
+
+## Coverage follow-up after the current-name integration
+
+Production acceptance remains `2cf66aa5e8ed37dd609e6abc377be599a425f504`.
+The test-only integration `b4e90485a118fddf4ce88c94272dea182b7cc3c3` adds
+four meaningful native provenance controls without changing production behavior.
+They cover missing border/used-box refusal, finite coefficients with an overflowing
+transform determinant, and imported SVG text-path refusal. Their focused tests,
+strict all-target layout Clippy, fmt and CC9 passed.
+
+The Rust1.98 all-feature layout LLVM coverage measurement now passes the unchanged
+99.8% floor: **20,929 / 20,966 lines, 99.82%**, exit0. This supersedes the earlier
+99.67% all-feature result above; the earlier failed receipt remains preserved.
+Command: `cargo +1.98.0 tarpaulin --offline --locked --engine llvm -p turbo-dom-layout
+--all-features --include-files 'crates/turbo-dom-layout/src/*' --timeout 600
+--out Json --out Stdout --fail-under 99.8` with one build job.
+The exact local log and JSON are under `.evidence/presented-effects/coverage-layout-post-controls*`.
+
+The separate default-feature layout measurement and latest binding/Core coverage
+checks are not implied by this all-feature receipt. No floor, timeout, resource
+budget, production guard or assertion was weakened. No tag or publication occurred.
