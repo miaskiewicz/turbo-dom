@@ -50,3 +50,20 @@ Raw local evidence remains under `.evidence/frame-recovery/`. The existing
 `recover_after_termination` function has CC10 on both the baseline and this
 candidate; new admission helpers and termination controls are within CC9. No
 complexity limit, allow-list, timeout, assertion or coverage floor changed.
+
+
+## Unchanged consumer regression acceptance
+
+Surf copied its exact original `host_input.rs` into an isolated consumer and
+selected immutable implementation `e6b9ee3dc610100857fb85cdddd8180dffe47453`
+for all four producer dependencies. The original interrupted-frame test changes
+from `CallbackUnavailable` on410 to **1 passed, zero failed**. The complete
+unchanged host-input binary then passes **26/26**, in10.61 seconds. Source hash
+equality is recorded in `turbo-surf/.recovery/recovery-e6b9-private/IDENTITY.json`;
+receipts are `ROOT-HOST-INPUT.log` and `ROOT-HOST-INPUT-FULL.log` in that directory.
+
+The pushed release integration is `e433aeb76d7c16a4cd8b0a3de05e9b55b841fe9a`,
+with binding source identical to the tested implementation. Issue567 is closed
+with the exact producer and consumer receipts. Surf's actual package remains410
+until the separately validated badge-transition follow-up is combined; these
+focused results do not claim a rebuilt-package/authentication-suite pass.
