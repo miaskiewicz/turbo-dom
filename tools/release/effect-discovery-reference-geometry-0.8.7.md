@@ -51,3 +51,20 @@ host-suppression defect. The independent baseline source/log is retained in
 Named-profile ancestry placed used-size BEFORE sampler entry during public style
 flushing. This public reduction proves unnecessary geometry work, not resolution
 of the real application's modal waits or an optimized live timing guarantee.
+
+## Final integrated gates
+
+Integrated production source `53ce99e29fc3126f39f15764dd947c8692a7ef11`
+completed the Rust1.98 default workspace gate: 3,280 reported passes, zero
+failures and13 ignored across286 summaries. Strict workspace all-target Clippy
+(`-D warnings`) and fmt pass. Local receipts are `WORKSPACE-DISCOVERY-577.json`,
+`workspace-discovery-577.log` and `clippy-discovery-577.log` under
+`.evidence/presented-effects/`.
+
+The focused checkpoint independently passes13 provider/lifecycle controls,
+98 presentation controls and880 binding units (four existing ignored tests).
+Root keeps its earlier actualea299 addon stable while collecting full-session
+CPU evidence; no actual#577 addon/application pass is claimed here. The actual
+profile has no cssFlush ancestry among sampler samples, so this independently
+proven discovery fix is not represented as a resolution of the auth timeout.
+The separate baseline hidden shadow-host CSS effect defect is tracked as#578.
