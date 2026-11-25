@@ -80,6 +80,9 @@ fn pairs(
 }
 
 fn failure(scope: &mut v8::PinScope, error: ComputedCssError) {
+    if scope.is_execution_terminating() {
+        return;
+    }
     if matches!(
         error,
         ComputedCssError::ResourceLimit | ComputedCssError::NestingLimit
@@ -90,6 +93,9 @@ fn failure(scope: &mut v8::PinScope, error: ComputedCssError) {
         ) else {
             return;
         };
+        if scope.is_execution_terminating() {
+            return;
+        }
         let error = v8::Exception::range_error(scope, message);
         scope.throw_exception(error);
     }
@@ -175,5 +181,46 @@ pub(super) fn install(scope: &mut v8::PinScope) {
     if let Some(namespace) = engine_namespace(scope) {
         bind_method(scope, namespace, "computeEffectCustomTokens", custom);
         bind_method(scope, namespace, "substituteEffectTokens", substitute);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resource_formatter_preserves_native_termination_and_ordinary_range_errors() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        v8::tc_scope!(let scope, scope);
+        let code = v8::String::new(scope, "0").unwrap();
+        let script = v8::Script::compile(scope, code, None).unwrap();
+        scope.terminate_execution();
+        assert!(script.run(scope).is_none());
+        assert!(scope.is_execution_terminating());
+        failure(scope, ComputedCssError::ResourceLimit);
+        assert!(scope.has_terminated());
+        assert!(scope.is_execution_terminating());
+        assert!(!scope
+            .exception()
+            .is_some_and(|error| error.is_native_error()));
+
+        // Only the test owner cancels after proving the helper preserved the
+        // interruption, then checks the ordinary resource-error inverse.
+        scope.cancel_terminate_execution();
+        scope.reset();
+        failure(scope, ComputedCssError::ResourceLimit);
+        assert!(scope.has_caught());
+        assert!(!scope.has_terminated());
+        assert!(scope.exception().unwrap().is_native_error());
+        let message = scope
+            .message()
+            .unwrap()
+            .get(scope)
+            .to_rust_string_lossy(scope);
+        assert!(message.contains("RangeError") && message.contains("computation budget"));
     }
 }
