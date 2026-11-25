@@ -41,6 +41,15 @@ def dependencies(toml):
         yield from target.get("dependencies", {}).items()
 
 
+def path_dependency_errors(where, toml, version):
+    errors = []
+    for name, spec in dependencies(toml):
+        if isinstance(spec, dict) and "path" in spec and spec.get("version") != version:
+            errors.append(f'{where}: path dependency {name} needs version = "{version}"'
+                          f" (has {spec.get('version')!r})")
+    return errors
+
+
 def lock_errors(lock_text, version, v8_version):
     """Cargo.lock entries of our packages that disagree with the release versions."""
     expected = {name: version for name in ["turbo-dom-parser", *CRATES]}
@@ -81,14 +90,11 @@ def main(argv=None):
         'package-lock.json packages[""]': lock["packages"][""]["version"],
         "Cargo.toml (turbo-dom-parser)": manifest("Cargo.toml")["package"]["version"],
     }
+    errors += path_dependency_errors("Cargo.toml", manifest("Cargo.toml"), version)
     for crate in CRATES:
         toml = manifest(f"crates/{crate}/Cargo.toml")
         found[f"crates/{crate}"] = toml["package"]["version"]
-        for name, spec in dependencies(toml):
-            if isinstance(spec, dict) and "path" in spec:
-                if spec.get("version") != version:
-                    errors.append(f"crates/{crate}: path dependency {name} needs version = \"{version}\""
-                                  f" (has {spec.get('version')!r})")
+        errors += path_dependency_errors(f"crates/{crate}", toml, version)
     for where, value in found.items():
         if value != version:
             errors.append(f"{where} is {value}, package.json is {version}")
