@@ -2634,14 +2634,31 @@
     for (let i = 0; i < promiseShapes.length; i++) if (!safePromiseShape(null, promiseShapes[i])) return;
     captureBuiltinShapes();
   };
+  function assignmentUndefinedStackHook(shape) {
+    const captured = builtinGlobals.Error;
+    if (!captured || shape.object !== captured.value || shape.descriptors.prepareStackTrace) return false;
+    const descriptor = getOwnDescriptor(shape.object, 'prepareStackTrace');
+    if (!descriptor || !getOwnDescriptor(descriptor, 'value')) return false;
+    return descriptor.value === undefined && descriptor.writable === true &&
+      descriptor.enumerable === true && descriptor.configurable === true;
+  }
+  function sameBuiltinShapeKeys(shape, keys) {
+    const ignoredStackHook = assignmentUndefinedStackHook(shape);
+    if (keys.length !== shape.keys.length + (ignoredStackHook ? 1 : 0)) return false;
+    let expected = 0;
+    for (let index = 0; index < keys.length; index++) {
+      const key = keys[index];
+      if (ignoredStackHook && key === 'prepareStackTrace') continue;
+      if (key !== shape.keys[expected++] || !samePrivateDescriptor(getOwnDescriptor(shape.object, key), shape.descriptors[key])) return false;
+    }
+    return true;
+  }
   function safeBuiltinShapes() {
     for (let i = 0; i < builtinNames.length; i++)
       if (!samePrivateDescriptor(getOwnDescriptor(g, builtinNames[i]), builtinGlobals[builtinNames[i]])) return false;
     for (let i = 0; i < builtinShapes.length; i++) {
-      const shape = builtinShapes[i], keys = ownKeys(shape.object);
-      if (keys.length !== shape.keys.length || getPrototype(shape.object) !== shape.prototype) return false;
-      for (let j = 0; j < keys.length; j++)
-        if (keys[j] !== shape.keys[j] || !samePrivateDescriptor(getOwnDescriptor(shape.object, keys[j]), shape.descriptors[keys[j]])) return false;
+      const shape = builtinShapes[i];
+      if (getPrototype(shape.object) !== shape.prototype || !sameBuiltinShapeKeys(shape, ownKeys(shape.object))) return false;
     }
     return true;
   }

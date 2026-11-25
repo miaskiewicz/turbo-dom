@@ -72,6 +72,91 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn preexisting_error_stack_hook_descriptor_is_never_forgiven() {
+    init_v8();
+    let isolate = &mut v8::Isolate::new(Default::default());
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope,isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    eval(scope, "Error.prepareStackTrace=undefined");
+    browser_env::install_independent_html(
+        scope,
+        "<!doctype html><div id=target style='width:100px;height:20px'></div>",
+    );
+    browser_env::run_engine_script(
+        scope,
+        "__tsNs.installAnimationHost({now:()=>1000,frame(){},task(){}})",
+    )
+    .unwrap();
+    eval(scope,"globalThis.target=document.getElementById('target');target.animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'}).pause()");
+    let document = object(scope, "document");
+    let target = object(scope, "target");
+    let handle = handle_of(scope, target).unwrap();
+    assert!(sample_presented_effects(scope, document, &[handle]).is_some());
+    eval(
+        scope,
+        "Object.defineProperty(Error,'prepareStackTrace',{enumerable:false})",
+    );
+    assert!(sample_presented_effects(scope, document, &[handle]).is_none());
+    browser_env::reset();
+}
+
+#[test]
+fn absent_and_assignment_undefined_error_stack_hooks_keep_canonical_sampling_equivalent() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');target.animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'}).pause();");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let before = sample_presented_effects(scope, document, &[handle]).unwrap();
+        assert!(eval(scope, "!Object.hasOwn(Error,'prepareStackTrace')").is_true());
+        eval(scope,"Error.prepareStackTrace=undefined;globalThis.stackShape=Object.getOwnPropertyDescriptor(Error,'prepareStackTrace');");
+        assert!(eval(scope,"stackShape.value===undefined&&stackShape.writable&&stackShape.enumerable&&stackShape.configurable&&!Object.hasOwn(stackShape,'get')").is_true());
+        let after = sample_presented_effects(scope, document, &[handle])
+            .expect("an undefined data stack hook does not execute guest code");
+        let PresentedTargetState::Certified {
+            animation: before, ..
+        } = &before.targets[0].presentation
+        else {
+            panic!("unproved baseline")
+        };
+        let PresentedTargetState::Certified {
+            animation: after, ..
+        } = &after.targets[0].presentation
+        else {
+            panic!("unproved undefined hook")
+        };
+        assert_eq!(before, after);
+        assert!(eval(scope, "typeof new Error('stack-control').stack==='string'").is_true());
+    });
+}
+
+#[test]
+fn stack_hook_equivalence_does_not_forgive_callables_accessors_or_other_shapes() {
+    for mutation in [
+        "Error.prepareStackTrace=()=>{traps++;return 'guest'}",
+        "Object.defineProperty(Error,'prepareStackTrace',{configurable:true,get(){traps++;return undefined}})",
+        "Error.unrelated=undefined",
+        "Error.prototype.prepareStackTrace=undefined",
+        "Object.defineProperty(Error,'prepareStackTrace',{value:undefined,writable:true,enumerable:false,configurable:true})",
+        "Object.defineProperty(Error,'prepareStackTrace',{value:undefined,writable:true,enumerable:true,configurable:false})",
+        "Object.defineProperty(Error,'prepareStackTrace',{value:undefined,writable:false,enumerable:true,configurable:true})",
+        "Function.prototype.prepareStackTrace=undefined",
+        "Object.setPrototypeOf(Error,{})",
+    ] {
+        with_dom(|scope|{
+            eval(scope,"globalThis.target=document.getElementById('target');target.animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'}).pause();globalThis.traps=0;");
+            let document=object(scope,"document");let target=object(scope,"target");let handle=handle_of(scope,target).unwrap();
+            assert!(sample_presented_effects(scope,document,&[handle]).is_some());
+            eval(scope,mutation);
+            assert!(sample_presented_effects(scope,document,&[handle]).is_none(),"{mutation}");
+            assert!(eval(scope,"traps===0").is_true());
+        });
+    }
+}
+
+#[test]
 fn deferred_background_tokens_do_not_certify_non_color_shorthand_values() {
     with_html(true,true,"<!doctype html><style>#target{background-color:black;transition:background-color 250ms}#target.enabled{background:var(--theme)}</style><div id=target style='--theme:red padding-box'>Color</div>",|scope|{
         eval(scope,"globalThis.target=document.getElementById('target');getComputedStyle(target).backgroundColor;target.className='enabled';");
