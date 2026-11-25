@@ -297,6 +297,13 @@ pub fn parse_sheet(
 ) -> Result<Vec<SheetRule>, SheetError> {
     parse_sheet_with_unknown_rules(units, limits, mode, UnknownRulePolicy::Ignore)
 }
+pub(super) fn check_source_units(units: &[u16], maximum: usize) -> Result<(), SheetError> {
+    if units.len() > maximum {
+        return Err(SheetError::SourceUnits);
+    }
+    Ok(())
+}
+
 /// Parse the same canonical rule grammar with an explicit unknown-rule policy.
 /// Preserved unknown blocks stay opaque even in recursive mode; conditional group
 /// interpretation and unknown-rule capability decisions belong to the caller.
@@ -310,9 +317,7 @@ pub fn parse_sheet_with_unknown_rules(
     mode: GroupMode,
     unknown: UnknownRulePolicy,
 ) -> Result<Vec<SheetRule>, SheetError> {
-    if units.len() > limits.source_units {
-        return Err(SheetError::SourceUnits);
-    }
+    check_source_units(units, limits.source_units)?;
     let source = CssSource::new(units);
     let mut parser_input = ParserInput::new(source.scalar());
     let mut input = Parser::new(&mut parser_input);

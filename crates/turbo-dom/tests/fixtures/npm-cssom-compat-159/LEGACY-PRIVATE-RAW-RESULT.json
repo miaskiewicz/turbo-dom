@@ -1,0 +1,2237 @@
+{
+  "status": "private-raw-row-factory-compat-audit-no-cssom-finalizer",
+  "artifactMode": "native",
+  "parserMode": "native",
+  "sceneFonts": "native_html_system",
+  "nativeLoadedArtifacts": [
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/native-css/turbo-dom-css.darwin-arm64.node",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-loader-296/turbo-dom-parser.darwin-arm64.node"
+  ],
+  "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/native-css/turbo-dom-css.darwin-arm64.node",
+  "artifactSha256": "1b09f73d27559785020070d0e38691f09a5d2d021a518f5e93564f81deefcdf6",
+  "sceneReceipts": [],
+  "containerReceipts": [],
+  "casesSha256": "f7e3d15470d190ea1c3cba550364ba34dbe04f6fd7a54c1ca72c04d4d66ffc2d",
+  "counts": {
+    "compile": 15,
+    "prepare": 15,
+    "resolve": 15,
+    "finalize": 13,
+    "geometry": 0
+  },
+  "results": [
+    {
+      "id": "margin-shorthand",
+      "legacy": {
+        "id": "margin-shorthand",
+        "cssText": "margin: 1px 2px 3px 4px;",
+        "values": [
+          {
+            "name": "margin",
+            "camel": "margin",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              }
+            }
+          },
+          {
+            "name": "margin-top",
+            "camel": "marginTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          },
+          {
+            "name": "margin-left",
+            "camel": "marginLeft",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "4px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "4px"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "margin-shorthand",
+        "cssText": "margin: 1px 2px 3px 4px;",
+        "values": [
+          {
+            "name": "margin",
+            "camel": "margin",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px 3px 4px"
+              }
+            }
+          },
+          {
+            "name": "margin-top",
+            "camel": "marginTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          },
+          {
+            "name": "margin-left",
+            "camel": "marginLeft",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "4px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "4px"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "margin-longhands",
+      "legacy": {
+        "id": "margin-longhands",
+        "cssText": "margin: 1px 2px;",
+        "values": [
+          {
+            "name": "margin",
+            "camel": "margin",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px"
+              }
+            }
+          },
+          {
+            "name": "margin-top",
+            "camel": "marginTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "margin-longhands",
+        "cssText": "margin: 1px 2px;",
+        "values": [
+          {
+            "name": "margin",
+            "camel": "margin",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px"
+              }
+            }
+          },
+          {
+            "name": "margin-top",
+            "camel": "marginTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "padding-shorthand",
+      "legacy": {
+        "id": "padding-shorthand",
+        "cssText": "padding: 1px 2px;",
+        "values": [
+          {
+            "name": "padding",
+            "camel": "padding",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px"
+              }
+            }
+          },
+          {
+            "name": "padding-right",
+            "camel": "paddingRight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "padding-shorthand",
+        "cssText": "padding: 1px 2px;",
+        "values": [
+          {
+            "name": "padding",
+            "camel": "padding",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px"
+              }
+            }
+          },
+          {
+            "name": "padding-right",
+            "camel": "paddingRight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "padding-partial",
+      "legacy": {
+        "id": "padding-partial",
+        "cssText": "padding-top: 1px;",
+        "values": [
+          {
+            "name": "padding",
+            "camel": "padding",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "padding-top",
+            "camel": "paddingTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          },
+          {
+            "name": "padding-left",
+            "camel": "paddingLeft",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "padding-partial",
+        "cssText": "padding-top: 1px;",
+        "values": [
+          {
+            "name": "padding",
+            "camel": "padding",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "padding-top",
+            "camel": "paddingTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px"
+              }
+            }
+          },
+          {
+            "name": "padding-left",
+            "camel": "paddingLeft",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "border-shorthand",
+      "legacy": {
+        "id": "border-shorthand",
+        "cssText": "border: 2px solid red;",
+        "values": [
+          {
+            "name": "border",
+            "camel": "border",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px solid red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px solid red"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px solid red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px solid red"
+              }
+            }
+          },
+          {
+            "name": "border-top",
+            "camel": "borderTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px solid red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px solid red"
+              }
+            }
+          },
+          {
+            "name": "border-width",
+            "camel": "borderWidth",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          },
+          {
+            "name": "border-style",
+            "camel": "borderStyle",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "solid"
+              },
+              "camel": {
+                "type": "string",
+                "value": "solid"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "solid"
+              },
+              "camel": {
+                "type": "string",
+                "value": "solid"
+              }
+            }
+          },
+          {
+            "name": "border-color",
+            "camel": "borderColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              },
+              "camel": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          },
+          {
+            "name": "border-top-color",
+            "camel": "borderTopColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "border-shorthand",
+        "cssText": "border: 2px solid red;",
+        "values": [
+          {
+            "name": "border",
+            "camel": "border",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px solid red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px solid red"
+              }
+            }
+          },
+          {
+            "name": "border-top",
+            "camel": "borderTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px solid red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px solid red"
+              }
+            }
+          },
+          {
+            "name": "border-width",
+            "camel": "borderWidth",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          },
+          {
+            "name": "border-style",
+            "camel": "borderStyle",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "solid"
+              },
+              "camel": {
+                "type": "string",
+                "value": "solid"
+              }
+            }
+          },
+          {
+            "name": "border-color",
+            "camel": "borderColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          },
+          {
+            "name": "border-top-color",
+            "camel": "borderTopColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              },
+              "camel": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "border-side",
+      "legacy": {
+        "id": "border-side",
+        "cssText": "border-top: 2px dotted blue;",
+        "values": [
+          {
+            "name": "border",
+            "camel": "border",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "border-top",
+            "camel": "borderTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px dotted blue"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px dotted blue"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px dotted blue"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px dotted blue"
+              }
+            }
+          },
+          {
+            "name": "border-top-width",
+            "camel": "borderTopWidth",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "border-side",
+        "cssText": "border-top: 2px dotted blue;",
+        "values": [
+          {
+            "name": "border",
+            "camel": "border",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "border-top",
+            "camel": "borderTop",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px dotted blue"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px dotted blue"
+              }
+            }
+          },
+          {
+            "name": "border-top-width",
+            "camel": "borderTopWidth",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "2px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "2px"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "border-radius",
+      "legacy": {
+        "id": "border-radius",
+        "cssText": "border-radius: 1px 2px / 3px 4px;",
+        "values": [
+          {
+            "name": "border-radius",
+            "camel": "borderRadius",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              }
+            }
+          },
+          {
+            "name": "border-top-left-radius",
+            "camel": "borderTopLeftRadius",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 3px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 3px"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "border-radius",
+        "cssText": "border-radius: 1px 2px / 3px 4px;",
+        "values": [
+          {
+            "name": "border-radius",
+            "camel": "borderRadius",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 2px / 3px 4px"
+              }
+            }
+          },
+          {
+            "name": "border-top-left-radius",
+            "camel": "borderTopLeftRadius",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 3px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 3px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1px 3px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1px 3px"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "font-shorthand",
+      "legacy": {
+        "id": "font-shorthand",
+        "cssText": "font: italic small-caps bold 12px / 1.5 Arial;",
+        "values": [
+          {
+            "name": "font",
+            "camel": "font",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "italic small-caps bold 12px/1.5 Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "italic small-caps bold 12px/1.5 Arial"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "italic small-caps bold 12px / 1.5 Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "italic small-caps bold 12px / 1.5 Arial"
+              }
+            }
+          },
+          {
+            "name": "font-size",
+            "camel": "fontSize",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            }
+          },
+          {
+            "name": "font-weight",
+            "camel": "fontWeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "bold"
+              },
+              "camel": {
+                "type": "string",
+                "value": "bold"
+              }
+            }
+          },
+          {
+            "name": "font-family",
+            "camel": "fontFamily",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            }
+          },
+          {
+            "name": "line-height",
+            "camel": "lineHeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1.5"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1.5"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "font-shorthand",
+        "cssText": "font: italic small-caps bold 12px / 1.5 Arial;",
+        "values": [
+          {
+            "name": "font",
+            "camel": "font",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "italic small-caps bold 12px / 1.5 Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "italic small-caps bold 12px / 1.5 Arial"
+              }
+            }
+          },
+          {
+            "name": "font-size",
+            "camel": "fontSize",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            }
+          },
+          {
+            "name": "font-weight",
+            "camel": "fontWeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "bold"
+              },
+              "camel": {
+                "type": "string",
+                "value": "bold"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "bold"
+              },
+              "camel": {
+                "type": "string",
+                "value": "bold"
+              }
+            }
+          },
+          {
+            "name": "font-family",
+            "camel": "fontFamily",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            }
+          },
+          {
+            "name": "line-height",
+            "camel": "lineHeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1.5"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1.5"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "1.5"
+              },
+              "camel": {
+                "type": "string",
+                "value": "1.5"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "font-partial",
+      "legacy": {
+        "id": "font-partial",
+        "cssText": "font-size: 12px; font-family: Arial;",
+        "values": [
+          {
+            "name": "font",
+            "camel": "font",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "font-size",
+            "camel": "fontSize",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            }
+          },
+          {
+            "name": "font-family",
+            "camel": "fontFamily",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "font-partial",
+        "cssText": "font-size: 12px; font-family: Arial;",
+        "values": [
+          {
+            "name": "font",
+            "camel": "font",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "font-size",
+            "camel": "fontSize",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "12px"
+              },
+              "camel": {
+                "type": "string",
+                "value": "12px"
+              }
+            }
+          },
+          {
+            "name": "font-family",
+            "camel": "fontFamily",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "Arial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "Arial"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "background-shorthand",
+      "legacy": {
+        "id": "background-shorthand",
+        "cssText": "background: red;",
+        "values": [
+          {
+            "name": "background",
+            "camel": "background",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              },
+              "camel": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          },
+          {
+            "name": "background-color",
+            "camel": "backgroundColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              },
+              "camel": {
+                "type": "string",
+                "value": "rgb(255, 0, 0)"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          },
+          {
+            "name": "background-position",
+            "camel": "backgroundPosition",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "initial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "initial"
+              }
+            }
+          },
+          {
+            "name": "background-repeat",
+            "camel": "backgroundRepeat",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "initial"
+              },
+              "camel": {
+                "type": "string",
+                "value": "initial"
+              }
+            }
+          }
+        ]
+      },
+      "error": "Error: CSSBackendResolve:Values(RequiresInitial(\"background-attachment\"))",
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "text-decoration-declared",
+      "legacy": {
+        "id": "text-decoration-declared",
+        "cssText": "text-decoration: underline dotted red;",
+        "values": [
+          {
+            "name": "text-decoration",
+            "camel": "textDecoration",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline dotted red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline dotted red"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline dotted red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline dotted red"
+              }
+            }
+          },
+          {
+            "name": "text-decoration-line",
+            "camel": "textDecorationLine",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline"
+              }
+            }
+          },
+          {
+            "name": "text-decoration-style",
+            "camel": "textDecorationStyle",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "dotted"
+              },
+              "camel": {
+                "type": "string",
+                "value": "dotted"
+              }
+            }
+          },
+          {
+            "name": "text-decoration-color",
+            "camel": "textDecorationColor",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "red"
+              },
+              "camel": {
+                "type": "string",
+                "value": "red"
+              }
+            }
+          }
+        ]
+      },
+      "error": "Error: CSSBackendResolve:Values(RequiresInitial(\"text-decoration-thickness\"))",
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "text-decoration-longhands",
+      "legacy": {
+        "id": "text-decoration-longhands",
+        "cssText": "text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: blue;",
+        "values": [
+          {
+            "name": "text-decoration",
+            "camel": "textDecoration",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "text-decoration-line",
+            "camel": "textDecorationLine",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "text-decoration-longhands",
+        "cssText": "text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: blue;",
+        "values": [
+          {
+            "name": "text-decoration",
+            "camel": "textDecoration",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "text-decoration-line",
+            "camel": "textDecorationLine",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "underline"
+              },
+              "camel": {
+                "type": "string",
+                "value": "underline"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "word-wrap-canonical",
+      "legacy": {
+        "id": "word-wrap-canonical",
+        "cssText": "overflow-wrap: break-word;",
+        "values": [
+          {
+            "name": "word-wrap",
+            "camel": "wordWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          },
+          {
+            "name": "overflow-wrap",
+            "camel": "overflowWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "word-wrap-canonical",
+        "cssText": "overflow-wrap: break-word;",
+        "values": [
+          {
+            "name": "word-wrap",
+            "camel": "wordWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          },
+          {
+            "name": "overflow-wrap",
+            "camel": "overflowWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "word-wrap-alias",
+      "legacy": {
+        "id": "word-wrap-alias",
+        "cssText": "overflow-wrap: break-word;",
+        "values": [
+          {
+            "name": "word-wrap",
+            "camel": "wordWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          },
+          {
+            "name": "overflow-wrap",
+            "camel": "overflowWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "word-wrap-alias",
+        "cssText": "overflow-wrap: break-word;",
+        "values": [
+          {
+            "name": "word-wrap",
+            "camel": "wordWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          },
+          {
+            "name": "overflow-wrap",
+            "camel": "overflowWrap",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": "break-word"
+              },
+              "camel": {
+                "type": "string",
+                "value": "break-word"
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": false,
+      "authoredUnchanged": true
+    },
+    {
+      "id": "unknown-unmatched",
+      "legacy": {
+        "id": "unknown-unmatched",
+        "cssText": "margin-top: 1px;",
+        "values": [
+          {
+            "name": "does-not-exist",
+            "camel": "doesNotExist",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "font-weight",
+            "camel": "fontWeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          }
+        ]
+      },
+      "privateRawFactory": {
+        "id": "unknown-unmatched",
+        "cssText": "margin-top: 1px;",
+        "values": [
+          {
+            "name": "does-not-exist",
+            "camel": "doesNotExist",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          },
+          {
+            "name": "font-weight",
+            "camel": "fontWeight",
+            "computed": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            },
+            "authored": {
+              "getPropertyValue": {
+                "type": "string",
+                "value": ""
+              },
+              "camel": {
+                "type": "string",
+                "value": ""
+              }
+            }
+          }
+        ]
+      },
+      "sameValues": true,
+      "authoredUnchanged": true
+    }
+  ]
+}

@@ -633,3 +633,40 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod bound_and_order_contracts {
+    use super::*;
+    #[test]
+    fn ast_depth_guard_preserves_exact_caller_bound() {
+        let limits = ComputationLimits {
+            max_nesting: 1,
+            max_output_units: 0,
+            max_total_units: 0,
+        };
+        assert_eq!(depth(0, limits), Ok(()));
+        assert_eq!(
+            depth(1, limits),
+            Err(ConditionEvaluationError::Computation(
+                ComputedCssError::NestingLimit
+            ))
+        );
+    }
+    #[test]
+    fn reversing_comparison_preserves_truth_for_each_order_relation() {
+        for operator in [
+            MediaFeatureComparison::Equal,
+            MediaFeatureComparison::GreaterThan,
+            MediaFeatureComparison::GreaterThanEqual,
+            MediaFeatureComparison::LessThan,
+            MediaFeatureComparison::LessThanEqual,
+        ] {
+            for order in [Ordering::Less, Ordering::Equal, Ordering::Greater] {
+                assert_eq!(
+                    compare_order(operator, order),
+                    compare_order(opposite(operator), order.reverse())
+                );
+            }
+        }
+    }
+}

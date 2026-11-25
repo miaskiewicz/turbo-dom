@@ -14,11 +14,15 @@ pub mod conditions;
 #[cfg(feature = "computed-style-grammar")]
 pub mod container;
 #[cfg(feature = "computed-style-grammar")]
+pub mod cssom_serialization;
+#[cfg(feature = "computed-style-grammar")]
 pub mod custom_cascade;
 #[cfg(feature = "computed-style-grammar")]
 pub mod declaration_model;
 #[cfg(feature = "computed-style-grammar")]
 pub mod facts;
+#[cfg(feature = "computed-style-grammar")]
+pub mod font_values;
 #[cfg(feature = "computed-style-grammar")]
 pub mod grammar;
 #[cfg(feature = "computed-style-grammar")]

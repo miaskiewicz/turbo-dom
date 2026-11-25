@@ -52,12 +52,7 @@ pub(super) fn query<'i>(input: &mut Parser<'i, '_>, used: &mut bool) -> Result<'
         .ok();
     let (qualifier, media_type, condition) = match prefix {
         Some((qualifier, media_type)) => {
-            let condition = if input.is_exhausted() {
-                None
-            } else {
-                input.expect_ident_matching("and")?;
-                Some(condition(input, false, used)?)
-            };
+            let condition = prefix_tail(input, used)?;
             (qualifier, media_type, condition)
         }
         None => (None, MediaType::All, Some(condition(input, true, used)?)),
@@ -175,5 +170,56 @@ fn closing_token(token: &Token<'_>) -> Option<RawToken<'static>> {
         Token::SquareBracketBlock => Some(RawToken::CloseSquareBracket),
         Token::CurlyBracketBlock => Some(RawToken::CloseCurlyBracket),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod defensive_fallback_contracts {
+    use super::*;
+    #[test]
+    fn fallback_requires_an_actual_general_enclosed_extension() {
+        // Direct subgrammar contract: valid canonical media is not an extension.
+        for source in ["", "screen", "screen, print"] {
+            let mut source = cssparser::ParserInput::new(source);
+            let mut parser = Parser::new(&mut source);
+            assert!(parse(&mut parser).is_err());
+        }
+        let mut source = cssparser::ParserInput::new("(future(foo))");
+        let mut parser = Parser::new(&mut source);
+        assert!(parse(&mut parser).is_ok());
+        parser.expect_exhausted().unwrap();
+    }
+}
+
+// The optional tail grammar is shared by media-type prefixes. The outer fallback
+// normally sees a nonempty extension after canonical query parsing was attempted.
+fn prefix_tail<'i>(
+    input: &mut Parser<'i, '_>,
+    used: &mut bool,
+) -> Result<'i, Option<MediaCondition<'i>>> {
+    if input.is_exhausted() {
+        return Ok(None);
+    }
+    input.expect_ident_matching("and")?;
+    Ok(Some(condition(input, false, used)?))
+}
+#[cfg(test)]
+mod prefix_tail_contract {
+    use super::*;
+    #[test]
+    fn absent_tail_and_present_extension_keep_distinct_grammar_results() {
+        let mut empty = cssparser::ParserInput::new("");
+        let mut empty = Parser::new(&mut empty);
+        let mut used = false;
+        assert!(prefix_tail(&mut empty, &mut used).unwrap().is_none());
+        assert!(!used);
+        let mut present = cssparser::ParserInput::new("and (future(foo))");
+        let mut present = Parser::new(&mut present);
+        assert!(prefix_tail(&mut present, &mut used).unwrap().is_some());
+        present.expect_exhausted().unwrap();
+        assert!(used);
+        let mut invalid = cssparser::ParserInput::new("or (future(foo))");
+        let mut invalid = Parser::new(&mut invalid);
+        assert!(prefix_tail(&mut invalid, &mut used).is_err());
     }
 }

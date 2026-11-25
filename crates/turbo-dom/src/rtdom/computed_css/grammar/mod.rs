@@ -505,11 +505,7 @@ pub fn zoom_declaration<'i>(input: &mut Parser<'i, '_>) -> Result<String, ParseE
     let start = input.position();
     let property = Property::parse(PropertyId::from("zoom"), input, &ParserOptions::default())
         .map_err(|_| input.new_custom_error(()))?;
-    let deferred = match &property {
-        Property::Custom(property) => deferred_value(&property.value),
-        Property::Unparsed(property) => deferred_value(&property.value),
-        _ => false,
-    };
+    let deferred = property_deferred(&property);
     if !deferred {
         return Err(input.new_custom_error(()));
     }
@@ -1100,5 +1096,51 @@ mod backend_conversion_contract {
         let parser = Parser::new(&mut source);
         let error = parser.new_custom_error(lightningcss::error::ParserError::MaximumNestingDepth);
         assert_eq!(condition_error(&error), ConditionError::NestingLimit);
+    }
+}
+
+// Keep the classifier separate from zoom's current PropertyId. A future backend
+// may model zoom directly; only genuinely deferred token payloads are admitted.
+fn property_deferred(property: &Property<'_>) -> bool {
+    match property {
+        Property::Custom(property) => deferred_value(&property.value),
+        Property::Unparsed(property) => deferred_value(&property.value),
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod defensive_token_contracts {
+    use super::*;
+    #[test]
+    fn incomplete_private_boolean_block_is_rejected() {
+        // Deliberately incomplete helper IR, not a purported public parse result.
+        let tokens = [TokenOrValue::Token(Token::ParenthesisBlock)];
+        let refs: Vec<_> = tokens.iter().collect();
+        assert_eq!(if_test(&refs), None);
+        let tokens = [
+            TokenOrValue::Token(Token::ParenthesisBlock),
+            TokenOrValue::Token(Token::CloseParenthesis),
+        ];
+        let refs: Vec<_> = tokens.iter().collect();
+        assert_eq!(if_test(&refs), None);
+    }
+    fn deferred_property(name: &str, source: &str) -> bool {
+        let mut source = ParserInput::new(source);
+        let mut parser = Parser::new(&mut source);
+        let property = Property::parse(
+            PropertyId::from(name),
+            &mut parser,
+            &ParserOptions::default(),
+        )
+        .unwrap();
+        parser.expect_exhausted().unwrap();
+        property_deferred(&property)
+    }
+    #[test]
+    fn property_classifier_distinguishes_parsed_and_unparsed_real_grammar() {
+        assert!(deferred_property("zoom", "var(--scale)"));
+        assert!(deferred_property("width", "var(--width)"));
+        assert!(!deferred_property("width", "1px"));
     }
 }

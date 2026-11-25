@@ -12,6 +12,8 @@ mod css_backend;
 mod css_resolve;
 #[cfg(feature = "css-backend")]
 mod css_scene;
+#[cfg(feature = "css-backend")]
+mod css_serialize;
 
 // Phase-1 boundary spike (Rust DOM runtime exported to JS via wasm-bindgen).
 #[cfg(feature = "wasm-runtime")]

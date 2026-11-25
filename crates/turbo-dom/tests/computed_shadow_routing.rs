@@ -507,3 +507,34 @@ fn empty_original_ancestor_path_has_no_valid_scope_membership() {
         Err(ScopeError::InvalidPath)
     );
 }
+
+#[test]
+fn mixed_host_and_ordinary_selector_items_keep_their_distinct_tree_routes() {
+    let prepared = model(".bad.bad.bad,:host(.active){color:red}", &[2]);
+    let mut host = route_facts(&[11, 10], 1);
+    host.host_of = Some(2);
+    let host_routes = validated(&host);
+    let host_answers = answers(&prepared, 11, None);
+    let boundaries = BTreeMap::new();
+    // The core refuses an ordinary shadow-tree route even when the mechanical
+    // adapter supplied an overbroad original-subject answer for that list item.
+    let matched = matching_rules(
+        &prepared,
+        &facts(&host_routes, &host_answers, &boundaries),
+        128,
+    )
+    .unwrap();
+    assert_eq!(matched.rules().len(), 1);
+    assert_eq!(matched.rules()[0].specificity(), (0, 2, 0));
+    let child = route_facts(&[21, 20], 2);
+    let child_routes = validated(&child);
+    let child_answers = answers(&prepared, 21, None);
+    let matched = matching_rules(
+        &prepared,
+        &facts(&child_routes, &child_answers, &boundaries),
+        128,
+    )
+    .unwrap();
+    assert_eq!(matched.rules().len(), 1);
+    assert_eq!(matched.rules()[0].specificity(), (0, 3, 0));
+}

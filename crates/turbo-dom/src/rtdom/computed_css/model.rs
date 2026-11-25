@@ -3,8 +3,8 @@
 use super::declaration_model::{compile_declarations, CompiledDeclaration};
 use super::scope_plan::{parse_scope_prelude, ScopePrelude};
 use super::stylesheet::{
-    parse_sheet_with_unknown_rules, GroupKind, GroupMode, SheetError, SheetLimits, SheetRule,
-    UnknownRulePolicy,
+    check_source_units, parse_sheet_with_unknown_rules, GroupKind, GroupMode, SheetError,
+    SheetLimits, SheetRule, UnknownRulePolicy,
 };
 use super::{
     check_component_limits, declarations, ComputationLimits, ComputedCssError, CssDeclaration,
@@ -48,6 +48,16 @@ pub enum CompileError {
     PropertyCount,
     GroupDepth,
     Computation(ComputedCssError),
+}
+
+impl From<SheetError> for CompileError {
+    fn from(error: SheetError) -> Self {
+        match error {
+            SheetError::SourceUnits => Self::SourceUnits,
+            SheetError::RuleCount => Self::RuleCount,
+            SheetError::GroupDepth => Self::GroupDepth,
+        }
+    }
 }
 
 /// Selector source is retained even when the current static compiler cannot classify it.
@@ -183,30 +193,24 @@ impl Compiler {
         if self.data.source_ids.contains(&source.id) {
             return Err(CompileError::DuplicateSource);
         }
-        charge(
-            &mut self.source_units,
-            source.text.as_units().len(),
-            self.limits.source_units,
-            CompileError::SourceUnits,
-        )?;
+        // The same canonical source guard runs before any recursive/token work.
+        // Every successful charge stays within the aggregate source quota.
+        let remaining = self.limits.source_units - self.source_units;
+        check_source_units(source.text.as_units(), remaining)?;
+        self.source_units += source.text.as_units().len();
         check_component_limits(&source.text, self.computation_limits())
             .map_err(CompileError::Computation)?;
         let rules = parse_sheet_with_unknown_rules(
             source.text.as_units(),
             SheetLimits {
-                source_units: source.text.as_units().len(),
+                source_units: remaining,
                 rules: self.limits.source_rule_preludes,
                 group_depth: self.limits.group_depth,
             },
             GroupMode::Recursive,
             UnknownRulePolicy::PreserveOpaque,
         )
-        .map_err(|error| match error {
-            // The parser receives the already-owned source's exact unit length.
-            SheetError::SourceUnits => unreachable!("exact source quota cannot reject itself"),
-            SheetError::RuleCount => CompileError::RuleCount,
-            SheetError::GroupDepth => CompileError::GroupDepth,
-        })?;
+        .map_err(CompileError::from)?;
         self.data.source_ids.push(source.id);
         self.data.events.push(StyleEvent::Source(source.id));
         self.nodes(source.id, rules, &mut Vec::new())

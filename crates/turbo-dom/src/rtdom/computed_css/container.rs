@@ -313,10 +313,10 @@ fn orientation(ancestor: &MeasuredAncestor<'_, '_>) -> Result<FeatureValue> {
         )
     })
 }
-fn value(
-    name: &MediaFeatureName<'_, ContainerSizeFeatureId>,
+fn value<'name>(
+    name: &'name MediaFeatureName<'_, ContainerSizeFeatureId>,
     ancestor: &MeasuredAncestor<'_, '_>,
-) -> Result<Option<FeatureValue>> {
+) -> Result<Option<(&'name ContainerSizeFeatureId, FeatureValue)>> {
     let MediaFeatureName::Standard(name) = name else {
         return Ok(None);
     };
@@ -335,16 +335,11 @@ fn value(
         }
         ContainerSizeFeatureId::Orientation => orientation(ancestor),
     };
-    value.map(Some)
+    // A measured value carries its validated standard feature identity. Unknown
+    // feature names never become names for a fabricated measurement.
+    value.map(|value| Some((name, value)))
 }
 
-fn name_text<'a>(name: &'a MediaFeatureName<'_, ContainerSizeFeatureId>) -> &'a str {
-    match name {
-        MediaFeatureName::Standard(name) => name.as_str(),
-        MediaFeatureName::Custom(name) => name.0.as_ref(),
-        MediaFeatureName::Unknown(name) => name.0.as_ref(),
-    }
-}
 fn compare(
     name: &MediaFeatureName<'_, ContainerSizeFeatureId>,
     operator: MediaFeatureComparison,
@@ -352,11 +347,11 @@ fn compare(
     ancestor: &MeasuredAncestor<'_, '_>,
     limits: ComputationLimits,
 ) -> Result<MediaTruth> {
-    let Some(value) = value(name, ancestor)? else {
+    let Some((name, value)) = value(name, ancestor)? else {
         return Ok(MediaTruth::Unknown);
     };
     let order = conditions::compare_value(
-        name_text(name),
+        name.as_str(),
         &value,
         query,
         ancestor.length_context,
@@ -371,8 +366,8 @@ fn feature(
 ) -> Result<MediaTruth> {
     match feature {
         QueryFeature::Boolean { name } => match value(name, ancestor)? {
-            Some(value) => Ok(MediaTruth::from(conditions::boolean_value(
-                name_text(name),
+            Some((name, value)) => Ok(MediaTruth::from(conditions::boolean_value(
+                name.as_str(),
                 &value,
             )?)),
             None => Ok(MediaTruth::Unknown),
@@ -655,6 +650,27 @@ mod backend_conversion_contract {
         assert_eq!(
             grammar_error(&error),
             ContainerError::Computation(ComputedCssError::NestingLimit)
+        );
+    }
+}
+
+#[cfg(test)]
+mod evaluation_error_contract {
+    use super::*;
+
+    #[test]
+    fn deferral_preserves_real_resource_failures_and_only_defers_missing_capabilities() {
+        // This is a typed dispatch contract, not fabricated authored parser output.
+        assert!(matches!(
+            Evaluation::defer(Err(ContainerError::Computation(
+                ComputedCssError::ResourceLimit
+            ))),
+            Err(ContainerError::Computation(ComputedCssError::ResourceLimit))
+        ));
+        let deferred = Evaluation::defer(Err(ContainerError::RequiresMeasurement(7))).unwrap();
+        assert_eq!(
+            deferred.unavailable,
+            Some(ContainerError::RequiresMeasurement(7))
         );
     }
 }

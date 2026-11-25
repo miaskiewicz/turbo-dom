@@ -158,12 +158,9 @@ impl<'facts> MatchRead<'_, 'facts> {
                 path: RoutePath::Physical(self.facts.path),
             }));
         };
-        let Some(route) =
-            selector_route(binding.tree_scope, policy, validated).map_err(MatchError::Route)?
-        else {
-            return Ok(None);
-        };
-        Ok(Some(RouteRead { path: route.path }))
+        let route =
+            selector_route(binding.tree_scope, policy, validated).map_err(MatchError::Route)?;
+        Ok(route.map(|route| RouteRead { path: route.path }))
     }
     fn best(
         &mut self,

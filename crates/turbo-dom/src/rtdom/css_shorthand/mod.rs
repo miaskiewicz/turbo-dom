@@ -172,6 +172,16 @@ fn uniform_shorthand_value(values: &[Declaration<'_>], entry: &table::Entry) -> 
 /// when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
 #[must_use]
 pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
+    shorthand_value_for(name, declarations, false)
+}
+/// Serialize a complete computed/used longhand set. Unlike declaration spelling,
+/// computed background keeps its full component order and repeats layer values;
+/// font omits numeric normal weight400. This never resolves missing/used values.
+#[must_use]
+pub fn computed_shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
+    shorthand_value_for(name, declarations, true)
+}
+fn shorthand_value_for(name: &str, declarations: &[Declaration<'_>], computed: bool) -> String {
     let Some(entry) = table::entry(name) else {
         return String::new();
     };
@@ -203,7 +213,11 @@ pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
         return String::new();
     }
     let texts: Vec<&str> = values.iter().map(|value| value.value).collect();
-    serialize::value(entry.grammar, &texts)
+    if computed {
+        serialize::computed_value(entry.grammar, &texts)
+    } else {
+        serialize::value(entry.grammar, &texts)
+    }
 }
 
 /// Shorthands that may represent `longhand`, in Chrome's preference order (most longhands

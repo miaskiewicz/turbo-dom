@@ -1,0 +1,96 @@
+{
+  "issue": 296,
+  "base": "fc075d675ff525d18287708e1ee993a74f335991",
+  "scope": "Shared computed-value CSSOM projection, font normalization and bounded adapter contracts; npm default unchanged",
+  "sourceSha256": {
+    "crates/turbo-dom/src/rtdom/computed_css.rs": "c7c638b69360428977883e2ec660fae7b0873b27023d7dd5e8cdf53181067553",
+    "crates/turbo-dom/src/rtdom/computed_css/computed_values.rs": "4e768a753ca272139ac6732912884b36906a8a487ccb181129a0acb165322aeb",
+    "crates/turbo-dom/src/rtdom/computed_css/conditions.rs": "615f5ef489743d8ec897e55aa9147d186795415b4003299c2d654f5b420ec68f",
+    "crates/turbo-dom/src/rtdom/computed_css/container.rs": "2e135d273f8ff5ad82849de5f7d9a3211e6972d3b26fd0febb3090b826065b5c",
+    "crates/turbo-dom/src/rtdom/computed_css/cssom_serialization.rs": "d63494ae1b0723ba4242239511675fb6cf95accb685e9c9230481723b337e02c",
+    "crates/turbo-dom/src/rtdom/computed_css/declaration_model.rs": "d9fd6455f1fb66f5955a8b4707b57484a79c1d1a9d77d9c8469a37f5a9f59ace",
+    "crates/turbo-dom/src/rtdom/computed_css/font_values.rs": "54eab0cd5a36854dfd5a07b5b23b180670d0735a6d9c360012b0a2c594512754",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/general_enclosed.rs": "320d3e656335fbe32d84d8a441b5ab41285f3a933fbd8d283a5447e1d3c685cd",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/mod.rs": "13e38b86669ef7e3e202c834962d11c4b7594fbbc7935ab5fe643d9125b86f6e",
+    "crates/turbo-dom/src/rtdom/computed_css/model.rs": "4d541d35ea73e5d7563328dcc41f69a3f9d5c6f793698de25215bb4e578f7195",
+    "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "1908e375efbb3df39b2e1c25e48ed6e4ae5d82728e01181ec7604c3ade2a9687",
+    "crates/turbo-dom/src/rtdom/computed_css/stylesheet.rs": "1adfc4d612f2d2a5fcb040f024966ea5b77b6c8ecb3f3fad3f507da953ef9369",
+    "crates/turbo-dom/src/rtdom/css_shorthand/mod.rs": "91f213f24b2ee185678eebb434cec540863b121c35fa7bcafc8e49eb4faf42ea",
+    "crates/turbo-dom/src/rtdom/css_shorthand/serialize.rs": "92b2c19e4dbfa8562be776d3d0dcd236b753e61d528b5c974bdd5d6ca597dc7e",
+    "crates/turbo-dom/tests/computed_css_checked_boundaries.rs": "7a3ca02a1d06fd62239d9bc001931138ab86377a892f1e097f8fa931c67a8f8f",
+    "crates/turbo-dom/tests/computed_css_feature_contracts.rs": "644e7546914d50b4d24423095fc45b3bb85f352cefbdf9e300e486b4ae8da949",
+    "crates/turbo-dom/tests/computed_cssom_serialization.rs": "6f1f51c45cd3f7d32fb610e5adfb8689749824ba70a6c2ac4b5cb1466fb12db4",
+    "crates/turbo-dom/tests/computed_font_error_contracts.rs": "03baf3d59c82a0a282562fa8c9ecebd13e310a4a5c1bb47d2266fbf67793b869",
+    "crates/turbo-dom/tests/computed_font_projection.rs": "9fcf58e1356139cf99d70397442ebb2be47fbb2d991f5534e8a4d4e6847ba491",
+    "crates/turbo-dom/tests/computed_shadow_routing.rs": "72beca55fbc0d4796a4b4a1731581e6c3f0d3f5b13d7b69fe5a23995856d87d8",
+    "crates/turbo-dom/tests/computed_shorthand_contracts.rs": "5658ad3628492d522895bb0c7b71f89f4d0953b38f3a7a505064bb81b209f759",
+    "src/css_backend.rs": "63c75b14a39f758c5c0746271a1270ff8e15e0e7a8041273ecb24e62fcf561a2",
+    "src/css_serialize.rs": "7f53495a31e8f90146293c904c45d917da637457c51c0ccdf10fff73939a6635",
+    "src/lib.rs": "080a3853d82255ebe635f8491344e3322b850f80b1c6dceda85e03bec17ed24e"
+  },
+  "coverage": {
+    "default": {
+      "covered": 14307,
+      "coverable": 14307,
+      "floor": 100
+    },
+    "computedStyleGrammar": {
+      "covered": 17460,
+      "coverable": 17460,
+      "floor": 100
+    }
+  },
+  "strict": [
+    "Core feature all-target Clippy",
+    "native Root all-target Clippy",
+    "wasm32 Root library Clippy",
+    "fmt",
+    "CC9"
+  ],
+  "rootTests": 46,
+  "actualArtifacts": {
+    "native": {
+      "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cssom-296/.evidence/issue-296/cssom-payload/be93e18bffca2fa36c4c3a875638dfd430489554f955acc11b50373b2d77a2b1/turbo-dom-css.darwin-arm64.node",
+      "sha256": "be93e18bffca2fa36c4c3a875638dfd430489554f955acc11b50373b2d77a2b1",
+      "bytes": 20063216
+    },
+    "wasm": {
+      "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cssom-296/.evidence/issue-296/cssom-payload/086d6fd117bdfc5fbea5945c266ca0b81251d1c0c11e36364c8eb51dcd49db94",
+      "sha256": "086d6fd117bdfc5fbea5945c266ca0b81251d1c0c11e36364c8eb51dcd49db94",
+      "bytes": 15942810
+    }
+  },
+  "actualCompatibility": {
+    "caseCountPerMode": 15,
+    "modes": [
+      "native",
+      "Node WASM",
+      "web ESM in Node"
+    ],
+    "outputsIdentical": true,
+    "authoredUnchanged": true,
+    "wasmNativeLoaded": false,
+    "actualChromeWebEndpoint": "159.0.8154.6",
+    "nativeNoWebAssembly": true
+  },
+  "compatibilityScope": [
+    "Unmatched UA defaults stay empty",
+    "Incomplete public shorthand stays empty",
+    "Declared text-decoration remains raw in the existing npm profile"
+  ],
+  "nativeRankRoundtrip": {
+    "redArtifact": "022d27110d1491bc525bbec3ecde5b7490fdcb710e61371829bc69fd41d5b665",
+    "correction": "New finalizer accepts only already-selected value and origin; resolver ranking stays unchanged"
+  },
+  "routeTrace": {
+    "priorKeywordLine163Hits": 0,
+    "priorNoneReturnLine164Hits": 3,
+    "sourceChange": "Use Option.map for the same None-preserving conversion; actual mixed host/ordinary selector control retained"
+  },
+  "normalPreCommit": "Required JS coverage hook runs on this source-changing commit; resulting commit/log is the success receipt",
+  "remaining": [
+    "Percent/auto/constraint used-size CSSOM finalization; measured Scene already supplies correct dimensions",
+    "Default runtime assembly/compatibility and ownership/performance acceptance",
+    "No npm default switch or issue296 closure"
+  ]
+}

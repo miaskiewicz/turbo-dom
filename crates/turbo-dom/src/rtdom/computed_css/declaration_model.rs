@@ -103,7 +103,12 @@ pub(super) fn admit_ordinary(
     raw: &str,
     limits: ComputationLimits,
 ) -> Result<DeclarationAdmission, ComputedCssError> {
-    match computed_declaration_value(name, raw, limits) {
+    admission_outcome(computed_declaration_value(name, raw, limits))
+}
+fn admission_outcome(
+    outcome: Result<DeclarationAdmission, ConditionError>,
+) -> Result<DeclarationAdmission, ComputedCssError> {
+    match outcome {
         Ok(admission) => Ok(admission),
         Err(ConditionError::InvalidSyntax) => Ok(DeclarationAdmission::Invalid),
         Err(ConditionError::NestingLimit) => Err(ComputedCssError::NestingLimit),
@@ -141,7 +146,16 @@ fn admit(
             longhand_alias(&name).unwrap_or(&name).to_owned(),
         ))));
     }
-    let Some(expanded) = expand(&name, &value) else {
+    compile_shorthand(declaration, &name, &value, limits)
+}
+
+fn compile_shorthand(
+    declaration: &CssDeclaration,
+    name: &str,
+    value: &str,
+    limits: ComputationLimits,
+) -> Result<Option<AdmittedDeclaration>, ComputedCssError> {
+    let Some(expanded) = expand(name, value) else {
         return Ok(None);
     };
     let properties: Vec<_> = expanded
@@ -247,5 +261,62 @@ mod tests {
             compile_declarations(&literal, bounded),
             Err(ComputedCssError::ResourceLimit)
         ));
+    }
+}
+
+#[cfg(test)]
+mod admission_error_contract {
+    use super::*;
+
+    #[test]
+    fn legacy_syntax_outcomes_are_invalid_but_resource_outcomes_keep_their_identity() {
+        // Conversion contract only: authored invalid syntax is already a value
+        // in the current ordinary grammar; the defensive legacy arm remains.
+        assert!(matches!(
+            admission_outcome(Err(ConditionError::InvalidSyntax)),
+            Ok(DeclarationAdmission::Invalid)
+        ));
+        assert!(matches!(
+            admission_outcome(Err(ConditionError::Computation(
+                ComputedCssError::ResourceLimit
+            ))),
+            Err(ComputedCssError::ResourceLimit)
+        ));
+    }
+}
+
+#[cfg(test)]
+mod expansion_adapter_contract {
+    use super::*;
+    #[test]
+    fn canonical_expansion_failures_are_not_published_as_empty_valid_declarations() {
+        let declaration = CssDeclaration {
+            name: "margin".into(),
+            value: CssText::from_units("1px".encode_utf16().collect()),
+            important: false,
+        };
+        let invalid = CssDeclaration {
+            value: CssText::from_units("garbage".encode_utf16().collect()),
+            ..declaration.clone()
+        };
+        let limits = ComputationLimits {
+            max_nesting: 8,
+            max_output_units: 64,
+            max_total_units: 128,
+        };
+        // Adapter contract only: the admission caller separately validates syntax.
+        assert!(compile_shorthand(&invalid, "margin", "garbage", limits)
+            .unwrap()
+            .is_none());
+        let valid = compile_shorthand(&declaration, "margin", "1px", limits)
+            .unwrap()
+            .unwrap();
+        assert_eq!(valid.properties.len(), 4);
+        assert!(valid.properties.iter().all(|property| property
+            .value
+            .as_ref()
+            .unwrap()
+            .as_units()
+            == [49, 112, 120]));
     }
 }

@@ -43,6 +43,7 @@ pub struct ValueLimits {
 pub enum ValueError {
     Computation(ComputedCssError),
     Length(LengthError),
+    Font(super::font_values::FontValueError),
     RequiresInitial(String),
     InvalidFontContext(String),
     UnsupportedValue(String),
@@ -57,6 +58,17 @@ impl From<LengthError> for ValueError {
         match error {
             LengthError::Computation(error) => Self::Computation(error),
             error => Self::Length(error),
+        }
+    }
+}
+impl From<super::font_values::FontValueError> for ValueError {
+    fn from(error: super::font_values::FontValueError) -> Self {
+        use super::font_values::FontValueError;
+        match error {
+            FontValueError::Computation(error) => Self::Computation(error),
+            FontValueError::InvalidLineHeight => Self::UnsupportedValue("line-height".into()),
+            FontValueError::InvalidFontWeight => Self::UnsupportedValue("font-weight".into()),
+            error => Self::Font(error),
         }
     }
 }
@@ -123,6 +135,12 @@ fn font_number(name: &str, value: f64) -> Result<f64> {
         return Err(ValueError::InvalidFontContext(name.to_string()));
     }
     Ok(value)
+}
+
+fn font_size_number(name: &str, value: f64) -> Result<f64> {
+    let value = font_number(name, value)?;
+    Ok(super::font_values::finalize_font_size_px(value)
+        .expect("font_number checked finite nonnegative resolved size"))
 }
 
 fn keyword(value: &CssText) -> Option<String> {
@@ -225,7 +243,7 @@ fn initial_font(context: &ValueContext<'_>, limits: ValueLimits) -> Result<f64> 
         limits.computation,
     )?
     .ok_or_else(|| ValueError::RequiresInitial("font-size".into()))?;
-    font_number("initial font-size", value)
+    font_size_number("initial font-size", value)
 }
 
 fn root_base(
@@ -238,14 +256,14 @@ fn root_base(
         return Ok(initial);
     }
     if let Some(parent) = parent {
-        return font_number("root font-size", parent.root_font_size_px);
+        return font_size_number("root font-size", parent.root_font_size_px);
     }
     let context_units = LengthContext {
         unit_bases: context.unit_bases,
     };
     let value = computed_length("1rem", &context_units, limits.computation)?
         .ok_or_else(|| ValueError::RequiresInitial("root font-size".into()))?;
-    font_number("root font-size", value)
+    font_size_number("root font-size", value)
 }
 
 fn font_inherits(selected: Option<&Option<CssText>>, limits: ValueLimits) -> Result<bool> {
@@ -265,7 +283,7 @@ struct FontState<'a> {
     value: Option<Value<'a>>,
 }
 fn inherited_font(parent: &ComputedValues, explicit: bool) -> Result<FontState<'_>> {
-    let size = font_number("parent font-size", parent.font_size_px)?;
+    let size = font_size_number("parent font-size", parent.font_size_px)?;
     let value = match parent.values.get("font-size") {
         Some(value) => Some(Value::Borrowed(value)),
         None if explicit => Some(Value::Owned(pixels(size))),
@@ -298,7 +316,7 @@ fn declared_font(
     };
     let size = computed_length(&scalar, &units, limits.computation)?
         .ok_or_else(|| ValueError::UnsupportedValue("font-size".into()))?;
-    font_number("font-size", size)
+    font_size_number("font-size", size)
 }
 
 fn font_from_origin(
@@ -346,7 +364,7 @@ fn compute_font<'a>(
         });
     };
     let parent_size = parent.map_or(Ok(initial), |parent| {
-        font_number("parent font-size", parent.font_size_px)
+        font_size_number("parent font-size", parent.font_size_px)
     })?;
     font_from_origin(&origin, context, initial, parent_size, rem, limits)
 }
@@ -371,19 +389,10 @@ fn parent_color<'a>(
 }
 
 fn number_line_height(source: &str) -> Result<Option<String>> {
-    let mut input = cssparser::ParserInput::new(source);
-    let mut input = cssparser::Parser::new(&mut input);
-    let parsed: std::result::Result<f32, cssparser::ParseError<'_, ()>> =
-        input.parse_entirely(|input| Ok(input.expect_number()?));
-    let Ok(number) = parsed else {
-        return Ok(None);
-    };
-    if number < 0.0 || !number.is_finite() {
-        return Err(ValueError::UnsupportedValue("line-height".into()));
-    }
-    Ok(Some(css_number(number)))
+    super::font_values::unitless_line_height(source)
+        .map(|value| value.map(css_number))
+        .map_err(ValueError::from)
 }
-
 fn context_free<'a>(name: &str, value: &'a CssText) -> Result<Value<'a>> {
     let Ok(scalar) = String::from_utf16(value.as_units()) else {
         return Ok(Value::Borrowed(value));
@@ -455,6 +464,25 @@ fn color_value<'a>(
     context_free(name, value)
 }
 
+fn font_weight_value(
+    value: &CssText,
+    parent: Option<&ComputedValues>,
+    context: &ValueContext<'_>,
+    limits: ValueLimits,
+) -> Result<Value<'static>> {
+    use super::font_values::{compute_font_weight, FontValueError};
+    let inherited = parent.and_then(|parent| parent.values.get("font-weight"));
+    let computed = match compute_font_weight(value, inherited, limits.computation) {
+        Err(FontValueError::RequiresParentFontWeight) if inherited.is_none() => {
+            // A missing sparse computed key has the canonical CSS initial value;
+            // explicit/inherited noninitial weights are retained in the map.
+            let initial = initial("font-weight", context)?;
+            compute_font_weight(value, Some(&initial), limits.computation)?
+        }
+        value => value?,
+    };
+    Ok(Value::Owned(computed))
+}
 fn declared<'a>(
     name: &str,
     value: &'a CssText,
@@ -464,6 +492,9 @@ fn declared<'a>(
     root_font: f64,
     limits: ValueLimits,
 ) -> Result<Value<'a>> {
+    if name == "font-weight" {
+        return font_weight_value(value, parent, context, limits);
+    }
     if name == "line-height" {
         let derived = bases(
             context.unit_bases,
