@@ -6,6 +6,7 @@ use crate::browser_env::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerminationRecoveryError {
     StillTerminating,
+    ImplicitMicrotasks,
     ActiveJavaScript,
     StackUnavailable,
     ContextOwnership,
@@ -21,10 +22,15 @@ pub enum TerminationRecoveryError {
 /// This function never cancels execution, pumps microtasks, advances a clock or
 /// dispatches events. Retained and inert realms are included; live effects keep
 /// their identities and timing. Errors do not replace the original turn error.
+/// The isolate must use explicit microtasks. The host must also configure any
+/// independently attached context microtask queues as explicit before calling.
 /// A subsequent recovery can retry an incomplete context walk.
 pub fn recover_after_termination(scope: &mut v8::PinScope) -> Result<(), TerminationRecoveryError> {
     if scope.is_execution_terminating() {
         return Err(TerminationRecoveryError::StillTerminating);
+    }
+    if scope.get_microtasks_policy() != v8::MicrotasksPolicy::Explicit {
+        return Err(TerminationRecoveryError::ImplicitMicrotasks);
     }
     let stack = v8::StackTrace::current_stack_trace(scope, 1)
         .ok_or(TerminationRecoveryError::StackUnavailable)?;
