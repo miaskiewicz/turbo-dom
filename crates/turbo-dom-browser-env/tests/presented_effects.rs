@@ -72,6 +72,195 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
 }
 
 #[test]
+fn captured_auth_label_length_percentage_transitions_are_certified() {
+    with_html(
+        true,
+        true,
+        include_str!("fixtures/auth_label_transitions.html"),
+        |scope| {
+            eval(scope,"globalThis.label=document.getElementById('label');globalThis.legend=document.getElementById('legend');getComputedStyle(label).maxWidth;getComputedStyle(legend).maxWidth;label.className='focused';legend.className='focused';__layoutCalls=0");
+            let document = object(scope, "document");
+            let label = object(scope, "label");
+            let legend = object(scope, "legend");
+            let handles = [
+                handle_of(scope, label).unwrap(),
+                handle_of(scope, legend).unwrap(),
+            ];
+            let initial = sample_presented_effects(scope, document, &handles).unwrap();
+            assert!(
+                initial.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{initial:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+            eval(scope,"for(const element of [label,legend])for(const effect of element.getAnimations()){effect.pause();effect.currentTime=100;}__layoutCalls=0;");
+            let sampled = sample_presented_effects(scope, document, &handles).unwrap();
+            assert!(
+                sampled.targets.iter().all(|target| matches!(
+                    target.presentation,
+                    PresentedTargetState::Certified { .. }
+                )),
+                "{sampled:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        },
+    );
+}
+
+fn length_percentage_coefficients(text: &str) -> (f64, f64) {
+    if let Some(body) = text
+        .strip_prefix("calc(")
+        .and_then(|text| text.strip_suffix(')'))
+    {
+        let parts: Vec<_> = body.split_whitespace().collect();
+        let percent = parts[0].trim_end_matches('%').parse::<f64>().unwrap();
+        let px = parts[2].trim_end_matches("px").parse::<f64>().unwrap();
+        return (percent, if parts[1] == "-" { -px } else { px });
+    }
+    if let Some(percent) = text.strip_suffix('%') {
+        return (percent.parse().unwrap(), 0.0);
+    }
+    (0.0, text.strip_suffix("px").unwrap().parse().unwrap())
+}
+
+#[test]
+fn captured_auth_transitions_match_chrome_symbolic_coefficients() {
+    let oracle: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/auth_label_transitions_chrome159.json"
+    ))
+    .unwrap();
+    let html = include_str!("fixtures/auth_label_transitions.html");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(html)),
+        oracle["sha256"].as_str().unwrap()
+    );
+    with_html(true, true, html, |scope| {
+        eval(scope,"globalThis.label=document.getElementById('label');globalThis.legend=document.getElementById('legend');getComputedStyle(label).maxWidth;getComputedStyle(legend).maxWidth;label.className='focused';legend.className='focused';globalThis.motions=[...label.getAnimations(),...legend.getAnimations()];for(const effect of motions)effect.pause();");
+        let document = object(scope, "document");
+        let label = object(scope, "label");
+        let legend = object(scope, "legend");
+        let handles = [
+            handle_of(scope, label).unwrap(),
+            handle_of(scope, legend).unwrap(),
+        ];
+        for row in oracle["result"].as_array().unwrap() {
+            let time = row["time"].as_u64().unwrap();
+            eval(
+                scope,
+                &format!("for(const effect of motions)effect.currentTime={time};__layoutCalls=0;"),
+            );
+            let sample = sample_presented_effects(scope, document, &handles).unwrap();
+            for (index, target) in sample.targets.iter().enumerate() {
+                let PresentedTargetState::Certified { transition, .. } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                let actual = transition
+                    .iter()
+                    .find(|pair| pair.name == "max-width")
+                    .map(|pair| pair.value.as_str());
+                // At the active end the transition no longer contributes.
+                if let Some(actual) = actual {
+                    let expected = row["targets"][index]["maxWidth"].as_str().unwrap();
+                    let (ap, ax) = length_percentage_coefficients(actual);
+                    let (ep, ex) = length_percentage_coefficients(expected);
+                    assert!(
+                        (ap - ep).abs() < 0.001 && (ax - ex).abs() < 0.001,
+                        "{time}: {actual} != {expected}"
+                    );
+                }
+            }
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        }
+    });
+}
+
+#[test]
+fn symbolic_lengths_compose_without_resolving_a_percentage_basis() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');globalThis.motion=target.animate([{width:'calc(10% - 2px)'},{width:'calc(30% + 2px)'}],{duration:1000,fill:'both',composite:'add'});motion.pause();motion.currentTime=500;__layoutCalls=0;");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        let PresentedTargetState::Certified { animation, .. } = &sample.targets[0].presentation
+        else {
+            panic!("{sample:?}")
+        };
+        assert_eq!(
+            animation
+                .iter()
+                .find(|pair| pair.name == "width")
+                .unwrap()
+                .value,
+            "calc(20% + 100px)"
+        );
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+        assert_eq!(
+            eval(scope, "getComputedStyle(target).width").to_rust_string_lossy(scope),
+            "calc(20% + 100px)"
+        );
+    });
+}
+
+#[test]
+fn unproved_length_and_transform_bases_remain_unknown() {
+    for (property, value) in [
+        ("width", "auto"),
+        ("width", "min(10%, 20px)"),
+        ("width", "max(10%, 20px)"),
+        ("width", "clamp(10px, 20%, 30px)"),
+        ("width", "calc(1em + 10%)"),
+        ("transform", "translateX(50%)"),
+    ] {
+        with_dom(|scope| {
+            eval(scope,&format!("globalThis.target=document.getElementById('target');globalThis.motion=target.animate([{{'{property}':'{value}'}},{{'{property}':'{value}'}}],{{duration:1000,fill:'both'}});motion.pause();motion.currentTime=500;__layoutCalls=0;"));
+            let document = object(scope, "document");
+            let target = object(scope, "target");
+            let handle = handle_of(scope, target).unwrap();
+            let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+            assert!(
+                matches!(
+                    sample.targets[0].presentation,
+                    PresentedTargetState::Unknown { .. }
+                ),
+                "{property}:{value}: {sample:?}"
+            );
+            assert!(eval(scope, "__layoutCalls===0").is_true());
+        });
+    }
+}
+
+#[test]
+fn symbolic_math_bridge_refuses_nonfinite_or_nonlinear_coefficients() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,"globalThis.bridgeRejects=['calc(infinity * 1px)','calc(NaN * 1px)','calc(1px / 0)','calc(1deg + 2deg)','min(1px,2%)','calc(1px + max(2px,3%))'].every(value=>__tsNs.animationLengthPercentage(value)===null);globalThis.bridgePrivate=Object.getPrototypeOf(__tsNs.animationLengthPercentage('calc(100% - 24px)'))===null;").unwrap();
+        assert!(eval(scope, "bridgeRejects&&bridgePrivate").is_true());
+    });
+}
+
+#[test]
+fn none_to_length_transition_is_not_certified_as_a_symbolic_length() {
+    with_dom(|scope| {
+        eval(scope,"globalThis.target=document.getElementById('target');target.style.maxWidth='none';target.style.transition='max-width 1000ms linear';getComputedStyle(target).maxWidth;target.style.maxWidth='100px';__layoutCalls=0;");
+        let document = object(scope, "document");
+        let target = object(scope, "target");
+        let handle = handle_of(scope, target).unwrap();
+        let sample = sample_presented_effects(scope, document, &[handle]).unwrap();
+        assert!(
+            matches!(
+                sample.targets[0].presentation,
+                PresentedTargetState::Unknown { .. }
+            ),
+            "{sample:?}"
+        );
+        assert!(eval(scope, "__layoutCalls===0").is_true());
+    });
+}
+
+#[test]
 fn discovers_paused_waapi_without_css_candidates_and_never_calls_layout() {
     with_dom(|scope| {
         eval(scope,"globalThis.target=document.getElementById('target');globalThis.effect=target.animate([{width:'100px'},{width:'200px'}],{duration:1000,fill:'both'});effect.pause();effect.currentTime=500");

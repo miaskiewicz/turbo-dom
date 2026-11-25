@@ -1,0 +1,81 @@
+{
+  "browser": "159.0.8154.6",
+  "sha256": "3dacc3c1ce2fa21e0de817253454a3732d25c631611770ea54346b07c15ec23b",
+  "result": [
+    {
+      "time": 0,
+      "targets": [
+        {
+          "maxWidth": "calc(100% - 24px)",
+          "color": "rgb(107, 114, 128)",
+          "transform": "matrix(1, 0, 0, 1, 14, 16)"
+        },
+        {
+          "maxWidth": "calc(0% + 0.01px)",
+          "color": "rgb(0, 0, 0)",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "time": 50,
+      "targets": [
+        {
+          "maxWidth": "calc(119.06% - 28.6206px)",
+          "color": "rgb(63, 85, 155)",
+          "transform": "matrix(0.855607, 0, 0, 0.855607, 14, 1.56068)"
+        },
+        {
+          "maxWidth": "calc(0% + 0.01px)",
+          "color": "rgb(0, 0, 0)",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "time": 100,
+      "targets": [
+        {
+          "maxWidth": "calc(127.695% - 30.714px)",
+          "color": "rgb(42, 72, 167)",
+          "transform": "matrix(0.790189, 0, 0, 0.790189, 14, -4.98113)"
+        },
+        {
+          "maxWidth": "calc(83.9245% + 0.00160755px)",
+          "color": "rgb(0, 0, 0)",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "time": 150,
+      "targets": [
+        {
+          "maxWidth": "calc(131.819% - 31.7137px)",
+          "color": "rgb(33, 66, 173)",
+          "transform": "matrix(0.758946, 0, 0, 0.758946, 14, -8.10541)"
+        },
+        {
+          "maxWidth": "100%",
+          "color": "rgb(0, 0, 0)",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "time": 200,
+      "targets": [
+        {
+          "maxWidth": "calc(133% - 32px)",
+          "color": "rgb(30, 64, 175)",
+          "transform": "matrix(0.75, 0, 0, 0.75, 14, -9)"
+        },
+        {
+          "maxWidth": "100%",
+          "color": "rgb(0, 0, 0)",
+          "transform": "none"
+        }
+      ]
+    }
+  ]
+}

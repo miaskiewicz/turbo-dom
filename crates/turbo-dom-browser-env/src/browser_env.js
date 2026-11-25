@@ -1809,6 +1809,17 @@
     if(units.length!==2||value['%']===undefined||value.px===undefined)return null;
     var px=value.px;return 'calc('+mathNumberText(value['%'])+'% '+(px<0?'- ':'+ ')+mathNumberText($Mabs(px))+'px)';
   }
+  // Animation values retain their percentage basis symbolically; this never
+  // resolves a containing block or asks the geometry provider for a used size.
+  __ns.animationLengthPercentage=function(text){
+    if(!$c.test(/^calc\(/i,text)||$c.test(/(?:min|max|clamp|abs|sign|round)\(/i,text))return null;
+    var value=mathValue(text,null);if(!value)return null;
+    var units=$O.keys(value);
+    if($c.some(units,function(unit){return unit!=='px'&&unit!=='%';}))return null;
+    var px=value.px===undefined?0:value.px,percent=value['%']===undefined?0:value['%'];
+    if(!cssFontFinite(px)||!cssFontFinite(percent))return null;
+    return {__proto__:null,px:px,percent:percent};
+  };
   // Properties whose number rounds to an integer, whose value is clamped to a range.
   var mathIntegers={__proto__:null,order:1,'z-index':1,'column-count':1,'orphans':1,'widows':1},mathRanges={__proto__:null,opacity:[0,1],'fill-opacity':[0,1],'stroke-opacity':[0,1],'flood-opacity':[0,1],'stop-opacity':[0,1],'font-weight':[1,1000],'flex-grow':[0,Infinity],'flex-shrink':[0,Infinity]};
   var mathNonNegative=/^(?:(?:min-|max-)?(?:width|height|block-size|inline-size)|padding(?:-.*)?|border-.*-width|outline-width|column-gap|row-gap|gap|font-size)$/;

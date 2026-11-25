@@ -229,11 +229,26 @@
   function propertyLengthValue(property, text, context) {
     const length = parseLength(text, context);
     if (length) return length;
+    const mixed = ns.animationLengthPercentage(text);
+    if (mixed) return { kind: 'length-percentage', px: mixed.px, percent: mixed.percent };
     if (property === 'stroke-dashoffset') {
       const value = parseNumber(text);
       if (value !== null) return { kind: 'length', value, unit: 'px' };
     }
     return { kind: 'discrete', text };
+  }
+  function lengthPercentageValue(value) {
+    if (value.kind === 'length-percentage') return value;
+    if (value.kind !== 'length') return null;
+    return { kind: 'length-percentage', px: value.unit === 'px' ? value.value : 0, percent: value.unit === '%' ? value.value : 0 };
+  }
+  function mixLengthPercentage(from, to, progress) {
+    return { kind: 'length-percentage', px: from.px + (to.px - from.px) * progress, percent: from.percent + (to.percent - from.percent) * progress };
+  }
+  function serializeLengthPercentage(value) {
+    if (!value.percent) return format(value.px) + 'px';
+    if (!value.px) return format(value.percent) + '%';
+    return `calc(${format(value.percent)}% ${value.px < 0 ? '-' : '+'} ${format(abs(value.px))}px)`;
   }
   function lengthListValue(text, context) {
     if (!text || intrinsic.test(/(^\s*,|,\s*,|,\s*$)/, text)) return { kind: 'discrete', text };
@@ -614,6 +629,7 @@
     switch (value.kind) {
       case 'number': return serializeNumber(property, value.value);
       case 'length': return format(value.value) + value.unit;
+      case 'length-percentage': return serializeLengthPercentage(value);
       case 'length-list': return intrinsic.join(intrinsic.map(value.values, item => serializeValue(property, item)), ', ');
       case 'color': return serializeColor(value);
       case 'transform': return serializeTransform(value);
@@ -621,9 +637,10 @@
     return value.text;
   }
   function interpolateTyped(from, to, p) {
+    if (lengthPercentageValue(from) && lengthPercentageValue(to))
+      return mixLengthPercentage(lengthPercentageValue(from), lengthPercentageValue(to), p);
     if (from.kind === 'length-list') return interpolateLengthList(from, to, p);
     if (from.kind === 'number') return { kind: 'number', value: from.value + (to.value - from.value) * p };
-    if (from.kind === 'length') return { kind: 'length', value: from.value + (to.value - from.value) * p, unit: from.unit };
     if (from.kind === 'transform') return interpolateTransform(from, to, p);
     // Premultiplied sRGB interpolation.
     const alpha = from.a + (to.a - from.a) * p;
@@ -644,7 +661,7 @@
     return null;
   }
   function interpolate(property, from, to, p) {
-    if (from.kind === to.kind && from.kind !== 'discrete' && (from.kind !== 'length' || from.unit === to.unit)) return interpolateTyped(from, to, p);
+    if (typedPairCompatible(from, to)) return interpolateTyped(from, to, p);
     if (property === 'visibility') return interpolateVisibility(property, from, to, p);
     if (property === 'display') {
       const value = interpolateDisplay(property, from, to, p);
@@ -652,10 +669,21 @@
     }
     return p < 0.5 ? from : to;
   }
+  function typedPairCompatible(from, to) {
+    if (lengthPercentageValue(from) && lengthPercentageValue(to)) return true;
+    return from.kind === to.kind && from.kind !== 'discrete';
+  }
+  function composedLengthPercentage(underlying, value, operation) {
+    if (operation === 'replace' || !underlying) return null;
+    const left = lengthPercentageValue(underlying), right = lengthPercentageValue(value);
+    if (!left || !right) return null;
+    return { kind: 'length-percentage', px: left.px + right.px, percent: left.percent + right.percent };
+  }
   function compose(property, underlying, value, operation) {
+    const symbolic = composedLengthPercentage(underlying, value, operation);
+    if (symbolic) return symbolic;
     if (operation === 'replace' || !underlying || underlying.kind !== value.kind || value.kind === 'discrete') return value;
     if (value.kind === 'number') return { kind: 'number', value: underlying.value + value.value };
-    if (value.kind === 'length') return underlying.unit === value.unit ? { kind: 'length', value: underlying.value + value.value, unit: value.unit } : value;
     if (value.kind === 'color') return { kind: 'color', r: min(underlying.r + value.r, 255), g: min(underlying.g + value.g, 255), b: min(underlying.b + value.b, 255), a: min(underlying.a + value.a, 1) };
     if (value.kind === 'transform') return composeTransform(underlying, value, operation);
     return value;
@@ -2535,7 +2563,7 @@
   function presentedText(property, text, context) {
     // Legacy scalar value adapters cannot certify repaired DOM-string payloads.
     if (intrinsic.indexOf(text, '\ufffd') >= 0) return null;
-    if (intrinsic.test(/(?:var|env|calc)\(|currentcolor|(?:[\d.])(?:em|rem|ex|ch|lh|rlh|vw|vh|vmin|vmax)\b/i, text)) return null;
+    if (intrinsic.test(/(?:var|env)\(|currentcolor|(?:[\d.])(?:em|rem|ex|ch|lh|rlh|vw|vh|vmin|vmax)\b/i, text)) return null;
     const value = parseValue(property, text, context);
     if (!value) return null;
     if (value.kind !== 'discrete') return value;
@@ -2544,6 +2572,7 @@
     return null;
   }
   function presentedFrameCompatible(left, right) {
+    if (lengthPercentageValue(left) && lengthPercentageValue(right)) return true;
     if (left.kind !== right.kind) return false;
     if (left.kind === 'length') return left.unit === right.unit;
     if (left.kind === 'length-list') {
