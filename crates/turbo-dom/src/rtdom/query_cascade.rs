@@ -29,8 +29,8 @@
 //! whole tree (each sibling list is scanned once instead of once per structural pseudo).
 use super::{
     is_name_char, matches_complex, parse_complex, scan_name, split_top_level_commas, starts_ident,
-    units, validate_selector_list, Complex, Compound, Handle, Navigator, Pseudo, SelectorError,
-    Tree, UnknownPseudo,
+    units, validate_selector_list, Combinator, Complex, Compound, Handle, Navigator, Pseudo,
+    SelectorError, Tree, UnknownPseudo,
 };
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
@@ -39,6 +39,16 @@ use std::rc::Rc;
 /// Selector specificity `(ids, classes + attributes + pseudo-classes, types +
 /// pseudo-elements)`, compared lexicographically.
 pub type Specificity = (u32, u32, u32);
+
+/// One necessary subject constraint for a candidate index. It is never a match
+/// verdict: all bucket entries still require the complete selector program.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SubjectSeed<'a> {
+    Id(&'a str),
+    Class(&'a str),
+    /// ASCII local-name constraint; the index must use ASCII case folding.
+    Type(&'a str),
+}
 
 /// A valid stylesheet selector list ([`parse_for_cascade`]).
 #[derive(Debug, Clone)]
@@ -62,6 +72,8 @@ pub struct CascadeSelector {
     complex: Complex,
     pseudo_element: Option<PseudoElement>,
     specificity: Specificity,
+    scope_reference: bool,
+    implicit_scope_anchor: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -89,10 +101,91 @@ impl CascadeSelector {
         )
     }
 
+    /// Lower-bound bytes retained in authored source payloads. Parsed selector AST
+    /// allocations and allocator bookkeeping are intentionally excluded.
+    #[must_use]
+    pub fn source_payload_bytes(&self) -> usize {
+        self.text.capacity()
+            + self
+                .source_units
+                .as_ref()
+                .map_or(0, |units| units.capacity() * std::mem::size_of::<u16>())
+    }
+
     /// Its specificity (Selectors 4).
     #[must_use]
     pub fn specificity(&self) -> Specificity {
         self.specificity
+    }
+
+    /// A necessary explicit constraint on the rightmost subject compound, choosing
+    /// an ID before a class before a type. No requirement is inferred from selector
+    /// arguments or alternatives. Composed/unknown pseudo-element subjects and
+    /// non-ASCII type folding conservatively remain unseeded.
+    #[must_use]
+    pub fn subject_seed(&self) -> Option<SubjectSeed<'_>> {
+        if !self.has_origin_subject() {
+            return None;
+        }
+        let subject = self
+            .complex
+            .rest
+            .last()
+            .map_or(&self.complex.first, |(_, compound)| compound);
+        subject
+            .id
+            .as_deref()
+            .map(SubjectSeed::Id)
+            .or_else(|| {
+                subject
+                    .classes
+                    .first()
+                    .map(|class| SubjectSeed::Class(class))
+            })
+            .or_else(|| {
+                subject
+                    .tag
+                    .as_deref()
+                    .filter(|tag| *tag != "*" && tag.is_ascii())
+                    .map(SubjectSeed::Type)
+            })
+    }
+
+    fn has_origin_subject(&self) -> bool {
+        match &self.pseudo_element {
+            None => true,
+            Some(PseudoElement::Inert(name)) => matches!(name.as_str(), "before" | "after"),
+            Some(_) => false,
+        }
+    }
+
+    /// Whether an authored scope reference occurs in the compiled selector AST,
+    /// including nested logical/relative selector arguments. Implicit prefixes do not
+    /// change this authored-reference fact.
+    #[must_use]
+    pub fn references_scope(&self) -> bool {
+        self.scope_reference
+    }
+
+    /// Add the mechanical scope-descendant prefix requested by a CSS caller without
+    /// changing authored specificity/source metadata. Root/limit selection stays with
+    /// the caller; this operation does not choose a scope root.
+    #[must_use]
+    pub fn with_implicit_scope_anchor(&self) -> Self {
+        let mut selector = self.clone();
+        if !selector.implicit_scope_anchor {
+            let root = Compound {
+                pseudos: vec![Pseudo::Scope],
+                ..Compound::default()
+            };
+            let first = std::mem::replace(&mut selector.complex.first, root);
+            selector
+                .complex
+                .rest
+                .insert(0, (Combinator::Descendant, first));
+            selector.implicit_scope_anchor = true;
+        }
+        selector
     }
 
     /// A necessary ordinary-element type constraint, ignoring state and namespace.
@@ -423,6 +516,108 @@ pub fn parse_for_cascade_units(source: &[u16]) -> Result<SelectorList, SelectorE
     Ok(SelectorList { selectors })
 }
 
+/// Parse a selector within a CSS scope, where `&` denotes the scope root with zero
+/// specificity. Original source units are retained; quoted/escaped ampersands are inert.
+///
+/// # Errors
+/// Returns the ordinary stylesheet validity errors after token-aware scope lowering.
+pub fn parse_for_cascade_units_scoped(source: &[u16]) -> Result<SelectorList, SelectorError> {
+    let normalized = super::source::normalize(source, super::source::Mode::Sheet);
+    let source = normalized.as_deref().unwrap_or(source);
+    let selectors = units::split(source, 44)
+        .into_iter()
+        .map(|item| {
+            let item = units::trim(item);
+            let lowered = lower_scope_references(item);
+            let text = String::from_utf16_lossy(&lowered);
+            validate_raw(&text)?;
+            let complex = units::complex(&lowered).ok_or(SelectorError::EmptyCompound)?;
+            finish_selector(
+                String::from_utf16_lossy(item),
+                Some(item.to_vec()),
+                check_complex(complex)?,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(SelectorList { selectors })
+}
+
+fn lower_scope_references(units: &[u16]) -> Vec<u16> {
+    use crate::rtdom::computed_css::CssSource;
+    let source = CssSource::new(units);
+    let mut parser_input = cssparser::ParserInput::new(source.scalar());
+    let mut parser = cssparser::Parser::new(&mut parser_input);
+    let mut positions = Vec::new();
+    scope_token_positions(&mut parser, &mut positions);
+    let mut output = Vec::new();
+    let mut start = 0;
+    for range in positions {
+        output.extend(
+            source
+                .raw_range(start..range.start)
+                .expect("token source boundary")
+                .as_units(),
+        );
+        output.extend(":where(:scope)".encode_utf16());
+        start = range.end;
+    }
+    output.extend(
+        source
+            .raw_range(start..source.scalar().len())
+            .expect("token source tail")
+            .as_units(),
+    );
+    output
+}
+
+fn scope_token_positions(
+    input: &mut cssparser::Parser<'_, '_>,
+    positions: &mut Vec<std::ops::Range<usize>>,
+) {
+    loop {
+        let start = input.position().byte_index();
+        let Ok(token) = input.next_including_whitespace_and_comments() else {
+            break;
+        };
+        match token.clone() {
+            cssparser::Token::Delim('&') => positions.push(start..input.position().byte_index()),
+            cssparser::Token::Function(_) | cssparser::Token::ParenthesisBlock => {
+                input
+                    .parse_nested_block(|nested| {
+                        scope_token_positions(nested, positions);
+                        Ok::<_, cssparser::ParseError<'_, ()>>(())
+                    })
+                    .expect("scope-token callback exhausts every nested component");
+            }
+            // Attribute blocks and quoted/escaped tokens cannot denote the scope root.
+            _ => {}
+        }
+    }
+}
+
+fn complex_references_scope(complex: &Complex) -> bool {
+    std::iter::once(&complex.first)
+        .chain(complex.rest.iter().map(|(_, compound)| compound))
+        .flat_map(|compound| &compound.pseudos)
+        .any(pseudo_references_scope)
+}
+
+fn pseudo_references_scope(pseudo: &Pseudo) -> bool {
+    match pseudo {
+        Pseudo::Scope => true,
+        Pseudo::Is(list)
+        | Pseudo::Where(list)
+        | Pseudo::Not(list)
+        | Pseudo::WebkitAny(list)
+        | Pseudo::NthChildOf(_, _, list)
+        | Pseudo::NthLastChildOf(_, _, list) => list.iter().any(complex_references_scope),
+        Pseudo::Has(list) => list
+            .iter()
+            .any(|relative| complex_references_scope(&relative.complex)),
+        _ => false,
+    }
+}
+
 fn finish_selector(
     text: String,
     source_units: Option<Vec<u16>>,
@@ -433,12 +628,16 @@ fn finish_selector(
         + pseudo_element
             .as_ref()
             .map_or(Spec::default(), pseudo_element_specificity);
+    let scope_reference = complex_references_scope(&complex)
+        || matches!(&pseudo_element,Some(PseudoElement::Slotted(list)) if list.iter().any(complex_references_scope));
     Ok(CascadeSelector {
         text,
         source_units,
         complex,
         pseudo_element,
         specificity: specificity.into(),
+        scope_reference,
+        implicit_scope_anchor: false,
     })
 }
 
@@ -1808,5 +2007,191 @@ mod tests {
         }
         assert!(may("span", ""));
         assert!(may("span", "SPAN"));
+    }
+}
+
+#[cfg(test)]
+mod css_scope_controls {
+    use super::*;
+    fn units(value: &str) -> Vec<u16> {
+        value.encode_utf16().collect()
+    }
+    fn selector(value: &str) -> CascadeSelector {
+        parse_for_cascade_units_scoped(&units(value))
+            .unwrap()
+            .selectors
+            .remove(0)
+    }
+    #[test]
+    fn scope_reference_specificity_uses_zero_weight_amp_and_class_weight_scope() {
+        for (source, specificity, reference) in [
+            ("&", (0, 0, 0), true),
+            ("& .target", (0, 1, 0), true),
+            (":scope", (0, 1, 0), true),
+            (":scope .target", (0, 2, 0), true),
+            (":is(&,.target)", (0, 1, 0), true),
+            (":not(:scope)", (0, 1, 0), true),
+            ("[data-x=':scope&']", (0, 1, 0), false),
+            (".\\&", (0, 1, 0), false),
+            (".\\26", (0, 1, 0), false),
+            (":nth-child(1 of &)", (0, 1, 0), true),
+            (":has(> &)", (0, 0, 0), true),
+        ] {
+            let parsed = selector(source);
+            assert_eq!(parsed.specificity(), specificity, "{source}");
+            assert_eq!(parsed.references_scope(), reference, "{source}");
+            assert_eq!(parsed.text_units().as_ref(), units(source));
+        }
+        assert!(parse_for_cascade_units(&units("& .target")).is_err());
+        assert!(parse_for_cascade_units_scoped(&units("[data-x=&]")).is_err());
+    }
+    #[test]
+    fn implicit_scope_anchor_is_ast_only_idempotent_and_does_not_change_authored_metadata() {
+        let tree=Tree::parse("<div class=outside><section class=root><div class=nested><span class=target></span></div></section></div>");
+        let root = tree.query_selector(".root").unwrap();
+        let target = tree.query_selector(".target").unwrap();
+        let nav = super::super::ScopedNavigator {
+            live: super::super::LiveNavigator(&tree),
+            scope: root,
+        };
+        for (source, expected) in [
+            (".target", true),
+            (".root .target", false),
+            (".outside .target", false),
+            (":is(.outside .target)", true),
+        ] {
+            let original = selector(source);
+            let anchored = original.with_implicit_scope_anchor();
+            assert_eq!(anchored.specificity(), original.specificity());
+            assert_eq!(anchored.text_units(), original.text_units());
+            assert!(!anchored.references_scope());
+            assert_eq!(
+                match_for_cascade(&nav, target, &anchored),
+                expected,
+                "{source}"
+            );
+            assert_eq!(
+                match_for_cascade(&nav, target, &anchored.with_implicit_scope_anchor()),
+                expected
+            );
+        }
+        assert!(!match_for_cascade(
+            &nav,
+            root,
+            &selector(".root").with_implicit_scope_anchor()
+        ));
+        assert!(match_for_cascade(
+            &nav,
+            target,
+            &selector(".outside :scope .target")
+        ));
+        assert!(match_for_cascade(&nav, target, &selector("& .target")));
+    }
+    #[test]
+    fn token_lowering_preserves_quoted_unpaired_units_and_attribute_ampersands() {
+        let mut source = units("&[data-x=\"");
+        source.push(0xd800);
+        source.extend(units("&:scope\"]"));
+        let parsed = parse_for_cascade_units_scoped(&source).unwrap();
+        let parsed = &parsed.selectors()[0];
+        assert_eq!(parsed.text_units().as_ref(), source);
+        assert_eq!(parsed.specificity(), (0, 1, 0));
+        assert!(parsed.references_scope());
+        let quoted = selector("[data-x=':scope&']");
+        assert!(!quoted.references_scope());
+        assert!(selector(":is(:not(&))").references_scope());
+    }
+}
+
+#[cfg(test)]
+mod subject_seed_controls {
+    use super::*;
+    fn selector(source: &str) -> CascadeSelector {
+        let units: Vec<u16> = source.encode_utf16().collect();
+        parse_for_cascade_units_scoped(&units)
+            .unwrap()
+            .selectors
+            .remove(0)
+    }
+    #[test]
+    fn rightmost_explicit_subject_constraints_have_stable_priority() {
+        for (source, expected) in [
+            (
+                "main#parent .first.second#target",
+                SubjectSeed::Id("target"),
+            ),
+            ("main#parent div.first.second", SubjectSeed::Class("first")),
+            ("main#parent section", SubjectSeed::Type("section")),
+            (".first:not(.excluded)", SubjectSeed::Class("first")),
+            (".first:is(.a,.b)", SubjectSeed::Class("first")),
+            ("button:where(#a,#b)", SubjectSeed::Type("button")),
+            (".first::before", SubjectSeed::Class("first")),
+            ("button::after", SubjectSeed::Type("button")),
+            ("& .target", SubjectSeed::Class("target")),
+        ] {
+            let parsed = selector(source);
+            assert_eq!(parsed.subject_seed(), Some(expected), "{source}");
+            assert_eq!(
+                parsed.with_implicit_scope_anchor().subject_seed(),
+                Some(expected),
+                "{source}"
+            );
+        }
+        let parsed = selector("DiV");
+        assert!(
+            matches!(parsed.subject_seed(), Some(SubjectSeed::Type(name)) if name.eq_ignore_ascii_case("div"))
+        );
+    }
+    #[test]
+    fn alternatives_negations_and_composed_paths_do_not_guess_a_candidate_bucket() {
+        for source in [
+            "*",
+            ":is(#a,.b)",
+            ":where(.a)",
+            ":not(#excluded)",
+            ":has(>.child)",
+            ":nth-child(1 of .a)",
+            ":scope",
+            "&",
+            "élement",
+            ".slot::slotted(.child)",
+            ".host::part(label)",
+            ".host::before::marker",
+            ".x::placeholder",
+            ":host(.root)",
+        ] {
+            assert_eq!(selector(source).subject_seed(), None, "{source}");
+        }
+    }
+    #[test]
+    fn a_seed_only_filters_candidates_and_keeps_live_matching_authoritative() {
+        let mut tree = Tree::parse("<div id=parent><button class='target first' id=same></button><button class=target id=same disabled></button></div>");
+        let parsed = selector("button.target#same:not([disabled])");
+        assert_eq!(parsed.subject_seed(), Some(SubjectSeed::Id("same")));
+        let candidates = tree.query_selector_all("button");
+        assert_eq!(candidates.len(), 2);
+        assert!(match_for_cascade(
+            &super::super::LiveNavigator(&tree),
+            candidates[0],
+            &parsed
+        ));
+        assert!(!match_for_cascade(
+            &super::super::LiveNavigator(&tree),
+            candidates[1],
+            &parsed
+        ));
+        tree.set_attribute(candidates[0], "disabled", "");
+        assert!(!match_for_cascade(
+            &super::super::LiveNavigator(&tree),
+            candidates[0],
+            &parsed
+        ));
+        tree.remove_attribute(candidates[1], "disabled");
+        assert!(match_for_cascade(
+            &super::super::LiveNavigator(&tree),
+            candidates[1],
+            &parsed
+        ));
+        assert_eq!(parsed.subject_seed(), Some(SubjectSeed::Id("same")));
     }
 }

@@ -509,6 +509,97 @@ fn image_slice(comps: &[Comp]) -> Option<String> {
     Some(if filled { format!("{text} fill") } else { text })
 }
 
+fn intrinsic_axis_value(comps: &[Comp]) -> Option<String> {
+    let (used, value) = super::grammar::intrinsic_axis(comps)?;
+    (used == comps.len()).then_some(value)
+}
+fn text_box_edge_value(comps: &[Comp]) -> Option<String> {
+    let (used, value) = super::grammar::text_box_edge(comps)?;
+    (used == comps.len()).then_some(value)
+}
+fn named_timeline(comps: &[Comp]) -> Option<String> {
+    listed(comps, |item| {
+        single(item, |c| kw(c, &["none"]).or_else(|| c.dashed_ident()))
+    })
+}
+fn timeline_axis(comps: &[Comp]) -> Option<String> {
+    listed(comps, |item| keywords(item, &["block", "inline", "x", "y"]))
+}
+fn view_inset(comps: &[Comp]) -> Option<String> {
+    listed(comps, |item| {
+        let (used, value) = super::grammar::view_inset(item)?;
+        (used == item.len()).then_some(value)
+    })
+}
+
+fn trigger_range(comps: &[Comp], initial: &str, end: bool) -> Option<String> {
+    listed(comps, |item| {
+        if initial == "auto" {
+            if let Some(value) = keywords(item, &["normal"]) {
+                return Some(value);
+            }
+        }
+        let (used, value, _) = range_value(item, initial, end)?;
+        (used == item.len()).then_some(value)
+    })
+}
+fn quotes(comps: &[Comp]) -> Option<String> {
+    if let Some(value) = keywords(comps, &["auto", "none"]) {
+        return Some(value);
+    }
+    if !comps.len().is_multiple_of(2) {
+        return None;
+    }
+    comps
+        .iter()
+        .map(Comp::string)
+        .collect::<Option<Vec<_>>>()
+        .map(|values| values.join(" "))
+}
+
+fn font_settings_value(comps: &[Comp], feature: bool) -> Option<String> {
+    let text = join(comps);
+    let mut source = cssparser::ParserInput::new(&text);
+    let mut input = cssparser::Parser::new(&mut source);
+    let value = crate::rtdom::css_values::font_settings(feature, true, &mut input)?;
+    input.expect_exhausted().ok()?;
+    Some(value)
+}
+fn font_language(comps: &[Comp]) -> Option<String> {
+    single(comps, |c| {
+        kw(c, &["normal"]).or_else(|| match &c.kind {
+            Kind::Str(value)
+                if value.len() <= 4 && value.chars().all(|c| (' '..='~').contains(&c)) =>
+            {
+                c.string()
+            }
+            _ => None,
+        })
+    })
+}
+fn font_size_adjust(comps: &[Comp]) -> Option<String> {
+    let value = |c: &Comp| kw(c, &["from-font"]).or_else(|| c.number(false));
+    match comps {
+        [c] => kw(c, &["none"]).or_else(|| value(c)),
+        [metric, c]
+            if metric.is_ident(&[
+                "ex-height",
+                "cap-height",
+                "ch-width",
+                "ic-width",
+                "ic-height",
+            ]) =>
+        {
+            let value = value(c)?;
+            Some(if metric.is_ident(&["ex-height"]) {
+                value
+            } else {
+                format!("{} {value}", metric.ident()?)
+            })
+        }
+        _ => None,
+    }
+}
 /// The value grammar of `name`, and whether its rejection is final (`strict`): a lenient
 /// grammar's rejection leaves the value to the embedder's own grammar.
 fn grammar_of(name: &str) -> Option<(Parse, bool)> {
@@ -826,7 +917,58 @@ fn grammar_of(name: &str) -> Option<(Parse, bool)> {
         "opacity" => opacity,
         "visibility" => |c| keywords(c, &["visible", "hidden", "collapse"]),
         "display" => display,
+        "font-feature-settings" => |c| font_settings_value(c, true),
+        "font-variation-settings" => |c| font_settings_value(c, false),
+        "font-language-override" => font_language,
+        "font-size-adjust" => font_size_adjust,
+        "contain-intrinsic-width"
+        | "contain-intrinsic-height"
+        | "contain-intrinsic-block-size"
+        | "contain-intrinsic-inline-size" => intrinsic_axis_value,
+        "scroll-timeline-axis" | "view-timeline-axis" => timeline_axis,
+        "scroll-timeline-name" | "view-timeline-name" | "timeline-trigger-name" => named_timeline,
+        "view-timeline-inset" => view_inset,
+        "text-box-edge" => text_box_edge_value,
+        "text-box-trim" => |c| keywords(c, &["none", "trim-start", "trim-end", "trim-both"]),
+        "timeline-trigger-source" => {
+            |c| listed(c, |item| single(item, super::grammar::timeline_source))
+        }
+        "timeline-trigger-activation-range-start" => |c| trigger_range(c, "normal", false),
+        "timeline-trigger-activation-range-end" => |c| trigger_range(c, "normal", true),
+        "timeline-trigger-active-range-start" => |c| trigger_range(c, "auto", false),
+        "timeline-trigger-active-range-end" => |c| trigger_range(c, "auto", true),
+        "transition-behavior" => {
+            |c| listed(c, |item| keywords(item, &["normal", "allow-discrete"]))
+        }
+        "outline-offset" => |c| single(c, |value| value.length(true)),
+        "text-underline-offset" => |c| {
+            single(c, |value| {
+                kw(value, &["auto"]).or_else(|| value.length_percentage(true))
+            })
+        },
+        "quotes" => quotes,
+        "position-anchor" => |c| {
+            single(c, |value| {
+                kw(value, &["auto", "none", "normal"]).or_else(|| value.dashed_ident())
+            })
+        },
+        "anchor-scope" | "timeline-scope" => |c| {
+            keywords(c, &["none", "all"])
+                .or_else(|| listed(c, |item| single(item, Comp::dashed_ident)))
+        },
+        "view-transition-class" => |c| {
+            keywords(c, &["none"]).or_else(|| {
+                c.iter()
+                    .map(|value| value.custom_ident(&["none"]))
+                    .collect::<Option<Vec<_>>>()
+                    .map(|values| values.join(" "))
+            })
+        },
         "animation-name" => animation_names,
+        "anchor-name" => |c| match c {
+            [only] if only.is_ident(&["none"]) => only.ident(),
+            _ => listed(c, |item| single(item, Comp::dashed_ident)),
+        },
         "box-shadow" => box_shadow,
         "text-shadow" => text_shadow,
         "offset-rotate" => offset_rotate,
@@ -1016,7 +1158,16 @@ fn has_shape(comps: &[Comp]) -> bool {
 /// The specified value of longhand `name` set to `value`, as Chrome 156 spells it.
 #[must_use]
 pub fn longhand_value(name: &str, value: &str) -> Spelled {
-    let trimmed = value.trim();
+    longhand_value_trimmed(name, value.trim(), substitution_text)
+}
+/// Context-free longhand grammar with CSS ASCII whitespace semantics. Unlike the
+/// legacy API this retains non-ASCII identifier units and authored substitutions.
+#[must_use]
+pub fn longhand_value_css(name: &str, value: &str) -> Spelled {
+    let trimmed = value.trim_matches(|c| matches!(c, '\t' | '\n' | '\x0c' | '\r' | ' '));
+    longhand_value_trimmed(name, trimmed, str::to_owned)
+}
+fn longhand_value_trimmed(name: &str, trimmed: &str, substitution: fn(&str) -> String) -> Spelled {
     if trimmed.is_empty() {
         return Spelled::Invalid;
     }
@@ -1025,7 +1176,7 @@ pub fn longhand_value(name: &str, value: &str) -> Spelled {
         return Spelled::Valid(lower);
     }
     if has_substitution(trimmed) {
-        return Spelled::Unchecked(substitution_text(trimmed));
+        return Spelled::Unchecked(substitution(trimmed));
     }
     let Some(comps) = components(trimmed) else {
         return Spelled::Invalid;

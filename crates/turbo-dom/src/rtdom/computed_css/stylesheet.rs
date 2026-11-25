@@ -23,6 +23,14 @@ pub enum GroupMode {
     Opaque,
 }
 
+/// Unknown rules can be retained for a context-aware caller's capability policy.
+/// The default parser contract continues to ignore them.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UnknownRulePolicy {
+    Ignore,
+    PreserveOpaque,
+}
+
 /// Caller-supplied bounds, counted across one complete source and all parsed groups.
 #[derive(Clone, Copy, Debug)]
 pub struct SheetLimits {
@@ -87,6 +95,7 @@ struct RuleParser<'source, 'count> {
     limits: SheetLimits,
     depth: usize,
     mode: GroupMode,
+    unknown: UnknownRulePolicy,
 }
 
 fn at_kind(name: &str) -> AtKind {
@@ -147,6 +156,7 @@ impl RuleParser<'_, '_> {
                 limits: self.limits,
                 depth: self.depth + 1,
                 mode: self.mode,
+                unknown: self.unknown,
             },
         )
     }
@@ -178,6 +188,12 @@ impl<'i> AtRuleParser<'i> for RuleParser<'_, '_> {
                 name: prelude.name,
                 prelude: prelude.text,
             }),
+            AtKind::Ignored if self.unknown == UnknownRulePolicy::PreserveOpaque => {
+                Ok(SheetRule::Statement {
+                    name: prelude.name,
+                    prelude: prelude.text,
+                })
+            }
             AtKind::Ignored => Ok(SheetRule::Ignored),
             _ => Err(()),
         }
@@ -205,6 +221,13 @@ impl<'i> AtRuleParser<'i> for RuleParser<'_, '_> {
                 prelude: prelude.text,
                 body: self.take(input),
             }),
+            AtKind::Ignored if self.unknown == UnknownRulePolicy::PreserveOpaque => {
+                Ok(SheetRule::Opaque {
+                    name: prelude.name,
+                    prelude: prelude.text,
+                    body: self.take(input),
+                })
+            }
             _ => {
                 self.take(input);
                 Ok(SheetRule::Ignored)
@@ -272,6 +295,21 @@ pub fn parse_sheet(
     limits: SheetLimits,
     mode: GroupMode,
 ) -> Result<Vec<SheetRule>, SheetError> {
+    parse_sheet_with_unknown_rules(units, limits, mode, UnknownRulePolicy::Ignore)
+}
+/// Parse the same canonical rule grammar with an explicit unknown-rule policy.
+/// Preserved unknown blocks stay opaque even in recursive mode; conditional group
+/// interpretation and unknown-rule capability decisions belong to the caller.
+///
+/// # Errors
+/// Preserves all original source/rule/group bounds; retention does not turn a
+/// resource failure into CSS syntax recovery.
+pub fn parse_sheet_with_unknown_rules(
+    units: &[u16],
+    limits: SheetLimits,
+    mode: GroupMode,
+    unknown: UnknownRulePolicy,
+) -> Result<Vec<SheetRule>, SheetError> {
     if units.len() > limits.source_units {
         return Err(SheetError::SourceUnits);
     }
@@ -287,6 +325,7 @@ pub fn parse_sheet(
             limits,
             depth: 0,
             mode,
+            unknown,
         },
     )
 }

@@ -2,7 +2,53 @@
 //! Raw declaration payloads retain DOM code units; the scalar view is only a
 //! structural tokenizer input, never a replacement for authored custom tokens.
 use std::ops::Range;
+#[cfg(feature = "computed-style-grammar")]
+pub mod candidate_set;
+#[cfg(feature = "computed-style-grammar")]
+pub mod candidates;
+pub mod cascade_order;
+#[cfg(feature = "computed-style-grammar")]
+pub mod computed_values;
+#[cfg(feature = "computed-style-grammar")]
+pub mod conditions;
+#[cfg(feature = "computed-style-grammar")]
+pub mod container;
+#[cfg(feature = "computed-style-grammar")]
+pub mod custom_cascade;
+#[cfg(feature = "computed-style-grammar")]
+pub mod declaration_model;
+#[cfg(feature = "computed-style-grammar")]
+pub mod facts;
+#[cfg(feature = "computed-style-grammar")]
+pub mod grammar;
+#[cfg(feature = "computed-style-grammar")]
+pub mod inline_style;
+#[cfg(feature = "computed-style-grammar")]
+pub mod layers;
+#[cfg(feature = "computed-style-grammar")]
+pub mod model;
+#[cfg(feature = "computed-style-grammar")]
+pub mod ordinary;
+#[cfg(feature = "computed-style-grammar")]
+pub mod payload;
+#[cfg(feature = "computed-style-grammar")]
+pub mod prepared;
+#[cfg(feature = "computed-style-grammar")]
+pub mod properties;
+pub mod property_data;
+#[cfg(feature = "computed-style-grammar")]
+pub mod property_registry;
+#[cfg(feature = "computed-style-grammar")]
+pub mod resolve;
+#[cfg(feature = "computed-style-grammar")]
+pub mod rule_matches;
+#[cfg(feature = "computed-style-grammar")]
+pub mod scope_plan;
+#[cfg(feature = "computed-style-grammar")]
+pub mod selection;
 pub mod stylesheet;
+#[cfg(feature = "computed-style-grammar")]
+pub mod target_scope;
 mod variables;
 pub use variables::{
     check_component_limits, compute_custom_properties, compute_custom_properties_detailed,
@@ -131,3 +177,9 @@ pub fn declarations(units: &[u16]) -> Vec<CssDeclaration> {
         })
         .collect()
 }
+
+#[cfg(feature = "computed-style-grammar")]
+pub mod selector_policy;
+
+#[cfg(feature = "computed-style-grammar")]
+pub mod shadow_routes;

@@ -9,7 +9,9 @@
 //! directly are the embedder's: this module only reads them.
 mod block;
 mod components;
+mod computed;
 pub use components::LENGTH_UNITS;
+pub use computed::{computed_length, computed_length_expression, LengthContext, LengthError};
 mod grammar;
 mod longhand;
 mod math;
@@ -22,7 +24,7 @@ pub use block::{
     LONGHAND_ALIASES,
 };
 use components::{components, has_substitution, substitution_text, CSS_WIDE};
-pub use longhand::{longhand_value, Spelled};
+pub use longhand::{longhand_value, longhand_value_css, Spelled};
 pub use table::{is_shorthand, longhands};
 
 /// One longhand a shorthand sets.
@@ -67,8 +69,16 @@ pub fn canonical(name: &str) -> Option<&'static str> {
 /// when the value is invalid for the shorthand (or `name` is not a shorthand).
 #[must_use]
 pub fn expand(name: &str, value: &str) -> Option<Vec<Longhand>> {
+    expand_trimmed(name, value.trim())
+}
+
+/// Strict CSS whitespace variant for the context-aware computed cascade.
+#[must_use]
+pub fn expand_css(name: &str, value: &str) -> Option<Vec<Longhand>> {
+    expand_trimmed(name, value.trim_matches([' ', '\t', '\n', '\r', '\x0c']))
+}
+fn expand_trimmed(name: &str, trimmed: &str) -> Option<Vec<Longhand>> {
     let entry = table::entry(name)?;
-    let trimmed = value.trim();
     if trimmed.is_empty() {
         return None;
     }

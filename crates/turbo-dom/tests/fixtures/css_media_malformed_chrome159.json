@@ -1,0 +1,60 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "62c7d1979278aa2e0f27ee6a861bc1f1ac4d60ca7d59c89e3af792f8ddbead31",
+  "results": [
+    {
+      "source": "???",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "screen or future(foo)",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "not future(foo) and (width:800px)",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "(future(foo)) and",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "(future(foo)) or",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "(future(foo)))",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "(future(foo)) and (width:800px) or (height:600px)",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "(future([bad))",
+      "matches": false,
+      "media": "not all",
+      "cssom": null
+    },
+    {
+      "source": "future(foo), screen and (width:800px) or (height:600px)",
+      "matches": false,
+      "media": "future(foo), not all",
+      "cssom": "future(foo), not all"
+    }
+  ]
+}

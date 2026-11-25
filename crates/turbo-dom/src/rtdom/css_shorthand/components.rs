@@ -177,7 +177,7 @@ const NAMING_FUNCTIONS: &[&str] = &[
 
 /// A math function Chrome simplified to one term (its text spells `calc(...)`): that term's
 /// unit and value.
-fn math_value(comp: &Comp) -> Option<(String, f64)> {
+pub(super) fn math_value(comp: &Comp) -> Option<(String, f64)> {
     if !comp.is_math() || !comp.text.starts_with("calc(") {
         return None;
     }
@@ -1423,6 +1423,11 @@ impl Comp {
             Kind::Hash(value) => hex_color(value),
             Kind::Ident(_) => {
                 let name = self.ident()?;
+                // A decoded CSS identifier's non-ASCII whitespace is part of its
+                // name, not padding the legacy color utility may trim away.
+                if name.chars().any(char::is_whitespace) {
+                    return None;
+                }
                 (SYSTEM_COLORS.contains(&name.as_str())
                     || canonicalize_color(&name, true).is_some())
                 .then_some(name)
@@ -1460,7 +1465,7 @@ impl Comp {
     }
     pub(super) fn dashed_ident(&self) -> Option<String> {
         match &self.kind {
-            Kind::Ident(name) if name.starts_with("--") && name.len() > 2 => Some(name.clone()),
+            Kind::Ident(name) if name.starts_with("--") => Some(name.clone()),
             _ => None,
         }
     }
@@ -1471,7 +1476,7 @@ impl Comp {
     }
 }
 
-fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
+pub(super) fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
     for comp in comps {
         callback(comp);
         if let Kind::Function(_) = comp.kind {

@@ -1,0 +1,222 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "fd74b1dbcba5da7d63746e988815b1c27101c6bdff8cacc97bee7c438e747265",
+  "results": [
+    {
+      "name": "position-anchor",
+      "value": "var(--x)",
+      "supports": true,
+      "held": "var(--x)"
+    },
+    {
+      "name": "color",
+      "value": "var(--x)",
+      "supports": true,
+      "held": "var(--x)"
+    },
+    {
+      "name": "position-anchor",
+      "value": "var()",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var()",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(x)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(x)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x, var())",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x, var())",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x, red !important)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x, red !important)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x, red; blue)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x, red; blue)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "env(safe-area-inset-top)",
+      "supports": true,
+      "held": "env(safe-area-inset-top)"
+    },
+    {
+      "name": "color",
+      "value": "env(safe-area-inset-top)",
+      "supports": true,
+      "held": "env(safe-area-inset-top)"
+    },
+    {
+      "name": "position-anchor",
+      "value": "env()",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "env()",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "env(foo, red)",
+      "supports": true,
+      "held": "env(foo, red)"
+    },
+    {
+      "name": "color",
+      "value": "env(foo, red)",
+      "supports": true,
+      "held": "env(foo, red)"
+    },
+    {
+      "name": "position-anchor",
+      "value": "\"var(--x)\"",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "\"var(--x)\"",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "if(style(--x:1): red; else: blue)",
+      "supports": true,
+      "held": "if(style(--x:1): red; else: blue)"
+    },
+    {
+      "name": "color",
+      "value": "if(style(--x:1): red; else: blue)",
+      "supports": true,
+      "held": "if(style(--x:1): red; else: blue)"
+    },
+    {
+      "name": "position-anchor",
+      "value": "if(red)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "if(red)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x) if(red)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x) if(red)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x, if(red))",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x, if(red))",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x) !important",
+      "supports": true,
+      "held": "var(--x)"
+    },
+    {
+      "name": "color",
+      "value": "var(--x) !important",
+      "supports": true,
+      "held": "var(--x)"
+    },
+    {
+      "name": "position-anchor",
+      "value": "var(--x); color:red",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x); color:red",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "if(else: var())",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "if(else: var())",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "if(else: var(--x))",
+      "supports": true,
+      "held": "if(else: var(--x))"
+    },
+    {
+      "name": "color",
+      "value": "if(else: var(--x))",
+      "supports": true,
+      "held": "if(else: var(--x))"
+    }
+  ]
+}

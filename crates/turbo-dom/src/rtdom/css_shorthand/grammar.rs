@@ -894,22 +894,23 @@ fn rule_inset(comps: &[Comp], kind: &str) -> Option<Out> {
     ])
 }
 
+pub(super) fn intrinsic_axis(comps: &[Comp]) -> Option<(usize, String)> {
+    let first = &comps[0];
+    match comps.get(1) {
+        Some(second) if first.is_ident(&["auto"]) => {
+            let value = second.length(false).or_else(|| kw(second, &["none"]))?;
+            Some((2, format!("auto {value}")))
+        }
+        _ => first
+            .length(false)
+            .or_else(|| kw(first, &["none"]))
+            .map(|value| (1, value)),
+    }
+}
+
 fn contain_intrinsic_size(comps: &[Comp]) -> Option<Out> {
     // Called with the whole (non-empty) value, then with a non-empty rest.
-    let axis = |comps: &[Comp]| -> Option<(usize, String)> {
-        let first = &comps[0];
-        match comps.get(1) {
-            Some(second) if first.is_ident(&["auto"]) => {
-                let value = second.length(false).or_else(|| kw(second, &["none"]))?;
-                Some((2, format!("auto {value}")))
-            }
-            _ => first
-                .length(false)
-                .or_else(|| kw(first, &["none"]))
-                .map(|value| (1, value)),
-        }
-    };
-    let (used, width) = axis(comps)?;
+    let (used, width) = intrinsic_axis(comps)?;
     let rest = &comps[used..];
     let height = if rest.is_empty()
         || (rest.len() == 1 && rest[0].is_ident(&["auto"]) && width.starts_with("auto "))
@@ -917,7 +918,7 @@ fn contain_intrinsic_size(comps: &[Comp]) -> Option<Out> {
         // A trailing lone `auto` after `auto <length>` repeats the width (Chrome).
         width.clone()
     } else {
-        let (more, height) = axis(rest)?;
+        let (more, height) = intrinsic_axis(rest)?;
         if used + more != comps.len() {
             return None;
         }
@@ -1516,6 +1517,20 @@ fn font_synthesis(comps: &[Comp]) -> Option<Out> {
     )
 }
 
+pub(super) fn text_box_edge(comps: &[Comp]) -> Option<(usize, String)> {
+    let first = comps.first()?;
+    let over = ["text", "cap", "ex", "ideographic", "ideographic-ink"];
+    let under = ["text", "alphabetic", "ideographic", "ideographic-ink"];
+    if first.is_ident(&["auto"]) {
+        return Some((1, "auto".into()));
+    }
+    let a = first.keyword(&over)?;
+    if let Some(b) = comps.get(1).and_then(|c| c.keyword(&under)) {
+        return Some((2, if a == b { a } else { format!("{a} {b}") }));
+    }
+    matches!(a.as_str(), "text" | "ideographic" | "ideographic-ink").then_some((1, a))
+}
+
 fn text_box(comps: &[Comp]) -> Option<Out> {
     if let [only] = comps {
         if only.is_ident(&["normal"]) {
@@ -1526,20 +1541,7 @@ fn text_box(comps: &[Comp]) -> Option<Out> {
         }
     }
     let trim = |c: &Comp| kw(c, &["none", "trim-start", "trim-end", "trim-both"]);
-    let edge = |comps: &[Comp]| -> Option<(usize, String)> {
-        let first = comps.first()?;
-        let over = ["text", "cap", "ex", "ideographic", "ideographic-ink"];
-        let under = ["text", "alphabetic", "ideographic", "ideographic-ink"];
-        if first.is_ident(&["auto"]) {
-            return Some((1, "auto".into()));
-        }
-        let a = first.keyword(&over)?;
-        if let Some(b) = comps.get(1).and_then(|c| c.keyword(&under)) {
-            return Some((2, if a == b { a } else { format!("{a} {b}") }));
-        }
-        matches!(a.as_str(), "text" | "ideographic" | "ideographic-ink").then_some((1, a))
-    };
-    let parsed = any_order(comps, &[&one(trim), &edge])?;
+    let parsed = any_order(comps, &[&one(trim), &text_box_edge])?;
     let mut parsed = parsed.into_iter();
     let trim = parsed.next().flatten();
     let edge = parsed.next().flatten();
@@ -1631,6 +1633,15 @@ fn scroll_timeline(comps: &[Comp]) -> Option<Out> {
     ])
 }
 
+pub(super) fn view_inset(comps: &[Comp]) -> Option<(usize, String)> {
+    let value = |c: &Comp| kw(c, &["auto"]).or_else(|| c.length_percentage(true));
+    let a = value(comps.first()?)?;
+    match comps.get(1).and_then(value) {
+        Some(b) => Some((2, if a == b { a } else { format!("{a} {b}") })),
+        None => Some((1, a)),
+    }
+}
+
 fn view_timeline(comps: &[Comp]) -> Option<Out> {
     let mut name_list = Vec::new();
     let mut axis_list = Vec::new();
@@ -1639,15 +1650,7 @@ fn view_timeline(comps: &[Comp]) -> Option<Out> {
         let (name, rest) = layer.split_first()?;
         name_list.push(kw(name, &["none"]).or_else(|| name.dashed_ident())?);
         let axis = one(|c| kw(c, &["block", "inline", "x", "y"]));
-        let inset = |comps: &[Comp]| -> Option<(usize, String)> {
-            let value = |c: &Comp| kw(c, &["auto"]).or_else(|| c.length_percentage(true));
-            let a = value(comps.first()?)?;
-            match comps.get(1).and_then(value) {
-                Some(b) => Some((2, if a == b { a } else { format!("{a} {b}") })),
-                None => Some((1, a)),
-            }
-        };
-        let parsed = any_order(rest, &[&axis, &inset])?;
+        let parsed = any_order(rest, &[&axis, &view_inset])?;
         axis_list.push(parsed[0].clone().unwrap_or_else(|| "block".into()));
         inset_list.push(parsed[1].clone().unwrap_or_else(|| "auto".into()));
     }
@@ -3526,6 +3529,23 @@ fn timeline_trigger_ranges(rest: &[Comp], more: &mut [(&str, String)]) -> Option
     (parts.len() <= 2).then_some(())
 }
 
+pub(super) fn timeline_source(c: &Comp) -> Option<String> {
+    if let Some(value) = kw(c, &["auto", "none"]).or_else(|| c.dashed_ident()) {
+        return Some(value);
+    }
+    c.function_named(&["view", "scroll"])?;
+    let start = c.text.find('(')?;
+    let inner = super::components::components(&c.text[start + 1..c.text.len() - 1])?;
+    let axis = one(|c| kw(c, &["block", "inline", "x", "y"]));
+    if matches!(&c.kind, Kind::Function(name) if name == "view") {
+        any_order(&inner, &[&axis, &view_inset])?;
+    } else {
+        let scroller = one(|c| kw(c, &["root", "nearest", "self"]));
+        any_order(&inner, &[&axis, &scroller])?;
+    }
+    Some(c.text.clone())
+}
+
 fn timeline_trigger_item(comps: &[Comp]) -> Option<Out> {
     let defaults = || {
         vec![
@@ -3546,10 +3566,7 @@ fn timeline_trigger_item(comps: &[Comp]) -> Option<Out> {
         Some((first, rest)) if first.dashed_ident().is_some() => (first.dashed_ident()?, rest),
         _ => ("none".to_string(), comps),
     };
-    let source_of = |c: &Comp| {
-        c.function_named(&["view", "scroll"])
-            .or_else(|| kw(c, &["auto", "none"]))
-    };
+    let source_of = timeline_source;
     let (source, rest) = match rest.split_first() {
         Some((first, rest)) if source_of(first).is_some() => (source_of(first)?, rest),
         _ => ("auto".to_string(), rest),

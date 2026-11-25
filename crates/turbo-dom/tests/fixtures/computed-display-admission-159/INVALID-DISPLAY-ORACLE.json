@@ -1,0 +1,17 @@
+{
+  "browser": "159.0.8154.6",
+  "sourceSha256": "0217b991d2980b00495990b0eed507378a81b3d7e9af6e45d3d5be9a05ab0a1c",
+  "result": {
+    "supports": false,
+    "invalidParsed": {
+      "css": ".x{display:inline-block;display:not-a-display}",
+      "declared": "inline-block",
+      "computed": "inline-block"
+    },
+    "invalidSubstituted": {
+      "css": ".x{--bad:not-a-display;display:inline-block;display:var(--bad)}",
+      "declared": "var(--bad)",
+      "computed": "inline"
+    }
+  }
+}

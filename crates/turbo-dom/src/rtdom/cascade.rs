@@ -77,7 +77,7 @@ fn shorthand_of(prop: &str) -> Option<&'static str> {
 }
 
 /// Length properties whose bare `0` real browsers serialize as `0px`.
-const LENGTH_PROPS: &[&str] = &[
+pub(super) const LENGTH_PROPS: &[&str] = &[
     "width",
     "height",
     "min-width",
@@ -120,7 +120,7 @@ const BORDER_STYLES: &[&str] = &[
 ];
 
 /// Inheritable properties propagated down the flattened tree (curated set).
-const INHERITED: &[&str] = &[
+pub(super) const INHERITED: &[&str] = &[
     "color",
     "cursor",
     "direction",

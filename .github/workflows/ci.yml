@@ -536,6 +536,7 @@ jobs:
       matrix:
         include:
           - { crate: turbo-dom,             floor: 100, features: '' }
+          - { crate: turbo-dom,             floor: 100, features: '--features computed-style-grammar', label: turbo-dom-computed-style-grammar }
           - { crate: turbo-dom-parser,      floor: 100, features: '', files: 'src/core.rs' }
           - { crate: turbo-dom-layout,      floor: 99.8, features: '' }
           - { crate: turbo-dom-layout,      floor: 99.8, features: '--features turbo-dom-layout/svg,turbo-dom-layout/perf,turbo-dom-layout/serde,turbo-dom-layout/test-support', label: turbo-dom-layout-all-features }
