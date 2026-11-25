@@ -5,7 +5,8 @@ use std::ops::Range;
 pub mod stylesheet;
 mod variables;
 pub use variables::{
-    compute_custom_properties, substitute, ComputationLimits, ComputedCssError, CustomProperties,
+    check_component_limits, compute_custom_properties, has_function_reference,
+    has_variable_references, substitute, ComputationLimits, ComputedCssError, CustomProperties,
 };
 
 /// Original CSS text, including any unpaired UTF-16 units.
@@ -93,6 +94,23 @@ pub struct CssDeclaration {
     pub name: String,
     pub value: CssText,
     pub important: bool,
+}
+
+impl CssDeclaration {
+    /// Serialize a normalized name through CSS Syntax while retaining raw value units.
+    #[must_use]
+    pub fn serialized(&self) -> CssText {
+        let mut name = String::new();
+        cssparser::serialize_identifier(&self.name, &mut name).expect("String serialization");
+        let mut units: Vec<u16> = name.encode_utf16().collect();
+        units.push(u16::from(b':'));
+        units.extend_from_slice(self.value.as_units());
+        if self.important {
+            units.extend(" !important".encode_utf16());
+        }
+        units.push(u16::from(b';'));
+        CssText::from_units(units)
+    }
 }
 
 /// Parse declarations without normalizing their raw custom-property payloads.
