@@ -36,6 +36,8 @@ pub mod ordinary;
 #[cfg(feature = "computed-style-grammar")]
 pub mod payload;
 #[cfg(feature = "computed-style-grammar")]
+pub mod preferences;
+#[cfg(feature = "computed-style-grammar")]
 pub mod prepared;
 #[cfg(feature = "computed-style-grammar")]
 pub mod properties;
