@@ -416,3 +416,31 @@ fn marker_uses_existing_scope_proximity_before_later_source_order() {
         Some("underline")
     );
 }
+
+#[test]
+fn canonical_declared_marker_expansion_obeys_the_per_output_quota() {
+    use turbo_dom::rtdom::computed_css::{
+        declaration_model::compile_declarations, declarations, ComputedCssError,
+    };
+    let source = "text-decoration:#f00".encode_utf16().collect::<Vec<_>>();
+    let parsed = declarations(&source);
+    let mut policy = limits();
+    policy.max_output_units = 4;
+    assert!(matches!(
+        compile_declarations(&parsed, policy),
+        Err(ComputedCssError::ResourceLimit)
+    ));
+    policy.max_output_units = 64;
+    let compiled = compile_declarations(&parsed, policy).unwrap();
+    assert_eq!(
+        String::from_utf16(
+            compiled[0]
+                .declared_text_decoration
+                .as_ref()
+                .unwrap()
+                .as_units()
+        )
+        .unwrap(),
+        "rgb(255, 0, 0)"
+    );
+}

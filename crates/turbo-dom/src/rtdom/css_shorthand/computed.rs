@@ -130,7 +130,7 @@ fn length_token(
     if has_tree_counting(&tokens) {
         return Err(LengthError::UnsupportedMath(token.text.clone()));
     }
-    let text = resolve_token(token, context, limits, 0, percentage)?;
+    let text = resolve_token(token, context, limits, percentage)?;
     // resolve_token emits one finite dimension, the original number/percentage,
     // or one balanced function with each argument replaced by one component.
     // Parsing that spelling also preserves the canonical dimension f32 clamp.
@@ -188,12 +188,11 @@ fn resolve_token(
     token: &Comp,
     context: &LengthContext<'_>,
     limits: ComputationLimits,
-    depth: usize,
     percentage: PercentageMode,
 ) -> Result<String, LengthError> {
-    if depth >= limits.max_nesting {
-        return Err(ComputedCssError::NestingLimit.into());
-    }
+    // The canonical raw guard already bounds this private length IR: admitted
+    // math normalization preserves/reduces wrapper depth. Tree-counting forms
+    // that can add grouped expressions were rejected before this resolver.
     if percentage == PercentageMode::Retain && matches!(token.kind, Kind::Percentage(_)) {
         return checked_text(token.text.clone(), limits);
     }
@@ -208,7 +207,7 @@ fn resolve_token(
         return checked_text(format!("{value}px"), limits);
     }
     if matches!(token.kind, Kind::Function(_)) {
-        return resolve_function(token, context, limits, depth, percentage);
+        return resolve_function(token, context, limits, percentage);
     }
     checked_text(token.text.clone(), limits)
 }
@@ -217,7 +216,6 @@ fn resolve_function(
     token: &Comp,
     context: &LengthContext<'_>,
     limits: ComputationLimits,
-    depth: usize,
     percentage: PercentageMode,
 ) -> Result<String, LengthError> {
     // The shared parser produced the spelling and balanced delimiters. It can have
@@ -225,10 +223,8 @@ fn resolve_function(
     let open = token.text.find('(').expect("canonical function opener");
     let mut tokens = components(&token.text[open + 1..token.text.len() - 1])
         .expect("canonical function arguments were already parsed");
-    // resolve_token admitted depth < max_nesting <= usize::MAX.
-    let nested = depth + 1;
     for token in &mut tokens {
-        token.text = resolve_token(token, context, limits, nested, percentage)?;
+        token.text = resolve_token(token, context, limits, percentage)?;
     }
     checked_text(
         format!("{}({})", &token.text[..open], join(&tokens)),
@@ -265,6 +261,40 @@ mod tests {
             resolve("\\76 ar(--x)", &[]),
             Err(LengthError::Computation(ComputedCssError::RequiresCascade))
         );
+    }
+
+    #[test]
+    fn admitted_math_uses_the_canonical_source_nesting_budget_once() {
+        let context = LengthContext {
+            unit_bases: &[("em", 20.0)],
+        };
+        for (raw, value) in [
+            ("calc(1em + 2px)", 22.0),
+            ("min(1em + 2px, 3em)", 22.0),
+            ("max(1em + 2px, 3em)", 60.0),
+            ("clamp(1em, 2em + 3px, 4em)", 43.0),
+            ("calc((1em + 2px) * 3)", 66.0),
+        ] {
+            for maximum in 1..6 {
+                let policy = ComputationLimits {
+                    max_nesting: maximum,
+                    ..limits()
+                };
+                let source = CssText::from_units(raw.encode_utf16().collect());
+                if check_component_limits(&source, policy).is_ok() {
+                    assert_eq!(computed_length(raw, &context, policy), Ok(Some(value)));
+                    assert_eq!(
+                        computed_length_expression(raw, &context, policy),
+                        Ok(Some(format!("{value}px")))
+                    );
+                } else {
+                    assert_eq!(
+                        computed_length(raw, &context, policy),
+                        Err(LengthError::Computation(ComputedCssError::NestingLimit))
+                    );
+                }
+            }
+        }
     }
 
     #[test]
