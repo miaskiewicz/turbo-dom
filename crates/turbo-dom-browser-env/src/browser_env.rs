@@ -8275,6 +8275,13 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
+    bind_method(
+        scope,
+        global,
+        "__noteEffectValidation",
+        note_effect_validation,
+    );
+    #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
@@ -8377,6 +8384,25 @@ fn note_cascade_run(
     _rv: v8::ReturnValue,
 ) {
     CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    static EFFECT_VALIDATIONS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(all(test, feature = "host-internals"))]
+fn effect_validations() -> u64 {
+    EFFECT_VALIDATIONS.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+fn note_effect_validation(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    EFFECT_VALIDATIONS.with(|visits| visits.set(visits.get() + 1));
 }
 
 #[cfg(test)]

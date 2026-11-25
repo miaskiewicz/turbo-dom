@@ -93,6 +93,133 @@ fn presented_batch_shared_ancestors_require_only_one_underlying_cascade_each() {
 
 #[cfg(feature = "host-internals")]
 #[test]
+fn presented_batch_volatile_ancestors_keep_the_original_per_root_reuse_bound() {
+    use crate::host_internals as host;
+    let mut rows = Vec::new();
+    for (depth, count) in [(2, 1), (4, 1), (4, 4)] {
+        let html = presented_batch_fixture(depth, count)
+            .replace(
+                "@keyframes probe",
+                "@keyframes ancestor{from{opacity:.4}to{opacity:.8}}@keyframes probe",
+            )
+            .replace(
+                ".ancestor{display:block;",
+                ".ancestor{animation:ancestor 1000ms linear both;display:block;",
+            );
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..count)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            host::sample_presented_effects(scope, document, &targets).unwrap();
+            let before = super::cascade_runs();
+            let validations = super::effect_validations();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let cascades = super::cascade_runs() - before;
+            let visits = super::effect_validations() - validations;
+            assert_eq!(sample.targets.len(), depth + count);
+            for target in &sample.targets {
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert!(transition.is_empty());
+                let expected = if target.css_animation_names == ["probe"] {
+                    ("width", "10px")
+                } else {
+                    assert_eq!(target.css_animation_names, ["ancestor"]);
+                    ("opacity", "0.4")
+                };
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == expected.0)
+                        .unwrap()
+                        .value,
+                    expected.1
+                );
+            }
+            // A fresh map per selected root was the original behavior. Active
+            // ancestor roots are also discovered: their path depths are 3..D+2.
+            let original = count * (depth + 3) + depth * (depth + 5) / 2;
+            eprintln!("volatile ancestors depth={depth} leaves={count} cascades={cascades} original_bound={original} validation_visits={visits}");
+            rows.push((depth, count, cascades, original, visits));
+        });
+    }
+    assert!(
+        rows.iter()
+            .all(|(_, _, cascades, bound, visits)| *cascades <= *bound as u64
+                && *visits <= 2 * *bound as u64),
+        "{rows:?}"
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_inherited_context_reports_validation_work_with_exact_values() {
+    use crate::host_internals as host;
+    for depth in [2, 4, 8] {
+        let html =
+            presented_batch_fixture(depth, 4).replace("font:16px/20px serif;color:rgb(1,2,3)", "");
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..4)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            host::sample_presented_effects(scope, document, &targets).unwrap();
+            let before = super::cascade_runs();
+            let validations = super::effect_validations();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let cascades = super::cascade_runs() - before;
+            let visits = super::effect_validations() - validations;
+            assert_eq!(sample.targets.len(), 4);
+            for target in &sample.targets {
+                assert_eq!(target.css_animation_names, ["probe"]);
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert!(transition.is_empty());
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == "width")
+                        .unwrap()
+                        .value,
+                    "10px"
+                );
+            }
+            eprintln!("inherited context depth={depth} leaves=4 cascades={cascades} validation_visits={visits}");
+            // Three later siblings each import the single parent-dependency chain
+            // of D ordinary ancestors plus HTML/BODY, once within that read.
+            assert!(
+                visits <= 3 * (depth + 2) as u64,
+                "depth={depth} validation_visits={visits}"
+            );
+        });
+    }
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
 fn presented_batch_observes_real_ancestor_mutation_between_selected_roots() {
     use crate::host_internals as host;
     with_presented_batch(&presented_batch_fixture(4, 2), |scope| {
