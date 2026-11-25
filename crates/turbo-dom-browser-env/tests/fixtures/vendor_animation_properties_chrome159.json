@@ -1,0 +1,54 @@
+{
+  "version": "159.0.8154.6",
+  "probeSha256": "0c36b0d2b24e9d9d38c6b79c26640dcb21366ff125fc8e20f3c3242a4cdfb368",
+  "output": [
+    {
+      "property": "-ms-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-MS-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-o-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-O-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-moz-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-MOZ-transform",
+      "supports": false,
+      "value": "",
+      "cssText": ""
+    },
+    {
+      "property": "-webkit-transform",
+      "supports": true,
+      "value": "rotate(1deg)",
+      "cssText": "transform: rotate(1deg);"
+    },
+    {
+      "property": "--ms-transform",
+      "supports": true,
+      "value": "rotate(1deg)",
+      "cssText": "--ms-transform: rotate(1deg);"
+    }
+  ]
+}

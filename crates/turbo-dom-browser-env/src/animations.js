@@ -13,7 +13,7 @@
   const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const ownKeys = Reflect.ownKeys, getOwnDescriptor = Object.getOwnPropertyDescriptor, setPrototype = Object.setPrototypeOf, getPrototype = Object.getPrototypeOf, sameValue = Object.is;
-  const ErrorType = TypeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
+  const ErrorType = TypeError, RangeErrorType = RangeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
   const EventType = g.Event, TargetType = g.EventTarget;
   const listen = g.EventTarget.prototype.addEventListener, unlisten = g.EventTarget.prototype.removeEventListener;
   const floor = Math.floor, round = Math.round, abs = Math.abs, min = Math.min, max = Math.max, sqrt = Math.sqrt;
@@ -234,6 +234,41 @@
       if (value !== null) return { kind: 'length', value, unit: 'px' };
     }
     return { kind: 'discrete', text };
+  }
+  function lengthListValue(text, context) {
+    if (!text || intrinsic.test(/(^\s*,|,\s*,|,\s*$)/, text)) return { kind: 'discrete', text };
+    const tokens = intrinsic.split(text, /[\s,]+/), values = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const value = propertyLengthValue('stroke-dashoffset', tokens[i], context);
+      if (value.kind !== 'length' || !isFinite(value.value) || value.value < 0) return { kind: 'discrete', text };
+      push(values, value);
+    }
+    return { kind: 'length-list', values, sourceUnits: text.length };
+  }
+  function lengthListRepeatCount(left, right) {
+    let a = left.values.length, b = right.values.length;
+    const sourceUnits = left.sourceUnits + right.sourceUnits;
+    while (b) { const rest = a % b; a = b; b = rest; }
+    const factor = left.values.length / a;
+    // Repetition may otherwise expand coprime lists quadratically. Bound new work
+    // by the two original sources before multiplying or allocating the result.
+    return factor <= floor(sourceUnits / right.values.length) ? factor * right.values.length : null;
+  }
+  function lengthListsCompatible(left, right, count) {
+    for (let i = 0; i < count; i++)
+      if (left.values[i % left.values.length].unit !== right.values[i % right.values.length].unit) return false;
+    return true;
+  }
+  function interpolateLengthList(from, to, progress) {
+    const count = lengthListRepeatCount(from, to);
+    if (count === null) throw new RangeErrorType('Repeatable animation list exceeds its source-derived work budget');
+    if (!lengthListsCompatible(from, to, count)) throw new Exception('Mixed-unit animation lists are unsupported', 'NotSupportedError');
+    const values = [];
+    for (let i = 0; i < count; i++) {
+      const left = from.values[i % from.values.length], right = to.values[i % to.values.length];
+      push(values, { kind: 'length', value: max(0, left.value + (right.value - left.value) * progress), unit: left.unit });
+    }
+    return { kind: 'length-list', values, sourceUnits: from.sourceUnits + to.sourceUnits };
   }
   // Colors in sRGB with straight alpha: hex, rgb()/hsl()/hwb() and named keywords.
   function hsl(h, s, l) {
@@ -565,25 +600,28 @@
     if (text === null || text === undefined) return null;
     text = intrinsic.trim(string(text));
     if (intrinsic.slice(property, 0, 2) === '--') return { kind: 'discrete', text };
+    if (property === 'stroke-dasharray') return lengthListValue(text, context);
     return typedPropertyValue(property, text, context);
+  }
+  function serializeNumber(property, number) {
+    if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
+    if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
+    if (property === 'font-weight') number = min(max(number, 1), 1000);
+    if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
+    return format(number);
   }
   function serializeValue(property, value) {
     switch (value.kind) {
-      case 'number': {
-        let number = value.value;
-        if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
-        if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
-        if (property === 'font-weight') number = min(max(number, 1), 1000);
-        if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
-        return format(number);
-      }
+      case 'number': return serializeNumber(property, value.value);
       case 'length': return format(value.value) + value.unit;
+      case 'length-list': return intrinsic.join(intrinsic.map(value.values, item => serializeValue(property, item)), ', ');
       case 'color': return serializeColor(value);
       case 'transform': return serializeTransform(value);
     }
     return value.text;
   }
   function interpolateTyped(from, to, p) {
+    if (from.kind === 'length-list') return interpolateLengthList(from, to, p);
     if (from.kind === 'number') return { kind: 'number', value: from.value + (to.value - from.value) * p };
     if (from.kind === 'length') return { kind: 'length', value: from.value + (to.value - from.value) * p, unit: from.unit };
     if (from.kind === 'transform') return interpolateTransform(from, to, p);
@@ -2500,6 +2538,10 @@
   function presentedFrameCompatible(left, right) {
     if (left.kind !== right.kind) return false;
     if (left.kind === 'length') return left.unit === right.unit;
+    if (left.kind === 'length-list') {
+      const count = lengthListRepeatCount(left, right);
+      return count !== null && lengthListsCompatible(left, right, count);
+    }
     return true;
   }
   function presentedFrameValuesSupported(frames, property, context) {
