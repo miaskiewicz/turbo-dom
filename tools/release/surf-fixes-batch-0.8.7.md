@@ -43,3 +43,22 @@ The exact local log and JSON are under `.evidence/presented-effects/coverage-lay
 The separate default-feature layout measurement and latest binding/Core coverage
 checks are not implied by this all-feature receipt. No floor, timeout, resource
 budget, production guard or assertion was weakened. No tag or publication occurred.
+
+## Passing default-layout follow-up
+
+The exact410045a001a80ee0098fd30259e11b3604a629a6 layout source now passes
+the unchanged default99.8% floor: **19,992 / 20,032 lines, 99.80%**, exit0.
+The prior99.71% and99.79% RED reports remain preserved. The actual bundled-font
+Arabic decomposition guard and the direct empty-multicol contract supplied the
+two remaining reachable production-line controls; no floor, feature, timeout or
+resource budget was changed.
+
+Command: `cargo +1.98.0 tarpaulin --offline --locked --engine llvm -p turbo-dom-layout
+--include-files 'crates/turbo-dom-layout/src/*' --timeout 600 --out Json --out Stdout
+--fail-under 99.8`, one build job. Exact log/JSON:
+`.evidence/presented-effects/coverage-layout-default-410*`.
+
+The last all-feature layout result is99.82% against99.8%. Latest binding coverage
+and the combined full workspace gate still have separate follow-ups; the optional
+#296 kernel feature is not part of this passing default-layout measurement.
+Actual optimized Surf cost/auth acceptance remains pending.
