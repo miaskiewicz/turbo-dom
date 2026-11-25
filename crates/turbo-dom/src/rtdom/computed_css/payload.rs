@@ -49,6 +49,10 @@ impl CompiledStyles {
                 bytes += declaration.name.capacity() + text(&declaration.value);
             }
             for declaration in &rule.compiled_declarations {
+                bytes += declaration
+                    .declared_text_decoration
+                    .as_ref()
+                    .map_or(0, text);
                 for property in &declaration.properties {
                     bytes += property.name.capacity() + property.value.as_ref().map_or(0, text);
                 }

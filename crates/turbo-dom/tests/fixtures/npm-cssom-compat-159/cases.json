@@ -1,0 +1,17 @@
+[
+ {"id":"margin-shorthand","inline":"margin:1px 2px 3px 4px","properties":[["margin","margin"],["margin-top","marginTop"],["margin-left","marginLeft"]]},
+ {"id":"margin-longhands","inline":"margin-top:1px;margin-right:2px;margin-bottom:1px;margin-left:2px","properties":[["margin","margin"],["margin-top","marginTop"]]},
+ {"id":"padding-shorthand","inline":"padding:1px 2px","properties":[["padding","padding"],["padding-right","paddingRight"]]},
+ {"id":"padding-partial","inline":"padding-top:1px","properties":[["padding","padding"],["padding-top","paddingTop"],["padding-left","paddingLeft"]]},
+ {"id":"border-shorthand","inline":"border:2px solid red","properties":[["border","border"],["border-top","borderTop"],["border-width","borderWidth"],["border-style","borderStyle"],["border-color","borderColor"],["border-top-color","borderTopColor"]]},
+ {"id":"border-side","inline":"border-top:2px dotted blue","properties":[["border","border"],["border-top","borderTop"],["border-top-width","borderTopWidth"]]},
+ {"id":"border-radius","inline":"border-radius:1px 2px / 3px 4px","properties":[["border-radius","borderRadius"],["border-top-left-radius","borderTopLeftRadius"]]},
+ {"id":"font-shorthand","inline":"font:italic small-caps bold 12px/1.5 Arial","properties":[["font","font"],["font-size","fontSize"],["font-weight","fontWeight"],["font-family","fontFamily"],["line-height","lineHeight"]]},
+ {"id":"font-partial","inline":"font-size:12px;font-family:Arial","properties":[["font","font"],["font-size","fontSize"],["font-family","fontFamily"]]},
+ {"id":"background-shorthand","inline":"background:red","properties":[["background","background"],["background-color","backgroundColor"],["background-position","backgroundPosition"],["background-repeat","backgroundRepeat"]]},
+ {"id":"text-decoration-declared","inline":"text-decoration:underline dotted red","properties":[["text-decoration","textDecoration"],["text-decoration-line","textDecorationLine"],["text-decoration-style","textDecorationStyle"],["text-decoration-color","textDecorationColor"]]},
+ {"id":"text-decoration-longhands","inline":"text-decoration-line:underline;text-decoration-style:wavy;text-decoration-color:blue","properties":[["text-decoration","textDecoration"],["text-decoration-line","textDecorationLine"]]},
+ {"id":"word-wrap-canonical","inline":"overflow-wrap:break-word","properties":[["word-wrap","wordWrap"],["overflow-wrap","overflowWrap"]]},
+ {"id":"word-wrap-alias","inline":"word-wrap:break-word","properties":[["word-wrap","wordWrap"],["overflow-wrap","overflowWrap"]]},
+ {"id":"unknown-unmatched","inline":"margin-top:1px","properties":[["does-not-exist","doesNotExist"],["font-weight","fontWeight"]]}
+]

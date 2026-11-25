@@ -1,0 +1,59 @@
+{
+  "issue": 296,
+  "base": "c3589b32780fe79f21258e97ef78eb5daca91030",
+  "stage": "computed kernel initial metadata and declared decoration provenance; no npm default change",
+  "toolchain": "1.98.0",
+  "jobs": 1,
+  "sources": {
+    "crates/turbo-dom/tests/computed_declared_decoration.rs": "933fa1ef25ce92701932174174f4e470097c2e463cdb3be8c040f4c03bfec89d",
+    "crates/turbo-dom/tests/computed_initial_shorthand_regressions.rs": "4bdb28b6f0dc9315f498a14891d8fa301f92da2e8f8a3e296ef9d6dd077143d8",
+    "crates/turbo-dom/tests/fixtures/declared-decoration-jsdom27/control.json": "50fcd3c706dc9825fd5546ba5c755aa75448df45498955eaa3ba322d000c4aef",
+    "crates/turbo-dom/tests/fixtures/declared-decoration-jsdom27/probe.js": "c1696e026f0676854c8dd00c36ccc02d08a2553899c7106e65b12f545fe9b64a",
+    "crates/turbo-dom/tests/fixtures/npm-cssom-compat-159/CHROME159.json": "70ac346975d4f8afd0967b4a30927b258bae85f3fea25c3a3d1f1fec64a5e1a3",
+    "crates/turbo-dom/tests/fixtures/npm-cssom-compat-159/cases.json": "ef7cfc0091a35d3c6ae9f06aece79b14a70188eecdb810a4f9045710b8932f76",
+    "crates/turbo-dom/tests/fixtures/npm-cssom-compat-159/chrome.mjs": "94927750ca7a750bb657bb3b6c718148976b4fc0badc84ec38e61f010d7ef6c4",
+    "crates/turbo-dom/tests/fixtures/npm-cssom-compat-159/fixture.mjs": "8978c594312245a1104333b1ad8fe7d46e908dfbd6f5c87e8c9978b38d7bf9b5",
+    "scripts/generate-property-registry.py": "a7a421a741c7561efb4bee50cd2365d7d0bd7c606110f5ea284498e1a0113f31",
+    "crates/turbo-dom/src/rtdom/computed_css/candidate_set.rs": "dcf3da2c09715d7d784489cf165454470c1fd17046aa4161d23cccfe0b83f872",
+    "crates/turbo-dom/src/rtdom/computed_css/candidates.rs": "d10138fb07cb1403380904ce1f6a37ecf14ea897c3ceb918201df376d964c22e",
+    "crates/turbo-dom/src/rtdom/computed_css/declaration_model.rs": "ab40ce5dd9a09590e5c29035e8af15dffe7b98f387a16754d26d076a80f2ebc4",
+    "crates/turbo-dom/src/rtdom/computed_css/inline_style.rs": "5a9f29d3b8b828c7358ac02543ec7378d5a9c527e49f1f17a2313f302a7c2e67",
+    "crates/turbo-dom/src/rtdom/computed_css/payload.rs": "598ede11487efa6d84da91aff3b44aeca0b33a84f1d78a7d4fe86e1b8d4237e6",
+    "crates/turbo-dom/src/rtdom/computed_css/properties.rs": "d586066cb7a2f2cb2100884736d03bcdb4c6cc1b6b2fea21441f94a729a6afaf",
+    "crates/turbo-dom/src/rtdom/computed_css/property_registry.rs": "dc2b367e382cf64281cac63b3a6140bb818203895d0cd08b472655f12d4466cb",
+    "crates/turbo-dom/src/rtdom/computed_css/resolve.rs": "98de2265b6487be3c8b5839a90766946dce3dece388f60f22bb4477678a47eee",
+    "crates/turbo-dom/tests/computed_values_boundary_controls.rs": "8e63d771383f0edb1b5fa5615897afcb6aca3e1a3a9dd53c8a0d16675041c010"
+  },
+  "tests": {
+    "feature": {
+      "passed": 796,
+      "failed": 0,
+      "ignored": 9
+    },
+    "default": {
+      "passed": 574,
+      "failed": 0,
+      "ignored": 9
+    }
+  },
+  "focusedControls": 11,
+  "checks": {
+    "strictAllTargetFeatureClippy": true,
+    "fmt": true,
+    "coreCC9": true,
+    "generatedRegistryCheck": true
+  },
+  "evidence": {
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-output-first-tests.log": "94969e853e0c34daecbfc23a1e9929a3c5f472ef032ffc48994a5323b94ac1e5",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-output-axis-tests.log": "20c049abe1d41c5bcafd6c3ed25a020afd412306fb302a8d595a65c5639b9d3b",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-output-generator-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-output-core-complexity.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "limitations": [
+    "No new native/WASM artifact validation; older acceptance artifacts do not certify this source.",
+    "Coverage has not been remeasured for this source; prior safety source floors remain red.",
+    "Shorthand/alias CSSOM projection, Buffer provenance and production performance remain blockers.",
+    "Issue296 stays open; no runtime-default or compatibility-mode switch."
+  ],
+  "runnerCorrection": "The generator accepts no --check option; attempted --check CLI error preserved in css-output-gates/4.log, followed by successful documented no-argument check."
+}

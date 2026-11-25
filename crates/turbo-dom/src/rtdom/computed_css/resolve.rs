@@ -11,12 +11,22 @@ use super::selection::{select_style, SelectionError};
 use super::{ComputedCssError, CssText, CustomProperties};
 use std::collections::{BTreeMap, BTreeSet};
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct DeclaredTextDecoration {
+    pub value: CssText,
+    pub origin: CascadeOrigin,
+    pub important: bool,
+    pub inline: bool,
+    pub order: (usize, usize),
+}
 pub struct ComputedStyle {
     pub custom: CustomProperties,
     pub values: ComputedValues,
     /// Explicit author/user keys (and inherited explicit keys), kept separate from
     /// the full internal computed map used by the canonical layout peer.
     pub public_keys: BTreeSet<String>,
+    /// Winning admitted declared shorthand, not substituted/inherited used values.
+    pub declared_text_decoration: Option<DeclaredTextDecoration>,
 }
 pub struct TargetContext<'a> {
     pub tree_scope: u32,
@@ -62,6 +72,42 @@ fn explicit_keys(
         );
     }
     keys
+}
+
+fn declared_marker(
+    candidates: &super::candidate_set::CandidateSet<'_>,
+    values: &ComputedValues,
+    limits: ValueLimits,
+) -> Result<Option<DeclaredTextDecoration>, ResolveError> {
+    let Some(winner) = candidates
+        .declared_text_decoration
+        .iter()
+        .max_by_key(|candidate| candidate.rank())
+    else {
+        return Ok(None);
+    };
+    let units = winner.value.as_units().len();
+    let retained = values
+        .values
+        .values()
+        .try_fold(units, |total, value| {
+            total.checked_add(value.as_units().len())
+        })
+        .filter(|total| *total <= limits.retained_units);
+    if units > limits.computation.max_output_units || retained.is_none() {
+        return Err(ResolveError::Values(ValueError::Computation(
+            ComputedCssError::ResourceLimit,
+        )));
+    }
+    super::check_component_limits(winner.value, limits.computation)
+        .map_err(|error| ResolveError::Values(ValueError::Computation(error)))?;
+    Ok(Some(DeclaredTextDecoration {
+        value: winner.value.clone(),
+        origin: winner.origin,
+        important: winner.important,
+        inline: winner.inline,
+        order: winner.order,
+    }))
 }
 
 /// `parent` is an already-computed style, never a CSSOM used-value string map.
@@ -111,7 +157,9 @@ pub fn compute_style(
         limits.values,
     )
     .map_err(ResolveError::Values)?;
+    let declared_text_decoration = declared_marker(&candidates, &values, limits.values)?;
     Ok(ComputedStyle {
+        declared_text_decoration,
         custom: selected.custom,
         values,
         public_keys,

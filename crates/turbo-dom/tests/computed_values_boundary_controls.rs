@@ -232,6 +232,7 @@ fn selected_admission_rejects_invalid_display_before_value_computation_against_c
         let mut candidates = CandidateSet {
             ordinary: BTreeMap::new(),
             custom: BTreeMap::new(),
+            declared_text_decoration: Vec::new(),
         };
         inline.append(&mut candidates, 0, 0);
         let selected = select_style(

@@ -35,6 +35,13 @@ pub fn initial(name: &str, context: &InitialContext<'_>) -> Option<CssText> {
 /// the explicit `InitialContext` caller; no UA map is materialized here.
 #[must_use]
 pub fn context_free_initial(name: &str) -> Option<CssText> {
+    if matches!(name, "background-position-x" | "background-position-y") {
+        let value = super::property_registry::initial_single_value("background-position")?;
+        let axis = crate::rtdom::css_shorthand::expand_css("background-position", value)?
+            .into_iter()
+            .find(|axis| axis.name == name)?;
+        return Some(CssText::from_units(axis.value.encode_utf16().collect()));
+    }
     let value = super::property_data::lookup(name)
         .map(|entry| entry.initial)
         .or_else(|| context_independent_initial(name))?;
@@ -51,6 +58,13 @@ fn context_independent_initial(name: &str) -> Option<&'static str> {
         "position" => Some("static"),
         "width" | "height" => Some("auto"),
         "container-name" => Some("none"),
+        // Audited context-independent reset fields for admitted background and
+        // text-decoration shorthands. Metadata supplies values, not this policy.
+        "background-attachment"
+        | "background-clip"
+        | "background-origin"
+        | "background-size"
+        | "text-decoration-thickness" => super::property_registry::initial_single_value(name),
         _ => None,
     }
 }

@@ -5,6 +5,7 @@ use super::properties::WideKeyword;
 use super::CssText;
 use std::cmp::Reverse;
 
+#[derive(Clone, Copy)]
 pub struct Candidate<'a> {
     pub property: &'a str,
     pub value: &'a CssText,

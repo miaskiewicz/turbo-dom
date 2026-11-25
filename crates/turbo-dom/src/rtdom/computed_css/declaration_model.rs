@@ -4,7 +4,9 @@ use super::{
     valid_custom_value_syntax, ComputationLimits, ComputedCssError, CssDeclaration, CssSource,
     CssText,
 };
-use crate::rtdom::css_shorthand::{expand_css as expand, is_shorthand, longhand_alias};
+use crate::rtdom::css_shorthand::{
+    expand_css as expand, is_shorthand, longhand_alias, shorthand_value, Declaration,
+};
 
 pub struct PropertyTemplate {
     pub name: String,
@@ -15,6 +17,8 @@ pub struct PropertyTemplate {
 pub struct CompiledDeclaration {
     pub source_index: usize,
     pub properties: Vec<PropertyTemplate>,
+    /// Admitted declared shorthand spelling, independent of computed longhands.
+    pub declared_text_decoration: Option<CssText>,
 }
 
 pub fn compile_declarations(
@@ -23,14 +27,67 @@ pub fn compile_declarations(
 ) -> Result<Vec<CompiledDeclaration>, ComputedCssError> {
     let mut output = Vec::new();
     for (index, declaration) in source.iter().enumerate() {
-        if let Some(properties) = admit(declaration, limits)? {
+        if let Some(admitted) = admit(declaration, limits)? {
             output.push(CompiledDeclaration {
                 source_index: index,
-                properties,
+                declared_text_decoration: admitted.declared_text_decoration,
+                properties: admitted.properties,
             });
         }
     }
     Ok(output)
+}
+struct AdmittedDeclaration {
+    properties: Vec<PropertyTemplate>,
+    declared_text_decoration: Option<CssText>,
+}
+fn unmarked(properties: Vec<PropertyTemplate>) -> AdmittedDeclaration {
+    AdmittedDeclaration {
+        properties,
+        declared_text_decoration: None,
+    }
+}
+fn declared_decoration(
+    declaration: &CssDeclaration,
+    properties: &[PropertyTemplate],
+    limits: ComputationLimits,
+) -> Result<Option<CssText>, ComputedCssError> {
+    if !declaration.name.eq_ignore_ascii_case("text-decoration") {
+        return Ok(None);
+    }
+    if properties.iter().any(|property| property.pending_shorthand) {
+        return Ok(Some(declaration.value.clone()));
+    }
+    // Static expanded values originate in Rust Strings immediately above. Pending
+    // raw code-unit payloads use the separate branch and never pass this boundary.
+    let values: Vec<_> = properties
+        .iter()
+        .map(|property| {
+            String::from_utf16(
+                property
+                    .value
+                    .as_ref()
+                    .expect("static expanded shorthand owns value")
+                    .as_units(),
+            )
+            .expect("static expanded shorthand is encoded from Rust text")
+        })
+        .collect();
+    let entries: Vec<_> = properties
+        .iter()
+        .zip(&values)
+        .map(|(property, value)| Declaration {
+            name: &property.name,
+            value,
+            important: false,
+            pending: None,
+        })
+        .collect();
+    let value = shorthand_value("text-decoration", &entries);
+    if value.encode_utf16().count() > limits.max_output_units {
+        return Err(ComputedCssError::ResourceLimit);
+    }
+    Ok(Some(CssText::from_units(value.encode_utf16().collect())))
 }
 fn raw_property(name: String) -> Vec<PropertyTemplate> {
     vec![PropertyTemplate {
@@ -60,11 +117,11 @@ pub(super) fn admit_ordinary(
 fn admit(
     declaration: &CssDeclaration,
     limits: ComputationLimits,
-) -> Result<Option<Vec<PropertyTemplate>>, ComputedCssError> {
+) -> Result<Option<AdmittedDeclaration>, ComputedCssError> {
     if declaration.name.starts_with("--") {
         return Ok((declaration.name.len() > 2
             && valid_custom_value_syntax(&declaration.value, limits)?)
-        .then(|| raw_property(declaration.name.clone())));
+        .then(|| unmarked(raw_property(declaration.name.clone()))));
     }
     // Full ordinary admission already performs the same strict component/var
     // syntax validation; do not tokenize every ordinary declaration twice.
@@ -74,32 +131,35 @@ fn admit(
         DeclarationAdmission::Valid(value) => Some(value),
         DeclarationAdmission::Invalid => None,
         // Keep unsupported grammar until matching/cascade selects the candidate.
-        DeclarationAdmission::RequiresGrammar(_) => return Ok(Some(raw_property(name))),
+        DeclarationAdmission::RequiresGrammar(_) => return Ok(Some(unmarked(raw_property(name)))),
     };
     let Some(value) = admitted else {
         return Ok(None);
     };
     if !is_shorthand(&name) {
-        return Ok(Some(raw_property(
+        return Ok(Some(unmarked(raw_property(
             longhand_alias(&name).unwrap_or(&name).to_owned(),
-        )));
+        ))));
     }
     let Some(expanded) = expand(&name, &value) else {
         return Ok(None);
     };
-    Ok(Some(
-        expanded
-            .into_iter()
-            .map(|property| PropertyTemplate {
-                name: property.name.to_owned(),
-                value: property
-                    .pending
-                    .is_none()
-                    .then(|| CssText::from_units(property.value.encode_utf16().collect())),
-                pending_shorthand: property.pending.is_some(),
-            })
-            .collect(),
-    ))
+    let properties: Vec<_> = expanded
+        .into_iter()
+        .map(|property| PropertyTemplate {
+            name: property.name.to_owned(),
+            value: property
+                .pending
+                .is_none()
+                .then(|| CssText::from_units(property.value.encode_utf16().collect())),
+            pending_shorthand: property.pending.is_some(),
+        })
+        .collect();
+    let declared_text_decoration = declared_decoration(declaration, &properties, limits)?;
+    Ok(Some(AdmittedDeclaration {
+        properties,
+        declared_text_decoration,
+    }))
 }
 
 #[cfg(test)]

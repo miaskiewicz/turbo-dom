@@ -55,7 +55,7 @@ impl InlineStyle {
     ) {
         for declaration in &self.compiled {
             let source = &self.declarations[declaration.source_index];
-            for property in &declaration.properties {
+            for (index, property) in declaration.properties.iter().enumerate() {
                 let candidate = Candidate {
                     property: &property.name,
                     value: property.value.as_ref().unwrap_or(&source.value),
@@ -70,15 +70,12 @@ impl InlineStyle {
                     proximity: usize::MAX,
                     order: (usize::MAX, declaration.source_index),
                 };
-                let target = if property.name.starts_with("--") {
-                    &mut set.custom
+                let marker = if index == 0 {
+                    declaration.declared_text_decoration.as_ref()
                 } else {
-                    &mut set.ordinary
+                    None
                 };
-                target
-                    .entry(property.name.clone())
-                    .or_default()
-                    .push(candidate);
+                set.push_property(candidate, marker);
             }
         }
     }
@@ -126,6 +123,7 @@ mod tests {
                 .unwrap();
         let mut set = CandidateSet {
             custom: BTreeMap::new(),
+            declared_text_decoration: Vec::new(),
             ordinary: BTreeMap::new(),
         };
         inline.append(&mut set, 2, 4);
