@@ -17,3 +17,11 @@ These are shared prerequisites for #559 and #296, not a claim that either comple
 `valid_custom_value_syntax` reuses the existing strict component/variable grammar and returns false for malformed syntax before cascade selection. It does not substitute or decide whether a valid unresolved/cyclic variable later becomes guaranteed-invalid. Typed input/nesting failures propagate separately. The generic condition/resource guard remains limits-only.
 
 Independent SVG-as-image Chromium inverses distinguish malformed `var()`/malformed unused fallback declarations (discard before selection, preserving earlier red) from valid cycles (selected then unset, inheriting green). The three malformed-declaration cases were causally red before this accessor/admission stage. Core full strict Clippy and original LLVM floor100 pass at13,855/13,855 coverable lines; the new public adapter suite has8 passing tests. No embedding default or limit changed.
+
+## Post-substitution custom CSS-wide values
+
+The shared resolver now applies the same keyword handler before and after substitution, before memoizing each property. `inherit`/`unset` use that property's computed parent; `initial` is guaranteed-invalid. A dependency therefore observes the correctly resolved inherited value, not a literal keyword that could later inherit from the wrong property. Cyclic custom values remain invalid even if their fallback spells `revert`.
+
+`compute_custom_properties_detailed` adds `CustomComputation::{Computed,RequiresCascade{property,keyword}}` and `RollbackKeyword::{Revert,RevertLayer}`. A request identifies the actual dependency property that produced rollback. Each retry creates a fresh memo/cycle set. The legacy API maps the request to its unchanged `ComputedCssError::RequiresCascade`; it never guesses a lower candidate.
+
+The legacy causal baseline had3failed tests and1quoted-word inverse passing; all6 new controls now pass, including dependency identity, cyclic rollback and fresh retry. Independent Chrome159 SVG controls confirm post-var inheritance/initial and dependency behavior. Full original core100 is13,879/13,879 lines with strict core all-target Clippy and CC9 passing. Neither the generic limits-only condition guard nor any runtime default/limit changed.
