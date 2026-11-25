@@ -5,6 +5,79 @@ import { createComputedStyleProxy } from './css-computed-proxy.mjs';
 
 const encode = JSON.stringify;
 const decode = JSON.parse;
+const freezePresentation = Object.freeze;
+const presentationEntries = Object.entries;
+const presentationPrototype = Object.getPrototypeOf;
+const presentationDefine = Object.defineProperty;
+const presentationArray = Array.isArray;
+const PresentationWeakMap = WeakMap;
+const presentationGet = WeakMap.prototype.get,
+  presentationSet = WeakMap.prototype.set,
+  presentationDelete = WeakMap.prototype.delete;
+const presentationOwn = Object.hasOwn;
+const presentationApply = Reflect.apply;
+const plainPresentationPrototype = Object.prototype;
+function dataProperty(target, key, value) {
+  presentationDefine(target, key, { __proto__: null, value, writable: true, enumerable: true, configurable: true });
+}
+function presentationContainer(value) {
+  const array = presentationArray(value),
+    proto = presentationPrototype(value);
+  if (!array && proto !== plainPresentationPrototype && proto !== null)
+    throw new TypeError('turbo-dom: lazy property context cannot retain native or opaque handles');
+  return array ? [] : Object.create(null);
+}
+function cloneData(value, seen, created) {
+  if (typeof value === 'function') throw new TypeError('turbo-dom: lazy property context must be stateless data');
+  if (value === null || typeof value !== 'object') return value;
+  const prior = presentationApply(presentationGet, seen, [value]);
+  if (prior) return prior;
+  const owned = presentationContainer(value);
+  presentationApply(presentationSet, seen, [value, owned]);
+  dataProperty(created, created.length, value);
+  for (const [key, entry] of presentationEntries(value)) dataProperty(owned, key, cloneData(entry, seen, created));
+  return freezePresentation(owned);
+}
+function immutableData(value, seen) {
+  const created = [];
+  try {
+    return cloneData(value, seen, created);
+  } catch (error) {
+    for (let index = 0; index < created.length; index++) presentationApply(presentationDelete, seen, [created[index]]);
+    throw error;
+  }
+}
+function immutableReadContext(context) {
+  const copy = Object.create(null);
+  for (const [key, value] of presentationEntries(context)) dataProperty(copy, key, value);
+  return freezePresentation(copy);
+}
+function propertyContext(resolved, request, context, snapshots) {
+  const row = immutableData(resolved.row, snapshots),
+    batch = immutableData(resolved.batch, snapshots);
+  const providerContext = immutableData(request.providerContext, snapshots);
+  return freezePresentation({ row, batch, providerContext, context: immutableReadContext(context) });
+}
+function presentationOptions(resolveProperty, row, resolved, request, context, snapshots) {
+  if (resolveProperty === undefined) return undefined;
+  return {
+    resolveProperty,
+    propertyContext: row.usedProperties.length ? propertyContext(resolved, request, context, snapshots) : undefined,
+  };
+}
+function usedMetadata(row, snapshots) {
+  const metadata = row.usedProperties;
+  if (!presentationArray(metadata)) throw new TypeError('turbo-dom: missing or invalid Rust usedProperties metadata');
+  for (let index = 0; index < metadata.length; index++) {
+    const name = metadata[index];
+    if (typeof name !== 'string' || name.length === 0)
+      throw new TypeError('turbo-dom: invalid Rust usedProperties metadata');
+    if (!presentationOwn(row.values ?? {}, name) && !presentationOwn(row.custom ?? {}, name))
+      throw new TypeError('turbo-dom: invalid Rust usedProperties metadata');
+  }
+  return immutableData(metadata, snapshots);
+}
+
 const object = (value) => value !== null && (typeof value === 'object' || typeof value === 'function');
 export class SharedCssCapabilityError extends Error {
   constructor(message) {
@@ -135,12 +208,14 @@ function copyResultValues(values) {
   }
   return copy;
 }
-function ownResult(row) {
-  return { values: copyResultValues(row.values), custom: copyResultValues(row.custom) };
+function ownResult(row, resolveProperty, snapshots) {
+  const owned = { values: copyResultValues(row.values), custom: copyResultValues(row.custom) };
+  if (resolveProperty !== undefined) owned.usedProperties = usedMetadata(row, snapshots);
+  return owned;
 }
 function resultProxy(entry, version) {
   if (entry.version !== version) {
-    entry.proxy = createComputedStyleProxy(entry.row, version);
+    entry.proxy = createComputedStyleProxy(entry.row, version, entry.presentation);
     entry.version = version;
   }
   return entry.proxy;
@@ -179,12 +254,16 @@ export function createSharedComputedStyle({
   prepareRequest,
   resolveRequest,
   finalizeResult,
+  resolveProperty,
   createFacts,
   encodeRequest = encode,
   decodeResponse = decode,
   intrinsics = { WeakRef: globalThis.WeakRef, FinalizationRegistry: globalThis.FinalizationRegistry },
 }) {
   if (typeof finalizeResult !== 'function') throw new TypeError('turbo-dom: shared CSS requires finalizeResult');
+  if (resolveProperty !== undefined && typeof resolveProperty !== 'function')
+    throw new TypeError('turbo-dom: resolveProperty must be a function');
+  const presentationSnapshots = resolveProperty === undefined ? null : new PresentationWeakMap();
   let documents = new WeakMap(),
     owners,
     closed = false;
@@ -231,12 +310,16 @@ export function createSharedComputedStyle({
           batch: resolved.batch,
           providerContext: request.providerContext,
         }),
+        resolveProperty,
+        presentationSnapshots,
       );
-      const proxy = createComputedStyleProxy(row, context.version);
+      const presentation = presentationOptions(resolveProperty, row, resolved, request, context, presentationSnapshots);
+      const proxy = createComputedStyleProxy(row, context.version, presentation);
       entry = {
         row,
         version: context.version,
         proxy,
+        presentation,
         key,
         generation: state.generation,
         renderToken: context.renderToken,
