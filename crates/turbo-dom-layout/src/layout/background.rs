@@ -693,6 +693,26 @@ mod tests {
     }
 
     #[test]
+    fn nonfinite_gradient_direction_does_not_emit_an_invalid_tile() {
+        let square = (0.0, 0.0, 10.0, 10.0);
+        let props = props_of(&[]);
+        assert!(layer(
+            NodeId(1),
+            &props,
+            &Source::Gradient(test_gradient(f32::INFINITY)),
+            (square, square, BorderRadii::ZERO)
+        )
+        .is_empty());
+        assert!(!layer(
+            NodeId(1),
+            &props,
+            &Source::Gradient(test_gradient(90.0)),
+            (square, square, BorderRadii::ZERO)
+        )
+        .is_empty());
+    }
+
+    #[test]
     fn gradients_fill_the_area_unless_sized() {
         let gradient = Source::Gradient(test_gradient(90.0));
         assert_eq!(
