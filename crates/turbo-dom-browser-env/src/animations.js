@@ -3118,18 +3118,22 @@
     if (cssTransitionsOn) cssTransitions(element, read, underlying, hidden);
   }
   // getAnimations() flushes style: every element of the tree resolves its style once.
+  function cssFlushVisit(node, batch) {
+    for (let child = apply(firstChild, node, []); child; child = apply(nextSibling, child, [])) {
+      if (nodeType(child) !== 1) continue;
+      if (!ns.refreshCssLifecycleInputs(child, batch)) throw new ErrorType('CSS effect discovery is unavailable during another style read');
+      cssFlushVisit(child, batch);
+    }
+  }
   function cssFlush(node) {
     if (!computedStyle) return;
-    cssKeyframes = null;
-    const visit = parent => {
-      for (let child = apply(firstChild, parent, []); child; child = apply(nextSibling, child, [])) {
-        if (nodeType(child) !== 1) continue;
-        apply(computedStyle, g, [child]).opacity;
-        visit(child);
-      }
-    };
-    visit(node);
-    cssKeyframes = null;
+    if (inspectingEffects || suppressStyle) throw new ErrorType('CSS effect discovery is unavailable during another style read');
+    const outerClock = inspectionClock, outerUnavailable = inspectionUnavailable;
+    inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
+    try {
+      inspectionClock = outerClock === null ? clock() : outerClock;
+      cssFlushVisit(node, ns.createCssEffectInputBatch(true));
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionClock = outerClock; inspectionUnavailable = outerUnavailable; }
   }
   const cssClass = record => record.css ? record.css.kind : SCRIPT;
   // https://drafts.csswg.org/css-transitions-2/#animation-composite-order and its css-animations-2
