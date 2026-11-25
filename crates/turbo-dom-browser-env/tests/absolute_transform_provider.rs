@@ -119,3 +119,83 @@ fn local_absolute_matrix_is_not_composed_with_its_transformed_ancestor() {
         assert_eq!(eval(scope, "__calls").integer_value(scope), Some(0));
     });
 }
+
+#[test]
+fn reference_transform_animation_discovery_does_not_need_used_geometry() {
+    let mut rows = Vec::new();
+    for operation in ["document.getAnimations()", "target.getAnimations()"] {
+        for throws in [false, true] {
+            with_dom(|scope| {
+                let provider = if throws {
+                    "__calls++;throw Error('discovery provider sentinel')"
+                } else {
+                    "__calls++;return[100,20,100,20,24]"
+                };
+                browser_env::run_engine_script(
+                    scope,
+                    &format!("__tsNs.layoutUsedSize=()=>{{{provider}}}"),
+                )
+                .unwrap();
+                eval(scope,"document.head.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}</style>';target.style.cssText='width:100px;height:20px;transform:translateX(50%);animation:probe 1000ms linear both paused';__calls=0");
+                eval(scope, &format!("globalThis.discovered={operation}"));
+                let calls = eval(scope, "__calls").integer_value(scope).unwrap();
+                assert!(eval(scope,"discovered.length===1&&discovered[0] instanceof CSSAnimation&&discovered[0].animationName==='probe'&&discovered[0].playState==='paused'&&discovered[0].currentTime===0").is_true());
+                assert!(eval(scope,"discovered[0].effect.getKeyframes()[0].opacity==='0.5'&&discovered[0].effect.getKeyframes()[1].opacity==='1'").is_true());
+                let total_calls = eval(scope, "__calls").integer_value(scope).unwrap();
+                eprintln!("reference-discovery operation={operation} provider_throws={throws} discovery_provider_calls={calls} model_inspection_calls={}",total_calls-calls);
+                rows.push((operation, throws, calls));
+            });
+        }
+    }
+    assert!(
+        rows.iter().all(|(_, _, calls)| *calls == 0),
+        "lifecycle discovery must not resolve used transform geometry: {rows:?}"
+    );
+}
+
+#[test]
+fn explicit_reference_transform_reads_still_require_the_current_native_box() {
+    with_dom(|scope| {
+        browser_env::run_engine_script(scope,"globalThis.__referenceWidth=100;__tsNs.layoutUsedSize=()=>{__calls++;return[__referenceWidth,20,__referenceWidth,20,24]}").unwrap();
+        eval(
+            scope,
+            "target.style.cssText='width:100px;height:20px;transform:translateX(50%)';__calls=0",
+        );
+        assert_eq!(
+            eval(scope, "getComputedStyle(target).transform").to_rust_string_lossy(scope),
+            "matrix(1, 0, 0, 1, 50, 0)"
+        );
+        assert!(eval(scope, "__calls>0").is_true());
+        eval(
+            scope,
+            "__referenceWidth=200;target.style.width='200px';__calls=0",
+        );
+        assert_eq!(
+            eval(scope, "getComputedStyle(target).transform").to_rust_string_lossy(scope),
+            "matrix(1, 0, 0, 1, 100, 0)"
+        );
+        assert!(eval(scope, "__calls>0").is_true());
+    });
+}
+
+#[test]
+fn discovery_provider_attempts_are_specific_to_reference_transform_resolution() {
+    let mut rows = Vec::new();
+    for transform in ["none", "matrix(1,0,0,1,50,0)", "translateX(50%)"] {
+        with_dom(|scope| {
+            browser_env::run_engine_script(
+                scope,
+                "__tsNs.layoutUsedSize=()=>{__calls++;return[100,20,100,20,24]}",
+            )
+            .unwrap();
+            eval(scope,"document.head.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}</style>'");
+            eval(scope,&format!("target.style.cssText='width:100px;height:20px;transform:{transform};animation:probe 1000ms linear both paused';__calls=0;globalThis.motionCount=document.getAnimations().length"));
+            let calls = eval(scope, "__calls").integer_value(scope).unwrap();
+            assert!(eval(scope, "motionCount===1").is_true());
+            eprintln!("discovery-transform-inverse transform={transform} provider_calls={calls}");
+            rows.push(calls);
+        });
+    }
+    assert_eq!(&rows[..2], [0, 0]);
+    assert!(rows[2] > 0);
+}
