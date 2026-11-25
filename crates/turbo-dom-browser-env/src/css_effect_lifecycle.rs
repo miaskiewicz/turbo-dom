@@ -43,8 +43,10 @@ pub struct CssEffectLifecycle {
 }
 
 /// An instantaneous sample. Synchronizes only this target's underlying cascade and
-/// its style dependencies; does not compose effects, resolve transforms, call native
-/// layout, flush the document, advance frames, finish or cancel animations.
+/// its style dependencies. Canonical synchronization may sample scalar `display`
+/// alone to retain a transition's exiting box. It never composes other properties,
+/// resolves transforms, calls native layout, flushes the document or advances frames.
+/// Ordinary CSS synchronization may create/cancel effects when their source changes.
 ///
 /// The isolate and any separately attached context microtask queue must use explicit
 /// checkpoints. The default isolate policy is checked; embedders installing a custom

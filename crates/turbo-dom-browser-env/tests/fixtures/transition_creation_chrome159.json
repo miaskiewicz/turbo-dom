@@ -1,0 +1,967 @@
+{
+  "browser": "159.0.8154.6",
+  "casesSha256": "d67be55a3ea79c3700b037f96c4c4582e612f0d1331d55e1046af7485a4c7ee1",
+  "runnerSha256": "2532cb0d3898c3f6d47750bfe757b65d60cacc33dfa01bac2de0a67ef1f9b725",
+  "results": [
+    {
+      "id": "max-width-none-to-length-normal",
+      "property": "max-width",
+      "before": "none",
+      "after": "100px",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "none",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "100px",
+        "sampled": "100px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "max-width-length-to-none-normal",
+      "property": "max-width",
+      "before": "100px",
+      "after": "none",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "100px",
+          "width": 100
+        },
+        "beforeEffects": 0,
+        "afterForced": "none",
+        "sampled": "none",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "max-width-none-to-length-discrete",
+      "property": "max-width",
+      "before": "none",
+      "after": "100px",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "none",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "none",
+        "sampled": "none",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "max-width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "none",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "100px",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "max-width-length-to-none-discrete",
+      "property": "max-width",
+      "before": "100px",
+      "after": "none",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "100px",
+          "width": 100
+        },
+        "beforeEffects": 0,
+        "afterForced": "100px",
+        "sampled": "100px",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "max-width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "100px",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "none",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "width-auto-to-length-normal",
+      "property": "width",
+      "before": "auto",
+      "after": "100px",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "400px",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "100px",
+        "sampled": "100px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "width-length-to-auto-normal",
+      "property": "width",
+      "before": "100px",
+      "after": "auto",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "100px",
+          "width": 100
+        },
+        "beforeEffects": 0,
+        "afterForced": "400px",
+        "sampled": "400px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "width-auto-to-length-discrete",
+      "property": "width",
+      "before": "auto",
+      "after": "100px",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "400px",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "400px",
+        "sampled": "400px",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "auto",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "100px",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "width-length-to-auto-discrete",
+      "property": "width",
+      "before": "100px",
+      "after": "auto",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "100px",
+          "width": 100
+        },
+        "beforeEffects": 0,
+        "afterForced": "100px",
+        "sampled": "100px",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "100px",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "auto",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "width-auto-to-length-intrinsic",
+      "property": "width",
+      "before": "auto",
+      "after": "100px",
+      "interpolateSize": "allow-keywords",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "400px",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "400px",
+        "sampled": "325px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "allow-keywords",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "auto",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "100px",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "width-length-to-auto-intrinsic",
+      "property": "width",
+      "before": "100px",
+      "after": "auto",
+      "interpolateSize": "allow-keywords",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "100px",
+          "width": 100
+        },
+        "beforeEffects": 0,
+        "afterForced": "100px",
+        "sampled": "175px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "allow-keywords",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "100px",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "width": "auto",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "max-width-length-positive",
+      "property": "max-width",
+      "before": "50px",
+      "after": "100px",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "50px",
+          "width": 50
+        },
+        "beforeEffects": 0,
+        "afterForced": "50px",
+        "sampled": "62.5px",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "max-width",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "50px",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "maxWidth": "100px",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "opacity-positive",
+      "property": "opacity",
+      "before": "0",
+      "after": "1",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "0",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "0",
+        "sampled": "0.25",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "opacity",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "opacity": "0",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "opacity": "1",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "opacity-reverse-positive",
+      "property": "opacity",
+      "before": "1",
+      "after": "0",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "1",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "1",
+        "sampled": "0.75",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "opacity",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "opacity": "1",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "opacity": "0",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "opacity-equal-negative",
+      "property": "opacity",
+      "before": "1",
+      "after": "1",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "1",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "1",
+        "sampled": "1",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "visibility-hidden-visible-normal",
+      "property": "visibility",
+      "before": "hidden",
+      "after": "visible",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "hidden",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "hidden",
+        "sampled": "visible",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "visibility",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "hidden",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "visible",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "visibility-visible-hidden-normal",
+      "property": "visibility",
+      "before": "visible",
+      "after": "hidden",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "visible",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "visible",
+        "sampled": "visible",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "visibility",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "visible",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "hidden",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "visibility-collapse-hidden-normal",
+      "property": "visibility",
+      "before": "collapse",
+      "after": "hidden",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "collapse",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "hidden",
+        "sampled": "hidden",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "visibility-collapse-hidden-discrete",
+      "property": "visibility",
+      "before": "collapse",
+      "after": "hidden",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "collapse",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "collapse",
+        "sampled": "collapse",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "visibility",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "collapse",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "visibility": "hidden",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "display-block-none-normal",
+      "property": "display",
+      "before": "block",
+      "after": "none",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "block",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "none",
+        "sampled": "none",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "display-none-block-normal",
+      "property": "display",
+      "before": "none",
+      "after": "block",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "none",
+          "width": 0
+        },
+        "beforeEffects": 0,
+        "afterForced": "block",
+        "sampled": "block",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "display-block-none-discrete",
+      "property": "display",
+      "before": "block",
+      "after": "none",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "block",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "block",
+        "sampled": "block",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "display",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "display": "block",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "display": "none",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "display-none-block-discrete",
+      "property": "display",
+      "before": "none",
+      "after": "block",
+      "behavior": "allow-discrete",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "none",
+          "width": 0
+        },
+        "beforeEffects": 0,
+        "afterForced": "block",
+        "sampled": "block",
+        "computedBehavior": "allow-discrete",
+        "computedInterpolateSize": "numeric-only",
+        "effects": []
+      }
+    },
+    {
+      "id": "transform-none-positive",
+      "property": "transform",
+      "before": "none",
+      "after": "translateX(100px)",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "none",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "matrix(1, 0, 0, 1, 0, 0)",
+        "sampled": "matrix(1, 0, 0, 1, 25, 0)",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "transform",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "transform": "none",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "transform": "translateX(100px)",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "transform-none-reverse-positive",
+      "property": "transform",
+      "before": "translateX(100px)",
+      "after": "none",
+      "result": {
+        "supports": true,
+        "before": {
+          "computed": "matrix(1, 0, 0, 1, 100, 0)",
+          "width": 400
+        },
+        "beforeEffects": 0,
+        "afterForced": "matrix(1, 0, 0, 1, 100, 0)",
+        "sampled": "matrix(1, 0, 0, 1, 75, 0)",
+        "computedBehavior": "normal",
+        "computedInterpolateSize": "numeric-only",
+        "effects": [
+          {
+            "constructor": "CSSTransition",
+            "transitionProperty": "transform",
+            "playState": "paused",
+            "currentTime": 2500,
+            "timing": {
+              "delay": 0,
+              "direction": "normal",
+              "duration": 10000,
+              "easing": "linear",
+              "endDelay": 0,
+              "fill": "backwards",
+              "iterationStart": 0,
+              "iterations": 1
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "easing": "linear",
+                "composite": "auto",
+                "transform": "translateX(100px)",
+                "computedOffset": 0
+              },
+              {
+                "offset": 1,
+                "easing": "linear",
+                "composite": "auto",
+                "transform": "none",
+                "computedOffset": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
