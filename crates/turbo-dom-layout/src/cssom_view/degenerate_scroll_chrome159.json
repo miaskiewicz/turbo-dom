@@ -1,0 +1,440 @@
+{
+  "browser": "159.0.8154.6",
+  "cases": [
+    {
+      "id": "leaf",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject></div></div>",
+      "sourceSha256": "e672605dcd5de9d4ad9e4dc37c04a2e12d8765499008692b2ecb87f9979d7089",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          20,
+          10
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "flow-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "afed7493763b5e4217a7294243a8a65881b9acd41a0c8828b27bbf122b307b33",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "translated-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='width:15px;height:8px;transform:translate(30px,12px)'></div></div></div>",
+      "sourceSha256": "3402f27abc649ef6993406327b1f1c68c00d75b5b42051c492bf84fd936bcc3b",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          20
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "scaled-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='width:15px;height:8px;transform:scale(2);transform-origin:0 0'></div></div></div>",
+      "sourceSha256": "482885b950161dca0f081db47e87670d998e05f970df79b021c88ef196b2d4bb",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          30,
+          16
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "rotated-positive-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scaleX(0)}</style><div id=outer><div id=subject><div style='width:15px;height:8px;transform:translate(10px,0) rotate(90deg);transform-origin:0 0'></div></div></div>",
+      "sourceSha256": "cd9d83bf58cb601867e61cf60254b4d232a9ab94e2502d1c77d4523200c6df62",
+      "observation": {
+        "rect": [
+          20,
+          20,
+          0,
+          10
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          20,
+          15
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          5
+        ]
+      }
+    },
+    {
+      "id": "singular-ancestor",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;transform:scale(0)}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:rotate(25deg)}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "3302c937681ccc0182dc0abbec766770c57428990ab18ad5081e40fb940bd7dd",
+      "observation": {
+        "rect": [
+          50,
+          50,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "absolute-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='position:absolute;left:40px;top:25px;width:15px;height:8px'></div></div></div>",
+      "sourceSha256": "8bf7e7b51a6f9bfbd457f89fd0c38736dc91e59b81683256d75c9bef772d5ea3",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          55,
+          33
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "clipped-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='width:10px;height:8px;overflow:hidden'><div style='width:80px;height:60px'></div></div></div></div>",
+      "sourceSha256": "2506c07239ea2a3230de16c0c3583c9dfe71409ed9fb3a21de5b2773923892a8",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          20,
+          10
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "visible-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0)}</style><div id=outer><div id=subject><div style='width:10px;height:8px;overflow:visible'><div style='width:80px;height:60px'></div></div></div></div>",
+      "sourceSha256": "c75df227dd5c1eb43b98b378d024aa2cf066505206fd5ebffe68a08078ba08b0",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          80,
+          60
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "rtl-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0);direction:rtl}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "b8c1427a2d582b7b72c2e5411742e791fafbb877356af6501449e765f1b2d6a1",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          -5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "ripple-with-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0);opacity:.1}</style><div id=outer><div id=subject><span style='position:absolute;inset:0;width:100%;height:100%;border-radius:50%'></span></div></div>",
+      "sourceSha256": "40b1b5f5f745005f6e21dea1cd2e57bf4ae428113dc37256db2d6aa081f452b6",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          20,
+          10
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "root-singular-control",
+      "html": "<!doctype html><style>html,body{margin:0}html{transform:scale(0)}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:none}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "2b45e5c8e5bd4bc04edf0cbc962e80d7e114e205cd7eafe46ac732b9bb6c9ba8",
+      "observation": {
+        "rect": [
+          200,
+          50,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "invertible-control",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(2)}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "88e710248bbaa89f2dce3d5135fb0675dd30c4382bc7a17c4490205e56c6c44b",
+      "observation": {
+        "rect": [
+          0,
+          15,
+          40,
+          20
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "id": "visible-ripple-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0);overflow:visible;opacity:.1}</style><div id=outer><div id=subject><span style='position:absolute;inset:0;width:100%;height:100%;border-radius:50%'></span></div></div>",
+      "sourceSha256": "bbcb75e991e4cea667457b8180f1b7c1f2efa00a896562e69246eed5dc7f2ed0",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          20,
+          10
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "visible-overflow-child",
+      "html": "<!doctype html><style>html,body{margin:0}html{}#outer{position:relative;width:100px;height:100px;}#subject{position:absolute;left:10px;top:20px;width:20px;height:10px;overflow:auto;transform:scale(0);overflow:visible}</style><div id=outer><div id=subject><div style='width:45px;height:25px'></div></div></div>",
+      "sourceSha256": "0cbdac6642250418621a60a5612b539663b4b920cb05b75cd1ad1c529d7e394f",
+      "observation": {
+        "rect": [
+          20,
+          25,
+          0,
+          0
+        ],
+        "client": [
+          20,
+          10
+        ],
+        "scroll": [
+          45,
+          25
+        ],
+        "viewport": [
+          400,
+          300
+        ],
+        "position": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}
