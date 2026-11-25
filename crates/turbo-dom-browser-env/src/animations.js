@@ -220,6 +220,7 @@
     const match = intrinsic.exec(LENGTH, text);
     if (!match) return null;
     const value = +match[1], unit = intrinsic.toLowerCase(match[2]);
+    if (context.absoluteOnly && (unit === 'em' || unit === 'rem')) return null;
     if (unit === '') return value === 0 ? { kind: 'length', value: 0, unit: 'px' } : null;
     if (unit === 'em') return { kind: 'length', value: value * context.fontSize, unit: 'px' };
     if (unit === '%') return { kind: 'length', value, unit: '%' };
@@ -1340,6 +1341,10 @@
     if (typeof text !== 'string') return null;
     if (intrinsic.test(/^\s*$/, text)) return text;
     if (intrinsic.test(/^\s*none\s*$/i, text)) return 'none';
+    // Resolve context-independent lists before asking the host for a used box.
+    const absolute = parseResolvedTransform(text, NaN, null, null, true);
+    const resolved = absolute === null ? null : resolvedTransformText(absolute);
+    if (resolved !== null) return resolved;
     const box = layoutBox(element);
     // turbo-dom#373: the layout reports the used font size as `box[4]` (the fifth entry,
     // added for em resolution in #353); prefer it, so an element with an inherited
@@ -1351,14 +1356,17 @@
     const borderW = boxMetric(box, 0);
     const borderH = boxMetric(box, 1);
     const list = parseResolvedTransform(text, em, borderW, borderH);
-    if (list === null) return null;
+    return list === null ? null : resolvedTransformText(list);
+  };
+  function resolvedTransformText(list) {
     if (!list.length) return 'none';
     const matrix = listMatrix(list);
+    for (let i = 0; i < matrix.length; i++) if (!isFinite(matrix[i])) return null;
     // Blink's matrix serialization snaps components under ~1e-6 to zero, so trig-driven
     // neighbours of a right angle (`rotateX(90deg) rotateY(45deg)`) do not leak as `6e-17`.
     for (let i = 0; i < 16; i++) if (abs(matrix[i]) < 1e-6) matrix[i] = 0;
     return serializeTransformMatrix(matrix, list);
-  };
+  }
   function serializeTransformMatrix(m, list) {
     let three = false;
     for (let i = 0; i < list.length; i++) if (list[i].three) { three = true; break; }
@@ -1368,7 +1376,7 @@
   // Parse a transform text into primitives whose `v` is already resolved to px / radians /
   // numbers. Returns null if a percentage translate has no containing-block measure or any
   // token is unparseable; `[]` for `none`.
-  function parseResolvedTransform(text, em, borderW, borderH) {
+  function parseResolvedTransform(text, em, borderW, borderH, absoluteOnly) {
     const trimmed = intrinsic.trim(text);
     if (intrinsic.test(/^none$/i, trimmed)) return [];
     const pattern = /\s*([a-zA-Z0-9]+)\(([^()]*)\)\s*/y;
@@ -1381,7 +1389,7 @@
       at = pattern.lastIndex;
       const name = intrinsic.toLowerCase(match[1]);
       const args = intrinsic.map(intrinsic.split(match[2], ','), part => intrinsic.trim(part));
-      const fn = resolvedFunction(name, args, em, borderW, borderH);
+      const fn = resolvedFunction(name, args, em, borderW, borderH, absoluteOnly);
       if (!fn) return null;
       push(list, fn);
     }
@@ -1396,14 +1404,13 @@
     translatez: { min: 1, max: 1, bases: () => [0], build: translateZ },
     translate3d: { min: 3, max: 3, bases: (w, h) => [w, h, 0], build: translate3d },
   };
-  function resolvedFunction(name, args, em, borderW, borderH) {
+  function resolvedFunction(name, args, em, borderW, borderH, absoluteOnly) {
     const count = (a, b) => args.length >= a && args.length <= b;
     const resolveLen = (token, base) => {
-      const parsed = parseLength(token, { fontSize: em });
+      const parsed = parseLength(token, { fontSize: em, absoluteOnly });
       if (!parsed) return null;
-      if (parsed.unit === 'px') return parsed.value;
-      if (parsed.unit === '%') return base === null ? null : parsed.value / 100 * base;
-      return null;
+      const value = parsed.unit === 'px' ? parsed.value : parsed.unit === '%' && base !== null ? parsed.value / 100 * base : null;
+      return value !== null && isFinite(value) ? value : null;
     };
     const lengths = (bases) => {
       const out = [];
