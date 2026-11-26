@@ -228,6 +228,16 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Packed N-API after inheritance-chain assembly (2026-11-26)
+
+Across seven ABBA blocks, the packed Rust CSS candidate with the `aa69a733`
+adapter took 13.69% more wall time than the preserved legacy JavaScript
+CSS build at the median. Median process times were 1.537 s for Rust and
+1.396 s for legacy JS. Rust won 0 of seven blocks. Both packages passed
+the same 28 tests in every timed process. The Rust CSS preflight passed separately.
+
+[Raw timings, fixture and package hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-chain/LEGACY.json)
+
 ### Rust CSS capture CPU (2026-11-26)
 
 On the packed N-API candidate, 100 repeated DOM captures used 14.1% less CPU
