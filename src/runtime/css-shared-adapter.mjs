@@ -322,17 +322,17 @@ function freezeMatchData(value) {
  for (let index = 0; index < keys.length; index++) freezeMatchData(value[keys[index]]);
  return cacheFreeze(value);
 }
-function collectContextMatches(facts, active) {
+function collectContextMatches(facts, active, trustedUnscoped = false) {
  const { snapshot, context, contextual, routing, navigator } = active;
  facts.contextual ??= compileSharedShadowFacts(facts.metadata, navigator !== undefined);
- return facts.contextual.collect(snapshot, context.document, contextual, routing, navigator);
+ return facts.contextual.collect(snapshot, context.document, contextual, routing, navigator, trustedUnscoped);
 }
 function canCacheMatching(active, enabled) {
  // In one document root, the exact navigator fixes node membership, order
  // and every scope ancestor.
  return enabled && active.navigator !== undefined && active.snapshot.roots.length === 1 && matchingIntrinsicsIntact();
 }
-function matchingEntry(facts, active, prepared, enabled) {
+function matchingEntry(facts, active, prepared, enabled, useCapturedRoutes) {
  if (!canCacheMatching(active, enabled)) {
   facts.cachedMatching = null;
   return { mechanical: collectContextMatches(facts, active), wire: undefined };
@@ -341,7 +341,7 @@ function matchingEntry(facts, active, prepared, enabled) {
  if (previous?.navigator === active.navigator && previous.limits === active.contextual &&
      previous.prepared === prepared) return previous;
  facts.cachedMatching = null;
- const mechanical = collectContextMatches(facts, active);
+ const mechanical = collectContextMatches(facts, active, useCapturedRoutes);
  const wire = sharedEncode(mechanical);
  if (wire.length > maximumMatchingWire) return { mechanical, wire: undefined };
  const entry = { navigator: active.navigator, limits: active.contextual, prepared, mechanical: freezeMatchData(mechanical), wire };
@@ -481,7 +481,7 @@ function createAdapter({
 		resolveRequest({ element, pseudo, context, metadata, prepared, facts }) {
 			const snapshot = active.snapshot;
             const matching = active.contextual
-                ? matchingEntry(facts, active, prepared, cacheMatching)
+                ? matchingEntry(facts, active, prepared, cacheMatching, useCapturedRoutes)
                 : { mechanical: collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching), wire: undefined };
             const { mechanical } = matching;
 			const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);

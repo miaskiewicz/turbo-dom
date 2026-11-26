@@ -175,3 +175,24 @@ test("captured intrinsics tolerate mutable Set/Array/Number/descriptor prototype
 	}
 	assert.equal(output, '{"text":[55296],"number":2,"nested":null,"flag":true}');
 });
+
+test('wire snapshots all own descriptors before descending and preserves deleted keys and symbols', () => {
+  const touches = [], symbol = Symbol('hidden');
+  const child = new Proxy({value: 1}, {
+    ownKeys(target) { touches.push('child'); return Reflect.ownKeys(target); },
+  });
+  const source = Object.assign(Object.create(null), {first:child, removed:true});
+  Object.defineProperty(source, '__proto__', {value:'safe', enumerable:true});
+  source[symbol] = 42;
+  const proxy = new Proxy(source, {
+    ownKeys(target) { touches.push('keys'); return Reflect.ownKeys(target); },
+    getOwnPropertyDescriptor(target, key) {
+      touches.push(key);
+      if (key === 'first') delete target.removed;
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+    get() { throw new Error('unexpected property read'); },
+  });
+  assert.equal(encodeCssWire(proxy), '{"first":{"value":1},"__proto__":"safe"}');
+  assert.deepEqual(touches, ['keys','first','removed','__proto__',symbol,'child']);
+});

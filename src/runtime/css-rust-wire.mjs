@@ -2,7 +2,20 @@
 // guest objects. Proxy reflection can trap; its original error propagates.
 const parse = JSON.parse;
 const stringify = JSON.stringify;
-const descriptors = Object.getOwnPropertyDescriptors;
+// Snapshot every own descriptor, including symbols, before recursing. A Proxy
+// may delete a key or change another value while its descriptors are read.
+const ownKeys = Reflect.ownKeys;
+const descriptor = Object.getOwnPropertyDescriptor;
+function descriptors(value) {
+  const fields = create(null);
+  const names = ownKeys(value);
+  for (let index = 0; index < names.length; index++) {
+    const key = names[index];
+    const field = descriptor(value, key);
+    if (field !== undefined) fields[key] = field;
+  }
+  return fields;
+}
 const keys = Object.keys;
 const create = Object.create;
 const setPrototypeOf = Object.setPrototypeOf;

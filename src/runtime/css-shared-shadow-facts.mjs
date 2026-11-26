@@ -1,6 +1,6 @@
 // Context-keyed mechanical answers only. Rust owns rule admission, scope roots,
 // proximity and ranking. Snapshot roots/slots are trusted original native facts.
-import {compileCssMatchFacts, compileCssPrimitiveMatchFacts, CssMatchFactsLimitError, CssMatchFactsCapabilityError} from './css-match-facts.mjs';
+import {unscopedCssFactRoots, compileCssMatchFacts, compileCssPrimitiveMatchFacts, CssMatchFactsLimitError, CssMatchFactsCapabilityError} from './css-match-facts.mjs';
 import {cssFocusTarget} from './css-invalidation.mjs';
 import {sharedText} from './css-shared-codec.mjs';
 import {createSharedRouting} from './css-shared-routing.mjs';
@@ -25,12 +25,13 @@ function collectMetadata(metadata, primitive) {
   collectGroups(metadata.groups,groups,program);
   return {collector:(primitive ? compileCssPrimitiveMatchFacts : compileCssMatchFacts)({selectors,scopeGroups:groups}),items,contextual,groups};
 }
-function queries(program,snapshot) {
+function queries(program,snapshot, trustedUnscoped) {
+  const unscopedRoots = trustedUnscoped ? unscopedCssFactRoots : undefined;
   const ids=snapshot.records.filter(row=>row.kind==='element').map(row=>row.id);
   const roots=[...ids,...snapshot.roots.map(row=>row.id)];
   const selectorQueries=[],scopeQueries=[];
   for(const [selectorId,item] of program.contextual){
-    const scopeRootIds=item.implicitScopeAnchor?roots:item.referencesScope?[null,...roots]:[null];
+    const scopeRootIds=item.implicitScopeAnchor?roots:item.referencesScope?[null,...roots]:(unscopedRoots ?? [null]);
     selectorQueries.push({selectorId,scopeRootIds});
   }
   for(const group of program.groups)for(const boundary of ['start','end'])if(group[boundary]!==undefined)scopeQueries.push({groupId:group.id,boundary,enclosingRootIds:roots,candidateIds:ids});
@@ -62,13 +63,13 @@ function addAnswers(output,facts,program,treeScope,domains) {
 }
 export function compileSharedShadowFacts(metadata, primitive = false) {
   const program=collectMetadata(metadata, primitive);
-  return {collect(snapshot,document,limits,routing,navigator){return collect(program,snapshot,document,limits,routing,navigator);}};
+  return {collect(snapshot,document,limits,routing,navigator, trustedUnscoped = false){return collect(program,snapshot,document,limits,routing,navigator,trustedUnscoped);}};
 }
-function collect(program,snapshot,document,limits,originalRouting,navigator) {
+function collect(program,snapshot,document,limits,originalRouting,navigator,trustedUnscoped) {
   const maximumContexts=positive(limits.maxContexts),remaining={answers:positive(limits.maxAnswers),units:positive(limits.maxDomainUnits)};
   if(snapshot.roots.length>maximumContexts)throw new CssMatchFactsLimitError('contexts');
   const routing=originalRouting??createSharedRouting(snapshot,limits.routing);
-  const request=queries(program,snapshot),slots=slotsOf(snapshot);
+  const request=queries(program,snapshot,trustedUnscoped),slots=slotsOf(snapshot);
   const scopeNodes=snapshot.roots.map(row=>({id:row.id,element:row.element}));
   const sheetRootIds=snapshot.matchNodes.filter(row=>row.parent===null).map(row=>row.id);
   const output={domains:[],selectorAnswers:[],scopeAnswers:[],contextAnswers:{selectorAnswers:[],scopeAnswers:[]},contextRoots:routing.contextRoots};

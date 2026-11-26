@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEnvironment } from "../src/runtime/index.mjs";
-import { compileCssPrimitiveMatchFacts } from "../src/runtime/css-match-facts.mjs";
+import { unscopedCssFactRoots, compileCssPrimitiveMatchFacts } from "../src/runtime/css-match-facts.mjs";
 import {
 	createCssFactsNavigator,
 	CssFactsUnavailable,
@@ -110,4 +110,32 @@ test("primitive collector shares canonical domains and shadow-context matching w
 			),
 		CssFactsUnavailable,
 	);
+});
+
+test('private unscoped rows match the general collector at exact and exhausted answer quotas', () => {
+  const f = fixture();
+  const metadata = {selectors: [item(0, 'b'), item(1, '.absent'), item(2, '#light'),
+    item(3, ':scope > b')], scopeGroups: []};
+  const collector = compileCssPrimitiveMatchFacts(metadata);
+  const request = {
+    navigator: f.navigator, ownerDocument: f.facts.documentId,
+    sheetRootIds: f.nodes.filter(row => row.parent === null).map(row => row.id),
+    scopeNodes: [{id: f.facts.documentId}, {id: f.shadow}],
+    targetIds: f.nodes.map(row => row.id), scopeQueries: [], collectUsage: true,
+  };
+  function run(roots, maxAnswers, duplicate = false) {
+    const selectorQueries = [0, 1, 2].map(selectorId => ({selectorId, scopeRootIds: roots}));
+    selectorQueries.push({selectorId: 3, scopeRootIds: [f.id('host')]});
+    if (duplicate) selectorQueries.push(selectorQueries[0]);
+    return collector.collect(f.nodes, {...request, selectorQueries}, {maxNodes:128, maxAncestorDepth:100, maxAnswers});
+  }
+  const general = run([null], 1000), count = general.used.answers;
+  const fast = run(unscopedCssFactRoots, count);
+  assert.deepEqual(fast, general);
+  assert.ok(fast.selectorAnswers[0].matches.length > 1);
+  assert.equal(fast.selectorAnswers[1].matches.length, 0);
+  for (const roots of [[null], unscopedCssFactRoots]) {
+    assert.throws(() => run(roots, count - 1), e => e.limit === 'answers');
+    assert.throws(() => run(roots, 1000, true), /duplicate CSS matching answer/);
+  }
 });

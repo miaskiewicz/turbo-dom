@@ -361,26 +361,23 @@ function candidates(scene, selector, domain) {
 		? nodes.concat(scene.uncertainTypes)
 		: nodes;
 }
+function matchCandidates(program, scene, domain, request, state, context, matched) {
+  for (const node of candidates(scene, program, domain)) {
+    if (!domain.members.has(node.id) || matched?.has(node.id)) continue;
+    chargeAnswer(state);
+    const contextual = slotContext(scene, request, node, context);
+    const matches = scene.navigator
+      ? matchesCssFacts(node.id, program.program, contextual, request.navigator)
+      : matchesCssProgram(node.element, program.program, contextual);
+    if (matches) (matched ??= new Set()).add(node.id);
+  }
+  return matched;
+}
 function answers(programs, scene, domain, root, request, state) {
-	const matched = new Set();
-	const context = matchingContext(scene, request, root);
-	for (const program of programs) {
-		for (const node of candidates(scene, program, domain)) {
-			if (!domain.members.has(node.id) || matched.has(node.id)) continue;
-			chargeAnswer(state);
-			const contextual = slotContext(scene, request, node, context);
-			const matches = scene.navigator
-				? matchesCssFacts(
-						node.id,
-						program.program,
-						contextual,
-						request.navigator,
-					)
-				: matchesCssProgram(node.element, program.program, contextual);
-			if (matches) matched.add(node.id);
-		}
-	}
-	return Array.from(matched);
+  const matched = new Set();
+  const context = matchingContext(scene, request, root);
+  for (const program of programs) matchCandidates(program, scene, domain, request, state, context, matched);
+  return Array.from(matched);
 }
 function rootIds(scene, values) {
 	const input = array(values, "scope root ids");
@@ -399,13 +396,30 @@ function uniqueRow(seen, key) {
 		throw new TypeError("duplicate CSS matching answer domain");
 	seen.add(key);
 }
+// Only the private query builder supplies this exact frozen singleton.
+export const unscopedCssFactRoots = Object.freeze([null]);
+
+function unscopedMatches(program, scene, domain, request, state) {
+  const context = matchingContext(scene, request, null);
+  const matched = matchCandidates(program, scene, domain, request, state, context, undefined);
+  return matched ? Array.from(matched) : [];
+}
+
 function ordinaryRows(programs, scene, request, domains, state, output, seen) {
 	for (const query of request.selectorQueries) {
 		const selectorId = id(query.selectorId, "program id");
 		const program = programs.get(selectorId);
 		if (!program) throw new TypeError("unknown CSS selector program id");
 		const domain = domains.get(request.targetIds);
-		for (const scopeRootId of rootIds(scene, query.scopeRootIds)) {
+    const roots = query.scopeRootIds;
+    if (scene.navigator && roots === unscopedCssFactRoots) {
+      chargeAnswer(state);
+      uniqueRow(seen, `s:${selectorId}:null:${domain.id}`);
+      output.push({selectorId, scopeRootId:null, domainId:domain.id,
+        matches:unscopedMatches(program, scene, domain, request, state)});
+      continue;
+    }
+		for (const scopeRootId of rootIds(scene, roots)) {
 			chargeAnswer(state);
 			uniqueRow(seen, `s:${selectorId}:${scopeRootId}:${domain.id}`);
 			output.push({
