@@ -14,7 +14,7 @@
     "format": "passed",
     "complexity": "CC9 passed",
     "requiredPlainBuild": "actual scripts/agent/build-napi.sh exit0, Rust1.98/jobs1/offline/incremental0; Root/Cargo/index generated hashes identical",
-    "nodeFloor": "1030 passed,0 failed;100% lines,100% functions,97.35% branches (one worker); normal hook pending"
+    "nodeFloor": "One-worker AND normal pre-commit hook:1030 passed,0 failed;100% lines,100% functions,97.35% branches; coverage and conformance gates met"
   },
   "artifact": {
     "sha256": "8a01e06fc427a1760bf4414425631c9e01cdb7edfedc231b0f16b478d585471f",
@@ -174,5 +174,6 @@
     "nativeCSS": "8a01e06fc427a1760bf4414425631c9e01cdb7edfedc231b0f16b478d585471f",
     "wasmCSS": "a33002d572bcf64a7bb7074b5d819e643397f0ab3407d6ef019fbaea620eee74",
     "assembly": "actual scripts/css-shared.py assemble run; package/shared CSS bytes matching; old contextual WASM no policy/ENV claim"
-  }
+  },
+  "validatedCodeCommit": "84344f43c2287f8803cb61b111fb61d383df5f85"
 }
