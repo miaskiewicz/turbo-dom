@@ -6980,6 +6980,8 @@ fn ownership_callback<'s, 'i, F>(
 {
     let caught = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut caught.init();
+    #[cfg(all(test, feature = "host-internals"))]
+    let _diagnostic = sampler_diagnostics::callback(scope, std::any::type_name::<F>());
     // Source documents can lose their last node edge during adoption. Keep
     // their actual wrappers/realms alive through private record projection.
     let owners = dom_ownership::pin_callback_owners(
@@ -8342,7 +8344,14 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
                 action: std::cell::Cell::new(None),
             });
         }
-        bind_method(scope, global, "__noteEffectRefresh", note_effect_refresh);
+        // Diagnostics must not fabricate CE/observer/ownership epilogues.
+        let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, note_effect_refresh))
+            .constructor_behavior(v8::ConstructorBehavior::Throw)
+            .build(scope);
+        template.remove_prototype();
+        let function = template.get_function(scope).unwrap();
+        let key = v8::String::new(scope, "__noteEffectRefresh").unwrap();
+        global.set(scope, key.into(), function.into());
     }
     #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
@@ -8482,11 +8491,23 @@ fn effect_refresh_counts(isolate: &v8::Isolate) -> [u64; 19] {
 fn note_effect_refresh(
     scope: &mut v8::PinScope,
     args: v8::FunctionCallbackArguments,
-    _rv: v8::ReturnValue,
+    mut rv: v8::ReturnValue,
 ) {
+    #[cfg(not(feature = "host-internals"))]
+    let _ = &mut rv;
     let index = v8::Local::<v8::Number>::try_from(args.get(0))
         .unwrap()
         .value() as usize;
+    #[cfg(all(test, feature = "host-internals"))]
+    {
+        let number = |at| {
+            v8::Local::<v8::Number>::try_from(args.get(at))
+                .ok()
+                .map_or(0, |value| value.value() as u64)
+        };
+        let value = sampler_diagnostics::note(scope, index, number(1), number(2));
+        rv.set(v8::Number::new(scope, value as f64).into());
+    }
     // Snapshot callbacks survive in V8 while Rust isolate slots do not.
     if scope.get_slot::<EffectRefreshCounts>().is_none() {
         scope.set_slot(EffectRefreshCounts {
@@ -12496,8 +12517,14 @@ mod viewport_cssom_tests;
 #[path = "css_live_tests.rs"]
 mod css_live_tests;
 #[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_diagnostics.rs"]
+mod sampler_diagnostics;
+#[cfg(all(test, feature = "host-internals"))]
 #[path = "sampler_refresh_tests.rs"]
 mod sampler_refresh_tests;
+#[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_validation_tests.rs"]
+mod sampler_validation_tests;
 
 #[cfg(test)]
 #[path = "dom_projection_tests.rs"]

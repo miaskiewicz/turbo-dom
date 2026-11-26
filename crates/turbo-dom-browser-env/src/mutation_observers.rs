@@ -527,6 +527,8 @@ pub(super) fn payloads_built() -> usize {
 /// present, so a recording page without observers pays no V8 allocation per mutation
 /// (turbo-dom 0.7.0 perf item 6).
 pub(super) fn flush(scope: &mut v8::PinScope) {
+    #[cfg(all(test, feature = "host-internals"))]
+    super::sampler_diagnostics::flush(scope);
     form_checked_state::owner_changes();
     if !recording() && !other_document_recording() || scope.is_execution_terminating() {
         return;
@@ -534,6 +536,8 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
     let current = DOM_ID.with(std::cell::Cell::get);
     let mut ids = OTHER_DOMS.with(|doms| doms.borrow().keys().copied().collect::<Vec<_>>());
     ids.push(current);
+    #[cfg(all(test, feature = "host-internals"))]
+    super::sampler_diagnostics::slots(scope, ids.len());
     // Claim every document's pending batch before invoking any consumer. A
     // consumer can query another document, which reenters this fanout. Leaving
     // its old events in Tree would move them into the inner CE reaction scope
@@ -549,6 +553,8 @@ pub(super) fn flush(scope: &mut v8::PinScope) {
                         .map(|state| state.tree.take_mutation_events_utf16())
                 })
                 .unwrap_or_default();
+            #[cfg(all(test, feature = "host-internals"))]
+            super::sampler_diagnostics::document(scope, events.is_empty(), id != current);
             (!events.is_empty()).then_some((id, events))
         })
         .collect::<Vec<_>>();

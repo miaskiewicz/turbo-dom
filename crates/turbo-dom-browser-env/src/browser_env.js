@@ -616,7 +616,7 @@
     var entry=computedDefaultEntry(context,node,snapshots);
     if(!entry)return null;
     if(noteEffectRefresh)noteEffectRefresh(18);
-    if(!computedEffectEntryValid(node,snapshots,entry))return null;
+    if(!computedEffectImport(node,snapshots,entry,1))return null;
     return snapshots;
   }
   function computedDefaultSnapshots(record,node,inspectionSnapshots){
@@ -1371,6 +1371,7 @@
   }
   // What the key cannot see: the element's top layer and font context.
   function computedCacheProbe(el){
+    if(noteEffectRefresh)noteEffectRefresh(21);
     var connected=false;try{connected=computedConnected(el);}catch(e){}
     var layer='';try{if(connected)layer=computedTopLayer(el);}catch(e){}
     var context=null;try{context=computedFontContext(el);}catch(e){}
@@ -1400,7 +1401,7 @@
   // then skips recomputing the key and revalidating the ancestor chain (once per property read
   // and per ancestor, which made testing-library's role / visibility queries quadratic in
   // depth). A dependency on a volatile style (a running transition) never marks it stable.
-  function computedWorldStamp(el){var full,selector;try{full=computedStyleVersion(el);selector=computedStyleSelectorVersion(el);}catch(e){return null;}return typeof full==='number'&&typeof selector==='number'?[full,selector,cssomEpoch(),styleStateEpoch()]:null;}
+  function computedWorldStamp(el){if(noteEffectRefresh)noteEffectRefresh(19);var full,selector;try{full=computedStyleVersion(el);selector=computedStyleSelectorVersion(el);}catch(e){return null;}return typeof full==='number'&&typeof selector==='number'?[full,selector,cssomEpoch(),styleStateEpoch()]:null;}
   function computedStampEqual(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]&&a[3]===b[3];}
   function computedMarkStable(el,entry){
     var stamp=computedWorldStamp(el);entry.stable=null;entry.ownNone=false;if(!stamp)return;
@@ -1638,7 +1639,7 @@
       var entry=computedSnapshotGet(batch.entries,node);
       if(!entry){if(noteEffectRefresh)noteEffectRefresh(10);return false;}
       if(entry.snapshot!==snapshot){if(noteEffectRefresh)noteEffectRefresh(11);return false;}
-      if(!computedEffectEntryValid(node,snapshots,entry))return false;
+      if(!computedEffectEntryValid(node,snapshots,entry,3))return false;
     }
     return true;
   }
@@ -1649,6 +1650,7 @@
     return true;
   }
   function computedEffectOwner(el){
+    if(noteEffectRefresh)noteEffectRefresh(20);
     try{return cssApply(computedStyleNativeOwner,el,[]);}catch(e){return null;}
   }
   function computedEffectRefusal(reason){if(noteEffectRefresh)noteEffectRefresh(reason);return false;}
@@ -1674,6 +1676,30 @@
       return unchanged;
     }finally{entry.checking=false;}
   }
+  function installEffectValidationDiagnostics(){
+    if(!noteEffectRefresh)return;
+    var originalEffectEntryValid=computedEffectEntryValid;
+    computedEffectEntryValid=function(el,snapshots,entry,origin){
+      noteEffectRefresh(25,origin,entry&&entry.diagnostic_id||0);
+      var valid=false;
+      try{valid=originalEffectEntryValid(el,snapshots,entry);return valid;}
+      finally{noteEffectRefresh(26,valid?1:0);}
+    };
+  }
+  installEffectValidationDiagnostics();
+  // Lazy defaults and ordinary ancestors share one guarded import. Returning
+  // the map only after import makes the next lookup local, not a second proof.
+  function computedEffectImport(el,snapshots,entry,origin){
+    if(!computedEffectEntryValid(el,snapshots,entry,origin))return false;
+    if(noteEffectRefresh)noteEffectRefresh(14);
+    computedSnapshotSet(snapshots,el,entry.snapshot);
+    return true;
+  }
+  function computedEffectSnapshotDiagnostic(entry,deps){
+    if(!noteEffectRefresh)return;
+    noteEffectRefresh(23,deps.length/2);
+    if(entry)entry.diagnostic_id=noteEffectRefresh(24);
+  }
   function computedEffectSnapshot(el,snapshots){
     var stamp=computedWorldStamp(el),probe=computedCacheProbe(el),owner=computedEffectOwner(el);
     var ctx=computeStyleSnapshotRun(el,snapshots,undefined,undefined,null);
@@ -1682,6 +1708,7 @@
     if(owner&&owner===computedEffectOwner(el)&&computedStampEqual(stamp,computedWorldStamp(el))&&computedProbeEqual(probe,computedCacheProbe(el)))
       entry={__proto__:null,snapshot:ctx.snapshot,owner:owner,stamp:stamp,probe:probe,media:ctx.media,deps:ctx.deps,volatile:ctx.volatile,boxFailed:ctx.boxFailed,checking:false,lifecycle:computedLifecycleInputs(snapshots)};
     if(!entry&&noteEffectRefresh)noteEffectRefresh(16);
+    computedEffectSnapshotDiagnostic(entry,ctx.deps);
     computedSnapshotSet(computedSnapshotGet(computedEffectMaps,snapshots).batch.entries,el,entry);
     return ctx.snapshot;
   }
@@ -1720,7 +1747,7 @@
       var root=el===context.root;
       var shared=!root&&computedSnapshotGet(context.batch.entries,el);
       if(noteEffectRefresh)computedEffectLookupNote(root,shared);
-      if(shared&&computedEffectEntryValid(el,snapshots,shared)){if(noteEffectRefresh)noteEffectRefresh(14);computedSnapshotSet(snapshots,el,shared.snapshot);return shared.snapshot;}
+      if(shared&&computedEffectImport(el,snapshots,shared,2))return shared.snapshot;
       return computedEffectSnapshot(el,snapshots);
     }
     if(noteEffectRefresh)noteEffectRefresh(13);
@@ -4192,6 +4219,7 @@ Object.defineProperty(__ns.DOMException,Symbol.hasInstance,{value:function(value
   }
   function computedMergeMedia(reads){if(computedMediaReads&&reads)for(var text in reads)if(computedMediaReads[text]===undefined)computedMediaReads[text]=reads[text];}
   function computedMediaUnchanged(reads){
+    if(noteEffectRefresh)noteEffectRefresh(22);
     if(!reads)return true;
     try{for(var text in reads)if(mediaMatches(text)!==reads[text])return false;}catch(e){return false;}
     return true;
