@@ -622,7 +622,11 @@ fn ordinary_rendering_path(scope: &mut v8::PinScope, element: v8::Local<v8::Obje
     false
 }
 
-fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+fn native<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
     let set_string =
         |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value {
             Some(value) => {
@@ -632,6 +636,8 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             None => rv.set(v8::null(scope).into()),
         };
     match arg_str(scope, &args, 0).as_str() {
+        "renderingPath" => super::animation_rendering::path(scope, args, &mut rv),
+        "renderingPathCurrent" => super::animation_rendering::validate(scope, args, &mut rv),
         "animationNames" => animation_name_list(scope, &args, &mut rv),
         "keyframeName" => {
             let name = animation_source(scope, &args)

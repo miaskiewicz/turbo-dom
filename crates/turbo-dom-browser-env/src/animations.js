@@ -1862,7 +1862,9 @@
     const effect = record.effect ? effects.get(record.effect) : null;
     if (!effect || !effect.target || effect.pseudo !== null) throw new Exception(`${prefix}Animation not associated with a styled element`, 'NoModificationAllowedError');
     const element = effect.target;
-    if (!rendered(element)) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
+    const rendering=rendered(element);
+    if(rendering===null)throw new Exception(`${prefix}Cannot prove target renderedness.`, 'NotSupportedError');
+    if (!rendering) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
     const stack = commitStylesStack(record, effect, this);
     if (!stack.length) return;
     sortBy(stack, entry => entry.record.seq);
@@ -1953,24 +1955,24 @@
   reorder(AnimationTimelineDelegate.prototype, ['currentTime', 'duration']);
   reorder(PlaybackDelegate.prototype, ['currentTime', 'timelineTime']);
 
+  function renderedPath(element,snapshots,own){
+    const path=Native('renderingPath',element);
+    if(!path)return null;
+    setPrototype(path,null);
+    let visible=path[1]&&own!=='none';
+    for(let index=own?4:3;visible&&index<path.length;index++)if(ns.computedDisplay(path[index],snapshots)==='none')visible=false;
+    return Native('renderingPathCurrent',element,path)?visible:null;
+  }
   function rendered(element) {
     if (!apply(connectedGetter, element, [])) return false;
-    // One snapshot map for the walk: each ancestor resolves once (turbo-test perf parity).
-    const snapshots = ns.computedSnapshots();
-    for (let node = element; node && nodeType(node) === 1; node = apply(parentGetter, node, [])) { suppressStyle = true; try { if (ns.computedDisplay(node, snapshots) === 'none') return false; } finally { suppressStyle = false; } }
-    return true;
+    const snapshots=ns.computedSnapshots(),outer=suppressStyle;
+    suppressStyle=true;
+    try{return renderedPath(element,snapshots,null);}finally{suppressStyle=outer;}
   }
-  // `rendered` from inside the element's own style resolution (turbo-test#227): its own display
-  // comes from the resolution in progress (`own`), and the ancestors from that resolution's
-  // snapshot map, which inheritance has usually filled already. Ancestors resolve with their
-  // animations and their own CSS updates, as any other read of them. Without a usable own
-  // display, the standalone walk above.
   function renderedFrom(element, snapshots, own) {
     if (!snapshots || !own) return rendered(element);
-    if (own === 'none') return false;
     if (!apply(connectedGetter, element, [])) return false;
-    for (let node = apply(parentGetter, element, []); node && nodeType(node) === 1; node = apply(parentGetter, node, [])) if (ns.computedDisplay(node, snapshots) === 'none') return false;
-    return true;
+    return renderedPath(element,snapshots,own);
   }
   function baseStyle(element) {
     suppressStyle = true;
@@ -2550,7 +2552,8 @@
     let own = base === 'none' ? transitionPresentedDisplay(element, base, displayImportant) : base;
     if (own === null) return null;
     if (own === 'none' && transitionCanExit(element, read)) own = cssState(element).display;
-    return { base, hidden: !renderedFrom(element, snapshots, own) };
+    const visible=renderedFrom(element,snapshots,own);
+    return visible===null?null:{base,hidden:!visible};
   }
   function transitionCanExit(element, read) {
     if (!cssTransitionsOn) return false;

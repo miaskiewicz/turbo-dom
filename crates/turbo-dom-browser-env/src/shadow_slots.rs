@@ -220,17 +220,47 @@ pub(super) fn composed_children<'s>(
             .collect(),
     )
 }
+pub(super) enum ComposedParent<'s> {
+    Parent(v8::Local<'s, v8::Object>),
+    NotInFlatTree,
+    Unavailable,
+}
 pub(super) fn composed_parent<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
 ) -> Option<v8::Local<'s, v8::Object>> {
+    match composed_parent_status(scope, node) {
+        ComposedParent::Parent(parent) => Some(parent),
+        _ => None,
+    }
+}
+pub(super) fn composed_parent_status<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+) -> ComposedParent<'s> {
+    composed_parent_proof(scope, node).unwrap_or(ComposedParent::Unavailable)
+}
+fn composed_parent_proof<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+) -> Option<ComposedParent<'s>> {
     if scope.is_execution_terminating() {
         return None;
     }
     let _owner = DomScope::for_object(scope, node);
     let handle = handle_of(scope, node)?;
+    if !with_tree(|tree| tree.is_live(handle))? {
+        return None;
+    }
     let context = node.get_creation_context(scope)?;
     let scope = &mut v8::ContextScope::new(scope, context);
+    composed_parent_in_context(scope, node, handle)
+}
+fn composed_parent_in_context<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+    handle: Handle,
+) -> Option<ComposedParent<'s>> {
     if let Some(host) = with_tree(|tree| {
         tree.is_shadow_root(handle)
             .then(|| tree.shadow_host(handle))
@@ -238,19 +268,36 @@ pub(super) fn composed_parent<'s>(
     .flatten()
     .flatten()
     {
-        return Some(wrap(scope, host));
+        return Some(ComposedParent::Parent(wrap(scope, host)));
     }
-    let parent = with_tree(|tree| tree.parent(handle)).flatten()?;
+    let Some(parent) = with_tree(|tree| tree.parent(handle))? else {
+        return Some(ComposedParent::NotInFlatTree);
+    };
+    composed_parent_edge(scope, node, parent)
+}
+fn composed_parent_edge<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+    parent: Handle,
+) -> Option<ComposedParent<'s>> {
     if with_tree(|tree| tree.shadow_root(parent).is_some())? {
-        return assigned_slot(scope, node);
+        let assigned = assigned_slot(scope, node);
+        if scope.is_execution_terminating() {
+            return None;
+        }
+        return Some(
+            assigned
+                .map(ComposedParent::Parent)
+                .unwrap_or(ComposedParent::NotInFlatTree),
+        );
     }
     if with_tree(|tree| slot(tree, parent) && root(tree, parent).is_some())?
         && !assigned(scope, parent).is_empty()
     {
-        return None;
+        return Some(ComposedParent::NotInFlatTree);
     }
     let parent = with_tree(|tree| tree.shadow_host(parent).unwrap_or(parent))?;
-    Some(wrap(scope, parent))
+    Some(ComposedParent::Parent(wrap(scope, parent)))
 }
 pub(super) fn configure(scope: &mut v8::PinScope, root: v8::Local<v8::Object>, manual: bool) {
     let private = key(scope, "manual");
@@ -458,6 +505,34 @@ fn collect_assign_nodes<'s>(
     Some(nodes)
 }
 
+fn assignment_changed<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    slot: v8::Local<'s, v8::Object>,
+    nodes: &[v8::Local<'s, v8::Object>],
+) -> Option<bool> {
+    if scope.is_execution_terminating() {
+        return None;
+    }
+    let private = key(scope, "assigned");
+    let previous = slot.get_private(scope, private)?;
+    if previous.is_undefined() {
+        return Some(!nodes.is_empty());
+    }
+    let previous = v8::Local::<v8::Array>::try_from(previous).ok()?;
+    if previous.length() as usize != nodes.len() {
+        return Some(true);
+    }
+    for (index, node) in nodes.iter().enumerate() {
+        if !previous
+            .get_index(scope, index as u32)?
+            .strict_equals((*node).into())
+        {
+            return Some(true);
+        }
+    }
+    Some(false)
+}
+
 fn assign<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     slot: v8::Local<'s, v8::Object>,
@@ -470,6 +545,9 @@ fn assign<'s>(
         .and_then(|value| value.uint32_value(scope))
         .expect("arguments.length");
     let Some(nodes) = collect_assign_nodes(scope, arguments, length) else {
+        return;
+    };
+    let Some(changed) = assignment_changed(scope, slot, &nodes) else {
         return;
     };
     let reverse = key(scope, "manual-slot");
@@ -487,6 +565,10 @@ fn assign<'s>(
         let scope = &mut v8::ContextScope::new(scope, context);
         let next = array(scope, &nodes);
         slot.set_private(scope, private, next.into());
+    }
+    // Private slot assignment changes the flat tree without a physical DOM mutation.
+    if changed {
+        bump_style_state();
     }
     for owner in affected {
         let _owner = DomScope::enter(owner);
