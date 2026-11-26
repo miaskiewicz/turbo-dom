@@ -91,6 +91,18 @@ env.document.querySelector('#app');     // nodes inflate lazily from the parse b
 env.reset();                            // fast per-file reset (reuses the parse buffer)
 ```
 
+**DOM backend selection.** Each environment accepts `domBackend`. The default, `'js'`,
+uses the existing npm DOM. The `'rust'` value is reserved for the Node integration
+of `turbo-dom-browser-env`. In this build it raises a setup error before creating
+a document. Parser selection is independent, so the JS DOM can still use the native
+Rust parser or WASM.
+
+| Entry point | Explicit JS configuration |
+| --- | --- |
+| npm runtime | `createEnvironment(html, { domBackend: 'js' })` |
+| Vitest config | `test.environmentOptions.turboDom.domBackend = 'js'` |
+| Jest config | `testEnvironmentOptions.turboDom.domBackend = 'js'` |
+
 **Just the parser:**
 
 ```js

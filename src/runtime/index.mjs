@@ -78,6 +78,10 @@ function promoteDeclarativeShadowRoots(document) {
 }
 
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
+  const { domBackend = 'js' } = options;
+  if (domBackend === 'rust') throw new Error('turbo-dom: domBackend "rust" requires a Node browser-env binding, which this build does not include');
+  if (domBackend !== 'js') throw new TypeError('turbo-dom: domBackend must be "js" or "rust"');
+
   // Optional parser selection: options.parser === 'wasm' | 'native' | 'auto'. Applied
   // before the first parse below; process-global (the parser binding is a singleton),
   // so the last mode set wins. Embedders wanting a fully node-free path inject a
