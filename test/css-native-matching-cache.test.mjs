@@ -31,7 +31,7 @@ const readers = {
   },
   unsupported(reason) { throw new TypeError(reason); },
 };
-async function fixture() {
+async function fixture(useCapturedRoutes = false) {
   const real = await loadRealCssBackend('native');
   let previous;
   return createRealCssFixture(real,
@@ -47,7 +47,7 @@ async function fixture() {
         previous = { input, navigator };
         return navigator;
       },
-      adapterFactory: options => createDefaultSharedCssAdapter(options, true),
+      adapterFactory: options => createDefaultSharedCssAdapter(options, true, useCapturedRoutes),
       policy: { contextualMatching: () => contextual },
     });
 }
@@ -95,4 +95,21 @@ test('warm native matching takes the fresh path when matcher dependencies change
     Object.defineProperty(String.prototype, 'replace', original);
     dispose();
   }
+});
+
+test('ordinary captured targets follow reassigned slots and preserve pseudo reads', async () => {
+  const {doc, env, dispose} = await fixture(true);
+  try {
+    const target = doc.querySelector('b');
+    const read = () => env.window.getComputedStyle(target).color;
+    assert.equal(read(), blue);
+    const host = doc.querySelector('main'), shadow = host.attachShadow({mode:'open'});
+    shadow.innerHTML = '<slot name="hot" style="color:red"></slot><slot name="cold" style="color:blue"></slot>';
+    target.removeAttribute('class');
+    target.setAttribute('slot','hot');
+    assert.equal(read(), red);
+    target.setAttribute('slot','cold');
+    assert.equal(read(), blue);
+    assert.equal(typeof env.window.getComputedStyle(target, '::before').color, 'string');
+  } finally { dispose(); }
 });

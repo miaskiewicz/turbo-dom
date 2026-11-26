@@ -222,7 +222,30 @@ function uses(sources, snapshot, ua, profile, routing) {
 		})),
 	);
 }
-function targets(snapshot, pseudo, element, profile, routing) {
+// The default capture already proved each element's composed inheritance route.
+function defaultRoutedTargets(snapshot, element, profile, routing) {
+  const rows = [], order = routing.targetOrder;
+  const resultId = snapshot.nodeId(element);
+  let ordered = true, subject;
+  for (let index = 0; index < snapshot.records.length; index++) {
+    const record = snapshot.records[index];
+    if (record.kind !== "element") continue;
+    const id = record.id, facts = routing.targetFacts(id);
+    if (id === resultId) subject = record;
+    if (id !== order[rows.length]) ordered = false;
+    sharedApply("arrayPush", rows, {
+      id, subjectId: id, parentId: facts.parentId, path: facts.path,
+      treeScope: facts.treeScope, scopeDepth: facts.scopeDepth,
+      implicitScopeRoot: snapshot.documentId, pseudo: null, inline: record.inlineUnits,
+      hostOf: facts.hostOf, assignedSlot: facts.assignedSlot,
+      context: profile.targetContext(record, { root: record.parent === snapshot.documentId, pseudo: null, snapshot }),
+    });
+  }
+  const targets = ordered && order.length === rows.length ? rows : parentFirstTargets(rows, routing);
+  return { targets, resultId, subject };
+}
+function targets(snapshot, pseudo, element, profile, routing, useCapturedRoutes) {
+  if (useCapturedRoutes && routing && !pseudo) return defaultRoutedTargets(snapshot, element, profile, routing);
 	const byId = new SharedMap(
 		sharedApply("arrayMap", snapshot.records, (row) => [row.id, row]),
 	);
@@ -340,8 +363,8 @@ export function createSharedCssAdapter(options) {
  return createAdapter(options, false);
 }
 // Only the public default adapter owns the native capture and JSON policy.
-export function createDefaultSharedCssAdapter(options, cacheMatching) {
- return createAdapter(options, cacheMatching);
+export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false) {
+ return createAdapter(options, cacheMatching, useCapturedRoutes);
 }
 function createAdapter({
 	selectBackend,
@@ -351,7 +374,7 @@ function createAdapter({
 	profile,
 	limits,
 	measureScene,
-}, cacheMatching) {
+}, cacheMatching, useCapturedRoutes = false) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	const callbacks = {
 		selectBackend,
@@ -461,7 +484,7 @@ function createAdapter({
                 ? matchingEntry(facts, active, prepared, cacheMatching)
                 : { mechanical: collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching), wire: undefined };
             const { mechanical } = matching;
-			const selected = targets(snapshot, pseudo, element, profile, active.routing);
+			const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
 			const request = {
 				abiVersion: 1,
 				targets: selected.targets,
@@ -494,7 +517,7 @@ function createAdapter({
 				environment: profile.environment(context),
 				limits,
 			});
-			const subject = sharedApply(
+			const subject = selected.subject ?? sharedApply(
 				"arrayFind",
 				snapshot.records,
 				(row) => row.id === snapshot.nodeId(element),
