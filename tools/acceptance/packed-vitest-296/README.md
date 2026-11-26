@@ -34,3 +34,13 @@ node tools/acceptance/packed-vitest-296/benchmark.mjs .evidence/step4/consumer .
 ```
 
 The baseline four compatibility runs take roughly1.4–2.8s each. Four warmups plus20 measured serial runs therefore represent approximately35–70s of observed baseline process time, excluding scheduling noise; this is an estimate, not a deadline. The runner records Node/machine/installed dependency versions, source/package/artifact baseline hashes, per-run wall times/load averages, JSON reports/logs, medians and min/max spreads. The measured results are recorded in the dated directory and the main README, separately from the legacy microbenchmarks.
+
+## After-phase gate (prepared; not executed)
+
+After the public default is switched and packed, use a NEW output directory:
+
+```
+node tools/acceptance/packed-vitest-296/benchmark.mjs PATH_TO_NEW_CONSUMER NEW_AFTER_OUTPUT 5 after
+```
+
+Before any warmup or timed process, `after` requires the unchanged strict public CSS test to pass under both `TURBO_DOM_PARSER=native` and `wasm`. The same real extracted package is hashed before/after both sentinels and every subsequent process; mutation aborts acceptance. No private adapter or kernel is installed. Failed preflight preserves its log and starts no timings. Successful preflight records both report hashes in PREFLIGHT.json. The original baseline raw receipts remain immutable. The same28-case filter, four warmups, one worker and five rotated fresh-process rounds follow. After results and default acceptance are pending; this increment only prepares the gate and does not claim a switched payload has passed.
