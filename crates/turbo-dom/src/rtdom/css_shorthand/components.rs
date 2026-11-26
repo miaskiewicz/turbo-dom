@@ -754,6 +754,7 @@ fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     }
     if commas > 0 {
         rgb_hsl_legacy_comma_valid(inner, commas)
+            && (!name.starts_with("rgb") || rgb_legacy_channel_types_match(inner))
     } else {
         rgb_hsl_modern_space_valid(inner)
     }
@@ -787,6 +788,24 @@ fn rgb_hsl_legacy_comma_valid(inner: &[Comp], commas: usize) -> bool {
             .iter()
             .enumerate()
             .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+}
+
+// Legacy RGB channels share one number/percentage grammar. Alpha is deliberately
+// excluded, and modern space syntax may mix the two. Reuse canonical math type
+// inference so a percentage-valued calc cannot evade the comma-form constraint.
+fn rgb_legacy_channel_types_match(inner: &[Comp]) -> bool {
+    let mut channel_type = None;
+    for comp in inner.iter().step_by(2).take(3) {
+        let current = calc_type(std::slice::from_ref(comp));
+        if !matches!(current, Some(CalcType::Number | CalcType::Percent)) {
+            continue;
+        }
+        if channel_type.is_some() && channel_type != current {
+            return false;
+        }
+        channel_type = current;
+    }
+    true
 }
 
 /// Modern space syntax: three space-separated channels, optionally `/ <alpha>`.

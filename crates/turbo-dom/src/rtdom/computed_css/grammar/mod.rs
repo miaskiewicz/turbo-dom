@@ -2,6 +2,7 @@
 //! This optional module validates scalar grammar and preserves admitted lexemes; raw
 //! custom-property DOM strings remain the separate UTF-16 computation contract.
 mod backend_limits;
+mod deferred_tokens;
 mod general_enclosed;
 
 use super::{ComputationLimits, ComputedCssError, CssText};
@@ -837,7 +838,7 @@ fn checked_deferred(raw: &str, limits: ComputationLimits) -> Result<Option<bool>
     let mut source = ParserInput::new(raw);
     let mut input = Parser::new(&mut source);
     let tokens = input.parse_until_before(Delimiter::Bang | Delimiter::Semicolon, |input| {
-        TokenList::parse_with_options(input, &ParserOptions::default())
+        deferred_tokens::parse(input)
     });
     let tokens = match tokens {
         Ok(tokens) => tokens,

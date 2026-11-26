@@ -1,0 +1,249 @@
+{
+  "browserVersion": "159.0.8154.6",
+  "sourceSha256": "6c4afa4f50cd80b60a5d18232ee06597fc71609775122ef2dc36217871e291c3",
+  "result": [
+    {
+      "value": "var(--x,env())",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "env(foo,env())",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "f(env())",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "RGB(50%,0,0)",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "RGBA(128,0,0,50%)",
+      "literal": {
+        "declared": "rgba(128, 0, 0, 0.5)",
+        "computed": "rgba(128, 0, 0, 0.5)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgba(128, 0, 0, 0.5)"
+      }
+    },
+    {
+      "value": "rgb(50%,0,0)",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "rgb(50%,0%,0%)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgb(128,0,0)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgb(50% 0 0)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgba(50%,0,0,.5)",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "rgba(50%,0%,0%,.5)",
+      "literal": {
+        "declared": "rgba(128, 0, 0, 0.5)",
+        "computed": "rgba(128, 0, 0, 0.5)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgba(128, 0, 0, 0.5)"
+      }
+    },
+    {
+      "value": "rgb(calc(50%),0,0)",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "rgb(calc(50%),0%,0%)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgb(calc(128),0,0)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgb(50%,calc(0),0%)",
+      "literal": {
+        "declared": "lime",
+        "computed": "rgb(0, 255, 0)",
+        "supports": false
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "value": "rgb(50%,calc(0%),0%)",
+      "literal": {
+        "declared": "rgb(128, 0, 0)",
+        "computed": "rgb(128, 0, 0)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(128, 0, 0)"
+      }
+    },
+    {
+      "value": "rgb(50% 0% 0 / 50%)",
+      "literal": {
+        "declared": "rgba(128, 0, 0, 0.5)",
+        "computed": "rgba(128, 0, 0, 0.5)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgba(128, 0, 0, 0.5)"
+      }
+    },
+    {
+      "value": "hsl(120,50%,50%)",
+      "literal": {
+        "declared": "rgb(64, 191, 64)",
+        "computed": "rgb(64, 191, 64)",
+        "supports": true
+      },
+      "substituted": {
+        "declared": "var(--bad)",
+        "computed": "rgb(64, 191, 64)"
+      }
+    }
+  ],
+  "unusedFallback": {
+    "css": "--ok: lime; color: var(--ok,rgb(50%,calc(0),0%));",
+    "computed": "rgb(0, 255, 0)"
+  },
+  "pending": [
+    {
+      "source": "--x:0%;color:lime;color:rgb(var(--x),0,0%)",
+      "declared": "rgb(var(--x),0,0%)",
+      "computed": "rgb(0, 0, 255)"
+    },
+    {
+      "source": "--x:0%;color:lime;color:rgb(var(--x),0%,0%)",
+      "declared": "rgb(var(--x),0%,0%)",
+      "computed": "rgb(0, 0, 0)"
+    },
+    {
+      "source": "--a:50%;color:lime;color:rgba(128,0,0,var(--a))",
+      "declared": "rgba(128,0,0,var(--a))",
+      "computed": "rgba(128, 0, 0, 0.5)"
+    }
+  ],
+  "unresolvedMath": {
+    "value": "rgb(sin(0),0,0)",
+    "supports": true,
+    "declared": "rgb(0, 0, 0)",
+    "computed": "rgb(0, 0, 0)"
+  }
+}
