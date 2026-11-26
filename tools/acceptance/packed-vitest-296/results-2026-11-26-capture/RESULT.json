@@ -1,0 +1,2080 @@
+{
+  "method": "Seven ABBA blocks per comparison, previous Rust or legacy JS as A and candidate as B. CPU measures process user + system milliseconds for 100 captures; packed Vitest measures wall milliseconds per fresh 28-test process. Coverage and separate packed acceptance exercise all compatibility cases. Final capture CPU and acceptance were rerun after extracting guardScalarState for the complexity gate. Whole-suite timing used the preceding tarball with the same checks inline.",
+  "node": "v26.11.0",
+  "cpuModel": "Apple M5 Max",
+  "loadBefore": [
+    10.56201171875,
+    8.56591796875,
+    11.119140625
+  ],
+  "loadAfter": [
+    121.61181640625,
+    129.51416015625,
+    74.2119140625
+  ],
+  "sha256": {
+    "previousRustTarball": "f788f47fcaef9e1ae50c6d4e36804c06f9d3d29362e050f388247b383fe6ecdf",
+    "candidateTarball": "b2d38c03489700773d52c23d76968ed638e5a026975b6b6c4d572b497fb08a0c",
+    "vitestTimedTarball": "ce5df985cf0811db0a37719b9f238870f0c6816c9950fcaa7a1212753c92d795",
+    "candidatePatch": "8e9acac36042dd85ed317ee70524b18f15f54ce87996cda0b827a23eb5c663cd"
+  },
+  "captureCpuPercent": -14.133435742013168,
+  "captureRuns": [
+    {
+      "variant": "chain",
+      "block": 1,
+      "cpu": 0.8332124246449372,
+      "wall": 0.3402919859993321,
+      "samples": [
+        {
+          "cpuMs": 95.655,
+          "wallMs": 257.0425839999999
+        },
+        {
+          "cpuMs": 82.545,
+          "wallMs": 127.77649999999994
+        },
+        {
+          "cpuMs": 80.548,
+          "wallMs": 87.21837499999992
+        },
+        {
+          "cpuMs": 100.085,
+          "wallMs": 374.752709
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 2,
+      "cpu": 0.901718886614975,
+      "wall": 0.997105871405144,
+      "samples": [
+        {
+          "cpuMs": 112.602,
+          "wallMs": 278.4055410000001
+        },
+        {
+          "cpuMs": 104.619,
+          "wallMs": 382.429209
+        },
+        {
+          "cpuMs": 83.081,
+          "wallMs": 195.557459
+        },
+        {
+          "cpuMs": 95.556,
+          "wallMs": 301.25874999999996
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 3,
+      "cpu": 0.8586656425798683,
+      "wall": 0.8003128668976527,
+      "samples": [
+        {
+          "cpuMs": 96.633,
+          "wallMs": 347.63704200000006
+        },
+        {
+          "cpuMs": 82.651,
+          "wallMs": 168.160167
+        },
+        {
+          "cpuMs": 82.807,
+          "wallMs": 381.21183299999996
+        },
+        {
+          "cpuMs": 96.059,
+          "wallMs": 338.80949999999996
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 4,
+      "cpu": 0.9086332145201629,
+      "wall": 1.252578518533272,
+      "samples": [
+        {
+          "cpuMs": 91.929,
+          "wallMs": 235.30216700000005
+        },
+        {
+          "cpuMs": 84.185,
+          "wallMs": 292.63087500000006
+        },
+        {
+          "cpuMs": 83.297,
+          "wallMs": 350.15479199999993
+        },
+        {
+          "cpuMs": 92.394,
+          "wallMs": 277.867792
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 5,
+      "cpu": 0.819725171241885,
+      "wall": 0.904368605020069,
+      "samples": [
+        {
+          "cpuMs": 91.927,
+          "wallMs": 297.97745799999996
+        },
+        {
+          "cpuMs": 78.787,
+          "wallMs": 160.05895799999996
+        },
+        {
+          "cpuMs": 77.028,
+          "wallMs": 338.66441699999996
+        },
+        {
+          "cpuMs": 98.155,
+          "wallMs": 253.48283400000003
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 6,
+      "cpu": 0.7792714725123737,
+      "wall": 0.5221739459667845,
+      "samples": [
+        {
+          "cpuMs": 92.965,
+          "wallMs": 233.16600000000005
+        },
+        {
+          "cpuMs": 68.268,
+          "wallMs": 192.721042
+        },
+        {
+          "cpuMs": 81.462,
+          "wallMs": 180.568667
+        },
+        {
+          "cpuMs": 99.176,
+          "wallMs": 481.710167
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 7,
+      "cpu": 0.9482556063625159,
+      "wall": 0.9381058904229649,
+      "samples": [
+        {
+          "cpuMs": 91.733,
+          "wallMs": 192.97533299999998
+        },
+        {
+          "cpuMs": 80.831,
+          "wallMs": 124.3565000000001
+        },
+        {
+          "cpuMs": 83.826,
+          "wallMs": 209.96900000000005
+        },
+        {
+          "cpuMs": 81.909,
+          "wallMs": 163.40820900000006
+        }
+      ]
+    }
+  ],
+  "vitestSummary": {
+    "previous": {
+      "wallPercent": 4.427557180899977,
+      "callbackPercent": -12.117302866444534,
+      "wins": 3,
+      "winsOverHalfPercent": 3
+    },
+    "legacy": {
+      "wallPercent": 14.122232197637308,
+      "callbackPercent": 109.91207753773429,
+      "wins": 2,
+      "winsOverHalfPercent": 2
+    }
+  },
+  "vitestRuns": {
+    "previous": [
+      {
+        "block": 1,
+        "wallRatio": 0.8872194883867329,
+        "callbackRatio": 0.7706251113849177,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block1",
+            "round": 1,
+            "wallMs": 3524.637125000001,
+            "testMs": 560.380124,
+            "reportSha256": "8affc0650d4ce81b211d75f9dc8cc922447b4e14f06b41ef5bbfe04aab98fa0f",
+            "load": [
+              15.3447265625,
+              9.71435546875,
+              11.4833984375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block1",
+            "round": 2,
+            "wallMs": 3460.4871249999997,
+            "testMs": 566.5085809999999,
+            "reportSha256": "331f0ce3fa1de4c27acedaa4b2c5b40236b8ea87e17fc949787d3d66d37554fc",
+            "load": [
+              15.3447265625,
+              9.71435546875,
+              11.4833984375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block1",
+            "round": 3,
+            "wallMs": 3340.639959,
+            "testMs": 555.390541,
+            "reportSha256": "79a6ef9e39ae0ac5bfe782d1433f3ef827c90dc8873f5d6352e894feb1586e6d",
+            "load": [
+              15.47705078125,
+              9.8349609375,
+              11.515625
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block1",
+            "round": 4,
+            "wallMs": 4141.027542000003,
+            "testMs": 895.4498319999998,
+            "reportSha256": "7b4c6e18bd3180e03a596827f7acd57b1fb7a245e630d3b811b78c2f89687303",
+            "load": [
+              17.9208984375,
+              10.43505859375,
+              11.71728515625
+            ]
+          }
+        ]
+      },
+      {
+        "block": 2,
+        "wallRatio": 1.0442755718089998,
+        "callbackRatio": 0.8788269713355547,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block2",
+            "round": 1,
+            "wallMs": 3737.3880419999987,
+            "testMs": 728.993499,
+            "reportSha256": "7562b03814f0a884766a439ec09ea010873aae55febeb0a9b6cf16114f4c2418",
+            "load": [
+              24.416015625,
+              12.7060546875,
+              12.49365234375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block2",
+            "round": 2,
+            "wallMs": 3940.8643749999974,
+            "testMs": 640.897125,
+            "reportSha256": "66f41e788887dd6df61bb178ba3f09f7f4e577e83da8533c76956e09dcbeb410",
+            "load": [
+              25.18310546875,
+              13.05908203125,
+              12.61962890625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block2",
+            "round": 3,
+            "wallMs": 4616.883084000001,
+            "testMs": 755.8246659999999,
+            "reportSha256": "e765beecaca2319ab4701d0b45803e22d869184885069b782f5e866de1c92809",
+            "load": [
+              24.6875,
+              13.1572265625,
+              12.65673828125
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block2",
+            "round": 4,
+            "wallMs": 4457.5249579999945,
+            "testMs": 860.3088740000001,
+            "reportSha256": "efcc0009dace6b7d527c2f1aa8228faa68c2738e3e3ca9eaa0bea05d28d83337",
+            "load": [
+              25.91357421875,
+              13.6025390625,
+              12.81689453125
+            ]
+          }
+        ]
+      },
+      {
+        "block": 3,
+        "wallRatio": 1.1827169904993078,
+        "callbackRatio": 1.1514375731953155,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block3",
+            "round": 1,
+            "wallMs": 4644.005999999994,
+            "testMs": 830.9176259999999,
+            "reportSha256": "07ddbf13c579b724d9cd44520dca5a13797c377cf6e50950c2b2a385d9d4073d",
+            "load": [
+              26.56103515625,
+              13.94091796875,
+              12.94091796875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block3",
+            "round": 2,
+            "wallMs": 5625.871708999999,
+            "testMs": 975.679919,
+            "reportSha256": "5c412c02e538e547cd493d399ec07d2101e86adb7d17b5df4bd3f5a6ada07117",
+            "load": [
+              28.197265625,
+              14.48974609375,
+              13.14013671875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block3",
+            "round": 3,
+            "wallMs": 4371.282166999998,
+            "testMs": 704.1274589999999,
+            "reportSha256": "02a7636492d0ae19cbff945a73ae3104aea549ec3bb47d8f2ae24357db964bf9",
+            "load": [
+              26.89990234375,
+              14.4482421875,
+              13.13330078125
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block3",
+            "round": 4,
+            "wallMs": 3808.6956659999996,
+            "testMs": 627.9607509999997,
+            "reportSha256": "7ee52e29fdee37cb910d95ad7168d4ef85ae3dea64849d1122ae146389bb19ee",
+            "load": [
+              26.89990234375,
+              14.4482421875,
+              13.13330078125
+            ]
+          }
+        ]
+      },
+      {
+        "block": 4,
+        "wallRatio": 0.7428693582144518,
+        "callbackRatio": 0.7741679410022797,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block4",
+            "round": 1,
+            "wallMs": 10369.051332999981,
+            "testMs": 1958.7778319999998,
+            "reportSha256": "ed9adacb32127123d25ae18d1e2b099a3a6167104ea38891b5f5a60abf0a8e5e",
+            "load": [
+              47.71044921875,
+              23.14990234375,
+              16.50927734375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block4",
+            "round": 2,
+            "wallMs": 11566.03224999999,
+            "testMs": 2165.8469160000004,
+            "reportSha256": "4bacb0815dcc6eb5ff59e9440692c8c1fbabfd8bed4b826b5fab2a923670d59a",
+            "load": [
+              49.41357421875,
+              24.328125,
+              17.0048828125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block4",
+            "round": 3,
+            "wallMs": 10836.737083999993,
+            "testMs": 1971.820705,
+            "reportSha256": "46dca9251e3f925997363122d795dcca3b5dd515eaf8e755360be5a40225a7fb",
+            "load": [
+              56.841796875,
+              26.7119140625,
+              17.93408203125
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block4",
+            "round": 4,
+            "wallMs": 19788.02687500001,
+            "testMs": 3385.886293,
+            "reportSha256": "8cac17ceb72c51beb746e45428a8980e22b37cd96ef75c96a05bc6ce050b420f",
+            "load": [
+              64.96337890625,
+              30.505859375,
+              19.49755859375
+            ]
+          }
+        ]
+      },
+      {
+        "block": 5,
+        "wallRatio": 1.1491171928999557,
+        "callbackRatio": 1.3214748084784447,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block5",
+            "round": 1,
+            "wallMs": 18649.50320800001,
+            "testMs": 3048.829499000001,
+            "reportSha256": "8c7cbb7619e1d669ef2ff42a6b1ee17b680040f2e4c3ffa079755129eb2921b4",
+            "load": [
+              70.060546875,
+              33.96923828125,
+              20.9990234375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block5",
+            "round": 2,
+            "wallMs": 18226.263834000012,
+            "testMs": 3011.756038999999,
+            "reportSha256": "dace60e85250e101b97e7ad92e48f5f9147b748144c6367ea70da9b45f04f32f",
+            "load": [
+              72.6181640625,
+              36.9638671875,
+              22.37841796875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block5",
+            "round": 3,
+            "wallMs": 23896.947083000006,
+            "testMs": 5434.354333000001,
+            "reportSha256": "ad60611aa1ee3ced581b41e3df836ea1d7bac8bae1658fbfa4eed91e1d9cb557",
+            "load": [
+              83.0126953125,
+              42.45947265625,
+              24.79248046875
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block5",
+            "round": 4,
+            "wallMs": 18007.51591700001,
+            "testMs": 3342.5979559999996,
+            "reportSha256": "22ef3fb2542e76402237c5efe6958550d628ad1748c6b40eb189362513756e2e",
+            "load": [
+              82.02783203125,
+              44.205078125,
+              25.72265625
+            ]
+          }
+        ]
+      },
+      {
+        "block": 6,
+        "wallRatio": 1.2141008936224713,
+        "callbackRatio": 1.2630559084392232,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block6",
+            "round": 1,
+            "wallMs": 34711.28445799998,
+            "testMs": 5987.685662999999,
+            "reportSha256": "59efcf03af32c3eb08b7e823b8346306b48039a30896dec674705b3e0d7f3a40",
+            "load": [
+              223.302734375,
+              131.94873046875,
+              68.2529296875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block6",
+            "round": 2,
+            "wallMs": 31611.99204199994,
+            "testMs": 5800.233747999999,
+            "reportSha256": "b7a2387730429f9ec3f561c8aa19b512c73ee6f2b51e20648d155f770a05d087",
+            "load": [
+              216.828125,
+              140.9521484375,
+              74.1318359375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block6",
+            "round": 3,
+            "wallMs": 21370.610624999972,
+            "testMs": 3734.728708,
+            "reportSha256": "b176fd2419cfa305736b7a26e0eaa264a490e457fa79e52ac8b859c129a5e2b6",
+            "load": [
+              206.08056640625,
+              143.48046875,
+              76.59423828125
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block6",
+            "round": 4,
+            "wallMs": 8928.089291999931,
+            "testMs": 1561.4357910000003,
+            "reportSha256": "7ea089f8354f6a4038c3f83c9a2a2819cb138c70da25af4c2dc1d7ae528ad5be",
+            "load": [
+              181.92041015625,
+              140.35546875,
+              76.265625
+            ]
+          }
+        ]
+      },
+      {
+        "block": 7,
+        "wallRatio": 0.7591813107872833,
+        "callbackRatio": 0.6993649421726794,
+        "runs": [
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block7",
+            "round": 1,
+            "wallMs": 4330.42975000001,
+            "testMs": 803.0502510000001,
+            "reportSha256": "a3b2af3cb4ce6751df8b4ae68cf0996fe382ebd7f13714f76f52610ea85dae58",
+            "load": [
+              168.1533203125,
+              138.19091796875,
+              75.876953125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block7",
+            "round": 2,
+            "wallMs": 3014.247541000019,
+            "testMs": 466.61583299999995,
+            "reportSha256": "9f628a0e6ec1cb1627f44a6687a3f7bbe3cf83ae4cd9d4627f448fd9f402da1d",
+            "load": [
+              168.1533203125,
+              138.19091796875,
+              75.876953125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "previous-block7",
+            "round": 3,
+            "wallMs": 2764.56799999997,
+            "testMs": 452.030792,
+            "reportSha256": "bae283415de2c73decff7aaea1807cf993257d74474144622fae74e8a3f52c13",
+            "load": [
+              155.0078125,
+              135.962890625,
+              75.45556640625
+            ]
+          },
+          {
+            "build": "previous",
+            "mode": "native",
+            "phase": "previous-block7",
+            "round": 4,
+            "wallMs": 3281.4746250000317,
+            "testMs": 510.493751,
+            "reportSha256": "61defee6941eef72519565ff17600f232d446fba310c30bf3c165ace673ece63",
+            "load": [
+              142.9951171875,
+              133.78857421875,
+              75.04248046875
+            ]
+          }
+        ]
+      }
+    ],
+    "legacy": [
+      {
+        "block": 1,
+        "wallRatio": 1.0851438083323859,
+        "callbackRatio": 1.7425159658517768,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 1,
+            "wallMs": 3302.5735410000016,
+            "testMs": 388.99578900000006,
+            "reportSha256": "34879b0a246e0894684035ffdc401cec50603c421e595be37abcaac20f8a1609",
+            "load": [
+              17.9208984375,
+              10.43505859375,
+              11.71728515625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 2,
+            "wallMs": 3654.3961670000026,
+            "testMs": 564.7606280000002,
+            "reportSha256": "dbbd3dc7aea36380d5a2836e2cedba2e06b0be0eaca51862c7d54684b6f96f10",
+            "load": [
+              19.2880859375,
+              10.8427734375,
+              11.853515625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 3,
+            "wallMs": 3496.4882080000025,
+            "testMs": 620.8823730000001,
+            "reportSha256": "681986bf06b24141551b3af7cf542eda02f114861a9d16d397b53997be1de4b9",
+            "load": [
+              19.7451171875,
+              11.07763671875,
+              11.93017578125
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 4,
+            "wallMs": 3287.2298749999973,
+            "testMs": 291.424376,
+            "reportSha256": "fb4a4bd183ccf3256d39b9f442c7fd058839cdd288b0b74411cadbc803e5175e",
+            "load": [
+              19.7451171875,
+              11.07763671875,
+              11.93017578125
+            ]
+          }
+        ]
+      },
+      {
+        "block": 2,
+        "wallRatio": 1.2439628726947627,
+        "callbackRatio": 2.251933057369148,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 1,
+            "wallMs": 3147.4433329999956,
+            "testMs": 320.9383290000002,
+            "reportSha256": "f31e6d471ddc32bf07272d6aabed32c4945206b998e6c99270b67fcf88f066ac",
+            "load": [
+              21.28662109375,
+              11.541015625,
+              12.08837890625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 2,
+            "wallMs": 3760.0621249999967,
+            "testMs": 708.6903340000001,
+            "reportSha256": "f62898c529952839492321454a4cba754839e680e5a9fcca549d37490ad3175f",
+            "load": [
+              22.30419921875,
+              11.91357421875,
+              12.21630859375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 3,
+            "wallMs": 4110.626458000006,
+            "testMs": 712.723333,
+            "reportSha256": "6c0f9a335bda11f8f96c626d87231e6670c04e6fb2fa1dced1cada77890d19b8",
+            "load": [
+              23.32080078125,
+              12.29638671875,
+              12.349609375
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 4,
+            "wallMs": 3179.665583000002,
+            "testMs": 310.2587939999999,
+            "reportSha256": "560d91501339523ebd60c4d171d8b6c7ab5641797b57015bf83e7a052cc6e01e",
+            "load": [
+              23.32080078125,
+              12.29638671875,
+              12.349609375
+            ]
+          }
+        ]
+      },
+      {
+        "block": 3,
+        "wallRatio": 0.8967814594190803,
+        "callbackRatio": 1.7731004682522877,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 1,
+            "wallMs": 3931.083249999996,
+            "testMs": 353.4114189999999,
+            "reportSha256": "eebd509fe3460be7716ca18c5d3e98e536af394747021b0407b81b9fec2df7ec",
+            "load": [
+              26.74755859375,
+              14.623046875,
+              13.20263671875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 2,
+            "wallMs": 4511.282249999989,
+            "testMs": 857.1756670000002,
+            "reportSha256": "9d12cc6136f2bbf818e766867b42477fcf64770ea7a5f5ec70e96b6a767fdac9",
+            "load": [
+              27.248046875,
+              14.927734375,
+              13.318359375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 3,
+            "wallMs": 3023.7661660000012,
+            "testMs": 471.8525389999999,
+            "reportSha256": "ce7754aefddbbefe4d04ef3ef6d499cd47b142f75874824b00ccd29d65c03ae0",
+            "load": [
+              25.54638671875,
+              14.779296875,
+              13.275390625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 4,
+            "wallMs": 4471.240790999989,
+            "testMs": 396.13900400000006,
+            "reportSha256": "deebfa767026d1a2faf4fb31a0847f6335c828a5ee32fb8bfdc2bf4521c58ce5",
+            "load": [
+              27.18408203125,
+              15.29736328125,
+              13.466796875
+            ]
+          }
+        ]
+      },
+      {
+        "block": 4,
+        "wallRatio": 1.3994449126808373,
+        "callbackRatio": 3.2052709202735654,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 1,
+            "wallMs": 10242.06416699999,
+            "testMs": 936.7369140000003,
+            "reportSha256": "60b5da9ececa63c6eb5bb51949ff06ead284ec889ef764c3e2e8b3bef1a976fe",
+            "load": [
+              33.244140625,
+              16.9833984375,
+              14.0859375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 2,
+            "wallMs": 13325.925957999993,
+            "testMs": 2264.395750999999,
+            "reportSha256": "6dfb9e3c50cfb675016e7eaa375d2909b0b814d1500c669b5045dffcf1df12e8",
+            "load": [
+              39.29833984375,
+              18.79833984375,
+              14.76220703125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 3,
+            "wallMs": 13854.503291,
+            "testMs": 2696.2229610000004,
+            "reportSha256": "a5894b6c790097abcaa168e9bdb916537303f0ee39effdb95688aa4afa66d305",
+            "load": [
+              43.04150390625,
+              20.6474609375,
+              15.4931640625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 4,
+            "wallMs": 9180.228917,
+            "testMs": 610.9072120000002,
+            "reportSha256": "88d7787af272e8c91372a42c3adc8ac87753256f4c2d6668c520d1b0b8ba7c97",
+            "load": [
+              45.478515625,
+              21.8955078125,
+              15.99560546875
+            ]
+          }
+        ]
+      },
+      {
+        "block": 5,
+        "wallRatio": 0.8036786313662736,
+        "callbackRatio": 2.118357117473948,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 1,
+            "wallMs": 15251.814249999996,
+            "testMs": 1085.854288,
+            "reportSha256": "34c7530d201cddd4077a0346ccd3a5c47f5049def1ecc6600df8acdcc6621582",
+            "load": [
+              88.8203125,
+              47.71435546875,
+              27.306640625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 2,
+            "wallMs": 18341.434083,
+            "testMs": 3503.361625,
+            "reportSha256": "7f1402b56dc1d6ec4ce287c367bc02402dea3f77488eeea23e8967672d65bd34",
+            "load": [
+              90.34326171875,
+              50.79150390625,
+              28.8876953125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 3,
+            "wallMs": 17326.607665999967,
+            "testMs": 3090.867377999999,
+            "reportSha256": "d65d7c4c4ef0500f4bc62615096ca98a84f069126c431a57341b237aca6d2e8d",
+            "load": [
+              82.84716796875,
+              51.09033203125,
+              29.37744140625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 4,
+            "wallMs": 29129.161375000025,
+            "testMs": 2027.0434140000007,
+            "reportSha256": "38ff9b61fc316dbbdcfba40de212a2ecf90ab1605b78400ffe0032b2536a53c4",
+            "load": [
+              119.73876953125,
+              62.79638671875,
+              34.35546875
+            ]
+          }
+        ]
+      },
+      {
+        "block": 6,
+        "wallRatio": 1.213133199622056,
+        "callbackRatio": 2.099120775377343,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 1,
+            "wallMs": 31292.389958999993,
+            "testMs": 3289.7568359999996,
+            "reportSha256": "fe7f0137258387f93ae19cb5e57f913c91b0098a150d4c9283b30429f9e8aeb4",
+            "load": [
+              158.71044921875,
+              77.9833984375,
+              40.86279296875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 2,
+            "wallMs": 37651.44595799997,
+            "testMs": 6125.830710000002,
+            "reportSha256": "0928560995ad4fb1ab6ab6488e51334cc191b1e9bab52a7cd237fcce2ed0dfa9",
+            "load": [
+              160.95751953125,
+              88.87890625,
+              46.57177734375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 3,
+            "wallMs": 40296.26537500002,
+            "testMs": 6386.644623999999,
+            "reportSha256": "c5622259020005fc14ef99c7f9600fcf1f25a3241512a250953eea5d599e43ea",
+            "load": [
+              181.609375,
+              102.60595703125,
+              53.5087890625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 4,
+            "wallMs": 32960.827541999985,
+            "testMs": 2671.0604169999997,
+            "reportSha256": "4e337e644386eba8c001f1d96905bc29ed9c5277d12507c8a3c9ca4191795c81",
+            "load": [
+              225.39111328125,
+              122.55908203125,
+              62.77490234375
+            ]
+          }
+        ]
+      },
+      {
+        "block": 7,
+        "wallRatio": 1.141222321976373,
+        "callbackRatio": 2.0745835494078038,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 1,
+            "wallMs": 2612.5889169999864,
+            "testMs": 225.17908299999985,
+            "reportSha256": "da3560e3cbc3af2134560a9ca8b7d50855bde0e685e51d9520ade94fd238dcb8",
+            "load": [
+              142.9951171875,
+              133.78857421875,
+              75.04248046875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 2,
+            "wallMs": 2643.470374999917,
+            "testMs": 432.9103759999997,
+            "reportSha256": "2b2c5d0e44cc434077115b0e96ce5f504c7bae7628c9b44fd6cd6514e30a64e8",
+            "load": [
+              132.0244140625,
+              131.6669921875,
+              74.6376953125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 3,
+            "wallMs": 2578.5638749999925,
+            "testMs": 412.7431250000001,
+            "reportSha256": "f2c58c3be976c4455f494311fcc95b47b7286c3e433d3ca7d4010ad1bbfd5456",
+            "load": [
+              132.0244140625,
+              131.6669921875,
+              74.6376953125
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 4,
+            "wallMs": 1963.2366249999031,
+            "testMs": 182.44658300000003,
+            "reportSha256": "f6fd9c744524e1997e44a244959d3a8c176f0852c0e976c573f4ecefcc947965",
+            "load": [
+              121.61181640625,
+              129.51416015625,
+              74.2119140625
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "timingExclusion": "getByLabelText: wrapping <label> labels only its FIRST control",
+  "coverage": {
+    "passCount": 1143,
+    "line": 100,
+    "branch": 97.36,
+    "function": 100
+  },
+  "acceptancePerBackend": {
+    "compatibility": 29,
+    "strictRustCss": 1
+  },
+  "prototypeMeasurements": {
+    "description": "Earlier prototype using the same guard, before splitting its implementation into two functions.",
+    "packedCapturePercent": -7.83728333088648,
+    "publicReads": [
+      {
+        "block": 1,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 1056.798958015861,
+            "stable": {
+              "wall": 35.736958999999956,
+              "cpu": 57.104
+            },
+            "mutation": {
+              "wall": 90.62404100000003,
+              "cpu": 143.945
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 781.8439170077909,
+            "stable": {
+              "wall": 34.01212499999997,
+              "cpu": 54.887
+            },
+            "mutation": {
+              "wall": 98.42191599999995,
+              "cpu": 152.284
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 463.86441600043327,
+            "stable": {
+              "wall": 29.54525000000001,
+              "cpu": 48.145
+            },
+            "mutation": {
+              "wall": 95.514542,
+              "cpu": 146.142
+            }
+          },
+          {
+            "variant": "release",
+            "process": 456.27308401162736,
+            "stable": {
+              "wall": 32.91270800000001,
+              "cpu": 52.26
+            },
+            "mutation": {
+              "wall": 89.71324999999999,
+              "cpu": 141.894
+            }
+          }
+        ],
+        "process": 0.8232974362139414,
+        "stable": 0.9258220436815813,
+        "mutation": 1.0754096222949248
+      },
+      {
+        "block": 1,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 526.8444579851348,
+            "stable": {
+              "wall": 0.3250419999999963,
+              "cpu": 0.581
+            },
+            "mutation": {
+              "wall": 1.605792000000008,
+              "cpu": 2.88
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 451.05208398308605,
+            "stable": {
+              "wall": 29.864709000000005,
+              "cpu": 48.619
+            },
+            "mutation": {
+              "wall": 92.42858299999997,
+              "cpu": 143.9
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 448.6366669880226,
+            "stable": {
+              "wall": 29.820334000000003,
+              "cpu": 48.326
+            },
+            "mutation": {
+              "wall": 89.868417,
+              "cpu": 138.994
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 338.69525001500733,
+            "stable": {
+              "wall": 0.2909580000000034,
+              "cpu": 0.481
+            },
+            "mutation": {
+              "wall": 1.5466669999999993,
+              "cpu": 2.802
+            }
+          }
+        ],
+        "process": 1.0394540454416228,
+        "stable": 96.89130357142864,
+        "mutation": 57.82692177757095
+      },
+      {
+        "block": 2,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 337.40412499173544,
+            "stable": {
+              "wall": 0.3002919999999989,
+              "cpu": 0.616
+            },
+            "mutation": {
+              "wall": 1.6379160000000041,
+              "cpu": 2.949
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 450.89258399093524,
+            "stable": {
+              "wall": 29.574959000000007,
+              "cpu": 47.604
+            },
+            "mutation": {
+              "wall": 86.99487500000001,
+              "cpu": 134.459
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 452.9226250015199,
+            "stable": {
+              "wall": 29.312707999999986,
+              "cpu": 47.329
+            },
+            "mutation": {
+              "wall": 86.90674999999999,
+              "cpu": 134.843
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 329.56795798963867,
+            "stable": {
+              "wall": 0.30666700000000446,
+              "cpu": 0.535
+            },
+            "mutation": {
+              "wall": 1.5868329999999986,
+              "cpu": 2.854
+            }
+          }
+        ],
+        "process": 1.3551020080966345,
+        "stable": 97.02083172009917,
+        "mutation": 53.92718161940661
+      },
+      {
+        "block": 2,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 509.72179099335335,
+            "stable": {
+              "wall": 32.66079199999999,
+              "cpu": 53.021
+            },
+            "mutation": {
+              "wall": 94.573917,
+              "cpu": 149.289
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 523.0992079887073,
+            "stable": {
+              "wall": 34.62783299999998,
+              "cpu": 54.395
+            },
+            "mutation": {
+              "wall": 111.29258300000004,
+              "cpu": 167.941
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 513.3277910063043,
+            "stable": {
+              "wall": 31.918583000000012,
+              "cpu": 52.487
+            },
+            "mutation": {
+              "wall": 93.98220900000001,
+              "cpu": 144.671
+            }
+          },
+          {
+            "variant": "release",
+            "process": 504.8132080119103,
+            "stable": {
+              "wall": 35.61499999999998,
+              "cpu": 56.422
+            },
+            "mutation": {
+              "wall": 100.20079099999998,
+              "cpu": 156.82
+            }
+          }
+        ],
+        "process": 1.0215783585694065,
+        "stable": 0.9746707295610724,
+        "mutation": 1.0539088678803208
+      },
+      {
+        "block": 3,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 533.0082919972483,
+            "stable": {
+              "wall": 42.05966699999999,
+              "cpu": 63.742
+            },
+            "mutation": {
+              "wall": 109.80941699999997,
+              "cpu": 168.042
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 574.5346659969073,
+            "stable": {
+              "wall": 46.841958000000005,
+              "cpu": 69.965
+            },
+            "mutation": {
+              "wall": 110.27804100000003,
+              "cpu": 169.409
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 483.0350420088507,
+            "stable": {
+              "wall": 31.463042,
+              "cpu": 50.921
+            },
+            "mutation": {
+              "wall": 94.07312499999998,
+              "cpu": 144.224
+            }
+          },
+          {
+            "variant": "release",
+            "process": 476.32524999789894,
+            "stable": {
+              "wall": 34.981667,
+              "cpu": 56.026
+            },
+            "mutation": {
+              "wall": 97.94787500000001,
+              "cpu": 154.746
+            }
+          }
+        ],
+        "process": 1.0477901149656261,
+        "stable": 1.0164024418372613,
+        "mutation": 0.983605263780585
+      },
+      {
+        "block": 3,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 340.17933398718014,
+            "stable": {
+              "wall": 0.36487500000001205,
+              "cpu": 0.682
+            },
+            "mutation": {
+              "wall": 1.8226250000000022,
+              "cpu": 3.164
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 490.0461670185905,
+            "stable": {
+              "wall": 33.097916999999995,
+              "cpu": 53.431
+            },
+            "mutation": {
+              "wall": 96.910334,
+              "cpu": 151.01
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 547.759084001882,
+            "stable": {
+              "wall": 41.48195799999999,
+              "cpu": 65.055
+            },
+            "mutation": {
+              "wall": 120.786292,
+              "cpu": 181.101
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 347.3020829842426,
+            "stable": {
+              "wall": 0.3429579999999959,
+              "cpu": 0.873
+            },
+            "mutation": {
+              "wall": 2.7422909999999945,
+              "cpu": 4.309
+            }
+          }
+        ],
+        "process": 1.5095757141950676,
+        "stable": 105.36365922470293,
+        "mutation": 47.68907598737856
+      },
+      {
+        "block": 4,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 371.16124999010935,
+            "stable": {
+              "wall": 0.31562499999999716,
+              "cpu": 0.688
+            },
+            "mutation": {
+              "wall": 1.737166000000002,
+              "cpu": 3.15
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 483.0019589862786,
+            "stable": {
+              "wall": 34.15554200000001,
+              "cpu": 54.183
+            },
+            "mutation": {
+              "wall": 103.57287499999998,
+              "cpu": 157.825
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 527.1304589987267,
+            "stable": {
+              "wall": 37.780624999999986,
+              "cpu": 58.513
+            },
+            "mutation": {
+              "wall": 104.42050000000003,
+              "cpu": 160.083
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 357.77508400497027,
+            "stable": {
+              "wall": 0.3192910000000069,
+              "cpu": 0.6
+            },
+            "mutation": {
+              "wall": 1.790333000000004,
+              "cpu": 3.127
+            }
+          }
+        ],
+        "process": 1.3857622001756655,
+        "stable": 113.30029011711713,
+        "mutation": 58.96341147084653
+      },
+      {
+        "block": 4,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 491.09483300708234,
+            "stable": {
+              "wall": 38.42120799999999,
+              "cpu": 60.619
+            },
+            "mutation": {
+              "wall": 100.24866700000001,
+              "cpu": 159.752
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 479.8554999870248,
+            "stable": {
+              "wall": 31.631541000000013,
+              "cpu": 51.965
+            },
+            "mutation": {
+              "wall": 99.53095900000002,
+              "cpu": 154.969
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 501.4522920246236,
+            "stable": {
+              "wall": 34.86566699999999,
+              "cpu": 56.45
+            },
+            "mutation": {
+              "wall": 103.43979200000001,
+              "cpu": 160.217
+            }
+          },
+          {
+            "variant": "release",
+            "process": 495.27437501819804,
+            "stable": {
+              "wall": 35.443375,
+              "cpu": 56.831
+            },
+            "mutation": {
+              "wall": 103.79883400000003,
+              "cpu": 161.87
+            }
+          }
+        ],
+        "process": 0.9948686394785529,
+        "stable": 0.9002583552119966,
+        "mutation": 0.9947230424547077
+      },
+      {
+        "block": 5,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 503.8526249991264,
+            "stable": {
+              "wall": 38.95225000000002,
+              "cpu": 60.594
+            },
+            "mutation": {
+              "wall": 102.05825000000002,
+              "cpu": 159.787
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 493.5002920101397,
+            "stable": {
+              "wall": 34.92562500000001,
+              "cpu": 54.657
+            },
+            "mutation": {
+              "wall": 103.85258299999998,
+              "cpu": 159.724
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 505.79491700045764,
+            "stable": {
+              "wall": 33.839582999999976,
+              "cpu": 55.01
+            },
+            "mutation": {
+              "wall": 101.526917,
+              "cpu": 158.639
+            }
+          },
+          {
+            "variant": "release",
+            "process": 494.20370801817626,
+            "stable": {
+              "wall": 36.88425000000001,
+              "cpu": 57.649
+            },
+            "mutation": {
+              "wall": 101.65408300000001,
+              "cpu": 160.557
+            }
+          }
+        ],
+        "process": 1.0012412886450501,
+        "stable": 0.9067560871084499,
+        "mutation": 1.008183927676092
+      },
+      {
+        "block": 5,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 397.17124999151565,
+            "stable": {
+              "wall": 0.32920900000000586,
+              "cpu": 0.627
+            },
+            "mutation": {
+              "wall": 2.4351249999999993,
+              "cpu": 4.236
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 581.4492500212509,
+            "stable": {
+              "wall": 45.399542,
+              "cpu": 66.444
+            },
+            "mutation": {
+              "wall": 130.562084,
+              "cpu": 189.223
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 594.8122080008034,
+            "stable": {
+              "wall": 42.265625,
+              "cpu": 63.403
+            },
+            "mutation": {
+              "wall": 111.585666,
+              "cpu": 167.637
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 386.3375830114819,
+            "stable": {
+              "wall": 0.31187500000000057,
+              "cpu": 0.601
+            },
+            "mutation": {
+              "wall": 1.7736249999999956,
+              "cpu": 3.114
+            }
+          }
+        ],
+        "process": 1.5012740233109205,
+        "stable": 136.7452112359677,
+        "mutation": 57.534362934363
+      },
+      {
+        "block": 6,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 375.5999169952702,
+            "stable": {
+              "wall": 0.34312500000000057,
+              "cpu": 0.655
+            },
+            "mutation": {
+              "wall": 1.839665999999994,
+              "cpu": 3.436
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 544.9463330151048,
+            "stable": {
+              "wall": 33.742582999999996,
+              "cpu": 53.856
+            },
+            "mutation": {
+              "wall": 98.43829100000002,
+              "cpu": 151.922
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 540.7007079920731,
+            "stable": {
+              "wall": 39.854791000000006,
+              "cpu": 61.23
+            },
+            "mutation": {
+              "wall": 116.69825000000003,
+              "cpu": 175.362
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 388.05199999478646,
+            "stable": {
+              "wall": 0.309708999999998,
+              "cpu": 0.574
+            },
+            "mutation": {
+              "wall": 1.8555000000000064,
+              "cpu": 3.166
+            }
+          }
+        ],
+        "process": 1.4216516934656158,
+        "stable": 112.73520374245238,
+        "mutation": 58.22107613027399
+      },
+      {
+        "block": 6,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 474.7327499790117,
+            "stable": {
+              "wall": 33.00454099999999,
+              "cpu": 53.511
+            },
+            "mutation": {
+              "wall": 95.13037499999999,
+              "cpu": 149.581
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 500.3194999881089,
+            "stable": {
+              "wall": 38.49041699999998,
+              "cpu": 60.503
+            },
+            "mutation": {
+              "wall": 102.90674999999999,
+              "cpu": 158.999
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 483.74075000174344,
+            "stable": {
+              "wall": 30.534499999999994,
+              "cpu": 49.457
+            },
+            "mutation": {
+              "wall": 95.33712500000001,
+              "cpu": 147.224
+            }
+          },
+          {
+            "variant": "release",
+            "process": 478.10162501991726,
+            "stable": {
+              "wall": 35.55354199999999,
+              "cpu": 56.066
+            },
+            "mutation": {
+              "wall": 94.29237500000002,
+              "cpu": 149.019
+            }
+          }
+        ],
+        "process": 1.0327715664025643,
+        "stable": 1.006809321083263,
+        "mutation": 1.0465684560064723
+      },
+      {
+        "block": 7,
+        "comparison": "release",
+        "samples": [
+          {
+            "variant": "release",
+            "process": 461.99916701880284,
+            "stable": {
+              "wall": 33.123125000000016,
+              "cpu": 53.84
+            },
+            "mutation": {
+              "wall": 92.406666,
+              "cpu": 145.138
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 459.58545798202977,
+            "stable": {
+              "wall": 30.09170899999998,
+              "cpu": 50.09
+            },
+            "mutation": {
+              "wall": 93.53270800000001,
+              "cpu": 143.404
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 460.4930829955265,
+            "stable": {
+              "wall": 30.194874999999996,
+              "cpu": 49.217
+            },
+            "mutation": {
+              "wall": 95.55224999999999,
+              "cpu": 148.41
+            }
+          },
+          {
+            "variant": "release",
+            "process": 467.370625003241,
+            "stable": {
+              "wall": 33.20104100000002,
+              "cpu": 53.06
+            },
+            "mutation": {
+              "wall": 91.926583,
+              "cpu": 145.563
+            }
+          }
+        ],
+        "process": 0.9900026328332961,
+        "stable": 0.9089685952477705,
+        "mutation": 1.025777818303414
+      },
+      {
+        "block": 7,
+        "comparison": "legacy",
+        "samples": [
+          {
+            "variant": "legacy",
+            "process": 338.8164170028176,
+            "stable": {
+              "wall": 0.3046669999999949,
+              "cpu": 0.531
+            },
+            "mutation": {
+              "wall": 1.5677909999999997,
+              "cpu": 2.814
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 464.2905420041643,
+            "stable": {
+              "wall": 29.845000000000013,
+              "cpu": 48.495
+            },
+            "mutation": {
+              "wall": 93.94062499999998,
+              "cpu": 146.322
+            }
+          },
+          {
+            "variant": "chain",
+            "process": 465.16341698588803,
+            "stable": {
+              "wall": 29.831958,
+              "cpu": 48.336
+            },
+            "mutation": {
+              "wall": 96.5435,
+              "cpu": 150.393
+            }
+          },
+          {
+            "variant": "legacy",
+            "process": 351.5015000011772,
+            "stable": {
+              "wall": 0.31287500000000534,
+              "cpu": 0.556
+            },
+            "mutation": {
+              "wall": 1.676165999999995,
+              "cpu": 2.99
+            }
+          }
+        ],
+        "process": 1.3464143637237707,
+        "stable": 96.63627413196186,
+        "mutation": 58.71968247421291
+      }
+    ]
+  },
+  "qualification": "An earlier exploratory whole-suite run failed a click assertion. Its timings were discarded. The unfiltered final acceptance run passed that test on N-API and WASM.",
+  "captureRunsBeforeHelperExtraction": [
+    {
+      "variant": "chain",
+      "block": 1,
+      "cpu": 0.909872703901812,
+      "wall": 0.9956338373424578,
+      "samples": [
+        {
+          "cpuMs": 61.01,
+          "wallMs": 57.952083999999985
+        },
+        {
+          "cpuMs": 55.015,
+          "wallMs": 31.946583999999987
+        },
+        {
+          "cpuMs": 54.702,
+          "wallMs": 56.51170800000001
+        },
+        {
+          "cpuMs": 59.575,
+          "wallMs": 30.894125000000003
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 2,
+      "cpu": 0.8660013687946648,
+      "wall": 0.6347033225144288,
+      "samples": [
+        {
+          "cpuMs": 63.717,
+          "wallMs": 45.621167
+        },
+        {
+          "cpuMs": 53.934,
+          "wallMs": 28.612333000000007
+        },
+        {
+          "cpuMs": 54.886,
+          "wallMs": 29.665042
+        },
+        {
+          "cpuMs": 61.941,
+          "wallMs": 46.197125
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 3,
+      "cpu": 0.8738324961657997,
+      "wall": 0.8218735112055452,
+      "samples": [
+        {
+          "cpuMs": 59.569,
+          "wallMs": 38.165375
+        },
+        {
+          "cpuMs": 54.112,
+          "wallMs": 31.744874999999993
+        },
+        {
+          "cpuMs": 53.573,
+          "wallMs": 29.576375
+        },
+        {
+          "cpuMs": 63.664,
+          "wallMs": 36.44616699999999
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 4,
+      "cpu": 0.6936855893818159,
+      "wall": 0.719075662852637,
+      "samples": [
+        {
+          "cpuMs": 67.907,
+          "wallMs": 53.59629199999999
+        },
+        {
+          "cpuMs": 53.985,
+          "wallMs": 49.599125
+        },
+        {
+          "cpuMs": 33.923,
+          "wallMs": 31.44708399999999
+        },
+        {
+          "cpuMs": 58.819,
+          "wallMs": 59.11258299999999
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 5,
+      "cpu": 0.7794977233697278,
+      "wall": 0.7461169713828193,
+      "samples": [
+        {
+          "cpuMs": 64.423,
+          "wallMs": 37.53616600000001
+        },
+        {
+          "cpuMs": 46.651,
+          "wallMs": 31.687375000000003
+        },
+        {
+          "cpuMs": 52.3,
+          "wallMs": 29.049374999999998
+        },
+        {
+          "cpuMs": 62.519,
+          "wallMs": 43.86762499999999
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 6,
+      "cpu": 0.8140136431881977,
+      "wall": 0.8856397379073249,
+      "samples": [
+        {
+          "cpuMs": 61.644,
+          "wallMs": 33.71704199999999
+        },
+        {
+          "cpuMs": 49.046,
+          "wallMs": 30.537166999999997
+        },
+        {
+          "cpuMs": 50.713,
+          "wallMs": 31.868624999999994
+        },
+        {
+          "cpuMs": 60.908,
+          "wallMs": 36.74704100000001
+        }
+      ]
+    },
+    {
+      "variant": "chain",
+      "block": 7,
+      "cpu": 0.8902965207013678,
+      "wall": 0.8784190865364065,
+      "samples": [
+        {
+          "cpuMs": 64.471,
+          "wallMs": 41.672833
+        },
+        {
+          "cpuMs": 63.273,
+          "wallMs": 43.200874999999996
+        },
+        {
+          "cpuMs": 53.103,
+          "wallMs": 30.495374999999996
+        },
+        {
+          "cpuMs": 66.245,
+          "wallMs": 42.223625
+        }
+      ]
+    }
+  ]
+}

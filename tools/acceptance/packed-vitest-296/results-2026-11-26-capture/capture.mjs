@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {performance} from 'node:perf_hooks';
+const root=resolve(process.argv[2],'node_modules/turbo-dom/src/runtime');
+const {createEnvironment}=await import(pathToFileURL(root+'/index.mjs'));
+const {createDefaultCssCapture}=await import(pathToFileURL(root+'/css-default-capture.mjs'));
+const {document}=createEnvironment('<main>'+('<div class="cell"><input type="checkbox"></div>').repeat(32)+'</main>');
+const bounds={maxNodes:512,maxDepth:64,maxPathUnits:8192,maxTextUnits:16384,maxAttributes:512,maxAttributeUnits:16384};
+const cap=createDefaultCssCapture(), input=document.querySelector('input');
+const facts={maxNodes:512,maxEdges:8192,maxTextUnits:40000,maxAttributeUnits:16384};
+const read=()=>cap.selectorFacts(cap.capture(document,bounds),facts);
+const cold=read();input.checked=true; const changed=read();assert.notEqual(changed,cold);assert.equal(read(),changed);
+for(let i=0;i<25;i++)read();
+const start=performance.now(),usage=process.cpuUsage();
+for(let i=0;i<100;i++)assert.equal(read(),changed);
+const cpu=process.cpuUsage(usage);
+console.log(JSON.stringify({cpuMs:(cpu.user+cpu.system)/1000,wallMs:performance.now()-start}));

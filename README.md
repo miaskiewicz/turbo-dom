@@ -228,6 +228,22 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Rust CSS capture CPU (2026-11-26)
+
+On the packed N-API candidate, 100 repeated DOM captures used 14.1% less CPU
+than the previous Rust build at the median. 7 of seven ABBA blocks improved by over 0.5%.
+The fast path checks that an ordinary element has the original prototype chain
+and lacks four optional selector-state fields. Elements with any of those fields
+still go through the full descriptor checks on every capture.
+
+Before a final helper extraction, the 28-test Vitest benchmark took 4.43% more wall time
+than the previous Rust build and 14.12% more than legacy JavaScript
+at the median. System load varied substantially during the process timings.
+Separate unfiltered acceptance passed all 29 compatibility tests
+and the Rust CSS check on both N-API and WASM. The default switch is pending.
+
+[Timings and package hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/RESULT.json) · [Capture workload](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/capture.mjs) · [Candidate delta against the previous Rust package](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/candidate.patch)
+
 ### Packed Vitest after selector collection and encoding changes (2026-11-26)
 
 The packed Rust CSS candidate includes the matching changes from `8137bae4`.
