@@ -1,3 +1,7 @@
+import {
+	projectComposedScene,
+	requireComposedTargets,
+} from "./css-shared-composition.mjs";
 // Original primitive nodes + canonical Rust computed rows, never authored sizing.
 import {
 	SharedMap,
@@ -16,11 +20,16 @@ function attribute(value) {
 		valueUnits: value.valueUnits,
 	};
 }
-function nodeRow(row, byId, computed) {
+function nodeRow(row, byId, computed, composedParent) {
 	const parent = sharedApply("mapGet", byId, row.parent);
 	const common = {
 		id: row.id,
-		parent: parent?.kind === "element" ? parent.id : null,
+		parent:
+			composedParent === undefined
+				? parent?.kind === "element"
+					? parent.id
+					: null
+				: composedParent,
 	};
 	if (row.kind === "text")
 		return { ...common, node: { kind: "text", textUnits: row.textUnits } };
@@ -59,16 +68,39 @@ function counts(nodes) {
 }
 /** Only a canonical trusted primitive snapshot is accepted by this private seam.
  * Policy owns viewport/font profile and every resource limit explicitly. */
+function sceneNodes(snapshot, byId, computed, requested, compositionLimits) {
+	if (snapshot.roots.length !== 1) {
+		if (typeof compositionLimits !== "function")
+			throw new Error("MissingCanonicalShadowScene");
+		const projection = projectComposedScene(
+			snapshot,
+			compositionLimits(snapshot),
+		);
+		requireComposedTargets(projection, requested);
+		return sharedApply("arrayMap", projection.records, (row) =>
+			nodeRow(snapshot.records[row.recordIndex], byId, computed, row.parentId),
+		);
+	}
+	const selected = sharedApply(
+		"arrayFilter",
+		snapshot.records,
+		(row) => row.kind === "element" || row.kind === "text",
+	);
+	return sharedApply("arrayMap", selected, (row) =>
+		nodeRow(row, byId, computed),
+	);
+}
 export function createSharedSceneProvider({
 	selectBackend,
 	viewport,
 	fonts,
 	limits,
+	compositionLimits,
 }) {
 	if (typeof selectBackend !== "function" || typeof limits !== "function")
 		throw new TypeError("CSS Scene provider policy required");
 	return function measureScene({ snapshot, rows, requested, world }) {
-		if (snapshot.roots.length !== 1)
+		if (snapshot.roots.length !== 1 && typeof compositionLimits !== "function")
 			throw new Error("MissingCanonicalShadowScene");
 		const backend = selectBackend();
 		if (typeof backend.measureSceneV1 !== "function")
@@ -79,13 +111,12 @@ export function createSharedSceneProvider({
 		const computed = new SharedMap(
 			sharedApply("arrayMap", rows, (row) => [row.id, row.rendererValues]),
 		);
-		const selected = sharedApply(
-			"arrayFilter",
-			snapshot.records,
-			(row) => row.kind === "element" || row.kind === "text",
-		);
-		const nodes = sharedApply("arrayMap", selected, (row) =>
-			nodeRow(row, byId, computed),
+		const nodes = sceneNodes(
+			snapshot,
+			byId,
+			computed,
+			requested,
+			compositionLimits,
 		);
 		const request = {
 			world: sharedUnits(world),

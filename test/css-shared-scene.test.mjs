@@ -180,3 +180,65 @@ test("Scene rejects unsupported owners and capabilities and compares every world
 		JSON.stringify({ world: units("worle"), measurements: [] });
 	assert.throws(() => provider(fixture()), /CanonicalSceneWorldMismatch/);
 });
+
+test("explicit composition policy remaps native Scene parents and refuses excluded requests", () => {
+	const source = fixture(),
+		ns = "http://www.w3.org/1999/xhtml";
+	source.snapshot.roots = [
+		{ id: 1, host: null, parentScope: null },
+		{ id: 4, host: 2, parentScope: 1 },
+	];
+	source.snapshot.records[0].treeScope = 1;
+	Object.assign(source.snapshot.records[1], {
+		treeScope: 1,
+		tag: "div",
+		namespace: ns,
+		shadowRootId: 4,
+	});
+	source.snapshot.records[2].treeScope = 1;
+	source.snapshot.records.push(
+		{ id: 4, parent: null, treeScope: 4, kind: "shadow" },
+		{
+			id: 5,
+			parent: 4,
+			treeScope: 4,
+			kind: "element",
+			tag: "span",
+			namespace: ns,
+			tagUnits: units("span"),
+			namespaceUnits: units(ns),
+			attrs: [],
+		},
+	);
+	source.rows.push({ id: 5, rendererValues: { display: units("block") } });
+	source.requested = [5];
+	let request;
+	const provider = createSharedSceneProvider({
+		selectBackend: () => ({
+			measureSceneV1(text) {
+				request = JSON.parse(text);
+				return JSON.stringify({ world: request.scene.world, measurements: [] });
+			},
+		}),
+		viewport,
+		fonts: "bundled_html",
+		limits: () => ({}),
+		compositionLimits: () => ({
+			maxRoots: 2,
+			maxNodes: 5,
+			maxDepth: 3,
+			maxEdges: 10,
+			maxPathUnits: 10,
+		}),
+	});
+	provider(source);
+	assert.deepEqual(
+		request.scene.nodes.map((row) => [row.id, row.parent]),
+		[
+			[2, null],
+			[5, 2],
+		],
+	);
+	source.requested = [3];
+	assert.throws(() => provider(source), /excluded or unknown/);
+});
