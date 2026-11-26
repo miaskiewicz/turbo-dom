@@ -403,7 +403,7 @@ function matchingEntry(facts, active, prepared, enabled, useCapturedRoutes) {
  facts.cachedMatching = entry;
  return entry;
 }
-function encodeMatchingRequest(request, entry) {
+function encodeTargetRequest(request, entry) {
  const remainder = cacheCreate(null);
  const keys = sharedKeys(request);
  for (let index = 0; index < keys.length; index++) {
@@ -411,7 +411,10 @@ function encodeMatchingRequest(request, entry) {
   if (!cacheOwn(entry.mechanical, key))
    sharedDefine(remainder, key, sharedDescriptor(request, key));
  }
- return sharedApply('stringSlice', sharedEncode(remainder), 0, -1) + ',' + sharedApply('stringSlice', entry.wire, 1);
+ return sharedEncode(remainder);
+}
+function encodeMatchingRequest(request, entry) {
+ return sharedApply('stringSlice', encodeTargetRequest(request, entry), 0, -1) + ',' + sharedApply('stringSlice', entry.wire, 1);
 }
 
 export function createSharedCssAdapter(options) {
@@ -461,6 +464,7 @@ function createAdapter({
 	let active = null;
 	let selectedBackend = null;
 	const requestWires = new RequestWires();
+ const retainedMatching = new RequestWires();
 	function fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching) {
 		const {mechanical} = matching;
 		const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
@@ -515,10 +519,23 @@ function createAdapter({
 		};
 	}
 	const factory = createSharedComputedStyle({
-		encodeRequest(request) {
-			const entry = sharedInvoke(wireGet, requestWires, [request]);
-			return entry ? encodeMatchingRequest(request, entry) : sharedEncode(request);
-		},
+    resolveBatch(prepared, request) {
+      const entry = sharedInvoke(wireGet, requestWires, [request]);
+      if (!entry) return prepared.resolveBatch(sharedEncode(request));
+      // Older native and WASM artifacts use the complete wire. A new prepared
+      // model or a fresh exact matching entry must install its own answer set.
+      if (!cacheOwn(entry.mechanical, 'contextRoots') ||
+          typeof prepared.storeMatchingV1 !== 'function' || typeof prepared.resolveMatchingV1 !== 'function')
+        return prepared.resolveBatch(encodeMatchingRequest(request, entry));
+      let slot = sharedInvoke(wireGet, retainedMatching, [prepared]);
+      if (!slot || slot.entry !== entry) {
+        const token = prepared.storeMatchingV1(entry.wire, sharedEncode(request.limits));
+        slot = { entry, token };
+        sharedInvoke(wireSet, retainedMatching, [prepared, slot]);
+      }
+      return prepared.resolveMatchingV1(encodeTargetRequest(request, entry), slot.token);
+    },
+		encodeRequest: sharedEncode,
 		encodeResultKey: sharedEncode,
 		decodeResponse: decode,
 		selectBackend() {

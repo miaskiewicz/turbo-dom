@@ -145,3 +145,85 @@ test('compact captured reads retain sibling selector facts and restore the full 
     f.dispose();
   }
 });
+
+function observedMatchingModels(options, expose, events, refusing) {
+  const real = options.selectBackend();
+  const backend = { ...real, CompiledStylesV1: class {
+    constructor(wire) { this.inner = new real.CompiledStylesV1(wire); }
+    metadata() { return this.inner.metadata(); }
+    dispose() { this.inner.dispose(); }
+    prepare(wire) {
+      const inner = this.inner.prepare(wire);
+      const model = { entries: new Map() };
+      events.push({ kind: 'prepare', model });
+      const methods = {
+        metadata: () => inner.metadata(),
+        dispose() { events.push({ kind: 'dispose', model }); inner.dispose(); },
+        resolveBatch(full) { events.push({ kind: 'full', model }); return inner.resolveBatch(full); },
+      };
+      if (expose.includes('store')) methods.storeMatchingV1 = (matching, limits) => {
+        const token = String(model.entries.size + 1);
+        assert.ok(JSON.parse(limits).targets > 0);
+        events.push({ kind: 'store', model, token });
+        if (refusing.value) throw refusing.value;
+        model.entries.set(token, JSON.parse(matching));
+        return token;
+      };
+      if (expose.includes('resolve')) methods.resolveMatchingV1 = (rest, token) => {
+        assert.ok(model.entries.has(token));
+        const partial = JSON.parse(rest);
+        assert.ok(!Object.hasOwn(partial, 'contextRoots'));
+        events.push({ kind: 'resolve', model, token });
+        return inner.resolveBatch(JSON.stringify({ ...partial, ...model.entries.get(token) }));
+      };
+      return methods;
+    }
+  } };
+  return createDefaultSharedCssAdapter({ ...options, selectBackend: () => backend }, true, true);
+}
+
+test('partial retained-matching capabilities keep using the full resolution wire', async () => {
+  for (const expose of [[], ['store'], ['resolve']]) {
+    const events = [];
+    const f = await fixture(true, {
+      adapterFactory: options => observedMatchingModels(options, expose, events, {}),
+    });
+    try {
+      const read = () => f.env.window.getComputedStyle(f.doc.querySelector('b')).color;
+      assert.equal(read(), blue);
+      f.doc.querySelector('input').checked = true;
+      assert.equal(read(), red);
+      assert.deepEqual(events.map(e => e.kind), ['prepare', 'full', 'full']);
+    } finally { f.dispose(); }
+  }
+});
+
+test('retained matching is installed per exact input and prepared model, with refusal and disposal', async () => {
+  const events = [], refusing = { value: null };
+  const f = await fixture(true, {
+    adapterFactory: options => observedMatchingModels(options, ['store', 'resolve'], events, refusing),
+  });
+  const target = f.doc.querySelector('b'), read = () => f.env.window.getComputedStyle(target).color;
+  try {
+    assert.equal(read(), blue);
+    assert.equal(read(), blue);
+    assert.deepEqual(events.map(e => e.kind), ['prepare','store','resolve','resolve']);
+    const first = events[0].model;
+    f.doc.querySelector('input').checked = true;
+    refusing.value = new Error('matching storage refused');
+    assert.throws(read, error => error === refusing.value);
+    refusing.value = null;
+    assert.equal(read(), red);
+    assert.deepEqual(events.slice(4).map(e => e.kind), ['store','store','resolve']);
+    assert.equal(events.at(-1).model, first);
+    assert.equal(events.at(-1).token, '2');
+    const sheet = f.doc.querySelector('style').sheet;
+    sheet.insertRule('.item{color:purple!important}', sheet.cssRules.length);
+    assert.equal(read(), purple);
+    const last = events.at(-1);
+    assert.notEqual(last.model, first);
+    assert.equal(last.token, '1');
+    assert.ok(events.some(e => e.kind === 'dispose' && e.model === first));
+  } finally { f.dispose(); }
+  assert.equal(events.filter(e => e.kind === 'dispose').length, 2);
+});

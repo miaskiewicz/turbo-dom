@@ -228,6 +228,17 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Packed N-API selector-answer reuse (2026-11-26)
+
+The held Rust CSS build retained selector answers on the prepared model for 97
+of 110 style reads. Request traffic fell from 1,857,987 to 370,456 bytes,
+including token arguments. All 110 style results matched byte for byte. Across
+seven ABBA blocks the combined capture and transport changes took 0.31% less
+wall time than the previous Rust build (four blocks faster). The candidate took
+10.71% more wall time than legacy JS, which won all seven blocks.
+
+[Artifact hashes, checks and timings](tools/acceptance/packed-vitest-296/results-2026-11-26-retained/BENCHMARK.json)
+
 ### Packed N-API empty-child capture (2026-11-26)
 
 The Rust CSS validation build can skip copying an empty child array during DOM

@@ -184,6 +184,8 @@ struct CompiledHandle {
     model: Option<CompiledStyles>,
 }
 struct PreparedHandle {
+    #[cfg(any(feature = "napi-bind", test))]
+    matching: Option<crate::css_resolve::retained::MatchingSlot>,
     model: Option<PreparedStyles>,
 }
 fn transport<T: for<'a> Deserialize<'a>>(source: &str) -> Result<T, String> {
@@ -276,7 +278,11 @@ impl CompiledHandle {
             .model()?
             .prepare(&uses, &environment, limits)
             .map_err(|error| format!("CSSBackendPrepare:{error:?}"))?;
-        Ok(PreparedHandle { model: Some(model) })
+        Ok(PreparedHandle {
+            model: Some(model),
+            #[cfg(any(feature = "napi-bind", test))]
+            matching: None,
+        })
     }
     fn retained_bytes(&self) -> f64 {
         self.model
@@ -310,12 +316,39 @@ impl PreparedHandle {
             .map_err(|error| format!("CSSBackendGeometry:{error:?}"))?;
         crate::css_resolve::resolve_batch(plan.styles_for_measurement(), source)
     }
-    fn retained_bytes(&self) -> f64 {
-        self.model
+    #[cfg(any(feature = "napi-bind", test))]
+    fn store_matching(&mut self, wire: &str, limits: &str) -> Result<String, String> {
+        self.model()?;
+        let next = crate::css_resolve::retained::MatchingSlot::new(wire, limits)?;
+        let token = next.token().to_owned();
+        self.matching = Some(next);
+        Ok(token)
+    }
+    #[cfg(any(feature = "napi-bind", test))]
+    fn resolve_matching(&self, wire: &str, token: &str) -> Result<String, String> {
+        let model = self.model()?;
+        self.matching
             .as_ref()
-            .map_or(0, PreparedStyles::retained_payload_bytes) as f64
+            .filter(|slot| slot.token() == token)
+            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
+            .resolve(model, wire)
+    }
+    fn retained_bytes(&self) -> f64 {
+        let bytes = self
+            .model
+            .as_ref()
+            .map_or(0, PreparedStyles::retained_payload_bytes);
+        #[cfg(any(feature = "napi-bind", test))]
+        let bytes = bytes
+            + self
+                .matching
+                .as_ref()
+                .map_or(0, crate::css_resolve::retained::MatchingSlot::payload_bytes);
+        bytes as f64
     }
     fn dispose(&mut self) {
+        #[cfg(any(feature = "napi-bind", test))]
+        self.matching.take();
         self.model.take();
     }
 }
@@ -517,6 +550,14 @@ mod native {
         #[napi]
         pub fn metadata(&self) -> Result<String> {
             self.handle.metadata().map_err(error)
+        }
+        #[napi(js_name = "storeMatchingV1")]
+        pub fn store_matching_v1(&mut self, wire: String, limits: String) -> Result<String> {
+            self.handle.store_matching(&wire, &limits).map_err(error)
+        }
+        #[napi(js_name = "resolveMatchingV1")]
+        pub fn resolve_matching_v1(&self, wire: String, token: String) -> Result<String> {
+            self.handle.resolve_matching(&wire, &token).map_err(error)
         }
         #[napi(js_name = "resolveBatch")]
         pub fn resolve_batch(&self, request: String) -> Result<String> {
@@ -983,6 +1024,61 @@ mod tests {
             .resolve_batch(&input.to_string())
             .unwrap_err()
             .contains("InvalidPath"));
+    }
+    #[test]
+    fn retained_matching_requires_exact_owner_and_checks_each_read_budget() {
+        let compiled = compiled(".x{color:red}");
+        let mut owner = prepared(&compiled);
+        let other = prepared(&compiled);
+        let request = request(2, true);
+        let facts = json!({"domains":request["domains"],"selectorAnswers":request["selectorAnswers"],"scopeAnswers":[]});
+        let mut input = json!({"abiVersion":1,"targets":request["targets"],"limits":limits()});
+        let baseline = owner.retained_bytes();
+        let token = owner
+            .store_matching(&facts.to_string(), &limits().to_string())
+            .unwrap();
+        assert!(owner.retained_bytes() > baseline);
+        assert_eq!(
+            owner.resolve_matching(&input.to_string(), &token).unwrap(),
+            owner.resolve_batch(&request.to_string()).unwrap()
+        );
+        assert!(other.resolve_matching(&input.to_string(), &token).is_err());
+        let mut bad = facts.clone();
+        bad["selectorAnswers"][0]["matches"] = json!([999]);
+        assert!(owner
+            .store_matching(&bad.to_string(), &limits().to_string())
+            .unwrap_err()
+            .contains("OutsideDomain"));
+        let large = " ".repeat(256 * 1024 + 1);
+        assert!(owner
+            .store_matching(&large, &limits().to_string())
+            .unwrap_err()
+            .contains("ResourceLimit"));
+        for name in ["answerRows", "answerIds", "targets", "pathNodes"] {
+            input["limits"] = limits();
+            input["limits"][name] = json!(0);
+            assert!(owner
+                .resolve_matching(&input.to_string(), &token)
+                .unwrap_err()
+                .contains("ResourceLimit"));
+        }
+        input["limits"] = limits();
+        let empty = json!({"domains":[],"selectorAnswers":[],"scopeAnswers":[]});
+        let retained = owner.retained_bytes();
+        let next = owner
+            .store_matching(&empty.to_string(), &limits().to_string())
+            .unwrap();
+        assert!(owner.retained_bytes() < retained);
+        assert!(owner
+            .resolve_matching(&input.to_string(), &token)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        owner.dispose();
+        assert_eq!(owner.retained_bytes(), 0.0);
+        assert!(owner
+            .resolve_matching(&input.to_string(), &next)
+            .unwrap_err()
+            .contains("Disposed"));
     }
     #[test]
     fn immutable_models_resolve_original_units_and_survive_other_owner_disposal() {

@@ -275,8 +275,8 @@ function resultProxy(entry, version) {
   }
   return entry.proxy;
 }
-function resolvedRow(prepared, request, encode, decode) {
-  const output = decode(prepared.resolveBatch(encode(request.request)));
+function resolvedRow(prepared, request, resolve, decode) {
+  const output = decode(resolve(prepared, request.request));
   if (output.geometryOnly === true) throw new SharedCssCapabilityError('geometry-only rows cannot become computed style');
   let row;
   for (let index = 0; index < output.targets.length; index++) {
@@ -289,12 +289,12 @@ function resolvedRow(prepared, request, encode, decode) {
   return { row, batch: output };
 }
 
-function presentationBatch(prepared, resolved, row, request, encode, decode) {
+function presentationBatch(prepared, resolved, row, request, resolve, decode) {
   if (!presentationOwn(request, 'fullRequest') || !row.usedProperties?.length) return resolved;
   // Read the full request once. A trusted capture can defer its other target
   // rows until Rust reports that geometry is needed for a used property.
   const fullRequest = request.fullRequest;
-  const complete = resolvedRow(prepared, { resultId: request.resultId, request: fullRequest }, encode, decode);
+  const complete = resolvedRow(prepared, { resultId: request.resultId, request: fullRequest }, resolve, decode);
   request.providerContext = request.materializeProvider();
   return complete;
 }
@@ -327,6 +327,7 @@ export function createSharedComputedStyle({
   resolveProperty,
   createFacts,
   encodeRequest = encode,
+  resolveBatch = (prepared, request) => prepared.resolveBatch(encodeRequest(request)),
   encodeResultKey,
   decodeResponse = decode,
   intrinsics = { WeakRef: DefaultWeak, FinalizationRegistry: DefaultFinalizer },
@@ -370,7 +371,7 @@ export function createSharedComputedStyle({
         prepared: state.resources.prepared,
         facts: state.facts,
       });
-      const resolved = resolvedRow(state.resources.prepared, request, encodeRequest, decodeResponse);
+      const resolved = resolvedRow(state.resources.prepared, request, resolveBatch, decodeResponse);
       const row = ownResult(
         finalizeResult(resolved.row, {
           element,
@@ -384,7 +385,7 @@ export function createSharedComputedStyle({
         resolveProperty,
         presentationSnapshots,
       );
-      const batch = presentationBatch(state.resources.prepared, resolved, row, request, encodeRequest, decodeResponse);
+      const batch = presentationBatch(state.resources.prepared, resolved, row, request, resolveBatch, decodeResponse);
       const presentation = presentationOptions(resolveProperty, row, batch, request, context, presentationSnapshots);
       const proxy = createComputedStyleProxy(row, context.version, presentation);
       entry = {

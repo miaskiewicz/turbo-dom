@@ -46,6 +46,24 @@ struct Request {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct Matching {
+    #[serde(default)]
+    context_roots: Vec<ContextRow>,
+    domains: Vec<DomainRow>,
+    selector_answers: Vec<SelectorRow>,
+    scope_answers: Vec<BoundaryRow>,
+    #[serde(default)]
+    context_answers: Option<ContextAnswerRows>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ResolveInput {
+    abi_version: u32,
+    targets: Vec<Target>,
+    limits: Limits,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Target {
     id: u32,
     subject_id: Option<u32>,
@@ -212,6 +230,7 @@ fn add(total: &mut usize, count: usize, maximum: usize) -> Result<(), String> {
         .ok_or_else(|| fail("ResourceLimit"))?;
     Ok(())
 }
+#[derive(Default)]
 struct Usage {
     rows: usize,
     ids: usize,
@@ -277,8 +296,7 @@ impl Usage {
         }
         Ok(())
     }
-    fn row_counts(&mut self, request: &Request) -> Result<(), String> {
-        let limits = request.limits;
+    fn row_counts(&mut self, request: &Matching, limits: Limits) -> Result<(), String> {
         add(&mut self.rows, request.domains.len(), limits.answer_rows)?;
         add(
             &mut self.rows,
@@ -304,9 +322,8 @@ impl Usage {
         }
         Ok(())
     }
-    fn common(&mut self, request: &Request) -> Result<(), String> {
-        let limits = request.limits;
-        self.row_counts(request)?;
+    fn common(&mut self, request: &Matching, limits: Limits) -> Result<(), String> {
+        self.row_counts(request, limits)?;
         for domain in &request.domains {
             add(&mut self.ids, domain.node_ids.len(), limits.answer_ids)?;
         }
@@ -833,8 +850,8 @@ struct Batch<'a> {
     usage: Usage,
     styles: BTreeMap<u32, ComputedStyle>,
     output: Vec<ResultRow>,
-    answers: AnswerMaps,
-    contexts: Vec<ContextRoot>,
+    answers: &'a AnswerMaps,
+    contexts: &'a [ContextRoot],
     route_budget: RouteBudget,
 }
 impl Batch<'_> {
@@ -854,8 +871,8 @@ impl Batch<'_> {
             parent,
             self.limits,
             StyleInput {
-                answers: &self.answers,
-                contexts: &self.contexts,
+                answers: self.answers,
+                contexts: self.contexts,
                 route_budget: &mut self.route_budget,
             },
             &mut self.usage,
@@ -865,34 +882,30 @@ impl Batch<'_> {
         Ok(())
     }
 }
-fn new_batch(
-    prepared: &PreparedStyles,
-    request: Request,
-) -> Result<(Batch<'_>, Vec<Target>), String> {
-    let mut usage = Usage {
-        rows: 0,
-        ids: 0,
-        paths: 0,
-        input: 0,
-        output: 0,
-    };
-    usage.common(&request)?;
-    let domains = domains(request.domains)?;
-    let answers = answer_maps(
-        &request.context_roots,
-        request.selector_answers,
-        request.scope_answers,
-        request.context_answers,
-        &domains,
-    )?;
-    let batch = Batch {
-        prepared,
-        limits: request.limits,
-        usage,
-        styles: BTreeMap::new(),
-        output: Vec::new(),
-        answers,
-        contexts: request
+struct ValidatedMatching {
+    answers: AnswerMaps,
+    contexts: Vec<ContextRoot>,
+    rows: usize,
+    ids: usize,
+}
+impl Matching {
+    fn validate<T>(
+        self,
+        limits: Limits,
+        measure: impl FnOnce(&Self) -> T,
+    ) -> Result<(ValidatedMatching, T), String> {
+        let mut usage = Usage::default();
+        usage.common(&self, limits)?;
+        let retained = measure(&self);
+        let domains = domains(self.domains)?;
+        let answers = answer_maps(
+            &self.context_roots,
+            self.selector_answers,
+            self.scope_answers,
+            self.context_answers,
+            &domains,
+        )?;
+        let contexts = self
             .context_roots
             .into_iter()
             .map(|row| ContextRoot {
@@ -901,25 +914,82 @@ fn new_batch(
                 host: row.host,
                 parent_tree_scope: row.parent_tree_scope,
             })
-            .collect(),
-        route_budget: RouteBudget {
-            contexts: request.limits.routing_contexts,
-            path_units: request.limits.path_nodes,
-        },
-    };
-    Ok((batch, request.targets))
+            .collect();
+        Ok((
+            ValidatedMatching {
+                answers,
+                contexts,
+                rows: usage.rows,
+                ids: usage.ids,
+            },
+            retained,
+        ))
+    }
+}
+fn parse<T: serde::de::DeserializeOwned>(wire: &str) -> Result<T, String> {
+    serde_json::from_str(wire).map_err(|error| format!("CSSBackendTransport:{error}"))
+}
+
+#[cfg(any(feature = "napi-bind", test))]
+#[path = "css_retained_matching.rs"]
+pub(super) mod retained;
+
+impl ResolveInput {
+    fn validate(&self) -> Result<(), String> {
+        if self.abi_version != 1 {
+            return Err(fail("AbiVersion"));
+        }
+        if self.targets.len() > self.limits.targets {
+            return Err(fail("ResourceLimit"));
+        }
+        Ok(())
+    }
 }
 pub(super) fn resolve_batch(prepared: &PreparedStyles, source: &str) -> Result<String, String> {
-    let request: Request =
-        serde_json::from_str(source).map_err(|error| format!("CSSBackendTransport:{error}"))?;
-    if request.abi_version != 1 {
-        return Err(fail("AbiVersion"));
+    let request: Request = parse(source)?;
+    let input = ResolveInput {
+        abi_version: request.abi_version,
+        targets: request.targets,
+        limits: request.limits,
+    };
+    input.validate()?;
+    let (matching, ()) = Matching {
+        context_roots: request.context_roots,
+        domains: request.domains,
+        selector_answers: request.selector_answers,
+        scope_answers: request.scope_answers,
+        context_answers: request.context_answers,
     }
-    if request.targets.len() > request.limits.targets {
+    .validate(input.limits, |_| ())?;
+    apply_matching(prepared, input, &matching)
+}
+fn apply_matching(
+    prepared: &PreparedStyles,
+    input: ResolveInput,
+    matching: &ValidatedMatching,
+) -> Result<String, String> {
+    let limits = input.limits;
+    if matching.rows > limits.answer_rows || matching.ids > limits.answer_ids {
         return Err(fail("ResourceLimit"));
     }
-    let (mut batch, targets) = new_batch(prepared, request)?;
-    for target in targets {
+    let mut batch = Batch {
+        prepared,
+        limits,
+        usage: Usage {
+            rows: matching.rows,
+            ids: matching.ids,
+            ..Usage::default()
+        },
+        styles: BTreeMap::new(),
+        output: Vec::new(),
+        answers: &matching.answers,
+        contexts: &matching.contexts,
+        route_budget: RouteBudget {
+            contexts: limits.routing_contexts,
+            path_units: limits.path_nodes,
+        },
+    };
+    for target in input.targets {
         batch.target(target)?;
     }
     serde_json::to_string(&serde_json::json!({"abiVersion":1,"geometryOnly":prepared.is_geometry_only(),"targets":batch.output}))
