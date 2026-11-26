@@ -316,6 +316,12 @@ function retireAll(resources, owners) {
   if (failed) throw failure;
 }
 
+function presentationCache(resolveProperty) {
+  if (resolveProperty !== undefined && typeof resolveProperty !== 'function')
+    throw new TypeError('turbo-dom: resolveProperty must be a function');
+  return resolveProperty === undefined ? null : new PresentationWeakMap();
+}
+
 export function createSharedComputedStyle({
   selectBackend,
   readContext,
@@ -333,9 +339,7 @@ export function createSharedComputedStyle({
   intrinsics = { WeakRef: DefaultWeak, FinalizationRegistry: DefaultFinalizer },
 }) {
   if (typeof finalizeResult !== 'function') throw new TypeError('turbo-dom: shared CSS requires finalizeResult');
-  if (resolveProperty !== undefined && typeof resolveProperty !== 'function')
-    throw new TypeError('turbo-dom: resolveProperty must be a function');
-  const presentationSnapshots = resolveProperty === undefined ? null : new PresentationWeakMap();
+  const presentationSnapshots = presentationCache(resolveProperty);
   let documents = new NativeWeakMap(),
     owners,
     closed = false;

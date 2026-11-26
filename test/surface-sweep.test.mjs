@@ -46,7 +46,7 @@ test('selection range props + setSelectionRange + select', () => {
   const { document } = fresh();
   const inp = document.createElement('input');
   inp.value = 'abcdef';
-  assert.equal(inp.selectionStart, null);
+  assert.equal(inp.selectionStart, 6);
   inp.selectionStart = 1;
   inp.selectionEnd = 3;
   assert.equal(inp.selectionStart, 1);

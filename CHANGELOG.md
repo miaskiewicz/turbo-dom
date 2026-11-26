@@ -7,6 +7,11 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+- **npm runtime and Vitest (#571–#575):** geometry reads return branded DOMRect
+  instances. Same-document history writes update the location, textarea
+  selection tracks the caret, removing focused content clears focus, and
+  HTML elements reflect `inert` and block focus inside inert subtrees.
+
 - **Scroll and hit-clip ownership (#550, #551):** containment on HTML or BODY
   retains BODY's independent scrollport. Hit testing applies viewport overflow
   at the viewport boundary and preserves containing-block ownership when fixed

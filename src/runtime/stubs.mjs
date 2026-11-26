@@ -142,32 +142,4 @@ export class MutationObserver {
   takeRecords() { const r = this.__records; this.__records = []; return r; }
 }
 
-export function makeLocation(href = 'http://localhost/') {
-  const u = new URL(href);
-  return {
-    get href() { return u.href; }, set href(v) { /* navigation is a no-op in headless */ },
-    get protocol() { return u.protocol; },
-    get host() { return u.host; },
-    get hostname() { return u.hostname; },
-    get port() { return u.port; },
-    get pathname() { return u.pathname; },
-    get search() { return u.search; },
-    get hash() { return u.hash; },
-    get origin() { return u.origin; },
-    assign() {}, replace() {}, reload() {}, toString() { return u.href; },
-  };
-}
-
-export function makeHistory(location) {
-  const stack = [{ state: null, url: location.href }];
-  let idx = 0;
-  return {
-    get length() { return stack.length; },
-    get state() { return stack[idx].state; },
-    pushState(state, _title, url) { stack.splice(idx + 1); stack.push({ state, url }); idx++; },
-    replaceState(state, _title, url) { stack[idx] = { state, url: url ?? stack[idx].url }; },
-    back() { if (idx > 0) idx--; },
-    forward() { if (idx < stack.length - 1) idx++; },
-    go(n) { idx = Math.max(0, Math.min(stack.length - 1, idx + (n || 0))); },
-  };
-}
+export { makeLocation, makeHistory } from './navigation.mjs';

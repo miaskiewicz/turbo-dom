@@ -6,6 +6,7 @@
 // Mutation promotes the affected node to fully-owned (COW). Reads are transparent
 // across the boundary — a buffer-backed read and an owned read are indistinguishable.
 
+import { DOMRect } from './dom-rect.mjs';
 import { getParser } from './parser.mjs';
 import { installCssTrackingArm, noteCssMutation, noteCssStateChange } from './css-invalidation.mjs';
 import {
@@ -235,6 +236,20 @@ function namespaceMismatch(ns, qualified, prefix) {
 }
 const invalidName = (name) => domError('InvalidCharacterError', `The qualified name provided ('${name}') contains the invalid name-start character or invalid character.`);
 
+// Focus follows the flat tree, including slots in closed shadow roots.
+function canReceiveFocus(element) {
+  for (let node = element; node; node = node.__isShadowRoot ? node.host : node.assignedSlot || node.parentNode) {
+    if (node.nodeType === DOCUMENT_NODE) return true;
+    if (node.__ns === '' && node.hasAttribute('inert')) return false;
+  }
+  return false;
+}
+
+function clearDisconnectedFocus(doc) {
+  const active = doc && cssNodeDescriptor(doc, '__active')?.value;
+  if (active && !active.isConnected) doc.__setActive(null, false);
+}
+
 // ------------------------------------------------------------------ Node ----
 export class Node extends EventTarget {
   static ELEMENT_NODE = ELEMENT_NODE;
@@ -326,6 +341,7 @@ export class Node extends EventTarget {
     const ce = hasCeConnected(this);
     kids.splice(i, 1);
     node.parentNode = null;
+    clearDisconnectedFocus(this.ownerDocument);
     if (moQuiet === 0) notifyMutation(this, 'childList', null, node, next, null, null, previous);
     else this.__touch();
     if (ce) removedNode(node);
@@ -453,6 +469,7 @@ export class Node extends EventTarget {
     if (liveRanges.length !== 0) liveReplaceAll(this);
     const doc = this.ownerDocument, ce = doc !== null && doc.__ceRegistry !== undefined && kids.length !== 0 && this.isConnected;
     for (let i = 0; i < kids.length; i++) kids[i].parentNode = null;
+    clearDisconnectedFocus(doc);
     if (ce) for (let i = 0; i < kids.length; i++) removedNode(kids[i]);
   }
 
@@ -662,6 +679,7 @@ export class Element extends Node {
     const old = a ? a.value : null;
     if (a) a.value = String(value);
     else this.__attrs.push({ name, value: String(value), prefix: '' });
+    resetNewlySelectable(this, name, old);
     notifyMutation(this, 'attributes', null, null, null, name, old);
   }
   removeAttribute(name) {
@@ -669,7 +687,10 @@ export class Element extends Node {
     if (this.__attrs === undefined) this.__attrs = this.__buildAttrs();
     const a = this.__attrs.find((x) => x.name === name);
     this.__attrs = this.__attrs.filter((x) => x.name !== name);
-    if (a) notifyMutation(this, 'attributes', null, null, null, name, a.value);
+    if (a) {
+      resetNewlySelectable(this, name, a.value);
+      notifyMutation(this, 'attributes', null, null, null, name, a.value);
+    }
   }
   toggleAttribute(name, force) {
     const has = this.hasAttribute(name);
@@ -732,25 +753,19 @@ export class Element extends Node {
     const t = this.localName;
     if (t === 'select') return selectValue(this);
     if (t === 'option') return this.hasAttribute('value') ? this.getAttribute('value') : this.textContent;
-    if (t === 'textarea') return this.__value !== undefined ? this.__value : this.textContent;
-    if (t === 'input') return this.__value !== undefined ? this.__value : (this.getAttribute('value') ?? '');
+    if (t === 'textarea' || t === 'input') return textControlValue(this);
     return undefined;
   }
   set value(x) {
     const t = this.localName;
     if (t === 'select') { for (const o of this.getElementsByTagName('option')) o.selected = (o.value === String(x)); return; }
     if (t === 'option') { this.setAttribute('value', x); return; }
-    // typed <input> runs the WHATWG value-sanitization algorithm: a value that
-    // isn't valid for date/time/number/etc becomes the EMPTY string (not the prior
-    // value). Matches real browsers — React's value tracker then sees the change and
-    // fires onChange, where retaining the old value would silently swallow it.
-    if (t === 'input') {
-      const sanitized = sanitizeInputValue((this.getAttribute('type') || 'text').toLowerCase(), String(x));
-      this.__value = sanitized === null ? '' : sanitized;
-    } else {
-      this.__value = String(x);
+    const previous = supportsTextSelection(this) ? textControlValue(this) : null;
+    this.__value = normalizeControlValue(this, x);
+    if (previous !== null && previous !== this.__value) {
+      this.__selStart = this.__selEnd = this.__value.length;
+      this.__selDir = 'none';
     }
-    if (this.__selStart != null) { this.__selStart = Math.min(this.__selStart, this.__value.length); this.__selEnd = Math.min(this.__selEnd, this.__value.length); }
     touchCssState(this.ownerDocument);
   }
   get defaultValue() { return this.getAttribute('value') ?? ''; }
@@ -760,17 +775,42 @@ export class Element extends Node {
   get valueAsDate() { const v = this.value; const d = v ? new Date(v) : null; return d && !isNaN(d) ? d : null; }
   set valueAsDate(d) { this.value = d instanceof Date ? d.toISOString().slice(0, 10) : ''; }
 
-  get selectionStart() { return this.__selStart ?? null; }
-  set selectionStart(v) { this.__selStart = v; }
-  get selectionEnd() { return this.__selEnd ?? null; }
-  set selectionEnd(v) { this.__selEnd = v; }
-  get selectionDirection() { return this.__selDir ?? 'none'; }
-  set selectionDirection(v) { this.__selDir = v; }
-  setSelectionRange(s, e, dir = 'none') { this.__selStart = s; this.__selEnd = e; this.__selDir = dir; }
-  setRangeText(repl, start = this.__selStart ?? 0, end = this.__selEnd ?? 0) {
-    const v = this.value ?? ''; this.value = v.slice(0, start) + repl + v.slice(end);
+  get selectionStart() { return supportsTextSelection(this) ? this.__selStart ?? 0 : null; }
+  set selectionStart(v) {
+    requireTextSelection(this);
+    const start = v >>> 0;
+    writeTextSelection(this, start, Math.max(start, this.__selEnd ?? 0), this.__selDir);
   }
-  select() { this.__selStart = 0; this.__selEnd = (this.value ?? '').length; }
+  get selectionEnd() { return supportsTextSelection(this) ? this.__selEnd ?? 0 : null; }
+  set selectionEnd(v) {
+    requireTextSelection(this);
+    writeTextSelection(this, this.__selStart ?? 0, v, this.__selDir);
+  }
+  get selectionDirection() { return supportsTextSelection(this) ? this.__selDir ?? 'none' : null; }
+  set selectionDirection(v) {
+    requireTextSelection(this);
+    writeTextSelection(this, this.__selStart ?? 0, this.__selEnd ?? 0, String(v));
+  }
+  setSelectionRange(start, end, direction = 'none') {
+    if (arguments.length < 2) throw new TypeError('Two selection boundaries are required.');
+    requireTextSelection(this);
+    writeTextSelection(this, start, end, String(direction));
+  }
+  setRangeText(replacement, start = this.selectionStart, end = this.selectionEnd, mode = 'preserve') {
+    requireTextSelection(this);
+    if (arguments.length === 0 || arguments.length === 2) throw new TypeError('Provide a replacement or a replacement and both boundaries.');
+    if (!['select', 'start', 'end', 'preserve'].includes(mode)) throw new TypeError('Unknown selection mode.');
+    const value = textControlValue(this), oldStart = this.selectionStart, oldEnd = this.selectionEnd;
+    start >>>= 0; end >>>= 0;
+    if (start > end) throw domError('IndexSizeError', 'The start exceeds the end.');
+    start = Math.min(start, value.length); end = Math.min(end, value.length);
+    const text = String(replacement), replacementEnd = start + text.length;
+    this.value = value.slice(0, start) + text + value.slice(end);
+    setReplacementSelection(this, mode, oldStart, oldEnd, start, end, replacementEnd);
+  }
+  select() {
+    if (supportsTextSelection(this)) writeTextSelection(this, 0, textControlValue(this).length);
+  }
 
   get checked() { return this.__checked !== undefined ? this.__checked : this.hasAttribute('checked'); }
   set checked(x) { this.__checked = !!x; touchCssState(this.ownerDocument); }
@@ -1022,6 +1062,7 @@ export class Element extends Node {
     else if (tag === 'label') { const c = this.control; if (c && c !== e.target) c.click(); }
   }
   focus() {
+    if (!canReceiveFocus(this)) return;
     const doc = this.ownerDocument;
     const prev = doc.__active;
     if (prev === this) { if (cssFocusStatus(doc) === false) { cssMarkFocus(doc, true); touchCssState(doc); } return; }
@@ -1043,7 +1084,7 @@ export class Element extends Node {
     this.dispatchEvent(new FocusEvent('blur'));
     this.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   }
-  getBoundingClientRect() { const w = synthWidth(this), h = synthHeight(this); return { x: 0, y: 0, top: 0, left: 0, right: w, bottom: h, width: w, height: h, toJSON() { return this; } }; }
+  getBoundingClientRect() { return new DOMRect(0, 0, synthWidth(this), synthHeight(this)); }
   getClientRects() { const r = this.getBoundingClientRect(); return (r.width || r.height) ? [r] : []; }
   scrollIntoView() {}
   scroll() {} scrollTo() {} scrollBy() {}
@@ -1090,6 +1131,8 @@ export class Element extends Node {
   get title() { return this.getAttribute('title') ?? ''; } set title(v) { this.setAttribute('title', v); }
   get lang() { return this.getAttribute('lang') ?? ''; } set lang(v) { this.setAttribute('lang', v); }
   get dir() { return this.getAttribute('dir') ?? ''; } set dir(v) { this.setAttribute('dir', v); }
+  get inert() { return this.hasAttribute('inert'); }
+  set inert(value) { if (value) this.setAttribute('inert', ''); else this.removeAttribute('inert'); }
   get hidden() { return this.hasAttribute('hidden'); } set hidden(v) { if (v) this.setAttribute('hidden', ''); else this.removeAttribute('hidden'); }
   get role() { return this.getAttribute('role'); } set role(v) { this.setAttribute('role', v); }
   get contentEditable() { return this.getAttribute('contenteditable') ?? 'inherit'; } set contentEditable(v) { this.setAttribute('contenteditable', v); }
@@ -1635,9 +1678,6 @@ function collectByClass(root, classes) {
   return out;
 }
 
-function zeroRect() {
-  return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON() { return this; } };
-}
 
 // ---- synthetic geometry --------------------------------------------------
 // Honest zero geometry deadlocks layout-driven React: a component measures 0,
@@ -1905,7 +1945,7 @@ class Range {
     frag.__kids = nodes;
     return frag;
   }
-  getBoundingClientRect() { return zeroRect(); }
+  getBoundingClientRect() { return new DOMRect(); }
   getClientRects() { return []; }
   detach() {}
 }
@@ -2204,6 +2244,53 @@ function sanitizeInputValue(type, v) {
   const syntax = INPUT_VALUE_SYNTAX.get(type);
   if (syntax === undefined) return v; // text, email, password, search, url, tel, hidden, etc.
   return syntax.test(v) ? v : null;
+}
+
+// Unknown input types fall back to text, for which selection applies.
+const nonSelectableInputs = new Set([
+  'hidden', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range',
+  'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button', 'email',
+]);
+function textControlValue(el) {
+  return el.__value ?? (el.localName === 'textarea' ? el.textContent.replace(/\r\n?/g, '\n') : el.getAttribute('value') ?? '');
+}
+function inputControlType(el) { return (el.getAttribute('type') || 'text').toLowerCase(); }
+function normalizeControlValue(el, value) {
+  if (el.localName === 'input') return sanitizeInputValue(inputControlType(el), value === null ? '' : String(value)) ?? '';
+  if (el.localName === 'textarea') return String(value === null ? '' : value).replace(/\r\n?/g, '\n');
+  return String(value);
+}
+function supportsTextSelection(el) {
+  return el.localName === 'textarea' || (el.localName === 'input' && !nonSelectableInputs.has(inputControlType(el)));
+}
+function resetNewlySelectable(el, name, oldValue) {
+  if (name === 'type' && el.localName === 'input' && oldValue !== null &&
+      nonSelectableInputs.has(oldValue.toLowerCase()) && supportsTextSelection(el)) {
+    el.__selStart = el.__selEnd = 0;
+    el.__selDir = 'none';
+  }
+}
+function requireTextSelection(el) {
+  if (!supportsTextSelection(el)) throw domError('InvalidStateError', 'Selection does not apply to this control.');
+}
+function writeTextSelection(el, start, end, direction) {
+  // Operate on UTF-16 positions, after unsigned-long Web IDL conversion.
+  el.__selEnd = Math.min(end >>> 0, textControlValue(el).length);
+  el.__selStart = Math.min(start >>> 0, el.__selEnd);
+  el.__selDir = direction === 'forward' || direction === 'backward' ? direction : 'none';
+  setTimeout(() => el.dispatchEvent(new Event('select', { bubbles: true })), 0);
+}
+function setReplacementSelection(el, mode, oldStart, oldEnd, start, end, replacementEnd) {
+    if (mode === 'select') writeTextSelection(el, start, replacementEnd);
+    else if (mode === 'start') writeTextSelection(el, start, start);
+    else if (mode === 'end') writeTextSelection(el, replacementEnd, replacementEnd);
+    else writeTextSelection(el,
+      preserveSelectionPoint(oldStart, start, end, replacementEnd, start),
+      preserveSelectionPoint(oldEnd, start, end, replacementEnd, replacementEnd));
+}
+function preserveSelectionPoint(point, start, end, replacementEnd, inside) {
+  if (point > end) return point + replacementEnd - end;
+  return point > start ? inside : point;
 }
 
 // element.dataset — camelCase <-> data-* attribute mapping.

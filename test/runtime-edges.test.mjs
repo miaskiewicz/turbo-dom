@@ -50,14 +50,14 @@ test('DocumentFragment.children is a live element-only collection', () => {
   }
 });
 
-test('Range.getBoundingClientRect() is an all-zero rect whose toJSON is the rect', () => {
+test('Range.getBoundingClientRect() is an all-zero rect with a fresh JSON snapshot', () => {
   // jsdom has no Range geometry; Chrome 156 gives a collapsed range in an empty document an
   // all-zero DOMRect (its toJSON has the same eight keys).
   const { document } = createEnvironment('<p>x</p>');
   const range = document.createRange();
   const rect = range.getBoundingClientRect();
-  assert.equal(rect.toJSON(), rect);
-  assert.equal(JSON.stringify(rect), '{"x":0,"y":0,"top":0,"left":0,"right":0,"bottom":0,"width":0,"height":0}');
+  assert.notEqual(rect.toJSON(), rect);
+  assert.equal(JSON.stringify(rect), '{"x":0,"y":0,"width":0,"height":0,"top":0,"right":0,"bottom":0,"left":0}');
   assert.notEqual(range.getBoundingClientRect(), rect, 'a new rect per call');
 });
 
