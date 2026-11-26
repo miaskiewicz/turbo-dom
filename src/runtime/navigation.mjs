@@ -19,7 +19,7 @@ function historyUrl(current, value) {
   throw Object.assign(new Error(message), { name: 'SecurityError' });
 }
 
-function sessionHistory(initial, hashchange) {
+function sessionHistory(initial, hashchange, popstate) {
   const entries = [{ state: null, url: initial }];
   let index = 0;
   const current = () => entries[index].url;
@@ -36,6 +36,7 @@ function sessionHistory(initial, hashchange) {
     if (!(target >= 0 && target < entries.length) || target === index) return;
     const old = current();
     index = target;
+    popstate(entries[index].state);
     notify(old, current());
   }
   const history = {
@@ -56,8 +57,8 @@ function sessionHistory(initial, hashchange) {
   return { current, history, navigate };
 }
 
-export function makeLocation(href = 'http://localhost/', hashchange = () => {}) {
-  const { current, history, navigate } = sessionHistory(new URL(href), hashchange);
+export function makeLocation(href = 'http://localhost/', hashchange = () => {}, popstate = () => {}) {
+  const { current, history, navigate } = sessionHistory(new URL(href), hashchange, popstate);
   function component(name, value) {
     const next = new URL(current().href);
     next[name] = value;

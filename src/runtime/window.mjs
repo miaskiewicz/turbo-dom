@@ -20,7 +20,7 @@ import {
 } from './dom.mjs';
 import {
   EventTarget,
-  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
+  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent, PopStateEvent,
   CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent,
 } from './events.mjs';
 
@@ -203,18 +203,20 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   // Per-env lazy globals: ONLY those that capture document/url/windowProxy.
   // Everything env-independent lives in the module-level SHARED_LAZY (built once,
   // not re-allocated per test file) — see below. None constructed until touched.
+  function queueNavigationEvent(event) {
+    (globalThis.setTimeout || hostSetTimeout)(() => {
+      document.dispatchEvent(event);
+      const view = document.defaultView;
+      const listener = view['on' + event.type];
+      if (typeof listener === 'function') listener.call(view, event);
+    }, 0);
+  }
   const lazy = {
     origin: () => new URL(url).origin,
     // subsystem grouping: history co-materializes with (and shares) location
     location: () => makeLocation(url, (oldURL, newURL) => {
-      (globalThis.setTimeout || hostSetTimeout)(() => {
-        const event = new Event('hashchange');
-        Object.assign(event, { oldURL, newURL });
-        document.dispatchEvent(event);
-        const view = document.defaultView;
-        if (typeof view.onhashchange === 'function') view.onhashchange(event);
-      }, 0);
-    }),
+      queueNavigationEvent(Object.assign(new Event('hashchange'), { oldURL, newURL }));
+    }, state => queueNavigationEvent(new PopStateEvent('popstate', { state }))),
     history: () => makeHistory(windowProxy.location),
     // per-env so matchMedia can evaluate queries against THIS window's viewport
     matchMedia: () => makeMatchMedia(windowProxy),
@@ -387,7 +389,7 @@ const STATIC_BASE = {
   Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, EventTarget,
   ShadowRoot,
   Event, CustomEvent,
-  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
+  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent, PopStateEvent,
   CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
   DataTransfer,
   // every element is a plain Element → `el instanceof HTMLElement` is true.

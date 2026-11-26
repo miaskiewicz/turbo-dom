@@ -14,7 +14,7 @@ import {
   UIEvent, MouseEvent, KeyboardEvent, FocusEvent,
 } from './events.mjs';
 import { liveNodeList, liveHTMLCollection, liveNamedNodeMap } from './collections.mjs';
-import { matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
+import { disabledState, matchesSelector, querySelector as qsel, querySelectorAll as qselAll } from './selectors.mjs';
 import { serializeInner, serializeOuter } from './html-serialize.mjs';
 import { CSSStyleSheet, createObservedCssSheet, styleSheetList } from './cssom.mjs';
 import { COLOR_PROPS, canonicalizeColor } from './color.mjs';
@@ -238,11 +238,21 @@ const invalidName = (name) => domError('InvalidCharacterError', `The qualified n
 
 // Focus follows the flat tree, including slots in closed shadow roots.
 function canReceiveFocus(element) {
+  if (disabledState(element) === true) return false;
   for (let node = element; node; node = node.__isShadowRoot ? node.host : node.assignedSlot || node.parentNode) {
     if (node.nodeType === DOCUMENT_NODE) return true;
     if (node.__ns === '' && node.hasAttribute('inert')) return false;
   }
   return false;
+}
+
+function focusedInRoot(active, root) {
+  while (active) {
+    const tree = active.getRootNode();
+    if (tree === root) return active;
+    active = tree.__isShadowRoot ? tree.host : null;
+  }
+  return null;
 }
 
 function clearDisconnectedFocus(doc) {
@@ -768,8 +778,11 @@ export class Element extends Node {
     }
     touchCssState(this.ownerDocument);
   }
-  get defaultValue() { return this.getAttribute('value') ?? ''; }
-  set defaultValue(v) { this.setAttribute('value', v); }
+  get defaultValue() { return this.localName === 'textarea' ? this.textContent : this.getAttribute('value') ?? ''; }
+  set defaultValue(v) {
+    if (this.localName === 'textarea') this.textContent = String(v);
+    else this.setAttribute('value', v);
+  }
   get valueAsNumber() { const v = this.value; return v === '' || v == null ? NaN : Number(v); }
   set valueAsNumber(n) { this.value = String(n); }
   get valueAsDate() { const v = this.value; const d = v ? new Date(v) : null; return d && !isNaN(d) ? d : null; }
@@ -1315,7 +1328,7 @@ export class ShadowRoot extends DocumentFragment {
     return liveHTMLCollection(() => { const d = self.ownerDocument, v = d ? (d.__version || 0) : 0; if (v === cv) return ca; cv = v; return (ca = collectByClass(self, classes)); });
   }
   // the topmost root of any node within is this shadow root, never the document
-  get activeElement() { return null; }
+  get activeElement() { return focusedInRoot(this.ownerDocument.__active, this); }
 }
 
 // ------------------------------------------------------------ helpers ----
@@ -1497,7 +1510,7 @@ function resetControl(el) {
     if (t === 'checkbox' || t === 'radio') el.__checked = el.hasAttribute('checked');
     else el.__value = undefined;
   } else if (tag === 'textarea') {
-    el.__value = el.textContent;
+    el.__value = undefined;
   } else if (tag === 'select') {
     for (const o of el.getElementsByTagName('option')) o.__selected = o.hasAttribute('selected');
   }
@@ -2564,7 +2577,7 @@ export class Document extends Node {
   get doctype() { return this.__children().find((n) => n.nodeType === DOCUMENT_TYPE_NODE) ?? null; }
   get head() { const html = this.documentElement; return html ? html.__children().find((n) => n.localName === 'head') ?? null : null; }
   get body() { const html = this.documentElement; return html ? html.__children().find((n) => n.localName === 'body') ?? null : null; }
-  get activeElement() { return this.__active || this.body || null; }
+  get activeElement() { return focusedInRoot(this.__active, this) || this.body || null; }
   __setActive(el, focused = true) {
     const tracked = (this.#cssTracked & 1) !== 0;
     const previous = tracked ? cssNodeDescriptor(this, '__active') : undefined;

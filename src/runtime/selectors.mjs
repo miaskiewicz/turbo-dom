@@ -1016,7 +1016,7 @@ function actuallyDisabled(el) {
   return boolAttr(el, 'disabled', 'disabled') || disabledByFieldset(el);
 }
 // :disabled / :enabled: undefined when neither applies, else whether `el` is disabled.
-function disabledState(el) {
+export function disabledState(el) {
   if (!isHtml(el)) return undefined;
   switch (selectorName(el)) {
     case 'button': case 'input': case 'select': case 'textarea': case 'fieldset':
