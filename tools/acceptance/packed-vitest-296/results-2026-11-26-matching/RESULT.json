@@ -1,0 +1,1993 @@
+{
+  "implementationCommit": "8137bae441baa29e6497bf57229c156ad4ede55c",
+  "method": "Five ABBA blocks per comparison. A is previous Rust or legacy JS, B is the Rust candidate. Fresh processes, one worker, warmed once per artifact and mode. Wall change is the median of within-block B/A elapsed-time ratios. All timed processes pass the same 28 tests.",
+  "modes": {
+    "N-API": {
+      "summary": {
+        "previous": {
+          "wallPercent": 0.2900576293437096,
+          "callbackPercent": 0.7401481226166462,
+          "wins": 2,
+          "winsOverHalfPercent": 2
+        },
+        "legacy": {
+          "wallPercent": 12.037320674533403,
+          "callbackPercent": 88.29421905287487,
+          "wins": 0,
+          "winsOverHalfPercent": 0
+        }
+      },
+      "blocks": {
+        "previous": [
+          {
+            "block": 1,
+            "wallRatio": 0.9546193855064898,
+            "callbackRatio": 0.9584296243601206,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block1",
+                "round": 1,
+                "wallMs": 1841.6674169999997,
+                "testMs": 306.0534590000001,
+                "reportSha256": "047bbfb253aed845c6524506421e4e7ae706bd26b29cb5ad5b65448c69f0f46a",
+                "load": [
+                  3.54931640625,
+                  3.79541015625,
+                  3.9921875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block1",
+                "round": 2,
+                "wallMs": 1771.1134160000001,
+                "testMs": 295.343336,
+                "reportSha256": "faaa48c7da07c1b11617cc9a0822fbf223c375fa4d98400c0d66ffebbbc288e3",
+                "load": [
+                  3.54931640625,
+                  3.79541015625,
+                  3.9921875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block1",
+                "round": 3,
+                "wallMs": 1647.3387089999997,
+                "testMs": 278.32104200000003,
+                "reportSha256": "72bcfd7e60127d4bb0043316303057c48869ea7ae059a16f3291d99199fe69a2",
+                "load": [
+                  3.54931640625,
+                  3.79541015625,
+                  3.9921875
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block1",
+                "round": 4,
+                "wallMs": 1739.2907919999998,
+                "testMs": 292.492708,
+                "reportSha256": "35da176f41798a0cf296fb23bbe465e2890f8d4e64ed1488750d9441051477b1",
+                "load": [
+                  3.8251953125,
+                  3.84814453125,
+                  4.009765625
+                ]
+              }
+            ]
+          },
+          {
+            "block": 2,
+            "wallRatio": 0.975445521087125,
+            "callbackRatio": 0.9529638700316928,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block2",
+                "round": 1,
+                "wallMs": 1585.2899999999972,
+                "testMs": 276.40862499999986,
+                "reportSha256": "6e6f88683b493672a6c88ec3ef7bb8a6cb28453b7522125e2cadee96f69b83ef",
+                "load": [
+                  3.8330078125,
+                  3.853515625,
+                  4.00830078125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block2",
+                "round": 2,
+                "wallMs": 1710.3360839999987,
+                "testMs": 290.144582,
+                "reportSha256": "a429bb794c21d5245c8cb79ece15d07881dd7eb52c9e8664abe801162b178b2c",
+                "load": [
+                  3.8330078125,
+                  3.853515625,
+                  4.00830078125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block2",
+                "round": 3,
+                "wallMs": 1618.2445829999997,
+                "testMs": 275.6027900000001,
+                "reportSha256": "d8bf786a7a325e260c71ea6852c14e4904c474c39ee26aaceea78e3fb65e8653",
+                "load": [
+                  3.8330078125,
+                  3.853515625,
+                  4.00830078125
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block2",
+                "round": 4,
+                "wallMs": 1827.0796249999985,
+                "testMs": 317.262751,
+                "reportSha256": "b64b8888fb69cd2909c371fc39bf146df6a5a0f4d6ed70b2e736662f0eb1df3e",
+                "load": [
+                  4.00634765625,
+                  3.888671875,
+                  4.01953125
+                ]
+              }
+            ]
+          },
+          {
+            "block": 3,
+            "wallRatio": 1.0580697452126602,
+            "callbackRatio": 1.022854027532103,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block3",
+                "round": 1,
+                "wallMs": 1721.0582910000012,
+                "testMs": 290.95545599999997,
+                "reportSha256": "a83e3a5f7821fa2f6057744fb4ff679acb6c17fd06a447429f83ba72a3a7bb80",
+                "load": [
+                  4.00634765625,
+                  3.888671875,
+                  4.01953125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block3",
+                "round": 2,
+                "wallMs": 1821.6977079999997,
+                "testMs": 300.558539,
+                "reportSha256": "af7054f1dc376a9ccd476f09bf556a7e2f9df833a04412b9643c253c6e1dd599",
+                "load": [
+                  4.00634765625,
+                  3.888671875,
+                  4.01953125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block3",
+                "round": 3,
+                "wallMs": 1834.371874999997,
+                "testMs": 304.85345799999993,
+                "reportSha256": "948cf667c518008716b246a3a206069de64e4ee02e37d2654857932e185d44ec",
+                "load": [
+                  4.00537109375,
+                  3.89013671875,
+                  4.01904296875
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block3",
+                "round": 4,
+                "wallMs": 1734.3562500000044,
+                "testMs": 300.92958400000003,
+                "reportSha256": "6f8970ae369e0209211cc2d0ebb1f8ace6fec4d1a06d21035f40c618deeb2df2",
+                "load": [
+                  4.00537109375,
+                  3.89013671875,
+                  4.01904296875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 4,
+            "wallRatio": 1.0085032160541916,
+            "callbackRatio": 1.0245474101409453,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block4",
+                "round": 1,
+                "wallMs": 1592.0341249999983,
+                "testMs": 274.44804500000004,
+                "reportSha256": "1f6fc7b76d172341d27f1dd2077a2c2b8598ede844f7bf1353fb824f6a387f22",
+                "load": [
+                  4.43359375,
+                  3.9921875,
+                  4.052734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block4",
+                "round": 2,
+                "wallMs": 1646.2285829999964,
+                "testMs": 293.12695899999994,
+                "reportSha256": "8626fd89c5eb8018954dc250c95f682c483245b1b08cdf1b8f1a3e700677dabb",
+                "load": [
+                  4.43359375,
+                  3.9921875,
+                  4.052734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block4",
+                "round": 3,
+                "wallMs": 1716.9348329999993,
+                "testMs": 296.6916700000001,
+                "reportSha256": "53c935303a236b453ac6898bc129d66eb5a1bf0638e7994879b070ca8ef8a996",
+                "load": [
+                  4.958984375,
+                  4.1083984375,
+                  4.09326171875
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block4",
+                "round": 4,
+                "wallMs": 1742.772708000004,
+                "testMs": 301.238959,
+                "reportSha256": "a84a2531bfd7662a580ced566861ecbfa9a085150ea159a0121a32ab4fedf94d",
+                "load": [
+                  4.958984375,
+                  4.1083984375,
+                  4.09326171875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 5,
+            "wallRatio": 1.002900576293437,
+            "callbackRatio": 1.0074014812261665,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block5",
+                "round": 1,
+                "wallMs": 1672.528124999997,
+                "testMs": 288.938753,
+                "reportSha256": "e9cff52f6d6ac0f21e689453b011f7de1df364fb497c1fba9d79d1237b0f51e6",
+                "load": [
+                  4.958984375,
+                  4.1083984375,
+                  4.09326171875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block5",
+                "round": 2,
+                "wallMs": 1764.5149579999998,
+                "testMs": 316.85958600000015,
+                "reportSha256": "f9e260682007462b9ea1f5b7b095e16115fd73468f18ac46e7a73e87d3bc485b",
+                "load": [
+                  5.0419921875,
+                  4.1396484375,
+                  4.10400390625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "previous-block5",
+                "round": 3,
+                "wallMs": 1670.0682920000036,
+                "testMs": 286.115999,
+                "reportSha256": "1ff427981e10f14a4ac64e195dff21fcb7de141edad833e26f3c6028937ca9c7",
+                "load": [
+                  5.0419921875,
+                  4.1396484375,
+                  4.10400390625
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "native",
+                "phase": "previous-block5",
+                "round": 4,
+                "wallMs": 1752.1216670000067,
+                "testMs": 309.6067090000001,
+                "reportSha256": "f0d4a2bdca6aa35506cd138a906f6c731e5aaa0d4abd69c78aa783f8a263259e",
+                "load": [
+                  5.0419921875,
+                  4.1396484375,
+                  4.10400390625
+                ]
+              }
+            ]
+          }
+        ],
+        "legacy": [
+          {
+            "block": 1,
+            "wallRatio": 1.1293929179205748,
+            "callbackRatio": 1.8950997384058121,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block1",
+                "round": 1,
+                "wallMs": 1551.653542,
+                "testMs": 160.20824899999997,
+                "reportSha256": "766184b5baad2f93186dcaea54e682fcd1753d0d8cb49cf56ecafd004393aba1",
+                "load": [
+                  3.8251953125,
+                  3.84814453125,
+                  4.009765625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block1",
+                "round": 2,
+                "wallMs": 1715.5546250000007,
+                "testMs": 298.78191499999997,
+                "reportSha256": "50c313398dfecb53f86d17da3a0a380ddfce4e1f245816e07e87e417c33965a2",
+                "load": [
+                  3.8251953125,
+                  3.84814453125,
+                  4.009765625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block1",
+                "round": 3,
+                "wallMs": 1667.679082999999,
+                "testMs": 289.68208500000003,
+                "reportSha256": "077e6d4e1456717fdd268b3b8d51d48afa6153ff2cf4edc4d5f9bcc09a70e0e8",
+                "load": [
+                  4.0791015625,
+                  3.900390625,
+                  4.02685546875
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block1",
+                "round": 4,
+                "wallMs": 1443.9679589999978,
+                "testMs": 150.3105,
+                "reportSha256": "139efe184ea4e899d1ee59873d78f4e66fe1012d3467c5055b89fb7e165753ac",
+                "load": [
+                  4.0791015625,
+                  3.900390625,
+                  4.02685546875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 2,
+            "wallRatio": 1.2175703148703159,
+            "callbackRatio": 2.051346172099433,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block2",
+                "round": 1,
+                "wallMs": 1434.689624999999,
+                "testMs": 147.78520699999996,
+                "reportSha256": "4a7ca04160eb63bfa57e342b5d791ddc7e55a6895c3f9dbd01ad892a4ba95ead",
+                "load": [
+                  4.0791015625,
+                  3.900390625,
+                  4.02685546875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block2",
+                "round": 2,
+                "wallMs": 1730.9444580000018,
+                "testMs": 303.7127489999999,
+                "reportSha256": "e085ad9820716f4383590061b1996dc78ec845b927e1d5609d767cfa0dc14519",
+                "load": [
+                  3.99267578125,
+                  3.88525390625,
+                  4.0205078125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block2",
+                "round": 3,
+                "wallMs": 1842.7041669999999,
+                "testMs": 319.14475100000004,
+                "reportSha256": "a60d30693adb795ae3729ec6007dfa816d66640556f6d9802c319580c3b4c30f",
+                "load": [
+                  3.99267578125,
+                  3.88525390625,
+                  4.0205078125
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block2",
+                "round": 4,
+                "wallMs": 1500.3758750000015,
+                "testMs": 155.84833299999997,
+                "reportSha256": "a018eda65579e5e2e5d35ff06e63bb3297aaeb5caffcd5b59f2ea6dcda88622e",
+                "load": [
+                  3.99267578125,
+                  3.88525390625,
+                  4.0205078125
+                ]
+              }
+            ]
+          },
+          {
+            "block": 3,
+            "wallRatio": 1.0788792023607836,
+            "callbackRatio": 1.8308003905980679,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block3",
+                "round": 1,
+                "wallMs": 1696.361625000005,
+                "testMs": 168.60249799999994,
+                "reportSha256": "e3f155c955ff0ed2c68e918a419ed1151122545806fc81a34dfb1e5cd9f17f89",
+                "load": [
+                  4.00537109375,
+                  3.89013671875,
+                  4.01904296875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block3",
+                "round": 2,
+                "wallMs": 1776.1243329999998,
+                "testMs": 299.509292,
+                "reportSha256": "366fa800eccf8695fe86227bc29ca0329bb0cb1bbc7c8b80d83e094719de4359",
+                "load": [
+                  4.0849609375,
+                  3.908203125,
+                  4.0244140625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block3",
+                "round": 3,
+                "wallMs": 1676.8768339999951,
+                "testMs": 287.92649700000004,
+                "reportSha256": "b428d6987a3e5c3e9e388a0bfe232a599921c8b9b27c84e20d6e35260190e2b5",
+                "load": [
+                  4.0849609375,
+                  3.908203125,
+                  4.0244140625
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block3",
+                "round": 4,
+                "wallMs": 1504.183124999996,
+                "testMs": 152.260329,
+                "reportSha256": "a9c3faf1dd85b8303dbdb13bcbd2e14c7a2c68fcbd1da143d5bbf52553a97fc1",
+                "load": [
+                  4.0849609375,
+                  3.908203125,
+                  4.0244140625
+                ]
+              }
+            ]
+          },
+          {
+            "block": 4,
+            "wallRatio": 1.0816854949967136,
+            "callbackRatio": 1.8265557835647563,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block4",
+                "round": 1,
+                "wallMs": 1533.266499999998,
+                "testMs": 151.82696,
+                "reportSha256": "8db7a28c7b8824693fcb841265691770cc61295a4443c6bb06f5f7ac2705d6ad",
+                "load": [
+                  4.55859375,
+                  4.00927734375,
+                  4.05908203125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block4",
+                "round": 2,
+                "wallMs": 1610.1572500000038,
+                "testMs": 273.109203,
+                "reportSha256": "7821e685f57dfcbd3f5c763825614a2124b28139e7653d03b7ef39611683cf61",
+                "load": [
+                  4.55859375,
+                  4.00927734375,
+                  4.05908203125
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block4",
+                "round": 3,
+                "wallMs": 1596.9150829999999,
+                "testMs": 275.967625,
+                "reportSha256": "bff5a7a8dd736fcb6d050f22f1ca85a24b994f0c04c0baa69dbc1a6429b2303f",
+                "load": [
+                  4.55859375,
+                  4.00927734375,
+                  4.05908203125
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block4",
+                "round": 4,
+                "wallMs": 1431.6177920000046,
+                "testMs": 148.780792,
+                "reportSha256": "f76a04dd3987726faa39d8b198287224cd784258bf4126cfc936ded026944505",
+                "load": [
+                  4.43359375,
+                  3.9921875,
+                  4.052734375
+                ]
+              }
+            ]
+          },
+          {
+            "block": 5,
+            "wallRatio": 1.120373206745334,
+            "callbackRatio": 1.8829421905287487,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block5",
+                "round": 1,
+                "wallMs": 1511.8388750000013,
+                "testMs": 155.59442,
+                "reportSha256": "da14dcb49a180ff4a395ca3bd1ed61eec6980b091f330af3f2d1de2f6fe02a37",
+                "load": [
+                  4.95849609375,
+                  4.13720703125,
+                  4.10302734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block5",
+                "round": 2,
+                "wallMs": 1656.199999999997,
+                "testMs": 285.0691230000001,
+                "reportSha256": "342e7859d52ee2e41f34a1d796db88656373eae655d5d31a5f85dc04dd8bd873",
+                "load": [
+                  4.95849609375,
+                  4.13720703125,
+                  4.10302734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "native",
+                "phase": "legacy-block5",
+                "round": 3,
+                "wallMs": 1699.1610419999924,
+                "testMs": 300.248957,
+                "reportSha256": "04d2320a54dd16366bbc72b883d1dc7cd1f6d726a231209faa8355a453f9e6ef",
+                "load": [
+                  4.95849609375,
+                  4.13720703125,
+                  4.10302734375
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "native",
+                "phase": "legacy-block5",
+                "round": 4,
+                "wallMs": 1483.0212500000052,
+                "testMs": 155.25850100000005,
+                "reportSha256": "dc5a9c53a93fc6b07be19dcb817d3f9922d13d05958749b9a0884c2a62be4ba2",
+                "load": [
+                  4.96142578125,
+                  4.1513671875,
+                  4.10791015625
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "warmup": [
+        {
+          "build": "base",
+          "mode": "native",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 1600.682667,
+          "testMs": 276.800415,
+          "reportSha256": "1b8daabde99bc70748e73b0b9fe98a099f3825440d3c342bcc88ca51bc7da4e0",
+          "load": [
+            3.51025390625,
+            3.7919921875,
+            3.9921875
+          ]
+        },
+        {
+          "build": "previous",
+          "mode": "native",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 1773.7748749999996,
+          "testMs": 303.18495700000005,
+          "reportSha256": "41a81578050e6e539551d42ba67b5e1b043682e0efcf7324b0e5e2c674859f05",
+          "load": [
+            3.51025390625,
+            3.7919921875,
+            3.9921875
+          ]
+        },
+        {
+          "build": "legacy",
+          "mode": "native",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 1599.9281660000006,
+          "testMs": 165.51450100000002,
+          "reportSha256": "0df0ae11d5c19a23bc2084d4d49f6d3b120c8e366f4b16ceda017a8aa8893dc4",
+          "load": [
+            3.51025390625,
+            3.7919921875,
+            3.9921875
+          ]
+        }
+      ],
+      "preflight": [
+        {
+          "build": "base",
+          "mode": "native",
+          "phase": "sentinel",
+          "round": 0,
+          "wallMs": 443.83575,
+          "testMs": 100.571334,
+          "reportSha256": "01c1c70616123982837c19a858ad4c06df806f5287e4d5b51f1b8f8f14756fa7",
+          "load": [
+            3.55517578125,
+            3.8056640625,
+            3.998046875
+          ]
+        },
+        {
+          "build": "previous",
+          "mode": "native",
+          "phase": "sentinel",
+          "round": 0,
+          "wallMs": 439.82633300000043,
+          "testMs": 105.38399999999999,
+          "reportSha256": "f9b75b35c9ba24994728fe4179fdc5812233441c72c6d11bffea0307297ef83c",
+          "load": [
+            3.51025390625,
+            3.7919921875,
+            3.9921875
+          ]
+        }
+      ],
+      "loadBefore": [
+        3.55517578125,
+        3.8056640625,
+        3.998046875
+      ],
+      "loadAfter": [
+        4.96142578125,
+        4.1513671875,
+        4.10791015625
+      ]
+    },
+    "WASM": {
+      "summary": {
+        "previous": {
+          "wallPercent": -0.25767273175059113,
+          "callbackPercent": -0.49200075826639766,
+          "wins": 3,
+          "winsOverHalfPercent": 2
+        },
+        "legacy": {
+          "wallPercent": 28.593361566611364,
+          "callbackPercent": 236.51419833933028,
+          "wins": 0,
+          "winsOverHalfPercent": 0
+        }
+      },
+      "blocks": {
+        "previous": [
+          {
+            "block": 1,
+            "wallRatio": 1.0149843026673047,
+            "callbackRatio": 0.9958919032761815,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block1",
+                "round": 1,
+                "wallMs": 1924.2549170000002,
+                "testMs": 514.473874,
+                "reportSha256": "990bb5b00c61712ae4b2060860299f5a6a2c0646cd7e718991bb6bc8e36d3d50",
+                "load": [
+                  5.36474609375,
+                  4.248046875,
+                  4.14208984375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block1",
+                "round": 2,
+                "wallMs": 1890.329040999999,
+                "testMs": 500.86962299999993,
+                "reportSha256": "dc658d815e5f82c3861e32540b5044a4256e272cf864a7fa7c43e2017c04c93e",
+                "load": [
+                  5.33544921875,
+                  4.26025390625,
+                  4.14697265625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block1",
+                "round": 3,
+                "wallMs": 1954.730791,
+                "testMs": 529.2510830000001,
+                "reportSha256": "6d379038ca5eaeb8b651dbc7dbbf633fd2e606ba4a60711350c3abcdb9f94aa2",
+                "load": [
+                  5.33544921875,
+                  4.26025390625,
+                  4.14697265625
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block1",
+                "round": 4,
+                "wallMs": 1864.0399579999994,
+                "testMs": 519.8961240000001,
+                "reportSha256": "d118c88363c309b59f243062b76e07a0a63cee7d5c7a47211be4bc010e757d74",
+                "load": [
+                  5.06787109375,
+                  4.22265625,
+                  4.13427734375
+                ]
+              }
+            ]
+          },
+          {
+            "block": 2,
+            "wallRatio": 0.9606120136482318,
+            "callbackRatio": 0.939991149612833,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block2",
+                "round": 1,
+                "wallMs": 2106.3432909999974,
+                "testMs": 571.233581,
+                "reportSha256": "208bbdbd3c82d4c383e1905f253d8d3f9cefeff17504c60cdded3a45380388d2",
+                "load": [
+                  4.984375,
+                  4.24365234375,
+                  4.14306640625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block2",
+                "round": 2,
+                "wallMs": 1981.3991669999996,
+                "testMs": 524.80475,
+                "reportSha256": "cdcd294d3aef38afc1da3c8117c20099afda092a4858d4735c25e185701ac8ed",
+                "load": [
+                  4.984375,
+                  4.24365234375,
+                  4.14306640625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block2",
+                "round": 3,
+                "wallMs": 2035.2884169999961,
+                "testMs": 545.633709,
+                "reportSha256": "73af3e01a7303578b3ca8a3502d56591d77613105a3431a902792d203cf7399e",
+                "load": [
+                  5.2255859375,
+                  4.3056640625,
+                  4.16552734375
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block2",
+                "round": 4,
+                "wallMs": 2075.040584000002,
+                "testMs": 567.541459,
+                "reportSha256": "e26f71973d1609c2d2805ffcd8a7fd4efbb3408e1d198eded62c3d337ed48d50",
+                "load": [
+                  5.2255859375,
+                  4.3056640625,
+                  4.16552734375
+                ]
+              }
+            ]
+          },
+          {
+            "block": 3,
+            "wallRatio": 0.9974232726824941,
+            "callbackRatio": 0.995079992417336,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block3",
+                "round": 1,
+                "wallMs": 2049.721166000003,
+                "testMs": 546.5453720000002,
+                "reportSha256": "28bda0430e1cb265356b8d3bccb4d42574d597d2e5abf20ef3f59a18a38d6ecc",
+                "load": [
+                  5.2255859375,
+                  4.3056640625,
+                  4.16552734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block3",
+                "round": 2,
+                "wallMs": 2035.927542000005,
+                "testMs": 542.8110039999999,
+                "reportSha256": "956c9faf3dc3a5df04af42756505ee384b87780032150c047344bb2fca457222",
+                "load": [
+                  5.52783203125,
+                  4.38330078125,
+                  4.19384765625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block3",
+                "round": 3,
+                "wallMs": 1933.7684169999993,
+                "testMs": 519.9022500000001,
+                "reportSha256": "340e55c6ab91fb6265977f75b5ef1824e205faf59820037ca04da44297fbd8ca",
+                "load": [
+                  5.52783203125,
+                  4.38330078125,
+                  4.19384765625
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block3",
+                "round": 4,
+                "wallMs": 1930.2300419999956,
+                "testMs": 521.4222909999999,
+                "reportSha256": "b75915810651ba01315bc3ccb0f3619a7b5a5690d22bd7636d727171d8e17ceb",
+                "load": [
+                  5.1650390625,
+                  4.32666015625,
+                  4.1748046875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 4,
+            "wallRatio": 0.9779840547734909,
+            "callbackRatio": 0.9662803710854186,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block4",
+                "round": 1,
+                "wallMs": 1894.5642910000024,
+                "testMs": 515.6850009999998,
+                "reportSha256": "c68c3f935e2e910e5d0de1c4da5a056f976ee0e170a85fd215b4dfee043d26ce",
+                "load": [
+                  5.0791015625,
+                  4.34375,
+                  4.1826171875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block4",
+                "round": 2,
+                "wallMs": 1803.8727910000016,
+                "testMs": 482.9486240000001,
+                "reportSha256": "bcf83e1f0ef12f6da649fde7fd19d164f7e24a57ca49496eb1745c17c298bc11",
+                "load": [
+                  5.0791015625,
+                  4.34375,
+                  4.1826171875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block4",
+                "round": 3,
+                "wallMs": 1826.9416249999995,
+                "testMs": 485.5537890000001,
+                "reportSha256": "5d98db4d26ca2750ad9a21cd799a5241336b1ce7b78efcf8d84c6fbf2aa44f92",
+                "load": [
+                  5.0791015625,
+                  4.34375,
+                  4.1826171875
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block4",
+                "round": 4,
+                "wallMs": 1817.9854160000032,
+                "testMs": 486.614582,
+                "reportSha256": "5f123d50c343451bf15b46731cc766c1458ecdba2906c8ea50daf35772b934a4",
+                "load": [
+                  4.91259765625,
+                  4.3212890625,
+                  4.17529296875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 5,
+            "wallRatio": 1.0315995739245996,
+            "callbackRatio": 1.0193129927450202,
+            "runs": [
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block5",
+                "round": 1,
+                "wallMs": 1813.4665839999943,
+                "testMs": 477.51362600000004,
+                "reportSha256": "d8f47e8c314aff46287fcc44d069f324d954023d590f329d9251efae59cac201",
+                "load": [
+                  4.91259765625,
+                  4.3212890625,
+                  4.17529296875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block5",
+                "round": 2,
+                "wallMs": 1878.7069590000028,
+                "testMs": 500.3962479999999,
+                "reportSha256": "00d95dab252ae1533a944752a09a724b2fffef30adae9158f4b8500e7cf78a17",
+                "load": [
+                  5.15966796875,
+                  4.38232421875,
+                  4.197265625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "previous-block5",
+                "round": 3,
+                "wallMs": 1895.1103750000038,
+                "testMs": 495.324876,
+                "reportSha256": "f7f2ceff4989d472d0ec1b512c8430ddbe03ce3871492a02776befb887566610",
+                "load": [
+                  5.15966796875,
+                  4.38232421875,
+                  4.197265625
+                ]
+              },
+              {
+                "build": "previous",
+                "mode": "wasm",
+                "phase": "previous-block5",
+                "round": 4,
+                "wallMs": 1844.7525830000086,
+                "testMs": 499.34150200000005,
+                "reportSha256": "a9f2dfc7e47559de2128b21e798ae791a41f23964ab49f1eefeb265981773cb4",
+                "load": [
+                  5.15966796875,
+                  4.38232421875,
+                  4.197265625
+                ]
+              }
+            ]
+          }
+        ],
+        "legacy": [
+          {
+            "block": 1,
+            "wallRatio": 1.3024749683098624,
+            "callbackRatio": 3.426214260428053,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block1",
+                "round": 1,
+                "wallMs": 1561.3805829999983,
+                "testMs": 158.54037599999998,
+                "reportSha256": "8edad8cbf2b98c4f4b5563a09fd63439da7544dae88fe942f193cf2affcc8cf8",
+                "load": [
+                  5.06787109375,
+                  4.22265625,
+                  4.13427734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block1",
+                "round": 2,
+                "wallMs": 2007.5787920000002,
+                "testMs": 529.65658,
+                "reportSha256": "a927d22348c12ce25a240ff5d0719671392e9de42916299ee1f2c8719512e338",
+                "load": [
+                  5.06787109375,
+                  4.22265625,
+                  4.13427734375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block1",
+                "round": 3,
+                "wallMs": 1954.296457999997,
+                "testMs": 534.9257100000001,
+                "reportSha256": "8f6e9b7667625756f2205d0e2dccec1e966b4d0e944487092e6e301c6ad95b05",
+                "load": [
+                  5.06201171875,
+                  4.2353515625,
+                  4.13916015625
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block1",
+                "round": 4,
+                "wallMs": 1480.4247080000023,
+                "testMs": 152.17641199999997,
+                "reportSha256": "53d1c99189316ec24912e479aacc70b00be1b66fe70fe2699d19164b52e8dc3d",
+                "load": [
+                  5.06201171875,
+                  4.2353515625,
+                  4.13916015625
+                ]
+              }
+            ]
+          },
+          {
+            "block": 2,
+            "wallRatio": 1.3134388538552322,
+            "callbackRatio": 3.429042634317655,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block2",
+                "round": 1,
+                "wallMs": 1568.3290420000012,
+                "testMs": 160.32120499999996,
+                "reportSha256": "322d0f3d16433ed91db505893a88e218a98cc89d5ba3fd58a3c85b7575cae855",
+                "load": [
+                  5.06201171875,
+                  4.2353515625,
+                  4.13916015625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block2",
+                "round": 2,
+                "wallMs": 2085.856499999998,
+                "testMs": 554.600665,
+                "reportSha256": "bf995a8351db561f19c58274b73329bc939dab7f976e78d57e3c0767cc0dd104",
+                "load": [
+                  4.896484375,
+                  4.21435546875,
+                  4.13232421875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block2",
+                "round": 3,
+                "wallMs": 2037.0871670000015,
+                "testMs": 541.2023320000001,
+                "reportSha256": "a906cf1d87518e7947a0942545964ed3a35432d89aaa48329e6627852cdf4ce2",
+                "load": [
+                  4.896484375,
+                  4.21435546875,
+                  4.13232421875
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block2",
+                "round": 4,
+                "wallMs": 1570.7159580000007,
+                "testMs": 159.24408300000007,
+                "reportSha256": "2d4dfe0159055a77c5e034a2ebdaf8a98059d277d62eaabf9588978134ddc205",
+                "load": [
+                  4.896484375,
+                  4.21435546875,
+                  4.13232421875
+                ]
+              }
+            ]
+          },
+          {
+            "block": 3,
+            "wallRatio": 1.2859336156661136,
+            "callbackRatio": 3.3651419833933027,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block3",
+                "round": 1,
+                "wallMs": 1518.9357910000035,
+                "testMs": 155.490502,
+                "reportSha256": "0d4fb7a65fd24d7caa08be64a5f1a0c678f9bfe03c9a29591b4360657dc41a52",
+                "load": [
+                  5.1650390625,
+                  4.32666015625,
+                  4.1748046875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block3",
+                "round": 2,
+                "wallMs": 1948.0047919999997,
+                "testMs": 518.7784570000001,
+                "reportSha256": "623175df010ad3513a9eb13524f575008f9fbff3a1b82984adb1cba2034f72e7",
+                "load": [
+                  5.1650390625,
+                  4.32666015625,
+                  4.1748046875
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block3",
+                "round": 3,
+                "wallMs": 1956.417042000001,
+                "testMs": 527.8594980000001,
+                "reportSha256": "f9fbf9520c28edcd37697417bc32d5c6928047c651e850c8be519ba90c93308a",
+                "load": [
+                  5.0712890625,
+                  4.32080078125,
+                  4.17333984375
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block3",
+                "round": 4,
+                "wallMs": 1517.3187919999982,
+                "testMs": 155.53291399999995,
+                "reportSha256": "7ff9283f3a6bd65738e788184299a7376fbe9cc3538bc841144e3647e92a1166",
+                "load": [
+                  5.0712890625,
+                  4.32080078125,
+                  4.17333984375
+                ]
+              }
+            ]
+          },
+          {
+            "block": 4,
+            "wallRatio": 1.2593582771650842,
+            "callbackRatio": 3.215280457333965,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block4",
+                "round": 1,
+                "wallMs": 1528.1630420000001,
+                "testMs": 163.11641699999996,
+                "reportSha256": "fd6d8de775c0c5b9a2a4be237dc033fa4ceb0610b0fcb5f36e66cb69f0f7ddeb",
+                "load": [
+                  5.0712890625,
+                  4.32080078125,
+                  4.17333984375
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block4",
+                "round": 2,
+                "wallMs": 1900.721540999999,
+                "testMs": 516.977208,
+                "reportSha256": "9fff203e8bf28da061e17b360b88de303f6989582ab3cc87ce22fcf4f4e47a49",
+                "load": [
+                  4.8251953125,
+                  4.2822265625,
+                  4.16015625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block4",
+                "round": 3,
+                "wallMs": 1850.434666000001,
+                "testMs": 494.77229299999993,
+                "reportSha256": "f5c7c19dd8f3e8916b2d87b6ffdeac9c4dcd9f5fefe4de0a498ea53e0ef75394",
+                "load": [
+                  4.8251953125,
+                  4.2822265625,
+                  4.16015625
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block4",
+                "round": 4,
+                "wallMs": 1450.4620840000061,
+                "testMs": 151.55271199999993,
+                "reportSha256": "4935a7d698233090237037530b21e5c6dc8e94061c56098df380ccc72540dd6e",
+                "load": [
+                  4.8251953125,
+                  4.2822265625,
+                  4.16015625
+                ]
+              }
+            ]
+          },
+          {
+            "block": 5,
+            "wallRatio": 1.2322608227890988,
+            "callbackRatio": 3.178306325227616,
+            "runs": [
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block5",
+                "round": 1,
+                "wallMs": 1506.2961249999935,
+                "testMs": 155.65920899999992,
+                "reportSha256": "ddf35b78b629c62a5160b990e632f592d04b44a774bae1f56dea871fc3b0438e",
+                "load": [
+                  5.146484375,
+                  4.392578125,
+                  4.20166015625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block5",
+                "round": 2,
+                "wallMs": 1830.8564170000027,
+                "testMs": 491.776419,
+                "reportSha256": "c96c9fdf161d3fe3d2f9a4c8eb33e9832a6efb19d577a03b5954645a600502b3",
+                "load": [
+                  5.146484375,
+                  4.392578125,
+                  4.20166015625
+                ]
+              },
+              {
+                "build": "base",
+                "mode": "wasm",
+                "phase": "legacy-block5",
+                "round": 3,
+                "wallMs": 1833.483500000002,
+                "testMs": 484.92387499999995,
+                "reportSha256": "82ba18637b94b81492d96bdc8340e5ecc1b7e0f87340e7f96393f98f8c29a86c",
+                "load": [
+                  5.146484375,
+                  4.392578125,
+                  4.20166015625
+                ]
+              },
+              {
+                "build": "legacy",
+                "mode": "wasm",
+                "phase": "legacy-block5",
+                "round": 4,
+                "wallMs": 1467.3762089999946,
+                "testMs": 151.64291799999998,
+                "reportSha256": "caecb070568f7926953e0a6d1e6f9fc086f74a29ec93a900f10ed2be37d3a0ba",
+                "load": [
+                  4.81396484375,
+                  4.3359375,
+                  4.1826171875
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "warmup": [
+        {
+          "build": "base",
+          "mode": "wasm",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 2023.5519169999998,
+          "testMs": 540.808666,
+          "reportSha256": "0623a7fc6fa2be3bcebd141714c27e34ee3f2a106c930ad210823bd856edafa1",
+          "load": [
+            4.96142578125,
+            4.1513671875,
+            4.10791015625
+          ]
+        },
+        {
+          "build": "previous",
+          "mode": "wasm",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 1925.943334,
+          "testMs": 523.5850409999999,
+          "reportSha256": "e36c185a63c4b69f27a6bf71459cc3a0f3e1cf120ee36232110a239e9fa5d06f",
+          "load": [
+            5.36474609375,
+            4.248046875,
+            4.14208984375
+          ]
+        },
+        {
+          "build": "legacy",
+          "mode": "wasm",
+          "phase": "warmup",
+          "round": 0,
+          "wallMs": 1619.0337909999998,
+          "testMs": 157.72887200000002,
+          "reportSha256": "600f30010dee6f1ae62c30856b1d5c6528a67c22428c793163259c157ce08d48",
+          "load": [
+            5.36474609375,
+            4.248046875,
+            4.14208984375
+          ]
+        }
+      ],
+      "preflight": [
+        {
+          "build": "base",
+          "mode": "wasm",
+          "phase": "sentinel",
+          "round": 0,
+          "wallMs": 425.54891699999996,
+          "testMs": 78.67699999999999,
+          "reportSha256": "64f68da3ed77e3b0a4ca4067d326a48ced6c08294f1c0110c148030a32105009",
+          "load": [
+            4.96142578125,
+            4.1513671875,
+            4.10791015625
+          ]
+        },
+        {
+          "build": "previous",
+          "mode": "wasm",
+          "phase": "sentinel",
+          "round": 0,
+          "wallMs": 472.35554200000024,
+          "testMs": 79.44925,
+          "reportSha256": "3b79a6a8eefb007a3806c810404d9ac06a645776a6ea7ce1154025d03a05b254",
+          "load": [
+            4.96142578125,
+            4.1513671875,
+            4.10791015625
+          ]
+        }
+      ],
+      "loadBefore": [
+        4.96142578125,
+        4.1513671875,
+        4.10791015625
+      ],
+      "loadAfter": [
+        4.81396484375,
+        4.3359375,
+        4.1826171875
+      ]
+    }
+  },
+  "targetStageTrials": {
+    "unscoped": [
+      [
+        {
+          "eligibility": 5.591407999999888,
+          "collect": 12.256458999999964,
+          "encode": 4.712166999999965
+        },
+        {
+          "eligibility": 5.2099159999999785,
+          "collect": 10.327206000000118,
+          "encode": 4.726917
+        },
+        {
+          "eligibility": 4.657705000000007,
+          "collect": 10.066207999999989,
+          "encode": 3.954914999999957
+        },
+        {
+          "eligibility": 5.998711000000043,
+          "collect": 14.020290000000045,
+          "encode": 4.908916000000119
+        }
+      ],
+      [
+        {
+          "eligibility": 5.611836000000082,
+          "collect": 12.079709999999892,
+          "encode": 3.7572479999999757
+        },
+        {
+          "eligibility": 4.899081999999993,
+          "collect": 10.261708999999996,
+          "encode": 5.0172509999999875
+        },
+        {
+          "eligibility": 4.913125000000051,
+          "collect": 11.062039999999968,
+          "encode": 4.22237800000002
+        },
+        {
+          "eligibility": 5.173407000000083,
+          "collect": 12.03691699999996,
+          "encode": 4.426956999999959
+        }
+      ],
+      [
+        {
+          "eligibility": 5.305711000000173,
+          "collect": 11.049500999999992,
+          "encode": 4.109582999999986
+        },
+        {
+          "eligibility": 4.64641399999995,
+          "collect": 9.93649899999997,
+          "encode": 4.557209
+        },
+        {
+          "eligibility": 4.79558499999996,
+          "collect": 10.726667999999918,
+          "encode": 4.798333999999997
+        },
+        {
+          "eligibility": 5.303205999999875,
+          "collect": 11.612706000000045,
+          "encode": 4.089460000000045
+        }
+      ],
+      [
+        {
+          "eligibility": 5.111589000000109,
+          "collect": 12.344538999999955,
+          "encode": 3.749500999999995
+        },
+        {
+          "eligibility": 4.881089000000102,
+          "collect": 10.64354200000001,
+          "encode": 4.138913000000031
+        },
+        {
+          "eligibility": 4.9476239999999905,
+          "collect": 10.334333999999998,
+          "encode": 4.536751000000038
+        },
+        {
+          "eligibility": 4.824295000000006,
+          "collect": 10.915668000000025,
+          "encode": 4.057750999999968
+        }
+      ],
+      [
+        {
+          "eligibility": 4.624289000000047,
+          "collect": 10.599249999999941,
+          "encode": 4.055792999999994
+        },
+        {
+          "eligibility": 4.533627000000166,
+          "collect": 9.647249999999957,
+          "encode": 4.433542000000003
+        },
+        {
+          "eligibility": 4.857545999999971,
+          "collect": 9.901040999999978,
+          "encode": 4.380459999999985
+        },
+        {
+          "eligibility": 4.610167999999959,
+          "collect": 10.548001,
+          "encode": 3.9522919999999147
+        }
+      ],
+      [
+        {
+          "eligibility": 5.280788999999984,
+          "collect": 11.379334,
+          "encode": 4.096957000000003
+        },
+        {
+          "eligibility": 4.64166699999997,
+          "collect": 10.418501000000035,
+          "encode": 4.073748999999978
+        },
+        {
+          "eligibility": 4.9010819999998745,
+          "collect": 9.928251000000031,
+          "encode": 4.621752999999984
+        },
+        {
+          "eligibility": 4.8664590000000345,
+          "collect": 11.113168000000016,
+          "encode": 4.103664999999992
+        }
+      ],
+      [
+        {
+          "eligibility": 4.8047899999998975,
+          "collect": 11.035458999999975,
+          "encode": 4.186331999999979
+        },
+        {
+          "eligibility": 4.548083999999918,
+          "collect": 10.005624000000026,
+          "encode": 4.605793000000077
+        },
+        {
+          "eligibility": 4.798368000000082,
+          "collect": 9.77970899999994,
+          "encode": 4.608539999999934
+        },
+        {
+          "eligibility": 5.245617999999851,
+          "collect": 11.05691600000003,
+          "encode": 4.039334000000025
+        }
+      ]
+    ],
+    "fields": [
+      [
+        {
+          "eligibility": 4.6415820000000565,
+          "collect": 10.886917000000082,
+          "encode": 4.044790999999989
+        },
+        {
+          "eligibility": 5.091953999999845,
+          "collect": 11.59820900000011,
+          "encode": 3.5152490000000682
+        },
+        {
+          "eligibility": 5.101544000000018,
+          "collect": 11.018331999999972,
+          "encode": 3.3336259999999953
+        },
+        {
+          "eligibility": 5.0513740000001235,
+          "collect": 10.981792999999982,
+          "encode": 3.534665999999987
+        }
+      ],
+      [
+        {
+          "eligibility": 5.225208999999808,
+          "collect": 11.499414000000016,
+          "encode": 3.6707079999999195
+        },
+        {
+          "eligibility": 5.124412999999791,
+          "collect": 11.598498999999904,
+          "encode": 3.3542070000000592
+        },
+        {
+          "eligibility": 4.550460000000143,
+          "collect": 10.997666999999936,
+          "encode": 3.3190440000000194
+        },
+        {
+          "eligibility": 5.326583999999812,
+          "collect": 11.258125000000021,
+          "encode": 3.5326239999999274
+        }
+      ],
+      [
+        {
+          "eligibility": 4.982287999999812,
+          "collect": 12.133747999999954,
+          "encode": 4.250628000000006
+        },
+        {
+          "eligibility": 6.475385000000173,
+          "collect": 12.948791000000028,
+          "encode": 3.865543000000045
+        },
+        {
+          "eligibility": 5.537080000000245,
+          "collect": 13.79916600000007,
+          "encode": 3.672458000000006
+        },
+        {
+          "eligibility": 7.133828999999849,
+          "collect": 14.280665000000141,
+          "encode": 4.42670899999996
+        }
+      ],
+      [
+        {
+          "eligibility": 5.927207000000209,
+          "collect": 10.845665999999923,
+          "encode": 4.056914999999961
+        },
+        {
+          "eligibility": 5.330212999999688,
+          "collect": 11.206418,
+          "encode": 3.3505400000000094
+        },
+        {
+          "eligibility": 5.03988000000011,
+          "collect": 10.760334000000014,
+          "encode": 3.2006250000000307
+        },
+        {
+          "eligibility": 4.570043999999939,
+          "collect": 10.233957999999959,
+          "encode": 3.9127069999999833
+        }
+      ],
+      [
+        {
+          "eligibility": 4.595539999999801,
+          "collect": 10.339832999999999,
+          "encode": 3.909540000000021
+        },
+        {
+          "eligibility": 4.62012399999999,
+          "collect": 10.906042999999983,
+          "encode": 3.304666999999995
+        },
+        {
+          "eligibility": 5.052037000000155,
+          "collect": 11.194334000000069,
+          "encode": 3.3614980000000116
+        },
+        {
+          "eligibility": 4.68903800000011,
+          "collect": 11.003126999999978,
+          "encode": 3.5227489999999904
+        }
+      ],
+      [
+        {
+          "eligibility": 4.729086000000166,
+          "collect": 10.734998000000004,
+          "encode": 4.0854979999999586
+        },
+        {
+          "eligibility": 4.828544999999863,
+          "collect": 11.904249999999962,
+          "encode": 3.3794589999999687
+        },
+        {
+          "eligibility": 4.740456000000009,
+          "collect": 11.738542999999993,
+          "encode": 3.431205000000034
+        },
+        {
+          "eligibility": 4.898166000000018,
+          "collect": 11.590749000000045,
+          "encode": 3.6501249999999743
+        }
+      ],
+      [
+        {
+          "eligibility": 4.895128000000156,
+          "collect": 10.92866600000005,
+          "encode": 4.056416000000013
+        },
+        {
+          "eligibility": 5.293413000000086,
+          "collect": 12.291750000000079,
+          "encode": 3.4057100000000133
+        },
+        {
+          "eligibility": 5.320205999999757,
+          "collect": 12.110625000000056,
+          "encode": 3.4129989999999424
+        },
+        {
+          "eligibility": 4.969540000000052,
+          "collect": 11.25449900000001,
+          "encode": 4.125375999999974
+        }
+      ]
+    ],
+    "eligibility": [
+      [
+        {
+          "eligibility": 4.841498999999885,
+          "collect": 10.861208999999945,
+          "encode": 4.034085000000005
+        },
+        {
+          "eligibility": 5.24483499999927,
+          "collect": 12.414125999999968,
+          "encode": 4.821498999999932
+        },
+        {
+          "eligibility": 4.181917000000183,
+          "collect": 10.52520799999995,
+          "encode": 4.0306679999999915
+        },
+        {
+          "eligibility": 4.658085000000099,
+          "collect": 10.517123000000012,
+          "encode": 3.9709600000000336
+        }
+      ],
+      [
+        {
+          "eligibility": 4.77204099999976,
+          "collect": 12.40062199999997,
+          "encode": 3.6849150000000037
+        },
+        {
+          "eligibility": 5.908571000000194,
+          "collect": 12.520584000000014,
+          "encode": 4.273541999999907
+        },
+        {
+          "eligibility": 4.4651679999999345,
+          "collect": 11.702960000000047,
+          "encode": 4.358623999999963
+        },
+        {
+          "eligibility": 5.334837000000007,
+          "collect": 12.29666899999998,
+          "encode": 3.7614169999999945
+        }
+      ],
+      [
+        {
+          "eligibility": 5.590379999999968,
+          "collect": 11.805165000000017,
+          "encode": 4.189416999999949
+        },
+        {
+          "eligibility": 4.611500000000149,
+          "collect": 12.249918999999934,
+          "encode": 4.275834999999972
+        },
+        {
+          "eligibility": 4.810333000000156,
+          "collect": 13.644959999999998,
+          "encode": 4.010832999999991
+        },
+        {
+          "eligibility": 5.615130000000164,
+          "collect": 11.983623999999992,
+          "encode": 3.6819600000000605
+        }
+      ],
+      [
+        {
+          "eligibility": 4.676212000000163,
+          "collect": 10.699790000000021,
+          "encode": 4.071539999999956
+        },
+        {
+          "eligibility": 4.8689989999999455,
+          "collect": 11.275625999999974,
+          "encode": 4.219290000000029
+        },
+        {
+          "eligibility": 3.8514219999999426,
+          "collect": 10.761165999999974,
+          "encode": 3.540789999999987
+        },
+        {
+          "eligibility": 4.733877000000078,
+          "collect": 11.058334000000016,
+          "encode": 3.5648330000000215
+        }
+      ],
+      [
+        {
+          "eligibility": 4.51591699999986,
+          "collect": 10.769001999999944,
+          "encode": 3.516334000000043
+        },
+        {
+          "eligibility": 3.825790999999967,
+          "collect": 11.05845899999997,
+          "encode": 3.5254159999999928
+        },
+        {
+          "eligibility": 3.935252999999989,
+          "collect": 11.55791600000002,
+          "encode": 3.6144589999999823
+        },
+        {
+          "eligibility": 4.831039000000004,
+          "collect": 10.83054100000004,
+          "encode": 4.027083000000019
+        }
+      ],
+      [
+        {
+          "eligibility": 4.657584999999898,
+          "collect": 11.313332999999986,
+          "encode": 3.615626999999975
+        },
+        {
+          "eligibility": 3.7111310000000657,
+          "collect": 11.254495000000034,
+          "encode": 3.5517909999999944
+        },
+        {
+          "eligibility": 4.51170599999989,
+          "collect": 12.056415999999984,
+          "encode": 4.185999999999993
+        },
+        {
+          "eligibility": 5.388085000000146,
+          "collect": 11.655586000000014,
+          "encode": 3.6471670000000245
+        }
+      ],
+      [
+        {
+          "eligibility": 4.957590999999795,
+          "collect": 11.39287499999999,
+          "encode": 4.178208999999924
+        },
+        {
+          "eligibility": 4.000208000000001,
+          "collect": 11.811834999999945,
+          "encode": 4.088791000000043
+        },
+        {
+          "eligibility": 4.468913000000001,
+          "collect": 11.134625999999997,
+          "encode": 4.124127000000044
+        },
+        {
+          "eligibility": 4.654255999999947,
+          "collect": 10.950000000000003,
+          "encode": 4.089873999999995
+        }
+      ]
+    ]
+  },
+  "cpu": "Apple M5 Max",
+  "node": "v26.11.0",
+  "excludedFromTiming": "getByLabelText: wrapping <label> labels only its FIRST control",
+  "fixtureHashes": {
+    "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+    "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+    "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+    "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+    "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+    "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+    "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+    "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+  },
+  "packageManifestSha256": {
+    "base": "f9f496311a0c2fd187c5813ccbf0ce2c25b6c4fa71de1e579ca10d7fc4e43bdf",
+    "previous": "17dc5909af5eb32211d922fd69128202db33743073cc9e150e35a5da8f919253",
+    "legacy": "0c14f39b7d1a934b420725d142e2795e55cb48270bbf62e0d5e8fca7dcd27af2"
+  },
+  "candidateTarballSha256": "f788f47fcaef9e1ae50c6d4e36804c06f9d3d29362e050f388247b383fe6ecdf",
+  "compatibility": [
+    {
+      "mode": "native",
+      "suite": "strict",
+      "tests": 1,
+      "passed": 1
+    },
+    {
+      "mode": "native",
+      "suite": "compat",
+      "tests": 29,
+      "passed": 29
+    },
+    {
+      "mode": "wasm",
+      "suite": "strict",
+      "tests": 1,
+      "passed": 1
+    },
+    {
+      "mode": "wasm",
+      "suite": "compat",
+      "tests": 29,
+      "passed": 29
+    }
+  ]
+}

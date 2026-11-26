@@ -228,6 +228,30 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Packed Vitest after selector collection and encoding changes (2026-11-26)
+
+The packed Rust CSS candidate includes the matching changes from `8137bae4`.
+The previous Rust package includes the routed-request changes from `06a799d4`.
+The legacy package uses JavaScript for CSS. Each comparison ran five ABBA
+blocks with fresh single-worker Vitest processes on the same 28 tests. The
+time columns give medians across ten processes per package. The last column
+gives the median within-block change in process wall time.
+
+| Mode | Comparison package | Comparison (s) | Rust candidate (s) | Change |
+|---|---|---:|---:|---:|
+| N-API | Previous Rust | 1.737 | 1.714 | +0.29% |
+| N-API | Legacy JS | 1.502 | 1.688 | +12.04% |
+| WASM | Previous Rust | 1.909 | 1.914 | -0.26% |
+| WASM | Legacy JS | 1.518 | 1.951 | +28.59% |
+
+On N-API, isolated measurements across the 13 selector rebuilds showed 9.8%
+less time collecting unscoped matches and 12.0% less time encoding answers.
+Each stage improved in seven of seven comparisons. Separate packed acceptance
+runs passed all 29 compatibility tests and the Rust CSS check on each backend.
+The release keeps the existing CSS default.
+
+[Benchmark timings and package identities](tools/acceptance/packed-vitest-296/results-2026-11-26-matching/RESULT.json)
+
 ### Packed Vitest before and after the Rust CSS switch (2026-11-26)
 
 The [packed consumer fixture](tools/acceptance/packed-vitest-296/README.md)
