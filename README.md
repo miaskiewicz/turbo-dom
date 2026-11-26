@@ -228,6 +228,22 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Packed Vitest consumer comparison (2026-11-26)
+
+A separate serial28-case React/RTL/forms comparison uses [the packed-consumer fixture](tools/acceptance/packed-vitest-296/README.md). Existing DOM microbenchmarks below are unchanged.
+
+Measured2026-11-26 in a coordinated compiler/test-idle window, fresh processes, one worker, five rotated rounds per row after one warmup. All24 processes reported exactly28 passes and only the documented title filtered. These are end-to-end process wall times, including Vitest startup/transform/environment/test work; not DOM operation timings.
+
+| Environment | CSS path | Median (s) | Min–max (s) |
+|---|---|---:|---:|
+| happy-dom | happy-dom | 1.774 | 1.740–1.807 |
+| jsdom | jsdom | 2.806 | 2.728–2.966 |
+| turbo-native-legacy-css | LEGACY JavaScript CSS (pre-cutover) | 1.382 | 1.337–1.488 |
+| turbo-wasm-legacy-css | LEGACY JavaScript CSS (pre-cutover) | 1.392 | 1.368–1.402 |
+
+Raw per-process JSON/logs, machine/Node/dependency versions and source/package/artifact hashes are in [the dated results](tools/acceptance/packed-vitest-296/results-2026-11-26/RESULT.json). This local pre-cutover comparison does not measure the forthcoming Rust CSS default. The unchanged29-case compatibility matrix and strict CSS sentinel remain separately reported; Step4 Rust CSS acceptance is still pending.
+
+
 v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
 the suite row (ms/file, lower is faster).
 

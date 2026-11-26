@@ -1,0 +1,674 @@
+{
+  "date": "2026-11-26T02:01:43.731Z",
+  "node": "v26.11.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.3.0",
+  "cpus": "Apple M5 Max",
+  "cpuCount": 18,
+  "memoryBytes": 137438953472,
+  "versions": {
+    "vitest": "4.1.11",
+    "happy-dom": "20.14.5",
+    "jsdom": "29.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7"
+  },
+  "consumer": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer",
+  "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+  "filter": "^(?!getByLabelText: wrapping <label> labels only its FIRST control$).*$",
+  "rounds": 5,
+  "runnerSha256": "51ac7b8d6ba5b4c5b8f120649a33de26ce9829a9afd58392343bdc751d4a3ad2",
+  "baseline": {
+    "status": "Step4 PENDING default switch",
+    "baseline": {
+      "commit": "0fa17f575df68a1f9869bc7d1c4e061d35391e68",
+      "tarballSha256": "0dbee9c246dd9121cdee768807ab44b1f94d5528dc224d56606f5226667066cf",
+      "parserSha256": "f6e8ba0eca1ce5ac298b662404e748311ea66bbb5f495538e0a29238b0e94d32",
+      "scope": "local pack ignore-scripts; copied actual plain parser; default remains legacy; no publication"
+    },
+    "versions": {
+      "vitest": "4.1.11",
+      "happy-dom": "20.14.5",
+      "jsdom": "29.1.1",
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "@testing-library/react": "16.3.3",
+      "@testing-library/user-event": "14.6.7"
+    },
+    "tests": {
+      "common": {
+        "turbo-native": {
+          "passed": 29,
+          "failed": 0
+        },
+        "turbo-wasm": {
+          "passed": 29,
+          "failed": 0
+        },
+        "jsdom": {
+          "passed": 29,
+          "failed": 0
+        },
+        "happy-dom": {
+          "passed": 28,
+          "failed": 1,
+          "difference": "wrapping label first control: getByLabelText Street differs; assertion unchanged"
+        }
+      },
+      "strictCss": "expected legacy default RED, assertions unchanged, no private hook"
+    },
+    "sources": {
+      "tools/acceptance/packed-vitest-296/mode-audit.mjs": "99cab4e305785e74df0d73f2cf09a61d2fb84c69f831e0d7fa429dcd9fb8bd8d",
+      "tools/acceptance/packed-vitest-296/css-acceptance.test.mjs": "21ffbab7e3ce46a0c8b9d8d74955da154e642b538a362036724271c05c62e635",
+      "tools/acceptance/packed-vitest-296/vitest.config.mjs": "a73e672c61912e0eb9425fb2f2aae0e0670c258cc138d0df056cc191f7b5068a",
+      "tools/acceptance/packed-vitest-296/shared/dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+      "tools/acceptance/packed-vitest-296/shared/inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+      "tools/acceptance/packed-vitest-296/shared/buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+      "tools/acceptance/packed-vitest-296/shared/setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c",
+      "tools/acceptance/packed-vitest-296/shared/bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+      "tools/acceptance/packed-vitest-296/shared/reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+      "tools/acceptance/packed-vitest-296/shared/forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+      "tools/acceptance/packed-vitest-296/shared/buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd"
+    },
+    "resolvedExport": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs",
+    "audit": "Seven copied test bodies and setup unchanged; only unused source-relative vitest config omitted. No env pragmas, parser/GCS overrides or product source imports. mode-audit uses public turbo-dom/runtime getParser only. Tarball actual name @miaskiewicz/turbo-dom, consumer local alias turbo-dom exercises exact same exports. Local directory extraction is real npm-install shape, dependency links read-only individually. No install/network/Rust/publication.",
+    "strictCssObservations": {
+      "turbo-native": {
+        "color": "",
+        "width": ""
+      },
+      "turbo-wasm": {
+        "color": "",
+        "width": ""
+      },
+      "happy-dom": {
+        "color": "",
+        "width": ""
+      },
+      "jsdom": {
+        "color": "rgb(0, 0, 0)",
+        "width": "auto"
+      }
+    },
+    "actualModeAudits": [
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "wasm",
+        "parserKeys": [
+          "parse",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      },
+      {
+        "requested": "native",
+        "parserKeys": [
+          "parse",
+          "parseRaw",
+          "parseBuffer",
+          "parseFragment"
+        ],
+        "nativeModules": [
+          "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+        ],
+        "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+      }
+    ]
+  },
+  "loadBefore": [
+    4.7080078125,
+    5.1953125,
+    4.076171875
+  ],
+  "runs": [
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "warmup",
+      "index": 0,
+      "wallMs": 1828.063375,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.7080078125,
+        5.1953125,
+        4.076171875
+      ],
+      "reportSha256": "c16b071cf453a5a0c9616c07ff73d6f4631572e8f51585354ce003d658d02878"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "warmup",
+      "index": 1,
+      "wallMs": 2827.460875,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.57080078125,
+        5.15869140625,
+        4.06982421875
+      ],
+      "reportSha256": "39990febbd36e25b3c2c0d0fbe9ee7a269805ef3328811909d277a45fec9425e"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "warmup",
+      "index": 2,
+      "wallMs": 1380.0657499999998,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.57080078125,
+        5.15869140625,
+        4.06982421875
+      ],
+      "reportSha256": "b1ca6b0e29521769f95f2bf449fb66a836365a18aaf7e413915b692783d9dd93"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "warmup",
+      "index": 3,
+      "wallMs": 1414.7533329999997,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.57080078125,
+        5.15869140625,
+        4.06982421875
+      ],
+      "reportSha256": "f4a5bb4e95170e76befe852ac3832bea219f9be07f0d3253798824948a0f667b"
+    },
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "timed",
+      "index": 0,
+      "wallMs": 1806.866833,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.52490234375,
+        5.13916015625,
+        4.0693359375
+      ],
+      "reportSha256": "bdadd4140a02d61e66c0f475410a677a62e81178345fc4975b74a25027568069"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "timed",
+      "index": 0,
+      "wallMs": 2966.183459,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.52490234375,
+        5.13916015625,
+        4.0693359375
+      ],
+      "reportSha256": "f81d49f25a47344a3c30c0ff71ae93f6e8ebb9d2979c0f4cab91c3f8a8f7c3ee"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "timed",
+      "index": 0,
+      "wallMs": 1488.4050830000015,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.802734375,
+        5.1865234375,
+        4.09228515625
+      ],
+      "reportSha256": "8cd352ab717cb6cbd7548d092f9d098beab900e24cee105bc8a1866c27639a89"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "timed",
+      "index": 0,
+      "wallMs": 1394.0920829999995,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.802734375,
+        5.1865234375,
+        4.09228515625
+      ],
+      "reportSha256": "ab8c292b4cb84b77b221a1d2cb66326d3a83e610899b6455b3b0f2483c5cc8d8"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "timed",
+      "index": 1,
+      "wallMs": 2805.6487500000003,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.578125,
+        5.13330078125,
+        4.07958984375
+      ],
+      "reportSha256": "a6bfa65862659aaad49e79bc85194c04b8f952da2857586caf70f3959c15082c"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "timed",
+      "index": 1,
+      "wallMs": 1381.6070419999996,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.578125,
+        5.13330078125,
+        4.07958984375
+      ],
+      "reportSha256": "e535a2efe5411ca2344cbd3ad8283f825e96d5fa78576f014571be694a1f8453"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "timed",
+      "index": 1,
+      "wallMs": 1401.504582999998,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.578125,
+        5.13330078125,
+        4.07958984375
+      ],
+      "reportSha256": "2b603fe1365ba7927fdc3f3e0ef1c5d1ae0db0cb79107564ecf292a04a256221"
+    },
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "timed",
+      "index": 1,
+      "wallMs": 1746.7184579999994,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.578125,
+        5.13330078125,
+        4.07958984375
+      ],
+      "reportSha256": "8f7d0a0efd24f12ebed5ae6e7faa1b24e9f940a75d1bae5f1697624f2408198b"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "timed",
+      "index": 2,
+      "wallMs": 1353.505208999999,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.29150390625,
+        5.064453125,
+        4.0615234375
+      ],
+      "reportSha256": "8282b04bd2c380ea8571d9baf318d3b26d7c60c4321614d0fcae6b1d36871142"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "timed",
+      "index": 2,
+      "wallMs": 1368.1794590000027,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.29150390625,
+        5.064453125,
+        4.0615234375
+      ],
+      "reportSha256": "aa3ee7f7150e13337ca42ac302bd6adde7994276c5c19a6081175a0b1932da26"
+    },
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "timed",
+      "index": 2,
+      "wallMs": 1778.8243750000001,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.29150390625,
+        5.064453125,
+        4.0615234375
+      ],
+      "reportSha256": "81508915babf62e857587bff637753974fed19854e743579bfcbbcb3d60dfb67"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "timed",
+      "index": 2,
+      "wallMs": 2802.8544169999986,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.02783203125,
+        4.99658203125,
+        4.04345703125
+      ],
+      "reportSha256": "fbc078b2a6a4dc68d3c67a915c54fd76d16dc262d8907ff94686cf932ea51f7c"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "timed",
+      "index": 3,
+      "wallMs": 1392.262584,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        4.02783203125,
+        4.99658203125,
+        4.04345703125
+      ],
+      "reportSha256": "a3846a90d20c0b330b60bb4cc52db994a3d372d344fc54f078384766dc2b7129"
+    },
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "timed",
+      "index": 3,
+      "wallMs": 1739.545207999996,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.78515625,
+        4.93017578125,
+        4.025390625
+      ],
+      "reportSha256": "256637ee0e5d09b98db7a83e177ce0101db3e84788bce216d768b291b8f0045a"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "timed",
+      "index": 3,
+      "wallMs": 2728.4597090000025,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.78515625,
+        4.93017578125,
+        4.025390625
+      ],
+      "reportSha256": "1f7768ff4ca8cffdb2b2bc42d6ca50f896673ec7ec311426c699ae9779081ac3"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "timed",
+      "index": 3,
+      "wallMs": 1387.812208000003,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.78515625,
+        4.93017578125,
+        4.025390625
+      ],
+      "reportSha256": "ce1ce30a0595312d03171a99210904a5c70ba305e3e87364a76e4fa4a0e949d0"
+    },
+    {
+      "row": "happy-dom",
+      "css": "happy-dom",
+      "parser": null,
+      "phase": "timed",
+      "index": 4,
+      "wallMs": 1773.8343339999992,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.56201171875,
+        4.86474609375,
+        4.00732421875
+      ],
+      "reportSha256": "99ee9af85cd2f93ac9ff912ab0ccbbd742d0b417388c0bc9b74dd605f696ede1"
+    },
+    {
+      "row": "jsdom",
+      "css": "jsdom",
+      "parser": null,
+      "phase": "timed",
+      "index": 4,
+      "wallMs": 2818.9946670000063,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.56201171875,
+        4.86474609375,
+        4.00732421875
+      ],
+      "reportSha256": "f236c24d00f6e7128226ac13cb0e844efb9f10b22504a6f138ff6719c01d4837"
+    },
+    {
+      "row": "turbo-native-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "native",
+      "phase": "timed",
+      "index": 4,
+      "wallMs": 1336.8381660000014,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.4365234375,
+        4.81689453125,
+        3.9951171875
+      ],
+      "reportSha256": "9b92bcb5644f964b269d23d5fd86ce12dbc54341abd8387f3768a09bf22e6cce"
+    },
+    {
+      "row": "turbo-wasm-legacy-css",
+      "css": "LEGACY JavaScript CSS (pre-cutover)",
+      "parser": "wasm",
+      "phase": "timed",
+      "index": 4,
+      "wallMs": 1369.8175839999967,
+      "passes": 28,
+      "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+      "load": [
+        3.4365234375,
+        4.81689453125,
+        3.9951171875
+      ],
+      "reportSha256": "172846e64b08482666c4267f0cbaa44fe3705f6697425974891b2d36a776a6fe"
+    }
+  ]
+}
