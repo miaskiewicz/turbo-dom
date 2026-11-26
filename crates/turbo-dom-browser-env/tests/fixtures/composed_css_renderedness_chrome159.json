@@ -1,6 +1,6 @@
 {
   "browser": "159.0.8154.6",
-  "casesSha256": "b5198c499ae3687685c3dffb36edfea8f3d521b19861b6054d98a405c4aabbc7",
+  "casesSha256": "217cd122e5b69ed72b587974cb983860782b02d0f58e83530864589d8dff50fc",
   "htmlSha256": "44d0383fc4202fc1a4b78ef519c3bf9ac313b81aa76d4e62b14c4050ba8a30e3",
   "probeSha256": "6fedf0bd4f0e1ca9656a93e6ea062eb114d76acfc8dfc13e622abba74bd6e95a",
   "rows": [
@@ -414,6 +414,182 @@
         },
         {
           "id": "restore-slot",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "presented-display-important",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "show-animation-over-none",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "important-none",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "remove-important",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cancel-show",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "display-exit-transition",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "exit-midpoint",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "exit-end",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foreign-manual-assignment",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "foreign-node",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-target",
           "targets": [
             {
               "id": "target",

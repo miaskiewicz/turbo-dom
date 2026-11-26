@@ -18,6 +18,8 @@ pub(crate) use context_rehydrate::rehydrate_context;
 #[cfg(feature = "host-internals")]
 #[path = "animation_ownership.rs"]
 pub(crate) mod animation_ownership;
+#[path = "animation_rendering.rs"]
+mod animation_rendering;
 #[path = "animation_tokens.rs"]
 mod animation_tokens;
 #[path = "animations.rs"]

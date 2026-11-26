@@ -1,0 +1,58 @@
+{
+  "issue": 578,
+  "base": "53ce99e29fc3126f39f15764dd947c8692a7ef11",
+  "baseline": {
+    "matrix": "0/7 before fix",
+    "unchangedDisplayExitProducer": "ea29941bd66ce302343abb18d5834b5483ffd4cb",
+    "addonSHA256": "133e7c76a62fc55d80f361cd4acc519487d1c7aed3ff908b529583e2854de47f",
+    "separateExitLightCSS": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "separateExitClosedCSS": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "chromeExitCSS": [
+      1,
+      1,
+      0,
+      1
+    ]
+  },
+  "checks": {
+    "privateABI": "3 passed",
+    "bindingLib": "883 passed, 0 failed, 4 existing ignored",
+    "presentedEffects": "99 passed",
+    "strictAllTargets": "passed -D warnings",
+    "fmt": "passed",
+    "scopedRustComplexity": "passed <=9",
+    "finalScopedReplay": "13 passed, 0 failed, 0 ignored"
+  },
+  "chrome": {
+    "version": "159.0.8154.6",
+    "oraclePhases": 45,
+    "shippingPhases": 43,
+    "independentWAAPI": "1 in every phase"
+  },
+  "sourceSHA256": {
+    "crates/turbo-dom-browser-env/src/animation_rendering.rs": "6ad25396448325f8caff92806b5dd8b5ed3fe0356b30c7baf33bd928d316e31a",
+    "crates/turbo-dom-browser-env/src/animations.js": "3f985333a259294df6f41e30ab193380f83af85c3b6848e144bfe86091bbacb6",
+    "crates/turbo-dom-browser-env/src/animations.rs": "fbdc675b8fd41061ab57748c396d961a3850911cd2e39e2ea20f896a0f98ef61",
+    "crates/turbo-dom-browser-env/src/shadow_slots.rs": "262624e68b1120375f582643c074a3b088af0e1fd14f0c54cbc5f18c7671f2c6",
+    "crates/turbo-dom-browser-env/tests/composed_css_renderedness.rs": "5005ac689710ca4c58d972018d4d4deb5c24abc529b80c5cfc1dc78929651585",
+    "crates/turbo-dom-browser-env/tests/fixtures/composed_css_renderedness.html": "44d0383fc4202fc1a4b78ef519c3bf9ac313b81aa76d4e62b14c4050ba8a30e3",
+    "crates/turbo-dom-browser-env/tests/fixtures/composed_css_renderedness_cases.json": "217cd122e5b69ed72b587974cb983860782b02d0f58e83530864589d8dff50fc",
+    "crates/turbo-dom-browser-env/tests/fixtures/composed_css_renderedness_oracle.mjs": "6fedf0bd4f0e1ca9656a93e6ea062eb114d76acfc8dfc13e622abba74bd6e95a",
+    "crates/turbo-dom-browser-env/tests/fixtures/composed_css_renderedness_chrome159.json": "6fb5e256d0e734528756181681e0cff6a4998729c0a902d44f01dc663e8ceafd"
+  },
+  "limitations": [
+    "Display exit end/restore is a reproduced pre-existing follow-up; full source-owned oracle retained.",
+    "No live application or performance resolution claim.",
+    "Follow-up GitHub issue publication rejected by automatic approval review; report retained locally."
+  ]
+}

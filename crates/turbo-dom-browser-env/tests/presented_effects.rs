@@ -1336,6 +1336,39 @@ fn repaired_non_scalar_custom_payload_is_unknown_instead_of_a_lossy_certificate(
 }
 
 #[test]
+fn composed_rendering_path_survives_startup_snapshot_rehydration() {
+    init_v8();
+    let mut window =
+        browser_env::install_from_snapshot("<!doctype html><div id=host></div>").unwrap();
+    let (isolate, context) = window.parts();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    {
+        v8::scope!(let scope,isolate);
+        let context = v8::Local::new(scope, context);
+        let scope = &mut v8::ContextScope::new(scope, context);
+        browser_env::run_engine_script(scope,"__tsNs.installAnimationHost({now:()=>1000,frame(){},task(){}});globalThis.providerCalls=0;__tsNs.layoutUsedSize=()=>{providerCalls++;throw Error('rendering path requested geometry')}").unwrap();
+        eval(scope,"globalThis.host=document.getElementById('host');globalThis.root=host.attachShadow({mode:'closed'});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}div{animation:probe 1s linear both paused}</style><div></div>';globalThis.target=root.querySelector('div');globalThis.motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500");
+        assert_eq!(
+            eval(scope, "target.getAnimations().length").integer_value(scope),
+            Some(2)
+        );
+        eval(scope, "host.style.display='none'");
+        assert!(eval(
+            scope,
+            "target.getAnimations().length===1&&target.getAnimations()[0]===motion"
+        )
+        .is_true());
+        eval(scope, "host.style.display='block'");
+        assert_eq!(
+            eval(scope, "target.getAnimations().length").integer_value(scope),
+            Some(2)
+        );
+        assert!(eval(scope, "providerCalls===0").is_true());
+    }
+    browser_env::reset();
+}
+
+#[test]
 fn presented_sampling_survives_startup_snapshot_rehydration() {
     init_v8();
     let mut window = browser_env::install_from_snapshot(
