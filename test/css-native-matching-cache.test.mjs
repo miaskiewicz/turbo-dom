@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDefaultSharedCssAdapter } from '../src/runtime/css-shared-adapter.mjs';
-import { captureCssPrimitivePublicFacts } from './helpers/css-primitive-public-facts.mjs';
+import { refreshCssSelectorInput, updateCssSelectorState } from '../src/runtime/css-selector-input.mjs';
+import { customElementState } from '../src/runtime/custom-elements.mjs';
 import { createCssFactsNavigator } from '../src/runtime/css-facts-navigator.mjs';
 import { cssFocusTarget } from '../src/runtime/css-invalidation.mjs';
 import { createRealCssFixture, loadRealCssBackend } from './helpers/css-shared-real.mjs';
@@ -15,6 +16,21 @@ const contextual = Object.freeze({
   maxNodes: 128, maxContexts: 4, maxAncestorDepth: 24, maxAnswers: 65536, maxDomainUnits: 65536,
   routing: Object.freeze({ maxRoots: 4, maxNodes: 128, maxPathUnits: 4096, maxScopeDepth: 4 }),
 });
+// Public DOM properties are intentional in this test-only reader.
+const readers = {
+  state(node, previous = null) {
+    let result = previous ?? Object.create(null);
+    for (const name of ['checked', 'selected', 'disabled', 'required', 'readOnly'])
+      result = updateCssSelectorState(result, previous, name, node[name]);
+    return updateCssSelectorState(result, previous, 'customElementState', customElementState(node));
+  },
+  text: node => node.data,
+  focus(snapshot) {
+    const node = cssFocusTarget(snapshot.roots[0].element);
+    return node === null ? null : snapshot.nodeId(node);
+  },
+  unsupported(reason) { throw new TypeError(reason); },
+};
 async function fixture() {
   const real = await loadRealCssBackend('native');
   let previous;
@@ -24,15 +40,11 @@ async function fixture() {
     '<main class="host"><input type="checkbox"><b class="item">x</b></main><section class="scope"></section>',
     {
       contextTransform: context => ({ ...context, renderToken: null }),
-      captureSelectorFacts(snapshot, { document }) {
-        const facts = captureCssPrimitivePublicFacts(document, {
-          idOf: snapshot.nodeId,
-          focusTarget: cssFocusTarget(document),
-        });
-        const key = JSON.stringify(facts);
-        if (previous?.key === key) return previous.navigator;
-        const navigator = createCssFactsNavigator(facts, bounds);
-        previous = { key, navigator };
+      captureSelectorFacts(snapshot) {
+        const input = refreshCssSelectorInput(snapshot, bounds, previous?.input, readers);
+        if (previous?.input === input) return previous.navigator;
+        const navigator = createCssFactsNavigator(input, bounds);
+        previous = { input, navigator };
         return navigator;
       },
       adapterFactory: options => createDefaultSharedCssAdapter(options, true),
