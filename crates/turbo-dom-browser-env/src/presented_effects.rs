@@ -108,10 +108,7 @@ pub fn sample_presented_effects(
         .map_or(0, |owner| owner.0);
     let scope = &mut v8::ContextScope::new(scope, context);
     let _owner = DomScope::for_object(scope, document);
-    if !valid_document(scope, document, owner) {
-        return None;
-    }
-    if !crate::browser_env::animation_ownership::owns_all_targets(scope, document, owner) {
+    if !valid_effect_owner(scope, document, owner) {
         return None;
     }
     let candidates = native_candidates(scope, css_candidates)?;
@@ -122,7 +119,20 @@ pub fn sample_presented_effects(
         scope.rethrow();
         return None;
     }
+    // Host callbacks may create or adopt effects after the initial ownership proof.
+    if !valid_effect_owner(scope, document, owner) {
+        return None;
+    }
     snapshot
+}
+
+fn valid_effect_owner(
+    scope: &mut v8::PinScope,
+    document: v8::Local<v8::Object>,
+    owner: u64,
+) -> bool {
+    valid_document(scope, document, owner)
+        && crate::browser_env::animation_ownership::owns_all_targets(scope, document, owner)
 }
 
 fn native_candidates<'s>(
@@ -152,10 +162,11 @@ fn invoke_sampler<'s>(
     let namespace = engine_namespace(scope)?;
     let function = field(scope, namespace, "samplePresentedEffects")?;
     let function = v8::Local::<v8::Function>::try_from(function).ok()?;
+    let owned = v8::Boolean::new(scope, true);
     let value = function.call(
         scope,
         namespace.into(),
-        &[document.into(), candidates.into()],
+        &[document.into(), candidates.into(), owned.into()],
     )?;
     v8::Local::<v8::Object>::try_from(value).ok()
 }

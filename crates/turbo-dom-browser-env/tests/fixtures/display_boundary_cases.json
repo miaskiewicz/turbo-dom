@@ -1,0 +1,67 @@
+[
+  {
+    "id": "waapi-enter-delay0",
+    "setup": "globalThis.target=document.createElement('div');document.body.appendChild(target);globalThis.motion=target.animate([{display:'none'},{display:'block'}],{duration:1000,delay:0,fill:'both'});motion.pause();",
+    "times": [
+      -1,
+      0,
+      1000
+    ]
+  },
+  {
+    "id": "waapi-enter-delay100",
+    "setup": "globalThis.target=document.createElement('div');document.body.appendChild(target);globalThis.motion=target.animate([{display:'none'},{display:'block'}],{duration:1000,delay:100,fill:'both'});motion.pause();",
+    "times": [
+      0,
+      99,
+      100,
+      100.001,
+      1099,
+      1100
+    ]
+  },
+  {
+    "id": "waapi-exit-delay0",
+    "setup": "globalThis.target=document.createElement('div');document.body.appendChild(target);globalThis.motion=target.animate([{display:'block'},{display:'none'}],{duration:1000,delay:0,fill:'both'});motion.pause();",
+    "times": [
+      -1,
+      0,
+      1000
+    ]
+  },
+  {
+    "id": "waapi-exit-delay100",
+    "setup": "globalThis.target=document.createElement('div');document.body.appendChild(target);globalThis.motion=target.animate([{display:'block'},{display:'none'}],{duration:1000,delay:100,fill:'both'});motion.pause();",
+    "times": [
+      0,
+      99,
+      100,
+      100.001,
+      1099,
+      1100
+    ]
+  },
+  {
+    "id": "css-exit-delay0",
+    "setup": "globalThis.target=document.createElement('div');target.style.cssText='display:block;transition:display 1000ms 0ms linear allow-discrete';document.body.appendChild(target);getComputedStyle(target).display;target.style.display='none';getComputedStyle(target).display;globalThis.motion=target.getAnimations().find(a=>a instanceof CSSTransition&&a.transitionProperty==='display');motion.pause();",
+    "times": [
+      -1,
+      0,
+      1000
+    ],
+    "restore": true
+  },
+  {
+    "id": "css-exit-delay100",
+    "setup": "globalThis.target=document.createElement('div');target.style.cssText='display:block;transition:display 1000ms 100ms linear allow-discrete';document.body.appendChild(target);getComputedStyle(target).display;target.style.display='none';getComputedStyle(target).display;globalThis.motion=target.getAnimations().find(a=>a instanceof CSSTransition&&a.transitionProperty==='display');motion.pause();",
+    "times": [
+      0,
+      99,
+      100,
+      100.001,
+      1099,
+      1100
+    ],
+    "restore": true
+  }
+]

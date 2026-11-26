@@ -1622,11 +1622,20 @@
   // Ordinary computed style keeps its separate, composed-value cache policy.
   // Weak capabilities, not a global active reader, own the maps: V8 termination
   // can skip finally, but cannot leave a reader rooted for the following sample.
-  __ns.createCssEffectInputBatch=function(lifecycle){
+  __ns.createCssEffectInputBatch=function(lifecycle,ownershipStamp){
     var token={__proto__:null};
-    var batch={__proto__:null,entries:new computedSnapshotMap(),lifecycle:lifecycle===true};
+    var batch={__proto__:null,entries:new computedSnapshotMap(),lifecycle:lifecycle===true,ownershipStamp:ownershipStamp||null};
     computedSnapshotSet(computedEffectReaders,token,batch);
     return token;
+  };
+  __ns.cssEffectModelStamp=function(element){
+    var value;try{value=computedStyleGeneration(element,0);}catch(e){return null;}
+    return typeof value==='number'&&value>=0&&value<=9007199254740991?value:null;
+  };
+  __ns.cssEffectOwnershipStamp=function(document){return computedWorldStamp(document);};
+  __ns.cssEffectOwnerInputs=function(snapshots,document){
+    var context=computedSnapshotGet(computedEffectMaps,snapshots);
+    return !!context&&!!context.batch.ownershipStamp&&computedStampEqual(context.batch.ownershipStamp,computedWorldStamp(document));
   };
   function computedLifecycleInputs(snapshots){
     var context=computedSnapshotGet(computedEffectMaps,snapshots);

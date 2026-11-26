@@ -33,9 +33,6 @@ fn with_dom(test: impl FnOnce(&mut v8::PinScope)) {
     browser_env::reset();
 }
 fn control(id: &str) {
-    control_phases(id, usize::MAX);
-}
-fn control_phases(id: &str, phases: usize) {
     let cases: serde_json::Value = serde_json::from_str(CASES).unwrap();
     let oracle: serde_json::Value = serde_json::from_str(include_str!(
         "fixtures/composed_css_renderedness_chrome159.json"
@@ -64,7 +61,7 @@ fn control_phases(id: &str, phases: usize) {
     with_dom(|scope| {
         eval(scope, input["setup"].as_str().unwrap());
         let mut actual = Vec::new();
-        for step in input["steps"].as_array().unwrap().iter().take(phases) {
+        for step in input["steps"].as_array().unwrap() {
             eval(scope, step["script"].as_str().unwrap());
             let value = eval(scope, OBSERVE);
             let targets: serde_json::Value =
@@ -76,18 +73,7 @@ fn control_phases(id: &str, phases: usize) {
             actual.push(serde_json::json!({"id":step["id"],"targets":targets}));
         }
         assert!(eval(scope, "providerCalls===0").is_true());
-        let expected: Vec<_> = expected["steps"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .take(phases)
-            .cloned()
-            .collect();
-        assert_eq!(
-            serde_json::Value::Array(actual),
-            serde_json::Value::Array(expected),
-            "{id}"
-        );
+        assert_eq!(serde_json::Value::Array(actual), expected["steps"], "{id}");
     });
 }
 #[test]
@@ -179,8 +165,7 @@ fn presented_display_important() {
 }
 #[test]
 fn display_exit_transition() {
-    // End/restore expose a separately reproduced baseline lifecycle bug.
-    control_phases("display-exit-transition", 2);
+    control("display-exit-transition");
 }
 #[test]
 fn foreign_manual_assignment() {

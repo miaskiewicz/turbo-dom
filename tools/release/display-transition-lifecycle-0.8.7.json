@@ -1,0 +1,96 @@
+{
+  "base": "e6e8c519c41b9a2f4504732f1f5bbf5e846b6ecf",
+  "baseline": {
+    "nativeSemantic": "4 passed, 3 failed",
+    "cacheDisablingTestOnly": "7 passed",
+    "foreignClockCallback": "First snapshot incorrectly returned Some before final ownership recheck; next call refused.",
+    "effectRemoval": "effect=null left CSS contribution active before model-generation guard."
+  },
+  "fixed": {
+    "boundary": "15 passed",
+    "composedRenderedness": "13 passed, all45 oracle phases",
+    "presentedEffects": "99 passed",
+    "bindingLib": "893 passed, 0 failed, 4 existing ignored",
+    "strict": "all targets, -D warnings passed",
+    "adapters": {
+      "absoluteTransformProvider": 13,
+      "animationPresentation": 5,
+      "cssEffectLifecycle": 12,
+      "cssEffectShadow": 6
+    },
+    "fmt": "passed",
+    "changedRustAndJavaScriptComplexity": "<=9 passed"
+  },
+  "stableWork": {
+    "baseline": {
+      "opacity": [
+        120,
+        0,
+        0,
+        0
+      ],
+      "display": [
+        200,
+        0,
+        0,
+        0
+      ]
+    },
+    "fixed": {
+      "opacity": [
+        120,
+        480,
+        0,
+        0
+      ],
+      "display": [
+        200,
+        480,
+        0,
+        0
+      ]
+    },
+    "columns": [
+      "cascades",
+      "scalarDisplayReads",
+      "cssUpdates",
+      "usedSizeProvider"
+    ],
+    "reads": 5,
+    "targets": 16,
+    "sharedSectionAncestors": 4
+  },
+  "chrome": {
+    "version": "159.0.8154.6",
+    "cases": 6,
+    "samples": 27
+  },
+  "sourceSHA256": {
+    "crates/turbo-dom-browser-env/src/animations.js": "92d8e5b124133781109cdc71e3057c72430899ae2871c8c6a0cb4f447bbc0419",
+    "crates/turbo-dom-browser-env/tests/display_transition_boundaries.rs": "33b47b92f536dccf29f9780d5a9fa922dc5f2e2e677367b94daac345c274bbc0",
+    "crates/turbo-dom-browser-env/tests/composed_css_renderedness.rs": "b1d5ce2f166034fe0dca69108e3c26cdd543af0db5a206e877460df6c20b5f93",
+    "crates/turbo-dom-browser-env/tests/fixtures/display_boundary_cases.json": "abedc228b6abbd2ba7f037e3f80b39d77f2ababd1d4a0493abd678f06751e52a",
+    "crates/turbo-dom-browser-env/tests/fixtures/display_boundary_oracle.mjs": "7a60340e1c885a087fd88dbb0a90b1a3cd0c848af627905120cdcf8fb63fdb7e",
+    "crates/turbo-dom-browser-env/tests/fixtures/display_boundary_chrome159.json": "d3ae2c3f71788e3b5c7edc750606197edc9b3a7ad69c397973f77888807dc206",
+    "crates/turbo-dom-browser-env/src/browser_env.js": "82df06ba9c3ac470aadb89f6f79e612f4bdfda2e3091000e027c18e0a3b3e640",
+    "crates/turbo-dom-browser-env/src/presented_effects.rs": "3345201fe3961774a0358563ad03ce35792bde7adadaa447127101718d7bfeba"
+  },
+  "limitations": [
+    "No live application or timing-resolution claim.",
+    "No interpolation/timeline/used-size or Unknown policy changes."
+  ],
+  "sourceQualification": "Full library and adapters passed before a behavior-identical clock predicate extraction; exact final source then passed 15 boundary, 13 composed and 99 presented tests plus strict all-target Clippy.",
+  "ownershipProof": {
+    "transport": "private native verified boolean into existing weak batch",
+    "stamp": "existing document world captured before selection and clock callbacks",
+    "model": "existing scope0 physical style generation; ordinary rendering path only",
+    "postCallbackNativeRecheck": true,
+    "inheritedDepthValidationVisits": {
+      "2": 12,
+      "4": 18,
+      "8": 30
+    },
+    "newNativeOpcodes": false,
+    "importContractChanged": false
+  }
+}

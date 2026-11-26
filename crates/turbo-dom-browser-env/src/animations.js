@@ -2515,22 +2515,59 @@
   function cssUpdateUnderlying(read, inherited, displayBase) {
     return property => { const text = read(property); if (text !== '') return text; if (property === 'display' && displayBase) return displayBase(); if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
   }
-  function cssUpdateCached(last, stamp, inputs) {
-    return !!stamp && !!last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs);
+  function cssInputsCached(last,stamp,inputs){return !!stamp&&!!last&&sameList(last.stamp,stamp)&&sameList(last.inputs,inputs);}
+  function renderingEffect(animation){
+    const record=animations.get(animation),effect=record&&record.effect&&effects.get(record.effect);
+    if(!effect)return true;
+    for(let i=0;i<effect.frames.order.length;i++){
+      const name=effect.frames.order[i];
+      if(name==='display'||intrinsic.slice(name,0,2)==='--')return true;
+    }
+    return false;
+  }
+  function pathRenderingEffects(path){
+    for(let i=3;i<path.length;i++){
+      const indexed=targets.get(path[i]);
+      if(indexed)for(let j=0;j<indexed.length;j++)if(renderingEffect(indexed[j]))return true;
+    }
+    return false;
+  }
+  function ordinaryRenderingModel(element,model){
+    return model!==null&&model===ns.cssEffectModelStamp(element)&&Native('ordinaryRenderingPath',element);
+  }
+  function renderingEffectsAbsent(element,snapshots,model){
+    if(!ns.cssEffectOwnerInputs(snapshots,realmDocument))return false;
+    if(!ordinaryRenderingModel(element,model))return false;
+    const path=Native('renderingPath',element);
+    if(!path||!path[1]||path[2]!==realmDocument)return false;
+    setPrototype(path,null);
+    if(pathRenderingEffects(path))return false;
+    return Native('renderingPathCurrent',element,path)&&ns.cssEffectOwnerInputs(snapshots,realmDocument);
+  }
+  function cssUpdateCached(last, stamp, inputs, rendering) {
+    return cssInputsCached(last,stamp,inputs)&&last.hidden===rendering.hidden&&last.base===rendering.base;
+  }
+  function cssRenderingModel(element,model){return model!==null&&model===ns.cssEffectModelStamp(element)?model:null;}
+  function cssUpdateRecord(element,stamp,inputs,rendering,model){
+    return {stamp:stamp&&ns.computedStyleStamp(element),inputs,hidden:rendering.hidden,base:rendering.base,model:model===null?null:ns.cssEffectModelStamp(element)};
   }
   function cssUpdateBody(element, read, inherited, snapshots, ownDisplay, displayImportant) {
     let own;
     const displayBase = () => { if (own === undefined) own = ownDisplay ? ownDisplay() : read('display'); return own; };
     const underlying = cssUpdateUnderlying(read, inherited, displayBase);
     const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(element, read, underlying), last = cssUpdates.get(element);
-    if (cssUpdateCached(last, stamp, inputs)) return;
-    if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
+    if(cssInputsCached(last,stamp,inputs)&&renderingEffectsAbsent(element,snapshots,last.model))return;
+    const model=ns.cssEffectModelStamp(element);
+    // Underlying inputs can stay unchanged while presented display reaches an exit.
     const rendering = transitionRendering(element, read, snapshots, displayBase(), displayImportant);
     if (rendering === null) { if (inspectingEffects) inspectionUnavailable = true; return; }
+    const modelStable=cssRenderingModel(element,model);
+    if (cssUpdateCached(last, stamp, inputs, rendering)) { last.model=modelStable; return; }
+    if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
     cssRun(element, read, underlying, rendering.hidden);
     cssState(element).display = rendering.base;
     // Stamped after the update: the invalidation its own animations cause is not a new input.
-    cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
+    cssUpdates.set(element,cssUpdateRecord(element,stamp,inputs,rendering,modelStable));
   }
   function transitionDisplayResolved(value) {
     if (!value || !intrinsic.test(/^[a-z-]+(?: [a-z-]+)*$/, value)) return false;
@@ -3040,8 +3077,8 @@
       apply(weakSetAdd, seen, [expanded[index]]); push(selected, expanded[index]);
     }
   }
-  function preparePresentedTargets(selected) {
-    const snapshots = [], batch = ns.createCssEffectInputBatch(), seen = new WeakSetType();
+  function preparePresentedTargets(selected,ownershipStamp) {
+    const snapshots = [], batch = ns.createCssEffectInputBatch(false,ownershipStamp), seen = new WeakSetType();
     for (let i = 0; i < selected.length; i++) apply(weakSetAdd, seen, [selected[i]]);
     if(notePresentedMembership)notePresentedMembership(0,selected.length);
     for (let i = 0; i < selected.length; i++) {
@@ -3055,8 +3092,8 @@
     }
     return snapshots;
   }
-  function presentedRows(selected) {
-    const snapshots = preparePresentedTargets(selected);
+  function presentedRows(selected,ownershipStamp) {
+    const snapshots = preparePresentedTargets(selected,ownershipStamp);
     if (!snapshots) return null;
     inspectionRenderingUncertain = presentedRenderingUncertain(selected);
     const changingContext = presentedChangingContext(selected), rows = []; setPrototype(rows, null);
@@ -3066,16 +3103,19 @@
     }
     return rows;
   }
-  ns.samplePresentedEffects = function (document, candidates) {
+  function ownedBatchStamp(document,verified){return verified===true?ns.cssEffectOwnershipStamp(document):null;}
+  function presentationClockValid(time){return !host||(time!==null&&isFinite(time));}
+  ns.samplePresentedEffects = function (document, candidates, ownershipVerified) {
     if (document !== realmDocument) return null;
     if (inspectingEffects || suppressStyle) return null;
+    const ownershipStamp=ownedBatchStamp(document,ownershipVerified);
     const selected = presentedTargets(candidates);
     if (selected.length && !safeInspectionPrototypes()) return null;
     const time = clock();
-    if (host && (time === null || !isFinite(time))) return null;
+    if (!presentationClockValid(time)) return null;
     inspectionClock = time; inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
     try {
-      const rows = presentedRows(selected);
+      const rows = presentedRows(selected,ownershipStamp);
       if (!rows) return null;
       const metadata = create(null), result = create(null);
       metadata.sample_time = time; metadata.css_animations_enabled = cssAnimationsOn;
