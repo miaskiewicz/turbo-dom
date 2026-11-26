@@ -11,8 +11,11 @@ import { createWindow } from './window.mjs';
 import { unpack } from './buffer.mjs';
 import { getParser, setParserMode } from './parser.mjs';
 
-export { Document } from './dom.mjs';
-export * from './dom.mjs';
+export {
+  ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, DOCUMENT_FRAGMENT_NODE,
+  Node, Text, Comment, DocumentType, Element, SVGElement, MathMLElement, DocumentFragment, ShadowRoot,
+  DOMParser, XMLSerializer, MutationObserver, Document, Event, CustomEvent, parseDocument,
+} from './dom.mjs';
 
 // Custom element state seam (public API): the state behind `:defined` (custom-elements.mjs),
 // for embedders that upgrade elements themselves — the JS twin of the Rust engine's

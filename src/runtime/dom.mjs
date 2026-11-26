@@ -488,7 +488,7 @@ function viableNextSibling(node, nodes) {
 }
 
 // ----------------------------------------------------- CharacterData ----
-class CharacterData extends Node {
+export class CharacterData extends Node {
   constructor(ownerDocument, data) { super(ownerDocument); this._data = data ?? ''; }
   get data() { return this._data; }
   set data(v) { this.__replace(0, this._data.length, String(v)); }
