@@ -2376,3 +2376,82 @@ fn presented_selection_membership_scales_without_cubic_identity_work() {
         "quadratic upper bound for explicit selection identity comparisons: {rows:?}"
     );
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn computed_font_shared_default_preferences_preserve_chrome159_initial_and_inherited_fonts() {
+    use sha2::{Digest, Sha256};
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/default-profile-159/CHROME159.json"
+    ))
+    .unwrap();
+    assert_eq!(fixture["browser"], "159.0.8154.6");
+    assert_eq!(
+        fixture["casesSha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!(
+                "../tests/fixtures/default-profile-159/cases.json"
+            ))
+        )
+    );
+    assert_eq!(
+        fixture["fixtureSha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!(
+                "../tests/fixtures/default-profile-159/fixture.mjs"
+            ))
+        )
+    );
+    let actual = run("<!doctype html><body><div id=fi style='font-family:initial'></div><div id=fh style='font-family:inherit'></div><div id=si style='font-size:initial'></div><div id=sh style='font-size:inherit'></div><div id=ci style='color:initial'></div><div id=ch style='color:inherit'></div></body>", r#"JSON.stringify([
+        ['family-initial','fi','font-family'],['family-inherit','fh','font-family'],
+        ['size-initial','si','font-size'],['size-inherit','sh','font-size'],
+        ['color-initial','ci','color'],['color-inherit','ch','color']
+    ].map(([id,node,property])=>({id,value:getComputedStyle(document.getElementById(node)).getPropertyValue(property)})))"#);
+    for row in actual.as_array().unwrap() {
+        let expected = fixture["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["id"] == row["id"])
+            .unwrap();
+        let values = expected["initial"]["values"].as_object().unwrap();
+        assert_eq!(
+            row["value"],
+            *values.values().next().unwrap(),
+            "{}",
+            row["id"]
+        );
+    }
+}
+
+#[test]
+fn computed_font_shared_host_override_rejections_keep_the_original_native_context_slot() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(set_computed_font_defaults(context, "monospace", 18.0));
+    for (family, size) in [
+        ("", 16.0),
+        ("\u{00a0}", 16.0),
+        ("serif", 0.0),
+        ("serif", f64::NAN),
+        ("serif", f64::INFINITY),
+    ] {
+        assert!(!set_computed_font_defaults(context, family, size));
+    }
+    install_with_html(scope, "<!doctype html><body><div id=x style='font-family:initial;font-size:inherit'></div></body>");
+    let source = v8::String::new(scope, "JSON.stringify((()=>{const style=getComputedStyle(document.getElementById('x'));return[style.fontFamily,style.fontSize,typeof globalThis.__computedFontContext]})())").unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap();
+    let result: serde_json::Value =
+        serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
+    assert_eq!(
+        result,
+        serde_json::json!(["monospace", "18px", "undefined"])
+    );
+}

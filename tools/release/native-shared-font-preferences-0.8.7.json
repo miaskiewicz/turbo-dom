@@ -1,0 +1,26 @@
+{
+  "base": "7d7b06361746f17094fd4f8604f7944254134c1b",
+  "patchSha256": "2885cf6da99215d4f0dd04814dfa5189928f43670596beb44124900e4910363f",
+  "files": {
+    "crates/turbo-dom-browser-env/src/browser_env.rs": "e2e2e9046c54aa7524cbf9427d5e336346893ada064d9085a1838bf0247b28fa",
+    "crates/turbo-dom-browser-env/src/css_live_tests.rs": "f0b87b4af9ec6331fbf63c1f87a28878f56054b1bc2e9d86b1875d4642904485"
+  },
+  "patchApplication": "git apply --check and apply clean; only two approved font hunks/test changes atop current release",
+  "validation": "35 tests and strict alltargets passed on exact frozen current release-based source",
+  "gates": {
+    "libraryPassed": 33,
+    "compatibilityIntegrationPassed": 2,
+    "strictAllTargets": "cargo +1.98.0 clippy --locked --offline -p turbo-dom-browser-env --features host-internals,test-support --all-targets -- -D warnings; exit0",
+    "fmt": "pass"
+  },
+  "environment": {
+    "jobs": 1,
+    "incremental": 0,
+    "offline": true,
+    "toolchain": "1.98.0",
+    "archiveSha256": "5aeffd8d5a0c1b79ac1d70af83d5b19099655fd9c645a794dc43f101f779838c"
+  },
+  "scope": "Native creation-context Rc wrapper retains slot identity/setter API; shared Core raw preferences replace duplicate defaults; no computed font cap added to raw setter",
+  "canonicalChromeFixture": "crates/turbo-dom-browser-env/tests/fixtures/default-profile-159",
+  "limits": "No resource budget, assertions, compatibility mode scope or default changed"
+}

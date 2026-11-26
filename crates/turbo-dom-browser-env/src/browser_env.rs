@@ -8160,9 +8160,9 @@ fn canvas_color_native(
     }
 }
 
+// Keep the native creation-context slot's private wrapper identity stable.
 struct ComputedFontDefaults {
-    family: String,
-    size: f64,
+    preferences: turbo_dom_parser::rtdom::computed_preferences::ComputedFontPreferences<'static>,
 }
 
 /// Host font preferences, retained as native scalars rather than guest properties.
@@ -8173,12 +8173,13 @@ pub fn set_computed_font_defaults(
     family: &str,
     size: f64,
 ) -> bool {
-    if family.trim().is_empty() || !size.is_finite() || size <= 0.0 {
+    use turbo_dom_parser::rtdom::computed_preferences::computed_font_preferences;
+    let Ok(preferences) = computed_font_preferences(std::borrow::Cow::Borrowed(family), size)
+    else {
         return false;
-    }
+    };
     context.set_slot(std::rc::Rc::new(ComputedFontDefaults {
-        family: family.into(),
-        size,
+        preferences: preferences.into_owned(),
     }));
     true
 }
@@ -8209,15 +8210,20 @@ fn computed_font_context<'s>(
         .get_creation_context(scope)
         .unwrap_or_else(|| scope.get_current_context());
     let defaults = context.get_slot::<ComputedFontDefaults>();
-    let default_family = if cfg!(target_os = "macos") {
-        "Times"
-    } else {
-        "Times New Roman"
+    use turbo_dom_parser::rtdom::computed_preferences::{
+        default_computed_font_preferences, FontDefaultsPlatform,
     };
-    let family = defaults
+    let platform = if cfg!(target_os = "macos") {
+        FontDefaultsPlatform::MacOs
+    } else {
+        FontDefaultsPlatform::Other
+    };
+    let fallback = default_computed_font_preferences(platform);
+    let preferences = defaults
         .as_ref()
-        .map_or(default_family, |defaults| defaults.family.as_str());
-    let size = defaults.as_ref().map_or(16.0, |defaults| defaults.size);
+        .map_or(&fallback, |defaults| &defaults.preferences);
+    let family = preferences.family.as_ref();
+    let size = preferences.size_px;
     // invariant: engine-built name, far below V8's string length limit
     let family = v8::String::new(scope, family).unwrap();
     let size = v8::Number::new(scope, size);
