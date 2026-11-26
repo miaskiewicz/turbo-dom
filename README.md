@@ -255,6 +255,23 @@ include per-process reports, machine and dependency versions, and artifact
 identities. See the [packed candidate receipt](tools/acceptance/packed-vitest-296/results-2026-11-26-after/PACKED-ACCEPTANCE.json)
 for the public Vitest results.
 
+### Matched Vitest rerun (2026-11-26)
+
+The [paired runner](tools/acceptance/packed-vitest-296/benchmark-paired.mjs)
+alternated the legacy package and the optimized Rust candidate in the same
+window, with the exact same fixtures and resolved dependencies. Each mode had
+five adjacent pairs and passed the same 28 tests in every timed process.
+
+| Mode | Legacy median (s) | Optimized Rust median (s) | Median paired change |
+|---|---:|---:|---:|
+| N-API | 1.767 | 2.024 | +20.9% |
+| WASM | 1.741 | 2.184 | +35.1% |
+
+The Rust candidate was slower in every pair. The paired change is the median
+of the five within-pair ratios. See the [matched receipt](tools/acceptance/packed-vitest-296/results-2026-11-26-matched/RESULT.json)
+for exact package manifests, all timings, and the two passing CSS preflight
+checks.
+
 v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
 the suite row (ms/file, lower is faster).
 
