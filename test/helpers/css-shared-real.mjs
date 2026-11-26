@@ -71,20 +71,19 @@ function compile(sources) {
 }
 function resolve({ snapshot, targets, mechanical, request, pathNodes }) {
 	if (request) return { ...request.limits, pathNodes };
+  const answerRows = [...mechanical.selectorAnswers, ...mechanical.scopeAnswers, ...(mechanical.contextAnswers?.selectorAnswers ?? []), ...(mechanical.contextAnswers?.scopeAnswers ?? [])];
 	return {
 		targets: targets.length,
 		routingContexts: targets.length * snapshot.roots.length,
 		answerRows:
-			mechanical.domains.length +
-			mechanical.selectorAnswers.length +
-			mechanical.scopeAnswers.length,
+			mechanical.domains.length + answerRows.length,
 		answerIds:
 			mechanical.domains.reduce((sum, row) => sum + row.nodeIds.length, 0) +
-			[...mechanical.selectorAnswers, ...mechanical.scopeAnswers].reduce(
+			answerRows.reduce(
 				(sum, row) => sum + row.matches.length,
 				0,
 			),
-		pathNodes: targets.reduce((sum, row) => sum + row.path.length, 0),
+		pathNodes: targets.reduce((sum, row) => sum + row.path.length + (row.assignedSlot?.path.length ?? 0), 0),
 		inputUnits: 8192,
 		retainedResultUnits: 16384,
 		matchingDecisions: 16384,
@@ -245,12 +244,14 @@ export function createRealCssFixture(
 		policy = {},
 		profile: profileOverrides,
 		contextTransform,
+    captureSelectorFacts,
+    snapshotReader,
 	} = {},
 ) {
 	const htmlParserMode = selectHtmlParser(real.mode);
 	const env = createEnvironment(html),
 		doc = env.document,
-		reader = createTestPublicCssFacts(),
+		reader = snapshotReader ?? createTestPublicCssFacts(),
 		environmentKey = {};
 	let sceneCalls = 0,
 		snapshotCalls = 0;
@@ -271,7 +272,7 @@ export function createRealCssFixture(
 			maxRequests: requested.length,
 		}),
 	});
-	const limits = { ...quotas(), ...policy };
+	const limits = { ...quotas(), ...real.fixturePolicy, ...policy };
 	const adapter = createSharedCssAdapter({
 		selectBackend: () => real.backend,
 		readContext(_element, pseudo) {
@@ -290,6 +291,7 @@ export function createRealCssFixture(
 			const snapshot = reader.capture(document, snapshotLimits, context);
 			return snapshotTransform ? snapshotTransform(snapshot) : snapshot;
 		},
+    captureSelectorFacts: captureSelectorFacts ?? real.captureSelectorFacts,
 		profile: {
 			textDecoration: "declared",
 			environment: () => environment,

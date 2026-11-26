@@ -1,3 +1,6 @@
+import { readCssFactsNavigator } from './css-facts-navigator.mjs';
+import { createSharedRouting } from './css-shared-routing.mjs';
+import { compileSharedShadowFacts } from './css-shared-shadow-facts.mjs';
 import {
 	SharedMap,
 	sharedInvoke,
@@ -180,7 +183,7 @@ function publicRow(row, backend, profile, limits) {
 		usedProperties: result.targets[0].usedProperties,
 	};
 }
-function uses(sources, snapshot, ua, profile) {
+function uses(sources, snapshot, ua, profile, routing) {
 	const root = snapshot.documentId;
 	const documentRoot = sharedApply(
 		"arrayFind",
@@ -199,12 +202,15 @@ function uses(sources, snapshot, ua, profile) {
 		implicitScopeRoot: documentRoot,
 	});
 	return sharedAppend(
-		ua.documentText ? [uaUse(0), uaUse(1)] : [uaUse(0)],
+		sharedAppend(
+            ua.documentText ? [uaUse(0), uaUse(1)] : [uaUse(0)],
+            routing ? shadowUserAgentUses(snapshot, routing) : [],
+        ),
 		sharedApply("arrayMap", sources.uses, (use) => ({
 			sourceId: use.sourceId + 2,
 			origin: "author",
 			treeScope: use.scopeId,
-			scopeDepth: profile.scopeDepth(use.scopeId, snapshot),
+			scopeDepth: routing ? routing.scopeDepth(use.scopeId) : profile.scopeDepth(use.scopeId, snapshot),
 			disabled: use.disabled,
 			media: use.sheetMedia.length
 				? units(sharedApply("arrayJoin", use.sheetMedia, ", "))
@@ -215,11 +221,11 @@ function uses(sources, snapshot, ua, profile) {
 		})),
 	);
 }
-function targets(snapshot, pseudo, element, profile) {
+function targets(snapshot, pseudo, element, profile, routing) {
 	const byId = new SharedMap(
 		sharedApply("arrayMap", snapshot.records, (row) => [row.id, row]),
 	);
-	const targets = sharedApply(
+	let targets = sharedApply(
 		"arrayMap",
 		sharedApply(
 			"arrayFilter",
@@ -234,12 +240,13 @@ function targets(snapshot, pseudo, element, profile) {
 				parentId: parent?.kind === "element" ? parent.id : null,
 				path: row.physicalPath,
 				treeScope: row.treeScope,
-				scopeDepth: profile.scopeDepth(row.treeScope, snapshot),
+				scopeDepth: routing ? routing.scopeDepth(row.treeScope) : profile.scopeDepth(row.treeScope, snapshot),
 				implicitScopeRoot: snapshot.documentId,
 				pseudo: null,
 				inline: row.inlineUnits,
 				hostOf: null,
 				assignedSlot: null,
+                ...(routing ? routing.targetFacts(row.id) : {}),
 				context: profile.targetContext(row, {
 					root: row.parent === snapshot.documentId,
 					pseudo: null,
@@ -248,6 +255,7 @@ function targets(snapshot, pseudo, element, profile) {
 			};
 		},
 	);
+	if (routing) targets = parentFirstTargets(targets, routing);
 	let resultId = snapshot.nodeId(element);
 	if (pseudo) {
 		const subject = sharedApply(
@@ -281,10 +289,12 @@ export function createSharedCssAdapter({
 	selectBackend,
 	readContext,
 	captureSnapshot,
+	captureSelectorFacts,
 	profile,
 	limits,
 	measureScene,
 }) {
+	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	const callbacks = {
 		selectBackend,
 		readContext,
@@ -325,9 +335,13 @@ export function createSharedCssAdapter({
 		readContext,
 		captureSources(document, context) {
 			const snapshot = captureSnapshot(document, context);
-			// This first extraction has no certified host/slotted fact collector yet.
-			if (snapshot.roots.length !== 1)
-				throw new Error("CSS adapter shadow matching context unsupported");
+            const navigator = captureSelectorFacts === undefined ? undefined : sharedInvoke(captureSelectorFacts, undefined, [snapshot, context]);
+            if (captureSelectorFacts !== undefined) readCssFactsNavigator(navigator);
+            if (snapshot.roots.length > 1 && navigator === undefined) throw new TypeError('turbo-dom: shared adapter shadow matching context unsupported');
+            const contextual = navigator !== undefined
+                ? sharedInvoke(required(limits.contextualMatching, 'limits.contextualMatching'), limits, [{snapshot}])
+                : null;
+            const routing = contextual ? createSharedRouting(snapshot, contextual.routing) : null;
 			const sources = captureCssSources(document, {
 				nodeId: snapshot.nodeId,
 				scopeId: snapshot.nodeId,
@@ -349,7 +363,7 @@ export function createSharedCssAdapter({
 							[backend],
 						);
 			if (ua.abiVersion !== 1) throw new Error("CSS user agent ABI");
-			active = { snapshot, ua, backend, context };
+			active = { snapshot, ua, backend, context, contextual, routing, navigator };
 			return sources;
 		},
 		compileRequest(sources) {
@@ -370,7 +384,7 @@ export function createSharedCssAdapter({
 			return { abiVersion: 1, sources: all, limits: limits.compile(all) };
 		},
 		prepareRequest(sources, context) {
-			const rows = uses(sources, active.snapshot, active.ua, profile);
+			const rows = uses(sources, active.snapshot, active.ua, profile, active.routing);
 			return {
 				abiVersion: 1,
 				uses: rows,
@@ -378,20 +392,19 @@ export function createSharedCssAdapter({
 				limits: limits.prepare({ sources, uses: rows, ua: active.ua }),
 			};
 		},
-		createFacts: compileSharedPrograms,
+		createFacts(metadata) { return { metadata, ordinary: captureSelectorFacts === undefined ? compileSharedPrograms(metadata) : null, contextual: null }; },
 		resolveRequest({ element, pseudo, context, metadata, prepared, facts }) {
 			const snapshot = active.snapshot;
-			const mechanical = collectSharedAnswers(
-				facts,
-				snapshot,
-				context.document,
-				limits.matching,
-			);
-			const selected = targets(snapshot, pseudo, element, profile);
+            let mechanical;
+            if (active.contextual) {
+                facts.contextual ??= compileSharedShadowFacts(facts.metadata, active.navigator !== undefined);
+                mechanical = facts.contextual.collect(snapshot, context.document, active.contextual, active.routing, active.navigator);
+            } else mechanical = collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching);
+			const selected = targets(snapshot, pseudo, element, profile, active.routing);
 			const request = {
 				abiVersion: 1,
 				targets: selected.targets,
-				contextRoots: sharedApply("arrayMap", snapshot.roots, (root) => ({
+				contextRoots: active.routing?.contextRoots ?? sharedApply("arrayMap", snapshot.roots, (root) => ({
 					treeScope: root.id,
 					root: root.id,
 					host: root.host,
@@ -533,4 +546,19 @@ function nextPseudoId(records) {
 	for (let index = 0; index < records.length; index++)
 		if (records[index].id > maximum) maximum = records[index].id;
 	return maximum + 1;
+}
+
+function shadowUserAgentUses(snapshot, routing) {
+    const rows = [];
+    for (let index=0; index<snapshot.roots.length; index++) {
+        const root=snapshot.roots[index];
+        if(root.host===null)continue;
+        sharedApply('arrayPush', rows, {sourceId:0,origin:'userAgent',treeScope:root.id,scopeDepth:routing.scopeDepth(root.id),disabled:false,media:null,implicitScopeRoot:root.id});
+    }
+    return rows;
+}
+
+function parentFirstTargets(targets, routing) {
+    const rows = new SharedMap(sharedApply('arrayMap', targets, (row)=>[row.id,row]));
+    return sharedApply('arrayMap', routing.targetOrder, (id)=>sharedApply('mapGet',rows,id));
 }

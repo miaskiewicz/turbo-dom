@@ -102,8 +102,10 @@ function visit(state, node, parent, scope, path) {
 	const own = record(state, node, parent, scope, path);
 	if (!own) return;
 	children(state, node, own, scope, own.physicalPath);
-	if (own.kind === "element" && node.shadowRoot)
-		shadow(state, node.shadowRoot, own, scope);
+	if (own.kind === "element") {
+    const root = state.closedRoots.get(node) ?? node.shadowRoot;
+    if (root) shadow(state, root, own, scope);
+  }
 }
 function shadow(state, node, host, parentScope) {
 	const scope = id(state, node),
@@ -113,7 +115,12 @@ function shadow(state, node, host, parentScope) {
 	state.roots.push({ id: scope, host: host.id, parentScope, element: node });
 	children(state, node, own, scope, own.physicalPath);
 }
-export function createTestPublicCssFacts() {
+export function createTestPublicCssFacts({ closedRoots = [] } = {}) {
+  const ownedRoots = new Map();
+  for (const root of closedRoots) {
+    if (!root.host) throw new TypeError("test owned root has no host");
+    ownedRoots.set(root.host, root);
+  }
 	const documents = new WeakMap();
 	return {
 		capture(document, limits) {
@@ -125,7 +132,9 @@ export function createTestPublicCssFacts() {
 				allocator = { ids: new WeakMap(), next: 1 };
 				documents.set(document, allocator);
 			}
+			for (const root of ownedRoots.values()) if (root.ownerDocument !== document) throw new TypeError("foreign test owned root");
 			const state = {
+        closedRoots: ownedRoots,
 				allocator,
 				records: [],
 				roots: [],
@@ -142,11 +151,25 @@ export function createTestPublicCssFacts() {
 				element: document,
 			});
 			children(state, document, root, documentId, root.physicalPath);
+      const slotAssignments = [];
+      for (const row of state.records) {
+        if (row.kind !== 'element' || row.tag !== 'slot') continue;
+        const assigned = [];
+        for (const node of row.element.assignedNodes()) {
+          const entry = state.byNode.get(node);
+          if (!entry) throw new TypeError('foreign test slot assignment');
+          entry.assignedSlot = row.id;
+          entry.assignedSlotPath = row.physicalPath.slice();
+          assigned.push(entry.id);
+        }
+        slotAssignments.push({slot:row.id, complete:true, assigned});
+      }
 			const byId = new Map(state.records.map((row) => [row.id, row]));
 			return {
 				records: state.records,
 				roots: state.roots,
 				documentId,
+        slotAssignments,
 				used: state.used,
 				matchNodes: state.records
 					.filter((row) => row.kind === "element")

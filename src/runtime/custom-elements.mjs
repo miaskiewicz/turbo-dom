@@ -79,7 +79,15 @@ export function customElementState(el) {
 // :defined — uncustomized or custom.
 export function isDefinedElement(el) {
   const state = customElementState(el);
+  return isDefinedCustomElementState(state);
+}
+
+// Shared enum interpretation; primitive selector facts do not evaluate :defined.
+export function isDefinedCustomElementState(state) {
   return state === UNCUSTOMIZED || state === CUSTOM;
+}
+export function isKnownCustomElementState(state) {
+  return STATES.has(state);
 }
 
 // Record an element's state (an embedder's upgrade report, or this module's own). Returns
