@@ -228,6 +228,19 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Packed N-API empty-child capture (2026-11-26)
+
+The Rust CSS validation build can skip copying an empty child array during DOM
+capture. The 28-test packed Vitest workload hit that case 657 times in 110 style
+reads. Median process wall time fell 0.45% across seven ABBA blocks, with four
+blocks faster. Summed test callback time rose 0.57%. A separate experiment that
+preclassified selector guard descriptors took 0.20% more wall time at the median.
+The integrated capture patch adds an intrinsic guard. That revision passed
+1,144 tests with 100% line coverage and 97.34% branch coverage. The timings
+above refer to the pilot before the final guard refinement.
+
+[Per-block timings and package file hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-empty-children/BENCHMARK.json)
+
 ### Packed N-API after inheritance-chain assembly (2026-11-26)
 
 Across seven ABBA blocks, the packed Rust CSS candidate with the `aa69a733`
