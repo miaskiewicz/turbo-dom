@@ -4,7 +4,7 @@ import { Element, SVGElement, MathMLElement, Node, CharacterData, Text, Comment,
   DocumentType, DocumentFragment, Document } from './dom.mjs';
 import { EventTarget } from './events.mjs';
 
-const descriptor = Object.getOwnPropertyDescriptor;
+const owns = Object.hasOwn;
 const parentOf = Object.getPrototypeOf;
 const nodeFields = ['__listeners', 'ownerDocument', 'parentNode', '__idx', '__kids'];
 const elementFields = [...nodeFields, 'localName', '__ns', '__attrs', '__attrIdx', '__content',
@@ -55,7 +55,7 @@ function liveCollision() {
     const chain = families[i][0], fields = families[i][1];
     for (let owner = chain[0]; owner; owner = parentOf(owner)) {
       for (let j = 0; j < fields.length; j++) {
-        if (descriptor(owner, fields[j])) return fields[j];
+        if (owns(owner, fields[j])) return fields[j];
       }
     }
   }
@@ -69,7 +69,7 @@ export function cssConstructionFieldCollision() {
   }
   for (let i = 0; i < checks.length; i++) {
     const {owner, field} = checks[i];
-    if (descriptor(owner, field)) return field;
+    if (owns(owner, field)) return field;
   }
   return undefined;
 }
