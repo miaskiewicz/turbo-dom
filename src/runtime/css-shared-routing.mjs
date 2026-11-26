@@ -64,7 +64,7 @@ function nodesOf(snapshot, state) {
     const record = snapshot.records[index], id = identifier(record.id);
     if (mapHas(nodes, id)) refuse('duplicate node identity');
     // Deliberately omit element/native-wrapper/text/attributes and snapshot refs.
-    const node = { id, kind: record.kind, parent: record.parent, treeScope: record.treeScope, path: copyPath(record.physicalPath, state), shadowRootId: record.shadowRootId ?? null, assignedSlot: record.assignedSlot ?? null };
+    const node = { id, index, kind: record.kind, parent: record.parent, treeScope: record.treeScope, path: copyPath(record.physicalPath, state), shadowRootId: record.shadowRootId ?? null, assignedSlot: record.assignedSlot ?? null };
     mapSet(nodes, id, node);
     if (node.kind === 'element') elements[elements.length] = node;
   }
@@ -135,6 +135,7 @@ export function createSharedRouting(snapshot, limits) {
     contextRoots,
     targetOrder: parentFirst(elements, routes),
     scopeDepth(id) { if (!mapHas(depths, id)) refuse('unknown context'); return mapGet(depths, id); },
+    recordIndex(id) { return mapGet(nodes, id).index; },
     targetFacts(id) { if (!mapHas(routes, id)) refuse('unknown target'); return mapGet(routes, id); },
   };
 }

@@ -31,7 +31,7 @@ const readers = {
   },
   unsupported(reason) { throw new TypeError(reason); },
 };
-async function fixture(useCapturedRoutes = false) {
+async function fixture(useCapturedRoutes = false, overrides = {}) {
   const real = await loadRealCssBackend('native');
   let previous;
   return createRealCssFixture(real,
@@ -49,6 +49,7 @@ async function fixture(useCapturedRoutes = false) {
       },
       adapterFactory: options => createDefaultSharedCssAdapter(options, true, useCapturedRoutes),
       policy: { contextualMatching: () => contextual },
+      ...overrides,
     });
 }
 test('opt-in native matching cache invalidates after state, ancestry and CSSOM changes', async () => {
@@ -112,4 +113,35 @@ test('ordinary captured targets follow reassigned slots and preserve pseudo read
     assert.equal(read(), blue);
     assert.equal(typeof env.window.getComputedStyle(target, '::before').color, 'string');
   } finally { dispose(); }
+});
+
+test('compact captured reads retain sibling selector facts and restore the full used-width scene', async () => {
+  const batches = [];
+  const f = await fixture(true, {
+    profile: {compactCascade: true},
+    adapterFactory(options) {
+      const resolve = options.limits.resolve;
+      options.limits.resolve = args => {
+        batches.push(args.targets.length);
+        return resolve(args);
+      };
+      return createDefaultSharedCssAdapter(options, true, true);
+    },
+  });
+  try {
+    const {doc, env} = f, item = doc.querySelector('b');
+    const style = () => env.window.getComputedStyle(item);
+    assert.equal(style().color, blue);
+    assert.deepEqual(batches, [4]);
+    doc.querySelector('input').checked = true;
+    assert.equal(style().color, red);
+    const baseline = batches.length;
+    doc.querySelector('main').setAttribute('style','width:200px');
+    item.setAttribute('style','display:block;width:50%');
+    assert.equal(style().width, '100px');
+    assert.equal(batches.length, baseline + 2);
+    assert.ok(batches.at(-1) > batches.at(-2));
+  } finally {
+    f.dispose();
+  }
 });

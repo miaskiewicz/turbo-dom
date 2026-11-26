@@ -222,6 +222,67 @@ function uses(sources, snapshot, ua, profile, routing) {
 		})),
 	);
 }
+function routedTarget(snapshot, record, facts, profile) {
+  const id = record.id;
+  return {
+    id, subjectId: id, parentId: facts.parentId, path: facts.path,
+    treeScope: facts.treeScope, scopeDepth: facts.scopeDepth,
+    implicitScopeRoot: snapshot.documentId, pseudo: null, inline: record.inlineUnits,
+    hostOf: facts.hostOf, assignedSlot: facts.assignedSlot,
+    context: profile.targetContext(record, { root: record.parent === snapshot.documentId, pseudo: null, snapshot }),
+  };
+}
+
+function compactCapture(active, profile, pseudo, metadata) {
+  if (!profile.compactCascade || pseudo || !active.routing) return false;
+  const {snapshot} = active;
+  return snapshot.roots.length === 1 &&
+    !sharedApply("arraySome", metadata.groups, group => group.kind === "Container");
+}
+
+// Routing has already checked every parent and rejected cycles. Matching keeps
+// its document-wide domains even when only this inheritance chain is cascaded.
+function inheritanceTargets(snapshot, resultId, routing, profile) {
+  const chain = [], parentFirst = [];
+  for (let id = resultId; id !== null;) {
+    const facts = routing.targetFacts(id);
+    sharedApply("arrayPush", chain, routedTarget(snapshot, snapshot.records[routing.recordIndex(id)], facts, profile));
+    id = facts.parentId;
+  }
+  for (let i = chain.length - 1; i >= 0; i--) sharedApply("arrayPush", parentFirst, chain[i]);
+  return parentFirst;
+}
+
+function capturedChainRequest(active, element, profile, limits, matching, requestWires) {
+  const {snapshot, routing, context, backend} = active;
+  const resultId = snapshot.nodeId(element);
+  const targets = inheritanceTargets(snapshot, resultId, routing, profile);
+  if (targets.length === routing.targetOrder.length) return null;
+  const {mechanical} = matching;
+  function requestFor(rows) {
+    const request = {
+      abiVersion: 1, targets: rows, contextRoots: routing.contextRoots, ...mechanical,
+      limits: limits.resolve({snapshot, targets: rows, mechanical}),
+    };
+    if (matching.wire !== undefined) sharedInvoke(wireSet, requestWires, [request, matching]);
+    return request;
+  }
+  const request = requestFor(targets);
+  if (profile.targetProjection) request.outputTargetId = resultId;
+  const provider = {
+    namespace: snapshot.records[routing.recordIndex(resultId)].namespaceUnits, pseudo: null,
+    world: profile.world(context, snapshot), backendIdentity: profile.backendIdentity(backend),
+  };
+  return {
+    resultId, request,
+    get fullRequest() {
+      return requestFor(defaultRoutedTargets(snapshot, element, profile, routing).targets);
+    },
+    materializeProvider: () => ({
+      ...provider, snapshot: sharedProviderSnapshot(snapshot, limits.providerSnapshot(snapshot)),
+    }),
+  };
+}
 // The default capture already proved each element's composed inheritance route.
 function defaultRoutedTargets(snapshot, element, profile, routing) {
   const rows = [], order = routing.targetOrder;
@@ -233,13 +294,7 @@ function defaultRoutedTargets(snapshot, element, profile, routing) {
     const id = record.id, facts = routing.targetFacts(id);
     if (id === resultId) subject = record;
     if (id !== order[rows.length]) ordered = false;
-    sharedApply("arrayPush", rows, {
-      id, subjectId: id, parentId: facts.parentId, path: facts.path,
-      treeScope: facts.treeScope, scopeDepth: facts.scopeDepth,
-      implicitScopeRoot: snapshot.documentId, pseudo: null, inline: record.inlineUnits,
-      hostOf: facts.hostOf, assignedSlot: facts.assignedSlot,
-      context: profile.targetContext(record, { root: record.parent === snapshot.documentId, pseudo: null, snapshot }),
-    });
+    sharedApply("arrayPush", rows, routedTarget(snapshot, record, facts, profile));
   }
   const targets = ordered && order.length === rows.length ? rows : parentFirstTargets(rows, routing);
   return { targets, resultId, subject };
@@ -406,6 +461,59 @@ function createAdapter({
 	let active = null;
 	let selectedBackend = null;
 	const requestWires = new RequestWires();
+	function fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching) {
+		const {mechanical} = matching;
+		const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
+		const request = {
+			abiVersion: 1,
+			targets: selected.targets,
+			contextRoots: active.routing?.contextRoots ?? sharedApply("arrayMap", snapshot.roots, (root) => ({
+				treeScope: root.id,
+				root: root.id,
+				host: root.host,
+				parentTreeScope: root.parentScope,
+			})),
+			...mechanical,
+			limits: limits.resolve({
+				snapshot,
+				targets: selected.targets,
+				mechanical,
+			}),
+		};
+		if (matching.wire !== undefined) sharedInvoke(wireSet, requestWires, [request, matching]);
+		const world = profile.world(context, snapshot);
+		const provider = sharedProviderSnapshot(
+			snapshot,
+			limits.providerSnapshot(snapshot),
+		);
+		const resolved = resolveSharedContainers({
+			prepared,
+			request,
+			metadata,
+			snapshot: provider,
+			measureScene,
+			world,
+			environment: profile.environment(context),
+			limits,
+		});
+		const subject = selected.subject ?? sharedApply(
+			"arrayFind",
+			snapshot.records,
+			(row) => row.id === snapshot.nodeId(element),
+		);
+		if (!subject) throw new Error("CSS original subject missing");
+		return {
+			resultId: selected.resultId,
+			request: resolved.request,
+			providerContext: {
+				snapshot: provider,
+				namespace: subject.namespaceUnits,
+				pseudo: pseudo || null,
+				world,
+				backendIdentity: profile.backendIdentity(active.backend),
+			},
+		};
+	}
 	const factory = createSharedComputedStyle({
 		encodeRequest(request) {
 			const entry = sharedInvoke(wireGet, requestWires, [request]);
@@ -483,57 +591,11 @@ function createAdapter({
             const matching = active.contextual
                 ? matchingEntry(facts, active, prepared, cacheMatching, useCapturedRoutes)
                 : { mechanical: collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching), wire: undefined };
-            const { mechanical } = matching;
-			const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
-			const request = {
-				abiVersion: 1,
-				targets: selected.targets,
-				contextRoots: active.routing?.contextRoots ?? sharedApply("arrayMap", snapshot.roots, (root) => ({
-					treeScope: root.id,
-					root: root.id,
-					host: root.host,
-					parentTreeScope: root.parentScope,
-				})),
-				...mechanical,
-				limits: limits.resolve({
-					snapshot,
-					targets: selected.targets,
-					mechanical,
-				}),
-			};
-			if (matching.wire !== undefined) sharedInvoke(wireSet, requestWires, [request, matching]);
-			const world = profile.world(context, snapshot);
-			const provider = sharedProviderSnapshot(
-				snapshot,
-				limits.providerSnapshot(snapshot),
-			);
-			const resolved = resolveSharedContainers({
-				prepared,
-				request,
-				metadata,
-				snapshot: provider,
-				measureScene,
-				world,
-				environment: profile.environment(context),
-				limits,
-			});
-			const subject = selected.subject ?? sharedApply(
-				"arrayFind",
-				snapshot.records,
-				(row) => row.id === snapshot.nodeId(element),
-			);
-			if (!subject) throw new Error("CSS original subject missing");
-			return {
-				resultId: selected.resultId,
-				request: resolved.request,
-				providerContext: {
-					snapshot: provider,
-					namespace: subject.namespaceUnits,
-					pseudo: pseudo || null,
-					world,
-					backendIdentity: profile.backendIdentity(active.backend),
-				},
-			};
+			if (useCapturedRoutes && compactCapture(active, profile, pseudo, metadata)) {
+				const compact = capturedChainRequest(active, element, profile, limits, matching, requestWires);
+				if (compact) return compact;
+			}
+			return fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching);
 		},
 		finalizeResult(row, { backend }) {
 			return publicRow(row, backend, profile, limits);

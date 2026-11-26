@@ -289,6 +289,16 @@ function resolvedRow(prepared, request, encode, decode) {
   return { row, batch: output };
 }
 
+function presentationBatch(prepared, resolved, row, request, encode, decode) {
+  if (!presentationOwn(request, 'fullRequest') || !row.usedProperties?.length) return resolved;
+  // Read the full request once. A trusted capture can defer its other target
+  // rows until Rust reports that geometry is needed for a used property.
+  const fullRequest = request.fullRequest;
+  const complete = resolvedRow(prepared, { resultId: request.resultId, request: fullRequest }, encode, decode);
+  request.providerContext = request.materializeProvider();
+  return complete;
+}
+
 function retireAll(resources, owners) {
   let failed = false,
     failure;
@@ -374,7 +384,8 @@ export function createSharedComputedStyle({
         resolveProperty,
         presentationSnapshots,
       );
-      const presentation = presentationOptions(resolveProperty, row, resolved, request, context, presentationSnapshots);
+      const batch = presentationBatch(state.resources.prepared, resolved, row, request, encodeRequest, decodeResponse);
+      const presentation = presentationOptions(resolveProperty, row, batch, request, context, presentationSnapshots);
       const proxy = createComputedStyleProxy(row, context.version, presentation);
       entry = {
         row,
