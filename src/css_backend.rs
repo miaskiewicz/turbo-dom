@@ -457,6 +457,10 @@ mod native {
     pub fn css_computed_preferences_v1(source: String) -> Result<String> {
         crate::css_preferences::preferences(&source).map_err(error)
     }
+    #[napi(js_name = "cssRuntimePolicyV1")]
+    pub fn css_runtime_policy_v1() -> Result<String> {
+        crate::css_runtime_policy::runtime_policy().map_err(error)
+    }
     #[napi(js_name = "cssComputedEnvironmentV1")]
     pub fn css_computed_environment_v1(source: String) -> Result<String> {
         crate::css_preferences::environment(&source).map_err(error)
@@ -558,6 +562,10 @@ mod wasm {
     #[wasm_bindgen(js_name=cssComputedPreferencesV1)]
     pub fn css_computed_preferences_v1(source: &str) -> Result<String, JsValue> {
         crate::css_preferences::preferences(source).map_err(error)
+    }
+    #[wasm_bindgen(js_name=cssRuntimePolicyV1)]
+    pub fn css_runtime_policy_v1() -> Result<String, JsValue> {
+        crate::css_runtime_policy::runtime_policy().map_err(error)
     }
     #[wasm_bindgen(js_name=cssComputedEnvironmentV1)]
     pub fn css_computed_environment_v1(source: &str) -> Result<String, JsValue> {

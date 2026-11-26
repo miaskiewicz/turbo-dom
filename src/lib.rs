@@ -15,6 +15,8 @@ mod css_preferences;
 #[cfg(feature = "css-backend")]
 mod css_resolve;
 #[cfg(feature = "css-backend")]
+mod css_runtime_policy;
+#[cfg(feature = "css-backend")]
 mod css_scene;
 #[cfg(feature = "css-backend")]
 mod css_serialize;
