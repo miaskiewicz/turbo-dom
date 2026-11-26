@@ -4,7 +4,13 @@ const mode = process.argv[2],
   artifact = process.argv[3];
 assert.ok(mode === 'native' || mode === 'wasm');
 assert.ok(artifact);
-if (mode === 'native') globalThis.WebAssembly = undefined;
+if (mode === 'native') {
+  // Node's lazy HTTP globals initialize a WASM parser. This CSS-only probe
+  // removes those unrelated host capabilities before importing the runtime.
+  for (const name of ['fetch', 'Headers', 'Request', 'Response', 'FormData', 'WebSocket', 'EventSource'])
+    delete globalThis[name];
+  globalThis.WebAssembly = undefined;
+}
 const { createCssArtifactResolver } = await import('../../../src/runtime/css-artifact.mjs');
 const { createRealCssFixture } = await import('../../helpers/css-shared-real.mjs');
 const require = createRequire(import.meta.url),

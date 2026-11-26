@@ -701,6 +701,8 @@ struct FormDataEventDispatcher(v8::Weak<v8::Function>);
 /// IS at the top of the script settings stack for the task's duration.
 struct EngineTaskScope(v8::Weak<v8::Function>);
 struct TerminationRecovery(v8::Weak<v8::Function>);
+// Native context slots are absent in a deserialized snapshot shell.
+struct NativeWindowInstallation;
 
 #[cfg(feature = "host-internals")]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -9286,10 +9288,15 @@ thread_local! {
 /// document. Runs no engine script. `Err(tree)` when the context was not made from the
 /// snapshot (or already holds a document).
 fn install_snapshot_context(scope: &mut v8::PinScope, tree: Tree) -> Result<(), Tree> {
+    let context = scope.get_current_context();
+    if context.get_slot::<NativeWindowInstallation>().is_some() {
+        return Err(tree);
+    }
     SETUP_TERMINATED.with(|t| t.set(false));
     if !crate_surface::startup_snapshot::rehydrate(scope) {
         return Err(tree);
     }
+    context.set_slot(std::rc::Rc::new(NativeWindowInstallation));
     attach_document(scope, tree);
     Ok(())
 }
@@ -9640,8 +9647,8 @@ fn recovery_capture_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
 }
 
 fn install_engine_with_tree(scope: &mut v8::PinScope, tree: Tree) {
-    #[cfg(feature = "host-internals")]
     let context = scope.get_current_context();
+    context.set_slot(std::rc::Rc::new(NativeWindowInstallation));
     #[cfg(feature = "host-internals")]
     begin_recovery_install(context);
     install_engine_body(scope, tree);

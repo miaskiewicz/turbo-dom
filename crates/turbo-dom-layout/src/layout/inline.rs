@@ -3673,9 +3673,16 @@ mod tests {
 
     #[test]
     fn transformed_expansion_retains_original_utf16_source_cells() {
-        use crate::live::testing::layout;
+        use crate::live::testing::layout_with_fonts;
         let html = "<p id=text style='text-transform:uppercase'>aßz</p>";
-        let (tree, snapshot, _) = layout(html, "", (200.0, 200.0), Some(1.0));
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
         let text = tree.children(tree.query_selector("#text").unwrap())[0];
         let source = crate::live::source_id(crate::live::testing::DOCUMENT, text);
         let cells = snapshot.text_cluster_boxes_for_source(source);
@@ -3691,9 +3698,16 @@ mod tests {
 
     #[test]
     fn wrapped_rtl_collapsed_spaces_keep_distinct_source_affinities() {
-        use crate::live::testing::layout;
+        use crate::live::testing::layout_with_fonts;
         let html = "<div id=text style='direction:rtl;width:35px;font-size:16px;line-height:20px'>abc  def</div>";
-        let (tree, snapshot, _) = layout(html, "", (200.0, 200.0), Some(1.0));
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
         let text = tree.children(tree.query_selector("#text").unwrap())[0];
         let source = crate::live::source_id(crate::live::testing::DOCUMENT, text);
         let cells = snapshot.text_cluster_boxes_for_source(source);

@@ -604,3 +604,25 @@ fn termination_recovery_reinstall_admits_rehydrated_callback_without_native_mark
     assert_eq!(host_internals::recover_after_termination(scope), Ok(()));
     reset();
 }
+
+#[test]
+fn initialization_errors_keep_dom_name_before_browser_constructor_installation() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    v8::tc_scope!(let catch, scope);
+    throw_dom_error(catch, "NotSupportedError", "setup capability unavailable");
+    let error = catch.exception().unwrap();
+    assert!(error.is_native_error());
+    let error = v8::Local::<v8::Object>::try_from(error).unwrap();
+    for (key, expected) in [
+        ("name", "NotSupportedError"),
+        ("message", "setup capability unavailable"),
+    ] {
+        let key = v8::String::new(catch, key).unwrap();
+        let actual = error.get(catch, key.into()).unwrap();
+        assert_eq!(actual.to_rust_string_lossy(catch), expected);
+    }
+}

@@ -275,6 +275,34 @@ mod tests {
         });
     }
     #[test]
+    fn rendering_evidence_rejects_invalid_receivers_and_metadata() {
+        with_dom(|scope| {
+            for receiver in ["null", "0", "document.createTextNode('x')"] {
+                assert!(
+                    eval(scope, &format!("__path('renderingPath',{receiver})===null")).is_true()
+                );
+                assert!(eval(
+                    scope,
+                    &format!("__validate('renderingPathCurrent',{receiver},[])===false")
+                )
+                .is_true());
+            }
+            for evidence in ["null", "{}", "[]", "[0,true,document]"] {
+                assert!(eval(
+                    scope,
+                    &format!("__validate('renderingPathCurrent',target,{evidence})===false")
+                )
+                .is_true());
+            }
+            eval(
+                scope,
+                "globalThis.p=__path('renderingPath',target);p[1]='true'",
+            );
+            assert!(eval(scope, "__validate('renderingPathCurrent',target,p)===false").is_true());
+        });
+    }
+
+    #[test]
     fn rendering_evidence_reprojects_private_slot_status_and_owner() {
         with_dom(|scope| {
             eval(scope,"globalThis.host=document.createElement('div');document.body.appendChild(host);globalThis.root=host.attachShadow({mode:'closed',slotAssignment:'manual'});root.innerHTML='<slot id=a></slot><slot id=b></slot>';globalThis.a=root.querySelector('#a');globalThis.b=root.querySelector('#b');host.appendChild(target);a.assign(target);globalThis.p=__path('renderingPath',target)");

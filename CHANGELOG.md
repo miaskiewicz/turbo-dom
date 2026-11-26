@@ -87,7 +87,9 @@ The npm default DOM and CSS engines remain JavaScript.
   checks for volatile styles. (#576–#579)
 - Hosts can recover interrupted inspection state across registered contexts
   after execution terminates, including partially bootstrapped frames.
-  Recovery requires explicit microtask handling. (#567)
+  Recovery requires explicit microtask handling. Reinstallation of an already
+  attached window follows the full install lifecycle even when snapshot
+  installation is enabled. (#567)
 
 ### Native layout, text and paint
 

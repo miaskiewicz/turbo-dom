@@ -82,7 +82,7 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertIn("--in-place", ms.mutation_flags())
         self.assertNotIn("--jobs", ms.mutation_flags())
 
-    def run_fake_job(self, primary_count, inventory_count=11, primary_source_changed=False, fallback_times_out=False):
+    def run_fake_job(self, primary_count, inventory_count=11, primary_source_changed=False, fallback_times_out=False, baseline_seconds=1, caught_in_primary=False):
         calls = []
 
         def capture(argv):
@@ -102,10 +102,10 @@ class MutationEvidenceTests(unittest.TestCase):
                            else "actual command output")
             if log.name in {"lib.log", "all-targets.log"}:
                 directory = log.parent / ("lib" if log.name == "lib.log" else "all-targets")
-                summary = "MissedMutant" if log.name == "lib.log" else "CaughtMutant"
+                summary = "MissedMutant" if log.name == "lib.log" and not caught_in_primary else "CaughtMutant"
                 names = [f"one-{index}" for index in range(11)]
                 self.write_outcomes(directory, names, dict.fromkeys(names, summary))
-            return {"argv": argv, "exit_code": 0, "seconds": 1}
+            return {"argv": argv, "exit_code": 0, "seconds": baseline_seconds if log.name == "baseline-test.log" else 1}
 
         with tempfile.TemporaryDirectory() as temp:
             args = SimpleNamespace(output=temp, target="worker_scope", mode="full", shard=0, shards=1)
@@ -131,6 +131,19 @@ class MutationEvidenceTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertTrue(report["primary_phase_complete"])
         self.assertFalse(report["ok"])
+
+    def test_slow_successful_baseline_does_not_require_unused_fallback(self):
+        result, calls, report = self.run_fake_job(11, baseline_seconds=551, caught_in_primary=True)
+        self.assertEqual(result, 0)
+        self.assertTrue(report["ok"])
+        self.assertFalse(any(name == "all-targets.log" for _, name in calls))
+
+    def test_slow_baseline_still_refuses_required_fallback_above_ceiling(self):
+        result, calls, report = self.run_fake_job(11, baseline_seconds=551)
+        self.assertEqual(result, 1)
+        self.assertTrue(report["primary_phase_complete"])
+        self.assertIn("900-second fallback ceiling", report["error"])
+        self.assertFalse(any(name == "all-targets.log" for _, name in calls))
 
     def test_inventory_drift_stops_before_building_or_testing(self):
         result, calls, report = self.run_fake_job(11, inventory_count=10)

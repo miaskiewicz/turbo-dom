@@ -4274,7 +4274,7 @@ mod tests {
             (200.0, 200.0),
             Some(1.0),
             |_| {},
-            &FontRegistry::new(),
+            &crate::test_support::fixture_fonts(),
         );
         assert!(snapshot.sticky_constraint(id(&tree, "#sticky")).is_some());
     }

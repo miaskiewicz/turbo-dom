@@ -8,7 +8,12 @@ pub(super) fn evaluate(source: &str) -> String {
 
 fn evaluate_with(prelude: &str, source: &str) -> String {
     tests::init_v8();
-    let isolate = &mut tests::new_isolate();
+    let isolate = &mut if prelude.is_empty() {
+        tests::new_isolate()
+    } else {
+        // A prelude configures globals before the browser bootstrap exists.
+        tests::plain_isolate()
+    };
     v8::scope!(let scope, isolate);
     let context = v8::Context::new(scope, Default::default());
     let scope = &mut v8::ContextScope::new(scope, context);

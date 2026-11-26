@@ -1,6 +1,7 @@
 # Public Rust API diff, v0.8.6 -> v0.8.7 candidate
 # Baseline 76e67f5554e28497a03b43b2ab6add73e67f1c0f
-# Candidate dd2771f66da8670e22d6136c0ec13027e6c1a0e3; subsequent preparation edits affect docs and workflows only.
+# Candidate dd2771f66da8670e22d6136c0ec13027e6c1a0e3.
+# Later CI fixes preserve these public signatures and add private install bookkeeping.
 # cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02)
 # Host aarch64-apple-darwin; commands use cargo +nightly public-api -sss --color never.
 # Default features; layout svg,perf,serde,test-support; raster avif,jxl;
