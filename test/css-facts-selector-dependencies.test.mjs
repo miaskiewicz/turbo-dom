@@ -110,3 +110,39 @@ test("facts matcher refuses changed AST program collection lookup", () => {
 		true,
 	);
 });
+
+test("indexed prototype checks preserve the full canonical nonnegative number domain", () => {
+	const fixture = setup();
+	const matches = () =>
+		matchesCssFacts(fixture.target, fixture.program, {}, fixture.navigator);
+	let calls = 0;
+	const descriptor = {
+		configurable: true,
+		get() { calls++; },
+		set() { calls++; },
+	};
+	for (const name of ["17", "0.5", "1e+21", "Infinity"])
+		assert.match(poison(Array.prototype, name, descriptor, matches)?.message, /array indexed prototype/);
+	for (const name of ["", "00", "-0", "-1", "1e3", "NaN", "1name"])
+		assert.equal(poison(Array.prototype, name, descriptor, matches), undefined);
+	assert.equal(calls, 0);
+});
+
+test("indexed prototype validation does not invoke replaced numeric constructors", () => {
+	const fixture = setup();
+	const number = Number;
+	let numericCalls = 0;
+	const replacement = new Proxy(number, {
+		apply(target, receiver, args) {
+			numericCalls++;
+			return Reflect.apply(target, receiver, args);
+		},
+	});
+	let result;
+	const error = poison(globalThis, "Number", { configurable: true, value: replacement }, () => {
+		result = matchesCssFacts(fixture.target, fixture.program, {}, fixture.navigator);
+	});
+	assert.equal(error, undefined);
+	assert.equal(result, true);
+	assert.equal(numericCalls, 0);
+});

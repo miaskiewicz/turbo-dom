@@ -1780,12 +1780,18 @@ function checkFactsArrayDependencies() {
   }
   checkFactsArrayShape();
 }
+function factsNumericName(name) {
+  // A canonical nonnegative number starts with an ASCII digit or is Infinity.
+  // Lexical checks bypass numeric coercion for the ordinary method names.
+  if (name < '0' || name >= ':') return name === 'Infinity';
+  return `${+name}` === name;
+}
 function checkFactsArrayShape() {
   if (!sameFactsDescriptor(factsDescriptor(factsArrayPrototype, Symbol.iterator), factsArrayIterator) || !sameFactsDescriptor(factsDescriptor(factsArray, Symbol.species), factsArraySpecies)) throw new CssFactsUnavailable('array species/iterator');
   const names = factsNames(factsArrayPrototype);
   for (let i = 0; i < names.length; i++) {
     const name = names[i];
-    if (name !== '' && String(Number(name)) === name && Number(name) >= 0) throw new CssFactsUnavailable('array indexed prototype');
+    if (factsNumericName(name)) throw new CssFactsUnavailable('array indexed prototype');
   }
 }
 export function checkCssFactsDependencies() { checkFactsArrayDependencies(); }

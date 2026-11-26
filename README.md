@@ -272,6 +272,25 @@ of the five within-pair ratios. See the [matched receipt](tools/acceptance/packe
 for exact package manifests, all timings, and the two passing CSS preflight
 checks.
 
+### Rust CSS profiling and reuse pilot (2026-11-26)
+
+Vitest worker profiles attributed 256 ms of sampled time to Rust-backed
+`getComputedStyle` on N-API and 541 ms on WASM. Selector matching accounted
+for 66 and 77 ms, respectively. The cascade request, including transport,
+accounted for 56 and 128 ms. WASM also spent 107 ms on compile and preparation
+and 57 ms loading the CSS backend. These are sampled times across seven
+profiled test workers per mode.
+
+An unpublished prototype reused matching data for identical selector inputs.
+It passed the CSS preflight and all 28 timed tests. The five-pair median
+was 2.1% faster than the previous Rust candidate on N-API and 1.3% slower on
+WASM. Compared with the legacy JavaScript package, its five-pair medians
+were still 11.3% slower on N-API and 29.7% slower on WASM.
+
+See the [worker profile summary](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PROFILE-SUMMARY.json),
+[pilot versus legacy](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PILOT-VS-LEGACY.json),
+and [pilot versus the previous Rust build](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PILOT-VS-RUST.json).
+
 v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
 the suite row (ms/file, lower is faster).
 
