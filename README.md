@@ -91,7 +91,9 @@ env.document.querySelector('#app');     // nodes inflate lazily from the parse b
 env.reset();                            // fast per-file reset (reuses the parse buffer)
 ```
 
-**DOM backend selection.** Each environment accepts `domBackend`. The default, `'js'`,
+### DOM backend selection
+
+Each environment accepts `domBackend`. The default, `'js'`,
 uses the existing npm DOM. The `'rust'` value is reserved for the Node integration
 of `turbo-dom-browser-env`. In this build it raises a setup error before creating
 a document. Parser selection is independent, so the JS DOM can still use the native
@@ -173,6 +175,12 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 features (for example `simdutf`).
 
 ## Status
+
+- **0.8.7 candidate:** canonical animation sampling and recovery for native
+  embedders, shadow-inclusive document checkpoints, SVG paint and metric fixes,
+  and an optional shared Rust CSS engine. The npm DOM now includes corrected
+  history events, textarea defaults and selection, disabled/inert focus, nested
+  shadow focus and DOMRect branding. [Full release notes](CHANGELOG.md#087--unreleased).
 
 - **0.8.6:** the `parseBuffer` parser builds its flat buffer from an
   index-arena tree sink instead of a reference-counted tree, and gates
@@ -346,9 +354,10 @@ Lower is faster.
 | turbo-dom (native) | 1.382 | 1.337–1.488 | 1.892 | 1.841–1.928 | +36.9% |
 | turbo-dom (WASM) | 1.392 | 1.368–1.402 | 2.191 | 2.143–2.228 | +57.4% |
 
-The turbo-dom baseline uses the legacy JavaScript CSS engine. The candidate
-uses the shared Rust CSS engine by default and passes the public CSS regression
-and all 29 compatibility tests in both modes. Both control environments were
+The turbo-dom baseline uses the legacy JavaScript CSS engine. The measured candidate
+used the shared Rust CSS engine by default and passed the public CSS regression
+and all 29 compatibility tests in both modes. The release branch retains the
+JavaScript CSS default. Both control environments were
 slower in the second window too. The measured changes compare the packed
 candidates end to end and include startup, parser and runtime costs.
 

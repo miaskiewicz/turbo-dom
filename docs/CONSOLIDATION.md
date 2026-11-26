@@ -1,4 +1,4 @@
-# turbo-dom consolidation (0.6.0; current release 0.8.3)
+# turbo-dom consolidation (0.6.0; current candidate 0.8.7)
 
 turbo-html2pdf, turbo-test and turbo-surf used to carry their own copies of the browser
 engine pieces they share: a rusty_v8 fork (`turbo-surf-v8`, vendored twice), turbo-test's
@@ -19,12 +19,18 @@ is declared in `tools/parity/expected/` and listed in [CHANGELOG.md](../CHANGELO
 
 | crate | version | MSRV | contents | origin |
 |---|---|---|---|---|
-| [`turbo-dom`](../crates/turbo-dom) | 0.8.3 | 1.89 | pure-Rust DOM (`rtdom::Tree`), the ONE selector engine (`query*.rs`, `parse_for_cascade`/`match_for_cascade`/`parse_for_supports` over a `Navigator`), CSSOM, `rtdom::cascade`, `rtdom::css_values`, `Tree::parse_with` | this repository |
-| [`turbo-dom-v8`](../crates/turbo-dom-v8) | 150.4.1 | 1.91 | rusty_v8 150.4.0 + interceptor `ShouldThrowOnError` and isolate weak-teardown fixes, `FORK_SHOULD_THROW_FIX`, `PinScope::get_incumbent_context()` (150.4.1); generated, never committed | upstream `v8-150.4.0.crate` + turbo-surf's reviewed patch |
-| [`turbo-dom-layout`](../crates/turbo-dom-layout) | 0.8.3 | 1.89 | style cascade, box generation, block/inline/flex/grid/table layout, fonts, image sizing, layout snapshots, `layout_html`; `style::TreeView` (html2pdf mode), `live` (surf mode), `cssom_view` | turbo-html2pdf-core 0.3.9 layout half (S1), turbo-surf CSSOM-View modules (S4) |
-| [`turbo-dom-raster`](../crates/turbo-dom-raster) | 0.8.3 | 1.89 | synthetic screenshots (PNG/SVG painters), canvas op-log replay, `gpu-metal` WebGL replay | turbo-surf-raster 0.5.5 (S1) |
-| [`turbo-dom-browser-env`](../crates/turbo-dom-browser-env) | 0.8.3 | 1.91 | the rtdom <-> V8 browser binding (window, document, CSSOM, forms, events, …) + JS bootstrap + production JSON; features `host-internals`, `test-support`, `native-sdk-frame-read`; Chrome controls and their collectors | turbo-test 0.4.8 `src/` (S0), collectors from turbo-test (S5) |
-| npm `@miaskiewicz/turbo-dom` + `turbo-dom-parser` (npm only, `publish = false`) | 0.8.3 | — | JS DOM runtime + native/WASM parser addon | this repository |
+| [`turbo-dom`](../crates/turbo-dom) | 0.8.7 | 1.89 | pure-Rust DOM (`rtdom::Tree`), the ONE selector engine (`query*.rs`, `parse_for_cascade`/`match_for_cascade`/`parse_for_supports` over a `Navigator`), CSSOM, `rtdom::cascade`, `rtdom::css_values`, `Tree::parse_with` | this repository |
+| [`turbo-dom-v8`](../crates/turbo-dom-v8) | 150.4.2 | 1.91 | rusty_v8 150.4.0 + interceptor `ShouldThrowOnError` and isolate weak-teardown fixes, `FORK_SHOULD_THROW_FIX`, `PinScope::get_incumbent_context()` (150.4.1); generated, never committed | upstream `v8-150.4.0.crate` + turbo-surf's reviewed patch |
+| [`turbo-dom-layout`](../crates/turbo-dom-layout) | 0.8.7 | 1.89 | style cascade, box generation, block/inline/flex/grid/table layout, fonts, image sizing, layout snapshots, `layout_html`; `style::TreeView` (html2pdf mode), `live` (surf mode), `cssom_view` | turbo-html2pdf-core 0.3.9 layout half (S1), turbo-surf CSSOM-View modules (S4) |
+| [`turbo-dom-raster`](../crates/turbo-dom-raster) | 0.8.7 | 1.89 | synthetic screenshots (PNG/SVG painters), canvas op-log replay, `gpu-metal` WebGL replay | turbo-surf-raster 0.5.5 (S1) |
+| [`turbo-dom-browser-env`](../crates/turbo-dom-browser-env) | 0.8.7 | 1.91 | the rtdom <-> V8 browser binding (window, document, CSSOM, forms, events, …) + JS bootstrap + production JSON; features `host-internals`, `test-support`, `native-sdk-frame-read`; Chrome controls and their collectors | turbo-test 0.4.8 `src/` (S0), collectors from turbo-test (S5) |
+| npm `@miaskiewicz/turbo-dom` + `turbo-dom-parser` (npm only, `publish = false`) | 0.8.7 | — | JS DOM runtime + native/WASM parser addon | this repository |
+
+The npm DOM uses JavaScript wrappers over native/WASM parser buffers. Its Jest
+and Vitest adapters install the same runtime. The native browser environment is
+a separate V8 binding over the Rust tree; see the [backend options](../README.md#dom-backend-selection).
+The optional Rust CSS adapter shares computed-style work with the Rust engine,
+while the default npm cascade still runs in JavaScript.
 
 ## Dependency graph (acyclic)
 
@@ -47,18 +53,18 @@ require `~150.4`.
 
 ## Publish order
 
-One annotated `vX.Y.Z` tag (`v0.8.3` for this release) on the merge commit runs `.github/workflows/publish.yml`
+One annotated `vX.Y.Z` tag (`v0.8.7` for this candidate) on the merge commit runs `.github/workflows/publish.yml`
 (see [PUBLISHING.md](../PUBLISHING.md)): the full CI workflow, then
 
-1. `turbo-dom-v8` 150.4.1 — generated from the pins, published by
-   `crates/turbo-dom-v8/scripts/release.py --publish` (an existing 150.4.1 must match the
+1. `turbo-dom-v8` 150.4.2 — generated from the pins, published by
+   `crates/turbo-dom-v8/scripts/release.py --publish` (an existing 150.4.2 must match the
    fresh package byte-for-byte);
-2. `turbo-dom` 0.8.3;
-3. `turbo-dom-layout` 0.8.3 (needs turbo-dom);
-4. `turbo-dom-raster` 0.8.3 (needs turbo-dom-layout);
-5. `turbo-dom-browser-env` 0.8.3 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
+2. `turbo-dom` 0.8.7;
+3. `turbo-dom-layout` 0.8.7 (needs turbo-dom);
+4. `turbo-dom-raster` 0.8.7 (needs turbo-dom-layout);
+5. `turbo-dom-browser-env` 0.8.7 (needs turbo-dom-v8 + turbo-dom + turbo-dom-layout; the root manifest's
    pre-publish `[patch]` is dropped first so it verifies against the published fork);
-6. npm `@miaskiewicz/turbo-dom` 0.8.3.
+6. npm `@miaskiewicz/turbo-dom` 0.8.7.
 
 Each crate step skips a version crates.io already has and waits for the crates.io index
 to list it before the next one (`scripts/publish-crates.py`). Then, in parallel, the
@@ -78,9 +84,9 @@ fork publishes first.
 
 ## How consumers depend on the crates
 
-Manifests always name the registry version (`turbo-dom = "0.8.3"`,
-`turbo-dom-layout = { version = "0.8.3", default-features = false }`,
-`turbo-dom-browser-env = { version = "0.8.3", features = ["host-internals"] }`, dev
+Manifests always name the registry version (`turbo-dom = "0.8.7"`,
+`turbo-dom-layout = { version = "0.8.7", default-features = false }`,
+`turbo-dom-browser-env = { version = "0.8.7", features = ["host-internals"] }`, dev
 `features = ["test-support"]`, `v8 = { package = "turbo-dom-v8", version = "~150.4" }`).
 
 - **Before publication (PR time)**: each consumer adds a `[patch.crates-io]` section that
@@ -98,7 +104,7 @@ Manifests always name the registry version (`turbo-dom = "0.8.3"`,
 
 ## CI
 
-`.github/workflows/ci.yml` (toolchain 1.98.0). Pull requests and pushes to `main` run it on
+`.github/workflows/ci.yml` (toolchain 1.98.0). Pull requests, manual dispatches and release workflow calls run it on
 Linux runners plus Windows x64 (the napi build and the v8 matrix); the macOS arm64 builds
 and jobs are added only when `publish.yml` calls it with `darwin: true` for a release.
 Every job that builds a shipped Linux binary (the napi matrix and publish.yml's `crates`)
@@ -109,8 +115,7 @@ linux-gnu addons, named explicitly. It fails above GLIBC_2.35, on a missing file
 readelf failure and on a binary with no GLIBC_ symbols (self-test
 `scripts/test_check_glibc_ceiling.py`, run by `guards`). Test-only jobs stay on
 `ubuntu-latest`. A newer push to a pull request cancels the PR's superseded run: the
-`concurrency` group is per PR, with `cancel-in-progress` for `pull_request` only. `main`
-pushes, tags and the `workflow_call` from `publish.yml` each get a group of their own
+`concurrency` group is per PR, with `cancel-in-progress` for `pull_request` only. Manual dispatches and the `workflow_call` from `publish.yml` each get a group of their own
 (`github.run_id`), so they are never cancelled or dropped as pending. The browser-env tarpaulin
 `--timeout` bounds the whole test binary, so it is sized for the full lib suite (turbo-dom#235).
 
