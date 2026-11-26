@@ -242,6 +242,12 @@ at the median. System load varied substantially during the process timings.
 Separate unfiltered acceptance passed all 29 compatibility tests
 and the Rust CSS check on both N-API and WASM. The default switch is pending.
 
+A second seven-block run used the final packed N-API candidate throughout.
+For 100 captures it used 15.08% less CPU (7/7 blocks improved by over 0.5%).
+Across the 28 Vitest tests it took 1.14% less wall time than the previous
+Rust package and 9.71% more than legacy JS at the median.
+[Final-build rerun timings](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/RETRY.json)
+
 [Timings and package hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/RESULT.json) · [Capture workload](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/capture.mjs) · [Candidate delta against the previous Rust package](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/candidate.patch)
 
 ### Packed Vitest after selector collection and encoding changes (2026-11-26)
