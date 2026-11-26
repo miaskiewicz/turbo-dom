@@ -499,6 +499,8 @@ OWNED="$OWNED css_effect_shadow_probe.js css_effect_shadow_cases.json css_effect
 # 0.8.4 cross-realm image ownership controls authored here (625472a0).
 OWNED="$OWNED html_image_adoption_chrome156.json html_image_adoption_probe.js html_image_crossrealm_tests.rs"
 OWNED="$OWNED window_getter_receivers_probe.js window_getter_receivers_chrome158.json"
+# Native host, animation and standalone-window modules added for 0.8.7.
+OWNED="$OWNED animation_ownership.rs animation_rendering.rs animation_tokens.rs cached_own_box.rs cached_own_box_chrome159.json cached_own_box_probe.js document_checkpoint_host.rs dom_parser.js dom_parser.rs native_dom_adapters_chrome159.json native_dom_adapters_probe.js native_dom_adapters_tests.rs presented_effects.rs sampler_diagnostics.rs sampler_refresh_tests.rs sampler_validation_tests.rs selector_preparation.rs termination_recovery.rs window_history.js window_history.rs xpath_value_admission_chrome159.json xpath_value_admission_probe.js"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 turbo_test=${TURBO_TEST_REPO:-$repo_root/../turbo-test}
