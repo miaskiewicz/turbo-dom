@@ -228,21 +228,32 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
-### Packed Vitest consumer comparison (2026-11-26)
+### Packed Vitest before and after the Rust CSS switch (2026-11-26)
 
-A separate serial28-case React/RTL/forms comparison uses [the packed-consumer fixture](tools/acceptance/packed-vitest-296/README.md). Existing DOM microbenchmarks below are unchanged.
+The [packed consumer fixture](tools/acceptance/packed-vitest-296/README.md)
+runs the same 28 React, Testing Library and forms tests in each environment.
+Each measurement uses fresh Vitest processes, one worker, one warmup per
+environment and five rotated rounds. Times are total process wall times.
+Lower is faster.
 
-Measured2026-11-26 in a coordinated compiler/test-idle window, fresh processes, one worker, five rotated rounds per row after one warmup. All24 processes reported exactly28 passes and only the documented title filtered. These are end-to-end process wall times, including Vitest startup/transform/environment/test work; not DOM operation timings.
+| Environment | Before median (s) | Before min–max (s) | After median (s) | After min–max (s) | Median change |
+|---|---:|---:|---:|---:|---:|
+| happy-dom | 1.774 | 1.740–1.807 | 1.909 | 1.873–1.923 | +7.6% |
+| jsdom | 2.806 | 2.728–2.966 | 2.961 | 2.908–3.189 | +5.5% |
+| turbo-dom (native) | 1.382 | 1.337–1.488 | 1.892 | 1.841–1.928 | +36.9% |
+| turbo-dom (WASM) | 1.392 | 1.368–1.402 | 2.191 | 2.143–2.228 | +57.4% |
 
-| Environment | Before CSS path | Before median (s) | Before min–max (s) | After median (s) |
-|---|---|---:|---:|---:|
-| happy-dom | happy-dom | 1.774 | 1.740–1.807 | pending |
-| jsdom | jsdom | 2.806 | 2.728–2.966 | pending |
-| turbo-native-legacy-css | LEGACY JavaScript CSS (pre-cutover) | 1.382 | 1.337–1.488 | pending |
-| turbo-wasm-legacy-css | LEGACY JavaScript CSS (pre-cutover) | 1.392 | 1.368–1.402 | pending |
+The turbo-dom baseline uses the legacy JavaScript CSS engine. The candidate
+uses the shared Rust CSS engine by default and passes the public CSS regression
+and all 29 compatibility tests in both modes. Both control environments were
+slower in the second window too. The measured changes compare the packed
+candidates end to end and include startup, parser and runtime costs.
 
-Raw per-process JSON/logs, machine/Node/dependency versions and source/package/artifact hashes are in [the dated results](tools/acceptance/packed-vitest-296/results-2026-11-26/RESULT.json). This local pre-cutover comparison does not measure the forthcoming Rust CSS default. After measurements remain pending: the runner first requires both public native/WASM CSS sentinels to pass on the same immutable packed package, then repeats the identical28-case protocol. The unchanged29-case compatibility matrix and strict CSS sentinel remain separately reported; Step4 Rust CSS acceptance is still pending.
-
+[Before results](tools/acceptance/packed-vitest-296/results-2026-11-26/RESULT.json)
+and [after results](tools/acceptance/packed-vitest-296/results-2026-11-26-after/RESULT.json)
+include per-process reports, machine and dependency versions, and artifact
+identities. See the [packed candidate receipt](tools/acceptance/packed-vitest-296/results-2026-11-26-after/PACKED-ACCEPTANCE.json)
+for the public Vitest results.
 
 v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
 the suite row (ms/file, lower is faster).
