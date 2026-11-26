@@ -1,3 +1,4 @@
+import { matchingIntrinsicsIntact } from './css-matching-integrity.mjs';
 import { readCssFactsNavigator } from './css-facts-navigator.mjs';
 import { createSharedRouting } from './css-shared-routing.mjs';
 import { compileSharedShadowFacts } from './css-shared-shadow-facts.mjs';
@@ -285,7 +286,64 @@ function targets(snapshot, pseudo, element, profile, routing) {
 	return { targets, resultId };
 }
 /** Explicit caller environment, limits and trusted snapshot; no runtime defaults. */
-export function createSharedCssAdapter({
+const cacheOwn = Object.hasOwn;
+const cacheFreeze = Object.freeze;
+const cacheCreate = Object.create;
+const RequestWires = WeakMap;
+const wireGet = WeakMap.prototype.get, wireSet = WeakMap.prototype.set;
+const maximumMatchingWire = 256 * 1024;
+
+function freezeMatchData(value) {
+ if (value === null || typeof value !== 'object') return value;
+ const keys = sharedKeys(value);
+ for (let index = 0; index < keys.length; index++) freezeMatchData(value[keys[index]]);
+ return cacheFreeze(value);
+}
+function collectContextMatches(facts, active) {
+ const { snapshot, context, contextual, routing, navigator } = active;
+ facts.contextual ??= compileSharedShadowFacts(facts.metadata, navigator !== undefined);
+ return facts.contextual.collect(snapshot, context.document, contextual, routing, navigator);
+}
+function canCacheMatching(active, enabled) {
+ // In one document root, the exact navigator fixes node membership, order
+ // and every scope ancestor.
+ return enabled && active.navigator !== undefined && active.snapshot.roots.length === 1 && matchingIntrinsicsIntact();
+}
+function matchingEntry(facts, active, prepared, enabled) {
+ if (!canCacheMatching(active, enabled)) {
+  facts.cachedMatching = null;
+  return { mechanical: collectContextMatches(facts, active), wire: undefined };
+ }
+ const previous = facts.cachedMatching;
+ if (previous?.navigator === active.navigator && previous.limits === active.contextual &&
+     previous.prepared === prepared) return previous;
+ facts.cachedMatching = null;
+ const mechanical = collectContextMatches(facts, active);
+ const wire = sharedEncode(mechanical);
+ if (wire.length > maximumMatchingWire) return { mechanical, wire: undefined };
+ const entry = { navigator: active.navigator, limits: active.contextual, prepared, mechanical: freezeMatchData(mechanical), wire };
+ facts.cachedMatching = entry;
+ return entry;
+}
+function encodeMatchingRequest(request, entry) {
+ const remainder = cacheCreate(null);
+ const keys = sharedKeys(request);
+ for (let index = 0; index < keys.length; index++) {
+  const key = keys[index];
+  if (!cacheOwn(entry.mechanical, key))
+   sharedDefine(remainder, key, sharedDescriptor(request, key));
+ }
+ return sharedApply('stringSlice', sharedEncode(remainder), 0, -1) + ',' + sharedApply('stringSlice', entry.wire, 1);
+}
+
+export function createSharedCssAdapter(options) {
+ return createAdapter(options, false);
+}
+// Only the public default adapter owns the native capture and JSON policy.
+export function createDefaultSharedCssAdapter(options, cacheMatching) {
+ return createAdapter(options, cacheMatching);
+}
+function createAdapter({
 	selectBackend,
 	readContext,
 	captureSnapshot,
@@ -293,7 +351,7 @@ export function createSharedCssAdapter({
 	profile,
 	limits,
 	measureScene,
-}) {
+}, cacheMatching) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	const callbacks = {
 		selectBackend,
@@ -324,8 +382,12 @@ export function createSharedCssAdapter({
 	);
 	let active = null;
 	let selectedBackend = null;
+	const requestWires = new RequestWires();
 	const factory = createSharedComputedStyle({
-		encodeRequest: sharedEncode,
+		encodeRequest(request) {
+			const entry = sharedInvoke(wireGet, requestWires, [request]);
+			return entry ? encodeMatchingRequest(request, entry) : sharedEncode(request);
+		},
 		encodeResultKey: sharedEncode,
 		decodeResponse: decode,
 		selectBackend() {
@@ -392,14 +454,13 @@ export function createSharedCssAdapter({
 				limits: limits.prepare({ sources, uses: rows, ua: active.ua }),
 			};
 		},
-		createFacts(metadata) { return { metadata, ordinary: captureSelectorFacts === undefined ? compileSharedPrograms(metadata) : null, contextual: null }; },
+		createFacts(metadata) { return { metadata, ordinary: captureSelectorFacts === undefined ? compileSharedPrograms(metadata) : null, contextual: null, cachedMatching: null }; },
 		resolveRequest({ element, pseudo, context, metadata, prepared, facts }) {
 			const snapshot = active.snapshot;
-            let mechanical;
-            if (active.contextual) {
-                facts.contextual ??= compileSharedShadowFacts(facts.metadata, active.navigator !== undefined);
-                mechanical = facts.contextual.collect(snapshot, context.document, active.contextual, active.routing, active.navigator);
-            } else mechanical = collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching);
+            const matching = active.contextual
+                ? matchingEntry(facts, active, prepared, cacheMatching)
+                : { mechanical: collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching), wire: undefined };
+            const { mechanical } = matching;
 			const selected = targets(snapshot, pseudo, element, profile, active.routing);
 			const request = {
 				abiVersion: 1,
@@ -417,6 +478,7 @@ export function createSharedCssAdapter({
 					mechanical,
 				}),
 			};
+			if (matching.wire !== undefined) sharedInvoke(wireSet, requestWires, [request, matching]);
 			const world = profile.world(context, snapshot);
 			const provider = sharedProviderSnapshot(
 				snapshot,

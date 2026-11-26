@@ -246,6 +246,7 @@ export function createRealCssFixture(
 		contextTransform,
     captureSelectorFacts,
     snapshotReader,
+    adapterFactory = createSharedCssAdapter,
 	} = {},
 ) {
 	const htmlParserMode = selectHtmlParser(real.mode);
@@ -273,7 +274,7 @@ export function createRealCssFixture(
 		}),
 	});
 	const limits = { ...quotas(), ...real.fixturePolicy, ...policy };
-	const adapter = createSharedCssAdapter({
+	const adapter = adapterFactory({
 		selectBackend: () => real.backend,
 		readContext(_element, pseudo) {
 			ensureCssState(doc);
