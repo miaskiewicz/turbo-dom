@@ -20,6 +20,8 @@ pub mod custom_cascade;
 #[cfg(feature = "computed-style-grammar")]
 pub mod declaration_model;
 #[cfg(feature = "computed-style-grammar")]
+pub mod environment;
+#[cfg(feature = "computed-style-grammar")]
 pub mod facts;
 #[cfg(feature = "computed-style-grammar")]
 pub mod font_values;

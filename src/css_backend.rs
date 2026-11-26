@@ -131,9 +131,9 @@ enum Phase {
     Steady,
     Starting,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(tag = "kind", content = "value", rename_all = "camelCase")]
-enum MediaFact {
+pub(super) enum MediaFact {
     Number(f64),
     LengthPx(f64),
     Ratio((f64, f64)),
@@ -150,6 +150,19 @@ impl From<MediaFact> for FeatureValue {
             MediaFact::ResolutionDppx(value) => Self::ResolutionDppx(value),
             MediaFact::Ident(value) => Self::Ident(value),
             MediaFact::Boolean(value) => Self::Boolean(value),
+        }
+    }
+}
+
+impl From<FeatureValue> for MediaFact {
+    fn from(value: FeatureValue) -> Self {
+        match value {
+            FeatureValue::Number(value) => Self::Number(value),
+            FeatureValue::LengthPx(value) => Self::LengthPx(value),
+            FeatureValue::Ratio(x, y) => Self::Ratio((x, y)),
+            FeatureValue::ResolutionDppx(value) => Self::ResolutionDppx(value),
+            FeatureValue::Ident(value) => Self::Ident(value),
+            FeatureValue::Boolean(value) => Self::Boolean(value),
         }
     }
 }
@@ -444,6 +457,10 @@ mod native {
     pub fn css_computed_preferences_v1(source: String) -> Result<String> {
         crate::css_preferences::preferences(&source).map_err(error)
     }
+    #[napi(js_name = "cssComputedEnvironmentV1")]
+    pub fn css_computed_environment_v1(source: String) -> Result<String> {
+        crate::css_preferences::environment(&source).map_err(error)
+    }
     #[napi(js_name = "serializeCssomV1")]
     pub fn serialize_cssom_v1(source: String) -> Result<String> {
         crate::css_serialize::serialize_batch(&source).map_err(error)
@@ -541,6 +558,10 @@ mod wasm {
     #[wasm_bindgen(js_name=cssComputedPreferencesV1)]
     pub fn css_computed_preferences_v1(source: &str) -> Result<String, JsValue> {
         crate::css_preferences::preferences(source).map_err(error)
+    }
+    #[wasm_bindgen(js_name=cssComputedEnvironmentV1)]
+    pub fn css_computed_environment_v1(source: &str) -> Result<String, JsValue> {
+        crate::css_preferences::environment(source).map_err(error)
     }
     #[wasm_bindgen(js_name=serializeCssomV1)]
     pub fn serialize_cssom_v1(source: &str) -> Result<String, JsValue> {

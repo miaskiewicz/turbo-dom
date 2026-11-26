@@ -125,6 +125,95 @@ pub(super) fn preferences(source: &str) -> Result<String, String> {
         "preferenceIdentity":identity,"userAgentSource":ua
     })).map_err(fail)
 }
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct EnvironmentRequest {
+    abi_version: u32,
+    host_platform: Platform,
+    font_override: Option<Override>,
+    viewport: Viewport,
+    limits: Limits,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Viewport {
+    width: AxisInput,
+    height: AxisInput,
+}
+#[derive(Deserialize)]
+#[serde(tag = "status", rename_all = "camelCase", deny_unknown_fields)]
+enum AxisInput {
+    Known { value: f64 },
+    Unknown {},
+}
+impl From<AxisInput> for turbo_dom_core::rtdom::computed_css::environment::ViewportAxis {
+    fn from(value: AxisInput) -> Self {
+        match value {
+            AxisInput::Known { value } => Self::Known(value),
+            AxisInput::Unknown {} => Self::Unknown,
+        }
+    }
+}
+fn environment_fail(reason: impl std::fmt::Debug) -> String {
+    format!("CSSBackendEnvironment:{reason:?}")
+}
+fn environment_request(source: &str) -> Result<EnvironmentRequest, String> {
+    let request: EnvironmentRequest = serde_json::from_str(source).map_err(environment_fail)?;
+    if request.abi_version != 1 {
+        return Err("CSSBackendEnvironment:AbiVersion".into());
+    }
+    Ok(request)
+}
+/// Return only actual viewport facts and canonical bases, with preference identity
+/// deliberately viewport-independent. Callers must key viewport state separately.
+pub(super) fn environment(source: &str) -> Result<String, String> {
+    use turbo_dom_core::rtdom::computed_css::environment::{
+        build_environment_facts, ViewportFacts,
+    };
+    let request = environment_request(source)?;
+    let fonts = font_preferences(
+        request.host_platform,
+        request.font_override,
+        request.limits.input_units,
+    )?;
+    let initial =
+        initial_preference_values(&fonts, request.limits.computation.into()).map_err(fail)?;
+    let mut remaining = request.limits.retained_units;
+    let identity = identity_units(
+        &(
+            request.host_platform.identity(),
+            fonts.family.as_ref(),
+            fonts.size_px,
+            PREFERENCE_SOURCE_SHA256,
+        ),
+        &mut remaining,
+    )?;
+    let mut computation: turbo_dom_core::rtdom::computed_css::ComputationLimits =
+        request.limits.computation.into();
+    computation.max_total_units = computation.max_total_units.min(remaining);
+    let facts = build_environment_facts(
+        ViewportFacts {
+            width: request.viewport.width.into(),
+            height: request.viewport.height.into(),
+        },
+        &initial,
+        computation,
+    )
+    .map_err(environment_fail)?;
+    environment_response(identity, facts)
+}
+fn environment_response(
+    identity: Vec<u16>,
+    facts: turbo_dom_core::rtdom::computed_css::environment::ComputedEnvironmentFacts,
+) -> Result<String, String> {
+    let features: std::collections::BTreeMap<_, super::css_backend::MediaFact> = facts
+        .features
+        .into_iter()
+        .map(|(name, value)| (name, value.into()))
+        .collect();
+    serde_json::to_string(&json!({"abiVersion":1,"preferenceIdentity":identity,"features":features,"mediaUnitBases":facts.media_unit_bases,"valueUnitBases":facts.value_unit_bases})).map_err(environment_fail)
+}
+
 // This writer is used only by serde_json's scalar tuple serializer: string
 // fragments are valid UTF-8 slices and the remaining writes are ASCII syntax.
 // It counts canonical wire output before allocating the retained identity copy.
@@ -321,6 +410,112 @@ mod tests {
             }
         }
         assert!(mismatches.is_empty(), "{mismatches:#?}");
+    }
+    fn env_request() -> Value {
+        let mut input = request("macos");
+        input["viewport"] = json!({"width":{"status":"known","value":1024.0},"height":{"status":"known","value":768.0}});
+        input
+    }
+    fn run_env(input: &Value) -> Result<Value, String> {
+        serde_json::from_str(&environment(&input.to_string())?).map_err(environment_fail)
+    }
+    #[test]
+    fn environment_uses_actual_axes_normalized_initial_media_font_and_no_target_em_policy() {
+        let mut input = env_request();
+        input["fontOverride"] = json!({"family":[65],"sizePx":1e300});
+        let result = run_env(&input).unwrap();
+        assert_eq!(
+            result["features"]["width"],
+            json!({"kind":"lengthPx","value":1024.0})
+        );
+        assert_eq!(
+            result["features"]["orientation"],
+            json!({"kind":"ident","value":"landscape"})
+        );
+        assert_eq!(
+            result["features"]["aspect-ratio"],
+            json!({"kind":"ratio","value":[1024.0,768.0]})
+        );
+        assert_eq!(result["mediaUnitBases"][0], json!(["em", 10000.0]));
+        assert_eq!(result["mediaUnitBases"][1], json!(["rem", 10000.0]));
+        assert_eq!(
+            result["valueUnitBases"],
+            json!([["vw", 10.24], ["vh", 7.68], ["vmin", 7.68], ["vmax", 10.24]])
+        );
+    }
+    #[test]
+    fn unknown_and_zero_axes_have_distinct_facts_with_viewport_independent_preference_identity() {
+        let mut input = env_request();
+        input["viewport"] = json!({"width":{"status":"unknown"},"height":{"status":"unknown"}});
+        let unknown = run_env(&input).unwrap();
+        assert_eq!(unknown["features"], json!({}));
+        assert_eq!(unknown["valueUnitBases"], json!([]));
+        input["viewport"]["width"] = json!({"status":"known","value":0.0});
+        let zero = run_env(&input).unwrap();
+        assert_eq!(
+            zero["features"]["width"],
+            json!({"kind":"lengthPx","value":0.0})
+        );
+        assert!(zero["features"].get("orientation").is_none());
+        assert_eq!(zero["valueUnitBases"], json!([["vw", 0.0]]));
+        assert_eq!(zero["preferenceIdentity"], unknown["preferenceIdentity"]);
+        input["hostPlatform"] = json!("other");
+        assert_ne!(
+            run_env(&input).unwrap()["preferenceIdentity"],
+            zero["preferenceIdentity"]
+        );
+    }
+    #[test]
+    fn environment_input_rejects_malformed_status_unknown_fields_and_invalid_known_axes() {
+        for axis in [
+            json!({"status":"known"}),
+            json!({"status":"known","value":null}),
+            json!({"status":"unknown","value":0}),
+            json!({"status":"unavailable"}),
+            json!({"status":"known","value":1,"extra":true}),
+        ] {
+            let mut input = env_request();
+            input["viewport"]["width"] = axis;
+            assert!(run_env(&input).is_err(), "{input}");
+        }
+        let mut input = env_request();
+        input["viewport"]["width"] = json!({"status":"known","value":-1});
+        assert!(run_env(&input).unwrap_err().contains("InvalidViewportAxis"));
+        input = env_request();
+        input["viewport"]["inlineSize"] = json!(2);
+        assert!(run_env(&input).unwrap_err().contains("unknown field"));
+        input = env_request();
+        input["mediaType"] = json!("screen");
+        assert!(run_env(&input).unwrap_err().contains("unknown field"));
+        input = env_request();
+        input["abiVersion"] = json!(2);
+        assert!(run_env(&input).unwrap_err().contains("AbiVersion"));
+    }
+    #[test]
+    fn environment_exact_input_and_retained_string_quotas_do_not_replace_unknown_with_zero() {
+        let mut input = env_request();
+        input["fontOverride"] = json!({"family":[65],"sizePx":16});
+        input["limits"]["inputUnits"] = json!(1);
+        let output = run_env(&input).unwrap();
+        let mut retained = output["preferenceIdentity"].as_array().unwrap().len();
+        for (name, value) in output["features"].as_object().unwrap() {
+            retained += name.encode_utf16().count();
+            if value["kind"] == "ident" {
+                retained += value["value"].as_str().unwrap().encode_utf16().count();
+            }
+        }
+        for field in ["mediaUnitBases", "valueUnitBases"] {
+            for row in output[field].as_array().unwrap() {
+                retained += row[0].as_str().unwrap().encode_utf16().count();
+            }
+        }
+        input["limits"]["retainedUnits"] = json!(retained);
+        assert_eq!(run_env(&input).unwrap(), output);
+        input["limits"]["retainedUnits"] = json!(retained - 1);
+        assert!(run_env(&input).unwrap_err().contains("ResourceLimit"));
+        input["limits"]["retainedUnits"] = json!(retained);
+        input["limits"]["inputUnits"] = json!(0);
+        assert!(run_env(&input).unwrap_err().contains("ResourceLimit"));
     }
     #[test]
     fn invalid_raw_preferences_and_explicit_resource_limits_do_not_fallback() {
