@@ -166,8 +166,7 @@
   },
   "limitations": [
     "New finite resource policy, not Chrome CSS validity; default integration requires separate public packed acceptance.",
-    "WASM Rust configuration strict-check passed; matching policy+ENV WASM payload is not built by this increment.",
-    "Copied existing a330 contextual WASM supports normal JS compatibility controls; not claimed policy+ENV equivalence."
+    "Actual native/Node-WASM/web-WASM policy+ENV equality is verified; this endpoint commit does not enable a public runtime default."
   ],
   "rawEvidence": ".evidence/runtime-policy/",
   "compatibilityArtifacts": {
@@ -175,5 +174,18 @@
     "wasmCSS": "a33002d572bcf64a7bb7074b5d819e643397f0ab3407d6ef019fbaea620eee74",
     "assembly": "actual scripts/css-shared.py assemble run; package/shared CSS bytes matching; old contextual WASM no policy/ENV claim"
   },
-  "validatedCodeCommit": "84344f43c2287f8803cb61b111fb61d383df5f85"
+  "validatedCodeCommit": "84344f43c2287f8803cb61b111fb61d383df5f85",
+  "wasmArtifacts": {
+    "wasmSha256": "ed79b1204a7ac8fd7cf90e7c168e655c17b82a6928ead4e201aabea8e9559834",
+    "wasmBytes": 16189799,
+    "nodeJsSha256": "8a59f334d86b7b8bbabb465ffd640235c729005b7e7331ab20875c629e1b45fd",
+    "webJsSha256": "06c268c823ed4e481d5e90ab606c7c3f5213b826a4a5c861a2e9d074158d4f0f",
+    "identicalNodeWebBinary": true,
+    "actualAbiVersion": "1 / 0.8.7",
+    "actualPolicyAndEnvironmentCallsPassed": true,
+    "nativeAddonModules": 0,
+    "sourceMatchesNativeArtifact": true,
+    "toolchain": "Rust1.98/offline/jobs1/incremental0/wasm-bindgen0.2.122/wasm-opt117/BINARYEN_CORES1",
+    "immutableRelativeRoot": ".evidence/runtime-policy/payload/ed79b1204a7ac8fd7cf90e7c168e655c17b82a6928ead4e201aabea8e9559834"
+  }
 }
