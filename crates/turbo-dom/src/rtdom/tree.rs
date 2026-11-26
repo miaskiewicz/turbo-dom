@@ -573,7 +573,9 @@ mod storage;
 
 #[path = "tree_access.rs"]
 mod tree_access;
-pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
+pub use storage::{
+    CollectionBudget, CollectionError, CollectionReport, StorageCollectionOutcome, StorageStats,
+};
 pub use tree_access::{LocalAttributes, ParseOptions};
 
 pub struct Tree {

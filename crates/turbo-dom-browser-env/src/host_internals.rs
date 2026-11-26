@@ -29,6 +29,9 @@ use crate::browser_env::{
     DOM_CONTEXTS, DOM_ID,
 };
 
+pub use super::storage_ownership::{collect_native_storage_if_needed, NativeStorageSweepReport};
+pub use turbo_dom_parser::rtdom::tree::StorageCollectionOutcome;
+
 #[path = "css_effect_lifecycle.rs"]
 mod css_effect_lifecycle;
 pub use css_effect_lifecycle::{

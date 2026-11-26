@@ -531,3 +531,6 @@ fn document_checkpoint_is_public_and_survives_startup_snapshot_rehydration() {
     }
     browser_env::reset();
 }
+
+#[path = "host_internals_api/storage_collection.rs"]
+mod storage_collection;
