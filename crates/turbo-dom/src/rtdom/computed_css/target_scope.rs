@@ -11,6 +11,21 @@ pub enum Boundary {
 pub use super::facts::MechanicalAnswer as BoundaryAnswer;
 /// The key is (compiled group ID, boundary kind, original enclosing root ID).
 pub type BoundaryAnswers = BTreeMap<(usize, Boundary, u32), BoundaryAnswer>;
+/// Exact stylesheet tree context, group, boundary and original enclosing root.
+pub type ContextBoundaryAnswers = BTreeMap<(u32, usize, Boundary, u32), BoundaryAnswer>;
+#[derive(Clone, Copy)]
+pub(crate) enum BoundaryAnswerSource<'a> {
+    Legacy(&'a BoundaryAnswers),
+    Context(u32, &'a ContextBoundaryAnswers),
+}
+impl BoundaryAnswerSource<'_> {
+    fn get(&self, key: (usize, Boundary, u32)) -> Option<&BoundaryAnswer> {
+        match self {
+            Self::Legacy(answers) => answers.get(&key),
+            Self::Context(tree_scope, answers) => answers.get(&(*tree_scope, key.0, key.1, key.2)),
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ScopeError {
     InvalidPath,
@@ -31,7 +46,7 @@ impl From<ScopeFactError> for ScopeError {
 
 struct ScopeRead<'a> {
     path: &'a [u32],
-    answers: &'a BoundaryAnswers,
+    answers: BoundaryAnswerSource<'a>,
     implicit_root: Option<usize>,
     owner_known: bool,
     remaining: usize,
@@ -46,7 +61,7 @@ impl ScopeRead<'_> {
     ) -> Result<bool, ScopeError> {
         let answer = self
             .answers
-            .get(&(group, boundary, self.path[root]))
+            .get((group, boundary, self.path[root]))
             .ok_or(ScopeError::MissingAnswer)?;
         answer
             .matches(self.path[node])
@@ -162,6 +177,24 @@ pub fn scope_roots_with_owner_budget(
     path: &[u32],
     owner: Option<u32>,
     answers: &BoundaryAnswers,
+    remaining: &mut usize,
+) -> Result<Vec<usize>, ScopeError> {
+    scope_roots_with_answer_budget(
+        groups,
+        scope_groups,
+        path,
+        owner,
+        BoundaryAnswerSource::Legacy(answers),
+        remaining,
+    )
+}
+
+pub(crate) fn scope_roots_with_answer_budget(
+    groups: &[CompiledGroup],
+    scope_groups: &[usize],
+    path: &[u32],
+    owner: Option<u32>,
+    answers: BoundaryAnswerSource<'_>,
     remaining: &mut usize,
 ) -> Result<Vec<usize>, ScopeError> {
     let maximum_decisions = *remaining;
@@ -314,5 +347,40 @@ mod tests {
             BoundaryAnswer::new(domain, vec![99]),
             Err(super::super::facts::FactError::OutsideDomain)
         ));
+    }
+    #[test]
+    fn contextual_boundaries_never_reuse_another_sheet_context_or_legacy_answers() {
+        let groups = vec![group("(.root) to(.limit)")];
+        let path = [10, 11, 12, 13];
+        let mut answers = ContextBoundaryAnswers::from([
+            ((7, 0, Boundary::Start, 13), answer(&[11])),
+            ((7, 0, Boundary::End, 11), answer(&[])),
+            ((9, 0, Boundary::Start, 13), answer(&[11])),
+            ((9, 0, Boundary::End, 11), answer(&[10])),
+        ]);
+        let read = |context, answers: &ContextBoundaryAnswers| {
+            scope_roots_with_answer_budget(
+                &groups,
+                &[0],
+                &path,
+                Some(13),
+                BoundaryAnswerSource::Context(context, answers),
+                &mut 64,
+            )
+        };
+        assert_eq!(read(7, &answers).unwrap(), vec![1]);
+        assert!(read(9, &answers).unwrap().is_empty());
+        assert_eq!(read(8, &answers), Err(ScopeError::MissingAnswer));
+        answers.insert((7, 0, Boundary::Start, 13), answer(&[]));
+        assert!(read(7, &answers).unwrap().is_empty());
+        answers.insert(
+            (7, 0, Boundary::Start, 13),
+            BoundaryAnswer::new(
+                super::super::facts::AnswerDomain::new(vec![10]).unwrap(),
+                vec![],
+            )
+            .unwrap(),
+        );
+        assert_eq!(read(7, &answers), Err(ScopeError::MissingAnswer));
     }
 }

@@ -87,7 +87,7 @@ wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 # Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
 wasm-runtime = ["dep:wasm-bindgen"]
 # Explicit feature for native-css / pkg-css only, never enabled by parser defaults.
-css-backend = ["dep:turbo_dom_core", "turbo_dom_core/computed-style-grammar", "dep:turbo_dom_layout", "dep:serde", "dep:serde_json"]
+css-backend = ["dep:turbo_dom_core", "turbo_dom_core/computed-style-grammar", "dep:turbo_dom_layout", "dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
 
 # Same clippy pedantic gate as the turbo-dom crate (crates/turbo-dom/Cargo.toml). The
 # allowed lints are intentional for a parser/marshaling layer that bridges f64 and integer

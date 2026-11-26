@@ -127,23 +127,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if compgen -G '*.node' >/dev/null; then
-            echo "::error::a .node is already in the package root; only the ci artifacts may ship"
-            exit 1
-          fi
-          find artifacts -name '*.node' -exec cp {} . \;
-          for node in linux-x64-gnu linux-x64-musl linux-arm64-gnu darwin-arm64 win32-x64-msvc; do
-            [ -f "turbo-dom-parser.$node.node" ] || { echo "::error::turbo-dom-parser.$node.node missing from the ci artifacts"; exit 1; }
-          done
-          ls -l *.node
+          python scripts/css-artifacts.py bundle --artifacts artifacts
       # Only the WASM targets are built here. prepublishOnly would also rebuild the host
       # (linux-x64-gnu) addon over the ci one, so it is not run, and publish skips scripts.
-      - name: Build the WASM targets (pkg/ + pkg-web/)
+      - name: Build parser and lazy CSS WASM targets
         if: steps.published.outputs.skip != 'true'
-        run: npm run build:wasm:pkg && npm run build:wasm:web
+        run: npm run build:wasm:pkg && npm run build:wasm:web && npm run build:css:wasm:pkg && npm run build:css:wasm:web && npm run assemble:css
+      - name: Verify complete native/WASM payload, versions, sizes and hashes
+        if: steps.published.outputs.skip != 'true'
+        run: npm run check:artifacts
       - name: glibc ceiling guard (the linux-gnu addons that ship)
         if: steps.published.outputs.skip != 'true'
-        run: bash scripts/check-glibc-ceiling.sh turbo-dom-parser.linux-x64-gnu.node turbo-dom-parser.linux-arm64-gnu.node
+        run: bash scripts/check-glibc-ceiling.sh turbo-dom-parser.linux-x64-gnu.node turbo-dom-parser.linux-arm64-gnu.node native-css/turbo-dom-css.linux-x64-gnu.node native-css/turbo-dom-css.linux-arm64-gnu.node
       - name: Publish @miaskiewicz/turbo-dom
         if: steps.published.outputs.skip != 'true'
         run: npm publish --access public --ignore-scripts

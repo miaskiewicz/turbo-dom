@@ -1,0 +1,62 @@
+{
+  "issue": 296,
+  "scope": "Core preferences foundation only; no npm default/runtime cutover",
+  "baseDependency": {
+    "original": "3051a51549b009b6025e7050cd5b9d7684aa39e7",
+    "localCherryPick": "03bd864923b709e7109dcf0ffabe637c61150004"
+  },
+  "files": {
+    "crates/turbo-dom/src/rtdom/computed_preferences.rs": "359f80f6a42f3bafff40b1c8cac6dc326461d024cf5f05a74f9d598e0c6751ff",
+    "crates/turbo-dom/src/rtdom/computed_preference_seeds.rs": "dd1b9d898cef63236751771f3c91a41748f40f9501e3733172b3827d90db8c52",
+    "crates/turbo-dom/src/rtdom/mod.rs": "091ae2f2018a5f662d60b453f62ee38cda5777d9f7bb9aaa07b86374a3c5fd63",
+    "crates/turbo-dom/src/rtdom/computed_css.rs": "d1ba1e7f4c1b0c703b6b0cd3b2326baf4108bfa06ef232d920475d219b9ae8a3",
+    "crates/turbo-dom/src/rtdom/computed_css/preferences.rs": "36bd794b1381c7182737dee871d1cdeee8c93672eb622569ebda6e7c84605e2f",
+    "crates/turbo-dom/tests/computed_preferences.rs": "ab465978a54ead6c3c3a9fbc27244bb99296c731b0fcbd0484b08582f1d7659a",
+    "crates/turbo-dom/tests/computed_preference_context.rs": "fff217388ab220541c0d85d807a5bde7cdde29e23e3e0119b15780c6b0010bed",
+    "scripts/generate-property-registry.py": "7a2cb126538ac403c419bbc3efe82c4fb8e2c1497e8451d9123ad076669ae2e0"
+  },
+  "gates": {
+    "rust": "1.98.0",
+    "jobs": 1,
+    "incremental": 0,
+    "offline": true,
+    "defaultTests": {
+      "passed": 589,
+      "failed": 0,
+      "existingIgnored": 9
+    },
+    "grammarFeatureTests": {
+      "passed": 867,
+      "failed": 0,
+      "existingIgnored": 9
+    },
+    "strictAllTargetClippy": "default+feature pass, zero warnings",
+    "fmt": "pass",
+    "complexity": "all Core source CC <=9",
+    "coverage": {
+      "default": "14335/14335 (100%)",
+      "computed-style-grammar": "17637/17637 (100%)",
+      "floor": 100
+    },
+    "generator": "check passes; full property_registry.rs unchanged dc2b367e382cf64281cac63b3a6140bb818203895d0cd08b472655f12d4466cb"
+  },
+  "sourcePolicy": {
+    "rawPreferences": "finite positive size; trim-empty family rejected; raw content retained",
+    "hostPlatform": "explicit MacOs/Other, never WASM cfg inference",
+    "fontSizeInput": "internal shortest roundtrip of finalized canonical f32 dimension basis",
+    "computedFontSize": "public six-significant CSSOM formatting retained separately",
+    "rendererInitials": "bounded renderer-only missing font-family/color; public and ancestor maps unchanged"
+  },
+  "notIncluded": [
+    "Root ABI endpoints/renderer integration",
+    "native font wrapper",
+    "layout UA",
+    "Node viewport/profile assembly",
+    "npm default switch"
+  ],
+  "evidence": {
+    "gatesManifestSha256": "ab8df26d861bd42b5aeee85c2f17b495f94bfa5e0c8139732eb900a790371ed7",
+    "numericRedReceiptSha256": "56eef7d789450da9eefefbf236b2ba644c3f42597e1eeee0059049cb0b8ecf2b",
+    "numericGreenReceiptSha256": "815198c6c1d32cbeeca5d40b609e7cb091a31679e9c38feb94e1e66d7e9570e1"
+  }
+}

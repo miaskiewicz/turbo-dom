@@ -1,0 +1,11 @@
+[
+ {"id":"scope-end-inside","html":"<div class=root><div class=limit><div class=x></div></div></div>","css":".x{color:red}@scope (.root) to (.limit){.x{color:blue}}","properties":["color"]},
+ {"id":"scope-end-outside","html":"<div class=root><div class=x></div><div class=limit></div></div>","css":".x{color:red}@scope (.root) to (.limit){.x{color:blue}}","properties":["color"]},
+ {"id":"own-none","html":"<div style=width:800px><div class=x style='display:none;width:50%'></div></div>","css":"","properties":["width"]},
+ {"id":"ancestor-none","html":"<div style='display:none;width:800px'><div class=x style='display:block;width:50%'></div></div>","css":"","properties":["width"]},
+ {"id":"ordinary-inline","html":"<div style=width:800px><span class=x style='width:50%'>text</span></div>","css":"","properties":["width"]},
+ {"id":"content-height","html":"<div style='height:200px'><div class=x style='height:50%;padding:10px;border:2px solid'></div></div>","css":"","properties":["height"]},
+ {"id":"border-height","html":"<div style='height:200px'><div class=x style='height:50%;box-sizing:border-box;padding:10px;border:2px solid'></div></div>","css":"","properties":["height"]},
+ {"id":"max-width","html":"<div style=width:800px><div class=x style='width:90%;max-width:100px'></div></div>","css":"","properties":["width"]},
+ {"id":"min-width","html":"<div style=width:800px><div class=x style='width:5%;min-width:100px'></div></div>","css":"","properties":["width"]}
+]

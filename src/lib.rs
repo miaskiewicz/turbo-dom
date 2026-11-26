@@ -11,6 +11,8 @@ mod css_backend;
 #[cfg(feature = "css-backend")]
 mod css_input;
 #[cfg(feature = "css-backend")]
+mod css_preferences;
+#[cfg(feature = "css-backend")]
 mod css_resolve;
 #[cfg(feature = "css-backend")]
 mod css_scene;

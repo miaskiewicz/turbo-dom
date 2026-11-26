@@ -1,10 +1,11 @@
 // Optional CSS artifacts are independent of the minimal HTML parser binding.
-import { createCssBackendResolver, cssCapabilityDescriptor } from './css-backend.mjs';
+import { createCssBackendResolver, cssCapabilityDescriptor, cssOptionalAbsent } from './css-backend.mjs';
 
 import { createParserRequire } from './parser.mjs';
 
+const applyMetadata = Reflect.apply;
 function metadata(binding, value) {
-  return typeof value === 'function' ? value.call(binding) : value;
+  return typeof value === 'function' ? applyMetadata(value, binding, []) : value;
 }
 
 export function normalizeCssArtifact(binding) {
@@ -13,11 +14,19 @@ export function normalizeCssArtifact(binding) {
   const CompiledStylesV1 = binding.CompiledStylesV1;
   const measureSceneV1 = binding.measureSceneV1;
   const cssUserAgentSourceV1 = binding.cssUserAgentSourceV1;
+  const serializeCssomV1 = binding.serializeCssomV1;
+  const projectCssomPropertyV1 = binding.projectCssomPropertyV1;
+  const cssComputedPreferencesV1 = binding.cssComputedPreferencesV1;
   if (
     abi === undefined &&
     CompiledStylesV1 === undefined &&
-    measureSceneV1 === undefined &&
-    cssUserAgentSourceV1 === undefined
+    cssOptionalAbsent([
+      measureSceneV1,
+      cssUserAgentSourceV1,
+      serializeCssomV1,
+      projectCssomPropertyV1,
+      cssComputedPreferencesV1,
+    ])
   )
     return null;
   const cssAbiVersion = metadata(binding, abi);
@@ -26,7 +35,15 @@ export function normalizeCssArtifact(binding) {
   if (cssAbiVersion !== 1 || typeof CompiledStylesV1 !== 'function' || backendVersion !== '0.8.7') {
     throw new TypeError('turbo-dom: incompatible CSS artifact (expected ABI 1, version 0.8.7)');
   }
-  return cssCapabilityDescriptor(cssAbiVersion, CompiledStylesV1, measureSceneV1, cssUserAgentSourceV1);
+  return cssCapabilityDescriptor(
+    cssAbiVersion,
+    CompiledStylesV1,
+    measureSceneV1,
+    cssUserAgentSourceV1,
+    serializeCssomV1,
+    projectCssomPropertyV1,
+    cssComputedPreferencesV1,
+  );
 }
 
 export function nativeCssSuffix(platform, arch, musl = false) {

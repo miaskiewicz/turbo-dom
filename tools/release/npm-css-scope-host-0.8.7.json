@@ -1,0 +1,78 @@
+{
+  "base": "3051a51549b009b6025e7050cd5b9d7684aa39e7",
+  "source": {
+    "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "ee3e7f7dcfc70a89b8e40ebd2db45d0a746f94ab87896cbacb0b627e786cf71e",
+    "crates/turbo-dom/src/rtdom/computed_css/shadow_routes.rs": "3eeb6024857b4f417df3ec7647a7aec60f405bd02c390a3dc5b495dd226b0cd0",
+    "crates/turbo-dom/tests/computed_shadow_routing.rs": "c8aaa1db99f523d791cd319b7b38050b19190219e5c91cc2c3a23e744b572f4c",
+    "crates/turbo-dom/tests/fixtures/computed_scope_host_chrome159.json": "3aa1280ee8d51d229a66b452e55e9f9c503dc0ed44300040041a40877739a1e7"
+  },
+  "scope": "Contextual Core-only host anchors; physicalpaths and PreparedRuleowners unchanged; no Root/JS/default/Scene/performance claim",
+  "gates": {
+    "defaultFullTests": {
+      "passed": 581,
+      "failed": 0,
+      "ignored": 9
+    },
+    "featureFullBeforeThreeTestOnlyAdditions": {
+      "passed": 860,
+      "failed": 0,
+      "ignored": 9
+    },
+    "featureInstrumentedFinal": {
+      "passed": 863,
+      "failed": 0,
+      "ignored": 7,
+      "docTestsNotExecutedByTarpaulin": 2
+    },
+    "focusedRouting": 24,
+    "defensivePrivate": 1,
+    "sourceHashedActualChrome159Rows": 46,
+    "defaultCoverage": {
+      "covered": 14307,
+      "coverable": 14307,
+      "percent": 100
+    },
+    "featureCoverage": {
+      "covered": 17607,
+      "coverable": 17607,
+      "percent": 100
+    },
+    "strictFeatureAllTargetClippy": true,
+    "fmtCc9Diff": true
+  },
+  "coveragePolicy": {
+    "engine": "llvm",
+    "includeFiles": "crates/turbo-dom/src/*",
+    "timeout": 600,
+    "failUnder": 100,
+    "jobs": 1,
+    "toolchain": "1.98.0",
+    "offline": true,
+    "floorChanged": false,
+    "exclusionsAdded": false
+  },
+  "testOnlyGapControls": [
+    "Public flatcontextscoped migration/nolegacyfallback",
+    "Public inconsistentphysicalpath duplicatehost refusal",
+    "Private defensive terminalrootcontract; explicitly not authoredDOMRED"
+  ],
+  "evidenceSha256": {
+    "BASELINE-RED.log": "440042899337e9ad6ee8499beae6a64b6e301f9470adc6bde673b26bc4719e5b",
+    "ORACLE-46-BASELINE-RED.log": "e036bff32cd6baaf5eab46f5fc4a3d2bf91cc580f9fc8ceeebda702292d682c5",
+    "ORACLE-46-03.log": "e58fbb755e9a605e293123976c82433121f220dd44eea9c569487875d65b0f9a",
+    "FULL-DEFAULT.log": "316f4eb790bbde9ac553316d5d5541d453fd1d9315382d182a5f3243fe08a875",
+    "FULL-FEATURE.log": "0351060d5a6a09fe8e9ddb1d75b5a28f73f5186e42f3dc6eb5d29371b9224406",
+    "COVERAGE-DEFAULT.log": "aea8b20491df9fdbf5a437e731310bd8c1f8ddcb55ef2fbb6eadbe9e809f205e",
+    "COVERAGE-FEATURE.log": "ec8aadb5974b7d73c7fa7a3836437ea8c1ff102ea3f53d2bfbab0620b6710baa",
+    "COVERAGE-FEATURE-GREEN.log": "dabf172b14a07335bab9fa16788dd6202f004c546dd2a881f70f4c726f8f159e",
+    "GAP-FOCUSED.log": "c830288469e798a382853c1212937d959cf4430ca1733878e88145e0b872079a",
+    "GAP-DEFENSIVE.log": "a68c609002d22aaff776266cda82b7241dd468b5c33652e23ae9a588509b5f07",
+    "FINAL-STRICT.log": "99f71393b9903dca098310bb446022a4bdee195ea9996f351a787195555210a6",
+    "FINAL-CC.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "remaining": [
+    "Normalcommit hook",
+    "Root DTO/native/WASM integration independent increment",
+    "No npm default/runtime completion claim"
+  ]
+}

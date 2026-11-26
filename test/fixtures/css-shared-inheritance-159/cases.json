@@ -1,0 +1,62 @@
+[
+  {
+    "id": "percentage-parent",
+    "family": "percentage",
+    "target": "parent",
+    "properties": [
+      [
+        "width",
+        "width"
+      ],
+      [
+        "font-size",
+        "fontSize"
+      ]
+    ]
+  },
+  {
+    "id": "percentage-child",
+    "family": "percentage",
+    "target": "child",
+    "properties": [
+      [
+        "width",
+        "width"
+      ],
+      [
+        "font-size",
+        "fontSize"
+      ]
+    ]
+  },
+  {
+    "id": "em-parent",
+    "family": "em",
+    "target": "parent",
+    "properties": [
+      [
+        "width",
+        "width"
+      ],
+      [
+        "font-size",
+        "fontSize"
+      ]
+    ]
+  },
+  {
+    "id": "em-child",
+    "family": "em",
+    "target": "child",
+    "properties": [
+      [
+        "width",
+        "width"
+      ],
+      [
+        "font-size",
+        "fontSize"
+      ]
+    ]
+  }
+]

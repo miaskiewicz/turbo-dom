@@ -1,0 +1,237 @@
+{
+  "status": "validated optional lazy presentation; published default unchanged; no #296 closure/performance acceptance",
+  "base": "1be2e4f2d309eb767200778ca9738d43a37b39f0",
+  "sourceSha256": {
+    "src/runtime/css-computed-proxy.mjs": "b9d26f206fdad7df23338995527d67407169e141a0271cf919c6978ee4be91ff",
+    "src/runtime/css-gcs-factory.mjs": "36d3369565587a01624512e924348984611db4782b431ba28b1d513434d9e301",
+    "test/css-used-proxy.test.mjs": "251a82684a55ec18ca414bbe91c2ae8cd292cd5c29edaf6cd6d7947c5072f5e7"
+  },
+  "gates": {
+    "focusedNode": {
+      "pass": 31,
+      "fail": 0,
+      "includes": "original24 +new7",
+      "log": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/.evidence/issue-296/used-proxy/FOCUSED-FINAL.log"
+    },
+    "targetedCoverageBeforeFormat": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 95.52,
+      "scope": "ONLY2files focused tests; NOTfullnpmfloorclaim",
+      "log": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/.evidence/issue-296/used-proxy/FOCUSED-COVERAGE-02.log"
+    },
+    "complexity9": "pass CC-FINAL.log",
+    "format": "pass FORMAT.log",
+    "diffCheck": "pass",
+    "fullJavaScript": {
+      "pass": 1000,
+      "fail": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.32,
+      "log": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/.evidence/issue-296/used-proxy/FULL-HOOK-CONCURRENCY-03.log",
+      "source2filesUnchangedSinceFreeze": true
+    },
+    "vitest": {
+      "pass": 29,
+      "fail": 0
+    },
+    "jest": {
+      "pass": 2,
+      "fail": 0
+    }
+  },
+  "plainHtmlParserDependency": {
+    "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-proxy-296/turbo-dom-parser.darwin-arm64.node",
+    "sha256": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412",
+    "scope": "existing1.98plainHTMLparser copiedread-only fororiginalChrome/custompropertyunitcontrol; NOTnewCSSRootartifact"
+  },
+  "contract": [
+    "OptionalresolveProperty callback; undefined preservesoldmetadata-absentmode, null/nonfunction explicitTypeError.",
+    "OnlyRustrow.usedProperties drivespendingSet; namesmustalreadyhaveprimitivebasevalue, noJSwidthtable.",
+    "Color/length/item/iterator/priority readsdo notinvoke callback orRootScene.",
+    "SuccessmustString, cachedonceperproxy; failureidentity preserved, pendingkey retryable.",
+    "Callbackgets ownedfrozen originalrow/batch/providerDTO; readContextshallowfrozenpreservesowner/certificateidentities.",
+    "EmptyusedProperties neverclonesbatch/providercontext.",
+    "Per-factoryWeakMapmemo clonesownedobjects once, noreferencesregistry; errorsremoveallnewpartialclones transactionally.",
+    "NewcallbackproviderContext MUSTpuredata; native/opaquehandles/functions rejected. CallerprojectsDOMsnapshotsfirst.",
+    "Callbacksneverreceivebackend/compiled/prepared resources. Alreadyreturnedproxies remainreadableafterreset/dispose.",
+    "Rendererrows andbatch are nevermutated bypresentation. Defaultcallbackabsent pathdoesnotrequiremetadata orclonecontext."
+  ],
+  "notRun": [
+    "Rust/addonbuild inthischild",
+    "benchmark/performance",
+    "defaultactivation"
+  ],
+  "openReview": [
+    "CacheisprivatepresentationMapperproxy; broad-version proxyrecreation currentlyconstructsnewpresentationMap asoldfactorydoes forstyles. No crossversiongeometryreuseclaim.",
+    "UTF16 decodingnowcapturescollectionhelpers andusesown-data chunkcells toavoidprimordialstoreescape; no performanceclaim."
+  ],
+  "supplementalTest": "metadata-only customcase/null-prototype DTOinverse added afterinitial997pass/97.28branch run; two productionfiles untouched; full998pass/97.30branch nowgreen",
+  "baseDependency": "1be2e4f2d309eb767200778ca9738d43a37b39f0",
+  "combinedActualProof": {
+    "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/ASSERTED-ALL-MODES.json",
+    "sha256": "d7c3be317db433810c29675eef84234498df9339e6a9964c4946207d88a5d398",
+    "checks": [
+      {
+        "suite": "inheritance4",
+        "mode": "native",
+        "passed": 4,
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        },
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db"
+      },
+      {
+        "suite": "inheritance4",
+        "mode": "node-wasm",
+        "passed": 4,
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        },
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745"
+      },
+      {
+        "suite": "inheritance4",
+        "mode": "web-wasm",
+        "passed": 4,
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        },
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e"
+      },
+      {
+        "suite": "original15",
+        "mode": "native",
+        "passed": 15,
+        "criterion": "exact previously certified15 public API values/authored unchanged",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db"
+      },
+      {
+        "suite": "original18",
+        "mode": "native",
+        "passed": 18,
+        "criterion": "exact original18 oracle",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db"
+      },
+      {
+        "suite": "original15",
+        "mode": "node-wasm",
+        "passed": 15,
+        "criterion": "exact previously certified15 public API values/authored unchanged",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745"
+      },
+      {
+        "suite": "original18",
+        "mode": "node-wasm",
+        "passed": 18,
+        "criterion": "exact original18 oracle",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745"
+      },
+      {
+        "suite": "original15",
+        "mode": "web-wasm",
+        "passed": 15,
+        "criterion": "exact previously certified15 public API values/authored unchanged",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e"
+      },
+      {
+        "suite": "original18",
+        "mode": "web-wasm",
+        "passed": 18,
+        "criterion": "exact original18 oracle",
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e"
+      }
+    ],
+    "sourceVerification": [
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/computed-used-inheritance/USED-NATIVE.json",
+        "sha256": "42a63ae4aeefb256c5288290028b33a900de7d52ce35f869f6bb35b098085e26",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/computed-used-inheritance/USED-NODE-WASM.json",
+        "sha256": "7bf07d5f3f846cfdac88d8465bf16de8d36d293b7845ea4bc01e59fe33a47e26",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/computed-used-inheritance/USED-WEB-ESM.json",
+        "sha256": "a2f0e7c41666a311ceb0e9db66b12b22099a1582ae0396659c5f1cb6e64b8f8e",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original15/native.json",
+        "sha256": "fb6a819c556c75b3d680a6fd6b56c80c07b4f830f52f5e57fb1517954364808a",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original18/native.json",
+        "sha256": "a3959ca37c790452ccc08b689fee8c9abf0f0249051d6639aa1eb2d0fa9cb9a8",
+        "sourceVerification": "hashed original18 harness imports frozen exact factory; factory imports adjacent frozen proxy (result lacks embedded sourceManifest)"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original15/node-wasm.json",
+        "sha256": "499ed65dd14cad9f6b414e969012eaabc88b675aa5bb6ca15b672c3fe038f848",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original18/node-wasm.json",
+        "sha256": "4445ff00a59d6e041e17f47046de98e8adf41c21b142584d0ce6e563d5a51625",
+        "sourceVerification": "hashed original18 harness imports frozen exact factory; factory imports adjacent frozen proxy (result lacks embedded sourceManifest)"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original15/web-wasm.json",
+        "sha256": "0f6d6c7afafb039fcf5e390338a59e4c51ec82e528c45ee5c3f82515fb5c5bd3",
+        "sourceVerification": "embedded exact proxy/factory source hashes"
+      },
+      {
+        "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-values-296/.evidence/issue-296/used-regression-refresh/original18/web-wasm.json",
+        "sha256": "f169b9978b4768d5afd8aeb797560b54b23c928bfe3f4a1464b672d4d1de1663",
+        "sourceVerification": "hashed original18 harness imports frozen exact factory; factory imports adjacent frozen proxy (result lacks embedded sourceManifest)"
+      }
+    ],
+    "nativeArtifact": {
+      "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db/turbo-dom-css.darwin-arm64.node",
+      "sha256": "35edaaf7737438559416cf8dda96bb647a4c30f2be6b2b6413a9711dad4355db"
+    },
+    "wasmArtifacts": [
+      {
+        "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/node/turbo_dom_css_bg.wasm",
+        "sha256": "08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde"
+      },
+      {
+        "path": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde/web/turbo_dom_css_bg.wasm",
+        "sha256": "08235348d3551f3799c2ff26a08f2fc0c23e532429fd7654ae0773e7e8a8bfde"
+      }
+    ],
+    "noDefaultSwitch": true
+  },
+  "hookThresholdAudit": "Firstnormalhook998passedbutreported97.29branches despite97.3CLIthreshold; noacceptancebasedonthatrounding. Test-onlyfactorymalformedname/nativefunctioncontextguardsadded; actualunlimitedhook-concurrencyfull1000now97.32. Noassertion/floor/source2filechanges."
+}

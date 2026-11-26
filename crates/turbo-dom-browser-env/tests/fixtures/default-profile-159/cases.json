@@ -1,0 +1,12 @@
+[
+ {"id":"family-initial","style":"font-family:initial","properties":["font-family"]},
+ {"id":"family-inherit","style":"font-family:inherit","properties":["font-family"]},
+ {"id":"size-initial","style":"font-size:initial","properties":["font-size"]},
+ {"id":"size-inherit","style":"font-size:inherit","properties":["font-size"]},
+ {"id":"color-initial","style":"color:initial","properties":["color"]},
+ {"id":"color-inherit","style":"color:inherit","properties":["color"]},
+ {"id":"viewport-default","css":".x{color:red;width:50vw}@media(min-width:1000px){.x{color:blue}}","properties":["color","width"]},
+ {"id":"viewport-width-data","css":".x{color:red;width:50vw}@media(min-width:1000px){.x{color:blue}}","change":{"innerWidth":640},"physicalAfter":{"width":640,"height":768},"properties":["color","width"]},
+ {"id":"viewport-height-data","css":".x{color:red;width:50vh}@media(min-height:700px){.x{color:blue}}","change":{"innerHeight":600},"physicalAfter":{"width":1024,"height":600},"properties":["color","width"]},
+ {"id":"viewport-width-accessor","css":".x{color:red;width:50vw}@media(min-width:1000px){.x{color:blue}}","accessor":"innerWidth","properties":["color","width"]}
+]

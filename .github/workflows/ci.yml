@@ -88,6 +88,17 @@ jobs:
           RUSTFLAGS: "-C strip=symbols"
         run: npx napi build --platform --release --target ${{ matrix.target }}
 
+      - name: Build separate lazy CSS addon (parser artifact unchanged)
+        env:
+          RUSTFLAGS: "-C strip=symbols"
+        run: python scripts/css-artifacts.py native --target ${{ matrix.target }}
+
+      - name: Require actual CSS native ABI on the matching host
+        # The musl target is cross-built on GNU; its native load is exercised by
+        # musl consumers, while this step must never load a foreign-libc addon.
+        if: matrix.target != 'x86_64-unknown-linux-musl'
+        run: node scripts/check-css-host.cjs --native-only
+
       # Names the expected addon explicitly, so a missing or misnamed .node fails the guard
       # instead of an unmatched glob passing it.
       - name: glibc ceiling guard (linux addon runs on glibc >= 2.35)
@@ -99,12 +110,15 @@ jobs:
             aarch64-unknown-linux-gnu) node=turbo-dom-parser.linux-arm64-gnu.node ;;
             *) echo "::error::no expected addon name for ${{ matrix.target }}"; exit 1 ;;
           esac
-          bash scripts/check-glibc-ceiling.sh "$node"
+          css="native-css/${node/turbo-dom-parser/turbo-dom-css}"
+          bash scripts/check-glibc-ceiling.sh "$node" "$css"
 
       - uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.target }}
-          path: '*.node'
+          path: |
+            *.node
+            native-css/*.node
           if-no-files-found: error
 
   # ---- base: turbo-dom + turbo-dom-parser tests, clippy and the JS suites on Linux ----
@@ -144,6 +158,12 @@ jobs:
       - name: Build WASM parser (nodejs + web targets — exercised by parser.test.mjs)
         run: npm run build:wasm:pkg && npm run build:wasm:web
 
+      - name: Build lazy CSS payloads and require real host ABI
+        run: npm run build:css && npm run check:css:host
+
+      - name: CSS packaging helper controls (offline, no compiler)
+        run: node --test scripts/check-css-host.test.cjs
+
       - name: Rust parser tests (turbo-dom-parser)
         run: cargo test -p turbo-dom-parser --lib
 
@@ -154,6 +174,8 @@ jobs:
           cargo clippy -p turbo-dom -p turbo-dom-parser --all-targets -- -D warnings
           cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind -- -D warnings
           cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-runtime -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features napi-bind,css-backend -- -D warnings
+          cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind,css-backend -- -D warnings
 
       - name: Rust DOM runtime tests (turbo-dom crate + conformance gate)
         run: cargo test -p turbo-dom

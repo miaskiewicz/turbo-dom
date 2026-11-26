@@ -1,0 +1,72 @@
+{
+  "base": "9701a4d6f2ac83e6ef6990a034e6215de8df9067",
+  "status": "validated-node-candidate-required-native-build-complete",
+  "source": {
+    "src/runtime/css-gcs-factory.mjs": "03b23b4f759c820079b1e643290616062553defa9282c4d5437c138a56817391",
+    "src/runtime/css-computed-proxy.mjs": "39c07419abb6f8e90db95e4033ff159d8da87d7a4f9e4f73d628f628ecf4af78",
+    "test/css-factory-integrity.test.mjs": "624bec2b9fe876b2f0ed6b4ec9c378a7e4a93ad00138cee74aaf4487680949b7"
+  },
+  "controls": {
+    "initialRealCalloutFailures": 8,
+    "isolatedPoisonModes": [
+      "inherited toJSON",
+      "Array.push",
+      "Array iterator",
+      "Object.assign",
+      "WeakMap.get",
+      "Set.add",
+      "indexed Array setter",
+      "Array species"
+    ],
+    "fixedFocusedControls": 9,
+    "lazyOwnedCopiesCovered": true,
+    "identityTransportWarmCache": true,
+    "undefinedKeyOmission": true,
+    "proxyOriginalErrorIdentity": true,
+    "retainedViewAfterDispose": true
+  },
+  "gates": {
+    "fullNode": {
+      "pass": 1009,
+      "fail": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.32
+    },
+    "vitest": 29,
+    "jest": 2,
+    "complexityLimit": 9,
+    "lint": "PASS"
+  },
+  "parserUnchangedRootSources": {
+    "src/lib.rs": "bd1a7de286f7dde0061073ca5aa3a75ebc356b3a348bff543b638e56d0ea90fe",
+    "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+    "Cargo.toml": "ba8a0111e40f2ba20111d2d5e5804893854675d6e4805bb2d064d43ccbd96118",
+    "Cargo.lock": "564a26b82da64091441471a81621fbd723e7befa1c2bebefd23c824754a4201b"
+  },
+  "actualParserAddonSha256": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412",
+  "noRustChanges": true,
+  "defaultComputedStyleUnchanged": true,
+  "remaining": [
+    "normal hook and committed-source receipt",
+    "independent adapter snapshot/shadow/profile/performance gates"
+  ],
+  "requiredNativeBuild": {
+    "script": "scripts/agent/build-napi.sh",
+    "toolchain": "1.98.0",
+    "jobs": 1,
+    "offline": true,
+    "cargoTarget": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/production-target",
+    "sourceAndCuratedJsDtsUnchanged": true,
+    "hashes": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "bd1a7de286f7dde0061073ca5aa3a75ebc356b3a348bff543b638e56d0ea90fe",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "ba8a0111e40f2ba20111d2d5e5804893854675d6e4805bb2d064d43ccbd96118",
+      "Cargo.lock": "564a26b82da64091441471a81621fbd723e7befa1c2bebefd23c824754a4201b"
+    },
+    "artifactSha256": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412",
+    "buildLogSha256": "b010cdf75d063b017d7d3754c05ac1bc067c8c6b1384d958fbb858ce6a9a090b"
+  }
+}

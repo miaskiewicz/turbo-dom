@@ -26,3 +26,13 @@ mutants.out.old/
 
 # Local decoder investigation logs, archives and private build caches
 /.evidence/
+
+# Separate lazy CSS WASM build outputs
+/pkg-css
+/pkg-css-web
+
+# Generated parser web payload (never source)
+/pkg-web
+
+# Shared derived CSS glue and one WASM payload
+/css-wasm

@@ -503,3 +503,89 @@ fn container_layers_follow_source_hashed_chrome159_at_both_real_container_sizes(
         }
     }
 }
+
+#[test]
+fn contextual_compute_pipeline_uses_only_exact_context_maps_and_keeps_values_canonical() {
+    use turbo_dom::rtdom::computed_css::{
+        resolve::compute_style_with_context_answers,
+        rule_matches::{ContextAnswers, ContextSelectorAnswers},
+    };
+    let prepared = model(".x{--ink:red;color:var(--ink);width:2rem}");
+    let legacy = answers(&prepared);
+    let empty = BTreeMap::new();
+    let boundaries = BTreeMap::new();
+    let legacy_boundaries = BTreeMap::new();
+    let contextual: ContextSelectorAnswers = legacy
+        .keys()
+        .map(|key| {
+            (
+                (0, key.0, key.1, key.2),
+                MechanicalAnswer::new(AnswerDomain::new(vec![2]).unwrap(), vec![2]).unwrap(),
+            )
+        })
+        .collect();
+    let facts = TargetFacts {
+        containers: None,
+        path: &[2, 1],
+        implicit_scope_root: 1,
+        pseudo: None,
+        selectors: &empty,
+        routes: None,
+        boundaries: &legacy_boundaries,
+    };
+    let context = TargetContext {
+        tree_scope: 0,
+        scope_depth: 0,
+        values: ValueContext {
+            initial: InitialContext {
+                color: "rgb(0, 0, 0)",
+                font_family: "serif",
+                font_size: "16px",
+            },
+            unit_bases: &[("rem", 16.0)],
+            font_size_unit_bases: &[],
+            is_root: false,
+        },
+    };
+    let read = |selectors: &ContextSelectorAnswers| {
+        compute_style_with_context_answers(
+            &prepared,
+            &facts,
+            None,
+            None,
+            &context,
+            ResolveLimits {
+                matching_decisions: 4096,
+                inline: InlineLimits {
+                    computation: limits(),
+                    declarations: 128,
+                    properties: 2048,
+                },
+                custom: CustomCascadeLimits {
+                    computation: limits(),
+                    rollbacks: 128,
+                },
+                values: turbo_dom::rtdom::computed_css::computed_values::ValueLimits {
+                    computation: limits(),
+                    retained_units: 32768,
+                },
+            },
+            ContextAnswers {
+                selectors,
+                boundaries: &boundaries,
+            },
+        )
+    };
+    let result = read(&contextual).unwrap();
+    assert_eq!(value(&result, "color"), Some("rgb(255, 0, 0)".to_owned()));
+    assert_eq!(value(&result, "width"), Some("32px".to_owned()));
+    assert_eq!(result.custom.get("--ink"), Some(&text("red")));
+    assert!(matches!(
+        read(&BTreeMap::new()),
+        Err(
+            turbo_dom::rtdom::computed_css::resolve::ResolveError::Matching(
+                MatchError::MissingSelectorAnswer
+            )
+        )
+    ));
+}

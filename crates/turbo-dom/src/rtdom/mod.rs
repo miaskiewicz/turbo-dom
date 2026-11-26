@@ -14,6 +14,8 @@ pub mod canvas;
 pub mod cascade;
 pub mod color;
 pub mod computed_css;
+mod computed_preference_seeds;
+pub mod computed_preferences;
 pub mod css_shorthand;
 pub mod css_values;
 pub mod cssom;

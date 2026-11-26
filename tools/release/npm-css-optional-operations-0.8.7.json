@@ -1,0 +1,87 @@
+{
+  "scope": "Optional operation forwarding only; no Root/Core/default/backend mode changes",
+  "base": "c0475893c30d08e6e5ff84dd150155b718e0b6b9",
+  "requiredDisjointDependencies": [
+    "1be2e4f2d309eb767200778ca9738d43a37b39f0",
+    "5a0b68f7e38db747c3cbb4fdbbf827bc45511e52",
+    "9701a4d6f2ac83e6ef6990a034e6215de8df9067",
+    "f3236d0556a932002b53bead78830a81eff24d22"
+  ],
+  "source": {
+    "src/runtime/css-backend.mjs": "929afb794ecdcd2ff2a59a00bbb5afce1d6868853da57be2ddc5df22ea205a5d",
+    "src/runtime/css-artifact.mjs": "d01506de9be2b8dc4658a3ffaec9c6be202df28bef0d49121ca64c89b51223b9",
+    "test/css-optional-operations.test.mjs": "3e246d60f37b993964d73832c79c244cc8215baee6c0e997749c92c68059cb9d",
+    "test/css-optional-real.test.mjs": "67719b5a45b0d3d909c2b70d46327e375e735f9d45d6e9bbbc879413aa01e6ed",
+    "test/fixtures/css-optional-ops/actual.mjs": "fb77fd80532c1b5512c2e7734829d8de66b7686cfd52913dca2b14d7c99f5282"
+  },
+  "artifactHashes": {
+    "nativeOld": "b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa",
+    "wasmOld": "b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb",
+    "nativePreferences": "9e3288d7924a9fecfb35c605eb57ecdca94656b3b8cc36cdc2e79b9a56d33709",
+    "wasmPreferences": "2e70c697ffd9b9ef07fff3dd104f3d7faebfeca1bb65e32bf4b902da6e577680"
+  },
+  "tests": {
+    "baselineFailed": 9,
+    "baselinePassed": 1,
+    "focused": 41,
+    "fullNode": 980,
+    "coverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.72
+    },
+    "vitest": 29,
+    "jest": 2,
+    "complexity9": true,
+    "actualLegacyNativeNoWasm": true,
+    "actualLegacyWasmNoNative": true,
+    "actualPreferencesNativeNoWasm": true,
+    "actualPreferencesWasmNoNative": true
+  },
+  "evidenceSha256": {
+    "FULL-FINAL.log": "419fc98c58c76a2de7334e83d054b72b6da8830715d7079420f98f9b557cf419",
+    "FOCUSED-03.log": "34d46ce2edfadc2efa081f6ea5b74f54af0c47cbef96abfee79fa39a4167415c",
+    "VITEST.log": "9400054e3a1c7916c0c7d611b90ee18e899e9dff73395d3ab0d9fa7bfd1f1f68",
+    "JEST.log": "d85157802c233d3ebb367fc9add47cfb724bd05895dacb721d53b3444837828d",
+    "CC-02.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "LEGACY-NATIVE-FINAL.log": "d5f1ff208ba901d6ee7257b9ab9e051331790ffa27ddf1898de11e6381100beb",
+    "LEGACY-WASM-FINAL.log": "22374f69e23f97e566551919f25ec7fecd4ce36dd98dc94a6062604124294214",
+    "PREFS-NATIVE-FINAL.log": "d5f1ff208ba901d6ee7257b9ab9e051331790ffa27ddf1898de11e6381100beb",
+    "PREFS-WASM-FINAL.log": "22374f69e23f97e566551919f25ec7fecd4ce36dd98dc94a6062604124294214"
+  },
+  "remaining": [
+    "Normal commit hook"
+  ],
+  "notes": [
+    "Copied plain parserbc97 used in Node tests; not a newbuild claim.",
+    "Old c018 artifact absence of optionalpreferences remains valid. Newprofile must explicitly require newcapability separately.",
+    "Initial newfixture4096-unit retainedlimit correctly surfaced ResourceLimit; success fixture bound derives actualUA units+1024, test-only notproductiondefault.",
+    "Forced native has no WebAssembly; forcedWASM loads0native modules."
+  ],
+  "requiredBuild": {
+    "script": "scripts/agent/build-napi.sh",
+    "exitCode": 0,
+    "toolchain": "1.98.0",
+    "jobs": 1,
+    "offline": true,
+    "incremental": 0,
+    "before": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "fd10fcc81670569222406874edbcca1efb46a9904b41eb73c3e07ac246a4c98c",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "ab2e7017aaab868686a5c2ccad29a553e29c5c128cc6e64b03b429d4b3cc681f",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e"
+    },
+    "after": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "fd10fcc81670569222406874edbcca1efb46a9904b41eb73c3e07ac246a4c98c",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "ab2e7017aaab868686a5c2ccad29a553e29c5c128cc6e64b03b429d4b3cc681f",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e"
+    },
+    "logSha256": "ef581a0c0af1124fc5963859a7b6b1c525568d3c9311c79d36d290cea7282199",
+    "artifactSha256": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412"
+  }
+}

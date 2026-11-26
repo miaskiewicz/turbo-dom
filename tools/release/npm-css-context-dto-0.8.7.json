@@ -1,0 +1,76 @@
+{
+  "base": "be833152b3a259601da398911dbe9a40353d8cdf",
+  "source": {
+    "src/css_resolve.rs": "4277d3b9156434b4091a249b6ccdc88cf76915ca6a1747ea2ac6071187f9a910",
+    "src/css_resolve_context_tests.rs": "359885ca8922db9f9036cbed2adedd201ff1371d9eeb242006e4e4e840e16040"
+  },
+  "scope": "Additive optional Request.contextAnswers only; no Core scope-host semantic source/JS/default/manifest/API-output changes",
+  "protocol": {
+    "absentOrNull": "unchanged legacy",
+    "present": "nested required selectorAnswers/scopeAnswers; legacy top-level arrays must be empty",
+    "owner": "declared contextRoot keys plus existing per-target canonical route validation; Core consumes exact preparedbinding.tree_scope",
+    "inactiveDisabled": "unused declared-context answers remain valid and fully quota charged",
+    "fallback": false
+  },
+  "gates": {
+    "rootFullCssTests": 69,
+    "rootFocusedContextContracts": 7,
+    "strictActualNativeNapiCssAllTargets": true,
+    "strictWasm32WasmBindCssLib": true,
+    "fmtCc9Diff": true,
+    "nodeFull": 980,
+    "coverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.73
+    },
+    "vitest": 29,
+    "jest": 2
+  },
+  "requiredBuild": {
+    "script": "scripts/agent/build-napi.sh",
+    "exitCode": 0,
+    "toolchain": "1.98.0",
+    "jobs": 1,
+    "offline": true,
+    "elapsedReportedSeconds": 4.77,
+    "before": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "7f429c1b790bb27e589020cf702a49582eabb08b799fcdcb1461211f8e1c3b39",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "71b40ddb09181a9876f5cf203aa55dca3f75d36fe16495f2c6ff5727ed3f8f8c",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "src/css_resolve.rs": "4277d3b9156434b4091a249b6ccdc88cf76915ca6a1747ea2ac6071187f9a910",
+      "src/css_resolve_context_tests.rs": "359885ca8922db9f9036cbed2adedd201ff1371d9eeb242006e4e4e840e16040"
+    },
+    "after": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "7f429c1b790bb27e589020cf702a49582eabb08b799fcdcb1461211f8e1c3b39",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "71b40ddb09181a9876f5cf203aa55dca3f75d36fe16495f2c6ff5727ed3f8f8c",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "src/css_resolve.rs": "4277d3b9156434b4091a249b6ccdc88cf76915ca6a1747ea2ac6071187f9a910",
+      "src/css_resolve_context_tests.rs": "359885ca8922db9f9036cbed2adedd201ff1371d9eeb242006e4e4e840e16040"
+    },
+    "nativeParserSha256": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412"
+  },
+  "evidenceSha256": {
+    "FOCUSED-01.log": "e2feb9f9c959841f6b777c9240cf595de6b04f37098c7d062abeb4b227485446",
+    "ROOT-FULL-01.log": "273d549d5f115c38be11cc61fff11417239017811e1c3b91abe360058e6815af",
+    "NATIVE-STRICT-01.log": "7178a4fd94a1dfee89344f7002b4dc96b84f9237ec4bb392be64e898dddc7a35",
+    "WASM-STRICT-01.log": "e605eb2fb391accdbf8d7c5170765b214a5b699f7945337b420a62325c8a2c20",
+    "BUILD-NAPI.log": "b44b40e57e2258f7b4bccd3af84fb98fe831cc8e604b3d6d4d9c39b4bcad453a",
+    "NODE-FULL-01.log": "193ef1f9a2ca8f0940a0c63f947f3369f788857de52bd05d31081301cd77bfe3",
+    "VITEST.log": "b3316422584c9787c405c26e4097cf45172bf2f44fd9adaa7dc93404095d3400",
+    "JEST.log": "1c5af410cf4c4f8e0a98e88d021185d9fa51faec467117b5ff63a079dedd5052",
+    "OLD-NATIVE-PROTOCOL-RED.json": "32c0e34fdfeae12c7e63599137daa540db37f06060752d3d4a5998543447b901"
+  },
+  "remaining": [
+    "Normal commit hook",
+    "Source-matched new DTO native/WASM payload generation and actual protocol probes remain separate, deliberately not claimed by this increment",
+    "Core scope-host6a61 semantic dependency integrates independently"
+  ],
+  "defaultChanged": false
+}
