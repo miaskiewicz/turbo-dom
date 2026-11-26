@@ -1,7 +1,11 @@
 //! Test-only primitive operation counts. Never a cache permission or V8 root.
 use super::*;
 use serde::Serialize;
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    rc::{Rc, Weak},
+};
 
 #[derive(Clone, Default, Debug, Serialize)]
 pub(super) struct Report {
@@ -26,6 +30,8 @@ pub(super) struct Report {
     pub foreign_empty_documents: u64,
     pub diagnostic_empty_documents: u64,
     pub slots_max: u64,
+    pub claim_scope_switches: u64,
+    pub diagnostic_claim_scope_switches: u64,
 }
 #[derive(Default)]
 struct State {
@@ -175,4 +181,31 @@ pub(super) fn note(scope: &v8::Isolate, code: usize, first: u64, second: u64) ->
         _ => {}
     }
     0
+}
+
+thread_local! {
+    // Only a weak bridge to isolate-owned primitive test state; no V8 roots.
+    static CLAIM_STATE: RefCell<Option<Weak<RefCell<State>>>> = const { RefCell::new(None) };
+}
+
+pub(super) struct ClaimPhase(Option<Weak<RefCell<State>>>);
+impl Drop for ClaimPhase {
+    fn drop(&mut self) {
+        CLAIM_STATE.with(|active| *active.borrow_mut() = self.0.take());
+    }
+}
+pub(super) fn claim_phase(scope: &v8::Isolate) -> ClaimPhase {
+    let next = state(scope).map(|state| Rc::downgrade(&state));
+    ClaimPhase(CLAIM_STATE.with(|active| active.replace(next)))
+}
+pub(super) fn claim_scope_switched() {
+    let active = CLAIM_STATE.with(|active| active.borrow().as_ref().and_then(Weak::upgrade));
+    if let Some(slot) = active {
+        let mut state = slot.borrow_mut();
+        if state.callbacks.last().is_some_and(|frame| frame.1) {
+            state.report.diagnostic_claim_scope_switches += 1;
+        } else {
+            state.report.claim_scope_switches += 1;
+        }
+    }
 }

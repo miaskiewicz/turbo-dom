@@ -793,6 +793,8 @@ impl DomScope {
     fn enter(id: u64) -> Self {
         let previous = DOM_ID.with(|d| d.replace(id));
         if id != previous {
+            #[cfg(all(test, feature = "host-internals"))]
+            sampler_diagnostics::claim_scope_switched();
             let old = take_dom();
             let next = OTHER_DOMS.with(|d| {
                 let mut d = d.borrow_mut();
@@ -812,6 +814,8 @@ impl Drop for DomScope {
     fn drop(&mut self) {
         let current = DOM_ID.with(|d| d.get());
         if current != self.0 {
+            #[cfg(all(test, feature = "host-internals"))]
+            sampler_diagnostics::claim_scope_switched();
             let saved = take_dom();
             let previous = OTHER_DOMS.with(|d| {
                 let mut d = d.borrow_mut();

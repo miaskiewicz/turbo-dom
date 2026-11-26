@@ -1,0 +1,1610 @@
+{
+  "base": "e62c9dcfe8a8f1d940e1c9f5379d92df9d145feb",
+  "scope": "direct pure mutation batch claim; no sampler cache or flush bypass",
+  "rows": [
+    {
+      "D": 4,
+      "N": 16,
+      "M": 0,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 0,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 0,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 0,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 16,
+      "M": 1,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 1,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 1,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 1,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 16,
+      "M": 8,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 8,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 8,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 8,
+      "recording": false,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 0,
+          "after": 0
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 16,
+      "M": 0,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 3312,
+          "after": 3312
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 3312,
+          "after": 3312
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 0,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 11904,
+          "after": 11904
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 11904,
+          "after": 11904
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 0,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 7596,
+          "after": 7596
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 7596,
+          "after": 7596
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 0,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 25404,
+          "after": 25404
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "empty_documents": {
+          "before": 25404,
+          "after": 25404
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 1,
+          "after": 1
+        },
+        "claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 16,
+      "M": 1,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 3312,
+          "after": 3312
+        },
+        "empty_documents": {
+          "before": 6624,
+          "after": 6624
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 6624,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 266,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 3312,
+          "after": 3312
+        },
+        "empty_documents": {
+          "before": 6624,
+          "after": 6624
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 6624,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 266,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 1,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 11904,
+          "after": 11904
+        },
+        "empty_documents": {
+          "before": 23808,
+          "after": 23808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 23808,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 1034,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 11904,
+          "after": 11904
+        },
+        "empty_documents": {
+          "before": 23808,
+          "after": 23808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 23808,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 1034,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 1,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 7596,
+          "after": 7596
+        },
+        "empty_documents": {
+          "before": 15192,
+          "after": 15192
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 15192,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 674,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 7596,
+          "after": 7596
+        },
+        "empty_documents": {
+          "before": 15192,
+          "after": 15192
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 15192,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 674,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 1,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 25404,
+          "after": 25404
+        },
+        "empty_documents": {
+          "before": 50808,
+          "after": 50808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 50808,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 2594,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 25404,
+          "after": 25404
+        },
+        "empty_documents": {
+          "before": 50808,
+          "after": 50808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 2,
+          "after": 2
+        },
+        "claim_scope_switches": {
+          "before": 50808,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 2594,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 16,
+      "M": 8,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 26496,
+          "after": 26496
+        },
+        "empty_documents": {
+          "before": 29808,
+          "after": 29808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 52992,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 2128,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 3312,
+          "after": 3312
+        },
+        "foreign_empty_documents": {
+          "before": 26496,
+          "after": 26496
+        },
+        "empty_documents": {
+          "before": 29808,
+          "after": 29808
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 52992,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 2128,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 4,
+      "N": 64,
+      "M": 8,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 95232,
+          "after": 95232
+        },
+        "empty_documents": {
+          "before": 107136,
+          "after": 107136
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 190464,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 8272,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 11904,
+          "after": 11904
+        },
+        "foreign_empty_documents": {
+          "before": 95232,
+          "after": 95232
+        },
+        "empty_documents": {
+          "before": 107136,
+          "after": 107136
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 190464,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 8272,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 16,
+      "M": 8,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 60768,
+          "after": 60768
+        },
+        "empty_documents": {
+          "before": 68364,
+          "after": 68364
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 121536,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 5392,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 7596,
+          "after": 7596
+        },
+        "foreign_empty_documents": {
+          "before": 60768,
+          "after": 60768
+        },
+        "empty_documents": {
+          "before": 68364,
+          "after": 68364
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 121536,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 5392,
+          "after": 0
+        }
+      }
+    },
+    {
+      "D": 16,
+      "N": 64,
+      "M": 8,
+      "recording": true,
+      "first": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 203232,
+          "after": 203232
+        },
+        "empty_documents": {
+          "before": 228636,
+          "after": 228636
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 406464,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 20752,
+          "after": 0
+        }
+      },
+      "second": {
+        "flushes": {
+          "before": 25404,
+          "after": 25404
+        },
+        "foreign_empty_documents": {
+          "before": 203232,
+          "after": 203232
+        },
+        "empty_documents": {
+          "before": 228636,
+          "after": 228636
+        },
+        "nonempty_documents": {
+          "before": 0,
+          "after": 0
+        },
+        "slots_max": {
+          "before": 9,
+          "after": 9
+        },
+        "claim_scope_switches": {
+          "before": 406464,
+          "after": 0
+        },
+        "diagnostic_claim_scope_switches": {
+          "before": 20752,
+          "after": 0
+        }
+      }
+    }
+  ],
+  "focused": "4 passed; 0 failed",
+  "semantics": "UTF16 old-value records, owner identity, current-last, reentrant consumer nested mutation, deferred observer delivery, actual scope-counter positive control",
+  "timing": "No synthetic timing claim and no live Surf timeout-resolution claim",
+  "gates": {
+    "host_full": {
+      "passed": 1145,
+      "failed": 0,
+      "ignored_existing": 4,
+      "suites": 34
+    },
+    "default_library": {
+      "passed": 845,
+      "failed": 0,
+      "ignored_existing": 4
+    },
+    "format_diff": "pass",
+    "scoped_complexity": "all new helpers/tests <=9; unchanged pre-existing child_list/flush=10; no floor/limit/exclusion changes",
+    "coverage": "not remeasured",
+    "strict_clippy": "pass; all targets; host-internals,test-support; -D warnings"
+  }
+}

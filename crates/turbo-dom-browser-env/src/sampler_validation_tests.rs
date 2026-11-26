@@ -161,6 +161,14 @@ fn unrelated_retained_document_counter_proves_empty_read_fanout() {
         "EMPTY_FANOUT_ROWS={}",
         serde_json::to_string(&rows).unwrap()
     );
+    assert!(
+        rows.iter().all(|row| {
+            ["first", "second"]
+                .into_iter()
+                .all(|phase| row[phase]["claim_scope_switches"] == 0)
+        }),
+        "claim phase must not swap document state: {rows:?}"
+    );
     for row in &rows {
         for phase in ["first", "second"] {
             let report = &row[phase];
@@ -213,6 +221,111 @@ fn raw_diagnostic_hook_preserves_cross_document_callbacks_and_ownership() {
         );
         eprintln!(
             "CROSS_DOCUMENT_DIAGNOSTIC={}",
+            serde_json::to_string(&report).unwrap()
+        );
+    });
+}
+
+fn claim_consumer<'s>(scope: &mut v8::PinScope<'s, '_>) -> v8::Local<'s, v8::Function> {
+    let source = v8::String::new(scope, r#"globalThis.__claimObserverRows=[];
+      globalThis.__claimObserver=new MutationObserver(rows=>{for(const row of rows)__claimObserverRows.push([row.attributeName,row.oldValue===null?null:row.oldValue.charCodeAt(0)]);});
+      __claimObserver.observe(document.body,{attributes:true,attributeOldValue:true});
+      (function(event){
+        __claimLog.push([document===__claimMain?'main':'foreign',event.attributeName,event.oldValue===null?null:event.oldValue.charCodeAt(0),event.target.ownerDocument===document]);
+        if(event.attributeName==='data-a')document.body.setAttribute('data-b','nested');
+      })"#).unwrap();
+    v8::Local::<v8::Function>::try_from(
+        v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn claimed_utf16_batches_keep_current_last_and_survive_reentrant_consumers() {
+    with_scene(4, 1, 1, true, false, |scope, document, _| {
+        let context = scope.get_current_context();
+        let foreign_key = v8::String::new(scope, "__foreignWindow").unwrap();
+        let foreign = v8::Local::<v8::Object>::try_from(
+            context
+                .global(scope)
+                .get(scope, foreign_key.into())
+                .unwrap(),
+        )
+        .unwrap();
+        let foreign_context = foreign.get_creation_context(scope).unwrap();
+        let contexts = [foreign_context, context];
+        let log = v8::Array::new(scope, 0);
+        let mut documents = Vec::new();
+        for realm in contexts {
+            let inner = &mut v8::ContextScope::new(scope, realm);
+            let id = realm.get_slot::<DomContextId>().map_or(0, |id| id.0);
+            let _owner = DomScope::enter(id);
+            let root = with_tree(Tree::root).unwrap();
+            let own_document = wrap(inner, root);
+            for (name, value) in [("__claimLog", log.into()), ("__claimMain", document.into())] {
+                let key = v8::String::new(inner, name).unwrap();
+                realm.global(inner).set(inner, key.into(), value);
+            }
+            let callback = claim_consumer(inner);
+            assert!(mutation_observers::install_mutation_consumer(
+                inner,
+                own_document,
+                callback
+            ));
+            with_tree_mut(|tree| {
+                let body = tree.query_selector("body").unwrap();
+                tree.set_attribute_utf16(body, "data-a", &[0xd800]);
+                tree.take_mutation_events_utf16();
+            });
+            documents.push((id, own_document));
+        }
+        for (id, _) in &documents {
+            let _owner = DomScope::enter(*id);
+            with_tree_mut(|tree| {
+                let body = tree.query_selector("body").unwrap();
+                tree.set_attribute_utf16(body, "data-a", &[0xd801]);
+            });
+        }
+        let original = DOM_ID.with(std::cell::Cell::get);
+        diag::begin(scope);
+        mutation_observers::flush(scope);
+        let report = diag::finish(scope);
+        assert_eq!(DOM_ID.with(std::cell::Cell::get), original);
+        assert_eq!(
+            eval(scope, "JSON.stringify(__claimLog)"),
+            r#"[["foreign","data-a",55296,true],["foreign","data-b",null,true],["main","data-a",55296,true],["main","data-b",null,true]]"#
+        );
+        assert_eq!(
+            eval(
+                scope,
+                "__claimObserverRows.length+__foreignWindow.__claimObserverRows.length"
+            ),
+            "0"
+        );
+        scope.perform_microtask_checkpoint();
+        for &(_, own_document) in &documents {
+            let realm = own_document.get_creation_context(scope).unwrap();
+            let inner = &mut v8::ContextScope::new(scope, realm);
+            assert_eq!(
+                eval(inner, "JSON.stringify(__claimObserverRows)"),
+                r#"[["data-a",55296],["data-b",null]]"#
+            );
+        }
+        assert!(report.nonempty_documents >= 4, "{report:?}");
+        assert_eq!(report.claim_scope_switches, 0);
+        diag::begin(scope);
+        let phase = diag::claim_phase(scope);
+        {
+            let _foreign = DomScope::enter(documents[0].0);
+        }
+        drop(phase);
+        assert_eq!(diag::finish(scope).claim_scope_switches, 2);
+
+        eprintln!(
+            "NONEMPTY_CLAIM_REPORT={}",
             serde_json::to_string(&report).unwrap()
         );
     });
