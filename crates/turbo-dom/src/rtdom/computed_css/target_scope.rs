@@ -262,6 +262,8 @@ mod tests {
             invalid_scope: false,
             scope_start: None,
             scope_end: None,
+            scope_start_policy: None,
+            scope_end_policy: None,
         }
     }
     fn answer(matches: &[u32]) -> BoundaryAnswer {

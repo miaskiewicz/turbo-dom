@@ -377,6 +377,29 @@ fn selector_policy_metadata(
         }).collect()),
     }
 }
+fn boundary_items(
+    compiled: &Result<
+        turbo_dom_core::rtdom::query::SelectorList,
+        turbo_dom_core::rtdom::query::SelectorError,
+    >,
+    policy: Option<&turbo_dom_core::rtdom::computed_css::selector_policy::SelectorPolicyInspection>,
+) -> Value {
+    let mut items = selector_items(compiled, false);
+    if let (Value::Array(items), Some(policy)) = (&mut items, policy) {
+        let policies = selector_policy_metadata(policy);
+        for (index, item) in items.iter_mut().enumerate() {
+            let certificate = match &policies {
+                Value::Array(values) => values
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| json!({"invalid":true})),
+                value => value.clone(),
+            };
+            item["policy"] = certificate;
+        }
+    }
+    items
+}
 fn compiled_metadata(styles: &CompiledStyles) -> Result<String, String> {
     let data = styles.metadata();
     let selectors: Vec<_> = data.selectors.iter().enumerate().map(|(id, selector)| json!({
@@ -386,8 +409,8 @@ fn compiled_metadata(styles: &CompiledStyles) -> Result<String, String> {
         "id":id,"kind":format!("{:?}",group.kind),"prelude":group.prelude.as_units(),"parent":group.parent,
         "invalidScope":group.invalid_scope,"scope":group.scope.as_ref().map(|scope|json!({
             "start":scope.start.as_ref().map(CssText::as_units),"end":scope.end.as_ref().map(CssText::as_units),
-            "startItems":group.scope_start.as_ref().map(|items|selector_items(items,false)),
-            "endItems":group.scope_end.as_ref().map(|items|selector_items(items,false))
+            "startItems":group.scope_start.as_ref().map(|items|boundary_items(items,group.scope_start_policy.as_ref())),
+            "endItems":group.scope_end.as_ref().map(|items|boundary_items(items,group.scope_end_policy.as_ref()))
         }))
     })).collect();
     let rules:Vec<_>=data.rules.iter().enumerate().map(|(id,rule)|json!({"id":id,"sourceId":rule.source_id,"selectorId":rule.selector_id,"groups":rule.groups})).collect();
@@ -611,6 +634,33 @@ mod tests {
             "declarations":256,"properties":1024,"groupDepth":16,"tokenNesting":32,
         }});
         CompiledHandle::new(&request.to_string()).unwrap()
+    }
+    #[test]
+    fn boundary_metadata_has_explicit_ordinary_and_composed_certificates() {
+        for boundary in [
+            ".root",
+            ":scope",
+            ":host",
+            ":host-context(.outside)",
+            "::part(control)",
+            "::slotted(.light)",
+        ] {
+            let source = compiled(&format!("@scope({boundary}){{b{{color:red}}}}"));
+            let metadata: Value = serde_json::from_str(&source.metadata().unwrap()).unwrap();
+            let item = &metadata["groups"][0]["scope"]["startItems"][0];
+            assert!(item.as_object().unwrap().contains_key("policy"));
+            if boundary == ".root" || boundary == ":scope" {
+                assert!(item["policy"].is_null());
+            } else {
+                assert!(item["policy"].is_object());
+            }
+        }
+        let source = compiled("@scope(.root) to(:host-context(.stop)){b{color:red}}");
+        let metadata: Value = serde_json::from_str(&source.metadata().unwrap()).unwrap();
+        assert_eq!(
+            metadata["groups"][0]["scope"]["endItems"][0]["policy"]["target"]["kind"],
+            "unsupported_composed"
+        );
     }
     fn prepared(compiled: &CompiledHandle) -> PreparedHandle {
         let request = json!({"abiVersion":1,"uses":[{"sourceId":7,"origin":"author","treeScope":0,"scopeDepth":0,"disabled":false,"media":null}],"environment":{

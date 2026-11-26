@@ -36,6 +36,8 @@ impl CompiledStyles {
         for selector in &data.selectors {
             bytes += text(&selector.source) + selectors(&selector.compiled);
         }
+        // Boundary policy vectors, like ordinary selector policies, retain only
+        // scalar classification records. Containers are outside this metric.
         for group in &data.groups {
             bytes += text(&group.prelude);
             if let Some(scope) = &group.scope {

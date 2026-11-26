@@ -77,6 +77,10 @@ pub struct CompiledGroup {
     pub invalid_scope: bool,
     pub scope_start: Option<Result<SelectorList, SelectorError>>,
     pub scope_end: Option<Result<SelectorList, SelectorError>>,
+    /// CSS-only capability certificates, computed once through the same inspector
+    /// as ordinary selectors; these scalar vectors own no CSS text payload.
+    pub scope_start_policy: Option<super::selector_policy::SelectorPolicyInspection>,
+    pub scope_end_policy: Option<super::selector_policy::SelectorPolicyInspection>,
 }
 
 pub struct CompiledRule {
@@ -261,6 +265,28 @@ impl Compiler {
                     .as_ref()
                     .and_then(|value| value.end.as_ref())
                     .map(|value| parse_for_cascade_units_scoped(value.as_units()));
+                let scope_start_policy = scope
+                    .as_ref()
+                    .and_then(|scope| scope.start.as_ref())
+                    .map(|value| {
+                        super::selector_policy::inspect_selector_policy(
+                            value,
+                            self.computation_limits(),
+                        )
+                    })
+                    .transpose()
+                    .map_err(CompileError::Computation)?;
+                let scope_end_policy = scope
+                    .as_ref()
+                    .and_then(|scope| scope.end.as_ref())
+                    .map(|value| {
+                        super::selector_policy::inspect_selector_policy(
+                            value,
+                            self.computation_limits(),
+                        )
+                    })
+                    .transpose()
+                    .map_err(CompileError::Computation)?;
                 let invalid_scope = kind == GroupKind::Scope && scope.is_none();
                 let id = self.data.groups.len();
                 self.data.groups.push(CompiledGroup {
@@ -271,6 +297,8 @@ impl Compiler {
                     invalid_scope,
                     scope_start,
                     scope_end,
+                    scope_start_policy,
+                    scope_end_policy,
                 });
                 self.data.events.push(StyleEvent::Enter(id));
                 groups.push(id);

@@ -1,0 +1,76 @@
+{
+  "scope": "Independent immutable scope-boundary capability metadata only; no routing, held JS provenance, adapter, default or payload metric change.",
+  "base": "be833152b3a259601da398911dbe9a40353d8cdf",
+  "dependencies": {
+    "contextCoreEquivalent": "03bd864923b709e7109dcf0ffabe637c61150004",
+    "contextCoreOriginal": "3051a51549b009b6025e7050cd5b9d7684aa39e7",
+    "fontPreferences": "47bd5f5281638f60c53d559338c5abe9c6cd6294"
+  },
+  "source": {
+    "crates/turbo-dom/src/rtdom/computed_css/model.rs": "fcedb3a3fdcf7933e7c8a9962e5efd4ab937f11a204bc301782932b843784223",
+    "crates/turbo-dom/src/rtdom/computed_css/payload.rs": "5df36c51f42ba9fdc9d4b76fe80580a8d560591933127a241f953e7cf459e0f7",
+    "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "80d8315821ce0ffdf1a35fba28b5dc7d29bd7aef10c704dd4b27b3325f090f05",
+    "src/css_backend.rs": "2f181f40fa7e812aa3ec35413a8a9c37aba569ff9614407afe8facc6243556e0",
+    "crates/turbo-dom/tests/computed_boundary_policy.rs": "bd2bef358a0729329ec1c489d9d4d9723fb35f5539a14110c4505d2b8df80170"
+  },
+  "metadataContract": "Each present scope boundary item has an own policy field: null certifies canonical ordinary inspection; an object retains the matching canonical composed capability. Missing old artifacts remain unavailable to the private contextual collector.",
+  "validation": {
+    "candidateFocusedCore": {
+      "passed": 3,
+      "toolchain": "1.98.0",
+      "locked": true,
+      "offline": true,
+      "jobs": 1
+    },
+    "combinedRootMetadataFunction": {
+      "passed": 1,
+      "scope": "Same Root metadata source in separate combined 6a/e7/12e proof, not full candidate gates"
+    },
+    "fmt": true,
+    "CC9": true,
+    "fullRoot": {
+      "passed": 63,
+      "failed": 0,
+      "ignored": 0,
+      "log": "root-native.log"
+    },
+    "fullCoreDefault": {
+      "passed": 589,
+      "failed": 0,
+      "ignored": 9,
+      "log": "core-default.log"
+    },
+    "fullCoreFeature": {
+      "passed": 870,
+      "failed": 0,
+      "ignored": 9,
+      "log": "core-feature.log"
+    },
+    "defaultCoverage100": {
+      "covered": 14335,
+      "coverable": 14335,
+      "percent": 100
+    },
+    "featureCoverage100": {
+      "covered": 17653,
+      "coverable": 17653,
+      "percent": 100
+    },
+    "strictNativeAndWasm": {
+      "passed": true,
+      "nativeActualCandidateRebuild": true,
+      "sourceChanged": false,
+      "firstStaleMetadataFailurePreserved": true
+    },
+    "requiredBuildScript": {
+      "command": "scripts/agent/build-napi.sh",
+      "exit": 0,
+      "seconds": 4.54,
+      "toolchain": "1.98.0",
+      "offline": true,
+      "jobs": 1,
+      "sourceAbiHashesUnchanged": true
+    },
+    "normalHook": "Required normal git commit invokes full npm test:cov at original100/100/97.3 thresholds; outcome retained in .evidence/boundary-policy/NORMAL-COMMIT.log. No bypass."
+  }
+}
