@@ -5,7 +5,7 @@ A **pure-Rust DOM**: a lazy, copy-on-write tree built over an
 turbo-dom's one Chrome 156-checked selector engine, a CSSOM, a partial `getComputedStyle`,
 events, shadow DOM, mutation records and UTF-16-exact parsing. It is a plain Rust API with no
 JS boundary. On a chatty per-node workload it measured ~2.7x turbo-dom's JS runtime, while a JS
-caller going through WASM measured ~0.55x, so this crate serves Rust consumers only (numbers
+caller going through WASM measured ~0.55x, so those measurements favor direct Rust consumers (numbers
 from before 0.6.0; see [BENCHMARKS-history](../../docs/BENCHMARKS-history.md)).
 
 ## Where it sits
@@ -20,7 +20,9 @@ turbo-dom ──► turbo-dom-layout ──► turbo-dom-raster
 
 Consumers: **turbo-test** and **turbo-surf** (through turbo-dom-browser-env and directly),
 **turbo-html2pdf** (through turbo-dom-layout's cascade). The npm package
-`@miaskiewicz/turbo-dom` is the separate JS-consumer path; it does not use this crate.
+`@miaskiewicz/turbo-dom` supplies a separate JavaScript DOM runtime over parser
+buffers. Its optional Rust CSS addon uses this crate's shared computed-style API
+with `computed-style-grammar`; selecting it does not replace the npm DOM.
 
 ## Install
 
@@ -33,7 +35,11 @@ smallvec, unicode-bidi, log. No napi, no wasm-bindgen.
 
 ## Features
 
-None.
+`computed-style-grammar` enables the ordinary CSS property grammar shared by the
+native and WASM CSS backends. It is disabled by default. DOM parsing and the
+existing cascade API remain available without it. The bounded computed-style
+API lives under `rtdom::computed_css`; npm adapters supply owned DOM and
+stylesheet facts and consume its immutable results.
 
 ## API
 

@@ -171,8 +171,10 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | | `native-sdk-frame-read` | off | reads the interceptor's should-throw mode from the V8 frame, for native SDKs without the fork fix |
 | `turbo-dom-parser` (npm) | `napi-bind` / `wasm-bind` / `wasm-runtime` | `napi-bind` | the native addon, the WASM parser and the WASM DOM-runtime spike |
 
-`turbo-dom` declares no feature flags. `turbo-dom-v8` forwards upstream rusty_v8's
-features (for example `simdutf`).
+`turbo-dom` offers opt-in `computed-style-grammar` for the shared CSS property
+grammar used by the optional npm Rust CSS backend. Its DOM/parser defaults keep
+that dependency disabled. `turbo-dom-v8` forwards upstream rusty_v8's features
+(for example `simdutf`).
 
 ## Status
 
