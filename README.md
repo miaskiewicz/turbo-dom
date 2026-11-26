@@ -228,6 +228,17 @@ features (for example `simdutf`).
 
 ## Benchmarks
 
+### Single-compound selector matching (2026-11-26)
+
+The held N-API CSS build with direct single-compound matching took 2.23% less
+wall time than the preceding Rust build in the packed Vitest suite (four of
+seven ABBA blocks faster). Repeated DOM capture used 4.06% less CPU. In a
+separate comparison with legacy JS the candidate took 10.69% more wall time;
+legacy JS won all seven blocks. All 110 observed style results matched the
+previous Rust build byte for byte.
+
+[Individual runs and capture measurements](tools/acceptance/packed-vitest-296/results-2026-11-26-selector/RESULT.json)
+
 ### Packed N-API selector-answer reuse (2026-11-26)
 
 The held Rust CSS build retained selector answers on the prepared model for 97

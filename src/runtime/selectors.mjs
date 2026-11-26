@@ -1337,7 +1337,8 @@ function compoundAt(cx, k) {
 
 // Match a parsed complex selector against `el` (the rightmost compound applies to el).
 function matchComplex(el, cx) {
-  return matchChain(el, cx, cx.rest.length, null);
+  const depth = cx.rest.length;
+  return depth === 0 ? matchCompound(el, cx.first) : matchChain(el, cx, depth, null);
 }
 
 // Match compounds 0..=k of `cx` ending at `el`, recursing leftward. Descendant (' ') and
