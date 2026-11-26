@@ -34,7 +34,8 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    versions match. `turbo-dom-v8` keeps its upstream-derived version unless the fork
    itself changes (then bump the patch in `crates/turbo-dom-v8/pins.json`, see its README).
 3. Use the CI toolchain (Rust 1.98.0 with Clippy, rustfmt, `wasm32-unknown-unknown`;
-   Rust 1.89 for the MSRV check) and install npm development dependencies. Point
+   Rust 1.89 for the MSRV check), Python 3.11 or newer for the artifact checker,
+   and install npm development dependencies. Point
    `RUSTY_V8_ARCHIVE` at a local prebuilt rusty_v8 150.4.0 static library for the V8 crates.
 4. Run the local gate (the CI jobs in `ci.yml` are the complete list):
 
@@ -73,6 +74,23 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    `tools/release/mutation-audit-0.7.0.md`.
 6. Commit without bypassing the configured pre-commit coverage/conformance gate, push
    the release PR, and wait for every CI job to pass on that exact head revision.
+
+## 0.8.7 consumer preparation
+
+The candidate remains on `release/0.8.7` until its release PR is approved.
+Consumers pin one immutable producer revision for every DOM-family patch and
+refresh their Cargo lockfiles together. A successful build against one family
+member does not establish a coherent dependency graph.
+
+Review exhaustive `CascadeOrigin` matches for `Animation` and `Transition`,
+and prefer `Fragment::new` when constructing layout fragments. The new public
+`establishes_stacking_context` field must be supplied by struct literals.
+See the 0.8.7 changelog and its public API report for the full migration surface.
+
+The npm `domBackend` flag defaults to `'js'`. This candidate reports a setup error
+for `'rust'` because the Node browser-env host port is unavailable. Packed
+Rust CSS experiments in the README are explicitly identified by artifact and
+source revision; they do not change the release branch's default CSS resolver.
 
 ## Merge, tag and monitor
 

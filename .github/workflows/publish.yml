@@ -94,6 +94,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       # The two WASM targets (pkg/ + pkg-web/) ship in the package and are built here, so
       # the publish runner needs the Rust + wasm toolchain.
       - uses: dtolnay/rust-toolchain@master

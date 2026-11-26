@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [0.8.7] — Unreleased
 
+Rust source compatibility requires attention in layout consumers. Exhaustive
+matches on `style::CascadeOrigin` must handle the new `Animation` and
+`Transition` variants. Code constructing `Fragment` with a struct literal
+must supply `establishes_stacking_context`; the existing `Fragment::new`
+constructor initializes it. This release adds public APIs for computed CSS,
+document checkpoints, collection outcomes and host presentation integration.
+The npm default DOM and CSS engines remain JavaScript.
+
 ### npm, Jest and Vitest
 
 - Added the per-environment `domBackend` option to `createEnvironment` and the
