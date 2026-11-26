@@ -219,6 +219,7 @@ fn element_route<'a>(
     sheet: u32,
     policy: &SelectorPolicy,
     facts: &RouteFacts<'a>,
+    scope_anchor: bool,
 ) -> Result<Option<MatchRoute<'a>>, RouteError> {
     if sheet == facts.own_tree_scope {
         return Ok(Some(MatchRoute {
@@ -229,7 +230,7 @@ fn element_route<'a>(
             path: RoutePath::Physical(facts.own_path),
         }));
     }
-    if !policy.host_reference || facts.host_of != Some(sheet) {
+    if !(policy.host_reference || scope_anchor) || facts.host_of != Some(sheet) {
         return Ok(None);
     }
     let root = context(facts.context_roots, sheet)?;
@@ -249,6 +250,15 @@ pub fn selector_route<'a>(
     policy: &SelectorPolicy,
     validated: &ValidatedRouteFacts<'a>,
 ) -> Result<Option<MatchRoute<'a>>, RouteError> {
+    selector_route_with_scope_anchor(sheet, policy, validated, false)
+}
+
+pub(crate) fn selector_route_with_scope_anchor<'a>(
+    sheet: u32,
+    policy: &SelectorPolicy,
+    validated: &ValidatedRouteFacts<'a>,
+    scope_anchor: bool,
+) -> Result<Option<MatchRoute<'a>>, RouteError> {
     let facts = validated.facts();
     context(facts.context_roots, sheet)?;
     if !relevant(sheet, facts) {
@@ -261,7 +271,7 @@ pub fn selector_route<'a>(
     if matches!(policy.target, SelectorTarget::Slotted { .. }) {
         return Ok(slot_route(sheet, facts));
     }
-    element_route(sheet, policy, facts)
+    element_route(sheet, policy, facts, scope_anchor)
 }
 
 /// Convenience for a single query. Bulk callers construct `ValidatedRouteFacts` once

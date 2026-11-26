@@ -6,13 +6,16 @@ use super::prepared::{PreparedRule, PreparedStyles};
 use super::selector_policy::{
     GeneratedPseudo, SelectorPolicy, SelectorPolicyInspection, SelectorTarget,
 };
-use super::shadow_routes::{selector_route, RouteError, RoutePath, ValidatedRouteFacts};
+use super::shadow_routes::{
+    selector_route_with_scope_anchor, RouteError, RoutePath, ValidatedRouteFacts,
+};
 use super::stylesheet::GroupKind;
 use super::target_scope::{
     scope_roots_with_answer_budget, BoundaryAnswerSource, BoundaryAnswers, ContextBoundaryAnswers,
     ScopeError,
 };
 use super::ComputationLimits;
+use std::borrow::Cow;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 
@@ -150,6 +153,10 @@ fn item_policy(
 struct RouteRead<'a> {
     path: RoutePath<'a>,
 }
+struct ScopeContext<'a> {
+    path: Cow<'a, [u32]>,
+    owner: Option<u32>,
+}
 impl<'facts> MatchRead<'_, 'facts> {
     fn implicit_owner(&self, binding: &PreparedRule) -> Option<u32> {
         binding.implicit_scope_root.or(match self.implicit_policy {
@@ -161,6 +168,7 @@ impl<'facts> MatchRead<'_, 'facts> {
         &self,
         binding: &PreparedRule,
         policy: &SelectorPolicy,
+        scope_anchor: bool,
     ) -> Result<Option<RouteRead<'facts>>, MatchError> {
         let Some(validated) = self.facts.routes else {
             // rule() already accepted binding_relevant(), which refuses every
@@ -170,8 +178,78 @@ impl<'facts> MatchRead<'_, 'facts> {
             }));
         };
         let route =
-            selector_route(binding.tree_scope, policy, validated).map_err(MatchError::Route)?;
+            selector_route_with_scope_anchor(binding.tree_scope, policy, validated, scope_anchor)
+                .map_err(MatchError::Route)?;
         Ok(route.map(|route| RouteRead { path: route.path }))
+    }
+    fn scoped_route(
+        &self,
+        binding: &PreparedRule,
+        policy: &SelectorPolicy,
+        selector: &crate::rtdom::query::CascadeSelector,
+        scoped: bool,
+    ) -> Result<Option<RouteRead<'facts>>, MatchError> {
+        let anchor = self.context.is_some() && scoped && selector.references_scope();
+        let Some(route) = self.route(binding, policy, anchor)? else {
+            return Ok(None);
+        };
+        if scoped && matches!(policy.target, SelectorTarget::Slotted { .. }) {
+            return Err(MatchError::UnsupportedScopedSlotted);
+        }
+        Ok(Some(route))
+    }
+    fn scope_context<'path>(
+        &mut self,
+        binding: &PreparedRule,
+        route: &'path RoutePath<'_>,
+        scoped: bool,
+    ) -> Result<ScopeContext<'path>, MatchError> {
+        let mut scope = ScopeContext {
+            path: Cow::Borrowed(route.ids()),
+            owner: self.implicit_owner(binding),
+        };
+        if self.context.is_none() || !scoped {
+            return Ok(scope);
+        }
+        let Some(routes) = self.facts.routes else {
+            return Ok(scope);
+        };
+        let root = routes
+            .facts()
+            .context_roots
+            .iter()
+            .find(|root| root.tree_scope == binding.tree_scope)
+            .ok_or(MatchError::Route(RouteError::MissingContext(
+                binding.tree_scope,
+            )))?;
+        let Some(host) = root.host else {
+            return Ok(scope);
+        };
+        if scope.path.last() != Some(&root.root) {
+            return Err(MatchError::InvalidRouteFacts);
+        }
+        if scope.owner == Some(root.root) {
+            scope.owner = Some(host);
+        }
+        if matches!(route, RoutePath::Physical(_)) {
+            scope.path = Cow::Owned(self.scope_host_path(scope.path.as_ref(), host)?);
+        }
+        Ok(scope)
+    }
+    fn scope_host_path(&mut self, path: &[u32], host: u32) -> Result<Vec<u32>, MatchError> {
+        if path.contains(&host) {
+            return Err(MatchError::InvalidRouteFacts);
+        }
+        let length = path.len().checked_add(1).ok_or(MatchError::ResourceLimit)?;
+        self.remaining = self
+            .remaining
+            .checked_sub(length)
+            .ok_or(MatchError::ResourceLimit)?;
+        let mut scope = Vec::with_capacity(length);
+        scope.extend_from_slice(&path[..path.len() - 1]);
+        scope.push(host);
+        scope.push(path[path.len() - 1]);
+        Ok(scope)
     }
     fn best(
         &mut self,
@@ -201,19 +279,18 @@ impl<'facts> MatchRead<'_, 'facts> {
             return Ok(None);
         }
         let policy = item_policy(&compiled.selectors[rule.selector_id], item, selector)?;
-        let Some(route) = self.route(binding, &policy)? else {
+        let groups = scope_groups(compiled, &rule.groups);
+        let scoped = !groups.is_empty();
+        let Some(route) = self.scoped_route(binding, &policy, selector, scoped)? else {
             return Ok(None);
         };
-        let groups = scope_groups(compiled, &rule.groups);
-        if !groups.is_empty() && matches!(policy.target, SelectorTarget::Slotted { .. }) {
-            return Err(MatchError::UnsupportedScopedSlotted);
-        }
-        let path = route.path.ids();
+        let scope = self.scope_context(binding, &route.path, scoped)?;
+        let path = scope.path.as_ref();
         let roots = scope_roots_with_answer_budget(
             &compiled.groups,
             &groups,
             path,
-            self.implicit_owner(binding),
+            scope.owner,
             self.context.map_or(
                 BoundaryAnswerSource::Legacy(self.facts.boundaries),
                 |answers| BoundaryAnswerSource::Context(binding.tree_scope, answers.boundaries),
@@ -437,4 +514,90 @@ fn match_with_answers(
         prepared: prepared.clone(),
         rules: matches,
     })
+}
+
+#[cfg(test)]
+mod scope_context_contracts {
+    use super::super::prepared::{CascadeOrigin, LayerRank};
+    use super::super::shadow_routes::{ContextRoot, RouteBudget, RouteFacts};
+    use super::*;
+    #[test]
+    fn private_scope_context_rejects_a_nonterminal_root_before_spending_or_allocating() {
+        // Defensive helper contract, not an authored-DOM reproduction: the public
+        // canonical route already validates its terminal root before this seam.
+        let roots = [
+            ContextRoot {
+                tree_scope: 1,
+                root: 10,
+                host: None,
+                parent_tree_scope: None,
+            },
+            ContextRoot {
+                tree_scope: 2,
+                root: 20,
+                host: Some(11),
+                parent_tree_scope: Some(1),
+            },
+        ];
+        let input = RouteFacts {
+            target: 21,
+            own_tree_scope: 2,
+            own_path: &[21, 20],
+            host_of: None,
+            assigned_slot: None,
+            context_roots: &roots,
+            requested_pseudo: None,
+        };
+        let routes = ValidatedRouteFacts::new(
+            &input,
+            &mut RouteBudget {
+                contexts: 2,
+                path_units: 2,
+            },
+        )
+        .unwrap();
+        let selectors = BTreeMap::new();
+        let boundaries = BTreeMap::new();
+        let facts = TargetFacts {
+            path: input.own_path,
+            implicit_scope_root: 20,
+            pseudo: None,
+            selectors: &selectors,
+            routes: Some(&routes),
+            boundaries: &boundaries,
+            containers: None,
+        };
+        let contextual_selectors = BTreeMap::new();
+        let contextual_boundaries = BTreeMap::new();
+        let mut read = MatchRead {
+            facts: &facts,
+            target: 21,
+            remaining: 64,
+            implicit_policy: ImplicitRootPolicy::PerStylesheetUse,
+            context: Some(ContextAnswers {
+                selectors: &contextual_selectors,
+                boundaries: &contextual_boundaries,
+            }),
+        };
+        let binding = PreparedRule {
+            rule_id: 0,
+            use_id: 0,
+            origin: CascadeOrigin::Author,
+            tree_scope: 2,
+            scope_depth: 1,
+            implicit_scope_root: Some(20),
+            layer_context: 0,
+            layer: None,
+            layer_rank: LayerRank {
+                normal: std::sync::Arc::default(),
+                important: std::sync::Arc::default(),
+            },
+        };
+        assert!(matches!(
+            read.scope_context(&binding, &RoutePath::Physical(&[21, 99]), true),
+            Err(MatchError::InvalidRouteFacts)
+        ));
+        assert_eq!(read.remaining, 64);
+        assert_eq!(binding.implicit_scope_root, Some(20));
+    }
 }
