@@ -15,11 +15,16 @@ use turbo_dom_core::rtdom::computed_css::{
     preferences::renderer_initial_preferences,
     prepared::PreparedStyles,
     properties::InitialContext,
-    resolve::{compute_style, ComputedStyle, ResolveLimits, TargetContext},
-    rule_matches::{ContainerMatchContext, SelectorAnswers, TargetFacts},
+    resolve::{
+        compute_style, compute_style_with_context_answers, ComputedStyle, ResolveLimits,
+        TargetContext,
+    },
+    rule_matches::{
+        ContainerMatchContext, ContextAnswers, ContextSelectorAnswers, SelectorAnswers, TargetFacts,
+    },
     selector_policy::GeneratedPseudo,
     shadow_routes::{AssignedSlot, ContextRoot, RouteBudget, RouteFacts, ValidatedRouteFacts},
-    target_scope::{Boundary, BoundaryAnswers},
+    target_scope::{Boundary, BoundaryAnswers, ContextBoundaryAnswers},
     CssText,
 };
 
@@ -35,6 +40,8 @@ struct Request {
     domains: Vec<DomainRow>,
     selector_answers: Vec<SelectorRow>,
     scope_answers: Vec<BoundaryRow>,
+    #[serde(default)]
+    context_answers: Option<ContextAnswerRows>,
     limits: Limits,
 }
 #[derive(Deserialize)]
@@ -104,6 +111,32 @@ enum BoundaryKind {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct BoundaryRow {
+    group_id: usize,
+    boundary: BoundaryKind,
+    root_id: u32,
+    domain_id: u32,
+    matches: Vec<u32>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ContextAnswerRows {
+    selector_answers: Vec<ContextSelectorRow>,
+    scope_answers: Vec<ContextBoundaryRow>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ContextSelectorRow {
+    tree_scope: u32,
+    selector_id: usize,
+    item_id: usize,
+    root_id: Option<u32>,
+    domain_id: u32,
+    matches: Vec<u32>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ContextBoundaryRow {
+    tree_scope: u32,
     group_id: usize,
     boundary: BoundaryKind,
     root_id: u32,
@@ -257,6 +290,18 @@ impl Usage {
             request.scope_answers.len(),
             limits.answer_rows,
         )?;
+        if let Some(context) = &request.context_answers {
+            add(
+                &mut self.rows,
+                context.selector_answers.len(),
+                limits.answer_rows,
+            )?;
+            add(
+                &mut self.rows,
+                context.scope_answers.len(),
+                limits.answer_rows,
+            )?;
+        }
         Ok(())
     }
     fn common(&mut self, request: &Request) -> Result<(), String> {
@@ -270,6 +315,21 @@ impl Usage {
         }
         for row in &request.scope_answers {
             add(&mut self.ids, row.matches.len(), limits.answer_ids)?;
+        }
+        self.context_ids(request.context_answers.as_ref(), limits)
+    }
+    fn context_ids(
+        &mut self,
+        context: Option<&ContextAnswerRows>,
+        limits: Limits,
+    ) -> Result<(), String> {
+        if let Some(context) = context {
+            for row in &context.selector_answers {
+                add(&mut self.ids, row.matches.len(), limits.answer_ids)?;
+            }
+            for row in &context.scope_answers {
+                add(&mut self.ids, row.matches.len(), limits.answer_ids)?;
+            }
         }
         Ok(())
     }
@@ -375,6 +435,96 @@ fn boundary_answers(rows: Vec<BoundaryRow>, domains: &Domains) -> Result<Boundar
         }
     }
     Ok(answers)
+}
+#[derive(Default)]
+struct LegacyAnswers {
+    selectors: SelectorAnswers,
+    boundaries: BoundaryAnswers,
+}
+struct OwnedContextAnswers {
+    selectors: ContextSelectorAnswers,
+    boundaries: ContextBoundaryAnswers,
+}
+enum AnswerMaps {
+    Legacy(LegacyAnswers),
+    Context(OwnedContextAnswers),
+}
+fn ensure_answer_context(
+    scope: u32,
+    allowed: &std::collections::BTreeSet<u32>,
+) -> Result<(), String> {
+    if allowed.contains(&scope) {
+        Ok(())
+    } else {
+        Err(fail("UnknownAnswerContext"))
+    }
+}
+fn contextual_selectors(
+    rows: Vec<ContextSelectorRow>,
+    domains: &Domains,
+    allowed: &std::collections::BTreeSet<u32>,
+) -> Result<ContextSelectorAnswers, String> {
+    let mut answers = BTreeMap::new();
+    for row in rows {
+        ensure_answer_context(row.tree_scope, allowed)?;
+        let value = answer(domains, row.domain_id, row.matches)?;
+        if answers
+            .insert(
+                (row.tree_scope, row.selector_id, row.item_id, row.root_id),
+                value,
+            )
+            .is_some()
+        {
+            return Err(fail("DuplicateContextSelectorAnswer"));
+        }
+    }
+    Ok(answers)
+}
+fn contextual_boundaries(
+    rows: Vec<ContextBoundaryRow>,
+    domains: &Domains,
+    allowed: &std::collections::BTreeSet<u32>,
+) -> Result<ContextBoundaryAnswers, String> {
+    let mut answers = BTreeMap::new();
+    for row in rows {
+        ensure_answer_context(row.tree_scope, allowed)?;
+        let edge = match row.boundary {
+            BoundaryKind::Start => Boundary::Start,
+            BoundaryKind::End => Boundary::End,
+        };
+        let value = answer(domains, row.domain_id, row.matches)?;
+        if answers
+            .insert((row.tree_scope, row.group_id, edge, row.root_id), value)
+            .is_some()
+        {
+            return Err(fail("DuplicateContextScopeAnswer"));
+        }
+    }
+    Ok(answers)
+}
+fn answer_maps(
+    contexts: &[ContextRow],
+    selectors: Vec<SelectorRow>,
+    boundaries: Vec<BoundaryRow>,
+    contextual: Option<ContextAnswerRows>,
+    domains: &Domains,
+) -> Result<AnswerMaps, String> {
+    let Some(contextual) = contextual else {
+        return Ok(AnswerMaps::Legacy(LegacyAnswers {
+            selectors: selector_answers(selectors, domains)?,
+            boundaries: boundary_answers(boundaries, domains)?,
+        }));
+    };
+    if !selectors.is_empty() || !boundaries.is_empty() {
+        return Err(fail("MixedAnswerModes"));
+    }
+    // Prepared rules omit inactive/disabled uses. Declared contexts are validated
+    // by the existing per-target route constructor; Core consumes only exact keys.
+    let allowed = contexts.iter().map(|context| context.tree_scope).collect();
+    Ok(AnswerMaps::Context(OwnedContextAnswers {
+        selectors: contextual_selectors(contextual.selector_answers, domains, &allowed)?,
+        boundaries: contextual_boundaries(contextual.scope_answers, domains, &allowed)?,
+    }))
 }
 fn routes<'a>(
     target: &'a Target,
@@ -491,10 +641,34 @@ fn with_container_context<T>(
     }))
 }
 struct StyleInput<'a> {
-    selectors: &'a SelectorAnswers,
-    boundaries: &'a BoundaryAnswers,
+    answers: &'a AnswerMaps,
     contexts: &'a [ContextRoot],
     route_budget: &'a mut RouteBudget,
+}
+fn compute_with_answers(
+    prepared: &PreparedStyles,
+    facts: &TargetFacts<'_>,
+    inline: Option<&CssText>,
+    parent: Option<&ComputedStyle>,
+    context: &TargetContext<'_>,
+    limits: ResolveLimits,
+    answers: &AnswerMaps,
+) -> Result<ComputedStyle, turbo_dom_core::rtdom::computed_css::resolve::ResolveError> {
+    match answers {
+        AnswerMaps::Legacy(_) => compute_style(prepared, facts, inline, parent, context, limits),
+        AnswerMaps::Context(answers) => compute_style_with_context_answers(
+            prepared,
+            facts,
+            inline,
+            parent,
+            context,
+            limits,
+            ContextAnswers {
+                selectors: &answers.selectors,
+                boundaries: &answers.boundaries,
+            },
+        ),
+    }
 }
 type RendererDefaults = Vec<(&'static str, CssText)>;
 fn style(
@@ -506,11 +680,15 @@ fn style(
     usage: &mut Usage,
 ) -> Result<(ComputedStyle, RendererDefaults), String> {
     let StyleInput {
-        selectors,
-        boundaries,
+        answers,
         contexts,
         route_budget,
     } = input;
+    let empty = LegacyAnswers::default();
+    let legacy = match answers {
+        AnswerMaps::Legacy(legacy) => legacy,
+        AnswerMaps::Context(_) => &empty,
+    };
     let inline = target.inline.take().map(CssText::from_units);
     let routes = routes(&target, contexts, route_budget)?;
     let bases: Vec<_> = target
@@ -565,14 +743,21 @@ fn style(
                 path: &target.path,
                 implicit_scope_root: target.implicit_scope_root,
                 pseudo: target.pseudo.as_deref(),
-                selectors,
-                boundaries,
+                selectors: &legacy.selectors,
+                boundaries: &legacy.boundaries,
                 routes: routes.as_ref(),
                 containers,
             };
-            let computed =
-                compute_style(prepared, &facts, inline.as_ref(), parent, &context, limits)
-                    .map_err(|error| format!("CSSBackendResolve:{error:?}"))?;
+            let computed = compute_with_answers(
+                prepared,
+                &facts,
+                inline.as_ref(),
+                parent,
+                &context,
+                limits,
+                answers,
+            )
+            .map_err(|error| format!("CSSBackendResolve:{error:?}"))?;
             usage.result(&computed, renderer_limits)?;
             let mut retained: turbo_dom_core::rtdom::computed_css::ComputationLimits =
                 renderer_limits.computation.into();
@@ -648,8 +833,7 @@ struct Batch<'a> {
     usage: Usage,
     styles: BTreeMap<u32, ComputedStyle>,
     output: Vec<ResultRow>,
-    selectors: SelectorAnswers,
-    boundaries: BoundaryAnswers,
+    answers: AnswerMaps,
     contexts: Vec<ContextRoot>,
     route_budget: RouteBudget,
 }
@@ -670,8 +854,7 @@ impl Batch<'_> {
             parent,
             self.limits,
             StyleInput {
-                selectors: &self.selectors,
-                boundaries: &self.boundaries,
+                answers: &self.answers,
                 contexts: &self.contexts,
                 route_budget: &mut self.route_budget,
             },
@@ -695,16 +878,20 @@ fn new_batch(
     };
     usage.common(&request)?;
     let domains = domains(request.domains)?;
-    let selectors = selector_answers(request.selector_answers, &domains)?;
-    let boundaries = boundary_answers(request.scope_answers, &domains)?;
+    let answers = answer_maps(
+        &request.context_roots,
+        request.selector_answers,
+        request.scope_answers,
+        request.context_answers,
+        &domains,
+    )?;
     let batch = Batch {
         prepared,
         limits: request.limits,
         usage,
         styles: BTreeMap::new(),
         output: Vec::new(),
-        selectors,
-        boundaries,
+        answers,
         contexts: request
             .context_roots
             .into_iter()
@@ -738,3 +925,7 @@ pub(super) fn resolve_batch(prepared: &PreparedStyles, source: &str) -> Result<S
     serde_json::to_string(&serde_json::json!({"abiVersion":1,"geometryOnly":prepared.is_geometry_only(),"targets":batch.output}))
         .map_err(|error| format!("CSSBackendTransport:{error}"))
 }
+
+#[cfg(test)]
+#[path = "css_resolve_context_tests.rs"]
+mod context_tests;
