@@ -345,9 +345,12 @@ impl Compiler {
         } else {
             parse_for_cascade_units(source.as_units())
         };
-        let policy =
-            super::selector_policy::inspect_selector_policy(&source, self.computation_limits())
-                .map_err(CompileError::Computation)?;
+        let policy = super::selector_policy::inspect_compiled_selector_policy(
+            &source,
+            self.computation_limits(),
+            compiled.is_err(),
+        )
+        .map_err(CompileError::Computation)?;
         let count = compiled.as_ref().map_or(1, |list| list.selectors().len());
         charge(
             &mut self.selectors,

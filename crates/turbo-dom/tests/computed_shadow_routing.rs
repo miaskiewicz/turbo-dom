@@ -1162,3 +1162,58 @@ fn inconsistent_physical_ancestry_containing_its_declared_shadow_host_is_rejecte
         Err(MatchError::InvalidRouteFacts)
     ));
 }
+
+#[test]
+fn ordinary_invalid_and_terminal_pseudo_rules_need_no_route_answers() {
+    for selector in [
+        "div[data-x=]",
+        "#target, div[data-x=]",
+        "div:not(.absent, [data-x=])",
+        "::selection",
+        "::-webkit-scrollbar",
+        "#target::before",
+        "#target::after",
+    ] {
+        let prepared = model(
+            &format!("#target{{color:red}} {selector}{{color:blue}}"),
+            &[1],
+        );
+        let input = route_facts(&[12, 11, 10], 1);
+        let routes = validated(&input);
+        let domain = AnswerDomain::new(vec![12]).unwrap();
+        // Only the real element selector has a mechanical answer. Ignored CSS
+        // must not consume an answer or turn missing data into a false match.
+        let answers = BTreeMap::from([(
+            (0, 0, None),
+            MechanicalAnswer::new(domain, vec![12]).unwrap(),
+        )]);
+        let boundaries = BTreeMap::new();
+        let result = matching_rules(&prepared, &facts(&routes, &answers, &boundaries), 128);
+        assert!(result.is_ok(), "{selector}: {:?}", result.as_ref().err());
+        assert_eq!(result.unwrap().rules().len(), 1, "{selector}");
+    }
+}
+
+#[test]
+fn composed_pseudo_and_missing_mechanical_answers_stay_errors() {
+    for selector in ["::part(label)", ":host-context(.outer)"] {
+        let prepared = model(&format!("{selector}{{color:blue}}"), &[1]);
+        let input = route_facts(&[12, 11, 10], 1);
+        let routes = validated(&input);
+        let answers = BTreeMap::new();
+        let boundaries = BTreeMap::new();
+        assert!(matches!(
+            matching_rules(&prepared, &facts(&routes, &answers, &boundaries), 128),
+            Err(MatchError::Route(_))
+        ));
+    }
+    let prepared = model("#target{color:blue}", &[1]);
+    let input = route_facts(&[12, 11, 10], 1);
+    let routes = validated(&input);
+    assert!(matching_rules(
+        &prepared,
+        &facts(&routes, &BTreeMap::new(), &BTreeMap::new()),
+        128
+    )
+    .is_err());
+}

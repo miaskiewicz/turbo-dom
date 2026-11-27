@@ -49,13 +49,24 @@ pub fn inspect_selector_policy(
     raw: &CssText,
     limits: ComputationLimits,
 ) -> Result<SelectorPolicyInspection, ComputedCssError> {
+    inspect_compiled_selector_policy(raw, limits, false)
+}
+
+// Ordinary successful native parses retain their fast path. On native failure,
+// the canonical grammar distinguishes invalid CSS from an unsupported matcher.
+pub(crate) fn inspect_compiled_selector_policy(
+    raw: &CssText,
+    limits: ComputationLimits,
+    native_failed: bool,
+) -> Result<SelectorPolicyInspection, ComputedCssError> {
     super::grammar::check_grammar_limits(raw, limits).map_err(|error| match error {
         super::grammar::GrammarLimitError::Computation(error) => error,
         super::grammar::GrammarLimitError::NestingLimit => ComputedCssError::NestingLimit,
     })?;
     let source = CssSource::new(raw.as_units());
     let mut input = ParserInput::new(source.scalar());
-    if !has_family(&mut Parser::new(&mut input)) {
+    let family = has_family(&mut Parser::new(&mut input));
+    if !family && !native_failed {
         return Ok(SelectorPolicyInspection::Unchanged);
     }
     let mut input = ParserInput::new(source.scalar());
@@ -64,6 +75,9 @@ pub fn inspect_selector_policy(
         Ok(list) => list,
         Err(error) => return parse_failure(&error),
     };
+    if !family {
+        return Ok(SelectorPolicyInspection::Unchanged);
+    }
     // The pinned SelectorList parser exhausts each comma-delimited slice and
     // returns success only after its final input.next() reports end-of-input.
     Ok(SelectorPolicyInspection::Items(
@@ -323,5 +337,61 @@ mod backend_conversion_contract {
             parse_failure(&syntax),
             Ok(SelectorPolicyInspection::Invalid)
         );
+    }
+}
+
+#[cfg(test)]
+mod native_failure_admission_tests {
+    use super::*;
+    fn inspect(text: &str, failed: bool) -> Result<SelectorPolicyInspection, ComputedCssError> {
+        inspect_compiled_selector_policy(
+            &CssText::from_units(text.encode_utf16().collect()),
+            ComputationLimits {
+                max_nesting: 32,
+                max_output_units: 4096,
+                max_total_units: 4096,
+            },
+            failed,
+        )
+    }
+    #[test]
+    fn invalid_whole_lists_are_classified_only_after_native_failure() {
+        for text in ["div[data-x=]", "#target, span[", "div:not(.a, [data-x=])"] {
+            assert_eq!(
+                inspect(text, false),
+                Ok(SelectorPolicyInspection::Unchanged)
+            );
+            assert_eq!(inspect(text, true), Ok(SelectorPolicyInspection::Invalid));
+        }
+    }
+    #[test]
+    fn canonical_validity_is_not_native_support() {
+        for text in [
+            "#target",
+            ":is(#target, [data-x=])",
+            ":where(#target, [data-x=])",
+            "::selection",
+            "::-webkit-scrollbar",
+        ] {
+            assert_eq!(
+                inspect(text, true),
+                Ok(SelectorPolicyInspection::Unchanged),
+                "{text}"
+            );
+        }
+    }
+    #[test]
+    fn failure_fallback_keeps_resource_refusals() {
+        let raw = CssText::from_units("div[data-x=]".encode_utf16().collect());
+        assert!(inspect_compiled_selector_policy(
+            &raw,
+            ComputationLimits {
+                max_nesting: 1,
+                max_output_units: 1,
+                max_total_units: 1
+            },
+            true
+        )
+        .is_err());
     }
 }

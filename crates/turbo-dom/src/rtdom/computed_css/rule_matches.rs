@@ -274,8 +274,15 @@ impl<'facts> MatchRead<'_, 'facts> {
         item: usize,
         selector: &crate::rtdom::query::CascadeSelector,
     ) -> Result<Option<MatchRank>, MatchError> {
-        // Scope-zero callers retain the existing additional pseudo-name contract.
-        if self.facts.routes.is_none() && selector.pseudo_element() != self.facts.pseudo {
+        // Unchanged policy proves absence of composed selector families. Its
+        // native terminal pseudo cannot style a different requested subject.
+        let ordinary = matches!(
+            compiled.selectors[rule.selector_id].policy,
+            SelectorPolicyInspection::Unchanged
+        );
+        if (self.facts.routes.is_none() || ordinary)
+            && selector.pseudo_element() != self.facts.pseudo
+        {
             return Ok(None);
         }
         let policy = item_policy(&compiled.selectors[rule.selector_id], item, selector)?;
