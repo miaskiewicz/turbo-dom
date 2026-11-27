@@ -1907,6 +1907,35 @@ mod tests {
         )
     }
 
+    #[test]
+    fn ordinary_children_keep_their_parent_overflow_clip() {
+        let mut root = plain(10.0, 10.0, 20.0, 20.0, None);
+        root.overflow_clip = Some(OverflowClip {
+            x: 3.0,
+            y: 5.0,
+            width: 7.0,
+            height: 9.0,
+            radii: BorderRadii::ZERO,
+        });
+        root.children.push(plain(0.0, 0.0, 40.0, 40.0, Some(RED)));
+        let got = render(&root, 40, 40, &HashMap::new());
+        for y in 0..40 {
+            for x in 0..40 {
+                let expected = if (13..20).contains(&x) && (15..24).contains(&y) {
+                    [255, 0, 0, 255]
+                } else {
+                    [255; 4]
+                };
+                let pixel = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
     /// `f` with its box content's fields changed by `edit`.
     fn with_box(
         mut f: Fragment,
