@@ -7,6 +7,9 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Reuse one bounded encoded array fragment after fresh descriptor, cycle and scalar
+  validation; preserve mutation, callback and error behavior on every read.
+
 - Retain immutable unscoped query rows within a compiled selector program while
   still collecting fresh matching answers and checking scope, dependencies and quotas.
 

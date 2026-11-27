@@ -19,6 +19,7 @@ function descriptors(value) {
 }
 const keys = Object.keys;
 const create = Object.create;
+let priorArrayFragment;
 const isArray = Array.isArray;
 const finite = Number.isFinite;
 const apply = Reflect.apply;
@@ -34,10 +35,38 @@ function field(property, active) {
 	if (!own(property, "value")) throw invalid();
 	return ownData(property.value, active);
 }
+function rememberArray(properties, length, active) {
+ const previous = priorArrayFragment;
+ let tokens = previous?.length === length ? undefined : ({ __proto__: null });
+ for (let index = 0; index < length; index++) {
+  if (!own(properties, index)) throw invalid();
+  const encoded = field(properties[index], active);
+  const token = '' + encoded;
+  if (tokens === undefined && previous.tokens[index] !== token) {
+   tokens = copyPrefix(previous.tokens, index);
+  }
+  if (tokens !== undefined) tokens[index] = token;
+ }
+ return finishArray(previous, tokens, length);
+}
+function copyPrefix(previous, end) {
+ const tokens = { __proto__: null };
+ for (let index = 0; index < end; index++) tokens[index] = previous[index];
+ return tokens;
+}
+function finishArray(previous, tokens, length) {
+ if (tokens === undefined) return previous.wire;
+ let wire = '[';
+ for (let index = 0; index < length; index++) wire += (index === 0 ? '' : ',') + tokens[index];
+ wire += ']';
+ priorArrayFragment = wire.length <= 65536 ? { length, tokens, wire } : undefined;
+ return wire;
+}
 function arrayData(properties, active) {
  const length = properties.length.value;
  const names = keys(properties);
  if (names.length !== length + 1) throw invalid();
+ if (typeof length === 'number' && length >= 512 && length <= 16384) return rememberArray(properties, length, active);
  let result = '[';
  for (let index = 0; index < length; index++) {
   if (!own(properties, index)) throw invalid();
