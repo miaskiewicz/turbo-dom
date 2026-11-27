@@ -1214,6 +1214,47 @@ mod tests {
     }
 
     #[test]
+    fn scaled_svg_canvas_keeps_css_viewport_and_content_coordinates() {
+        let fragment = plain(1.0, 2.0, 3.0, 4.0, Some(RED));
+        for (pixels, scale, view) in [((101, 51), 2.0, "50.5 25.5"), ((13, 17), 0.5, "26 34")] {
+            let svg = paint_at_size(&fragment, (50, 25), pixels, WHITE, &HashMap::new(), scale);
+            assert!(svg.contains(&format!("viewBox=\"0 0 {view}\"")), "{svg}");
+            assert!(
+                svg.contains("x=\"1.00\" y=\"2.00\" width=\"3.00\" height=\"4.00\""),
+                "{svg}"
+            );
+        }
+    }
+
+    #[test]
+    fn promoted_svg_children_keep_nonzero_ancestor_clip_origins() {
+        let mut root = plain(0.0, 0.0, 80.0, 80.0, None);
+        let mut ancestor = plain(10.0, 20.0, 40.0, 40.0, None);
+        ancestor.clip = Some(ClipRect {
+            x: 3.0,
+            y: 4.0,
+            width: 10.0,
+            height: 12.0,
+            radii: BorderRadii::ZERO,
+        });
+        let mut child = plain(0.0, 0.0, 80.0, 80.0, Some(RED));
+        child.is_positioned = true;
+        child.z_index = Some(1);
+        ancestor.children.push(child);
+        root.children.push(ancestor);
+        let svg = paint(&root, 80, 80, WHITE, &HashMap::new());
+        let scope = svg
+            .split("<clipPath id=\"scope")
+            .nth(1)
+            .expect("promoted child clip");
+        let clip = scope.split("</clipPath>").next().unwrap();
+        assert!(
+            clip.contains("x=\"13.00\" y=\"24.00\" width=\"10.00\" height=\"12.00\""),
+            "{clip}"
+        );
+    }
+
+    #[test]
     fn translated_tile_patterns_are_written_in_phase() {
         // miaskiewicz/turbo-dom#274: the 10x10 pattern box moved by `Fragment::translate`
         // writes the pattern (or the walked tiles) where the same pattern laid out at the
