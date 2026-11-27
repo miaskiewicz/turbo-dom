@@ -490,6 +490,41 @@ mod mutation_tests {
     use super::*;
 
     #[test]
+    fn handler_assignment_survives_document_adoption_with_authored_attribute() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        crate::browser_env::install(scope);
+        let source = v8::String::new(
+            scope,
+            r###"(() => {
+  globalThis.idlCalls=0;globalThis.attributeCalls=0;
+  const button=document.createElement('button');
+  button.setAttribute('onclick','attributeCalls++');
+  document.body.appendChild(button);
+  const assigned=()=>idlCalls++;
+  button.onclick=assigned;
+  button.click();
+  const inert=document.implementation.createHTMLDocument('');
+  inert.body.appendChild(inert.adoptNode(button));
+  document.body.appendChild(document.adoptNode(button));
+  button.click();
+  return [button.onclick===assigned,idlCalls,attributeCalls].join();
+})()
+"###,
+        )
+        .unwrap();
+        let result = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        assert_eq!(result.to_rust_string_lossy(scope), "true,2,0");
+        reset();
+    }
+
+    #[test]
     fn handler_idl_only_attributes_preserve_assigned_callbacks_during_native_refresh() {
         crate::browser_env::tests::init_v8();
         let isolate = &mut crate::browser_env::tests::plain_isolate();
