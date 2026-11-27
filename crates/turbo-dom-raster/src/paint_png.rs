@@ -3002,6 +3002,31 @@ mod tests {
     }
 
     #[test]
+    fn promoted_children_keep_nonzero_ancestor_clip_origins() {
+        let mut root = plain(0.0, 0.0, 80.0, 80.0, None);
+        let mut ancestor = plain(10.0, 20.0, 40.0, 40.0, None);
+        ancestor.clip = Some(ClipRect {
+            x: 3.0,
+            y: 4.0,
+            width: 10.0,
+            height: 12.0,
+            radii: BorderRadii::ZERO,
+        });
+        let mut child = plain(0.0, 0.0, 80.0, 80.0, Some(RED));
+        child.is_positioned = true;
+        child.z_index = Some(1);
+        ancestor.children.push(child);
+        root.children.push(ancestor);
+        let pm = render(&root, 80, 80, &HashMap::new());
+        for (x, y) in [(13, 24), (22, 35)] {
+            assert_eq!(rgb(&pm, x, y), [255, 0, 0]);
+        }
+        for (x, y) in [(12, 24), (13, 23), (23, 35), (22, 36)] {
+            assert_eq!(rgb(&pm, x, y), [255, 255, 255]);
+        }
+    }
+
+    #[test]
     fn only_the_part_of_an_image_the_canvas_shows_is_resampled() {
         let red = crate::image_paint::DecodedImage {
             width: 1,
@@ -3015,6 +3040,12 @@ mod tests {
         assert_eq!(
             visible_window(place, (20, 20), (10, 10)),
             Some((5, 0, 10, 7))
+        );
+        // Negative offsets on both axes retain only the canvas-sized source
+        // window, so resampling scratch cannot grow with the hidden origin.
+        assert_eq!(
+            visible_window(Transform::from_translate(-7.0, -11.0), (100, 100), (10, 20)),
+            Some((7, 11, 10, 20))
         );
         // Wholly off the canvas, or through a transform with no inverse: nothing.
         let off = Transform::from_translate(30.0, 0.0);
