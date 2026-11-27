@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Retain immutable unscoped query rows within a compiled selector program while
+  still collecting fresh matching answers and checking scope, dependencies and quotas.
+
+- Reuse validated selector navigators for exactly equal private captures and fresh
+  quotas; retain full DOM capture and owner, mutation, state and limit checks.
+
 - Reuse bounded successful native computed-style results only for exact retained
   matching requests, after fresh validation; preserve callback, quota and disposal behavior.
 

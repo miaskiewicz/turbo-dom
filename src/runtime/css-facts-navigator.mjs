@@ -8,11 +8,14 @@ const safe = Number.isSafeInteger;
 const apply = Reflect.apply;
 const define = Object.defineProperty;
 const MapClass = Map;
-const WeakMapClass = WeakMap;
+const WeakMapClass = WeakMap, WeakSetClass = WeakSet;
 const mapGet = Map.prototype.get, mapSet = Map.prototype.set, mapHas = Map.prototype.has;
 const weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set;
+const budgetHas = WeakSet.prototype.has, budgetAdd = WeakSet.prototype.add, budgetDelete = WeakSet.prototype.delete;
 const mapSize = Object.getOwnPropertyDescriptor(Map.prototype, 'size').get;
 const maps = new WeakMapClass();
+const budgets = new WeakSetClass(), navigatorLimits = new WeakMapClass();
+const budgetNames = ['maxNodes','maxEdges','maxAttributeUnits','maxTextUnits'];
 function put(object, key, value) { define(object, key, {value, writable:true, enumerable:true, configurable:true}); }
 function lookup(map,key) { return apply(mapGet,map,[key]); }
 function contains(array,value) { for(let i=0;i<array.length;i++)if(array[i]===value)return true;return false; }
@@ -80,8 +83,20 @@ function property(rows,id,key){const row=get(rows,id);if(!own(row,key))missing(k
 function attribute(rows,id,name){const attrs=property(rows,id,'attributes');for(let at=0;at<attrs.length;at++){const row=attrs[at];if(!own(row,'prefix')||row.prefix===undefined)missing('attribute prefix',id);const qualified=row.prefix?`${row.prefix}:${row.name}`:row.name;if(qualified===name)return row.value;}return null;}
 function sibling(rows,id,delta){const row=get(rows,id);if(row.parentNode===null)return null;const children=property(rows,row.parentNode,'children');let index=-1;for(let i=0;i<children.length;i++)if(children[i]===id){index=i;break;}if(index<0)missing('parent/child provenance',id);const at=index+delta;return at<0||at>=children.length?null:children[at];}
 function validate(rows,input){for(let i=0;i<input.length;i++){const row=input[i];if(row.parentNode!==null){const parent=get(rows,row.parentNode);if(!contains(parent.children,row.id))missing('parent/child provenance',row.id);}for(let at=0;at<row.children.length;at++){const child=row.children[at];if(get(rows,child).parentNode!==row.id)missing('child/parent provenance',child);}let current=row,count=0;while(current.parentNode!==null){if(++count>apply(mapSize,rows,[]))missing('cyclic parent',row.id);current=get(rows,current.parentNode);}}}
-export function createCssFactsNavigator(source,limits){
- const budget={};const names=['maxNodes','maxEdges','maxAttributeUnits','maxTextUnits'];for(let i=0;i<names.length;i++){const name=names[i],value=data(limits,name);if(!safe(value)||value<0)missing('limit');put(budget,name,value);}
+export function captureCssFactsBudget(limits){
+ const budget={};for(let i=0;i<budgetNames.length;i++){const name=budgetNames[i],value=data(limits,name);if(!safe(value)||value<0)missing('limit');put(budget,name,value);}
+ freeze(budget);apply(budgetAdd,budgets,[budget]);return budget;
+}
+function budgetEntry(token){if(!apply(budgetHas,budgets,[token]))missing('unadmitted budget');return token;}
+export function reuseCssFactsBudget(token,navigator){
+ budgetEntry(token);const previous=apply(weakGet,navigatorLimits,[navigator]);
+ if(!previous)return false;
+ for(let i=0;i<budgetNames.length;i++){const name=budgetNames[i];if(token[name]!==previous[name])return false;}
+ apply(budgetDelete,budgets,[token]);return true;
+}
+export function createCssFactsNavigator(source,limits){return createCssFactsNavigatorFromBudget(source,captureCssFactsBudget(limits));}
+export function createCssFactsNavigatorFromBudget(source,budgetToken){
+ const entry=budgetEntry(budgetToken),budget={maxNodes:entry.maxNodes,maxEdges:entry.maxEdges,maxAttributeUnits:entry.maxAttributeUnits,maxTextUnits:entry.maxTextUnits};apply(budgetDelete,budgets,[budgetToken]);
  const documentId=identity(data(source,'documentId')),documentElementId=nullableId(data(source,'documentElementId'));const rows=new MapClass();
  const input=array(data(source,'nodes'),budget,'maxNodes',value=>node(value,budget));for(let index=0;index<input.length;index++){const row=input[index];if(apply(mapHas,rows,[row.id]))missing('duplicate node',row.id);apply(mapSet,rows,[row.id,row]);}
  validate(rows,input);get(rows,documentId);if(documentElementId!==null)get(rows,documentElementId);
@@ -95,6 +110,6 @@ export function createCssFactsNavigator(source,limits){
   previous:id=>sibling(rows,id,-1),next:id=>sibling(rows,id,1),
   documentId,documentElementId,
   focusTarget(){if(focus===undefined)missing('focusTarget');return focus;},
- });apply(weakSet,maps,[token,operations]);return token;
+ });apply(weakSet,maps,[token,operations]);apply(weakSet,navigatorLimits,[token,entry]);return token;
 }
 export function readCssFactsNavigator(token){const operations=apply(weakGet,maps,[token]);if(!operations)missing('unadmitted navigator');return operations;}

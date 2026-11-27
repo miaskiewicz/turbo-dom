@@ -4,6 +4,8 @@ import {unscopedCssFactRoots, compileCssMatchFacts, compileCssPrimitiveMatchFact
 import {cssFocusTarget} from './css-invalidation.mjs';
 import {sharedText} from './css-shared-codec.mjs';
 import {createSharedRouting} from './css-shared-routing.mjs';
+const createRecord=Object.create;
+const freeze=Object.freeze;
 function positive(value) {
   if (!Number.isSafeInteger(value) || value < 0) throw new TypeError('invalid CSS contextual fact limits');
   return value;
@@ -23,7 +25,7 @@ function collectMetadata(metadata, primitive) {
       selectors.push(value);items.set(value.id,{selectorId:selector.id,itemId:item.index});contextual.set(value.id,item);}
   }
   collectGroups(metadata.groups,groups,program);
-  return {collector:(primitive ? compileCssPrimitiveMatchFacts : compileCssMatchFacts)({selectors,scopeGroups:groups}),items,contextual,groups};
+  return {collector:(primitive ? compileCssPrimitiveMatchFacts : compileCssMatchFacts)({selectors,scopeGroups:groups}),items,contextual,groups,unscopedQueries:createRecord(null)};
 }
 function queries(program,snapshot, trustedUnscoped) {
   const unscopedRoots = trustedUnscoped ? unscopedCssFactRoots : undefined;
@@ -32,10 +34,14 @@ function queries(program,snapshot, trustedUnscoped) {
   const selectorQueries=[],scopeQueries=[];
   for(const [selectorId,item] of program.contextual){
     const scopeRootIds=item.implicitScopeAnchor?roots:item.referencesScope?[null,...roots]:(unscopedRoots ?? [null]);
-    selectorQueries.push({selectorId,scopeRootIds});
+    selectorQueries.push(selectorQuery(program,selectorId,scopeRootIds));
   }
   for(const group of program.groups)for(const boundary of ['start','end'])if(group[boundary]!==undefined)scopeQueries.push({groupId:group.id,boundary,enclosingRootIds:roots,candidateIds:ids});
   return {ids,selectorQueries,scopeQueries};
+}
+function selectorQuery(program,selectorId,scopeRootIds) {
+  if(scopeRootIds!==unscopedCssFactRoots)return {selectorId,scopeRootIds};
+  return program.unscopedQueries[selectorId]??=freeze({selectorId,scopeRootIds});
 }
 function slotsOf(snapshot) {
   const records=new Map(snapshot.records.map(row=>[row.id,row])),slots=new Map();

@@ -1,6 +1,6 @@
 import { sameOwnedSelectorInput } from './css-native-input-equality.mjs';
 import { captureNativeCssSources } from './css-default-sources.mjs';
-import { createCssFactsNavigator } from './css-facts-navigator.mjs';
+import { captureCssFactsBudget, reuseCssFactsBudget, createCssFactsNavigatorFromBudget } from './css-facts-navigator.mjs';
 import { customElementState, isNativeCssCustomPrototype } from './custom-elements.mjs';
 import { matchesSelector } from './selectors.mjs';
 import { readNativeCssBuffer } from './buffer.mjs';
@@ -36,6 +36,10 @@ const prototype = NativeObject.getPrototypeOf;
 const define = Reflect.defineProperty;
 const views = ArrayBuffer.isView;
 const apply = Reflect.apply;
+const weakGet = NativeWeakMap.prototype.get, weakSet = NativeWeakMap.prototype.set,
+  weakHas = NativeWeakMap.prototype.has, weakDelete = NativeWeakMap.prototype.delete;
+function weakRead(map,key){return apply(weakGet,map,[key]);}
+function weakWrite(map,key,value){apply(weakSet,map,[key,value]);}
 const arrayMethods = objectFromEntries(
   ['push', 'find', 'filter', 'map', 'some', 'slice', 'includes'].map((name) => [name, NativeArray.prototype[name]]),
 );
@@ -348,11 +352,11 @@ function nodeKind(node) {
   unsupported('foreign node');
 }
 function stableId(allocator, node) {
-  let id = allocator.ids.get(node);
+  let id = weakRead(allocator.ids,node);
   if (id === undefined) {
     if (allocator.next > 4294967295) throw new CssDomSnapshotLimitError('node IDs');
     id = allocator.next++;
-    allocator.ids.set(node, id);
+    weakWrite(allocator.ids,node,id);
   }
   return id;
 }
@@ -609,6 +613,7 @@ export function nativeCssConnected(element, document, maximumDepth) {
   }
   throw new CssDomSnapshotLimitError('maxDepth');
 }
+function sameSelectorOwner(left,right){return !!left && left.identity===right.identity && left.incarnation===right.incarnation;}
 export function createDefaultCssCapture() {
   const nativeNodeBrand = isNativeCssNode;
   const documents = new NativeWeakMap(), selectorInputs = new NativeWeakMap(), selectorReuse = new NativeWeakMap();
@@ -623,10 +628,10 @@ export function createDefaultCssCapture() {
     guardInflation(document);
     const bufferInput = beginCssBufferCapture(document);
     const buffer = bufferInput.buffer;
-    let allocator = documents.get(document);
+    let allocator = weakRead(documents,document);
     if (!allocator) {
       allocator = { ids: new NativeWeakMap(), next: 1, identity: freeze({}), storage: buffer, incarnation: freeze({}) };
-      documents.set(document, allocator);
+      weakWrite(documents,document,allocator);
     }
     if (allocator.storage !== buffer) {
       allocator.storage = buffer;
@@ -670,7 +675,7 @@ export function createDefaultCssCapture() {
         return record.id;
       },
     };
-    selectorInputs.set(snapshot,{input:selectorInput(snapshot,limits),document,identity:allocator.identity,incarnation:allocator.incarnation});
+    weakWrite(selectorInputs,snapshot,{input:selectorInput(snapshot,limits),document,identity:allocator.identity,incarnation:allocator.incarnation});
     guardHelpers();
     unchanged(document,buffer,startVersion);
     bufferInput.finish();
@@ -679,26 +684,27 @@ export function createDefaultCssCapture() {
   return {
     capture,
     sources(snapshot,limits) {
-      if(!selectorInputs.has(snapshot))unsupported('unknown native source snapshot');
+      if(!apply(weakHas,selectorInputs,[snapshot]))unsupported('unknown native source snapshot');
       guardHelpers();
       return captureNativeCssSources(snapshot,limits);
     },
     selectorFacts(snapshot,limits) {
-      const owned=selectorInputs.get(snapshot);
+      const owned=weakRead(selectorInputs,snapshot);
       if(!owned)unsupported('unknown native selector snapshot');
-      // Validate every fresh input and budget before considering exact reuse.
-      const fresh=createCssFactsNavigator(owned.input,limits);
-      const allocator=documents.get(owned.document);
-      if(!allocator || allocator.identity!==owned.identity || allocator.incarnation!==owned.incarnation)return fresh;
-      const previous=selectorReuse.get(owned.document);
-      if(previous && previous.identity===owned.identity && previous.incarnation===owned.incarnation &&
-          sameOwnedSelectorInput(previous.input,owned.input))return previous.navigator;
-      selectorReuse.set(owned.document,{identity:owned.identity,incarnation:owned.incarnation,input:owned.input,navigator:fresh});
+      // Fresh capture owns every input field; exact equality retains its prior
+      // validation only when the freshly read quotas are also unchanged.
+      const budget=captureCssFactsBudget(limits), allocator=weakRead(documents,owned.document);
+      const current=sameSelectorOwner(allocator,owned);
+      const previous=current && weakRead(selectorReuse,owned.document);
+      if(sameSelectorOwner(previous,owned) &&
+          sameOwnedSelectorInput(previous.input,owned.input) && reuseCssFactsBudget(budget,previous.navigator))return previous.navigator;
+      const fresh=createCssFactsNavigatorFromBudget(owned.input,budget);
+      if(current)weakWrite(selectorReuse,owned.document,{identity:owned.identity,incarnation:owned.incarnation,input:owned.input,navigator:fresh});
       return fresh;
     },
     reset(document) {
-      documents.delete(document);
-      selectorReuse.delete(document);
+      apply(weakDelete,documents,[document]);
+      apply(weakDelete,selectorReuse,[document]);
     },
   };
 }

@@ -146,11 +146,256 @@
     "packedPassed": 29,
     "rustSentinelPassed": 1
   },
-  "pending": "Combined performance not measured yet.",
+  "pending": "All-four combined performance is pending; individual deltas must not be added. Native performance artifact predates the equivalent enum coverage-expression change.",
   "coreCoverage": {
     "covered": 17860,
     "coverable": 17860,
     "percent": 100,
     "qualification": "Equivalent enum equality removes a non-executable matches! pattern line from coverage mapping; ordinary composed pseudo inverse added. Native perf artifact predates this equivalent source change."
+  },
+  "combinedPacked": {
+    "wallMs": {
+      "matchedMedianDeltaPct": 0.3621501401339211,
+      "blockDeltasPct": [
+        0.3149807178445929,
+        1.1712403052227982,
+        0.4469192094173735,
+        1.7604971293947669,
+        0.20163787305049752,
+        0.3621501401339211,
+        -1.3576477452842628
+      ],
+      "wins": 1,
+      "leftMedian": 1613.6164789932081,
+      "rightMedian": 1625.3867915074807
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": 0.19407575239085428,
+      "blockDeltasPct": [
+        1.8527478855393076,
+        -4.269179896574649,
+        0.5604334736275307,
+        3.182620898153954,
+        -0.2306273257757674,
+        0.19407575239085428,
+        -2.8243184128183163
+      ],
+      "wins": 3,
+      "leftMedian": 323.742481,
+      "rightMedian": 324.9909799999999
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": 0.6128810272413521,
+      "blockDeltasPct": [
+        1.1190924237717947,
+        0.47612624974675555,
+        0.6128810272413521,
+        1.2189660299301686,
+        0.7738892608474268,
+        0.4878564446926914,
+        -1.105045339477384
+      ],
+      "wins": 1,
+      "leftMedian": 1888.5785000000005,
+      "rightMedian": 1908.5109999999995
+    }
+  },
+  "encoderOnMemo": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.4662906707901704,
+      "blockDeltasPct": [
+        0.07782110382492657,
+        -0.11712254611316864,
+        -0.4662906707901704,
+        -0.5140727449547522,
+        -0.6713343247098935,
+        0.7791905685440081,
+        -4.907082996739254
+      ],
+      "wins": 5,
+      "leftMedian": 1565.6920415058266,
+      "rightMedian": 1564.381542004412
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -0.5517313839505933,
+      "blockDeltasPct": [
+        -0.6352566428798889,
+        -0.5517313839505933,
+        -1.5475905927928468,
+        0.02600785503648062,
+        -0.046646376544712265,
+        -0.5164443607978964,
+        -2.7004600509711985
+      ],
+      "wins": 6,
+      "leftMedian": 316.72285600000004,
+      "rightMedian": 314.7981665
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": 0.1664389062477012,
+      "blockDeltasPct": [
+        0.6347998751894401,
+        0.6141666560859793,
+        0.1664389062477012,
+        0.1389128073201018,
+        -0.5330502589467434,
+        1.500953174372044,
+        -2.1089605094938957
+      ],
+      "wins": 2,
+      "leftMedian": 1832.891500000001,
+      "rightMedian": 1839.9779999999998
+    }
+  },
+  "captureFirst": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.20896338454684527,
+      "blockDeltasPct": [
+        -2.8605424763513354,
+        -0.07168854370717126,
+        3.1473611819695213,
+        -4.453405825638345,
+        0.40031941508162916,
+        -0.20896338454684527,
+        -6.34779700595558
+      ],
+      "wins": 5,
+      "leftMedian": 1656.0481249907752,
+      "rightMedian": 1649.1259165049996
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -1.3302898601626367,
+      "blockDeltasPct": [
+        -5.120036945214257,
+        -1.3302898601626367,
+        1.597852343681394,
+        -3.0648486915164863,
+        -2.3851962363882317,
+        0.21596727632751112,
+        0.38575757474765826
+      ],
+      "wins": 4,
+      "leftMedian": 329.601209,
+      "rightMedian": 324.28704300000004
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -0.6702236261726058,
+      "blockDeltasPct": [
+        -3.121752535112432,
+        -0.22896359999746707,
+        2.2760561168944315,
+        -4.649523589654891,
+        -0.6702236261726058,
+        0.33310310842586954,
+        -5.43723314846869
+      ],
+      "wins": 5,
+      "leftMedian": 1939.3605000000014,
+      "rightMedian": 1925.738499999999
+    }
+  },
+  "captureRepeat": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.4566017356982144,
+      "blockDeltasPct": [
+        -0.5958955740083316,
+        -2.9200683913071512,
+        0.5789070157875775,
+        -4.597693852183382,
+        -0.4566017356982144,
+        2.2684153397064977,
+        -0.34241410337209066
+      ],
+      "wins": 5,
+      "leftMedian": 1606.140541509376,
+      "rightMedian": 1597.7226664981572
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -0.8215015951110627,
+      "blockDeltasPct": [
+        0.791267381246108,
+        -1.9333097564705248,
+        1.2245134398584767,
+        -2.4173880346396226,
+        -5.013716739267049,
+        -0.09698430121851676,
+        -0.8215015951110627
+      ],
+      "wins": 5,
+      "leftMedian": 319.15656199999995,
+      "rightMedian": 315.23297850000006
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -0.37686892702777364,
+      "blockDeltasPct": [
+        -1.010529387525405,
+        -1.3034902897193557,
+        -0.2079585421104091,
+        -3.6179848493333555,
+        -0.273648348190092,
+        1.0345470020168834,
+        -0.37686892702777364
+      ],
+      "wins": 6,
+      "leftMedian": 1867.6124999999995,
+      "rightMedian": 1866.217000000001
+    }
+  },
+  "queryRows": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.9845966328969724,
+      "blockDeltasPct": [
+        -1.3345777288122807,
+        0.23978326408851114,
+        -0.5373934263437574,
+        0.02735429882727569,
+        -1.1205470284833652,
+        -0.9845966328969724,
+        -1.311977235380013
+      ],
+      "wins": 5,
+      "leftMedian": 1607.7280000026803,
+      "rightMedian": 1600.4159584845183
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -0.11790220459150236,
+      "blockDeltasPct": [
+        -1.9021585721593848,
+        0.46202040776639475,
+        0.3251178668964849,
+        -0.11790220459150236,
+        0.8598253072290785,
+        -0.2407286908789108,
+        -0.3518440407866419
+      ],
+      "wins": 4,
+      "leftMedian": 321.788062,
+      "rightMedian": 320.88820499999997
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -0.6022946246826866,
+      "blockDeltasPct": [
+        -0.9931892806597453,
+        -0.6022946246826866,
+        -0.2929699694488974,
+        -0.07990646306875737,
+        -0.7097155221413076,
+        -0.2958895275050444,
+        -1.2009166857751774
+      ],
+      "wins": 7,
+      "leftMedian": 1881.9334999999992,
+      "rightMedian": 1874.954000000001
+    }
+  },
+  "allFourCorrectness": {
+    "tests": 1209,
+    "failed": 0,
+    "lineCoverage": 100,
+    "functionCoverage": 100,
+    "branchCoverage": 97.32,
+    "packed": 29,
+    "sentinel": 1,
+    "complexityLimit": 9
   }
 }
