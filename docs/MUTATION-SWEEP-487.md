@@ -1,5 +1,14 @@
 # Completing mutation sweep #487
 
+The v0.8.7 candidate at `b10598144a4029cd87c96309a347b4a52511e5fe`
+enumerates 937 PNG and 430 SVG mutants with cargo-mutants 27.1.0. The additions
+follow the shared stacking-context paint schedule and clipping changes.
+The release plan now admits those exact inventories across all existing shards;
+the historical v0.8.5 counts below describe their original source revision.
+This enumeration establishes scope; successful mutation results still require
+every selected mutant to be caught or unviable with retained evidence.
+
+
 The scope is `event_handlers.rs`, `worker_scope.rs`, `trusted_types.rs`,
 `paint_png.rs` and `paint_svg.rs`. The earlier multicol sweep and the shipped
 `record.target` regression are separate completed work. No full receipts for
