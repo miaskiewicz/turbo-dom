@@ -490,6 +490,39 @@ mod mutation_tests {
     use super::*;
 
     #[test]
+    fn handler_assignment_records_source_even_when_the_listener_is_already_registered() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::plain_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        crate::browser_env::install(scope);
+        let source = v8::String::new(scope, "globalThis.button=document.createElement('button');document.body.appendChild(button);button.onclick=()=>{};").unwrap();
+        v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let node = with_tree(|tree| tree.query_selector("button").unwrap()).unwrap();
+        // Exercise assignment independently of the cached source from listener
+        // registration: replacing a handler does not register a second listener.
+        DOM.with(|dom| {
+            dom.borrow_mut()
+                .as_mut()
+                .unwrap()
+                .event_handlers
+                .sources
+                .remove(&(node, "onclick".to_owned()));
+        });
+        let source = v8::String::new(scope, "globalThis.calls=0;globalThis.assigned=()=>calls++;button.onclick=assigned;button.click();[button.onclick===assigned,calls].join()").unwrap();
+        let result = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        assert_eq!(result.to_rust_string_lossy(scope), "true,1");
+        reset();
+    }
+
+    #[test]
     fn handler_assignment_survives_document_adoption_with_authored_attribute() {
         crate::browser_env::tests::init_v8();
         let isolate = &mut crate::browser_env::tests::plain_isolate();
