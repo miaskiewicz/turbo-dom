@@ -2,7 +2,7 @@
   "date": "2026-11-27",
   "baseline": "1344d48959fbd8a8b9fdc1723566d5ca3a90cdd8",
   "defaultCssBackend": "js",
-  "qualification": "Independent experiments; percentages are not additive. No claim of reaching legacy-JS parity.",
+  "qualification": "Independent deltas are not additive. All-four versus previous Rust: seven ABBA blocks, all 29 tests pass per run. Does not establish legacy-JS parity. The native artifact is source-matched to the memo change before the equivalent enum coverage-expression followup.",
   "nativeMemo": {
     "wallMs": {
       "matchedMedianDeltaPct": -0.8220347962372587,
@@ -146,7 +146,6 @@
     "packedPassed": 29,
     "rustSentinelPassed": 1
   },
-  "pending": "All-four combined performance is pending; individual deltas must not be added. Native performance artifact predates the equivalent enum coverage-expression change.",
   "coreCoverage": {
     "covered": 17860,
     "coverable": 17860,
@@ -397,5 +396,68 @@
     "packed": 29,
     "sentinel": 1,
     "complexityLimit": 9
+  },
+  "allFourPacked": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -1.1626978170925728,
+      "blockDeltasPct": [
+        -1.3453152913508903,
+        -1.1626978170925728,
+        -0.4688207607895456,
+        -0.22700831533495336,
+        -0.4150873268047084,
+        -3.0895519275972227,
+        -1.5441066359387468
+      ],
+      "wins": 7,
+      "leftMedian": 1595.196375012165,
+      "rightMedian": 1571.6800625086762
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -4.8309856638421245,
+      "blockDeltasPct": [
+        -3.3530724902189335,
+        -5.527174344343456,
+        -3.909100337107052,
+        -4.8309856638421245,
+        -4.102551460239079,
+        -6.003262214234118,
+        -6.8384505393508155
+      ],
+      "wins": 7,
+      "leftMedian": 323.14885200000003,
+      "rightMedian": 308.9316245
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -0.710717099400271,
+      "blockDeltasPct": [
+        -1.455599691259224,
+        -0.48541519052849313,
+        -1.0839392506663104,
+        -0.1880946512868853,
+        -0.602142222793256,
+        -2.515621677707569,
+        -0.710717099400271
+      ],
+      "wins": 7,
+      "leftMedian": 1856.1055000000006,
+      "rightMedian": 1835.2810000000004
+    }
+  },
+  "allFourPackedIdentity": {
+    "baseline": "1344d48959fbd8a8b9fdc1723566d5ca3a90cdd8",
+    "sourceCommit": "ddd9eb05",
+    "fixture": {
+      "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+      "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+      "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+      "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+      "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+      "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+      "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+      "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+    },
+    "runnerSha256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+    "blocks": 7
   }
 }
