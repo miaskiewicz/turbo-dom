@@ -1039,6 +1039,79 @@ mod tests {
         let first = owner.resolve_matching(&input, &token).unwrap();
         assert_eq!(owner.resolve_matching(&input, &token).unwrap(), first);
         assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 1);
+        assert_eq!(owner.matching.as_ref().unwrap().parse_calls(), 1);
+    }
+    #[test]
+    fn retained_validation_receipt_requires_exact_successful_wire() {
+        let (owner, token, input) = retained_fixture();
+        let wire = retained_input(&input);
+        let first = owner.resolve_matching(&wire, &token).unwrap();
+        let slot = owner.matching.as_ref().unwrap();
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        assert_eq!(slot.parse_calls(), 1);
+        let spaced = format!(" {wire}");
+        assert_eq!(owner.resolve_matching(&spaced, &token).unwrap(), first);
+        assert_eq!(slot.parse_calls(), 2);
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        assert_eq!(slot.parse_calls(), 3);
+        for _ in 0..2 {
+            assert!(owner
+                .resolve_matching("invalid-json", &token)
+                .unwrap_err()
+                .contains("Transport"));
+        }
+        assert_eq!(slot.parse_calls(), 5);
+        let mut bad = input;
+        bad["abiVersion"] = json!(2);
+        for _ in 0..2 {
+            assert!(owner
+                .resolve_matching(&retained_input(&bad), &token)
+                .unwrap_err()
+                .contains("AbiVersion"));
+        }
+        assert_eq!(slot.parse_calls(), 7);
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        assert_eq!(slot.parse_calls(), 7);
+    }
+    #[test]
+    fn retained_validation_receipt_keeps_owner_checks_before_parsing() {
+        let (mut owner, token, input) = retained_fixture();
+        let wire = retained_input(&input);
+        let first = owner.resolve_matching(&wire, &token).unwrap();
+        let (other, foreign, _) = retained_fixture();
+        assert!(owner
+            .resolve_matching("invalid-json", &foreign)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        assert!(other
+            .resolve_matching(&wire, &token)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        assert_eq!(owner.matching.as_ref().unwrap().parse_calls(), 1);
+        assert_eq!(other.matching.as_ref().unwrap().parse_calls(), 0);
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        owner.dispose();
+        assert!(owner
+            .resolve_matching("invalid-json", &token)
+            .unwrap_err()
+            .contains("Disposed"));
+    }
+    #[test]
+    fn concurrent_warm_validation_receipts_do_not_parse_again() {
+        let (owner, token, input) = retained_fixture();
+        let wire = retained_input(&input);
+        let expected = owner.resolve_matching(&wire, &token).unwrap();
+        std::thread::scope(|scope| {
+            let mut readers = Vec::new();
+            for _ in 0..8 {
+                readers.push(scope.spawn(|| owner.resolve_matching(&wire, &token).unwrap()));
+            }
+            for reader in readers {
+                assert_eq!(reader.join().unwrap(), expected);
+            }
+        });
+        assert_eq!(owner.matching.as_ref().unwrap().parse_calls(), 1);
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 1);
     }
     fn retained_fixture() -> (PreparedHandle, String, Value) {
         let compiled = compiled(".x{color:red}");

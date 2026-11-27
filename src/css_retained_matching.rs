@@ -83,6 +83,8 @@ pub(crate) struct MatchingSlot {
     result: Mutex<Option<CachedResult>>,
     #[cfg(test)]
     cascade_calls: std::sync::atomic::AtomicUsize,
+    #[cfg(test)]
+    parse_calls: std::sync::atomic::AtomicUsize,
 }
 impl MatchingSlot {
     pub(crate) fn new(wire: &str, limits: &str) -> Result<Self, String> {
@@ -99,6 +101,8 @@ impl MatchingSlot {
             result: Mutex::new(None),
             #[cfg(test)]
             cascade_calls: std::sync::atomic::AtomicUsize::new(0),
+            #[cfg(test)]
+            parse_calls: std::sync::atomic::AtomicUsize::new(0),
             token,
         })
     }
@@ -106,6 +110,10 @@ impl MatchingSlot {
     pub(crate) fn cascade_calls(&self) -> usize {
         self.cascade_calls
             .load(std::sync::atomic::Ordering::Relaxed)
+    }
+    #[cfg(test)]
+    pub(crate) fn parse_calls(&self) -> usize {
+        self.parse_calls.load(std::sync::atomic::Ordering::Relaxed)
     }
     pub(crate) fn token(&self) -> &str {
         &self.token
@@ -120,10 +128,9 @@ impl MatchingSlot {
                 .map_or(0, CachedResult::bytes)
     }
     pub(crate) fn resolve(&self, prepared: &PreparedStyles, wire: &str) -> Result<String, String> {
-        let input: ResolveInput = parse(wire)?;
-        input.validate()?;
-        // The owner and matching token were checked before entering this slot.
-        // Parsing and ABI/target validation still run on every public call.
+        // The live owner and current token were checked before this slot.
+        // An exact wire retained only after successful validation and cascade
+        // certifies these immutable prepared/matching facts and all budgets.
         if let Some(cached) = self
             .result
             .lock()
@@ -134,6 +141,11 @@ impl MatchingSlot {
                 return Ok(cached.response.to_string());
             }
         }
+        #[cfg(test)]
+        self.parse_calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let input: ResolveInput = parse(wire)?;
+        input.validate()?;
         #[cfg(test)]
         self.cascade_calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);

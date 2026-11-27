@@ -10,12 +10,16 @@ function objectPair(left, right) {
 export function sameOwnedSelectorInput(left, right) {
   if (same(left, right)) return true;
   if (!objectPair(left, right)) return false;
+  return sameFields(left, right);
+}
+function sameFields(left, right) {
   const a = names(left), b = names(right);
   if (a.length !== b.length) return false;
   for (let index = 0; index < a.length; index++) {
     if (a[index] !== b[index]) return false;
     const first = descriptor(left, a[index]), second = descriptor(right, b[index]);
-    if (!owns(first, 'value') || !owns(second, 'value') || !sameOwnedSelectorInput(first.value, second.value)) return false;
+    if (!owns(first, 'value') || !owns(second, 'value')) return false;
+    if (!same(first.value, second.value) && !sameOwnedSelectorInput(first.value, second.value)) return false;
   }
   return true;
 }
