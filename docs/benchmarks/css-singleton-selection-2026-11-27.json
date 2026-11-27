@@ -1,0 +1,487 @@
+{
+  "date": "2026-11-27",
+  "baseCommit": "2030505dc130eb3d6f423d511e368c3125391b45",
+  "defaultCssBackend": "js",
+  "decision": "Keep the bounded singleton fast path: lower median native-workload CPU in two independent sevenABBA windows, with packed time essentially flat to slightly lower. No claim of stable whole-suite speedup or JS parity.",
+  "change": "For exactly one cascade candidate, check the original restrictions, invoke the original evaluator exactly once, propagate its error, return None for revert/revert-layer and otherwise return the original candidate/payload. Empty/multi-candidate algorithm unchanged. No cache, grammar bypass, quota change or new API.",
+  "research": "Three-agent sequence: native phase research; independent source/proposal review; reviewed implementation and tests, followed by parent-controlled serial measurement. Intermediate JSON serialization was deferred after its measured cost was only about0.25ms.",
+  "profile": {
+    "baseCommit": "b8f7988def21d2d863a5546da4662662e5392ea8",
+    "runs": 3,
+    "testsPerRun": 29,
+    "allPassed": true,
+    "dropped": 0,
+    "qualification": "Private RAII elapsed attribution, not exclusive CPU or acceptance benchmark. Nested phases must not be added. Instrumented timings contain counter/timer overhead.",
+    "medianPhaseMs": {
+      "CompileTotal": 4.551458,
+      "CompileParse": 0.317623,
+      "CompileEngine": 4.232792,
+      "PrepareTotal": 0.125874,
+      "PrepareParse": 0.080123,
+      "PrepareEngine": 0.029584,
+      "ResolveTotal": 11.059924,
+      "ResolveParse": 0.454248,
+      "MatchingParse": 0.465496,
+      "ResolveApply": 10.56725,
+      "ResolveStyle": 9.546587,
+      "ResolveRow": 0.195005,
+      "ResolveValue": 0.304464,
+      "ResolveJson": 0.240463,
+      "CssomTotal": 1.012708,
+      "CssomParse": 0.436549,
+      "CssomRows": 0.454458,
+      "CssomValue": 0.050917,
+      "CssomJson": 0.023791,
+      "ResolveSetup": 0.032622,
+      "ResolveUsage": 0.026326,
+      "RendererDefaults": 0.072577,
+      "CoreMatching": 3.048547,
+      "CoreInline": 0.01887,
+      "CoreCandidates": 0.196583,
+      "CoreKeys": 0.017081,
+      "CoreSelection": 3.380612,
+      "CoreValues": 2.545377,
+      "CoreMarker": 0.005549,
+      "CoreCustomSelection": 0.059321,
+      "CoreOrdinarySelection": 3.301174,
+      "CoreInitialFont": 0.505457,
+      "CoreRootBase": 0.006615,
+      "CoreComputeFont": 0.115698,
+      "CoreSelectedValues": 1.839623,
+      "CoreInheritedValues": 0.033012,
+      "CoreSourceCheck": 0.291043,
+      "CoreSheetParse": 0.289668,
+      "CoreNodes": 3.64604
+    },
+    "counts": {
+      "CompileTotal": 6,
+      "CompileParse": 6,
+      "CompileEngine": 6,
+      "PrepareTotal": 6,
+      "PrepareParse": 6,
+      "PrepareEngine": 6,
+      "ResolveTotal": 118,
+      "ResolveParse": 105,
+      "MatchingParse": 28,
+      "ResolveApply": 105,
+      "ResolveStyle": 289,
+      "ResolveRow": 289,
+      "ResolveValue": 105,
+      "ResolveJson": 105,
+      "CssomTotal": 118,
+      "CssomParse": 118,
+      "CssomRows": 118,
+      "CssomValue": 118,
+      "CssomJson": 118,
+      "ResolveSetup": 289,
+      "ResolveUsage": 289,
+      "RendererDefaults": 289,
+      "CoreMatching": 289,
+      "CoreInline": 289,
+      "CoreCandidates": 289,
+      "CoreKeys": 289,
+      "CoreSelection": 289,
+      "CoreValues": 289,
+      "CoreMarker": 289,
+      "CoreCustomSelection": 289,
+      "CoreOrdinarySelection": 289,
+      "CoreInitialFont": 289,
+      "CoreRootBase": 289,
+      "CoreComputeFont": 289,
+      "CoreSelectedValues": 289,
+      "CoreInheritedValues": 289,
+      "CoreSourceCheck": 12,
+      "CoreSheetParse": 12,
+      "CoreNodes": 12,
+      "CountMatchedRules": 410,
+      "CountOrdinaryNames": 1428,
+      "CountOrdinaryRows": 1560,
+      "CountCustomNames": 0,
+      "CountCustomRows": 0,
+      "CountInlineUnits": 45,
+      "CountInheritedNames": 396
+    },
+    "capturedCalls": {
+      "compile": 6,
+      "metadata": 12,
+      "prepare": 6,
+      "storeMatchingV1": 14,
+      "resolveMatchingV1": 118,
+      "serializeCssomV1": 118
+    },
+    "disjointChildren": {
+      "CompileTotal": [
+        "CompileParse",
+        "CompileEngine"
+      ],
+      "CompileEngine": [
+        "CoreSourceCheck",
+        "CoreSheetParse",
+        "CoreNodes"
+      ],
+      "ResolveTotal": [
+        "ResolveParse",
+        "ResolveApply"
+      ],
+      "ResolveApply": [
+        "ResolveStyle",
+        "ResolveRow",
+        "ResolveValue",
+        "ResolveJson"
+      ],
+      "ResolveStyle": [
+        "ResolveSetup",
+        "ResolveUsage",
+        "RendererDefaults",
+        "CoreMatching",
+        "CoreInline",
+        "CoreCandidates",
+        "CoreKeys",
+        "CoreSelection",
+        "CoreValues",
+        "CoreMarker"
+      ],
+      "CoreSelection": [
+        "CoreCustomSelection",
+        "CoreOrdinarySelection"
+      ],
+      "CoreValues": [
+        "CoreInitialFont",
+        "CoreRootBase",
+        "CoreComputeFont",
+        "CoreSelectedValues",
+        "CoreInheritedValues"
+      ],
+      "CssomTotal": [
+        "CssomParse",
+        "CssomRows",
+        "CssomValue",
+        "CssomJson"
+      ]
+    },
+    "residualNanosPerRun": [
+      {
+        "CompileTotal": 1461,
+        "CompileEngine": 20121,
+        "ResolveTotal": 105432,
+        "ResolveApply": 411122,
+        "ResolveStyle": 284717,
+        "CoreSelection": 27293,
+        "CoreValues": 53593,
+        "CssomTotal": 75675
+      },
+      {
+        "CompileTotal": 1124,
+        "CompileEngine": 10124,
+        "ResolveTotal": 63632,
+        "ResolveApply": 307324,
+        "ResolveStyle": 211344,
+        "CoreSelection": 22730,
+        "CoreValues": 46426,
+        "CssomTotal": 47080
+      },
+      {
+        "CompileTotal": 1043,
+        "CompileEngine": 10752,
+        "ResolveTotal": 66420,
+        "ResolveApply": 287250,
+        "ResolveStyle": 205541,
+        "CoreSelection": 22593,
+        "CoreValues": 46884,
+        "CssomTotal": 45124
+      }
+    ],
+    "allResidualsNonnegative": true,
+    "ordinarySingletonLowerBound": {
+      "nonemptyLists": 1428,
+      "rows": 1560,
+      "minimumSingletons": 1296,
+      "fraction": 0.907563025210084,
+      "proof": "Each ordinary map entry is inserted immediately with push; every multi-candidate list consumes at least one of 132 rows beyond the first."
+    }
+  },
+  "artifacts": {
+    "baseCommit": "2030505dc130eb3d6f423d511e368c3125391b45",
+    "baselineSHA256": "1cc194eab96a3014c1f821ab84a565f1a0bcb4935ea48b8183b0cdc0d64d5e4a",
+    "candidateSHA256": "65169d323eb56b8eb90cbfd4f2126c1c12668c4a033dbbe317e923080874f2e1",
+    "sourceFiles": {
+      "crates/turbo-dom/src/rtdom/computed_css/candidates.rs": "21506175ff973b409f12eaa3e912e3da13b310a601691cde308eba732c5a5692",
+      "crates/turbo-dom/src/rtdom/computed_css/candidate_singleton_tests.rs": "58cc3e4aec30a402c124445869c1802d14082a0212f46f3db8ca787a1dd58093"
+    },
+    "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "finalSourceRecheck": "FINAL-SOURCE-RECHECK.log"
+  },
+  "nativeWorkload": {
+    "method": "Authentic packed native-call corpus, fresh6compiled/prepared models per iteration,14matching installations,118resolves(original13hits/105misses),118CSSOMserializations,12metadata reads. SevenABBA processes per window,50 then100 iterations. Matching tokens translated per owner; full byte/lifetime/error checks outside timing.",
+    "qualification": "CPU includes JSdispatch,NAPIstring transport,nativework and disposal. Excludes JavaScript DTOcapture/encoding and app execution. Captured success corpus replays workers serially; supplemental malformed/foreign/changed-budget/replaced/disposed controls run outside timing. Instrumented phase durations are attribution only, not acceptance timings.",
+    "windows": [
+      {
+        "iterationsPerProcess": 50,
+        "blocks": 7,
+        "summary": {
+          "nsPerCorpus": {
+            "matchedMedianDeltaPct": -1.5857112381858829,
+            "blockDeltasPct": [
+              0.5276594479338481,
+              -1.621186713938183,
+              -2.2688121099218916,
+              -0.8310974829636053,
+              -2.086175374969168,
+              0.13129169137664487,
+              -1.5857112381858829
+            ],
+            "wins": 5,
+            "baselineMedian": 12799637.08,
+            "candidateMedian": 12642648.34
+          },
+          "cpuUs": {
+            "matchedMedianDeltaPct": -1.513251413344574,
+            "blockDeltasPct": [
+              0.5322008773862796,
+              -1.596216490793656,
+              -1.9752371724126139,
+              -0.8126156195816914,
+              -2.115857335003013,
+              0.10133274761292554,
+              -1.513251413344574
+            ],
+            "wins": 5,
+            "baselineMedian": 640154.0,
+            "candidateMedian": 632563.5
+          }
+        },
+        "corpusSha256": "306ba64172dd6c75822dc28c1476d69bd9aafcb0498e8288b417510315baa4e5",
+        "outputSha256": "016d6b7a5225e8a83eb5c49ca18b696c7537fe446115127d5125242198a46668",
+        "outputBytes": 482782,
+        "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/singleton-v1-abba/RESULT.json"
+      },
+      {
+        "iterationsPerProcess": 100,
+        "blocks": 7,
+        "summary": {
+          "nsPerCorpus": {
+            "matchedMedianDeltaPct": -0.799848066522646,
+            "blockDeltasPct": [
+              -0.013634976756926598,
+              -0.8855627205651917,
+              -1.2854126129643761,
+              -1.4417046233200281,
+              0.025968775442186676,
+              1.3044625536148935,
+              -0.799848066522646
+            ],
+            "wins": 5,
+            "baselineMedian": 12805005.21,
+            "candidateMedian": 12836070.835
+          },
+          "cpuUs": {
+            "matchedMedianDeltaPct": -0.5303173322807053,
+            "blockDeltasPct": [
+              0.0542238814685847,
+              -0.8651032710664697,
+              -1.3063769821938687,
+              -1.4162493023172407,
+              -0.004909576128242499,
+              1.2709402499126998,
+              -0.5303173322807053
+            ],
+            "wins": 5,
+            "baselineMedian": 1279894.5,
+            "candidateMedian": 1283143.5
+          }
+        },
+        "corpusSha256": "306ba64172dd6c75822dc28c1476d69bd9aafcb0498e8288b417510315baa4e5",
+        "outputSha256": "016d6b7a5225e8a83eb5c49ca18b696c7537fe446115127d5125242198a46668",
+        "outputBytes": 482782,
+        "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/singleton-v1-confirm-abba/RESULT.json"
+      }
+    ]
+  },
+  "packed": {
+    "method": "Each comparison has2warmups+28measured freshprocesses, all29tests required; sevenABBA, median matchedblock ratios, unchanged fixture/package hashes. No heavy agent work during timing.",
+    "comparisons": {
+      "acceptedRust": {
+        "left": "singleton-baseline-v14",
+        "right": "singleton-candidate-v14",
+        "blocks": 7,
+        "summary": {
+          "wallMs": {
+            "matchedMedianDeltaPct": -0.5796031560684423,
+            "blockDeltasPct": [
+              -1.8989308738337485,
+              -0.5796031560684423,
+              1.4923983119686124,
+              -0.9818773552585092,
+              -0.31642143904226927,
+              -0.9238743461980836,
+              0.269429726734427
+            ],
+            "wins": 5,
+            "leftMedian": 1508.5694794834126,
+            "rightMedian": 1504.411916481331
+          },
+          "callbackMs": {
+            "matchedMedianDeltaPct": -0.9651439279500407,
+            "blockDeltasPct": [
+              -1.9308150260472834,
+              -1.0516141492147524,
+              1.4276431069204731,
+              1.7468516470152684,
+              -1.6616229122369597,
+              -0.5972447142146398,
+              -0.9651439279500407
+            ],
+            "wins": 5,
+            "leftMedian": 270.6819385,
+            "rightMedian": 268.81599900000003
+          },
+          "childCpuMs": {
+            "matchedMedianDeltaPct": -0.4276752677457085,
+            "blockDeltasPct": [
+              -1.7969774291645257,
+              -0.4276752677457085,
+              1.6839816883388092,
+              -0.6946353664454619,
+              -0.3316733143903683,
+              -0.43723436022358175,
+              0.26962412234854405
+            ],
+            "wins": 5,
+            "leftMedian": 1747.9890000000019,
+            "rightMedian": 1745.2929999999992
+          }
+        },
+        "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/singleton-independent-14/RESULT.json",
+        "fixtureHashes": {
+          "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+          "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+          "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+          "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+          "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+          "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+          "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+          "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+        }
+      },
+      "legacyJs": {
+        "left": "release-js",
+        "right": "singleton-candidate-v14",
+        "blocks": 7,
+        "summary": {
+          "wallMs": {
+            "matchedMedianDeltaPct": 10.86476810442134,
+            "blockDeltasPct": [
+              13.087483149242662,
+              10.86476810442134,
+              11.955749168899166,
+              9.443782392573151,
+              10.799497900654842,
+              7.609967681824292,
+              12.690366781499772
+            ],
+            "wins": 0,
+            "leftMedian": 1380.5413959780708,
+            "rightMedian": 1538.2416874927003
+          },
+          "callbackMs": {
+            "matchedMedianDeltaPct": 77.34991690795192,
+            "blockDeltasPct": [
+              86.60702249408929,
+              77.34991690795192,
+              79.12403081816998,
+              78.20589528292365,
+              73.95745720730575,
+              72.96237001058168,
+              77.2554669579891
+            ],
+            "wins": 0,
+            "leftMedian": 152.09674950000004,
+            "rightMedian": 270.93775149999993
+          },
+          "childCpuMs": {
+            "matchedMedianDeltaPct": 14.469490154180399,
+            "blockDeltasPct": [
+              16.77437546037346,
+              14.469490154180399,
+              15.72185786284319,
+              12.951605786236154,
+              14.200901702220436,
+              11.007427030397876,
+              16.10337763303029
+            ],
+            "wins": 0,
+            "leftMedian": 1546.0279999999982,
+            "rightMedian": 1779.1699999999964
+          }
+        },
+        "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/legacy-js-vs-singleton-14/RESULT.json",
+        "fixtureHashes": {
+          "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+          "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+          "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+          "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+          "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+          "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+          "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+          "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+        }
+      }
+    }
+  },
+  "qualification": "Packed acceptedRust wall median-0.58%,5/7wins, is modest/noisy. Latest directJS wall gap10.86%,all7blocks slower, outside2%goal; do not subtract separate-window percentages to infer causal gains. JS remainsdefault.",
+  "validation": {
+    "nativeTests": {
+      "singletonFocused": 4,
+      "computed": 83,
+      "selectorIntegration": 90,
+      "parser": 88,
+      "fail": 0
+    },
+    "coreCoverage": {
+      "covered": 17940,
+      "total": 17940,
+      "floor": 100,
+      "exitCode": 0,
+      "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-14/singleton-selection/COVERAGE-CORE-RESULT.json"
+    },
+    "node": {
+      "pass": 1237,
+      "fail": 0,
+      "skip": 0,
+      "line": 100,
+      "function": 100,
+      "branch": 97.33
+    },
+    "packed": {
+      "baseline": {
+        "pass": 29,
+        "sentinel": 1
+      },
+      "candidate": {
+        "pass": 29,
+        "sentinel": 1
+      }
+    },
+    "nativeReplay": {
+      "verified": true,
+      "outputBytes": 482782,
+      "receipt": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-14/singleton-selection/NATIVE-REPLAY-VERIFY.json"
+    },
+    "causalCounter": {
+      "beforeOrderedVectorPaths": 1,
+      "afterOrderedVectorPaths": 0,
+      "emptyAndMultiPathsUnchanged": true,
+      "qualification": "Code-path counter, not a heap-allocation measurement or speed claim."
+    },
+    "strict": [
+      "Clippy alltargets-Dwarnings",
+      "fmt",
+      "CC<=9"
+    ]
+  },
+  "coverageCorrection": "First100%core gate failed17940/17941 because the new test oracle contained an unreachable mismatch panic. Replaced with equivalent direct assertion; same fullcore gate then17940/17940. No loweredfloor/exclusion.",
+  "sourceIdentity": {
+    "crates/turbo-dom/src/rtdom/computed_css/candidates.rs": "21506175ff973b409f12eaa3e912e3da13b310a601691cde308eba732c5a5692",
+    "crates/turbo-dom/src/rtdom/computed_css/candidate_singleton_tests.rs": "58cc3e4aec30a402c124445869c1802d14082a0212f46f3db8ca787a1dd58093"
+  }
+}

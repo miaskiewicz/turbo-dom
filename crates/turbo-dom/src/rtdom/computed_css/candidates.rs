@@ -96,6 +96,11 @@ pub fn select<'a, T, E, F>(
 where
     F: FnMut(&Candidate<'a>) -> Result<Evaluation<T>, E>,
 {
+    if let [candidate] = candidates {
+        return select_single(candidate, restrictions, evaluate);
+    }
+    #[cfg(test)]
+    SORTED_SELECTIONS.with(|count| count.set(count.get() + 1));
     let mut ordered: Vec<_> = candidates.iter().collect();
     ordered.sort_by(|left, right| right.rank().cmp(&left.rank()));
     let mut rollback = Vec::new();
@@ -122,6 +127,24 @@ where
         }
     }
     Ok(None)
+}
+
+fn select_single<'a, T, E, F>(
+    candidate: &'a Candidate<'a>,
+    restrictions: &[Rollback<'a>],
+    mut evaluate: F,
+) -> Result<Option<(&'a Candidate<'a>, T)>, E>
+where
+    F: FnMut(&Candidate<'a>) -> Result<Evaluation<T>, E>,
+{
+    if restrictions.iter().any(|rule| rule.excludes(candidate)) {
+        return Ok(None);
+    }
+    let evaluation = evaluate(candidate)?;
+    match evaluation.keyword {
+        Some(WideKeyword::Revert | WideKeyword::RevertLayer) => Ok(None),
+        _ => Ok(Some((candidate, evaluation.value))),
+    }
 }
 
 #[cfg(test)]
@@ -247,3 +270,10 @@ mod tests {
         .excludes(&declarations[1]));
     }
 }
+
+#[cfg(test)]
+thread_local! { static SORTED_SELECTIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+
+#[cfg(test)]
+#[path = "candidate_singleton_tests.rs"]
+mod singleton_tests;
