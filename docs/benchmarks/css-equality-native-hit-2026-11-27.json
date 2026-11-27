@@ -1,0 +1,354 @@
+{
+  "date": "2026-11-27",
+  "baseCommit": "1e66e722d7767af13c54ec2a4792f51d447fc835",
+  "defaultCssBackend": "js",
+  "method": "Four independent seven-ABBA packed29-test comparisons. Each has two warmups and28 measured fresh processes. Deltas are medians of within-block ratios. All29 tests required per invocation; source and fixture hashes verified before/after. Native baseline/candidate both freshly built Rust1.98 release with identical flags. Equality-only uses unchanged prior nativecf5. No heavy agent work during timed runs.",
+  "decision": "Keep both small changes for repeatable isolated CPU savings and no observed packed regression. Combined median wall improvement0.70% is modest/noisy (6/7blocks); no claim of stable whole-suite parity.",
+  "qualification": "Latest direct legacyJS comparison remains11.09% slower wall and14.50% more childCPU, outside2%goal. Do not subtract deltas from different benchmark windows. Native micro uses maintained public test fixture, not packed requests; only13 of118 packed calls were eligible exact-success repeats.",
+  "changes": {
+    "equality": "Preserve final descriptor traversal and every validation read; bypass recursive helper only for identical field values. Full capture/equality fusion rejected because callbacks can mutate escaped prior rows.",
+    "native": "Consult existing exact successful request/result entry before reparsing; live owner and current matching token checked first on every call. Any changed byte retains full parse/validation; errors nevercached; limits, disposal, retention caps and concurrent reader semantics preserved."
+  },
+  "sourceIdentity": {
+    "src/css_backend.rs": "ef6859beb9e35ac1ad9990ef7df49e84a6bda7a9eefd7068019f1451300d3c73",
+    "src/css_retained_matching.rs": "bdedbc5bbd66ba48719fc911dec1ea9b6a632c57d448dd343aa7ddfe8abb33af",
+    "src/runtime/css-native-input-equality.mjs": "8a0d24c06c0f141b7557c3d5d2bf41b3c28378b3cf8c672c584f542b2d253bd2",
+    "test/css-native-input-equality.test.mjs": "c9cefeef458673af04ffd06f7bcc88b766ecd0e56290d442798251164fbf4b8c",
+    "test/css-capture-equality-alias.test.mjs": "a8536dcdff11f0c2e11252563d966b7fbb073c8b55c51a0bfd7a69a49f294b6a"
+  },
+  "artifacts": {
+    "baseCommit": "1e66e722d7767af13c54ec2a4792f51d447fc835",
+    "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "baselineSHA256": "1ced27fbe605b8041dc8e9dbcf245fc5cd04954630dc9f6fc6c09eba9c19879a",
+    "candidateSHA256": "1cc194eab96a3014c1f821ab84a565f1a0bcb4935ea48b8183b0cdc0d64d5e4a",
+    "sourceFiles": {
+      "src/css_backend.rs": "ef6859beb9e35ac1ad9990ef7df49e84a6bda7a9eefd7068019f1451300d3c73",
+      "src/css_retained_matching.rs": "bdedbc5bbd66ba48719fc911dec1ea9b6a632c57d448dd343aa7ddfe8abb33af"
+    }
+  },
+  "comparisons": {
+    "equalityOnly": {
+      "left": "private-json-fragments-v16",
+      "right": "capture-equality-v11",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -0.5214982884603203,
+          "blockDeltasPct": [
+            1.8767178449825561,
+            -0.5214982884603203,
+            -1.6621796140194434,
+            -2.860105782924216,
+            4.123842879063222,
+            0.2812792852742163,
+            -2.515635562360352
+          ],
+          "wins": 4,
+          "leftMedian": 1634.7484790021554,
+          "rightMedian": 1633.0341875436716
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -0.915134683226615,
+          "blockDeltasPct": [
+            -0.7112443209171482,
+            1.82877007060116,
+            -1.9196681393469528,
+            -0.915134683226615,
+            10.57740419579336,
+            -3.9406896550898685,
+            -1.792882279324648
+          ],
+          "wins": 5,
+          "leftMedian": 278.4741849999999,
+          "rightMedian": 279.644957
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -1.913375119265237,
+          "blockDeltasPct": [
+            2.2970569801654905,
+            -1.913375119265237,
+            -2.537821687968156,
+            -3.267168855734859,
+            5.075894293702543,
+            0.7147028979601844,
+            -2.836862678436791
+          ],
+          "wins": 4,
+          "leftMedian": 1912.5680000000007,
+          "rightMedian": 1900.4355
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/capture-equality-v11-independent-13/RESULT.json",
+      "fixtureSha256": "f91e13b12a5a5100069a980ea8b1fcd9ae88e03ff5a5038da00107302b1c7af7"
+    },
+    "nativeOnly": {
+      "left": "native-hit-baseline-v13",
+      "right": "native-hit-candidate-v13",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -0.4468400699277342,
+          "blockDeltasPct": [
+            -3.438856129233847,
+            1.315126335879957,
+            1.1479197146067932,
+            1.2456847946893834,
+            -1.9601127183746736,
+            -0.9629865964909556,
+            -0.4468400699277342
+          ],
+          "wins": 4,
+          "leftMedian": 1601.2925835384522,
+          "rightMedian": 1601.4275625057053
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -0.8828775752083295,
+          "blockDeltasPct": [
+            -1.4383961906498044,
+            -0.7673616327955268,
+            2.0752549882443017,
+            -1.329538464547142,
+            3.750826040411126,
+            -6.4609663771871055,
+            -0.8828775752083295
+          ],
+          "wins": 5,
+          "leftMedian": 275.894958,
+          "rightMedian": 275.1359355
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -0.1447329950428622,
+          "blockDeltasPct": [
+            -3.560848669702399,
+            1.801314197109094,
+            0.7174241760169009,
+            1.2642606965206138,
+            -1.3324728529832686,
+            -0.1447329950428622,
+            -0.3251264596467629
+          ],
+          "wins": 4,
+          "leftMedian": 1859.6145000000008,
+          "rightMedian": 1872.085499999999
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/native-validated-hit-independent-13/RESULT.json",
+      "fixtureSha256": "f91e13b12a5a5100069a980ea8b1fcd9ae88e03ff5a5038da00107302b1c7af7"
+    },
+    "combined": {
+      "left": "native-hit-baseline-v13",
+      "right": "capture-native-combined-v13",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -0.6978660360837718,
+          "blockDeltasPct": [
+            -4.803420870908203,
+            -0.5996970314015915,
+            -0.6978660360837718,
+            -1.872368769256949,
+            3.425263225307096,
+            -1.0859675854474893,
+            -0.0021613568002787353
+          ],
+          "wins": 6,
+          "leftMedian": 1594.1302704741247,
+          "rightMedian": 1585.4833335033618
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -0.11923073245588833,
+          "blockDeltasPct": [
+            -4.114147792862289,
+            1.6039576837235447,
+            2.3834155581336613,
+            -1.6667888327067226,
+            2.963459250119138,
+            -0.38244609277143793,
+            -0.11923073245588833
+          ],
+          "wins": 4,
+          "leftMedian": 275.63723100000004,
+          "rightMedian": 276.80895899999996
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -0.9290206779927312,
+          "blockDeltasPct": [
+            -4.365904097328876,
+            -0.9290206779927312,
+            -0.6860705288175617,
+            -1.8015562412262098,
+            3.5991933307003343,
+            -1.2428269316724583,
+            -0.43106693475729596
+          ],
+          "wins": 6,
+          "leftMedian": 1863.8325,
+          "rightMedian": 1858.1330000000014
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/capture-native-combined-independent-13/RESULT.json",
+      "fixtureSha256": "f91e13b12a5a5100069a980ea8b1fcd9ae88e03ff5a5038da00107302b1c7af7"
+    },
+    "legacyJs": {
+      "left": "release-js",
+      "right": "capture-native-combined-v13",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 11.09265639954151,
+          "blockDeltasPct": [
+            9.655511021122788,
+            11.281239688100797,
+            12.650944879261573,
+            11.09265639954151,
+            10.818331619594822,
+            9.85459652355878,
+            13.442316941290189
+          ],
+          "wins": 0,
+          "leftMedian": 1427.0682290080003,
+          "rightMedian": 1590.2310629899148
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 83.93859130358703,
+          "blockDeltasPct": [
+            84.06705435122812,
+            91.32115374817825,
+            83.93859130358703,
+            79.58130223791964,
+            80.30704891610063,
+            82.35359961778643,
+            85.9280468646914
+          ],
+          "wins": 0,
+          "leftMedian": 150.1511465,
+          "rightMedian": 275.58283400000005
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 14.495618874616433,
+          "blockDeltasPct": [
+            12.834131088750889,
+            14.495618874616433,
+            16.563629364391907,
+            14.209684923752409,
+            14.779294206608817,
+            13.397797929548094,
+            17.239944009475174
+          ],
+          "wins": 0,
+          "leftMedian": 1622.8480000000004,
+          "rightMedian": 1861.7889999999998
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/legacy-js-vs-capture-native-combined-13/RESULT.json",
+      "fixtureSha256": "f91e13b12a5a5100069a980ea8b1fcd9ae88e03ff5a5038da00107302b1c7af7"
+    }
+  },
+  "isolated": {
+    "equality": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -3.5922754517611954,
+          "blockDeltasPct": [
+            -3.5532490545516104,
+            -3.5922754517611954,
+            -3.5135367049965005,
+            -4.164013180138737,
+            -2.657163056706935,
+            -4.1411062632019435,
+            -5.397500282536239
+          ],
+          "wins": 7
+        },
+        "cpuMs": {
+          "matchedMedianDeltaPct": -3.5619250579611794,
+          "blockDeltasPct": [
+            -3.4035799413274503,
+            -3.5248248145451577,
+            -3.5619250579611794,
+            -4.027075517860046,
+            -2.5013007088138806,
+            -4.004471101671081,
+            -5.259129750133162
+          ],
+          "wins": 7
+        }
+      },
+      "counts": {
+        "pairs": 112,
+        "baseline": {
+          "calls": 44870,
+          "keyReads": 17090,
+          "descriptorReads": 89516
+        },
+        "candidate": {
+          "calls": 8545,
+          "keyReads": 17090,
+          "descriptorReads": 89516
+        }
+      },
+      "qualification": "112 actual packed comparison inputs,200 corpus iterations per timed freshprocess,20 warmups; sevenABBA, identical outputs/keyreads/descriptorreads."
+    },
+    "native": {
+      "summary": {
+        "nsPerCall": {
+          "matchedMedianDeltaPct": -78.64875347308192,
+          "blockDeltasPct": [
+            -78.35288347293829,
+            -78.6599540955302,
+            -78.71633133954549,
+            -76.15001542313931,
+            -79.26858126590636,
+            -78.42705278852787,
+            -78.64875347308192
+          ],
+          "wins": 7,
+          "baselineMedian": 869.83708,
+          "candidateMedian": 187.85334
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -76.45163088932256,
+          "blockDeltasPct": [
+            -76.18951545109115,
+            -76.45163088932256,
+            -76.55502919466784,
+            -74.87552534403797,
+            -77.16046115245769,
+            -76.2495239375406,
+            -76.51184624730767
+          ],
+          "wins": 7,
+          "baselineMedian": 44783.0,
+          "candidateMedian": 10632.5
+        }
+      },
+      "fixture": {
+        "source": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/test/helpers/css-native-memo-fixture.mjs",
+        "sourceSHA256": "5bcc3beeb70ed8794bef922f84547472c21037b4d432bcc197ed0b9183384f3f",
+        "derivedSHA256": "75fbfa36bc34a3a9cb43ff707ba705745f98c7f8b1210f15496e03f746de22d7",
+        "change": "Only remove loader import and accept explicit already-loaded native binding. Fixtures, budgets, facts and target inputs byte-equivalent.",
+        "qualification": "Maintained public native fixture, not captured packed-request data. Current packed diagnostic retained sizes/counters only, no complete requests."
+      },
+      "qualification": "50000 warmed identical NAPIcalls perprocess,sevenABBA,JSdispatch/stringconversion/return/loop included. Cold,changed-input,quota,malformed,foreign/stale/disposed controls outside timing. Not end-to-end speedup."
+    }
+  },
+  "validation": {
+    "isolatedEqualityNode": 1237,
+    "isolatedNativeTests": 257,
+    "isolatedNativeNode": 1233,
+    "packedPerArm": 29,
+    "strictRustSentinelPerArm": 1,
+    "nativeStrict": "Rust1.98 all-target Clippy-Dwarnings/fmt/CC<=9",
+    "parserCoreCoverage": "575/575=100%; does not claim all native glue coverage",
+    "combinedNode": {
+      "pass": 1237,
+      "fail": 0,
+      "skip": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.35,
+      "gate": "Normal pre-commit test:cov with conformance, real native candidate artifact; no bypass."
+    }
+  },
+  "implementationCommit": "b8f7988def21d2d863a5546da4662662e5392ea8"
+}

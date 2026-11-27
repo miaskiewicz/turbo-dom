@@ -107,10 +107,13 @@ Rust parser or WASM.
 
 ### Experimental CSS backend selection (v0.8.8 development)
 
-The [2026-11-27 packed Vitest measurements](docs/benchmarks/css-opt-in-2026-11-27.json)
-compare selector reuse, shared-addon loading and their combination independently.
-The final direct comparison still measured a 12.1% median Rust wall-time gap to JS,
-with substantial machine-load noise. This is not a performance-parity claim or
+The [initial packed Vitest measurements](docs/benchmarks/css-opt-in-2026-11-27.json)
+compare selector reuse and shared-addon loading. The
+[latest seven-ABBA comparison](docs/benchmarks/css-equality-native-hit-2026-11-27.json)
+includes reduced equality-call overhead and validated native request reuse. These
+changes save CPU in isolated controls; the combined packed suite measured a modest
+0.70% median improvement over its Rust baseline. It still measured 11.09% slower
+than legacy JS (block range 9.66–13.44%). This is not a performance-parity claim or
 justification to change the default.
 
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
