@@ -271,7 +271,7 @@ pub(crate) fn rehydrate(scope: &mut v8::PinScope) -> bool {
     let mut state = window_dom_state(tree, Vec::new(), el_template);
     state.basics_state = stored::<v8::Object>(scope, context, BASICS_STATE)
         .map(|object| v8::Weak::new(scope, object));
-    DOM.with(|d| *d.borrow_mut() = Some(state));
+    DOM.with(|d| *d.borrow_mut() = Some(Box::new(state)));
     let weak = v8::Weak::new(scope, context);
     DOM_CONTEXTS.with(|d| {
         d.borrow_mut()

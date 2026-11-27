@@ -1,0 +1,182 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "8a3943e8b03496a048f8f20eca982ca7a136db9d3511b5d40f681530914e6d14",
+  "result": [
+    {
+      "name": "default-style",
+      "css": "",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "default-script",
+      "css": "",
+      "html": "<script id=subject type=application/json>{}</script>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "inline-block",
+      "css": "",
+      "html": "<style id=subject style=\"display:block;width:40px;height:20px\">/* module */</style>",
+      "eligible": false,
+      "display": "block",
+      "position": "static",
+      "width": 40,
+      "height": 20,
+      "clientRects": 1
+    },
+    {
+      "name": "rule-block",
+      "css": "#subject{display:block;width:40px;height:20px}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": false,
+      "display": "block",
+      "position": "static",
+      "width": 40,
+      "height": 20,
+      "clientRects": 1
+    },
+    {
+      "name": "important-block",
+      "css": "#subject{display:block!important;width:40px;height:20px}",
+      "html": "<style id=subject style=\"display:none\">/* module */</style>",
+      "eligible": false,
+      "display": "block",
+      "position": "static",
+      "width": 40,
+      "height": 20,
+      "clientRects": 1
+    },
+    {
+      "name": "inline-important-none",
+      "css": "#subject{display:block}",
+      "html": "<style id=subject style=\"display:none!important\">/* module */</style>",
+      "eligible": false,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "contents",
+      "css": "",
+      "html": "<div id=subject style=\"display:contents\"><span style=\"display:block;width:40px;height:20px\">child</span></div>",
+      "eligible": false,
+      "display": "contents",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "ancestor-only",
+      "css": "",
+      "html": "<div style=\"display:none\"><div id=subject style=\"display:block;width:40px;height:20px\">child</div></div>",
+      "eligible": false,
+      "display": "block",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "literal-none",
+      "css": "style{display:none}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "irrelevant-type",
+      "css": ".parent > span{display:block}",
+      "html": "<div class=parent><style id=subject>/* module */</style></div>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "irrelevant-pseudo",
+      "css": "style::before{display:block;content:\"x\"}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "media-invariant",
+      "css": "@media(min-width:1px){.other{display:block}}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": true,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "media-potential",
+      "css": "@media(max-width:0px){style{display:block}}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": false,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "supports-potential",
+      "css": "@supports(not-a-property:invalid){style{display:block}}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": false,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    },
+    {
+      "name": "container-override",
+      "css": "@container(min-width:1px){style{display:block;width:40px;height:20px}}",
+      "html": "<div style=\"container-type:inline-size;width:100px\"><style id=subject>/* module */</style></div>",
+      "eligible": false,
+      "display": "block",
+      "position": "static",
+      "width": 40,
+      "height": 20,
+      "clientRects": 1
+    },
+    {
+      "name": "starting-style",
+      "css": "@starting-style{style{display:block}}",
+      "html": "<style id=subject>/* module */</style>",
+      "eligible": false,
+      "display": "none",
+      "position": "static",
+      "width": 0,
+      "height": 0,
+      "clientRects": 0
+    }
+  ]
+}

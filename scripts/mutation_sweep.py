@@ -257,8 +257,6 @@ def run_job(args):
         report["baseline_test"] = test_phase
         if test_phase["exit_code"]:
             raise ValueError("unmutated all-targets Test phase failed")
-        fallback_budget = full_fallback_timeout(test_phase)
-        report["full_fallback_timeout_seconds"] = fallback_budget
         primary_filter = PRIMARY_FILTERS.get(args.target)
         primary_args = [primary_filter] if primary_filter else []
         primary_targets = primary_cargo_targets(args.target)
@@ -300,6 +298,8 @@ def run_job(args):
         })
         missed = [name for name, row in rows.items() if row["summary"] == "MissedMutant"]
         if missed:
+            fallback_budget = full_fallback_timeout(test_phase)
+            report["full_fallback_timeout_seconds"] = fallback_budget
             # External integration controls may catch a mutant missed by lib tests.
             replay_filters = exact_replay_filters(common, inventory, missed, output)
             full_dir = output / "all-targets"

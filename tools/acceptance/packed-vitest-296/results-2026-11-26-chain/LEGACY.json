@@ -1,0 +1,747 @@
+{
+  "summary": {
+    "legacy": {
+      "wallPercent": 13.690890989213944,
+      "callbackPercent": 85.22995706414915,
+      "wins": 0,
+      "winsOverHalfPercent": 0
+    }
+  },
+  "blocks": {
+    "legacy": [
+      {
+        "block": 1,
+        "wallRatio": 1.1421523761531076,
+        "callbackRatio": 1.8522995706414915,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 1,
+            "wallMs": 1355.778625,
+            "testMs": 145.0617930000001,
+            "reportSha256": "aab47628957ef94d27f3f7f0a49ede2e8b93cc8bbd5b9fe6a172c2664fa6a1b6",
+            "load": [
+              2.39013671875,
+              7.625,
+              15.296875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 2,
+            "wallMs": 1526.1742080000004,
+            "testMs": 267.40983,
+            "reportSha256": "dc750293415f71bbf986e1138c27ff1cbfe6426887920598a1aa9d67894b6e03",
+            "load": [
+              2.39013671875,
+              7.625,
+              15.296875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 3,
+            "wallMs": 1548.0360840000003,
+            "testMs": 266.76966600000003,
+            "reportSha256": "7472c310eab935975eefe495c8be1293c71fb1c551b29410075006f7a3f26439",
+            "load": [
+              2.39013671875,
+              7.625,
+              15.296875
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block1",
+            "round": 4,
+            "wallMs": 1335.815208,
+            "testMs": 143.32541199999997,
+            "reportSha256": "f3b05dbe6df18cf3c925326fb16a636e5a6b2a8ab71ef88da5a51060f0b21000",
+            "load": [
+              2.43896484375,
+              7.5478515625,
+              15.224609375
+            ]
+          }
+        ]
+      },
+      {
+        "block": 2,
+        "wallRatio": 1.0947536970084841,
+        "callbackRatio": 1.7701934705351683,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 1,
+            "wallMs": 1386.332042,
+            "testMs": 147.31646000000003,
+            "reportSha256": "72ac5f948a903e40b1b30156c121d254c35212c844e1e0d3b1f6d3efe24daa59",
+            "load": [
+              2.43896484375,
+              7.5478515625,
+              15.224609375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 2,
+            "wallMs": 1520.6960409999992,
+            "testMs": 261.79338,
+            "reportSha256": "b060189fd9af6ac49a6b178620a6fdadd718b1da4935469fd14b09fca1d43923",
+            "load": [
+              2.43896484375,
+              7.5478515625,
+              15.224609375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 3,
+            "wallMs": 1522.1128339999996,
+            "testMs": 262.25041999999996,
+            "reportSha256": "fe0e764275bed90461e9800585879e63830972e598ebcd0866a5b3f9bbfd3b14",
+            "load": [
+              2.48388671875,
+              7.47216796875,
+              15.15283203125
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block2",
+            "round": 4,
+            "wallMs": 1393.114040999999,
+            "testMs": 148.72112499999997,
+            "reportSha256": "8f91c6e624b1105b66ec0d55ce1ca3334cd10adabf1205ce1374d4c8ecdaca9c",
+            "load": [
+              2.48388671875,
+              7.47216796875,
+              15.15283203125
+            ]
+          }
+        ]
+      },
+      {
+        "block": 3,
+        "wallRatio": 1.1071152073429416,
+        "callbackRatio": 1.8312478749393817,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 1,
+            "wallMs": 1399.7366669999992,
+            "testMs": 145.714002,
+            "reportSha256": "97cad1d405c4b232332ca51dff51691deccaed5d410977ec902ebc01583b4124",
+            "load": [
+              2.48388671875,
+              7.47216796875,
+              15.15283203125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 2,
+            "wallMs": 1549.9562920000026,
+            "testMs": 265.868415,
+            "reportSha256": "b39496f4c8961ae4c36fdf2374090967646b202ba1e378aaf831706ccd862943",
+            "load": [
+              2.48388671875,
+              7.47216796875,
+              15.15283203125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 3,
+            "wallMs": 1519.409125000002,
+            "testMs": 266.58941799999997,
+            "reportSha256": "453b2caa1cebb2a940ce9eb7fe0ed5324a706f9f133c1896b15e00a01c3f320b",
+            "load": [
+              2.36474609375,
+              7.3642578125,
+              15.06982421875
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block3",
+            "round": 4,
+            "wallMs": 1372.6626250000008,
+            "testMs": 145.0482920000001,
+            "reportSha256": "a1d15796c7ba30c41a10bfed9da731777f15b2f4c8741a7d995874dcf1e291a0",
+            "load": [
+              2.36474609375,
+              7.3642578125,
+              15.06982421875
+            ]
+          }
+        ]
+      },
+      {
+        "block": 4,
+        "wallRatio": 1.0637527813915202,
+        "callbackRatio": 1.7393242589871283,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 1,
+            "wallMs": 1445.556958000001,
+            "testMs": 154.15932999999998,
+            "reportSha256": "0e9648d86efa1723b2fe1dd23b2b34c96a13811dc01a875100c14ccf290b4cc9",
+            "load": [
+              2.36474609375,
+              7.3642578125,
+              15.06982421875
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 2,
+            "wallMs": 1509.2095000000008,
+            "testMs": 261.5532090000001,
+            "reportSha256": "f7a0293eb8e307caf51f43cd6c030ce5455cb0802d8967bfdce69ad1e4617169",
+            "load": [
+              2.65576171875,
+              7.34130859375,
+              15.0166015625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 3,
+            "wallMs": 1500.7632080000003,
+            "testMs": 262.565917,
+            "reportSha256": "60615f1756ff8f397f92fc7df179f5cabb215b522cb6420f385542d6487bc9ef",
+            "load": [
+              2.65576171875,
+              7.34130859375,
+              15.0166015625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block4",
+            "round": 4,
+            "wallMs": 1384.0222080000021,
+            "testMs": 147.17558400000001,
+            "reportSha256": "8a7e415a56edb6754acd0ed3102e85be80cb3d03d2acdebf0838a2e833bee4c1",
+            "load": [
+              2.65576171875,
+              7.34130859375,
+              15.0166015625
+            ]
+          }
+        ]
+      },
+      {
+        "block": 5,
+        "wallRatio": 1.1369089098921394,
+        "callbackRatio": 1.8779346427381132,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 1,
+            "wallMs": 1403.8419590000012,
+            "testMs": 144.56204200000002,
+            "reportSha256": "79087c694bc43d03cc64d956d45b735650396ffccaf53a332e5730191bf618ff",
+            "load": [
+              2.65576171875,
+              7.34130859375,
+              15.0166015625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 2,
+            "wallMs": 1561.6352909999987,
+            "testMs": 261.9694989999999,
+            "reportSha256": "92e98da2c4a699eb287bf786d17c8da7b020a91d2ca8f34f9e4c8d53069ba787",
+            "load": [
+              2.84326171875,
+              7.30224609375,
+              14.95751953125
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 3,
+            "wallMs": 1652.2177080000001,
+            "testMs": 283.72795699999995,
+            "reportSha256": "a746eb5441904541d743438cdd3d7bd22a99e7cda27cd8cab2c0ed2e7839a7ef",
+            "load": [
+              2.84326171875,
+              7.30224609375,
+              14.95751953125
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block5",
+            "round": 4,
+            "wallMs": 1422.9922499999993,
+            "testMs": 146.02179600000005,
+            "reportSha256": "c1260681f3b57373100f56f351e32533e05ce774f40010e45bc1738b71a9bded",
+            "load": [
+              2.84326171875,
+              7.30224609375,
+              14.95751953125
+            ]
+          }
+        ]
+      },
+      {
+        "block": 6,
+        "wallRatio": 1.1386549820354628,
+        "callbackRatio": 1.8552718821602228,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 1,
+            "wallMs": 1367.8390839999993,
+            "testMs": 147.02020999999996,
+            "reportSha256": "ecfbdb8a9141054685a2720fca21aa36a028e68b896f4bfe08065550ba1aa7b3",
+            "load": [
+              2.775390625,
+              7.2138671875,
+              14.88134765625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 2,
+            "wallMs": 1511.970291000005,
+            "testMs": 265.074835,
+            "reportSha256": "163a0bd7a376d665c010137c75ebe60d89d8ee3321a44bcd9e44b87d4a060a6f",
+            "load": [
+              2.775390625,
+              7.2138671875,
+              14.88134765625
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 3,
+            "wallMs": 1705.4329169999983,
+            "testMs": 288.81983399999996,
+            "reportSha256": "d7f80b3a6b402053c5b57b294ea41f3b51f913904eb6e58061245154e6b0d015",
+            "load": [
+              2.775390625,
+              7.2138671875,
+              14.88134765625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block6",
+            "round": 4,
+            "wallMs": 1457.7782089999964,
+            "testMs": 151.53154099999995,
+            "reportSha256": "2c2b050f8f8ac73d83d1f46101e29e3d06411f7627260658fb3ae46370592946",
+            "load": [
+              2.79296875,
+              7.1435546875,
+              14.8115234375
+            ]
+          }
+        ]
+      },
+      {
+        "block": 7,
+        "wallRatio": 1.1716428366270393,
+        "callbackRatio": 1.986113323792934,
+        "runs": [
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 1,
+            "wallMs": 1466.2089170000036,
+            "testMs": 150.53687399999998,
+            "reportSha256": "725295f9b25cdbebed57ef09c30ae371d72c186a3708130fdeb2e8c891e28755",
+            "load": [
+              2.79296875,
+              7.1435546875,
+              14.8115234375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 2,
+            "wallMs": 1764.3226670000004,
+            "testMs": 312.7104159999999,
+            "reportSha256": "0da2d87c139a2930291e9549e2d7f1a582b96ccdbd068fb6922d1b0a2d954ba9",
+            "load": [
+              2.79296875,
+              7.1435546875,
+              14.8115234375
+            ]
+          },
+          {
+            "build": "base",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 3,
+            "wallMs": 1873.3322079999998,
+            "testMs": 300.83970999999985,
+            "reportSha256": "18b518bf7d0b84eb1d2aff7367401c382a437f4d77e1a284af9b3c9797c87f3a",
+            "load": [
+              3.04931640625,
+              7.12451171875,
+              14.759765625
+            ]
+          },
+          {
+            "build": "legacy",
+            "mode": "native",
+            "phase": "legacy-block7",
+            "round": 4,
+            "wallMs": 1638.5383329999968,
+            "testMs": 158.38312499999998,
+            "reportSha256": "8cf7b5023ae62db48183644073ba217dbdbf29ed21d6ab87e06c483011cf44e5",
+            "load": [
+              3.04931640625,
+              7.12451171875,
+              14.759765625
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "preflight": [
+    {
+      "build": "base",
+      "mode": "native",
+      "phase": "sentinel",
+      "round": 0,
+      "wallMs": 562.3875409999999,
+      "testMs": 149.82333300000002,
+      "reportSha256": "81bcb2846b14cff1b1c2239910751363c18f506e69e21d986b3dc8aa27fe080e",
+      "load": [
+        2.51123046875,
+        7.7373046875,
+        15.38134765625
+      ]
+    }
+  ],
+  "warmup": [
+    {
+      "build": "base",
+      "mode": "native",
+      "phase": "warmup",
+      "round": 0,
+      "wallMs": 1580.1125419999998,
+      "testMs": 276.18233299999997,
+      "reportSha256": "9f14e61bc8433fa0cbf326dde87651f0f786d096acb10f43f5f1ce2039a2f172",
+      "load": [
+        2.51123046875,
+        7.7373046875,
+        15.38134765625
+      ]
+    },
+    {
+      "build": "legacy",
+      "mode": "native",
+      "phase": "warmup",
+      "round": 0,
+      "wallMs": 1368.5893339999998,
+      "testMs": 146.13871100000006,
+      "reportSha256": "5525f0b9eb07aab3d815269707ba99e73feaba14fb6d422e0d8900de759e6c39",
+      "load": [
+        2.39013671875,
+        7.625,
+        15.296875
+      ]
+    }
+  ],
+  "loadBefore": [
+    2.51123046875,
+    7.7373046875,
+    15.38134765625
+  ],
+  "loadAfter": [
+    3.04931640625,
+    7.12451171875,
+    14.759765625
+  ],
+  "node": "v26.11.0",
+  "cpu": "Apple M5 Max",
+  "fixture": {
+    "shared": {
+      "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+      "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+      "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+      "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+      "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+      "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+      "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+      "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+    },
+    "config": "a73e672c61912e0eb9425fb2f2aae0e0670c258cc138d0df056cc191f7b5068a",
+    "audit": "99cab4e305785e74df0d73f2cf09a61d2fb84c69f831e0d7fa429dcd9fb8bd8d",
+    "sentinel": "21ffbab7e3ce46a0c8b9d8d74955da154e642b538a362036724271c05c62e635",
+    "dependencies": {
+      "vitest": "vitest",
+      "react": "react",
+      "react-dom": "react-dom",
+      "@testing-library/react": "react",
+      "@testing-library/user-event": "user-event"
+    }
+  },
+  "artifacts": {
+    "base": {
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "Cargo.toml": "71b40ddb09181a9876f5cf203aa55dca3f75d36fe16495f2c6ff5727ed3f8f8c",
+      "LICENSE": "9a2fd4fd94d8a8bbceec2880086ce756b347010f889ee198d4ecd195c7c3cc6e",
+      "README.md": "7ca58bda783cba2f21cc9c4258b8aa91febc240039fae7a48e05ab7ebb2c8f75",
+      "build.rs": "0ce8bb12c26935e6ec89aff7c27dfc182939764e87d75af6f3f9206fcc8196fc",
+      "crates/turbo-dom/Cargo.toml": "343d87b3afcb9aa6331f371d5512d04a5b017239d840e52a222c1fec90ace7de",
+      "crates/turbo-dom/LICENSE": "9a2fd4fd94d8a8bbceec2880086ce756b347010f889ee198d4ecd195c7c3cc6e",
+      "crates/turbo-dom/README.md": "e64ca7e5fd334e3fee5eeea41eacc980af1b5da150b991515be4556e00c337e0",
+      "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-MIT": "86dd7f026f916daf7511e39951ad8ea8cf55a8db67ae64060dacf829761c18f3",
+      "crates/turbo-dom-layout/Cargo.toml": "aa706088a759479e2f6702531878baa11ea4cde8a132089213108e96f9e706c6",
+      "crates/turbo-dom-layout/LICENSE": "137d1b6f777b8066b8e4dcccbf659b82c0047dfec1ee94f0e0cf14f0f89e30f1",
+      "crates/turbo-dom-layout/README.md": "c96ab2639cca84a5504f352e64861137011cdf4b772063a103c48e8fbff7ee82",
+      "crates/turbo-dom-layout/assets/fonts/NOTICE.md": "b2f8357e23bf7e6b3551bcf34c37e8483f83c3a97c1ddfb0ca918cee1fc4516d",
+      "crates/turbo-dom-layout/assets/fonts/fira-code/OFL.txt": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c",
+      "crates/turbo-dom-layout/assets/fonts/ibm-plex-mono/OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+      "crates/turbo-dom-layout/assets/fonts/inter/LICENSE.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+      "crates/turbo-dom-layout/assets/fonts/liberation-serif/LICENSE": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b",
+      "crates/turbo-dom-layout/assets/fonts/pt-serif/OFL.txt": "ddf311c28ddf5a5ad9747649837346b67bed9d356789c3072bb27dbce49e514d",
+      "crates/turbo-dom-layout/assets/fonts/roboto/OFL.txt": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41",
+      "crates/turbo-dom-layout/src/layout/Blink-layout-unit.LICENSE": "e1c81dbba13a7f4b80f34203e87152498966e848ac047c2efa9be7f7bcf56fad",
+      "crates/turbo-dom-layout/src/text/Blink-font-metrics.LICENSE": "4fada1172149da4ad67c25ded347a1d49103d1af87aa909b797dc2461de98ad1",
+      "css-wasm/package.json": "8e7ef751bdc6bdd1875a8c1267420e54e390c4daebc703221a35284f5675eaf1",
+      "css-wasm/turbo_dom_css.node.cjs": "7c63b7f09af95a9693b795fd125e47c6178240d02a79a9fee968c7b34a738670",
+      "css-wasm/turbo_dom_css.node.d.cts": "6786dcb3bdda5283433d5d07846284946b7948c62a1333f892cf92f16521d38f",
+      "css-wasm/turbo_dom_css.web.d.mts": "773350cd52b6cc22fdb1bbfc2784de2241e512b3c11faee401c35bc10a9f2cc9",
+      "css-wasm/turbo_dom_css.web.mjs": "17e14c6e30ebc80871b6aa772b05564c4dd3984860cb19f11bdbbe30505d1d73",
+      "css-wasm/turbo_dom_css_bg.wasm": "1125e698838754e05718a4fb72dfbe4dc6a26e5621c0312968a8ac2f64840d18",
+      "css-wasm/turbo_dom_css_bg.wasm.d.ts": "7187c56e7cd3ac808ba861d105589a1de6152ad882f508e6a4703643cc688116",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "native-css/turbo-dom-css.darwin-arm64.node": "dd6bbc359d01899d2393be86be617292b07ade81cb28fe41fc195a1beb2ab9e9",
+      "package.json": "7c37e4c3729cf72bdee83e379719b55ab11fab514ff5cc54488286a6c33e7a14",
+      "pkg/package.json": "0f697c165e3f45afc5f32bfd1db6c41eced902c5c44e75ff56e3250dc088a085",
+      "pkg/turbo_dom_parser.d.ts": "2f16d062e960b01ad38dce62781e751e7b63ab75ce1e52a216b30308b69a5ea0",
+      "pkg/turbo_dom_parser.js": "0537c9ad88ba56168da0a6d6a481732b31c205ca6bd768060a9fa875f879d4fb",
+      "pkg/turbo_dom_parser_bg.wasm": "769a05e540777bb18dac62d69edc31bf10eb073ed01e97d0978ab701d6ec119b",
+      "pkg/turbo_dom_parser_bg.wasm.d.ts": "5f9aea7fd64303693bb3862962a517a88babdc8d11391055c9fcbd9fd323641e",
+      "pkg-css/package.json": "9a9ed0d35bd972654dc51d56e23e577503345ae447e065650297d2f83534d28f",
+      "pkg-css/turbo_dom_css.d.ts": "6786dcb3bdda5283433d5d07846284946b7948c62a1333f892cf92f16521d38f",
+      "pkg-css/turbo_dom_css.js": "341571af51788ac7069c772ee35f0e26e109145f6bf902e05a512f600ec3f26c",
+      "pkg-css-web/package.json": "4dfb230c5518dfd8250a99f930550e27021261b51f035d5029e73910670eb8fc",
+      "pkg-css-web/turbo_dom_css.d.ts": "773350cd52b6cc22fdb1bbfc2784de2241e512b3c11faee401c35bc10a9f2cc9",
+      "pkg-css-web/turbo_dom_css.js": "14eef6d4ab649f9e428c477b3599e3268a249b687455c79440490867a73ff4bd",
+      "pkg-web/package.json": "e6c05e947f98007439818e075634f9bfedc6cf209ee6562e84f2c34b2959e13b",
+      "pkg-web/turbo_dom_parser.d.ts": "6bfe0d27dd462046ace5cc5a709edddbeb3750bf58fa948475acee5de6a7a15d",
+      "pkg-web/turbo_dom_parser.js": "90e91d45926c9f3e1b0537fc0e8b7dc9012f3d25ef32b1da4fba2ca03d073b81",
+      "pkg-web/turbo_dom_parser_bg.wasm": "769a05e540777bb18dac62d69edc31bf10eb073ed01e97d0978ab701d6ec119b",
+      "pkg-web/turbo_dom_parser_bg.wasm.d.ts": "5f9aea7fd64303693bb3862962a517a88babdc8d11391055c9fcbd9fd323641e",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "src/css_backend.rs": "27310698b3b9b5b82cea223e4d771e1a4e4565c9a57a5d4f3ac0b396adf7afd8",
+      "src/css_input.rs": "aea402ac406024121021ba194c6dd18781dcdb9e71aa243eae281837e57acb48",
+      "src/css_preferences.rs": "48b87f9e0dd0267d3a2fc88f84f743a1e18dd46a797021fecdc5962631a57146",
+      "src/css_resolve.rs": "0f2f4f79f9a434184e8a9db9a4b67e9db8b107c0c49691b03366cdc4fe6b3ec9",
+      "src/css_resolve_context_tests.rs": "359885ca8922db9f9036cbed2adedd201ff1371d9eeb242006e4e4e840e16040",
+      "src/css_runtime_policy.rs": "95e9df7782c07c34ee045c97fe20770098ca03d345b3e76489c0a85435f975fb",
+      "src/css_scene.rs": "313762cd26372c71a8b919322e84cf959518d267bffa066b6a0642e61c4c074f",
+      "src/css_serialize.rs": "2e861d969c948a96128a2f01be3c5a02e62b8e8d155079b25af2aa1f0db45d30",
+      "src/css_used.rs": "804eb899d9decb4b396a79e4cf80a15e0a0e63c693f406e0aaa03089a0db747b",
+      "src/environment/install.mjs": "295c0baa1f9464c9b6651182bfef464e941fb20e72628b2e9b7c22b0b55bedce",
+      "src/environment/jest.cjs": "c932cbdb8b717e1acd331e25152044c60af9f0c4a4e32932fca3fd40949c63d8",
+      "src/environment/vitest.mjs": "7e01af8442b64899b403a108c9ca65893462fdc7f0b9db2b870cebfe817a8212",
+      "src/lib.rs": "727ec794543823a4eef99abaf31ce5cc9164ddb8fd127c641e939730e99dc8f9",
+      "src/runtime/buffer.mjs": "657e0937c2562790bbe20cfbe2fd1f02a2d525491b3ababa3096e05256e42306",
+      "src/runtime/cascade.mjs": "cefef4499003a919992548d2252a3703d9751d824509b103f07bd2f1798c55ff",
+      "src/runtime/collections.mjs": "c83bd56ee98ff8ff7ee71f36b524fcb91ddb972ced7cfcdb0c9d19c20bc3dcbe",
+      "src/runtime/color.mjs": "a628968b815ddce8546b6ea69fd6d2a3d4d6ef2071c71bf41dfe8958d78ee194",
+      "src/runtime/css-artifact.mjs": "e4ee4adfa8b5949694a04a9725abcc5b08147c73c848ac3bd7c353d9666a6742",
+      "src/runtime/css-backend.mjs": "0ede6bf8f1f9783d72d86fc5f1aca25384c436458faf87bd8adc6f520b01416a",
+      "src/runtime/css-computed-proxy.mjs": "39c07419abb6f8e90db95e4033ff159d8da87d7a4f9e4f73d628f628ecf4af78",
+      "src/runtime/css-construction-fields.mjs": "adff1a81205709411d6658eaf902ac17c2998618922947f349111210c4714732",
+      "src/runtime/css-copied-attributes.mjs": "b8c8eb2ee830eeb90df264522e70ee2d5e1466aa1b2db74ee6fc3a1da55518bf",
+      "src/runtime/css-default-capture.mjs": "c5d1a342c7f8f0965a9267d57b1b4ff74f882ecb7a858f7d39ec2532b2125ed8",
+      "src/runtime/css-default-profile.mjs": "cef7bc87a4f99cbd77a8677542a13cf5c42e86f4d506bae0ab83e0b2e2089d9e",
+      "src/runtime/css-default-sources.mjs": "c44fcc07c41467443421cd139fc3789752b4e9dc3a44c9af8ac5144dbef29cd1",
+      "src/runtime/css-default.mjs": "dd931fb36782d312c0a74cf712757d7d1a95ebad8bcb32e941b3ede5df5193dc",
+      "src/runtime/css-facts-navigator.mjs": "b2f46fecde240e5f0ef868df05a219fd2bc473404caac286318abca958102d4f",
+      "src/runtime/css-gcs-factory.mjs": "8a588068ce31fb8de7c4efd16cd5ee65da347bdb947c96a2f00918fa9a4b8436",
+      "src/runtime/css-host-identity.mjs": "c5bf0f3ed58cad013db43d3154e1e81113f8f19133acb8a7357261bd41618396",
+      "src/runtime/css-invalidation.mjs": "f6dace27b08fe9c315729ca059686ff9a5a2796fe4597d9900bf6baf3b08ff2c",
+      "src/runtime/css-match-facts.mjs": "371833e0c15177f6e20fe5ce54a7a7eddfe3be8713aae03c3d16cbaa59d974f5",
+      "src/runtime/css-matching-integrity.mjs": "b72c8713364f4f94a8017afa3368fb9cb7a7d5ef28fb6c6d507fe3d6dc2024a9",
+      "src/runtime/css-rust-wire.mjs": "b55e37237903628c915f7dd96e265b3e84e8fb81c47bee105989fd0aecfe7a10",
+      "src/runtime/css-selector-input.mjs": "cdf428d374827ee70706a3a8bc2187bb67211f1cf858ca2e8183a5093a7edc24",
+      "src/runtime/css-shared-adapter.mjs": "81db598b64f7fe0bcb08dc0843bd9635912e22905c1feea3f6ac1a2eefb73ddc",
+      "src/runtime/css-shared-codec.mjs": "5b66457a4f0806cfb0dd7fb58148772609aa2f50b63fb6eff292fd18f496c484",
+      "src/runtime/css-shared-composition.mjs": "e323412294d9006b77b0499445f4d48524a23a699223ef36efbc94d231ab8ace",
+      "src/runtime/css-shared-container.mjs": "034ad6ef588a8acf8c94a9217b502b83b5f627c7989f0b1191ffd986acbb5d02",
+      "src/runtime/css-shared-programs.mjs": "ded4983016903048c1f8a2a40b88d265cdabfa92d88e01ed0414323ad7a38694",
+      "src/runtime/css-shared-routing.mjs": "a6715bab179cee401598369e80a56b830af3ba9032d0cf42f55dc68d3e734bde",
+      "src/runtime/css-shared-scene.mjs": "1603be8385c7b91704b1cf8b5b1fe1a604b8af03fb152ddaff05e39e4f3b16bf",
+      "src/runtime/css-shared-shadow-facts.mjs": "046b0f5b41ad766ce33bcea0a4778bc802c4d3099b2ad6fa4e1f37344895b4ed",
+      "src/runtime/css-shorthand-table.mjs": "8a9924d4373b5d37e6263d92c7649140959b58602d9befa38b6990f114b7eceb",
+      "src/runtime/css-shorthand.mjs": "11539e5c5f71f34d44e7450213af31d3be585564e0ef658a855e293928a6eb56",
+      "src/runtime/css-sources.mjs": "7d0a0c7387a16fce221e559c4b3e1331ac9e1a64d36b3aec2c34819eeb3927ce",
+      "src/runtime/css-window-environment.mjs": "64a1541301570a50927198eba48f1e5269aa54f78f3e7b4e6cae4a5108d371e6",
+      "src/runtime/cssom-state.mjs": "4190f3e6243dd49fbc27cbee8efa85e17232acbe4e864acbd46d9742b506b09b",
+      "src/runtime/cssom.mjs": "b30a1865d9ea660fb19789f33308a4fa7fc650b7c69251e0ac3d547e98bf8964",
+      "src/runtime/custom-elements.mjs": "7450f3930e2c38b85a39cc6fbbbb85e9b7de8dfafb449b2a77dd4db0c421a422",
+      "src/runtime/dom.mjs": "aa8887a7c2f83f27f2a3e6b36917b51b916d040b256a6bd921130f03173a0a40",
+      "src/runtime/events.mjs": "33bdfa2265394bd8c086bd1f412cdc99bb07bdd5d25b16efb72531ea34ebd409",
+      "src/runtime/html-serialize.mjs": "662640c4db5b88cf2565e2c97b97f67f1b9790959500cf585a20f0d5bdf9b8f9",
+      "src/runtime/index.d.ts": "eecdb5ee6b7eba2d456a2122a49b95a98926d9f54d361fbca50b6a4b13af6d37",
+      "src/runtime/index.mjs": "88090f8ee36b821a3c40ea3b34a0984a3c47f26ff4809a41e633be93e053e2b2",
+      "src/runtime/parser-origin.mjs": "8b62531fad87b9b5cf3ef0cf6465f52d304eb60568395378a68225fb45dfebda",
+      "src/runtime/parser.mjs": "a23973c0478736e99a204b9964f0679a7f6ff0edabd2cf73494ed2b8b8de659c",
+      "src/runtime/selectors.mjs": "587026739ad26a5eabe732d652fdc0e22701109e7bce2691b674ab62d7187829",
+      "src/runtime/stubs.mjs": "bbc47906ecede6d4ff1dfdc404a118577d2a2f9cedf7bee3076f1d624ebfe446",
+      "src/runtime/svg.mjs": "a9540bf1cbad64312af0c90950c41780c99cbde4af7aa75c96d5c3b99593a93d",
+      "src/runtime/window.mjs": "5e02b4a98188f709136cecb38a90af9d4a9f39025366d0c6772f2d52150875ed",
+      "src/spike.rs": "4f908b7f36c1d2a318cae426fe1e2120f84a01ed56ea80171456311c328dc9f9",
+      "turbo-dom-parser.darwin-arm64.node": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412"
+    },
+    "legacy": {
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "Cargo.toml": "71b40ddb09181a9876f5cf203aa55dca3f75d36fe16495f2c6ff5727ed3f8f8c",
+      "LICENSE": "9a2fd4fd94d8a8bbceec2880086ce756b347010f889ee198d4ecd195c7c3cc6e",
+      "README.md": "4c4e486638dda995bc735d9cf8a99f12d8af33f5d69495cdc847fe5b2aa2539f",
+      "build.rs": "0ce8bb12c26935e6ec89aff7c27dfc182939764e87d75af6f3f9206fcc8196fc",
+      "crates/turbo-dom/Cargo.toml": "343d87b3afcb9aa6331f371d5512d04a5b017239d840e52a222c1fec90ace7de",
+      "crates/turbo-dom/LICENSE": "9a2fd4fd94d8a8bbceec2880086ce756b347010f889ee198d4ecd195c7c3cc6e",
+      "crates/turbo-dom/README.md": "e64ca7e5fd334e3fee5eeea41eacc980af1b5da150b991515be4556e00c337e0",
+      "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "crates/turbo-dom/src/rtdom/unit_tokenizer/LICENSE-MIT": "86dd7f026f916daf7511e39951ad8ea8cf55a8db67ae64060dacf829761c18f3",
+      "crates/turbo-dom-layout/Cargo.toml": "aa706088a759479e2f6702531878baa11ea4cde8a132089213108e96f9e706c6",
+      "crates/turbo-dom-layout/LICENSE": "137d1b6f777b8066b8e4dcccbf659b82c0047dfec1ee94f0e0cf14f0f89e30f1",
+      "crates/turbo-dom-layout/README.md": "c96ab2639cca84a5504f352e64861137011cdf4b772063a103c48e8fbff7ee82",
+      "crates/turbo-dom-layout/assets/fonts/NOTICE.md": "b2f8357e23bf7e6b3551bcf34c37e8483f83c3a97c1ddfb0ca918cee1fc4516d",
+      "crates/turbo-dom-layout/assets/fonts/fira-code/OFL.txt": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c",
+      "crates/turbo-dom-layout/assets/fonts/ibm-plex-mono/OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+      "crates/turbo-dom-layout/assets/fonts/inter/LICENSE.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+      "crates/turbo-dom-layout/assets/fonts/liberation-serif/LICENSE": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b",
+      "crates/turbo-dom-layout/assets/fonts/pt-serif/OFL.txt": "ddf311c28ddf5a5ad9747649837346b67bed9d356789c3072bb27dbce49e514d",
+      "crates/turbo-dom-layout/assets/fonts/roboto/OFL.txt": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41",
+      "crates/turbo-dom-layout/src/layout/Blink-layout-unit.LICENSE": "e1c81dbba13a7f4b80f34203e87152498966e848ac047c2efa9be7f7bcf56fad",
+      "crates/turbo-dom-layout/src/text/Blink-font-metrics.LICENSE": "4fada1172149da4ad67c25ded347a1d49103d1af87aa909b797dc2461de98ad1",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "package.json": "7c37e4c3729cf72bdee83e379719b55ab11fab514ff5cc54488286a6c33e7a14",
+      "pkg/package.json": "960af79d9b7a916e4fc77c5c44f22e59fa1d13cc05e0de0908cb213feea9de04",
+      "pkg/turbo_dom_parser.d.ts": "2f16d062e960b01ad38dce62781e751e7b63ab75ce1e52a216b30308b69a5ea0",
+      "pkg/turbo_dom_parser.js": "0537c9ad88ba56168da0a6d6a481732b31c205ca6bd768060a9fa875f879d4fb",
+      "pkg/turbo_dom_parser_bg.wasm": "1e7319f721d4a8814fdf3e149e2b7de18b5b4e1a542122794a3db344e0788438",
+      "pkg/turbo_dom_parser_bg.wasm.d.ts": "5f9aea7fd64303693bb3862962a517a88babdc8d11391055c9fcbd9fd323641e",
+      "pkg-web/package.json": "7d9b85675e2644cad7fdae7b6872a51ed485b6ad6e5f504ea1884e114ebb16d6",
+      "pkg-web/turbo_dom_parser.d.ts": "6bfe0d27dd462046ace5cc5a709edddbeb3750bf58fa948475acee5de6a7a15d",
+      "pkg-web/turbo_dom_parser.js": "90e91d45926c9f3e1b0537fc0e8b7dc9012f3d25ef32b1da4fba2ca03d073b81",
+      "pkg-web/turbo_dom_parser_bg.wasm": "1e7319f721d4a8814fdf3e149e2b7de18b5b4e1a542122794a3db344e0788438",
+      "pkg-web/turbo_dom_parser_bg.wasm.d.ts": "5f9aea7fd64303693bb3862962a517a88babdc8d11391055c9fcbd9fd323641e",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "src/css_backend.rs": "2f181f40fa7e812aa3ec35413a8a9c37aba569ff9614407afe8facc6243556e0",
+      "src/css_input.rs": "aea402ac406024121021ba194c6dd18781dcdb9e71aa243eae281837e57acb48",
+      "src/css_preferences.rs": "d7e00aa2c1eae66c8ae42af8076fe8391fce49e70625c1bce4c2c39266f57279",
+      "src/css_resolve.rs": "4277d3b9156434b4091a249b6ccdc88cf76915ca6a1747ea2ac6071187f9a910",
+      "src/css_resolve_context_tests.rs": "359885ca8922db9f9036cbed2adedd201ff1371d9eeb242006e4e4e840e16040",
+      "src/css_scene.rs": "313762cd26372c71a8b919322e84cf959518d267bffa066b6a0642e61c4c074f",
+      "src/css_serialize.rs": "2e861d969c948a96128a2f01be3c5a02e62b8e8d155079b25af2aa1f0db45d30",
+      "src/css_used.rs": "804eb899d9decb4b396a79e4cf80a15e0a0e63c693f406e0aaa03089a0db747b",
+      "src/environment/install.mjs": "491b7a347c3ad4b755a5e41717e4d2469bf93b1560a5d4964f01a44753c3c8c6",
+      "src/environment/jest.cjs": "c932cbdb8b717e1acd331e25152044c60af9f0c4a4e32932fca3fd40949c63d8",
+      "src/environment/vitest.mjs": "7e01af8442b64899b403a108c9ca65893462fdc7f0b9db2b870cebfe817a8212",
+      "src/lib.rs": "7f429c1b790bb27e589020cf702a49582eabb08b799fcdcb1461211f8e1c3b39",
+      "src/runtime/buffer.mjs": "4db28566347018e525cef17fde6b47be0da8a522f7d5ec0136c901720b01e4f2",
+      "src/runtime/cascade.mjs": "cefef4499003a919992548d2252a3703d9751d824509b103f07bd2f1798c55ff",
+      "src/runtime/collections.mjs": "c83bd56ee98ff8ff7ee71f36b524fcb91ddb972ced7cfcdb0c9d19c20bc3dcbe",
+      "src/runtime/color.mjs": "a628968b815ddce8546b6ea69fd6d2a3d4d6ef2071c71bf41dfe8958d78ee194",
+      "src/runtime/css-artifact.mjs": "d01506de9be2b8dc4658a3ffaec9c6be202df28bef0d49121ca64c89b51223b9",
+      "src/runtime/css-backend.mjs": "929afb794ecdcd2ff2a59a00bbb5afce1d6868853da57be2ddc5df22ea205a5d",
+      "src/runtime/css-computed-proxy.mjs": "39c07419abb6f8e90db95e4033ff159d8da87d7a4f9e4f73d628f628ecf4af78",
+      "src/runtime/css-facts-navigator.mjs": "31be1d09f3bf697b6818c4799a90a834c60bb7ce87831644eb71a4865cc08883",
+      "src/runtime/css-gcs-factory.mjs": "03b23b4f759c820079b1e643290616062553defa9282c4d5437c138a56817391",
+      "src/runtime/css-invalidation.mjs": "f6dace27b08fe9c315729ca059686ff9a5a2796fe4597d9900bf6baf3b08ff2c",
+      "src/runtime/css-match-facts.mjs": "e9ee3f4ea2e7a20aaa65fa6338f981a5b4b0e9a35f70692acad947f39d6a6f77",
+      "src/runtime/css-rust-wire.mjs": "33efa931ee39eb473a75de02ecc7d96923f0cda6a8c648ba3a07500bc642e759",
+      "src/runtime/css-shared-adapter.mjs": "e8e6011806294879b530072b2d79229939829821301013e55027df788decfb4b",
+      "src/runtime/css-shared-codec.mjs": "5b66457a4f0806cfb0dd7fb58148772609aa2f50b63fb6eff292fd18f496c484",
+      "src/runtime/css-shared-composition.mjs": "e323412294d9006b77b0499445f4d48524a23a699223ef36efbc94d231ab8ace",
+      "src/runtime/css-shared-container.mjs": "034ad6ef588a8acf8c94a9217b502b83b5f627c7989f0b1191ffd986acbb5d02",
+      "src/runtime/css-shared-programs.mjs": "ded4983016903048c1f8a2a40b88d265cdabfa92d88e01ed0414323ad7a38694",
+      "src/runtime/css-shared-routing.mjs": "f977ff3e0f37fa214312c3cdfd3449c01ba647c86c0e496779df988196cfff82",
+      "src/runtime/css-shared-scene.mjs": "1603be8385c7b91704b1cf8b5b1fe1a604b8af03fb152ddaff05e39e4f3b16bf",
+      "src/runtime/css-shared-shadow-facts.mjs": "44ac30dcc9bd85b984740ecb33b015d7d2635d2298300420be641ba1e94323f3",
+      "src/runtime/css-shorthand-table.mjs": "8a9924d4373b5d37e6263d92c7649140959b58602d9befa38b6990f114b7eceb",
+      "src/runtime/css-shorthand.mjs": "11539e5c5f71f34d44e7450213af31d3be585564e0ef658a855e293928a6eb56",
+      "src/runtime/css-sources.mjs": "7d0a0c7387a16fce221e559c4b3e1331ac9e1a64d36b3aec2c34819eeb3927ce",
+      "src/runtime/cssom-state.mjs": "ebebb7e8dadb28e61830a4c717643310536b0da7bc83c581f62d7f753c7c9d2f",
+      "src/runtime/cssom.mjs": "0396961f1315e19c334385e1fdecbbab356beb97524eaa6a4454528ecd0f4bd6",
+      "src/runtime/custom-elements.mjs": "5bb794036bf03df6da06fdd5b2c486193a756fee39dcbfb1084231cddf02b885",
+      "src/runtime/dom.mjs": "ec3877703c62c75026a33c2360bcdd5bf640590df383b31385bf4d8547b97afe",
+      "src/runtime/events.mjs": "33bdfa2265394bd8c086bd1f412cdc99bb07bdd5d25b16efb72531ea34ebd409",
+      "src/runtime/html-serialize.mjs": "662640c4db5b88cf2565e2c97b97f67f1b9790959500cf585a20f0d5bdf9b8f9",
+      "src/runtime/index.d.ts": "eecdb5ee6b7eba2d456a2122a49b95a98926d9f54d361fbca50b6a4b13af6d37",
+      "src/runtime/index.mjs": "9b637bebe7611ac1348d5027aca2f6f7d79ed2cb98f3b706809c9976eaf2c7d6",
+      "src/runtime/parser.mjs": "f9d742cdae9234aa692cc213a17a2e579f334c859de064c477746222ce740b38",
+      "src/runtime/selectors.mjs": "c1035721b30881afd6d9a206b804d2caf5e1b49756ccadea488ceb433b7a057b",
+      "src/runtime/stubs.mjs": "bbc47906ecede6d4ff1dfdc404a118577d2a2f9cedf7bee3076f1d624ebfe446",
+      "src/runtime/svg.mjs": "a9540bf1cbad64312af0c90950c41780c99cbde4af7aa75c96d5c3b99593a93d",
+      "src/runtime/window.mjs": "0635ae57b377f1c6b5875daa74c9eaf834aadf8904ea70e7b67591dfcc1c67e0",
+      "src/spike.rs": "4f908b7f36c1d2a318cae426fe1e2120f84a01ed56ea80171456311c328dc9f9",
+      "turbo-dom-parser.darwin-arm64.node": "f6e8ba0eca1ce5ac298b662404e748311ea66bbb5f495538e0a29238b0e94d32"
+    }
+  },
+  "exclude": "getByLabelText: wrapping <label> labels only its FIRST control",
+  "implementation": "aa69a733",
+  "candidateTarballSha256": "ab957dc31a4033fe851675c8785500966c67169e92cca49031e5fbcff02ca0b4",
+  "medianProcessMs": {
+    "legacy": 1396.425353999999,
+    "base": 1537.1051460000003
+  },
+  "method": "Seven ABBA blocks, A = preserved legacy JS CSS, B = packed Rust CSS candidate, identical native parser mode and shared fixture. Each fresh process used one Vitest worker. One warmup per package and a separate Rust CSS sentinel. One predeclared compatibility difference excluded from timing. The headline compares the median of seven within-block wall-time ratios."
+}

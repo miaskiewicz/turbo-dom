@@ -15,6 +15,13 @@
 #[path = "context_rehydrate.rs"]
 mod context_rehydrate;
 pub(crate) use context_rehydrate::rehydrate_context;
+#[cfg(feature = "host-internals")]
+#[path = "animation_ownership.rs"]
+pub(crate) mod animation_ownership;
+#[path = "animation_rendering.rs"]
+mod animation_rendering;
+#[path = "animation_tokens.rs"]
+mod animation_tokens;
 #[path = "animations.rs"]
 mod animations;
 #[path = "css_selector_syntax.rs"]
@@ -154,6 +161,13 @@ mod dom_implementation;
 pub use dom_implementation::set_initializer as set_inert_document_initializer;
 #[path = "document_xpath.rs"]
 mod document_xpath;
+#[path = "dom_parser.rs"]
+mod dom_parser;
+#[cfg(test)]
+#[path = "native_dom_adapters_tests.rs"]
+mod native_dom_adapters_tests;
+#[path = "window_history.rs"]
+mod window_history;
 #[path = "xml_documents.rs"]
 mod xml_documents;
 pub use document_xpath::is_native_xpath_object;
@@ -552,7 +566,8 @@ struct DomState {
 }
 
 thread_local! {
-    static DOM: RefCell<Option<DomState>> = const { RefCell::new(None) };
+    // Receiver dispatch parks this state frequently; move only its owning pointer.
+    static DOM: RefCell<Option<Box<DomState>>> = const { RefCell::new(None) };
     static TREE_SERIAL: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
 }
 
@@ -600,9 +615,9 @@ fn next_tree_serial() -> u64 {
 /// has no tree, or its state is borrowed mutably right now.
 fn with_dom_state<R>(id: u64, f: impl FnOnce(&DomState) -> R) -> Option<R> {
     if id == DOM_ID.with(|current| current.get()) {
-        return DOM.with(|dom| dom.try_borrow().ok()?.as_ref().map(f));
+        return DOM.with(|dom| dom.try_borrow().ok()?.as_deref().map(f));
     }
-    OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_ref().map(f))
+    OTHER_DOMS.with(|doms| doms.try_borrow().ok()?.get(&id)?.dom.as_deref().map(f))
 }
 
 thread_local! {
@@ -685,6 +700,53 @@ struct FormDataEventDispatcher(v8::Weak<v8::Function>);
 /// the dispatch looks like a page-script `target.dispatchEvent` — the realm
 /// IS at the top of the script settings stack for the task's duration.
 struct EngineTaskScope(v8::Weak<v8::Function>);
+struct TerminationRecovery(v8::Weak<v8::Function>);
+// Native context slots are absent in a deserialized snapshot shell.
+struct NativeWindowInstallation;
+
+#[cfg(feature = "host-internals")]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RecoveryAdmission {
+    Ready,
+    InterruptedBeforeCapture,
+}
+
+#[cfg(feature = "host-internals")]
+fn begin_recovery_install(context: v8::Local<v8::Context>) {
+    if context.get_slot::<TerminationRecovery>().is_some() {
+        context.set_slot(std::rc::Rc::new(RecoveryAdmission::Ready));
+    } else if interrupted_before_recovery_capture(context) {
+        // A retry starts a new install attempt; a prior interruption cannot
+        // excuse an ordinary failure in this attempt. Ready never downgrades.
+        context.remove_slot::<RecoveryAdmission>();
+    }
+}
+
+#[cfg(feature = "host-internals")]
+fn finish_recovery_install(scope: &mut v8::PinScope, context: v8::Local<v8::Context>) {
+    if context.get_slot::<TerminationRecovery>().is_some() {
+        context.set_slot(std::rc::Rc::new(RecoveryAdmission::Ready));
+        return;
+    }
+    if context
+        .get_slot::<RecoveryAdmission>()
+        .is_some_and(|state| *state == RecoveryAdmission::Ready)
+    {
+        return;
+    }
+    if SETUP_TERMINATED.with(std::cell::Cell::get) || scope.is_execution_terminating() {
+        context.set_slot(std::rc::Rc::new(
+            RecoveryAdmission::InterruptedBeforeCapture,
+        ));
+    }
+}
+
+#[cfg(feature = "host-internals")]
+fn interrupted_before_recovery_capture(context: v8::Local<v8::Context>) -> bool {
+    context
+        .get_slot::<RecoveryAdmission>()
+        .is_some_and(|state| *state == RecoveryAdmission::InterruptedBeforeCapture)
+}
 fn_slots!([
     FormSubmissionDispatcher,
     FormValueReader,
@@ -694,11 +756,12 @@ fn_slots!([
     HostEventDispatcher,
     InlineHandlerSetter,
     EngineTaskScope,
+    TerminationRecovery,
 ]);
 
 #[derive(Default)]
 struct SavedDom {
-    dom: Option<DomState>,
+    dom: Option<Box<DomState>>,
     styles: HashMap<Handle, v8::Weak<v8::Object>>,
     listeners: HashMap<(Handle, String), Vec<event_listeners::Listener>>,
     active: Option<Handle>,
@@ -732,6 +795,8 @@ impl DomScope {
     fn enter(id: u64) -> Self {
         let previous = DOM_ID.with(|d| d.replace(id));
         if id != previous {
+            #[cfg(all(test, feature = "host-internals"))]
+            sampler_diagnostics::claim_scope_switched();
             let old = take_dom();
             let next = OTHER_DOMS.with(|d| {
                 let mut d = d.borrow_mut();
@@ -751,6 +816,8 @@ impl Drop for DomScope {
     fn drop(&mut self) {
         let current = DOM_ID.with(|d| d.get());
         if current != self.0 {
+            #[cfg(all(test, feature = "host-internals"))]
+            sampler_diagnostics::claim_scope_switched();
             let saved = take_dom();
             let previous = OTHER_DOMS.with(|d| {
                 let mut d = d.borrow_mut();
@@ -926,7 +993,7 @@ fn parse_html_tree_with<'s>(
     let template = build_el_template(scope);
     let template = v8::Global::new(scope, template);
     DOM.with(|dom| {
-        *dom.borrow_mut() = Some(DomState {
+        *dom.borrow_mut() = Some(Box::new(DomState {
             serial: next_tree_serial(),
             scripts: script_state::initial(&tree),
             parser_scripts: Vec::new(),
@@ -954,7 +1021,7 @@ fn parse_html_tree_with<'s>(
             custom_elements_active: false,
             form_submission_blocked: false,
             form_submission_handler: None,
-        })
+        }))
     });
     script_state::initialize_inert();
     let context = scope.get_current_context();
@@ -3807,6 +3874,16 @@ fn rewrite_pseudo_selector<'s>(
     scalar: &str,
     subject_local: bool,
 ) -> Option<String> {
+    rewrite_pseudo_selector_impl(scope, node, scalar, subject_local, false)
+}
+
+fn rewrite_pseudo_selector_impl(
+    scope: &mut v8::PinScope,
+    node: Handle,
+    scalar: &str,
+    subject_local: bool,
+    strict: bool,
+) -> Option<String> {
     let mask = transform_mask(scalar);
     let mut transformed = scalar.to_owned();
     let mut rewritten = false;
@@ -3817,7 +3894,9 @@ fn rewrite_pseudo_selector<'s>(
         let next = match bit {
             0 => html_popover::selector(scope, node, &transformed)?,
             1 => html_dialog::selector(scope, node, &transformed)?,
+            2 if strict => interest_invokers::selector_strict(scope, node, &transformed)?,
             2 => interest_invokers::selector(scope, node, &transformed)?,
+            3 if strict => form_pseudo::selector_strict(scope, node, &transformed)?,
             3 => form_pseudo::selector(scope, node, &transformed, subject_local)?,
             _ => view_transitions::selector(scope, node, &transformed)?,
         };
@@ -6909,6 +6988,8 @@ fn ownership_callback<'s, 'i, F>(
 {
     let caught = std::pin::pin!(v8::TryCatch::new(scope));
     let scope = &mut caught.init();
+    #[cfg(all(test, feature = "host-internals"))]
+    let _diagnostic = sampler_diagnostics::callback(scope, std::any::type_name::<F>());
     // Source documents can lose their last node edge during adoption. Keep
     // their actual wrappers/realms alive through private record projection.
     let owners = dom_ownership::pin_callback_owners(
@@ -7279,6 +7360,17 @@ fn parse_css_native(
     }
     if args.get(1).is_string() {
         let mode = args.get(1).to_rust_string_lossy(scope);
+        if mode == "ordinary-type" {
+            let name = args.get(2).to_rust_string_lossy(scope);
+            let may_target =
+                turbo_dom_parser::rtdom::query::parse_for_cascade(&source).map_or(true, |list| {
+                    list.selectors()
+                        .iter()
+                        .any(|selector| selector.may_target_ordinary_type(&name))
+                });
+            rv.set_bool(may_target);
+            return;
+        }
         if parse_css_string_mode(scope, &source, &mode, &mut rv) {
             return;
         }
@@ -8074,9 +8166,9 @@ fn canvas_color_native(
     }
 }
 
+// Keep the native creation-context slot's private wrapper identity stable.
 struct ComputedFontDefaults {
-    family: String,
-    size: f64,
+    preferences: turbo_dom_parser::rtdom::computed_preferences::ComputedFontPreferences<'static>,
 }
 
 /// Host font preferences, retained as native scalars rather than guest properties.
@@ -8087,12 +8179,13 @@ pub fn set_computed_font_defaults(
     family: &str,
     size: f64,
 ) -> bool {
-    if family.trim().is_empty() || !size.is_finite() || size <= 0.0 {
+    use turbo_dom_parser::rtdom::computed_preferences::computed_font_preferences;
+    let Ok(preferences) = computed_font_preferences(std::borrow::Cow::Borrowed(family), size)
+    else {
         return false;
-    }
+    };
     context.set_slot(std::rc::Rc::new(ComputedFontDefaults {
-        family: family.into(),
-        size,
+        preferences: preferences.into_owned(),
     }));
     true
 }
@@ -8123,15 +8216,20 @@ fn computed_font_context<'s>(
         .get_creation_context(scope)
         .unwrap_or_else(|| scope.get_current_context());
     let defaults = context.get_slot::<ComputedFontDefaults>();
-    let default_family = if cfg!(target_os = "macos") {
-        "Times"
-    } else {
-        "Times New Roman"
+    use turbo_dom_parser::rtdom::computed_preferences::{
+        default_computed_font_preferences, FontDefaultsPlatform,
     };
-    let family = defaults
+    let platform = if cfg!(target_os = "macos") {
+        FontDefaultsPlatform::MacOs
+    } else {
+        FontDefaultsPlatform::Other
+    };
+    let fallback = default_computed_font_preferences(platform);
+    let preferences = defaults
         .as_ref()
-        .map_or(default_family, |defaults| defaults.family.as_str());
-    let size = defaults.as_ref().map_or(16.0, |defaults| defaults.size);
+        .map_or(&fallback, |defaults| &defaults.preferences);
+    let family = preferences.family.as_ref();
+    let size = preferences.size_px;
     // invariant: engine-built name, far below V8's string length limit
     let family = v8::String::new(scope, family).unwrap();
     let size = v8::Number::new(scope, size);
@@ -8166,6 +8264,10 @@ fn computed_font_context<'s>(
 
 pub fn register_css_parser(scope: &mut v8::PinScope) {
     let global = scope.get_current_context().global(scope);
+    if let Some(namespace) = engine_namespace(scope) {
+        let own_box = v8::Boolean::new(scope, cfg!(feature = "host-internals"));
+        set_prop(scope, namespace, "cachedOwnBoxEnabled", own_box.into());
+    }
     bind_method(scope, global, "__parseCssNative", parse_css_native);
     css_shorthand::register(scope, global);
     bind_method(
@@ -8235,6 +8337,37 @@ pub fn register_css_parser(scope: &mut v8::PinScope) {
     #[cfg(test)]
     bind_method(scope, global, "__noteCascadeRun", note_cascade_run);
     #[cfg(test)]
+    bind_method(
+        scope,
+        global,
+        "__notePresentedMembership",
+        note_presented_membership,
+    );
+    #[cfg(test)]
+    bind_method(
+        scope,
+        global,
+        "__noteEffectValidation",
+        note_effect_validation,
+    );
+    #[cfg(test)]
+    {
+        if scope.get_slot::<EffectRefreshCounts>().is_none() {
+            scope.set_slot(EffectRefreshCounts {
+                values: std::cell::Cell::new([0; 19]),
+                action: std::cell::Cell::new(None),
+            });
+        }
+        // Diagnostics must not fabricate CE/observer/ownership epilogues.
+        let template = v8::FunctionTemplate::builder(ext!(FunctionCallback, note_effect_refresh))
+            .constructor_behavior(v8::ConstructorBehavior::Throw)
+            .build(scope);
+        template.remove_prototype();
+        let function = template.get_function(scope).unwrap();
+        let key = v8::String::new(scope, "__noteEffectRefresh").unwrap();
+        global.set(scope, key.into(), function.into());
+    }
+    #[cfg(test)]
     bind_method(scope, global, "__noteCssUpdatePass", note_css_update_pass);
     #[cfg(test)]
     bind_method(scope, global, "__noteStyleLookup", note_style_lookup);
@@ -8289,6 +8422,13 @@ pub(super) fn bump_style_state() {
     STYLE_STATE_EPOCH.with(|epoch| epoch.set(epoch.get() + 1));
 }
 
+pub(super) fn host_style_revisions() -> (u64, u64) {
+    (
+        CSSOM_EPOCH.with(std::cell::Cell::get),
+        STYLE_STATE_EPOCH.with(std::cell::Cell::get),
+    )
+}
+
 /// The current live-state epoch (see `STYLE_STATE_EPOCH`).
 fn style_state_epoch(
     scope: &mut v8::PinScope,
@@ -8322,6 +8462,86 @@ fn cascade_runs() -> u64 {
     CASCADE_RUNS.with(std::cell::Cell::get)
 }
 
+#[cfg(test)]
+thread_local! {
+    static PRESENTED_MEMBERSHIP: std::cell::Cell<(u64,u64)> = const { std::cell::Cell::new((0,0)) };
+}
+#[cfg(test)]
+fn presented_membership() -> (u64, u64) {
+    PRESENTED_MEMBERSHIP.with(std::cell::Cell::get)
+}
+#[cfg(test)]
+fn note_presented_membership(
+    _scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    let count = v8::Local::<v8::Number>::try_from(args.get(0))
+        .unwrap()
+        .value() as u64;
+    let probes = v8::Local::<v8::Number>::try_from(args.get(1))
+        .ok()
+        .map_or(0, |value| value.value() as u64);
+    PRESENTED_MEMBERSHIP.with(|total| {
+        let old = total.get();
+        total.set((old.0 + count, old.1 + probes));
+    });
+}
+
+#[cfg(test)]
+struct EffectRefreshCounts {
+    values: std::cell::Cell<[u64; 19]>,
+    action: std::cell::Cell<Option<fn(&mut v8::PinScope)>>,
+}
+
+#[cfg(test)]
+fn effect_refresh_counts(isolate: &v8::Isolate) -> [u64; 19] {
+    isolate
+        .get_slot::<EffectRefreshCounts>()
+        .map_or([0; 19], |counts| counts.values.get())
+}
+
+#[cfg(test)]
+fn note_effect_refresh(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    #[cfg(not(feature = "host-internals"))]
+    let _ = &mut rv;
+    let index = v8::Local::<v8::Number>::try_from(args.get(0))
+        .unwrap()
+        .value() as usize;
+    #[cfg(all(test, feature = "host-internals"))]
+    {
+        let number = |at| {
+            v8::Local::<v8::Number>::try_from(args.get(at))
+                .ok()
+                .map_or(0, |value| value.value() as u64)
+        };
+        let value = sampler_diagnostics::note(scope, index, number(1), number(2));
+        rv.set(v8::Number::new(scope, value as f64).into());
+    }
+    // Snapshot callbacks survive in V8 while Rust isolate slots do not.
+    if scope.get_slot::<EffectRefreshCounts>().is_none() {
+        scope.set_slot(EffectRefreshCounts {
+            values: std::cell::Cell::new([0; 19]),
+            action: std::cell::Cell::new(None),
+        });
+    }
+    let action = scope.get_slot::<EffectRefreshCounts>().and_then(|counts| {
+        let mut values = counts.values.get();
+        if let Some(value) = values.get_mut(index) {
+            *value += 1;
+        }
+        counts.values.set(values);
+        (index == 18).then(|| counts.action.take()).flatten()
+    });
+    if let Some(action) = action {
+        action(scope);
+    }
+}
+
 /// Counts one fresh computed-style calculation (the test-only `__noteCascadeRun` hook).
 #[cfg(test)]
 fn note_cascade_run(
@@ -8330,6 +8550,25 @@ fn note_cascade_run(
     _rv: v8::ReturnValue,
 ) {
     CASCADE_RUNS.with(|runs| runs.set(runs.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    static EFFECT_VALIDATIONS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(all(test, feature = "host-internals"))]
+fn effect_validations() -> u64 {
+    EFFECT_VALIDATIONS.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+fn note_effect_validation(
+    _scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    _rv: v8::ReturnValue,
+) {
+    EFFECT_VALIDATIONS.with(|visits| visits.set(visits.get() + 1));
 }
 
 #[cfg(test)]
@@ -8887,7 +9126,9 @@ fn run_init_scripts(scope: &mut v8::PinScope) {
         // remaining scripts to no effect (and potentially hand a terminating
         // scope to a future hook). Break out at the top so setup reports the
         // termination through SETUP_TERMINATED without iterating further.
-        if scope.is_execution_terminating() {
+        // An install script's inner TryCatch may already have cleared V8's
+        // flag; that recorded interruption still forbids guest initialization.
+        if SETUP_TERMINATED.with(std::cell::Cell::get) || scope.is_execution_terminating() {
             break;
         }
         let Some(code) = v8::String::new(scope, &source) else {
@@ -9047,10 +9288,15 @@ thread_local! {
 /// document. Runs no engine script. `Err(tree)` when the context was not made from the
 /// snapshot (or already holds a document).
 fn install_snapshot_context(scope: &mut v8::PinScope, tree: Tree) -> Result<(), Tree> {
+    let context = scope.get_current_context();
+    if context.get_slot::<NativeWindowInstallation>().is_some() {
+        return Err(tree);
+    }
     SETUP_TERMINATED.with(|t| t.set(false));
     if !crate_surface::startup_snapshot::rehydrate(scope) {
         return Err(tree);
     }
+    context.set_slot(std::rc::Rc::new(NativeWindowInstallation));
     attach_document(scope, tree);
     Ok(())
 }
@@ -9389,7 +9635,28 @@ fn try_capture_bootstrap_callback<S: context_rehydrate::FnSlot>(
     true
 }
 
-fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
+fn recovery_capture_checkpoint(scope: &mut v8::PinScope, name: &'static str) {
+    termination_checkpoint(scope, name);
+    // The deterministic watchdog can fire between scripts, before run_js has
+    // its own TryCatch. Record that real native interrupt before later setup
+    // catches consume V8's termination state.
+    #[cfg(test)]
+    if scope.is_execution_terminating() {
+        SETUP_TERMINATED.with(|terminated| terminated.set(true));
+    }
+}
+
+fn install_engine_with_tree(scope: &mut v8::PinScope, tree: Tree) {
+    let context = scope.get_current_context();
+    context.set_slot(std::rc::Rc::new(NativeWindowInstallation));
+    #[cfg(feature = "host-internals")]
+    begin_recovery_install(context);
+    install_engine_body(scope, tree);
+    #[cfg(feature = "host-internals")]
+    finish_recovery_install(scope, context);
+}
+
+fn install_engine_body(scope: &mut v8::PinScope, mut tree: Tree) {
     SETUP_TERMINATED.with(|t| t.set(false));
     // Fragment parsing tokenizes `<?target data?>` like Chrome (turbo-dom#135).
     tree.set_processing_instructions(true);
@@ -9416,7 +9683,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
         v8::Global::new(scope, t)
     };
     let state = window_dom_state(tree, parser_scripts, el_template);
-    DOM.with(|d| *d.borrow_mut() = Some(state));
+    DOM.with(|d| *d.borrow_mut() = Some(Box::new(state)));
 
     let context = scope.get_current_context();
     let global = v8::Weak::new(scope, context);
@@ -9522,6 +9789,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     shadow_slots::install(scope);
     shadow_html::install(scope);
     sanitizer::install(scope);
+    dom_parser::install(scope);
     script_state::install(scope);
     range_contents::install(scope);
     bind_method(scope, global, "__htmlTextNative", html_text::dispatch);
@@ -9544,6 +9812,13 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     file_inputs::install(scope);
     select_element::install(scope);
     animations::install(scope);
+    recovery_capture_checkpoint(scope, "install:before-recovery-capture");
+    capture_bootstrap_callback::<TerminationRecovery>(
+        scope,
+        global,
+        "__captureTerminationRecovery",
+    );
+    recovery_capture_checkpoint(scope, "install:after-recovery-capture");
     typed_om::install(scope);
     hyperlink_utils::install(scope);
     form_pseudo::install(scope);
@@ -9575,6 +9850,7 @@ fn install_engine_with_tree(scope: &mut v8::PinScope, mut tree: Tree) {
     // sees the dunder (`key_order_tests::page_reaches_no_engine_shims_chrome_lacks`).
     capture_bootstrap_callback::<EngineTaskScope>(scope, global, "__engineTaskScope");
     event_handlers::install(scope, None, "about:blank");
+    window_history::install(scope);
     custom_elements::install(scope);
     element_internals::install(scope);
     // After custom_elements re-creates the HTML constructors, so static members stay on them.
@@ -12259,6 +12535,15 @@ mod viewport_cssom_tests;
 #[cfg(test)]
 #[path = "css_live_tests.rs"]
 mod css_live_tests;
+#[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_diagnostics.rs"]
+mod sampler_diagnostics;
+#[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_refresh_tests.rs"]
+mod sampler_refresh_tests;
+#[cfg(all(test, feature = "host-internals"))]
+#[path = "sampler_validation_tests.rs"]
+mod sampler_validation_tests;
 
 #[cfg(test)]
 #[path = "dom_projection_tests.rs"]

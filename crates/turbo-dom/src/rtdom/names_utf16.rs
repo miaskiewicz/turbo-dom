@@ -55,7 +55,7 @@ impl Tree {
         });
         self.children_ov.insert(node, super::ChildList::new());
         self.attrs_ov.insert(node, super::AttrList::new());
-        self.bump_unscoped();
+        self.bump_detached();
         node
     }
     pub fn create_element_namespace_units(

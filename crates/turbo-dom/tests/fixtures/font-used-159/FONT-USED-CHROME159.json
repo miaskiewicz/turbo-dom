@@ -1,0 +1,300 @@
+{
+  "browser": "159.0.8154.6",
+  "sourceSha256": "e0a51baa4c6c2f95ff03ed8ff75d66dc4b611e956b802531062e11b47b9b8259",
+  "result": [
+    {
+      "mode": "stylesheet",
+      "id": "parent",
+      "lineHeightSource": "1.5",
+      "fontSize": "12px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "stylesheet",
+      "id": "child",
+      "lineHeightSource": "1.5",
+      "fontSize": "20px",
+      "lineHeight": "30px",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "inline",
+      "id": "parent",
+      "lineHeightSource": "1.5",
+      "fontSize": "12px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "bold",
+      "authoredLineHeight": "1.5"
+    },
+    {
+      "mode": "inline",
+      "id": "child",
+      "lineHeightSource": "1.5",
+      "fontSize": "20px",
+      "lineHeight": "30px",
+      "fontWeight": "700",
+      "authoredWeight": "inherit",
+      "authoredLineHeight": "inherit"
+    },
+    {
+      "mode": "stylesheet",
+      "id": "parent",
+      "lineHeightSource": "150%",
+      "fontSize": "12px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "stylesheet",
+      "id": "child",
+      "lineHeightSource": "150%",
+      "fontSize": "20px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "inline",
+      "id": "parent",
+      "lineHeightSource": "150%",
+      "fontSize": "12px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "bold",
+      "authoredLineHeight": "150%"
+    },
+    {
+      "mode": "inline",
+      "id": "child",
+      "lineHeightSource": "150%",
+      "fontSize": "20px",
+      "lineHeight": "18px",
+      "fontWeight": "700",
+      "authoredWeight": "inherit",
+      "authoredLineHeight": "inherit"
+    },
+    {
+      "mode": "stylesheet",
+      "id": "parent",
+      "lineHeightSource": "normal",
+      "fontSize": "12px",
+      "lineHeight": "normal",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "stylesheet",
+      "id": "child",
+      "lineHeightSource": "normal",
+      "fontSize": "20px",
+      "lineHeight": "normal",
+      "fontWeight": "700",
+      "authoredWeight": "",
+      "authoredLineHeight": ""
+    },
+    {
+      "mode": "inline",
+      "id": "parent",
+      "lineHeightSource": "normal",
+      "fontSize": "12px",
+      "lineHeight": "normal",
+      "fontWeight": "700",
+      "authoredWeight": "bold",
+      "authoredLineHeight": "normal"
+    },
+    {
+      "mode": "inline",
+      "id": "child",
+      "lineHeightSource": "normal",
+      "fontSize": "20px",
+      "lineHeight": "normal",
+      "fontWeight": "700",
+      "authoredWeight": "inherit",
+      "authoredLineHeight": "inherit"
+    },
+    {
+      "weight": "normal",
+      "computed": "400",
+      "authored": "normal"
+    },
+    {
+      "weight": "bold",
+      "computed": "700",
+      "authored": "bold"
+    },
+    {
+      "weight": "400",
+      "computed": "400",
+      "authored": "400"
+    },
+    {
+      "weight": "500",
+      "computed": "500",
+      "authored": "500"
+    },
+    {
+      "weight": "700",
+      "computed": "700",
+      "authored": "700"
+    },
+    {
+      "weight": "1000",
+      "computed": "1000",
+      "authored": "1000"
+    },
+    {
+      "weight": 100,
+      "relative": "bolder",
+      "computed": "400",
+      "authored": "bolder"
+    },
+    {
+      "weight": 100,
+      "relative": "lighter",
+      "computed": "100",
+      "authored": "lighter"
+    },
+    {
+      "weight": 349,
+      "relative": "bolder",
+      "computed": "400",
+      "authored": "bolder"
+    },
+    {
+      "weight": 349,
+      "relative": "lighter",
+      "computed": "100",
+      "authored": "lighter"
+    },
+    {
+      "weight": 350,
+      "relative": "bolder",
+      "computed": "700",
+      "authored": "bolder"
+    },
+    {
+      "weight": 350,
+      "relative": "lighter",
+      "computed": "100",
+      "authored": "lighter"
+    },
+    {
+      "weight": 549,
+      "relative": "bolder",
+      "computed": "700",
+      "authored": "bolder"
+    },
+    {
+      "weight": 549,
+      "relative": "lighter",
+      "computed": "100",
+      "authored": "lighter"
+    },
+    {
+      "weight": 550,
+      "relative": "bolder",
+      "computed": "900",
+      "authored": "bolder"
+    },
+    {
+      "weight": 550,
+      "relative": "lighter",
+      "computed": "400",
+      "authored": "lighter"
+    },
+    {
+      "weight": 749,
+      "relative": "bolder",
+      "computed": "900",
+      "authored": "bolder"
+    },
+    {
+      "weight": 749,
+      "relative": "lighter",
+      "computed": "400",
+      "authored": "lighter"
+    },
+    {
+      "weight": 750,
+      "relative": "bolder",
+      "computed": "900",
+      "authored": "bolder"
+    },
+    {
+      "weight": 750,
+      "relative": "lighter",
+      "computed": "700",
+      "authored": "lighter"
+    },
+    {
+      "weight": 900,
+      "relative": "bolder",
+      "computed": "900",
+      "authored": "bolder"
+    },
+    {
+      "weight": 900,
+      "relative": "lighter",
+      "computed": "700",
+      "authored": "lighter"
+    },
+    {
+      "invalidWeight": "0",
+      "supports": false,
+      "authored": "",
+      "usedWeight": "400"
+    },
+    {
+      "invalidWeight": "1001",
+      "supports": false,
+      "authored": "",
+      "usedWeight": "400"
+    },
+    {
+      "invalidWeight": "-1",
+      "supports": false,
+      "authored": "",
+      "usedWeight": "400"
+    },
+    {
+      "invalidWeight": "1e999",
+      "supports": false,
+      "authored": "",
+      "usedWeight": "400"
+    },
+    {
+      "lineHeightCase": "0",
+      "fontSizeCase": "12px",
+      "usedLineHeight": "0px",
+      "authored": "0"
+    },
+    {
+      "lineHeightCase": "1.5",
+      "fontSizeCase": "0px",
+      "usedLineHeight": "0px",
+      "authored": "1.5"
+    },
+    {
+      "lineHeightCase": "normal",
+      "fontSizeCase": "12px",
+      "usedLineHeight": "normal",
+      "authored": "normal"
+    },
+    {
+      "lineHeightCase": "18px",
+      "fontSizeCase": "20px",
+      "usedLineHeight": "18px",
+      "authored": "18px"
+    }
+  ]
+}

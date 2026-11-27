@@ -1,0 +1,182 @@
+{
+  "browser": "159.0.8154.6",
+  "casesSHA256": "abedc228b6abbd2ba7f037e3f80b39d77f2ababd1d4a0493abd678f06751e52a",
+  "probeSHA256": "7a60340e1c885a087fd88dbb0a90b1a3cd0c848af627905120cdcf8fb63fdb7e",
+  "rows": [
+    {
+      "id": "waapi-enter-delay0",
+      "samples": [
+        {
+          "time": -1,
+          "display": "none",
+          "progress": 0
+        },
+        {
+          "time": 0,
+          "display": "none",
+          "progress": 0
+        },
+        {
+          "time": 1000,
+          "display": "block",
+          "progress": 1
+        }
+      ]
+    },
+    {
+      "id": "waapi-enter-delay100",
+      "samples": [
+        {
+          "time": 0,
+          "display": "none",
+          "progress": 0
+        },
+        {
+          "time": 99,
+          "display": "none",
+          "progress": 0
+        },
+        {
+          "time": 100,
+          "display": "none",
+          "progress": 0
+        },
+        {
+          "time": 100.001,
+          "display": "block",
+          "progress": 0.000001000000000001
+        },
+        {
+          "time": 1099,
+          "display": "block",
+          "progress": 0.999
+        },
+        {
+          "time": 1100,
+          "display": "block",
+          "progress": 1
+        }
+      ]
+    },
+    {
+      "id": "waapi-exit-delay0",
+      "samples": [
+        {
+          "time": -1,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 0,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 1000,
+          "display": "none",
+          "progress": 1
+        }
+      ]
+    },
+    {
+      "id": "waapi-exit-delay100",
+      "samples": [
+        {
+          "time": 0,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 99,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 100,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 100.001,
+          "display": "block",
+          "progress": 0.000001000000000001
+        },
+        {
+          "time": 1099,
+          "display": "block",
+          "progress": 0.999
+        },
+        {
+          "time": 1100,
+          "display": "none",
+          "progress": 1
+        }
+      ]
+    },
+    {
+      "id": "css-exit-delay0",
+      "samples": [
+        {
+          "time": -1,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 0,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 1000,
+          "display": "none",
+          "progress": null
+        }
+      ],
+      "restore": {
+        "first": "block",
+        "second": "block",
+        "transitions": 0
+      }
+    },
+    {
+      "id": "css-exit-delay100",
+      "samples": [
+        {
+          "time": 0,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 99,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 100,
+          "display": "block",
+          "progress": 0
+        },
+        {
+          "time": 100.001,
+          "display": "block",
+          "progress": 0.000001000000000001
+        },
+        {
+          "time": 1099,
+          "display": "block",
+          "progress": 0.999
+        },
+        {
+          "time": 1100,
+          "display": "none",
+          "progress": null
+        }
+      ],
+      "restore": {
+        "first": "block",
+        "second": "block",
+        "transitions": 0
+      }
+    }
+  ]
+}

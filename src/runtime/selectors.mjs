@@ -1,3 +1,4 @@
+import { readCssFactsNavigator, CssFactsUnavailable } from './css-facts-navigator.mjs';
 // CSS selector engine for the JS runtime. Correctness-first, right-to-left matching,
 // kept in lockstep with the Rust engine (crates/turbo-dom/src/rtdom/query.rs +
 // query_utf16.rs + query_cascade.rs): both answer like Chrome 156, checked against the
@@ -18,7 +19,7 @@
 // Hot paths stay allocation-free: the parse is cached by selector string, compounds are
 // matched with index loops over node.__children(), classes with a whole-word scan.
 
-import { isDefinedElement } from './custom-elements.mjs';
+import { isDefinedElement, isDefinedCustomElementState, isKnownCustomElementState } from './custom-elements.mjs';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -91,11 +92,21 @@ function scanIdent(src, i) {
       value += e.ch;
       i = e.end;
     } else if (isNameChar(c)) {
-      value += c;
-      i++;
+      if (c >= '\ud800' && c <= '\udfff') {
+        const scalar = consumeNameScalar(src, i);
+        value += scalar.ch;
+        i = scalar.end;
+      } else { value += c; i++; }
     } else break;
   }
   return { value, end: i };
+}
+// CSS input preprocessing repairs lone name units, while quoted attribute values
+// keep their DOM-string units. Valid supplementary scalars remain one name character.
+function consumeNameScalar(src, i) {
+  const point = src.codePointAt(i);
+  const invalid = point >= 0xd800 && point <= 0xdfff;
+  return { ch: invalid ? '\uFFFD' : String.fromCodePoint(point), end: i + (point > 0xffff ? 2 : 1) };
 }
 // Is `s` (trimmed by the caller) exactly one identifier? Returns its decoded value or null.
 function identValue(s) {
@@ -494,7 +505,7 @@ function scanTypeToken(src, i, tokens) {
 }
 // The pseudo-class / pseudo-element at `i` (src[i] is `:`): pushes its token, returns the
 // next index.
-function scanPseudoToken(src, i, tokens) {
+function scanPseudoToken(src, i, tokens, options) {
   const n = src.length;
   i++;
   const element = src[i] === ':';
@@ -507,11 +518,15 @@ function scanPseudoToken(src, i, tokens) {
   if (src[i] === '(') {
     const { inner, end } = scanBalanced(src, i + 1, '(', ')');
     arg = inner;
-    i = end < n ? end + 1 : n; // an unterminated argument closes at the end (CSS)
+    i = pseudoArgumentEnd(src, end, options);
   }
   const legacy = !element && LEGACY_PSEUDO_ELEMENTS.has(name);
   tokens.push({ k: element || legacy ? 'pelem' : 'pseudo', name, arg, legacy });
   return i;
+}
+function pseudoArgumentEnd(src, end, options) {
+  if (options?.stylesheet && end >= src.length) throw syntax(src, 'unterminated stylesheet argument');
+  return end < src.length ? end + 1 : src.length;
 }
 // The attribute selector at `i` (src[i] is `[`): pushes its token, returns the next index.
 function scanAttrToken(src, i, tokens) {
@@ -531,24 +546,31 @@ function scanHashOrClassToken(src, i, tokens) {
 }
 const COMBINATORS = new Set(['>', '+', '~']);
 // One tokenize step: returns the next source index after consuming src[i].
-function tokenizeStep(src, i, tokens) {
+function tokenizeStep(src, i, tokens, options) {
   const c = src[i];
   if (isWs(c)) { tokens.push({ k: 'ws' }); return skipWsAt(src, i); }
   if (c === ',') { tokens.push({ k: 'comma' }); return i + 1; }
   if (COMBINATORS.has(c)) { tokens.push({ k: 'comb', v: c }); return i + 1; }
-  return tokenizeSimple(src, i, c, tokens);
+  return tokenizeSimple(src, i, c, tokens, options);
 }
-function tokenizeSimple(src, i, c, tokens) {
+function tokenizeSimple(src, i, c, tokens, options) {
   if (c === '*' || c === '|' || startsIdent(src, i)) return scanTypeToken(src, i, tokens);
   if (c === '#' || c === '.') return scanHashOrClassToken(src, i, tokens);
   if (c === '[') return scanAttrToken(src, i, tokens);
-  if (c === ':') return scanPseudoToken(src, i, tokens);
+  if (c === ':') return scanPseudoToken(src, i, tokens, options);
+  return tokenizeScopeReference(src, i, c, tokens, options);
+}
+function tokenizeScopeReference(src, i, c, tokens, options) {
+  if (c === '&' && options?.allowScopeReference) {
+    tokens.push({ k: 'pseudo', name: 'where', arg: ':scope' });
+    return i + 1;
+  }
   throw new SyntaxError(`unexpected '${c}' in selector`);
 }
-function tokenize(src) {
+function tokenize(src, options) {
   const tokens = [];
   const n = src.length;
-  for (let i = 0; i < n;) i = tokenizeStep(src, i, tokens);
+  for (let i = 0; i < n;) i = tokenizeStep(src, i, tokens, options);
   return tokens;
 }
 
@@ -566,7 +588,7 @@ function parsePseudo(tok, src, opts) {
   const { inHas, inCompound = false } = opts;
   const { name, arg } = tok;
   const p = { name, arg };
-  const parsed = arg === null ? parsePlainPseudo(name, src) : parseFunctionalPseudo(name, arg, src, inHas, inCompound);
+  const parsed = arg === null ? (opts.shadow && name === 'host' ? { host: true } : parsePlainPseudo(name, src)) : parseFunctionalPseudo(name, arg, src, inHas, inCompound, opts);
   if (parsed) Object.defineProperty(p, 'parsed', { value: parsed });
   return p;
 }
@@ -578,11 +600,14 @@ function parsePlainPseudo(name, src) {
 }
 const NTH = new Set(['nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type']);
 // A nested selector-list pseudo (`:not` / `:is` / `:where` / `:-webkit-any`): its `parsed`.
-function parseListPseudo(name, arg, inHas, inCompound) {
-  if (name === 'not') return { list: parseList(arg, { nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
-  if (name === 'is' || name === 'where') return { list: parseList(arg, { nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
+function cssParseOptions(options) {
+  return { allowScopeReference: options?.allowScopeReference, stylesheet: options?.stylesheet, shadow: options?.shadow };
+}
+function parseListPseudo(name, arg, inHas, inCompound, options) {
+  if (name === 'not') return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: false, inHas, compound: inCompound, inCompound }) };
+  if (name === 'is' || name === 'where') return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: true, inHas, compound: inCompound, inCompound }) };
   // unforgiving compound selectors, no :has() (a nested :is() drops items with one)
-  return { list: parseList(arg, { nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
+  return { list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: false, inHas: true, compound: true, inCompound: true }) };
 }
 const LIST_PSEUDO = new Set(['not', 'is', 'where', '-webkit-any']);
 // A functional pseudo-class: its `parsed`.
@@ -591,15 +616,15 @@ function parseFunctionalPseudoValue(name, arg, src) {
   if (name === 'state') return { v: identArg(name, arg, src) };
   throw syntax(src, `unknown pseudo-class :${name}()`);
 }
-function parseFunctionalPseudo(name, arg, src, inHas, inCompound) {
+function parseFunctionalPseudo(name, arg, src, inHas, inCompound, options) {
   if (PLAIN.has(name)) throw syntax(src, `:${name}() takes no argument`);
-  if (NEVER_FUNCTIONAL.has(name)) return { never: true };
-  if (LIST_PSEUDO.has(name)) return parseListPseudo(name, arg, inHas, inCompound);
+  if (NEVER_FUNCTIONAL.has(name)) return parseCssHost(name, arg, options);
+  if (LIST_PSEUDO.has(name)) return parseListPseudo(name, arg, inHas, inCompound, options);
   if (name === 'has') {
     if (inHas) throw syntax(src, ':has() inside :has()');
-    return { rel: parseRelative(arg, src) };
+    return { rel: parseRelative(arg, src, options) };
   }
-  if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound);
+  if (NTH.has(name)) return parseNthPseudo(name, arg, src, inHas, inCompound, options);
   return parseFunctionalPseudoValue(name, arg, src);
 }
 // The one identifier argument of `:name()` (throws otherwise).
@@ -608,11 +633,11 @@ function identArg(name, arg, src) {
   if (v === null) throw syntax(src, `:${name}() takes one identifier`);
   return v;
 }
-function parseNthPseudo(name, arg, src, inHas, inCompound) {
+function parseNthPseudo(name, arg, src, inHas, inCompound, options) {
   const at = name.endsWith('child') ? nthOfPosition(arg) : -1;
   const anb = parseAnB(at === -1 ? arg : arg.slice(0, at));
   if (anb === null) throw syntax(src, `:${name}() argument`);
-  return { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { nested: true, forgiving: false, inHas, inCompound }) };
+  return { a: anb.a, b: anb.b, of: at === -1 ? null : parseList(arg.slice(at + 2), { ...cssParseOptions(options), nested: true, forgiving: false, inHas, inCompound }) };
 }
 
 // A view-transition pseudo-element argument (<pt-name-and-class-selector>): `*` or a name,
@@ -797,7 +822,7 @@ function parseList(src, opts) {
   const out = [];
   for (const item of splitTopLevel(src)) {
     try {
-      const tokens = tokenize(item);
+      const tokens = tokenize(item, opts);
       out.push(parseComplexTokens(tokens, 0, tokens.length, item, opts));
     } catch (e) {
       if (!opts.forgiving) throw e;
@@ -807,15 +832,15 @@ function parseList(src, opts) {
 }
 
 // `:has()` relative selector list (unforgiving): [{ combinator, complex }].
-function parseRelative(arg, src) {
+function parseRelative(arg, src, options) {
   const out = [];
   for (const item of splitTopLevel(arg)) {
-    const tokens = tokenize(item);
+    const tokens = tokenize(item, options);
     let lo = 0;
     while (lo < tokens.length && tokens[lo].k === 'ws') lo++;
     let combinator = ' ';
     if (lo < tokens.length && tokens[lo].k === 'comb') { combinator = tokens[lo].v; lo++; }
-    out.push({ combinator, complex: parseComplexTokens(tokens, lo, tokens.length, src, { nested: true, forgiving: false, inHas: true }) });
+    out.push({ combinator, complex: parseComplexTokens(tokens, lo, tokens.length, src, { ...cssParseOptions(options), nested: true, forgiving: false, inHas: true }) });
   }
   return out;
 }
@@ -840,10 +865,10 @@ export function parseSelectorList(selector) {
   return parsed;
 }
 // `closeAtEof`: a DOM-API selector string (a stylesheet prelude never ends inside a block).
-function parseSource(selector, closeAtEof) {
+function parseSource(selector, closeAtEof, options) {
   // CSS preprocessing: NUL becomes U+FFFD (a name code point); comments go
   const src = normalizeSource(String(selector).replace(/\0/g, '\uFFFD'), closeAtEof);
-  return parseList(src, { nested: false, forgiving: false, inHas: false });
+  return parseList(src, { ...options, nested: false, forgiving: false, inHas: false });
 }
 
 // The items of a style rule's selector list (top-level comma split), or [] when the list is
@@ -904,82 +929,85 @@ export function specificity(item) {
 // ── element state helpers ───────────────────────────────────────────────────
 // HTML elements carry no short namespace (`__ns` is '' — 'svg' / 'math' otherwise).
 function isHtml(el) {
-  return !el.__ns;
+  return activeFacts ? selectorNamespace(el) === 'http://www.w3.org/1999/xhtml' : !el.__ns;
 }
 function attrList(el) {
+  if (activeFacts) return activeFacts.attrs(el);
   return el.__attrs ?? (el.__buildAttrs ? (el.__attrs = el.__buildAttrs()) : []);
 }
 // The no-namespace attribute `name` (foreign elements: skip prefixed attributes such as
 // xlink:href), or null.
 function plainAttr(el, name) {
-  if (!el.__ns) return el.getAttribute(name);
+  if (activeFacts && isHtml(el)) return activeFacts.attribute(el, name);
+  if (isHtml(el)) return selectorAttribute(el, name);
   const at = attrList(el);
   for (let i = 0; i < at.length; i++) if (at[i].name === name && !at[i].prefix) return at[i].value;
   return null;
 }
 function rawChildren(node) {
+  if (activeFacts) return activeFacts.children(node);
   return typeof node.__children === 'function' ? node.__children() : Array.from(node.childNodes || []);
 }
 function previousElement(el) {
-  let n = el.previousSibling;
-  while (n && n.nodeType !== 1) n = n.previousSibling;
-  return n || null;
+  let n = selectorPrevious(el);
+  while (selectorPresent(n) && selectorType(n) !== 1) n = selectorPrevious(n);
+  return n ?? null;
 }
 function nextElement(el) {
-  let n = el.nextSibling;
-  while (n && n.nodeType !== 1) n = n.nextSibling;
-  return n || null;
+  let n = selectorNext(el);
+  while (selectorPresent(n) && selectorType(n) !== 1) n = selectorNext(n);
+  return n ?? null;
 }
 // (1-based index, count) among the element siblings (`ofType`: of the same local name). A
 // parentless element is its own only sibling (as the Rust engine).
 function position(el, ofType) {
-  const p = el.parentNode;
-  if (!p) return [1, 1];
+  const p = selectorParent(el);
+  if (!selectorPresent(p)) return [1, 1];
   const kids = rawChildren(p);
   let index = 0, count = 0;
   for (let i = 0; i < kids.length; i++) {
     const c = kids[i];
-    if (c.nodeType !== 1 || (ofType && c.localName !== el.localName)) continue;
+    if (selectorType(c) !== 1 || (ofType && selectorName(c) !== selectorName(el))) continue;
     count++;
     if (c === el) index = count;
   }
   return [index, count];
 }
 function positionOf(el, list, last) {
-  const p = el.parentNode;
-  const kids = p ? rawChildren(p) : [el];
+  const p = selectorParent(el);
+  const kids = selectorPresent(p) ? rawChildren(p) : [el];
   let index = 0, count = 0;
   for (let i = 0; i < kids.length; i++) {
     const c = kids[i];
-    if (c.nodeType !== 1 || (c !== el && !list.some((cx) => matchComplex(c, cx)))) continue;
+    if (selectorType(c) !== 1 || (c !== el && !list.some((cx) => matchComplex(c, cx)))) continue;
     count++;
     if (c === el) index = count;
   }
   return last ? count - index + 1 : index;
 }
 function boolAttr(el, prop, attr) {
-  const v = el[prop];
-  return typeof v === 'boolean' ? v : el.hasAttribute(attr);
+  const v = selectorState(el, prop);
+  return typeof v === 'boolean' ? v : selectorHasAttribute(el, attr);
 }
 const NAMES = (s) => new Set(s.split(' '));
 const READONLY_INPUT_TYPES = NAMES('text search url tel email password date month week time datetime-local number');
 const KNOWN_INPUT_TYPES = NAMES('hidden text search tel url email password date month week time datetime-local number range color checkbox radio file submit image reset button');
 const AUTO_DIR_INPUT_TYPES = NAMES('hidden text search tel url email password submit reset button');
 function inputType(el) {
-  const t = el.getAttribute('type');
+  const t = selectorAttribute(el, 'type');
   return t === null ? null : t.toLowerCase();
 }
 // HTML "actually disabled" (button/input/select/textarea/fieldset): own state or a disabled
 // fieldset ancestor outside its first legend child.
 function firstLegendChild(fieldset) {
   const kids = rawChildren(fieldset);
-  for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === 1 && kids[i].localName === 'legend') return kids[i];
+  for (let i = 0; i < kids.length; i++) if (selectorType(kids[i]) === 1 && selectorName(kids[i]) === 'legend') return kids[i];
   return null;
 }
 function disabledByFieldset(el) {
   let child = el;
-  for (let a = el.parentNode; a && a.nodeType === 1; child = a, a = a.parentNode) {
-    if (a.localName !== 'fieldset' || !isHtml(a) || !boolAttr(a, 'disabled', 'disabled')) continue;
+  for (let a = selectorParent(el); selectorPresent(a) && selectorType(a) === 1; child = a, a = selectorParent(a)) {
+    if (selectorName(a) !== 'fieldset' || !isHtml(a) || !boolAttr(a, 'disabled', 'disabled')) continue;
     if (firstLegendChild(a) !== child) return true;
   }
   return false;
@@ -988,9 +1016,9 @@ function actuallyDisabled(el) {
   return boolAttr(el, 'disabled', 'disabled') || disabledByFieldset(el);
 }
 // :disabled / :enabled: undefined when neither applies, else whether `el` is disabled.
-function disabledState(el) {
+export function disabledState(el) {
   if (!isHtml(el)) return undefined;
-  switch (el.localName) {
+  switch (selectorName(el)) {
     case 'button': case 'input': case 'select': case 'textarea': case 'fieldset':
       return actuallyDisabled(el);
     case 'optgroup':
@@ -1002,22 +1030,22 @@ function disabledState(el) {
   }
 }
 function isElementNamed(n, localName) {
-  return !!n && n.nodeType === 1 && n.localName === localName;
+  return !!selectorPresent(n) && selectorType(n) === 1 && selectorName(n) === localName;
 }
 // An option is disabled by its own attribute, its optgroup's or a disabled select.
 function optionDisabled(el) {
-  if (el.hasAttribute('disabled')) return true;
-  let p = el.parentNode;
+  if (selectorHasAttribute(el, 'disabled')) return true;
+  let p = selectorParent(el);
   if (isElementNamed(p, 'optgroup')) {
-    if (p.hasAttribute('disabled')) return true;
-    p = p.parentNode;
+    if (selectorHasAttribute(p, 'disabled')) return true;
+    p = selectorParent(p);
   }
   return isElementNamed(p, 'select') && actuallyDisabled(p);
 }
 function isEditable(el) {
-  for (let n = el; n && n.nodeType === 1; n = n.parentNode) {
+  for (let n = el; selectorPresent(n) && selectorType(n) === 1; n = selectorParent(n)) {
     if (!isHtml(n)) continue;
-    const v = n.getAttribute('contenteditable');
+    const v = selectorAttribute(n, 'contenteditable');
     if (v === null) continue;
     const l = v.toLowerCase();
     if (l === '' || l === 'true' || l === 'plaintext-only') return true;
@@ -1027,33 +1055,33 @@ function isEditable(el) {
 }
 // The HTML :read-write rule (HTML elements; others match neither).
 function readWrite(el) {
-  if (el.localName === 'input') {
+  if (selectorName(el) === 'input') {
     const t = inputType(el);
     const applies = t === null || READONLY_INPUT_TYPES.has(t) || !KNOWN_INPUT_TYPES.has(t);
     return applies && !boolAttr(el, 'readOnly', 'readonly') && !actuallyDisabled(el);
   }
-  if (el.localName === 'textarea') return !boolAttr(el, 'readOnly', 'readonly') && !actuallyDisabled(el);
+  if (selectorName(el) === 'textarea') return !boolAttr(el, 'readOnly', 'readonly') && !actuallyDisabled(el);
   return isEditable(el);
 }
 function isEmpty(el) {
   const kids = rawChildren(el);
   for (let i = 0; i < kids.length; i++) {
     const c = kids[i];
-    if (c.nodeType === 1) return false;
-    if (c.nodeType === 3 && c.data !== '') return false;
+    if (selectorType(c) === 1) return false;
+    if (selectorType(c) === 3 && selectorData(c) !== '') return false;
   }
   return true;
 }
 function isLink(el) {
-  if (isHtml(el)) return (el.localName === 'a' || el.localName === 'area') && el.hasAttribute('href');
-  return el.namespaceURI === SVG_NS && el.localName === 'a' && el.getAttribute('href') !== null;
+  if (isHtml(el)) return (selectorName(el) === 'a' || selectorName(el) === 'area') && selectorHasAttribute(el, 'href');
+  return selectorNamespace(el) === SVG_NS && selectorName(el) === 'a' && selectorAttribute(el, 'href') !== null;
 }
 // :defined — the element's custom element state (custom-elements.mjs: the creation-time
 // state, upgrades and constructions), as the Rust engine's Tree::custom_element_state.
 // :lang(range): the nearest `lang` / `xml:lang` (basic prefix match, case-insensitive).
 function langMatches(el, range) {
-  for (let n = el; n && n.nodeType === 1; n = n.parentNode) {
-    const v = n.getAttribute('lang');
+  for (let n = el; selectorPresent(n) && selectorType(n) === 1; n = selectorParent(n)) {
+    const v = selectorAttribute(n, 'lang');
     if (v === null) continue;
     const l = v.toLowerCase();
     return l === range || (l.length > range.length && l.startsWith(range) && l[range.length] === '-');
@@ -1061,7 +1089,7 @@ function langMatches(el, range) {
   return false;
 }
 function dirState(el) {
-  const v = el.getAttribute('dir');
+  const v = selectorAttribute(el, 'dir');
   if (v === null) return null;
   const l = v.toLowerCase();
   return l === 'ltr' || l === 'rtl' || l === 'auto' ? l : null;
@@ -1082,7 +1110,7 @@ function strongRtl(text) {
 function childText(el) {
   let text = '';
   const kids = rawChildren(el);
-  for (let i = 0; i < kids.length; i++) if (kids[i].nodeType === 3) text += kids[i].data;
+  for (let i = 0; i < kids.length; i++) if (selectorType(kids[i]) === 3) text += selectorData(kids[i]);
   return text;
 }
 function isAutoDirInput(el) {
@@ -1098,24 +1126,24 @@ function walkDirRtl(node) {
   const kids = rawChildren(node);
   for (let i = 0; i < kids.length; i++) {
     const c = kids[i];
-    if (c.nodeType === 3) { const r = strongRtl(c.data); if (r !== null) return r; continue; }
-    if (c.nodeType !== 1) continue;
-    if (isHtml(c) && (DIR_SKIP.has(c.localName) || dirState(c) !== null)) continue;
+    if (selectorType(c) === 3) { const r = strongRtl(selectorData(c)); if (r !== null) return r; continue; }
+    if (selectorType(c) !== 1) continue;
+    if (isHtml(c) && (DIR_SKIP.has(selectorName(c)) || dirState(c) !== null)) continue;
     const r = walkDirRtl(c);
     if (r !== null) return r;
   }
   return null;
 }
 function autoRtl(el) {
-  const ln = el.localName;
+  const ln = selectorName(el);
   if (ln === 'textarea') return autoDirValueRtl(childText(el));
-  if (ln === 'input' && isAutoDirInput(el)) return autoDirValueRtl(el.getAttribute('value') || '');
+  if (ln === 'input' && isAutoDirInput(el)) return autoDirValueRtl(selectorAttribute(el, 'value') || '');
   return walkDirRtl(el);
 }
 // HTML directionality: true = rtl. Mirrors the Rust query_cascade::is_rtl.
 function isRtlImplicitDir(n) {
-  if (n.localName === 'bdi') return autoRtl(n) === true;
-  if (n.localName === 'input' && inputType(n) === 'tel') return false;
+  if (selectorName(n) === 'bdi') return autoRtl(n) === true;
+  if (selectorName(n) === 'input' && inputType(n) === 'tel') return false;
   return undefined;
 }
 function isRtlStep(n) {
@@ -1127,9 +1155,9 @@ function isRtlStep(n) {
   return d === null ? isRtlImplicitDir(n) : undefined;
 }
 function dirAncestor(n) {
-  const p = n.parentNode;
-  if (p && p.__isShadowRoot) return p.host;
-  return p && p.nodeType === 1 ? p : null;
+  const p = selectorParent(n);
+  if (selectorPresent(p) && selectorShadow(p)) return selectorHost(p);
+  return selectorPresent(p) && selectorType(p) === 1 ? p : null;
 }
 function isRtl(el) {
   for (let n = el; n; n = dirAncestor(n)) {
@@ -1161,17 +1189,21 @@ function matchAttrAnyNs(el, name, match, ci) {
 }
 const IMPLICIT_CI_TYPE = new Set(['input', 'button', 'ol']);
 function matchAttr(el, a) {
-  const html = !el.__ns;
+  const html = isHtml(el);
   const name = html ? a.lname : a.name;
   if (a.ns === 'any') return matchAttrAnyNs(el, name, a.match, a.ci === true);
-  const raw = html ? el.getAttribute(name) : plainAttr(el, name);
+  const raw = html ? selectorAttribute(el, name) : plainAttr(el, name);
   if (raw === null) return false;
   if (a.match.op === 'present') return true;
-  return matchValue(a.match, raw, a.ci === true || (html && name === 'type' && IMPLICIT_CI_TYPE.has(el.localName)));
+  return matchValue(a.match, raw, a.ci === true || (html && name === 'type' && IMPLICIT_CI_TYPE.has(selectorName(el))));
 }
 
 // The element `:scope` matches during the current match (null = stylesheet: `:root`).
 let currentScope = null;
+let currentCssContext = null;
+let activeFacts = null;
+let currentCssShadow = null;
+const EMPTY_CSS_CONTEXT = Object.freeze({});
 
 // matchPseudo dispatches by family: tree-structural here, then the selector-argument and
 // language ones (matchLogicalPseudo), then element state (matchStatePseudo).
@@ -1190,6 +1222,8 @@ const PSEUDO_TREE = {
   'scope': (el) => currentScope === null ? isRootElement(el) : el === currentScope,
 };
 function matchPseudo(el, p) {
+  const css = currentCssContext && cssLivePseudo(el, p.name);
+  if (css !== null && css !== undefined) return css;
   const tree = PSEUDO_TREE[p.name];
   if (tree) return tree(el);
   if (p.name === 'nth-child') return matchNthChild(el, p.parsed, false);
@@ -1198,7 +1232,8 @@ function matchPseudo(el, p) {
   return matchLogicalPseudo(el, p);
 }
 function isRootElement(el) {
-  return !!el.parentNode && el.parentNode.nodeType === 9;
+  if (activeFacts) return el === activeFacts.documentElementId;
+  return !!selectorParent(el) && selectorParent(el).nodeType === 9;
 }
 function matchNthChild(el, parsed, last) {
   if (parsed.of) {
@@ -1218,10 +1253,10 @@ const LIST_MATCH = new Set(['not', 'is', 'where', '-webkit-any', 'has']);
 function matchLogicalPseudo(el, p) {
   if (LIST_MATCH.has(p.name)) return matchListPseudo(el, p);
   if (p.name === 'link' || p.name === 'any-link') return isLink(el);
-  if (p.name === 'defined') return isDefinedElement(el);
+  if (p.name === 'defined') return selectorDefined(el);
   if (p.name === 'lang') return langMatches(el, p.parsed.v);
   if (p.name === 'dir') return (p.parsed.v === 'rtl' || p.parsed.v === 'ltr') && isRtl(el) === (p.parsed.v === 'rtl');
-  return matchStatePseudo(el, p);
+  return matchCssStatePseudo(el, p);
 }
 // element state; form state reads the live PROPERTY first (what React sets), then the attribute
 const STATE_PSEUDO = {
@@ -1241,11 +1276,11 @@ function matchStatePseudo(el, p) {
   return fn ? fn(el) : false;
 }
 function isChecked(el) {
-  if (el.localName === 'option') return !!el.selected;
-  return el.localName === 'input' && (inputType(el) === 'checkbox' || inputType(el) === 'radio') && boolAttr(el, 'checked', 'checked');
+  if (selectorName(el) === 'option') return !!selectorState(el, 'selected');
+  return selectorName(el) === 'input' && (inputType(el) === 'checkbox' || inputType(el) === 'radio') && boolAttr(el, 'checked', 'checked');
 }
 function isOptional(el) {
-  return (el.localName === 'input' || el.localName === 'select' || el.localName === 'textarea') && !boolAttr(el, 'required', 'required');
+  return (selectorName(el) === 'input' || selectorName(el) === 'select' || selectorName(el) === 'textarea') && !boolAttr(el, 'required', 'required');
 }
 
 // allocation-free "does the class attribute contain this whole-word class"
@@ -1265,10 +1300,10 @@ function hasClass(cn, cls) {
 // The type selector `tag` (null = none, '*' = universal) against `el`.
 function tagMatches(el, tag) {
   if (tag === null || tag === '*') return true;
-  const ln = el.localName;
+  const ln = selectorName(el);
   // type selectors compare ASCII case-insensitively (as the Rust engine); HTML local
   // names are already lowercase, so only foreign elements pay for the fold
-  return ln === tag || (!!el.__ns && ln.toLowerCase() === tag);
+  return ln === tag || (!isHtml(el) && ln.toLowerCase() === tag);
 }
 // classes: read the class attribute ONCE and test membership without allocating
 function classesMatch(el, classes) {
@@ -1284,13 +1319,14 @@ function matchAttrsAndPseudos(el, compound) {
   return true;
 }
 function matchCompoundSimple(el, compound) {
-  if (compound.ns === 'none' && el.namespaceURI !== null) return false;
+  if (compound.ns === 'none' && selectorNamespace(el) !== null) return false;
   if (!tagMatches(el, compound.tag)) return false;
   if (compound.id !== null && plainAttr(el, 'id') !== compound.id) return false;
   return !(compound.classes.length && !classesMatch(el, compound.classes));
 }
 function matchCompound(el, compound) {
-  if (!el || el.nodeType !== 1 || compound.pe) return false;
+  if (!selectorPresent(el) || selectorType(el) !== 1 || compound.pe) return false;
+  if (currentCssShadow !== null && el === selectorHost(currentCssShadow) && !featurelessHostCompound(compound)) return false;
   return matchCompoundSimple(el, compound) && matchAttrsAndPseudos(el, compound);
 }
 
@@ -1301,7 +1337,8 @@ function compoundAt(cx, k) {
 
 // Match a parsed complex selector against `el` (the rightmost compound applies to el).
 function matchComplex(el, cx) {
-  return matchChain(el, cx, cx.rest.length, null);
+  const depth = cx.rest.length;
+  return depth === 0 ? matchCompound(el, cx.first) : matchChain(el, cx, depth, null);
 }
 
 // Match compounds 0..=k of `cx` ending at `el`, recursing leftward. Descendant (' ') and
@@ -1310,8 +1347,8 @@ function matchComplex(el, cx) {
 // (Every caller passes `scope`: null outside `:has()`.)
 function matchChainCombinator(el, cx, k, scope, comb) {
   if (comb === '>') {
-    const p = el.parentNode;
-    return !!p && p.nodeType === 1 && matchChain(p, cx, k, scope);
+    const p = cssSelectorParent(el);
+    return !!selectorPresent(p) && selectorType(p) === 1 && matchChain(p, cx, k, scope);
   }
   if (comb === '+') {
     const prev = previousElement(el);
@@ -1327,7 +1364,7 @@ function matchChain(el, cx, k, scope) {
 }
 // The descendant combinator: compounds 0..=k end at SOME element ancestor of `el`.
 function someAncestorMatches(el, cx, k, scope) {
-  for (let anc = el.parentNode; anc && anc.nodeType === 1; anc = anc.parentNode) {
+  for (let anc = cssSelectorParent(el); selectorPresent(anc) && selectorType(anc) === 1; anc = cssSelectorParent(anc)) {
     if (matchChain(anc, cx, k, scope)) return true;
   }
   return false;
@@ -1342,10 +1379,10 @@ function somePrecedingSiblingMatches(el, cx, k, scope) {
 
 // Does `node` stand in relation `comb` to the `:has()` subject `el`?
 function relatesToScope(node, comb, el) {
-  if (comb === '>') return node.parentNode === el;
+  if (comb === '>') return selectorParent(node) === el;
   if (comb === '+') return previousElement(node) === el;
   if (comb === '~') { for (let p = previousElement(node); p; p = previousElement(p)) if (p === el) return true; return false; }
-  for (let a = node.parentNode; a; a = a.parentNode) if (a === el) return true;
+  for (let a = selectorParent(node); selectorPresent(a); a = selectorParent(a)) if (a === el) return true;
   return false;
 }
 
@@ -1371,15 +1408,147 @@ function someDescendant(node, pred) {
   const kids = rawChildren(node);
   for (let i = 0; i < kids.length; i++) {
     const c = kids[i];
-    if (c.nodeType !== 1) continue;
+    if (selectorType(c) !== 1) continue;
     if (pred(c)) return true;
     if (someDescendant(c, pred)) return true;
   }
   return false;
 }
 function someSelfOrDescendant(node, pred) {
-  if (node.nodeType === 1 && pred(node)) return true;
+  if (selectorType(node) === 1 && pred(node)) return true;
   return someDescendant(node, pred);
+}
+
+// CSS-only program records contain no DOM references and never share a mutable
+// subject compound with the public DOM selector cache.
+const cssSelectorPrograms = new WeakMap();
+function cssSelectorSource(value) {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value) && !(value instanceof Uint16Array)) throw new TypeError('CSS selector source must be UTF16 units or a string');
+  const chunks = [];
+  for (let start = 0; start < value.length; start += 1024) {
+    const units = value.slice(start, start + 1024);
+    for (const unit of units) if (!Number.isInteger(unit) || unit < 0 || unit > 65535) throw new TypeError('invalid CSS selector UTF16 unit');
+    chunks.push(String.fromCharCode(...units));
+  }
+  return chunks.join('');
+}
+function cssPseudoName(value) {
+  if (value == null || value === '') return null;
+  const name = String(value).toLowerCase();
+  if (name.startsWith('::')) return name.slice(2);
+  return name.startsWith(':') ? name.slice(1) : name;
+}
+function cloneCssComplex(cx) {
+  return { first: { ...cx.first }, rest: cx.rest.map((part) => ({ combinator: part.combinator, compound: { ...part.compound } })) };
+}
+function cssPseudoSubject(cx, pseudo) {
+  const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
+  if (pseudo === null) return cx;
+  return cssPseudoProjection(cx, subject, pseudo);
+}
+function cssPseudoProjection(cx, subject, pseudo) {
+  if (subject.pe?.name === 'slotted') return cssSlottedPseudo(cx, subject.pe, pseudo);
+  if (!subject.pe || subject.pe.name !== pseudo || subject.pe.chain) return null;
+  const clone = cloneCssComplex(cx);
+  const clonedSubject = clone.rest.length ? clone.rest[clone.rest.length - 1].compound : clone.first;
+  clonedSubject.pe = null;
+  return clone;
+}
+function anchorCssComplex(cx) {
+  const anchor = parseComplex(':where(:scope)').first;
+  anchor.cssScopeAnchor = true;
+  return { first: anchor, rest: [{ combinator: ' ', compound: cx.first }, ...cx.rest] };
+}
+
+// `implicitScopeAnchor` is a mechanical instruction from the Rust scope compiler.
+// Root eligibility, limits, proximity, specificity and cascade order stay in Rust.
+export function compileCssSelectorProgram(source, metadata = {}) {
+  const pseudo = cssPseudoName(metadata.pseudo);
+  const implicitScopeAnchor = metadata.implicitScopeAnchor === true;
+  const parsed = parseSource(cssSelectorSource(source), false, { stylesheet: true, allowScopeReference: metadata.allowScopeReference === true, shadow: metadata.shadow === true });
+  const list = [];
+  for (const cx of parsed) {
+    const selector = cssPseudoSubject(cx, pseudo);
+    if (selector) list.push(implicitScopeAnchor ? anchorCssComplex(selector) : selector);
+  }
+  const program = Object.freeze({ pseudo, selectorCount: list.length });
+  cssSelectorPrograms.set(program, { list, implicitScopeAnchor, shadow: metadata.shadow === true });
+  return program;
+}
+
+export function matchesCssProgram(el, program, context) {
+  const record = cssSelectorPrograms.get(program);
+  if (!record) throw new TypeError('invalid CSS selector program');
+  const root = cssProgramRoot(el, record, context);
+  if (root === undefined) return false;
+  const savedScope = currentScope;
+  const savedCss = currentCssContext;
+  const savedShadow = currentCssShadow;
+  currentCssShadow = record.shadow ? context?.shadowRoot ?? null : null;
+  currentScope = root;
+  currentCssContext = context ?? EMPTY_CSS_CONTEXT;
+  try {
+    for (let i = 0; i < record.list.length; i++) if (matchCssComplex(el, record.list[i], context)) return true;
+    return false;
+  } finally {
+    currentScope = savedScope;
+    currentCssContext = savedCss;
+    currentCssShadow = savedShadow;
+  }
+}
+
+function cssProgramRoot(el, record, context) {
+  const root = context?.scopeRoot ?? null;
+  if (record.implicitScopeAnchor && !selectorPresent(root)) throw new TypeError('CSS scope root is required');
+  if (selectorPresent(root) && selectorOwner(root) !== selectorOwner(el)) return undefined;
+  return root;
+}
+function checkedCssFocusTarget(el, target) {
+  if (target !== null && (selectorType(target) !== 1 || selectorOwner(target) !== selectorOwner(el))) throw new TypeError('invalid CSS focus target');
+  return target;
+}
+function cssFocusTarget(el) {
+  if (activeFacts) return checkedCssFocusTarget(el, activeFacts.focusTarget());
+  const read = currentCssContext.liveState?.focusTarget;
+  const target = typeof read === 'function' ? read(selectorOwner(el)) : undefined;
+  if (target === undefined) throw new Error('turbo-dom: CSS focus state is unavailable');
+  return checkedCssFocusTarget(el, target);
+}
+function cssFocusMatches(el, target) {
+  if (el === target) return true;
+  for (let node = target; selectorPresent(node); node = selectorParent(node) ?? (selectorShadow(node) ? selectorHost(node) : null)) {
+    if (selectorShadow(node) && selectorHost(node) === el) return true;
+  }
+  return false;
+}
+function cssFocusWithin(el, target) {
+  for (let node = target; selectorPresent(node); node = selectorSlot(node) ?? selectorParent(node) ?? (selectorShadow(node) ? selectorHost(node) : null)) {
+    if (node === el) return true;
+  }
+  return false;
+}
+function cssTrustedPseudo(el, name) {
+  if (name === 'focus-visible' && !cssFocusMatches(el, cssFocusTarget(el))) return false;
+  if (activeFacts) {
+    const value = selectorState(el,name);
+    if (typeof value !== 'boolean') throw new CssFactsUnavailable(`state ${name}`,el);
+    return value;
+  }
+  const read = currentCssContext.liveState?.matchesPseudo;
+  if (typeof read === 'function') {
+    const result = read(el, name);
+    if (typeof result !== 'boolean') throw new Error(`turbo-dom: CSS ${name} state is unavailable`);
+    return result;
+  }
+  if (name === 'focus-visible') throw new Error('turbo-dom: CSS focus-visible modality is unavailable');
+  return false;
+}
+function cssLivePseudo(el, name) {
+  if (name === 'focus') return cssFocusMatches(el, cssFocusTarget(el));
+  if (name === 'focus-within') return cssFocusWithin(el, cssFocusTarget(el));
+  if (name === 'hover' || name === 'active' || name === 'focus-visible') return cssTrustedPseudo(el, name);
+  return null;
 }
 
 // `el.matches(selector)`; `scope` is the `:scope` element (`el` by default; null in a
@@ -1387,11 +1556,20 @@ function someSelfOrDescendant(node, pred) {
 export function matchesSelector(el, selector, scope = el) {
   const list = parseSelectorList(selector);
   const saved = currentScope;
+  const savedCss = currentCssContext;
   currentScope = scope;
+  const savedShadow = currentCssShadow;
+  currentCssShadow = null;
+  const savedFacts = activeFacts;
+  activeFacts = null;
+  currentCssContext = null;
   try {
     return list.some((cx) => matchComplex(el, cx));
   } finally {
     currentScope = saved;
+    currentCssContext = savedCss;
+    currentCssShadow = savedShadow;
+    activeFacts = savedFacts;
   }
 }
 
@@ -1400,6 +1578,16 @@ export function matchesSelector(el, selector, scope = el) {
 // rest of the selector (`slot[name=a]::slotted(S)`, `div ::slotted(S)`). A sub-pseudo-
 // element (`::slotted(S)::before`) targets generated content, never `el` itself.
 export function matchesSlotted(el, slot, selector) {
+  const savedCss = currentCssContext;
+  const savedShadow = currentCssShadow;
+  currentCssShadow = null;
+  const savedFacts = activeFacts;
+  activeFacts = null;
+  currentCssContext = null;
+  try { return matchSlottedLegacy(el, slot, selector); }
+  finally { currentCssContext = savedCss; currentCssShadow = savedShadow; activeFacts = savedFacts; }
+}
+function matchSlottedLegacy(el, slot, selector) {
   const cx = parseSelectorList(selector)[0];
   const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
   const pe = subject.pe;
@@ -1453,7 +1641,13 @@ function queryWalk(root, selector, first) {
   const list = parseSelectorList(selector);
   const single = list.length === 1 ? list[0] : null;
   const saved = currentScope;
+  const savedCss = currentCssContext;
   currentScope = scopeOf(root);
+  const savedShadow = currentCssShadow;
+  currentCssShadow = null;
+  const savedFacts = activeFacts;
+  activeFacts = null;
+  currentCssContext = null;
   try {
     const visit = (node) => {
       const kids = rawChildren(node);
@@ -1468,6 +1662,9 @@ function queryWalk(root, selector, first) {
     visit(root);
   } finally {
     currentScope = saved;
+    currentCssContext = savedCss;
+    currentCssShadow = savedShadow;
+    activeFacts = savedFacts;
   }
   return out;
 }
@@ -1481,3 +1678,154 @@ export function querySelector(root, selector) {
 }
 
 export const _internal = { parseComplex, parseSelectorList, matchCompound, matchComplex, parseAnB, ruleSelectors, specificity, compareSpecificity };
+
+// A shadow host is featureless within its own stylesheet. Arguments of :host()
+// are separately matched as ordinary compound selectors on the actual host.
+function featurelessHostCompound(compound) {
+  if (compound.cssScopeAnchor) return currentScope === selectorHost(currentCssShadow);
+  if (compound.tag !== null || compound.id !== null || compound.classes.length || compound.attrs.length) return false;
+  return compound.pseudos.length > 0 && compound.pseudos.every(featurelessHostPseudo);
+}
+function cssHostMatches(el, pseudo) {
+  if (currentCssShadow === null || el !== selectorHost(currentCssShadow)) return false;
+  if (selectorPresent(currentScope) && selectorType(currentScope) === 1) return false;
+  if (!pseudo.parsed.list) return true;
+  const saved = currentCssShadow;
+  currentCssShadow = null;
+  try { return pseudo.parsed.list.some((complex) => matchComplex(el, complex)); }
+  finally { currentCssShadow = saved; }
+}
+function cssSelectorParent(el) {
+  if (currentCssShadow === null) return selectorParent(el);
+  if (el === selectorHost(currentCssShadow)) return null;
+  return selectorParent(el) === currentCssShadow ? selectorHost(currentCssShadow) : selectorParent(el);
+}
+function cssSlottedPseudo(cx, pe, pseudo) {
+  if (pe.chain?.length !== 1 || pe.chain[0].name !== pseudo) return null;
+  const clone = cloneCssComplex(cx);
+  const subject = clone.rest.length ? clone.rest[clone.rest.length - 1].compound : clone.first;
+  subject.pe = { name: pe.name, arg: pe.arg };
+  Object.defineProperty(subject.pe, 'parsed', { value: pe.parsed });
+  return clone;
+}
+function matchCssComplex(el, cx, context) {
+  const subject = cx.rest.length ? cx.rest[cx.rest.length - 1].compound : cx.first;
+  if (currentCssShadow === null || subject.pe?.name !== 'slotted') return matchComplex(el, cx);
+  const slot = context?.assignedSlot;
+  if (!validCssSlot(slot, subject.pe, context)) return false;
+  const saved = currentCssShadow;
+  currentCssShadow = null;
+  let argument;
+  try { argument = subject.pe.parsed.some((complex) => matchComplex(el, complex)); }
+  finally { currentCssShadow = saved; }
+  if (!argument) return false;
+  const clone = cloneCssComplex(cx);
+  const clonedSubject = clone.rest.length ? clone.rest[clone.rest.length - 1].compound : clone.first;
+  clonedSubject.pe = null;
+  return matchComplex(slot, clone);
+}
+
+function parseCssHost(name, arg, options) {
+  if (!options?.shadow || name !== 'host') return { never: true };
+  return { host: true, list: parseList(arg, { ...cssParseOptions(options), nested: true, forgiving: false, compound: true, inCompound: true }) };
+}
+function validCssSlot(slot, pseudo, context) {
+  return selectorPresent(slot) && context.assignedSlotRoot === currentCssShadow && !pseudo.chain;
+}
+
+function matchCssStatePseudo(el, pseudo) {
+  return pseudo.parsed?.host ? cssHostMatches(el, pseudo) : matchStatePseudo(el, pseudo);
+}
+
+function featurelessHostPseudo(pseudo) {
+  if (pseudo.parsed?.host === true) return !selectorPresent(currentScope) || selectorType(currentScope) !== 1;
+  if (pseudo.name === 'scope') return currentScope === selectorHost(currentCssShadow);
+  if (!HOST_LOGICAL.has(pseudo.name)) return false;
+  return pseudo.parsed.list.some(featurelessHostComplex);
+}
+
+// Complex/relative branches do not grant featureless-host eligibility. Negation
+// changes truth only after a valid host/scope compound grants that eligibility.
+const HOST_LOGICAL = new Set(['is', 'where', 'not']);
+function featurelessHostComplex(complex) {
+  return complex.rest.length === 0 && featurelessHostCompound(complex.first);
+}
+
+// Facts programs refuse changed array callouts before private parser/AST data is used.
+// This is a bounded dependency guard, not certification of arbitrary host intrinsics.
+const factsDescriptor = Object.getOwnPropertyDescriptor;
+const factsNames = Object.getOwnPropertyNames;
+const factsArray = Array;
+const factsArrayPrototype = Array.prototype;
+const factsArrayMethods = ['some', 'every', 'find', 'map', 'slice', 'push', 'includes', 'indexOf', 'constructor'];
+const factsArrayDescriptors = [];
+for (let i = 0; i < factsArrayMethods.length; i++) factsArrayDescriptors[i] = factsDescriptor(factsArrayPrototype, factsArrayMethods[i]);
+const factsArrayIterator = factsDescriptor(factsArrayPrototype, Symbol.iterator);
+const factsArraySpecies = factsDescriptor(factsArray, Symbol.species);
+const factsCollectionMethods = [
+  [Map.prototype, 'get'], [Map.prototype, 'set'], [Map.prototype, 'has'], [Map.prototype, 'delete'], [Map.prototype, 'clear'],
+  [WeakMap.prototype, 'get'], [WeakMap.prototype, 'set'], [Set.prototype, 'has'],
+];
+const factsCollectionDescriptors = [];
+for (let i = 0; i < factsCollectionMethods.length; i++) factsCollectionDescriptors[i] = factsDescriptor(factsCollectionMethods[i][0], factsCollectionMethods[i][1]);
+function sameFactsDescriptor(actual, expected) {
+  return actual !== undefined && actual.value === expected.value && actual.get === expected.get && actual.set === expected.set;
+}
+function checkFactsArrayDependencies() {
+  for (let i = 0; i < factsCollectionMethods.length; i++) {
+    const method = factsCollectionMethods[i];
+    if (!sameFactsDescriptor(factsDescriptor(method[0], method[1]), factsCollectionDescriptors[i])) throw new CssFactsUnavailable('selector collection dependency');
+  }
+  for (let i = 0; i < factsArrayMethods.length; i++) {
+    if (!sameFactsDescriptor(factsDescriptor(factsArrayPrototype, factsArrayMethods[i]), factsArrayDescriptors[i])) throw new CssFactsUnavailable('array dependency');
+  }
+  checkFactsArrayShape();
+}
+function factsNumericName(name) {
+  // A canonical nonnegative number starts with an ASCII digit or is Infinity.
+  // Lexical checks bypass numeric coercion for the ordinary method names.
+  if (name < '0' || name >= ':') return name === 'Infinity';
+  return `${+name}` === name;
+}
+function checkFactsArrayShape() {
+  if (!sameFactsDescriptor(factsDescriptor(factsArrayPrototype, Symbol.iterator), factsArrayIterator) || !sameFactsDescriptor(factsDescriptor(factsArray, Symbol.species), factsArraySpecies)) throw new CssFactsUnavailable('array species/iterator');
+  const names = factsNames(factsArrayPrototype);
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
+    if (factsNumericName(name)) throw new CssFactsUnavailable('array indexed prototype');
+  }
+}
+export function checkCssFactsDependencies() { checkFactsArrayDependencies(); }
+export function compileCssFactsProgram(source, metadata) {
+  checkFactsArrayDependencies();
+  return compileCssSelectorProgram(source, metadata);
+}
+
+export function matchesCssFacts(targetId, program, context, navigator) {
+  checkFactsArrayDependencies();
+  const saved=activeFacts;
+  activeFacts=readCssFactsNavigator(navigator);
+  try { return matchesCssProgram(targetId,program,context); }
+  finally { activeFacts=saved; }
+}
+function selectorPresent(node) { return node !== null && node !== undefined; }
+function selectorType(node) { return activeFacts ? activeFacts.property(node,'nodeType') : node.nodeType; }
+function selectorName(node) { return activeFacts ? activeFacts.property(node,'localName') : node.localName; }
+function selectorNamespace(node) { return activeFacts ? activeFacts.property(node,'namespaceURI') : node.namespaceURI; }
+function selectorParent(node) { return activeFacts ? activeFacts.property(node,'parentNode') : node.parentNode; }
+function selectorPrevious(node) { return activeFacts ? activeFacts.previous(node) : node.previousSibling; }
+function selectorNext(node) { return activeFacts ? activeFacts.next(node) : node.nextSibling; }
+function selectorOwner(node) { return activeFacts ? activeFacts.property(node,'ownerDocument') : node.ownerDocument; }
+function selectorHost(node) { return activeFacts ? activeFacts.property(node,'host') : node.host; }
+function selectorSlot(node) { return activeFacts ? activeFacts.property(node,'assignedSlot') : node.assignedSlot; }
+function selectorData(node) { return activeFacts ? activeFacts.property(node,'text') : node.data; }
+function selectorShadow(node) { return activeFacts ? selectorType(node) === 11 && selectorHost(node) !== null : node.__isShadowRoot; }
+function selectorAttribute(node,name) { return activeFacts ? activeFacts.attribute(node,name) : node.getAttribute(name); }
+function selectorHasAttribute(node,name) { return activeFacts ? activeFacts.attribute(node,name) !== null : node.hasAttribute(name); }
+function selectorState(node,name) { return activeFacts ? activeFacts.state(node,name) : node[name]; }
+function selectorDefined(node) {
+  if(!activeFacts)return isDefinedElement(node);
+  const state=activeFacts.state(node,'customElementState');
+  if(!isKnownCustomElementState(state))throw new CssFactsUnavailable('customElementState',node);
+  return isDefinedCustomElementState(state);
+}

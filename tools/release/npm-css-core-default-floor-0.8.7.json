@@ -1,0 +1,61 @@
+{
+  "base": "21c4aab10d6a122ab50906b89941c22301663dea",
+  "issue": 296,
+  "stage": "default Core100 and canonical module identity; optional floor still pending",
+  "sourceMove": {
+    "oldPath": "crates/turbo-dom/src/rtdom/computed_css/grammar.rs",
+    "newPath": "crates/turbo-dom/src/rtdom/computed_css/grammar/mod.rs",
+    "oldAndNewSourceSha256": "e50c508cd01356774b960e9cc76f383e0b90740be9c8edaa3ebcc6267e0416d2",
+    "sourceContentsIdentical": true,
+    "cfgFeaturesUnchanged": true,
+    "noCoverageExclusionsOrFloorsChanged": true
+  },
+  "sources": {
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/mod.rs": "e50c508cd01356774b960e9cc76f383e0b90740be9c8edaa3ebcc6267e0416d2",
+    "crates/turbo-dom/src/rtdom/css_shorthand/computed.rs": "45b16572302c8a2ad491ce90a71421d02db561f96e62a3f3d1bdde0bf926e24f",
+    "crates/turbo-dom/tests/shared_css_default_contracts.rs": "b3502a0268ab46ce42229c360cf082c133fce2ff3cee2a091871b7c0df58ab23",
+    "crates/turbo-dom/tests/computed_declared_decoration.rs": "c4d1a0e0cfafe1189fc4d40999ea6b8835c4a246cacba6934b2ee248b25afe02"
+  },
+  "tests": {
+    "default": {
+      "passed": 579,
+      "failed": 0,
+      "ignored": 7
+    },
+    "feature": {
+      "passed": 802,
+      "failed": 0,
+      "ignored": 9
+    }
+  },
+  "defaultCoverage": {
+    "covered": 14265,
+    "coverable": 14265,
+    "floor": 100,
+    "passed": true
+  },
+  "featureCoverage": "Not remeasured on this source; preceding output source remained RED17190/17208=99.90% at unchanged100 floor.",
+  "strictFeatureClippy": true,
+  "fmt": true,
+  "CC9": true,
+  "tarpaulinVersion": "0.37.5",
+  "tarpaulinPrimarySource": {
+    "items.rs": "73046d94aa0e8ee338744dc6bc37e5a6c23461cc45b68f1822cdc765f3bd5fb0",
+    "mod.rs": "5833d239cd8ff6fde8cfdb5ae4724d6b9a41786d76ac08561f8b2ee79d6d2b30",
+    "attributes.rs": "625a1b6fe6e4fb33e450b12afd7241db82179b987ec488803d52b917c5e2434c"
+  },
+  "toolDiagnosis": "visit_mod records existing grammar/ directory and omits flat grammar.rs; directory walking ignores descendants only; generic lifetime function analysis synthesizes58 zero traces. Moving identical bytes into grammar/mod.rs matches the Rust module directory identity.",
+  "logs": {
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/layout-default-coverage.log": "6b7d3d1c5e17933415d6e989b5d172e63f02c4eac0d64366f4a449dee9feb3aa",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/layout-core-gates/0.log": "3d8ba6e2ecc439d3595de8de50ef363b819fc88563825f6e367d6a388e1b11b5",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/layout-core-gates/1.log": "d55cec343498b835c3aa38bbddf6a8a05c7dcad08aac60d7e50c35400cc1b550",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/layout-core-gates/2.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/layout-core-gates/3.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/declared-marker-output-quota-public.log": "012fd93a9dd6cfbddc9e8b0476cf859741eb9aa49c42134505d75b5fa020e7f4"
+  },
+  "limitations": [
+    "No coverage exclusion/floor/feature/default switch.",
+    "No new native/WASM artifact claim; actual earlier endpoint payloads certify earlier source.",
+    "Issue296 remains open; optional Core100/CSSOM/performance/Buffer/package integrations still required."
+  ]
+}

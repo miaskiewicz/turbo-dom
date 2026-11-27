@@ -521,37 +521,81 @@ pub(super) fn payloads_built() -> usize {
     PAYLOADS_BUILT.with(std::cell::Cell::get)
 }
 
+type MutationBatch = (u64, Vec<turbo_dom_parser::rtdom::tree::Utf16MutationEvent>);
+#[derive(Default)]
+struct ClaimedMutations {
+    batches: Vec<MutationBatch>,
+    #[cfg(all(test, feature = "host-internals"))]
+    visits: Vec<(u64, bool)>,
+}
+impl ClaimedMutations {
+    fn push(&mut self, id: u64, events: Vec<turbo_dom_parser::rtdom::tree::Utf16MutationEvent>) {
+        #[cfg(all(test, feature = "host-internals"))]
+        self.visits.push((id, events.is_empty()));
+        if !events.is_empty() {
+            self.batches.push((id, events));
+        }
+    }
+}
+
+// This phase only drains owned Tree data: no V8, consumer or document swap.
+// Claim every batch before any consumer can reenter, preserving this pass's
+// HashMap iteration order and visiting the current document last. Map order
+// across separate calls is deliberately not a delivery-order guarantee.
+fn claim_mutation_batches() -> ClaimedMutations {
+    let mut claimed = ClaimedMutations::default();
+    OTHER_DOMS.with(|doms| {
+        for (&id, saved) in doms.borrow_mut().iter_mut() {
+            let events = saved
+                .dom
+                .as_mut()
+                .map(|state| state.tree.take_mutation_events_utf16())
+                .unwrap_or_default();
+            claimed.push(id, events);
+        }
+    });
+    let current = DOM_ID.with(std::cell::Cell::get);
+    let events = DOM
+        .with(|dom| {
+            dom.borrow_mut()
+                .as_mut()
+                .map(|state| state.tree.take_mutation_events_utf16())
+        })
+        .unwrap_or_default();
+    claimed.push(current, events);
+    claimed
+}
+
+#[cfg(all(test, feature = "host-internals"))]
+fn note_claimed_mutations(scope: &v8::Isolate, claimed: &ClaimedMutations) {
+    super::sampler_diagnostics::slots(scope, claimed.visits.len());
+    let current = DOM_ID.with(std::cell::Cell::get);
+    for &(id, empty) in &claimed.visits {
+        super::sampler_diagnostics::document(scope, empty, id != current);
+    }
+}
+
 /// Deliver every document's pending mutation events. The native consumers (slot assignment,
 /// script preparation) see each event; the record object the JS consumers (observers, custom
 /// element reactions, the trusted document consumer) read is built only when one of them is
 /// present, so a recording page without observers pays no V8 allocation per mutation
 /// (turbo-dom 0.7.0 perf item 6).
 pub(super) fn flush(scope: &mut v8::PinScope) {
+    #[cfg(all(test, feature = "host-internals"))]
+    super::sampler_diagnostics::flush(scope);
     form_checked_state::owner_changes();
     if !recording() && !other_document_recording() || scope.is_execution_terminating() {
         return;
     }
-    let current = DOM_ID.with(std::cell::Cell::get);
-    let mut ids = OTHER_DOMS.with(|doms| doms.borrow().keys().copied().collect::<Vec<_>>());
-    ids.push(current);
-    // Claim every document's pending batch before invoking any consumer. A
-    // consumer can query another document, which reenters this fanout. Leaving
-    // its old events in Tree would move them into the inner CE reaction scope
-    // and run adoption callbacks before ownerDocument has been updated.
-    let batches = ids
-        .into_iter()
-        .filter_map(|id| {
-            let _owner = DomScope::enter(id);
-            let events = DOM
-                .with(|dom| {
-                    dom.borrow_mut()
-                        .as_mut()
-                        .map(|state| state.tree.take_mutation_events_utf16())
-                })
-                .unwrap_or_default();
-            (!events.is_empty()).then_some((id, events))
-        })
-        .collect::<Vec<_>>();
+    #[cfg(all(test, feature = "host-internals"))]
+    let claim_phase = super::sampler_diagnostics::claim_phase(scope);
+    let claimed = claim_mutation_batches();
+    #[cfg(all(test, feature = "host-internals"))]
+    {
+        drop(claim_phase);
+        note_claimed_mutations(scope, &claimed);
+    }
+    let batches = claimed.batches;
     if batches.is_empty() {
         return;
     }

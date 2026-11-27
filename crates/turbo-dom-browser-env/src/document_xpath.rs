@@ -27,6 +27,7 @@ struct Snapshot {
     rows: Vec<serde_json::Value>,
     context: usize,
     stamp: String,
+    remaining: usize,
 }
 #[allow(clippy::too_many_arguments)]
 fn snapshot_node(
@@ -59,15 +60,14 @@ fn snapshot_node(
     let local = tree.local_name(node).unwrap_or("").to_owned();
     let namespace = tree.namespace_uri(node).map(str::to_owned);
     let prefix = tree.prefix(node).map(str::to_owned);
-    let value = tree.node_value(node).unwrap_or_default();
-    *bytes += name.len() + local.len() + namespace.as_ref().map_or(0, String::len) + value.len();
+    *bytes += name.len() + local.len() + namespace.as_ref().map_or(0, String::len);
     if *bytes > STRING_LIMIT {
         return Err("XPath text exceeds its byte budget");
     }
     let attrs = snapshot_attributes(tree, node, index, nodes, rows, bytes)?;
     // The last column marks a shadow root: the `id()` scope of its descendants.
     let shadow = tree.shadow_host(node).is_some();
-    rows[index] = json!([kind, name, local, namespace, prefix, value, parent, attrs, null, shadow]);
+    rows[index] = json!([kind, name, local, namespace, prefix, null, parent, attrs, null, shadow]);
     let children = tree.children(node);
     if nodes.len() + stack.len() + children.len() > NODE_LIMIT {
         return Err("XPath tree exceeds its node budget");
@@ -94,8 +94,7 @@ fn snapshot_attributes(
         if attribute.namespace.as_deref() == Some("http://www.w3.org/2000/xmlns/") {
             continue;
         }
-        *bytes += attribute.value.len()
-            + attribute.qualified_name.len()
+        *bytes += attribute.qualified_name.len()
             + attribute.local_name.len()
             + attribute.namespace.as_ref().map_or(0, |value| value.len())
             + attribute.prefix.as_ref().map_or(0, |value| value.len());
@@ -113,7 +112,7 @@ fn snapshot_attributes(
             attribute.local_name.to_string(),
             attribute.namespace.as_ref().map(ToString::to_string),
             attribute.prefix.as_ref().map(ToString::to_string),
-            attribute.value.to_string(),
+            null,
             null,
             [],
             index
@@ -161,6 +160,7 @@ fn snapshot(tree: &mut Tree, context: Handle) -> Result<Snapshot, &'static str> 
         rows,
         context,
         stamp: format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version),
+        remaining: STRING_LIMIT - bytes,
     })
 }
 fn dispatch(
@@ -179,6 +179,10 @@ fn dispatch(
     let Some(node) = handle_of(scope, object) else {
         return;
     };
+    if operation == "value" {
+        read_value(scope, &args, node, &mut rv);
+        return;
+    }
     if operation == "stamp" {
         let stamp = with_tree(|tree| format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version))
             .unwrap_or_default();
@@ -196,7 +200,7 @@ fn dispatch(
         }
     };
     let data =
-        json!({"rows":snapshot.rows,"context":snapshot.context,"stamp":snapshot.stamp}).to_string();
+        json!({"rows":snapshot.rows,"context":snapshot.context,"stamp":snapshot.stamp,"remaining":snapshot.remaining}).to_string();
     // turbo-dom#183: fails only past V8's string length limit
     let data = super::utf8_string(scope, &data);
     let Some(result) = v8::json::parse(scope, data).and_then(|value| value.to_object(scope)) else {
@@ -210,6 +214,46 @@ fn dispatch(
     set_prop(scope, result, "nodes", nodes.into());
     rv.set(result.into());
 }
+/// Read only a value demanded by the private provider, against its captured owner/version.
+/// Metadata and earlier unique value reads have already spent the same byte allowance.
+fn read_value(
+    scope: &mut v8::PinScope,
+    args: &v8::FunctionCallbackArguments,
+    node: Handle,
+    rv: &mut v8::ReturnValue,
+) {
+    let remaining = args.get(2).uint32_value(scope).unwrap_or(0) as usize;
+    let expected = args.get(3).to_rust_string_lossy(scope);
+    let value = with_tree(|tree| {
+        let stamp = format!("{}:{}", DOM_ID.with(|id| id.get()), tree.version);
+        if stamp != expected {
+            return Err((
+                "InvalidStateError",
+                "XPath document changed during evaluation",
+            ));
+        }
+        let value = tree.node_value(node).unwrap_or_default();
+        if value.len() > remaining {
+            let message = if tree.node_type_id(node) == 2 {
+                "XPath attributes exceed the byte budget"
+            } else {
+                "XPath text exceeds its byte budget"
+            };
+            return Err(("NotSupportedError", message));
+        }
+        Ok(value)
+    })
+    .expect("scoped document tree");
+    match value {
+        Ok(value) => {
+            let bytes = v8::Number::new(scope, value.len() as f64);
+            let value = super::utf8_string(scope, &value);
+            rv.set(v8::Array::new_with_elements(scope, &[value.into(), bytes.into()]).into());
+        }
+        Err((name, message)) => throw_dom_error(scope, name, message),
+    }
+}
+
 /// Handle the per-object private-slot family operations (expression / result / evaluator /
 /// interfaces). Returns true when the operation was recognized and already handled.
 fn dispatch_record_ops(
@@ -475,5 +519,32 @@ mod tests {
                 tree.set_inner_html(body, &"<i><b></b></i>".repeat(1000));
             },
         );
+    }
+    #[test]
+    fn xpath_value_reads_validate_owner_version_and_utf8_byte_allowance() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        super::super::install_with_html(scope, "<!doctype html><body>");
+        let global = context.global(scope);
+        bind_method(scope, global, "hostXPathRead", dispatch);
+        let source = v8::String::new(scope, r#"(()=>{
+          const text=document.createTextNode('é'),stamp=hostXPathRead('stamp',text);
+          const exact=hostXPathRead('value',text,2,stamp);
+          let small;try{hostXPathRead('value',text,1,stamp)}catch(error){small=error.name}
+          text.data='changed';let stale;try{hostXPathRead('value',text,20,stamp)}catch(error){stale=error.name}
+          const foreign=new DOMParser().parseFromString('<p>foreign</p>','text/html').querySelector('p').firstChild;
+          let owner;try{hostXPathRead('value',foreign,20,hostXPathRead('stamp',text))}catch(error){owner=error.name}
+          const own=hostXPathRead('value',foreign,20,hostXPathRead('stamp',foreign));
+          return exact[0]==='é'&&exact[1]===2&&small==='NotSupportedError'&&stale==='InvalidStateError'&&owner==='InvalidStateError'&&own[0]==='foreign';
+        })()"#).unwrap();
+        assert!(v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .is_true());
+        reset();
     }
 }

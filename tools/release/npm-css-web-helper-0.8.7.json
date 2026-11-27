@@ -1,0 +1,54 @@
+{
+  "scope": "Test helper only: packaged web CSS wrapper loads shared css-wasm payload; explicit overrides keep co-located binaries. No runtime/default change.",
+  "base": "760214ac",
+  "requiredBuild": {
+    "script": "scripts/agent/build-napi.sh",
+    "exitCode": 0,
+    "seconds": 4.91,
+    "toolchain": "1.98.0",
+    "jobs": 1,
+    "offline": true,
+    "incremental": 0,
+    "sourceAndAPIUnchanged": true,
+    "before": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "fd10fcc81670569222406874edbcca1efb46a9904b41eb73c3e07ac246a4c98c",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "ab2e7017aaab868686a5c2ccad29a553e29c5c128cc6e64b03b429d4b3cc681f",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "test/helpers/css-shared-real.mjs": "ec2fdbf1ec3d77b9bdcba229ce0fd6dfb2f979567bc2fcc2d2a9f5f97cb0779b",
+      "turbo-dom-parser.darwin-arm64.node": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412"
+    },
+    "after": {
+      "index.js": "5a8daf0fb7647ce53d6bb8b7e2c008e1b6f688bd6b69a1ad5e5a54c9bdce8c4c",
+      "index.d.ts": "7c230b4c061aff08eafcb12b6e08556ae7379d409483bb78e322550be2240b60",
+      "src/lib.rs": "fd10fcc81670569222406874edbcca1efb46a9904b41eb73c3e07ac246a4c98c",
+      "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+      "Cargo.toml": "ab2e7017aaab868686a5c2ccad29a553e29c5c128cc6e64b03b429d4b3cc681f",
+      "Cargo.lock": "8e2de4bc5f2dc8b6cfd8b049f09ba9acabf11b50dd8c66ecd9c7fc1c02496a0e",
+      "test/helpers/css-shared-real.mjs": "ec2fdbf1ec3d77b9bdcba229ce0fd6dfb2f979567bc2fcc2d2a9f5f97cb0779b",
+      "turbo-dom-parser.darwin-arm64.node": "bc97c0d88f2331c813237ac6d235976cb3ab95cca95d0e193f68957d3aa0b412"
+    }
+  },
+  "checks": {
+    "recordedNode": 966,
+    "lines": 100,
+    "functions": 100,
+    "branches": 97.71,
+    "strictTypeScript": "5.9.3 NodeNext ES2022 both public wrappers",
+    "packagingPython": 23,
+    "hostControls": 6,
+    "hostVersion": true,
+    "complexity9": true,
+    "format": true
+  },
+  "logs": {
+    ".evidence/npm-used-integration/adapter-full-current-source-complete.log": "f5efd42b50775a2feae9e165dbb6fb0940c90163425f06789d1d3f7e048df267",
+    ".evidence/npm-used-integration/helper-types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".evidence/npm-used-integration/helper-python-css.log": "5423e535a3a730486fc0e8f811f0764824071dabf5a479e98b881e3fbc9beab4",
+    ".evidence/npm-used-integration/helper-host-controls.log": "73371a0da82a3849982912164dfb8ba79f08ebffb7655c1e0d90b3948937e15b",
+    ".evidence/npm-used-integration/helper-format.log": "c09468b79a681cf7262b33a862d3dd6dddd4214940d467e089f475ab3f26ca5d",
+    ".evidence/npm-used-integration/helper-required-build.log": "284803f1e6c4e4149b6d97c004439d5a6fe91d0bb58d5829809cebb21f95a091"
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "status": "validated additive Root endpoint; no default enablement",
+  "base": "00c2df6c5b495484edf3f63388ee8fb70918204b",
+  "sourceSha256": {
+    "src/css_runtime_policy.rs": "f71f9b891ad29a8054ea19010383b78cd00d71650bf246b2bbd86e7e93f46fc7",
+    "src/css_backend.rs": "0110610d5d0354142d156f9f5656a910d439f17a8ee92c953e00af54b9098945",
+    "src/lib.rs": "727ec794543823a4eef99abaf31ce5cc9164ddb8fd127c641e939730e99dc8f9"
+  },
+  "gates": {
+    "focusedPolicy": "3 passed",
+    "rootLib": "77 passed,0 failed",
+    "strictNative": "default napi-bind plus css-backend, all targets, -D warnings passed",
+    "strictWasm": "wasm32 no-default wasm-bind,css-backend lib, -D warnings passed",
+    "format": "passed",
+    "complexity": "CC9 passed",
+    "requiredPlainBuild": "actual scripts/agent/build-napi.sh exit0, Rust1.98/jobs1/offline/incremental0; Root/Cargo/index generated hashes identical",
+    "nodeFloor": "One-worker AND normal pre-commit hook:1030 passed,0 failed;100% lines,100% functions,97.35% branches; coverage and conformance gates met"
+  },
+  "artifact": {
+    "sha256": "8a01e06fc427a1760bf4414425631c9e01cdb7edfedc231b0f16b478d585471f",
+    "bytes": 20450640,
+    "abi": 1,
+    "version": "0.8.7",
+    "nativeNoWebAssembly": true,
+    "actualPolicyAndEnvironmentCallsPassed": true,
+    "sourceUnchangedBeforeAfter": true,
+    "build": "scripts/css-artifacts.py native --target aarch64-apple-darwin,1m03s,Rust1.98/offline/jobs1"
+  },
+  "policy": {
+    "abiVersion": 1,
+    "adapter": {
+      "compile": {
+        "declarations": 500000,
+        "groupDepth": 16,
+        "properties": 500000,
+        "rules": 8388608,
+        "selectors": 8388608,
+        "sourceRulePreludes": 8388608,
+        "sourceUnits": 8388608,
+        "sources": 50000,
+        "tokenNesting": 16
+      },
+      "contextualMatching": {
+        "maxAncestorDepth": 256,
+        "maxAnswers": 8388608,
+        "maxContexts": 50000,
+        "maxDomainUnits": 8388608,
+        "maxNodes": 50000,
+        "routing": {
+          "maxNodes": 50000,
+          "maxPathUnits": 4194304,
+          "maxRoots": 50000,
+          "maxScopeDepth": 256
+        }
+      },
+      "matching": {
+        "maxAncestorDepth": 256,
+        "maxAnswers": 8388608,
+        "maxNodes": 50000
+      },
+      "prepare": {
+        "computation": {
+          "maxNesting": 16,
+          "maxOutputUnits": 1048576,
+          "maxTotalUnits": 1048576
+        },
+        "layers": 8388608,
+        "rules": 8388608,
+        "uses": 50000
+      },
+      "property": {
+        "computation": {
+          "maxNesting": 16,
+          "maxOutputUnits": 1048576,
+          "maxTotalUnits": 1048576
+        },
+        "inputUnits": 8388608,
+        "retainedUnits": 8388608
+      },
+      "providerSnapshot": {
+        "maxDepth": 256,
+        "maxEntries": 8388608
+      },
+      "resolve": {
+        "answerIds": 8388608,
+        "answerRows": 8388608,
+        "computation": {
+          "maxNesting": 16,
+          "maxOutputUnits": 1048576,
+          "maxTotalUnits": 1048576
+        },
+        "customRollbacks": 500000,
+        "inlineDeclarations": 500000,
+        "inlineProperties": 500000,
+        "inputUnits": 8388608,
+        "matchingDecisions": 8388608,
+        "pathNodes": 4194304,
+        "retainedResultUnits": 8388608,
+        "routingContexts": 50000,
+        "targets": 50000,
+        "valueRetainedUnits": 8388608
+      },
+      "serialize": {
+        "computation": {
+          "maxNesting": 16,
+          "maxOutputUnits": 1048576,
+          "maxTotalUnits": 1048576
+        },
+        "inputUnits": 8388608,
+        "retainedUnits": 8388608,
+        "targets": 50000
+      }
+    },
+    "composition": {
+      "maxDepth": 256,
+      "maxEdges": 4194304,
+      "maxNodes": 50000,
+      "maxPathUnits": 4194304,
+      "maxRoots": 50000
+    },
+    "environment": {
+      "computation": {
+        "maxNesting": 16,
+        "maxOutputUnits": 1048576,
+        "maxTotalUnits": 1048576
+      },
+      "inputUnits": 8388608,
+      "retainedUnits": 8388608
+    },
+    "fonts": "native_html_system",
+    "preferences": {
+      "computation": {
+        "maxNesting": 16,
+        "maxOutputUnits": 1048576,
+        "maxTotalUnits": 1048576
+      },
+      "inputUnits": 8388608,
+      "retainedUnits": 8388608
+    },
+    "scene": {
+      "maxAttributeUnits": 2000000,
+      "maxAttributes": 2000000,
+      "maxDepth": 256,
+      "maxNodes": 50000,
+      "maxPathUnits": 4194304,
+      "maxProperties": 500000,
+      "maxRequests": 50000,
+      "maxStyleUnits": 8388608,
+      "maxTextUnits": 2000000,
+      "maxWorldUnits": 8388608
+    },
+    "selectorFacts": {
+      "maxAttributeUnits": 2000000,
+      "maxEdges": 4194304,
+      "maxNodes": 50000,
+      "maxTextUnits": 8388608
+    },
+    "snapshot": {
+      "maxAttributeUnits": 2000000,
+      "maxAttributes": 2000000,
+      "maxDepth": 256,
+      "maxNodes": 50000,
+      "maxPathUnits": 4194304,
+      "maxTextUnits": 2000000
+    }
+  },
+  "limitations": [
+    "New finite resource policy, not Chrome CSS validity; default integration requires separate public packed acceptance.",
+    "Actual native/Node-WASM/web-WASM policy+ENV equality is verified; this endpoint commit does not enable a public runtime default."
+  ],
+  "rawEvidence": ".evidence/runtime-policy/",
+  "compatibilityArtifacts": {
+    "nativeCSS": "8a01e06fc427a1760bf4414425631c9e01cdb7edfedc231b0f16b478d585471f",
+    "wasmCSS": "a33002d572bcf64a7bb7074b5d819e643397f0ab3407d6ef019fbaea620eee74",
+    "assembly": "actual scripts/css-shared.py assemble run; package/shared CSS bytes matching; old contextual WASM no policy/ENV claim"
+  },
+  "validatedCodeCommit": "84344f43c2287f8803cb61b111fb61d383df5f85",
+  "wasmArtifacts": {
+    "wasmSha256": "ed79b1204a7ac8fd7cf90e7c168e655c17b82a6928ead4e201aabea8e9559834",
+    "wasmBytes": 16189799,
+    "nodeJsSha256": "8a59f334d86b7b8bbabb465ffd640235c729005b7e7331ab20875c629e1b45fd",
+    "webJsSha256": "06c268c823ed4e481d5e90ab606c7c3f5213b826a4a5c861a2e9d074158d4f0f",
+    "identicalNodeWebBinary": true,
+    "actualAbiVersion": "1 / 0.8.7",
+    "actualPolicyAndEnvironmentCallsPassed": true,
+    "nativeAddonModules": 0,
+    "sourceMatchesNativeArtifact": true,
+    "toolchain": "Rust1.98/offline/jobs1/incremental0/wasm-bindgen0.2.122/wasm-opt117/BINARYEN_CORES1",
+    "immutableRelativeRoot": ".evidence/runtime-policy/payload/ed79b1204a7ac8fd7cf90e7c168e655c17b82a6928ead4e201aabea8e9559834"
+  }
+}

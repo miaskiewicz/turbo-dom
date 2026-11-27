@@ -1,0 +1,7 @@
+# SVG admission controls after #556/#557/#559
+
+Nine public controls exercise XML comments/processing instructions and natural metadata, escaped CSS XML attributes without changed selector input, descriptor/import/layer refusal, actual 17-level group nesting, unknown at-rule recovery, noninherited paint/currentColor inheritance, JPEG inside nested masks and stroke patterns, cyclic references and a recognized raster signature with missing dimensions. Two XML edit unit controls check the exact escaped-unit budget and absence of unnecessary owned replacement.
+
+All eleven focused controls pass, with no ignored tests. Changed Rust passes CC9 and workspace fmt. Strict all-target/all-feature layout Clippy is recorded in the worktree `.evidence/svg-coverage` alongside focused logs and defensive-path audit. This adds tests only; no production behavior, budgets, coverage exemptions or assertions change. The release coordinator owns the combined LLVM99.8% measurement; focused tests do not establish that floor by themselves.
+
+Some defensive branches cannot be induced by ordinary admitted input: shared AST SourceUnits/RuleCount exceed entire XML-derived limits; public fontless usvg cannot produce text nodes; the thread fallback requires OS thread creation failure. Those branches are preserved. The final converted graph-depth audit and downstream raw keyword guard remain conservative defenses even where earlier checks reject the path first.

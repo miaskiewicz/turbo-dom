@@ -1,0 +1,67 @@
+{
+  "issue": 296,
+  "scope": "Optional private shared-adapter UA provider, not runtime default switch",
+  "rootDependency": "be833152b3a259601da398911dbe9a40353d8cdf",
+  "coreDependency": "47bd5f5281638f60c53d559338c5abe9c6cd6294",
+  "optionalOpsDependency": "ae6c097f587dc47b27bba40c1a5d346757d8fbd8",
+  "prerequisites": [
+    "1be2e4f2d309eb767200778ca9738d43a37b39f0",
+    "5a0b68f7e38db747c3cbb4fdbbf827bc45511e52",
+    "9701a4d6f2ac83e6ef6990a034e6215de8df9067",
+    "f3236d0556a932002b53bead78830a81eff24d22"
+  ],
+  "files": {
+    "src/runtime/css-shared-adapter.mjs": "d56ef3f013304bf59a91f230ec36a4b4c764d2dd8076f3ad89a066daed9d37a4",
+    "test/helpers/css-shared-real.mjs": "ad83cd05d239ea6fd7639f8470cac5161344f234084931160d5aa89bf161334d",
+    "test/css-shared-profile-ua.test.mjs": "73cfaa6a473a759353aecb125c5acbac5d5cffdc60d46e542caf10183d33c700",
+    "crates/turbo-dom-browser-env/tests/fixtures/default-profile-159/fixture.mjs": "0cbfd29348abde27b2e86a52ad588af8489f6223459e36e4f77f2ab246382e47",
+    "crates/turbo-dom-browser-env/tests/fixtures/default-profile-159/cases.json": "20a5ce8c6e5f5ae0b86d0d023a7c3d1a93ca1af6e59805951cf8903bf36b7bb6",
+    "crates/turbo-dom-browser-env/tests/fixtures/default-profile-159/CHROME159.json": "024a7b542a8d3ebd4c145e12fa54da6a6a1cc991fc39ade07841f39a30c3459c"
+  },
+  "providerContract": "Optional profile.userAgentSource(backend) returns owned decoded UA bundle; absent hook retains old noarg export/decode each capture; callback results never assumed immutable",
+  "fixtureOwner": "browser-env/tests/fixtures/default-profile-159 canonical bytes shared by npm/Native controls, standalone crate-local path",
+  "actualOracle": "Chrome159.0.8154.6, six font/color initial+inherit controls in each of native/NodeWASM/webWASM",
+  "gates": {
+    "targeted": "8/8, baseline previous adapter0/8",
+    "joint": "28/28 including original18/API15/inherit4 all3modes",
+    "fullNode": {
+      "pass": 992,
+      "fail": 0,
+      "skip": 0
+    },
+    "coverage": {
+      "line": 100,
+      "functions": 100,
+      "branches": 97.74,
+      "floors": [
+        100,
+        100,
+        97.3
+      ]
+    },
+    "complexity": "CC<=9",
+    "format": "pass",
+    "requiredPlainNapiBuild": "existing required script result d55f35270bbfc00c0132586d87c6ae5853297aa1f316caed0528e0e67f381eb0; exact parser source/index/API hashes still unchanged; no new invocation claimed",
+    "actualLogSha256": "a39bb3758d81cc18f16a1f557a1f738b1067a40dc79b5010105e5fb71594f4a7"
+  },
+  "actualArtifacts": {
+    "native": "9e3288d7924a9fecfb35c605eb57ecdca94656b3b8cc36cdc2e79b9a56d33709",
+    "wasm": "2e70c697ffd9b9ef07fff3dd104f3d7faebfeca1bb65e32bf4b902da6e577680"
+  },
+  "behaviorControls": [
+    "warm UA oldbridge zero, actual prefs once/compile once",
+    "reset retained primitive view remains readable",
+    "backend/captured capability/preference identity cache keys",
+    "changed custom UA updates compiled model",
+    "provider original errors/invalid ABI/no fallback",
+    "old absent-hook bridge behavior unchanged"
+  ],
+  "notClaimed": [
+    "default integration",
+    "trusted private capture security",
+    "all CSS bridge calls zero",
+    "per-property computed-unit laziness",
+    "Native wrapper source commit"
+  ],
+  "nativeWrapperSourceExcluded": true
+}

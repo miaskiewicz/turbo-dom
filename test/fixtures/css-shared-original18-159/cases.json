@@ -1,0 +1,20 @@
+[
+  {"id":"media-active","css":"#target{color:red}@media screen and (min-width:1px){#target{color:blue}}","properties":["color"]},
+  {"id":"media-inactive","css":"#target{color:red}@media (min-width:10000px){#target{color:blue}}","properties":["color"]},
+  {"id":"supports-valid","css":"#target{color:red}@supports (display:grid){#target{color:blue}}","properties":["color"]},
+  {"id":"supports-invalid","css":"#target{color:red}@supports (display:invented-display){#target{color:blue}}","properties":["color"]},
+  {"id":"layer-order","css":"@layer early, late;@layer late{#target{color:blue}}@layer early{#target{color:red}}","properties":["color"]},
+  {"id":"layer-important","css":"@layer early, late;@layer early{#target{color:red!important}}@layer late{#target{color:blue!important}}","properties":["color"]},
+  {"id":"custom-inherited-case","css":"body{--Tone:blue}#target{color:var(--Tone,red)}","properties":["color"]},
+  {"id":"custom-cycle-fallback","css":"#target{--a:var(--b);--b:var(--a);color:var(--a,green)}","properties":["color"]},
+  {"id":"explicit-inherit","css":"body{color:blue;padding-left:20px}#target{color:inherit;padding-left:inherit}","properties":["color","padding-left"]},
+  {"id":"css-wide","css":"body{color:blue}#target{color:initial;margin-left:unset}","properties":["color","margin-left"]},
+  {"id":"font-units","css":"html{font-size:10px}body{font-size:20px}#target{font-size:2em;width:2rem;margin-left:1em}","properties":["font-size","width","margin-left"]},
+  {"id":"absolute-units","css":"#target{width:1in;margin-left:2.54cm;padding-left:12pt}","properties":["width","margin-left","padding-left"]},
+  {"id":"calc-length","css":"#target{font-size:20px;margin-left:calc(1em + 2px)}","properties":["margin-left"]},
+  {"id":"important-vs-inline","css":"#target{color:red!important}","inline":"color:blue","properties":["color"]},
+  {"id":"focus-state","css":"#target{color:red}#target:focus{color:blue}","tag":"button","action":"focus","properties":["color"]},
+  {"id":"before-pseudo","css":"#target{color:blue}#target::before{content:'x';color:red}","pseudo":"::before","properties":["color","content"]},
+  {"id":"scope-rule","css":"#target{color:red}@scope (.scope){#target{color:blue}}","wrapper":"<div class=scope>","properties":["color"]},
+  {"id":"container-rule","css":".scope{container-type:inline-size;container-name:box;width:400px}#target{color:red}@container box (min-width:300px){#target{color:blue}}","wrapper":"<div class=scope>","properties":["color"]}
+]

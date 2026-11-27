@@ -13,11 +13,16 @@
 pub mod canvas;
 pub mod cascade;
 pub mod color;
+pub mod computed_css;
+mod computed_preference_seeds;
+pub mod computed_preferences;
 pub mod css_shorthand;
 pub mod css_values;
 pub mod cssom;
 pub mod custom_elements;
+mod document_checkpoint;
 pub mod events;
+pub use document_checkpoint::DocumentCheckpoint;
 pub mod file;
 pub mod location;
 pub mod mutations;

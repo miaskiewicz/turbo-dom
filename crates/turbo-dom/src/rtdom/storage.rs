@@ -34,6 +34,25 @@ pub struct CollectionReport {
     pub reclaimed_nodes: usize,
 }
 
+/// Whether a collection replaced the tree's backing storage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageCollectionOutcome {
+    /// All live handles were retained in an already-materialized sparse arena.
+    Unchanged(CollectionReport),
+    /// The collector replaced storage, even if the initial materialization reclaimed no handles.
+    Compacted(CollectionReport),
+}
+
+impl StorageCollectionOutcome {
+    /// Storage statistics for this collection, independent of whether it wrote.
+    #[must_use]
+    pub fn report(self) -> CollectionReport {
+        match self {
+            Self::Unchanged(report) | Self::Compacted(report) => report,
+        }
+    }
+}
+
 impl<T> Overlay<T> {
     fn collected() -> Self {
         Self {
@@ -325,6 +344,37 @@ impl Tree {
         pins: &[Handle],
         budget: CollectionBudget,
     ) -> Result<CollectionReport, CollectionError> {
+        let (before, retained) = self.retained_for_collection(pins, budget)?;
+        Ok(self.compact_storage(before, &retained))
+    }
+
+    /// Collect under the same pin and budget requirements as [`Self::collect_unreachable`].
+    /// On an already-materialized sparse arena, retaining every live node leaves backing
+    /// storage, derived caches, and the document checkpoint untouched. Initial
+    /// materialization and positive reclamation follow the normal compaction path.
+    pub fn collect_unreachable_if_needed(
+        &mut self,
+        pins: &[Handle],
+        budget: CollectionBudget,
+    ) -> Result<StorageCollectionOutcome, CollectionError> {
+        let (before, retained) = self.retained_for_collection(pins, budget)?;
+        if matches!(self.new_nodes, NodeArena::Sparse(_)) && retained.len() == before.live_nodes {
+            return Ok(StorageCollectionOutcome::Unchanged(CollectionReport {
+                before,
+                after: before,
+                reclaimed_nodes: 0,
+            }));
+        }
+        Ok(StorageCollectionOutcome::Compacted(
+            self.compact_storage(before, &retained),
+        ))
+    }
+
+    fn retained_for_collection(
+        &self,
+        pins: &[Handle],
+        budget: CollectionBudget,
+    ) -> Result<(StorageStats, FxHashSet<Handle>), CollectionError> {
         if self.node_count() as usize > budget.max_nodes || pins.len() > budget.max_edges {
             return Err(CollectionError::BudgetExceeded);
         }
@@ -340,9 +390,18 @@ impl Tree {
         // Admit expanded retained strings before cloning parser payloads. Shared
         // interned values can expand dramatically when each element is materialized.
         self.check_retained_payload_budget(&retained, &budget)?;
+        Ok((before, retained))
+    }
+
+    fn compact_storage(
+        &mut self,
+        before: StorageStats,
+        retained: &FxHashSet<Handle>,
+    ) -> CollectionReport {
         // The parse buffer goes away: keep the creation-time custom element state it implies.
         self.record_parsed_states(retained.iter().copied());
-        let (nodes, parents, children, attrs) = self.materialize_retained_overlays(&retained);
+        let (nodes, parents, children, attrs) = self.materialize_retained_overlays(retained);
+        self.invalidate_document_checkpoint();
         self.buf = document_buffer();
         self.buf_len = 1;
         self.new_nodes = NodeArena::Sparse(nodes);
@@ -380,11 +439,11 @@ impl Tree {
         *self.qcache.borrow_mut() = super::QueryCache::default();
         *self.css_cache.borrow_mut() = crate::rtdom::cascade::CssCache::default();
         let after = self.storage_stats();
-        Ok(CollectionReport {
+        CollectionReport {
             reclaimed_nodes: before.live_nodes - after.live_nodes,
             before,
             after,
-        })
+        }
     }
 
     /// Check that materializing `retained` into overlay storage stays within
@@ -699,6 +758,10 @@ mod integrity_tests {
         let before = tree.storage_stats();
         let version = tree.version;
         assert_eq!(tree.collect_unreachable(pins, budget()), Err(error));
+        assert_eq!(
+            tree.collect_unreachable_if_needed(pins, budget()),
+            Err(error)
+        );
         assert_eq!(tree.storage_stats(), before);
         assert_eq!(tree.version, version);
     }

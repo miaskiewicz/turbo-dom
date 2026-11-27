@@ -18,19 +18,13 @@ use lightningcss::traits::ToCss;
 pub use turbo_dom_parser::rtdom::css_values::{css_number, zoom_value};
 
 pub fn is_supported_property(name: &str) -> bool {
-    // Chrome 156 refuses every `-moz-*` vendor-prefixed name, even the ones Lightning CSS
-    // maps to a known PropertyId (e.g. `-moz-appearance`): see turbo-dom#390.
-    //
-    // Review R2 layout M2: CSS 2.2 §4.1.1 says property names are ASCII
-    // case-insensitive; `CSS.supports("-MOZ-appearance", "none")` and
-    // `-MOZ-APPEARANCE: none` in a stylesheet must be rejected like `-moz-`.
-    // Lightning CSS normalises for its own lookup, so without an
-    // ASCII-case-insensitive check here the rejection leaked. Match the
-    // `-moz-` prefix case-insensitively.
-    if name.len() > 5
-        && name.as_bytes()[0] == b'-'
-        && name.as_bytes()[1..5].eq_ignore_ascii_case(b"moz-")
-    {
+    // Lightning CSS models legacy vendor names that Chromium ignores. Keep the
+    // canonical property admission consistent across supports, declarations and
+    // keyframes, including ASCII-case-insensitive authored spellings.
+    if ["-moz-", "-ms-", "-o-"].iter().any(|prefix| {
+        name.get(..prefix.len())
+            .is_some_and(|text| text.eq_ignore_ascii_case(prefix))
+    }) {
         return false;
     }
     // turbo-dom#441: a -webkit-* name whose Chrome 156 acceptance disagrees with Lightning
@@ -38,7 +32,7 @@ pub fn is_supported_property(name: &str) -> bool {
     // properties Chrome serves but Lightning CSS models as Custom (ASCII case-insensitive
     // per CSS 2.2 §4.1.1 — the Chrome page admits `-WEBKIT-LINE-CLAMP`); reject
     // `-webkit-backdrop-filter`, the one Lightning CSS models but Chrome 156 does not.
-    if name.len() > 1 && name.as_bytes()[0] == b'-' {
+    if name.starts_with('-') {
         // R1 L3: match the -webkit-* allowlist case-insensitively on the borrowed
         // name instead of allocating a lowercase copy on this hot path.
         // CSS 2.2 §4.1.1 says property names are ASCII case-insensitive,
@@ -374,22 +368,52 @@ fn keyframe_keys(prelude: &str) -> Option<String> {
     Some(keys.join(", "))
 }
 
-/// A @keyframes name as Chrome serializes it: a `<string>` name becomes an identifier
-/// (escaped as needed: `"a b"` -> `a\ b`); an identifier keeps its case.
+fn animation_name_token<'i>(
+    input: &mut Parser<'i, '_>,
+) -> Result<(String, bool), ParseError<'i, ()>> {
+    match input.next()?.clone() {
+        cssparser::Token::Ident(name) => Ok((name.to_string(), false)),
+        cssparser::Token::QuotedString(name) if !name.is_empty() => Ok((name.to_string(), true)),
+        _ => Err(input.new_custom_error(())),
+    }
+}
+
+pub(super) fn animation_names(source: &str) -> Option<Vec<Option<String>>> {
+    let mut source = ParserInput::new(source);
+    let mut input = Parser::new(&mut source);
+    input
+        .parse_comma_separated(|input| {
+            let (name, quoted) = animation_name_token(input)?;
+            input.expect_exhausted()?;
+            Ok((quoted || !name.eq_ignore_ascii_case("none")).then_some(name))
+        })
+        .ok()
+}
+
+pub(super) fn keyframe_prelude_name(source: &str) -> Option<String> {
+    let mut source = ParserInput::new(source);
+    let mut input = Parser::new(&mut source);
+    match input.next().ok()? {
+        cssparser::Token::AtKeyword(name)
+            if name.eq_ignore_ascii_case("keyframes")
+                || name.eq_ignore_ascii_case("-webkit-keyframes") => {}
+        _ => return None,
+    }
+    let (name, _) = animation_name_token(&mut input).ok()?;
+    input.expect_exhausted().ok()?;
+    Some(name)
+}
+
+/// CSSOM serializes every keyframes name as an identifier, preserving case and
+/// escaping decoded spaces/commas from either a string or an escaped identifier.
 fn keyframes_name(prelude: &str) -> Option<String> {
     let mut source = ParserInput::new(prelude);
     let mut input = Parser::new(&mut source);
-    let name = match input.next().ok()?.clone() {
-        cssparser::Token::Ident(name) => name.to_string(),
-        cssparser::Token::QuotedString(name) if !name.is_empty() => {
-            let mut text = String::new();
-            cssparser::serialize_identifier(&name, &mut text).ok()?;
-            text
-        }
-        _ => return None,
-    };
+    let (name, _) = animation_name_token(&mut input).ok()?;
     input.expect_exhausted().ok()?;
-    Some(name)
+    let mut text = String::new();
+    cssparser::serialize_identifier(&name, &mut text).ok()?;
+    Some(text)
 }
 
 /// The animation properties a keyframe block drops (Blink's IsValidForKeyframe).

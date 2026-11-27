@@ -373,3 +373,256 @@ fn inline_handler_termination_does_not_queue_a_script_error() {
         "[false,null,[]]",
     );
 }
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_keeps_complete_parent_usable_after_partial_child_install() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let parent = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, parent);
+    install_with_html(scope, "<!doctype html><p id=kept>parent</p>");
+    let before = host_internals::style_revisions();
+    let child = v8::Context::new(scope, Default::default());
+    {
+        let child_scope = &mut v8::ContextScope::new(scope, child);
+        v8::tc_scope!(let catch, child_scope);
+        TERMINATE_AT_RUN_JS.with(|at| at.set(Some(0)));
+        install_independent_html(catch, "<!doctype html><p>partial child</p>");
+        assert!(TERMINATE_AT_RUN_JS.with(|at| at.get()).is_none());
+        assert_eq!(
+            setup_result(catch),
+            Err(SetupTerminated),
+            "native install interruption must be recorded even after inner TryCatch unwinds"
+        );
+        catch.cancel_terminate_execution();
+        catch.reset();
+    }
+    assert!(child.get_slot::<TerminationRecovery>().is_none());
+    assert_eq!(host_internals::recover_after_termination(scope), Ok(()));
+    assert_ne!(
+        host_internals::style_revisions(),
+        before,
+        "the complete parent must actually be recovered"
+    );
+    let source = v8::String::new(scope, "document.getElementById('kept').textContent").unwrap();
+    let value = v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap();
+    assert_eq!(value.to_rust_string_lossy(scope), "parent");
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+fn interrupted_recovery_capture(checkpoint: &'static str, captured: bool) {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    {
+        v8::tc_scope!(let catch, scope);
+        TERMINATE_AT.with(|at| at.set(Some((checkpoint, None))));
+        install_with_html(catch, "<!doctype html><p>partial</p>");
+        assert!(TERMINATE_AT.with(|at| at.get()).is_none());
+        assert_eq!(setup_result(catch), Err(SetupTerminated));
+        catch.cancel_terminate_execution();
+        catch.reset();
+    }
+    assert_eq!(
+        context.get_slot::<TerminationRecovery>().is_some(),
+        captured
+    );
+    assert_eq!(interrupted_before_recovery_capture(context), !captured);
+    assert_eq!(host_internals::recover_after_termination(scope), Ok(()));
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_admits_a_callback_captured_before_bootstrap_interruption() {
+    interrupted_recovery_capture("install:before-recovery-capture", false);
+    interrupted_recovery_capture("install:after-recovery-capture", true);
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_does_not_downgrade_ready_realm_during_interrupted_reinstall() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p>ready</p>");
+    // A collected weak callback is distinct from an absent slot, but neither
+    // may turn a previously ready realm into an interrupted-bootstrap skip.
+    context.set_slot(std::rc::Rc::new(TerminationRecovery(v8::Weak::empty(
+        scope,
+    ))));
+    assert_eq!(
+        host_internals::recover_after_termination(scope),
+        Err(host_internals::TerminationRecoveryError::CallbackUnavailable)
+    );
+    context.remove_slot::<TerminationRecovery>();
+    assert_eq!(
+        host_internals::recover_after_termination(scope),
+        Err(host_internals::TerminationRecoveryError::CallbackUnavailable)
+    );
+    {
+        v8::tc_scope!(let catch, scope);
+        TERMINATE_AT_RUN_JS.with(|at| at.set(Some(0)));
+        install_with_html(catch, "<!doctype html><p>replacement</p>");
+        assert_eq!(setup_result(catch), Err(SetupTerminated));
+        catch.cancel_terminate_execution();
+        catch.reset();
+    }
+    assert!(!interrupted_before_recovery_capture(context));
+    // A retry can recapture the old private helper even when its script was
+    // interrupted. Genuine callback loss must still remain an error afterward.
+    context.remove_slot::<TerminationRecovery>();
+    assert_eq!(
+        host_internals::recover_after_termination(scope),
+        Err(host_internals::TerminationRecoveryError::CallbackUnavailable)
+    );
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_rejects_callback_absence_with_unknown_lifecycle() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p>ready</p>");
+    context.remove_slot::<TerminationRecovery>();
+    context.remove_slot::<RecoveryAdmission>();
+    assert_eq!(
+        host_internals::recover_after_termination(scope),
+        Err(host_internals::TerminationRecoveryError::CallbackUnavailable)
+    );
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_retry_cannot_reuse_previous_interrupted_admission() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    {
+        v8::tc_scope!(let catch, scope);
+        TERMINATE_AT_RUN_JS.with(|at| at.set(Some(0)));
+        install_with_html(catch, "<!doctype html><p>partial</p>");
+        assert_eq!(setup_result(catch), Err(SetupTerminated));
+        catch.cancel_terminate_execution();
+        catch.reset();
+    }
+    assert!(interrupted_before_recovery_capture(context));
+    run_engine_script(scope, "Object.freeze(__tsNs)").unwrap();
+    {
+        v8::tc_scope!(let catch, scope);
+        install_with_html(catch, "<!doctype html><p>ordinary failure</p>");
+        assert_eq!(setup_result(catch), Ok(()));
+        catch.reset();
+    }
+    assert!(context.get_slot::<TerminationRecovery>().is_none());
+    assert!(!interrupted_before_recovery_capture(context));
+    assert_eq!(
+        host_internals::recover_after_termination(scope),
+        Err(host_internals::TerminationRecoveryError::CallbackUnavailable)
+    );
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_never_runs_init_scripts_in_an_aborted_bootstrap() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let aborted = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, aborted);
+    add_init_script("globalThis.__initializationRan = 1");
+    {
+        v8::tc_scope!(let catch, scope);
+        TERMINATE_AT_RUN_JS.with(|at| at.set(Some(0)));
+        install_with_html(catch, "<!doctype html><p>partial</p>");
+        assert_eq!(setup_result(catch), Err(SetupTerminated));
+        catch.cancel_terminate_execution();
+        catch.reset();
+    }
+    let source = v8::String::new(scope, "'__initializationRan' in globalThis").unwrap();
+    assert!(v8::Script::compile(scope, source, None)
+        .unwrap()
+        .run(scope)
+        .unwrap()
+        .is_false());
+    let complete = v8::Context::new(scope, Default::default());
+    {
+        let complete_scope = &mut v8::ContextScope::new(scope, complete);
+        install_independent_html(complete_scope, "<!doctype html><p>complete</p>");
+        let source = v8::String::new(complete_scope, "__initializationRan === 1").unwrap();
+        assert!(v8::Script::compile(complete_scope, source, None)
+            .unwrap()
+            .run(complete_scope)
+            .unwrap()
+            .is_true());
+    }
+    clear_init_scripts();
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn termination_recovery_reinstall_admits_rehydrated_callback_without_native_marker() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_with_html(scope, "<!doctype html><p>ready</p>");
+    // Startup snapshots restore function slots from their private store, not
+    // arbitrary native context slots. Exercise that exact admission shape.
+    context.remove_slot::<RecoveryAdmission>();
+    install_with_html(scope, "<!doctype html><p>replacement</p>");
+    assert!(context
+        .get_slot::<RecoveryAdmission>()
+        .is_some_and(|state| *state == RecoveryAdmission::Ready));
+    assert_eq!(host_internals::recover_after_termination(scope), Ok(()));
+    reset();
+}
+
+#[test]
+fn initialization_errors_keep_dom_name_before_browser_constructor_installation() {
+    tests::init_v8();
+    let isolate = &mut tests::plain_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    v8::tc_scope!(let catch, scope);
+    throw_dom_error(catch, "NotSupportedError", "setup capability unavailable");
+    let error = catch.exception().unwrap();
+    assert!(error.is_native_error());
+    let error = v8::Local::<v8::Object>::try_from(error).unwrap();
+    for (key, expected) in [
+        ("name", "NotSupportedError"),
+        ("message", "setup capability unavailable"),
+    ] {
+        let key = v8::String::new(catch, key).unwrap();
+        let actual = error.get(catch, key.into()).unwrap();
+        assert_eq!(actual.to_rust_string_lossy(catch), expected);
+    }
+}

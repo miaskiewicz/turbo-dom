@@ -5,7 +5,7 @@
 //! flex/table + real font shaping over bundled faces) to turn a raw HTML string
 //! into a positioned [`Fragment`] display list, then paints that list two ways:
 //! a raster [`paint_png`] (tiny-skia) and a vector [`paint_svg`]. Both walk the
-//! same fragments in CSS stacking (paint) order via `Fragment::paint_order`, so
+//! same fragments in context-owned paint order via `layout::paint::PaintNode`, so
 //! they agree.
 //!
 //! This is a *reasonably representative* render, not a pixel-faithful browser:
@@ -44,6 +44,8 @@ mod paint_png;
 mod paint_svg;
 mod prepared;
 mod shadow_layers;
+#[cfg(test)]
+mod stacking_tests;
 pub use prepared::PreparedScreenshot;
 mod rrect;
 mod style_extract;

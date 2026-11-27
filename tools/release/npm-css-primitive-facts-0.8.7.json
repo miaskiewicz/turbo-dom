@@ -1,0 +1,104 @@
+{
+  "scope": "Optional primitive-facts CSS selector and contextual adapter. Same canonical JS selector parser/evaluator; no second parser/DOM mirror. No runtime default switch.",
+  "base": "7d7b06361746f17094fd4f8604f7944254134c1b",
+  "dependencies": {
+    "rootContextDto": "e7d1c119ee3dabed06e05430a1ce1378dc6a38b1",
+    "canonicalBoundaryMetadata": "abde0d12d73bab65f1fab6dc9d3c6adbbb9953a1",
+    "releasedScene": "2c672648889f6701d4475cb70719ce9b2a4c791b"
+  },
+  "source": {
+    "src/runtime/selectors.mjs": "c1035721b30881afd6d9a206b804d2caf5e1b49756ccadea488ceb433b7a057b",
+    "src/runtime/custom-elements.mjs": "5bb794036bf03df6da06fdd5b2c486193a756fee39dcbfb1084231cddf02b885",
+    "src/runtime/css-match-facts.mjs": "e9ee3f4ea2e7a20aaa65fa6338f981a5b4b0e9a35f70692acad947f39d6a6f77",
+    "src/runtime/css-facts-navigator.mjs": "31be1d09f3bf697b6818c4799a90a834c60bb7ce87831644eb71a4865cc08883",
+    "src/runtime/css-shared-routing.mjs": "f977ff3e0f37fa214312c3cdfd3449c01ba647c86c0e496779df988196cfff82",
+    "src/runtime/css-shared-shadow-facts.mjs": "44ac30dcc9bd85b984740ecb33b015d7d2635d2298300420be641ba1e94323f3",
+    "src/runtime/css-shared-adapter.mjs": "e8e6011806294879b530072b2d79229939829821301013e55027df788decfb4b"
+  },
+  "contracts": [
+    "Opaque WeakMap-admitted numeric original IDs incl0, primitive owner/physical-path/slot state only; no Element facade or matching DOM getter access.",
+    "Missing primitive fact is typed unavailable only when accessed. Own undefined IDL values preserve existing typeof/attribute fallback.",
+    "Optional captureSelectorFacts callback selected for every root; absent callback preserves old DOM single-root path and exact unsupported shadow message.",
+    "Original callback/provider/Proxy errors preserved. Host-context/part remain canonical unsupported.",
+    "Test producer deliberately reads genuine public DOM and explicitly owned closed roots. It is not default capture authority or a trap-free Proxy proof.",
+    "Array/collection dependency mutations refuse before private facts selector AST use. Broader String/RegExp/Object integrity review and performance remain separate."
+  ],
+  "validation": {
+    "fullNode": {
+      "passed": 1030,
+      "failed": 0,
+      "skipped": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.34,
+      "floors": [
+        100,
+        100,
+        97.3
+      ]
+    },
+    "vitest": {
+      "files": 7,
+      "passed": 29
+    },
+    "jest": {
+      "suites": 1,
+      "passed": 2
+    },
+    "typeDeclarations": true,
+    "CC9": true,
+    "actualModes": [
+      "native",
+      "node-wasm",
+      "web-wasm"
+    ],
+    "originalChrome18": {
+      "eachMode": 18,
+      "passed": true
+    },
+    "publishedApi15": {
+      "eachMode": 15,
+      "passed": true,
+      "sixKnownLegacyApiDifferencesRetained": true
+    },
+    "computedInheritance4": {
+      "eachMode": 4,
+      "passed": true
+    },
+    "shadowScopeColors": {
+      "activeEachMode": 26,
+      "activePassedEachMode": 26,
+      "knownSparseUnmatchedEachMode": 66,
+      "fullChromeCasesExactEachMode": 1,
+      "fullCasesEachMode": 46,
+      "sceneCalls": 0
+    },
+    "geometry": {
+      "positiveEachMode": 4,
+      "negativeEachMode": 5,
+      "projectionCallsEachPositive": 4,
+      "nativeSceneCallsEachPositive": 2,
+      "warmBridgeCalls": 0,
+      "chromeSourceSha256": "e11c88498bc57c011e592a07dfdd9a669be9971f7c2ae219643eb32acca708d3"
+    },
+    "forcedNativeWebAssemblyReads": 0,
+    "wasmNativeArtifactLoads": 0,
+    "actualNativePayloadSha256": "0a523a4592d1853a41871dd65bd2f3c64cfc63090fc0482a6683c3299ddefe82",
+    "actualWasmPayloadSha256": "a33002d572bcf64a7bb7074b5d819e643397f0ab3407d6ef019fbaea620eee74",
+    "requiredPlainBuild": {
+      "command": "scripts/agent/build-napi.sh",
+      "toolchain": "1.98.0",
+      "offline": true,
+      "jobs": 1,
+      "seconds": 4.5,
+      "exit": 0,
+      "rootCargoLockIndexApiHashesUnchanged": true
+    },
+    "normalCommitHook": "Required normal git commit invokes original full npm test:cov; outcome recorded .evidence/primitive-navigator/NORMAL-COMMIT.log"
+  },
+  "remaining": [
+    "No default capture certification or runtime default change",
+    "Ordinary selector helper dispatch overhead not yet benchmarked",
+    "Broad intrinsic integrity and existing unsupported CSS capabilities remain honest; #296 not closed by this optional checkpoint"
+  ]
+}

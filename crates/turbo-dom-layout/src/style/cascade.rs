@@ -17,13 +17,33 @@ use turbo_dom::Handle;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ComputedStyle {
     map: Arc<BTreeMap<String, String>>,
+    presentation_context: bool,
 }
 
 impl ComputedStyle {
+    /// Mark a context established by certified native presentation evidence, even
+    /// when the sampled value is opaque/identity. This flag is not inherited.
+    #[must_use]
+    pub fn with_stacking_context(mut self) -> Self {
+        self.presentation_context = true;
+        self
+    }
+
+    /// Whether canonical presentation supplied a stacking-context certificate.
+    #[must_use]
+    pub fn has_stacking_context(&self) -> bool {
+        self.presentation_context
+    }
+
+    pub(crate) fn clear_stacking_context(&mut self) {
+        self.presentation_context = false;
+    }
+
     /// Retaining the source style makes mutation copy-on-write, so cached
     /// metrics can validate their declaration identity without rescanning values.
     pub(crate) fn same_storage(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.map, &other.map)
+            && self.presentation_context == other.presentation_context
     }
 
     /// The computed value of a property, if set.
@@ -106,7 +126,10 @@ impl ComputedStyle {
             .into_iter()
             .map(|(k, v)| (k.into(), v.into()))
             .collect();
-        ComputedStyle { map: Arc::new(map) }
+        ComputedStyle {
+            map: Arc::new(map),
+            presentation_context: false,
+        }
     }
 }
 
@@ -320,7 +343,7 @@ fn marker_key(kind: crate::tag::MarkerKind) -> String {
 /// its RULE, then its index inside that rule. Ordering by rule order first is what makes a
 /// later rule of equal specificity win however many declarations an earlier rule has
 /// (miaskiewicz/turbo-dom#21: `p{margin:0;color:red} p{color:green}` is green).
-type Key = (bool, u8, Specificity, usize, usize);
+type Key = (bool, u16, Specificity, usize, usize);
 
 /// The cascade level of the user-agent sheet ([`super::build_cascade`]).
 const UA_LEVEL: u8 = 0;
@@ -328,11 +351,11 @@ const UA_LEVEL: u8 = 0;
 /// The origin part of a [`Key`]: the cascade level (UA < author sheets and hints < tokens <
 /// node styles < inline), except that an `!important` UA declaration beats every
 /// `!important` author one (CSS Cascade 4 origin order).
-fn origin_rank(important: bool, level: u8) -> u8 {
+fn origin_rank(important: bool, level: u8) -> u16 {
     if important && level == UA_LEVEL {
-        u8::MAX
+        u16::from(u8::MAX)
     } else {
-        level
+        u16::from(level)
     }
 }
 
@@ -838,7 +861,10 @@ fn inherit(mut own: BTreeMap<String, String>, parent: &ComputedStyle) -> Compute
     resolve_explicit_inherit(&mut map, parent);
     resolve_var_refs(&mut map);
     resolve_font_size(&mut map, parent);
-    ComputedStyle { map: Arc::new(map) }
+    ComputedStyle {
+        map: Arc::new(map),
+        presentation_context: false,
+    }
 }
 
 fn inherit_value(
@@ -1257,7 +1283,8 @@ fn resolve_style(
     collect_tokens(element, cascade, &mut cands);
     collect_inline(element, &mut cands);
     let author_border = cands.iter().any(|cand| {
-        !matches!(cand.key.1, UA_LEVEL | u8::MAX) && is_border_property(&cand.property)
+        ![u16::from(UA_LEVEL), u16::from(u8::MAX)].contains(&cand.key.1)
+            && is_border_property(&cand.property)
     });
     let cands = expand_quad_candidates(cands, parent);
     let style = if element.tag == Some("p") {
@@ -1294,7 +1321,8 @@ mod matched;
 #[path = "tree_view.rs"]
 mod tree_view;
 pub use matched::{
-    presentational_declarations, resolve_matched_style, CascadeOrigin, MatchedDeclaration,
+    cascade_matched_tokens, ordered_matched_declarations, presentational_declarations,
+    resolve_matched_style, CascadeOrigin, MatchedDeclaration,
 };
 pub(crate) use matched::{presentational_declarations_of, resolve_matched_paragraph_style};
 pub use tree_view::{

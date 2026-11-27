@@ -1,0 +1,126 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "af54aa800b5452139ddb58bb881c7ce903158935962abfa6b4b758c3a8af727e",
+  "results": [
+    {
+      "name": "position-anchor",
+      "value": "--a",
+      "supports": true,
+      "held": "--a"
+    },
+    {
+      "name": "position-anchor",
+      "value": "--",
+      "supports": true,
+      "held": "--"
+    },
+    {
+      "name": "position-anchor",
+      "value": "auto",
+      "supports": true,
+      "held": "auto"
+    },
+    {
+      "name": "position-anchor",
+      "value": "NONE",
+      "supports": true,
+      "held": "none"
+    },
+    {
+      "name": "position-anchor",
+      "value": "normal",
+      "supports": true,
+      "held": "normal"
+    },
+    {
+      "name": "position-anchor",
+      "value": "a",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "--a,--b",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "position-anchor",
+      "value": "\\61 uto",
+      "supports": true,
+      "held": "auto"
+    },
+    {
+      "name": "anchor-scope",
+      "value": "none",
+      "supports": true,
+      "held": "none"
+    },
+    {
+      "name": "anchor-scope",
+      "value": "all",
+      "supports": true,
+      "held": "all"
+    },
+    {
+      "name": "anchor-scope",
+      "value": "--a,--b",
+      "supports": true,
+      "held": "--a, --b"
+    },
+    {
+      "name": "anchor-scope",
+      "value": "all,--a",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "anchor-scope",
+      "value": "none,--a",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "timeline-scope",
+      "value": "--",
+      "supports": true,
+      "held": "--"
+    },
+    {
+      "name": "timeline-scope",
+      "value": "--a --b",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "view-transition-class",
+      "value": "a b",
+      "supports": true,
+      "held": "a b"
+    },
+    {
+      "name": "view-transition-class",
+      "value": "none",
+      "supports": true,
+      "held": "none"
+    },
+    {
+      "name": "view-transition-class",
+      "value": "none a",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "view-transition-class",
+      "value": "default",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "view-transition-class",
+      "value": "--",
+      "supports": true,
+      "held": "--"
+    }
+  ]
+}

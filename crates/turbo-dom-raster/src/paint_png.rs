@@ -7,6 +7,7 @@ use tiny_skia::{
     FillRule, GradientStop, LinearGradient, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint,
     Point, Rect, SpreadMode, Transform,
 };
+use turbo_dom_layout::layout::paint::PaintNode;
 use turbo_dom_layout::layout::value::BorderEdges;
 #[cfg(test)]
 use turbo_dom_layout::layout::value::BorderSide;
@@ -170,6 +171,58 @@ fn compose_transform(xf: Transform, f: &Fragment, t: &BoxTransform) -> Transform
 }
 
 fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_scheduled(pm, &PaintNode::new(f), images, xf, 0);
+}
+
+fn paint_scheduled(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+    index: usize,
+) {
+    let Some(ancestor) = node.clips.get(index) else {
+        paint_node(pm, node, images, xf);
+        return;
+    };
+    if let Some(clip) = ancestor.clip {
+        let region = (
+            ancestor.x + clip.x,
+            ancestor.y + clip.y,
+            clip.width,
+            clip.height,
+        );
+        if let Some(path) = rrect_path(region, &clip.radii) {
+            paint_masked(pm, &path, xf, |layer, local| {
+                paint_ancestor_overflow(layer, node, images, local, index);
+            });
+        }
+    } else {
+        paint_ancestor_overflow(pm, node, images, xf, index);
+    }
+}
+
+fn paint_ancestor_overflow(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+    index: usize,
+) {
+    let ancestor = node.clips[index];
+    if let Some(clip) = ancestor.overflow_clip {
+        if let Some(path) = rrect_path(overflow_region(ancestor, &clip), &clip.radii) {
+            paint_masked(pm, &path, xf, |layer, local| {
+                paint_scheduled(layer, node, images, local, index + 1);
+            });
+        }
+    } else {
+        paint_scheduled(pm, node, images, xf, index + 1);
+    }
+}
+
+fn paint_node(pm: &mut Pixmap, node: &PaintNode<'_>, images: &impl PaintInput, xf: Transform) {
+    let f = node.fragment;
     // CSS `opacity` (miaskiewicz/turbo-dom#206): the box and its subtree paint into
     // one canvas-sized layer composited at that alpha (a transparency group, so
     // overlapping descendants do not compound); `opacity: 0` paints nothing.
@@ -182,7 +235,7 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: T
             };
             let mut layer = Pixmap::new(w, h).expect("layer within the canvas");
             let local = Transform::from_translate(-x0 as f32, -y0 as f32).pre_concat(xf);
-            paint_opaque(&mut layer, f, images, local);
+            paint_opaque_node(&mut layer, node, images, local);
             let paint = PixmapPaint {
                 opacity: f.opacity,
                 ..PixmapPaint::default()
@@ -191,7 +244,7 @@ fn paint_fragment(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: T
         }
         return;
     }
-    paint_opaque(pm, f, images, xf);
+    paint_opaque_node(pm, node, images, xf);
 }
 
 /// The device-pixel rectangle `(x, y, width, height)` an opacity group's layer covers on
@@ -286,7 +339,18 @@ fn shadow_ink_bounds(
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
+#[cfg(test)]
 fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_opaque_node(pm, &PaintNode::new(f), images, xf);
+}
+
+fn paint_opaque_node(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+) {
+    let f = node.fragment;
     // A CSS `transform` on this box applies to it AND its whole subtree.
     let xf = match &f.content {
         FragmentContent::Box {
@@ -295,8 +359,8 @@ fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tra
         _ => xf,
     };
     match f.clip {
-        Some(clip) => paint_clipped(pm, f, clip, images, xf),
-        None => paint_subtree(pm, f, images, xf),
+        Some(clip) => paint_clipped_node(pm, node, clip, images, xf),
+        None => paint_subtree_node(pm, node, images, xf),
     }
 }
 
@@ -304,13 +368,14 @@ fn paint_opaque(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tra
 /// subtree paint into a layer covering the clip region's device bounds (in the box's own,
 /// possibly transformed, space), masked to that region and composited source-over. An
 /// empty region paints nothing.
-fn paint_clipped(
+fn paint_clipped_node(
     pm: &mut Pixmap,
-    f: &Fragment,
+    node: &PaintNode<'_>,
     clip: ClipRect,
     images: &impl PaintInput,
     xf: Transform,
 ) {
+    let f = node.fragment;
     let Some(region) = Rect::from_xywh(f.x + clip.x, f.y + clip.y, clip.width, clip.height) else {
         return;
     };
@@ -321,7 +386,7 @@ fn paint_clipped(
     )
     .expect("the outline of a valid region");
     paint_masked(pm, &path, xf, |layer, local| {
-        paint_subtree(layer, f, images, local);
+        paint_subtree_node(layer, node, images, local);
     });
 }
 
@@ -371,12 +436,13 @@ fn device_span(bounds: Rect, w: u32, h: u32) -> Option<(i32, i32, u32, u32)> {
 /// Paint `f`'s children in stacking order, clipped to its `overflow` region
 /// (miaskiewicz/turbo-dom#253) when it has one: an empty region paints none of them, and
 /// children all inside a square region paint directly.
-fn paint_children(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+fn paint_children(pm: &mut Pixmap, node: &PaintNode<'_>, images: &impl PaintInput, xf: Transform) {
+    let f = node.fragment;
     let paint = |pm: &mut Pixmap, xf: Transform| {
         // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
         // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
-        for &i in &f.paint_order() {
-            paint_fragment(pm, &f.children[i], images, xf);
+        for child in &node.children {
+            paint_scheduled(pm, child, images, xf, 0);
         }
     };
     let Some(clip) = f.overflow_clip.filter(|_| !f.children.is_empty()) else {
@@ -420,6 +486,16 @@ pub(crate) fn within(f: &Fragment, (x, y, w, h): rrect::Rect) -> bool {
 
 /// Paint a fragment's own content, then its children in stacking order.
 fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Transform) {
+    paint_subtree_node(pm, &PaintNode::new(f), images, xf);
+}
+
+fn paint_subtree_node(
+    pm: &mut Pixmap,
+    node: &PaintNode<'_>,
+    images: &impl PaintInput,
+    xf: Transform,
+) {
+    let f = node.fragment;
     match &f.content {
         FragmentContent::Box {
             background,
@@ -474,7 +550,7 @@ fn paint_subtree(pm: &mut Pixmap, f: &Fragment, images: &impl PaintInput, xf: Tr
         }
         FragmentContent::Marker(_) => {}
     }
-    paint_children(pm, f, images, xf);
+    paint_children(pm, node, images, xf);
 }
 
 /// Paint a multicol `column-rule` fragment ([`FragmentContent::ColumnRule`];
@@ -1831,6 +1907,105 @@ mod tests {
         )
     }
 
+    #[test]
+    fn ordinary_children_keep_their_parent_overflow_clip() {
+        let mut root = plain(10.0, 10.0, 20.0, 20.0, None);
+        root.overflow_clip = Some(OverflowClip {
+            x: 3.0,
+            y: 5.0,
+            width: 7.0,
+            height: 9.0,
+            radii: BorderRadii::ZERO,
+        });
+        root.children.push(plain(0.0, 0.0, 40.0, 40.0, Some(RED)));
+        let got = render(&root, 40, 40, &HashMap::new());
+        for y in 0..40 {
+            for x in 0..40 {
+                let expected = if (13..20).contains(&x) && (15..24).contains(&y) {
+                    [255, 0, 0, 255]
+                } else {
+                    [255; 4]
+                };
+                let pixel = got.pixel(x, y).unwrap();
+                assert_eq!(
+                    [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                    expected,
+                    "({x}, {y})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn multiple_outer_shadows_keep_canvas_offsets_and_exclude_inset_layers() {
+        use crate::shadow_layers::{PaintContext, ShadowLayers};
+
+        let blue = Rgba {
+            r: 0,
+            g: 0,
+            b: 255,
+            a: 255,
+        };
+        let green = Rgba {
+            r: 0,
+            g: 255,
+            b: 0,
+            a: 255,
+        };
+        let shadow = |offset_x, offset_y, color, inset| BoxShadow {
+            offset_x,
+            offset_y,
+            blur: 0,
+            spread: 0,
+            color,
+            inset,
+        };
+        let root = plain(10.0, 12.0, 4.0, 3.0, None);
+        let images = DecodedAssets::new();
+        let layers = ShadowLayers::from([(
+            NodeId(0),
+            vec![
+                shadow(4, 1, blue, false),
+                shadow(1, 5, green, false),
+                shadow(6, 6, RED, true),
+                shadow(9, 9, Rgba { a: 0, ..RED }, false),
+            ],
+        )]);
+        let input = PaintContext {
+            images: &images,
+            layers: &layers,
+        };
+        let mut actual = Pixmap::new(30, 30).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        let mut expected = actual.clone();
+        fill_rect(
+            &mut expected,
+            14.0,
+            13.0,
+            4.0,
+            3.0,
+            blue,
+            Transform::identity(),
+        );
+        fill_rect(
+            &mut expected,
+            11.0,
+            17.0,
+            4.0,
+            3.0,
+            green,
+            Transform::identity(),
+        );
+        paint_outer_layers(
+            &mut actual,
+            &root,
+            &BorderRadii::ZERO,
+            &input,
+            Transform::identity(),
+        );
+        assert_eq!(actual.data(), expected.data());
+    }
+
     /// `f` with its box content's fields changed by `edit`.
     fn with_box(
         mut f: Fragment,
@@ -2926,6 +3101,31 @@ mod tests {
     }
 
     #[test]
+    fn promoted_children_keep_nonzero_ancestor_clip_origins() {
+        let mut root = plain(0.0, 0.0, 80.0, 80.0, None);
+        let mut ancestor = plain(10.0, 20.0, 40.0, 40.0, None);
+        ancestor.clip = Some(ClipRect {
+            x: 3.0,
+            y: 4.0,
+            width: 10.0,
+            height: 12.0,
+            radii: BorderRadii::ZERO,
+        });
+        let mut child = plain(0.0, 0.0, 80.0, 80.0, Some(RED));
+        child.is_positioned = true;
+        child.z_index = Some(1);
+        ancestor.children.push(child);
+        root.children.push(ancestor);
+        let pm = render(&root, 80, 80, &HashMap::new());
+        for (x, y) in [(13, 24), (22, 35)] {
+            assert_eq!(rgb(&pm, x, y), [255, 0, 0]);
+        }
+        for (x, y) in [(12, 24), (13, 23), (23, 35), (22, 36)] {
+            assert_eq!(rgb(&pm, x, y), [255, 255, 255]);
+        }
+    }
+
+    #[test]
     fn only_the_part_of_an_image_the_canvas_shows_is_resampled() {
         let red = crate::image_paint::DecodedImage {
             width: 1,
@@ -2939,6 +3139,12 @@ mod tests {
         assert_eq!(
             visible_window(place, (20, 20), (10, 10)),
             Some((5, 0, 10, 7))
+        );
+        // Negative offsets on both axes retain only the canvas-sized source
+        // window, so resampling scratch cannot grow with the hidden origin.
+        assert_eq!(
+            visible_window(Transform::from_translate(-7.0, -11.0), (100, 100), (10, 20)),
+            Some((7, 11, 10, 20))
         );
         // Wholly off the canvas, or through a transform with no inverse: nothing.
         let off = Transform::from_translate(30.0, 0.0);

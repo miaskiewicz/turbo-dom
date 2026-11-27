@@ -560,15 +560,104 @@ fn pseudo_element(value: &str) -> Option<String> {
     admitted.text.starts_with("div::").then_some(normalized)
 }
 
-fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+fn animation_source(
+    scope: &mut v8::PinScope,
+    args: &v8::FunctionCallbackArguments,
+) -> Option<String> {
+    let text = v8::Local::<v8::String>::try_from(args.get(1)).ok()?;
+    String::from_utf16(&super::string_code_units(scope, text)).ok()
+}
+
+fn animation_name_list(
+    scope: &mut v8::PinScope,
+    args: &v8::FunctionCallbackArguments,
+    rv: &mut v8::ReturnValue,
+) {
+    let names =
+        animation_source(scope, args).and_then(|text| super::cssom_parser::animation_names(&text));
+    let Some(names) = names else {
+        rv.set(v8::null(scope).into());
+        return;
+    };
+    let values: Vec<v8::Local<v8::Value>> = names
+        .iter()
+        .map(|name| match name {
+            Some(name) => {
+                let value = v8::String::new(scope, name);
+                super::string_or_range_error(scope, value).into()
+            }
+            None => v8::null(scope).into(),
+        })
+        .collect();
+    rv.set(v8::Array::new_with_elements(scope, &values).into());
+}
+
+fn ordinary_rendering_path(scope: &mut v8::PinScope, element: v8::Local<v8::Object>) -> bool {
+    let _owner = DomScope::for_object(scope, element);
+    let Some(mut cursor) = handle_of(scope, element) else {
+        return false;
+    };
+    let Some((root, count)) = with_tree(|tree| (tree.root(), tree.node_count())) else {
+        return false;
+    };
+    for _ in 0..count {
+        let Some(parent) =
+            with_tree(|tree| tree.is_live(cursor).then(|| tree.parent(cursor))).flatten()
+        else {
+            return false;
+        };
+        if cursor == root {
+            return with_tree(|tree| tree.node_type_id(root) == 9).unwrap_or(false);
+        }
+        let Some(parent) = parent else {
+            return false;
+        };
+        let node = wrap(scope, cursor);
+        let composed = super::host_composed_parent(scope, node);
+        if composed.and_then(|node| handle_of(scope, node)) != Some(parent) {
+            return false;
+        }
+        cursor = parent;
+    }
+    false
+}
+
+fn native<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    args: v8::FunctionCallbackArguments<'s>,
+    mut rv: v8::ReturnValue,
+) {
     let set_string =
-        |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value
-            .and_then(|value| v8::String::new(scope, &value))
-        {
-            Some(value) => rv.set(value.into()),
+        |scope: &mut v8::PinScope, rv: &mut v8::ReturnValue, value: Option<String>| match value {
+            Some(value) => {
+                let value = v8::String::new(scope, &value);
+                rv.set(super::string_or_range_error(scope, value).into());
+            }
             None => rv.set(v8::null(scope).into()),
         };
     match arg_str(scope, &args, 0).as_str() {
+        "renderingPath" => super::animation_rendering::path(scope, args, &mut rv),
+        "renderingPathCurrent" => super::animation_rendering::validate(scope, args, &mut rv),
+        "animationNames" => animation_name_list(scope, &args, &mut rv),
+        "keyframeName" => {
+            let name = animation_source(scope, &args)
+                .and_then(|text| super::cssom_parser::keyframe_prelude_name(&text));
+            set_string(scope, &mut rv, name);
+        }
+        "ordinaryRenderingPath" => {
+            let element = v8::Local::<v8::Object>::try_from(args.get(1)).expect("native candidate");
+            rv.set_bool(ordinary_rendering_path(scope, element));
+        }
+        "targetTracking" => rv.set_bool(cfg!(feature = "host-internals")),
+        "target" => {
+            #[cfg(feature = "host-internals")]
+            {
+                let animation = v8::Local::<v8::Object>::try_from(args.get(1)).expect("animation");
+                let target = v8::Local::<v8::Object>::try_from(args.get(2)).ok();
+                let document = v8::Local::<v8::Object>::try_from(args.get(3)).expect("document");
+                super::animation_ownership::update(scope, animation, target, document);
+            }
+        }
         "dispatch" => {
             // animations.js dispatches its Animation objects' events.
             let target = v8::Local::<v8::Object>::try_from(args.get(1)).expect("animation");
@@ -580,6 +669,10 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
             // which would read the page-replaceable Promise[@@species] (turbo-dom#199).
             let promise = v8::Local::<v8::Promise>::try_from(args.get(1)).expect("promise");
             promise.mark_as_handled();
+        }
+        "nonAnimatable" => {
+            let name = arg_str(scope, &args, 1);
+            rv.set_bool(NOT_ANIMATABLE.contains(&name.as_str()));
         }
         "property" => {
             let name = arg_str(scope, &args, 1);
@@ -616,6 +709,7 @@ fn native(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv:
 }
 
 pub(super) fn install(scope: &mut v8::PinScope) {
+    super::animation_tokens::install(scope);
     let global = scope.get_current_context().global(scope);
     bind_method(scope, global, "__animationsNative", native);
     run_js(scope, include_str!("animations.js"));

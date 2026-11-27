@@ -22,6 +22,8 @@ mod grid_tracks;
 
 #[path = "flex_frame.rs"]
 mod frames;
+#[path = "flex_positioned.rs"]
+mod positioned;
 
 use taffy::prelude::{FromLength, FromPercent, TaffyAuto, TaffyMaxContent, TaffyMinContent};
 use taffy::style_helpers::{fr, line, minmax, percent, span};
@@ -1445,7 +1447,9 @@ fn place_one(
     // whose height taffy left at auto keeps its content height (basis == content). In a
     // column the height is the main size, so taffy's always wins over a `px` `height`
     // (a `flex-basis`, grow or shrink; miaskiewicz/turbo-dom#86).
-    if column || stretch || matches!(bs.height, LengthPct::Px(_)) {
+    // Absolute percentages already used the finalized padding-box height in
+    // Taffy, even when the flex container's own CSS height remains indefinite.
+    if item.out_of_flow() || column || stretch || matches!(bs.height, LengthPct::Px(_)) {
         let inset_v = bs.padding.vertical() + bs.border.widths().vertical();
         bs.height = LengthPct::Px((layout.size.height - inset_v).max(0.0));
         height_basis = item_height_basis(
@@ -1481,8 +1485,18 @@ fn place_one(
         height_basis,
         ctx,
     );
+    item_stacking_context(&mut frag, bs.z_index);
     frag.translate(cx + layout.location.x, cy + layout.location.y);
     frag
+}
+
+// A non-positioned flex/grid item with a non-auto z-index establishes a
+// context too. Its in-flow identity remains unchanged for layout/baselines.
+fn item_stacking_context(fragment: &mut Fragment, z_index: Option<i32>) {
+    if z_index.is_some() {
+        fragment.z_index = z_index;
+        fragment.establishes_stacking_context = true;
+    }
 }
 
 fn item_height_basis(
@@ -2132,12 +2146,13 @@ pub(crate) fn layout_flex(
     cx: f32,
     cy: f32,
     cw: f32,
-    fs: f32,
+    bs: &BoxStyle,
     ctx: &mut Ctx,
 ) -> (Vec<Fragment>, f32) {
     if items.is_empty() {
         return (Vec::new(), 0.0);
     }
+    let fs = bs.font_size;
     let _calc_scope = native_tree::CalcScope::new(ctx.html_font_scale);
     let mut tree: TaffyTree<usize> = TaffyTree::new();
     let column = matches!(
@@ -2158,19 +2173,24 @@ pub(crate) fn layout_flex(
         column_height: column.then_some(ctx.cb_h_known),
     };
     solve(&mut tree, root, items, (fs, cw), fill, ctx);
-    let frags = place_items(
+    let height = tree.layout(root).expect("root layout").size.height;
+    let frags = positioned::place(
         &tree,
         &leaves,
         items,
-        (cx, cy, fs),
-        Some((
+        &positioned::Root {
+            container,
+            style: bs,
+            origin: (cx, cy),
+            size: Size { width: cw, height },
+        },
+        (
             column,
             align_items(&container.style).unwrap_or(AlignItems::Stretch),
             ctx.cb_h_known,
-        )),
+        ),
         ctx,
     );
-    let height = tree.layout(root).expect("root layout").size.height;
     (frags, height)
 }
 
@@ -2286,6 +2306,17 @@ mod coverage_tests {
         );
         // an unparseable token -> Auto.
         assert_eq!(grid_placement("wat"), GridPlacement::Auto);
+    }
+
+    #[test]
+    fn grid_tracks_and_zero_spans_keep_the_existing_native_bounds() {
+        let limit = grid_capacity::MAX_TRACKS;
+        let exact = "1px ".repeat(limit);
+        let overflowing = format!("{exact} 2px");
+        assert_eq!(grid_tracks(Some(&exact)).len(), limit);
+        assert_eq!(grid_tracks(Some(&overflowing)), grid_tracks(Some(&exact)));
+        assert_eq!(grid_placement("span 0"), GridPlacement::Auto);
+        assert_eq!(grid_placement("span 1"), span(1));
     }
 
     #[test]

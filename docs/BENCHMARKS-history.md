@@ -1,10 +1,10 @@
 # Benchmarks — history
 
 This page preserves measured numbers with their source version, date and machine.
-The latest recorded npm-runtime comparison is [v0.8.2, 2026-11-10](#js-runtime-vs-happy-dom-and-jsdom--v082-2026-11-10);
-the earlier v0.1.55 baseline remains below. Neither run is a measurement of v0.8.3.
-Browser-env performance work measured on a React/MUI suite is recorded separately
-in [CHANGELOG.md](../CHANGELOG.md).
+Current 0.8.7 candidate packed Vitest and CSS experiments are recorded in the
+[root README](../README.md#benchmarks), with package identities and raw results.
+This file preserves the older npm comparisons below, including v0.8.2 and
+v0.1.55; their measurements describe those source revisions.
 
 ## JS runtime vs happy-dom and jsdom — v0.1.55, 2026-06-07
 

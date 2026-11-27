@@ -259,6 +259,17 @@ impl Styled {
         depth: &dyn Fn(Handle) -> Result<u32, String>,
         hook: impl FnOnce(&mut [StyledNode]) -> Result<T, String>,
     ) -> Result<(LayoutSnapshot, T), LiveError> {
+        self.run_contexts(origins, overrides, depth, &[], hook)
+    }
+
+    fn run_contexts<T>(
+        &self,
+        origins: &[OriginRules],
+        overrides: &[(Handle, &str)],
+        depth: &dyn Fn(Handle) -> Result<u32, String>,
+        contexts: &[SourceId],
+        hook: impl FnOnce(&mut [StyledNode]) -> Result<T, String>,
+    ) -> Result<(LayoutSnapshot, T), LiveError> {
         let provider = |h: Handle| self.children.get(&h).map_or(&[][..], Vec::as_slice);
         let capture = capture_light(&self.tree, &self.children);
         let overrides: HashMap<_, _> = overrides.iter().copied().collect();
@@ -282,10 +293,11 @@ impl Styled {
             resolver: &NoImages,
             body_height: None,
         };
-        snapshot(
+        snapshot_with_stacking_contexts(
             &style,
             &capture,
             &LiveOptions { layout_scale: 1.0 },
+            contexts,
             hook,
             &SnapshotInputs {
                 width: 200.0,
@@ -321,6 +333,108 @@ fn border(snapshot: &LayoutSnapshot, node: Handle) -> (f32, f32) {
         .find(|f| f.kind == GeometryKind::BorderBox)
         .unwrap();
     (fragment.rect.width, fragment.rect.height)
+}
+
+#[test]
+fn explicit_context_evidence_survives_post_cascade_reconstruction_without_css_markers() {
+    let doc = Styled::new(
+        "<body>before<div id='subject'>inside<div id='inner'></div></div><div id='cover'></div>after",
+    );
+    let [subject, inner, cover] = ["subject", "inner", "cover"].map(|id| doc.el(id));
+    let rules = [
+        rule(
+            "position:relative;width:100px;height:100px",
+            &[subject],
+            (0, 0, 1),
+        ),
+        rule("position:absolute;inset:0;z-index:100", &[inner], (0, 0, 1)),
+        rule(
+            "position:absolute;left:0;top:0;width:100px;height:100px;z-index:1",
+            &[cover],
+            (0, 0, 1),
+        ),
+    ];
+    let origins = [OriginRules {
+        origin: CascadeOrigin::Author,
+        rules: rules.iter().map(Some).collect(),
+    }];
+    for contexts in [vec![], vec![source_id(DOCUMENT, subject)]] {
+        let (snapshot, styles) = doc
+            .run_contexts(&origins, &[], &|_| Ok(0), &contexts, |styled| {
+                fn rebuild(nodes: &mut [StyledNode]) {
+                    for node in nodes {
+                        let StyledNode::Element(element) = node else {
+                            continue;
+                        };
+                        element.style = crate::ComputedStyle::from_pairs(element.style.iter());
+                        rebuild(&mut element.children);
+                    }
+                }
+                rebuild(styled);
+                Ok(super::testing::collect(styled))
+            })
+            .unwrap();
+        let mut text: Vec<_> = snapshot
+            .text_sources()
+            .iter()
+            .map(|source| source.text.as_str())
+            .collect();
+        text.sort_unstable();
+        assert_eq!(text, ["after", "before", "inside"]);
+        let hits = crate::cssom_view::hit::elements_at_point(
+            &snapshot,
+            &styles,
+            &std::collections::BTreeMap::new(),
+            [50.0, 50.0],
+        )
+        .unwrap();
+        let expected = if contexts.is_empty() { inner } else { cover };
+        assert_eq!(hits.first(), Some(&source_id(DOCUMENT, expected)));
+    }
+}
+
+#[test]
+fn explicit_context_source_rejects_foreign_absent_and_text_identities() {
+    let doc = Styled::new("<body><div id='subject'>text</div>");
+    let subject = doc.el("subject");
+    let text = doc.tree.children(subject)[0];
+    for source in [
+        source_id(DOCUMENT + 1, subject),
+        source_id(DOCUMENT, text),
+        source_id(DOCUMENT, Handle::from_raw(u32::MAX)),
+    ] {
+        assert_eq!(
+            doc.run_contexts(&[], &[], &|_| Ok(0), &[source], |_| Ok(()))
+                .err(),
+            Some(invalid_context())
+        );
+    }
+}
+
+#[test]
+fn explicit_context_source_rejects_stale_or_other_document_capture() {
+    let doc = Styled::new("<body><div id='subject'></div>");
+    let provider = |h| doc.children.get(&h).map_or(&[][..], Vec::as_slice);
+    let mut captured = capture_light(&doc.tree, &doc.children);
+    let contexts = [source_id(DOCUMENT, doc.el("subject"))];
+    let mut style = LiveStyle {
+        tree: live(&doc.tree, &provider),
+        origins: &[],
+        scope_depth: &|_| Ok(0),
+        inline_override: &|_| None,
+        inline_declarations: &|text| Ok(parse_declarations(text)),
+    };
+    captured.tree_version += 1;
+    assert_eq!(
+        validated_contexts(&style, &captured, &contexts).unwrap_err(),
+        invalid_context()
+    );
+    captured.tree_version = doc.tree.version;
+    style.tree.document += 1;
+    assert_eq!(
+        validated_contexts(&style, &captured, &contexts).unwrap_err(),
+        invalid_context()
+    );
 }
 
 fn find(nodes: &[StyledNode], node: Handle) -> Option<&StyledElement> {

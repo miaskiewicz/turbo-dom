@@ -1,0 +1,42 @@
+{
+  "base": "00c2df6c5b495484edf3f63388ee8fb70918204b",
+  "files": {
+    "crates/turbo-dom/src/rtdom/css_shorthand/components.rs": "0c75300369e767f646cb03643831ba8ab448d3d5a00959cb5c424de37d5f0876",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/mod.rs": "23db1332674d81d4668fc6774bceeff235e42707aad16f4ed17d5e2d28510a66",
+    "crates/turbo-dom/src/rtdom/computed_css/grammar/deferred_tokens.rs": "21599438ce15c2f158e6d11285e588dc049f78241ea5ab8766a21be5bca35d04",
+    "crates/turbo-dom/tests/legacy_rgb_admission.rs": "3844beec8b35309c304a6528e9670daf81623bd91bfa89e3e2ccdfbba27f573e",
+    "crates/turbo-dom/tests/fixtures/legacy-rgb-159/probe.mjs": "6c4afa4f50cd80b60a5d18232ee06597fc71609775122ef2dc36217871e291c3",
+    "crates/turbo-dom/tests/fixtures/legacy-rgb-159/ORACLE.json": "f285033ea053fd97db803c1fa8bf88c7471dcf45ddaf10e9d186c7587a0015b6"
+  },
+  "problem": "Known number/percentage channel types mixed in comma RGB were admitted; eager semantic TokenList color parsing also panicked on raw invalid RGB inside unused variable fallbacks.",
+  "fix": "Canonical component math-type consistency for comma RGB; private cssparser-to-existing-Lightning-AST mechanical deferred-token builder after existing depth/resource/custom syntax guards, preserving shared var/env heads and conditional/fallback checks.",
+  "gates": {
+    "defaultTestsPassed": 590,
+    "featureTestsPassed": 887,
+    "existingIgnored": 9,
+    "focusedLatest": 4,
+    "defaultCoverage": "100%;14346/14346",
+    "featureCoverage": "100%;17837/17837",
+    "strictDefaultAndFeature": "all-targets -D warnings pass",
+    "fmt": "pass",
+    "complexityLimit": 9
+  },
+  "oracle": {
+    "browserVersion": "159.0.8154.6",
+    "ordinaryControls": 18,
+    "pendingControls": 3,
+    "unusedFallback": 1,
+    "unresolvedMathAdmissionOnly": 1
+  },
+  "proofs": [
+    "Literal invalid mixed RGB preserves lower lime; pending invalid substituted winner inherits parent blue.",
+    "Unused raw invalid-color fallback compiles and computes selected existing variable lime without eager color evaluation.",
+    "Valid calc RGB, uppercase function names, independent alpha percentages and modern mixed space channels retain measured behavior.",
+    "Malformed nested env heads rejected; explicit caller nesting/output failures remain typed."
+  ],
+  "limitations": [
+    "No NAPI/WASM artifact rebuilt for this Core increment; combined artifact refresh pending.",
+    "Legacy unresolved trig/math raw contract remains unchanged, including sin-channel uncertainty; no full math-resolution/parity claim.",
+    "No native binding legacy declaration API, DOM capture, default Window wiring, registry or resource floor changed."
+  ]
+}

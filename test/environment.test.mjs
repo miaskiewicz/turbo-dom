@@ -54,3 +54,15 @@ test('@testing-library/dom works through globals installed on globalThis', () =>
     else delete globalThis.document;
   }
 });
+
+test('DOM backend selection is per environment and fails before installing any globals', async () => {
+  const { createEnvironment } = await import('../src/runtime/index.mjs');
+  assert.throws(() => createEnvironment('', { domBackend: 'rust' }), /requires a Node browser-env binding/);
+  assert.throws(() => createEnvironment('', { domBackend: 'wasm' }), TypeError);
+  const target = {};
+  assert.throws(() => vitestEnv.setup(target, { turboDom: { domBackend: 'rust' } }), /requires a Node browser-env binding/);
+  assert.deepEqual(Reflect.ownKeys(target), []);
+  const installed = vitestEnv.setup(target, { turboDom: { domBackend: 'js' } });
+  assert.equal(target.document.body.localName, 'body');
+  installed.teardown();
+});

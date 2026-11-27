@@ -91,6 +91,47 @@ pub fn collect_native_storage(
     budget: CollectionBudget,
     max_documents: usize,
 ) -> Result<NativeStorageReport, CollectionError> {
+    let documents = collect_registered(scope, budget, max_documents, Tree::collect_unreachable)?;
+    Ok(NativeStorageReport { documents })
+}
+
+#[cfg(feature = "host-internals")]
+#[derive(Debug)]
+pub struct NativeStorageSweepReport {
+    /// One outcome for each live owner, in the same order as ordinary collection.
+    pub documents: Vec<(u64, turbo_dom_parser::rtdom::tree::StorageCollectionOutcome)>,
+}
+
+/// Collect every registered owner, retaining its live wrappers and native job pins.
+///
+/// A tree may skip materialization when its sparse storage is already compact
+/// and no nodes would be reclaimed. `Unchanged` describes only that storage
+/// decision. The host still reconciles owners, sweeps weak and scalar tables,
+/// and clears its cached CSS cascades for every successful tree. Budgets and partial
+/// commits across documents follow [`collect_native_storage`].
+#[cfg(feature = "host-internals")]
+pub fn collect_native_storage_if_needed(
+    scope: &mut v8::PinScope,
+    budget: CollectionBudget,
+    max_documents: usize,
+) -> Result<NativeStorageSweepReport, CollectionError> {
+    let documents = collect_registered(
+        scope,
+        budget,
+        max_documents,
+        Tree::collect_unreachable_if_needed,
+    )?;
+    Ok(NativeStorageSweepReport { documents })
+}
+
+type TreeCollector<R> = fn(&mut Tree, &[Handle], CollectionBudget) -> Result<R, CollectionError>;
+
+fn collect_registered<R>(
+    scope: &mut v8::PinScope,
+    budget: CollectionBudget,
+    max_documents: usize,
+    collect_tree: TreeCollector<R>,
+) -> Result<Vec<(u64, R)>, CollectionError> {
     let _isolate = activate_isolate(scope);
     if scope.is_execution_terminating() {
         return Err(CollectionError::BudgetExceeded);
@@ -113,10 +154,10 @@ pub fn collect_native_storage(
     let mut reports = Vec::with_capacity(documents.len());
     for owner in documents {
         let _dom = DomScope::enter(owner);
-        let report = collect_current(scope, budget, owner, &jobs)?;
+        let report = collect_current(scope, budget, owner, &jobs, collect_tree)?;
         reports.push((owner, report));
     }
-    Ok(NativeStorageReport { documents: reports })
+    Ok(reports)
 }
 
 fn pending_jobs(
@@ -174,12 +215,13 @@ fn live_documents(max_documents: usize) -> Result<Vec<u64>, CollectionError> {
     documents.sort_unstable();
     Ok(documents)
 }
-fn collect_current(
+fn collect_current<R>(
     scope: &mut v8::PinScope,
     budget: CollectionBudget,
     owner: u64,
     jobs: &[Rc<JobPin>],
-) -> Result<CollectionReport, CollectionError> {
+    collect_tree: TreeCollector<R>,
+) -> Result<R, CollectionError> {
     let wrappers = DOM.with(|state| {
         let state = state.borrow();
         // invariant: natives run under the DomScope of an installed DOM
@@ -203,7 +245,7 @@ fn collect_current(
         let mut state = state.borrow_mut();
         // invariant: natives run under the DomScope of an installed DOM
         let state = state.as_mut().unwrap();
-        let report = state.tree.collect_unreachable(&pins, budget)?;
+        let report = collect_tree(&mut state.tree, &pins, budget)?;
         sweep_scalars(state);
         Ok(report)
     })
@@ -305,6 +347,64 @@ mod contracts {
         let context = v8::Local::new(scope, context);
         let scope = &mut v8::ContextScope::new(scope, context);
         collect_native_storage(scope, budget(), 32).unwrap()
+    }
+    #[cfg(feature = "host-internals")]
+    #[test]
+    fn sparse_storage_sweeps_expired_wrapper_entries_and_preserves_job_roots() {
+        use turbo_dom_parser::rtdom::tree::StorageCollectionOutcome;
+        run(|isolate, context| {
+            gc(isolate);
+            collect(isolate, context);
+            let job = {
+                v8::scope!(let scope, isolate);
+                let context = v8::Local::new(scope, context);
+                let scope = &mut v8::ContextScope::new(scope, context);
+                let node = eval(scope, "document.createElement('article')")
+                    .to_object(scope)
+                    .unwrap();
+                NativeNodePin::capture(scope, node).unwrap()
+            };
+            gc(isolate);
+            let detached = job.0.node;
+            let connected = with_tree(|tree| tree.query_selector("#connected").unwrap()).unwrap();
+            {
+                v8::scope!(let scope, isolate);
+                let context = v8::Local::new(scope, context);
+                let scope = &mut v8::ContextScope::new(scope, context);
+                // Model a collected wrapper whose underlying node is still connected.
+                DOM.with(|dom| {
+                    dom.borrow_mut()
+                        .as_mut()
+                        .unwrap()
+                        .cache
+                        .insert(connected, v8::Weak::empty(scope))
+                });
+                let sweep = collect_native_storage_if_needed(scope, budget(), 1).unwrap();
+                assert!(matches!(
+                    sweep.documents.as_slice(),
+                    [(_, StorageCollectionOutcome::Unchanged(_))]
+                ));
+                assert!(DOM.with(|dom| !dom
+                    .borrow()
+                    .as_ref()
+                    .unwrap()
+                    .cache
+                    .contains_key(&connected)));
+                assert!(job.node(scope).is_some());
+            }
+            drop(job);
+            gc(isolate);
+            v8::scope!(let scope, isolate);
+            let context = v8::Local::new(scope, context);
+            let scope = &mut v8::ContextScope::new(scope, context);
+            let sweep = collect_native_storage_if_needed(scope, budget(), 1).unwrap();
+            assert!(matches!(
+                sweep.documents.as_slice(),
+                [(_, StorageCollectionOutcome::Compacted(_))]
+            ));
+            assert_eq!(sweep.documents[0].1.report().reclaimed_nodes, 1);
+            assert_eq!(with_tree(|tree| tree.is_live(detached)), Some(false));
+        });
     }
     #[test]
     fn native_checked_radio_index_does_not_pin_unwrapped_nodes() {

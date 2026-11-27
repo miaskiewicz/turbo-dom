@@ -653,15 +653,19 @@ pub(super) fn schedule_after(
     callback: v8::Local<v8::Function>,
     delay: u32,
 ) -> bool {
-    let current = || DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone());
-    // An inert document (template contents, DOMParser, createHTMLDocument) has no event
-    // loop of its own: its tasks run on its creating window's (turbo-dom#171).
-    let scheduler = current().or_else(|| {
-        let context = scope.get_current_context();
-        let _owner = DomScope::enter(context.get_slot::<DomContextId>().map_or(0, |id| id.0));
-        current()
-    });
-    let Some(scheduler) = scheduler else {
+    // turbo-dom#540: resolve ownership from the current V8 context, not from the
+    // TLS DomScope. A native frame that enters here on document B's turn can carry
+    // a stale TLS naming a prior document A whose captured scheduler's weak owner
+    // is already dead (navigation between documents on the same Page), which would
+    // then panic in `dom_ownership::local` below. The V8 context's `DomContextId`
+    // is always the live document this callback belongs to; the inert-document
+    // case (template contents / DOMParser / createHTMLDocument, turbo-dom#171)
+    // still resolves because an inert document has no V8 context of its own and
+    // the current context's owner is the creating window. This mirrors the
+    // "resolve from the realm here" pattern `capture_scheduler` uses below.
+    let context = scope.get_current_context();
+    let _owner = DomScope::enter(context.get_slot::<DomContextId>().map_or(0, |id| id.0));
+    let Some(scheduler) = DOM.with(|dom| dom.borrow().as_ref()?.popover.scheduler.clone()) else {
         return false;
     };
     let scheduler = dom_ownership::local(scope, &scheduler);
@@ -917,6 +921,61 @@ mod tests {
             result.to_rust_string_lossy(scope),
             r#"[[["closed","open",true]],[["closed","open",true]],"InvalidStateError","popup","popup"]"#
         );
+        reset();
+    }
+    /// Regression for turbo-dom#540. A native `schedule` frame entering here on
+    /// document B's V8 turn with the TLS `DomScope` still naming document A must
+    /// route the task into document B's scheduler, not document A's. Before the
+    /// fix the TLS scheduler won and (in the real repro) its weak owner handle
+    /// was already dead, panicking in `dom_ownership::local`; here the two
+    /// documents are both alive so we assert routing directly.
+    #[test]
+    fn schedule_resolves_scheduler_from_v8_context_not_stale_tls() {
+        super::super::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        v8::scope!(let scope, isolate);
+        let doc_a = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, doc_a);
+        install_with_html(scope, "<!doctype html><body>");
+        let timers = "globalThis.tasks=[];globalThis.setTimeout=callback=>{tasks.push(callback);return tasks.length};";
+        run_js(scope, timers);
+        capture_popover_scheduler(scope);
+        let doc_a_id = doc_a.get_slot::<DomContextId>().map_or(0, |id| id.0);
+        let doc_b = v8::Context::new(scope, Default::default());
+        doc_b.set_security_token(doc_a.get_security_token(scope));
+        {
+            let scope = &mut v8::ContextScope::new(scope, doc_b);
+            install_independent_html(scope, "<!doctype html><body>");
+            run_js(scope, timers);
+            capture_popover_scheduler(scope);
+            let src = v8::String::new(scope, "(function noop(){})").unwrap();
+            let fn_value = v8::Script::compile(scope, src, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            let callback = v8::Local::<v8::Function>::try_from(fn_value).unwrap();
+            // Force TLS to doc A while the next schedule runs under doc B's V8 context.
+            let _stale = DomScope::enter(doc_a_id);
+            assert!(super::schedule_after(scope, callback, 0));
+            // Doc B's scheduler got the task — the V8 context owner won over stale TLS.
+            let src = v8::String::new(scope, "tasks.length").unwrap();
+            let got = v8::Script::compile(scope, src, None)
+                .unwrap()
+                .run(scope)
+                .unwrap()
+                .uint32_value(scope)
+                .unwrap();
+            assert_eq!(got, 1, "doc B's scheduler received the task");
+        }
+        // Doc A's scheduler did NOT get it — the stale TLS was ignored.
+        let src = v8::String::new(scope, "tasks.length").unwrap();
+        let got = v8::Script::compile(scope, src, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .uint32_value(scope)
+            .unwrap();
+        assert_eq!(got, 0, "doc A's stale-TLS scheduler was bypassed");
         reset();
     }
     fn fixture(source: &str) {

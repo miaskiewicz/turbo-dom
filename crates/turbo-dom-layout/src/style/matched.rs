@@ -12,13 +12,19 @@ pub enum CascadeOrigin {
     UserAgent,
     User,
     Author,
+    /// Sampled animation/WAAPI contributions, below every important declaration.
+    Animation,
+    /// Sampled transition contributions, above important declarations.
+    Transition,
 }
 impl CascadeOrigin {
-    fn rank(self, important: bool) -> u8 {
+    fn rank(self, important: bool) -> u16 {
         let normal = match self {
             Self::UserAgent => 0,
             Self::User => 1,
             Self::Author => 2,
+            Self::Animation => return 4,
+            Self::Transition => return 256,
         };
         if important {
             2 - normal
@@ -44,15 +50,23 @@ pub struct MatchedDeclaration {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Rank {
     important: bool,
-    origin: u8,
+    origin: u16,
     scope: u32,
     inline: bool,
     specificity: (u32, u32, u32),
     order: usize,
 }
 impl MatchedDeclaration {
+    fn importance(&self) -> bool {
+        match self.origin {
+            CascadeOrigin::Animation => false,
+            CascadeOrigin::Transition => true,
+            _ => self.declaration.important,
+        }
+    }
+
     fn rank(&self) -> Rank {
-        let important = self.declaration.important;
+        let important = self.importance();
         Rank {
             important,
             origin: self.origin.rank(important),
@@ -97,14 +111,64 @@ fn resolve_matched_style_impl(
         matched.origin != CascadeOrigin::UserAgent
             && is_border_property(&matched.declaration.property)
     });
+    let candidates = matched_candidates(declarations);
+    let candidates = expand_quad_candidates(candidates, parent);
+    let style = if paragraph {
+        resolve_paragraph_style(candidates, parent)
+    } else {
+        inherit(pick_winners(candidates), parent)
+    };
+    let style = mark_author_border(style, author_border);
+    if declarations.iter().any(presented_context) {
+        style.with_stacking_context()
+    } else {
+        style
+    }
+}
+
+// A contributing animation creates its context even when an important rule wins
+// the sampled property. Canonical origin inputs already exclude inactive effects.
+fn presented_context(matched: &MatchedDeclaration) -> bool {
+    matches!(
+        matched.origin,
+        CascadeOrigin::Animation | CascadeOrigin::Transition
+    ) && crate::layout::paint::context_property(&matched.declaration.property)
+}
+
+/// Select raw winning declaration tokens with the same origin, encapsulation,
+/// specificity and source-order ranking as [`resolve_matched_style`]. This does
+/// not expand shorthands, apply inheritance/CSS-wide keywords or substitute vars;
+/// specialized adapters must perform those stages with their own property policy.
+#[must_use]
+pub fn cascade_matched_tokens(
+    declarations: &[MatchedDeclaration],
+) -> std::collections::BTreeMap<String, String> {
+    pick_winners(matched_candidates(declarations))
+}
+
+/// Raw matched declarations from lowest to highest native cascade rank.
+/// Retains invalid-value fallback candidates and shorthand/longhand source order.
+#[must_use]
+pub fn ordered_matched_declarations(declarations: &[MatchedDeclaration]) -> Vec<Declaration> {
+    ordered_matches(declarations)
+        .into_iter()
+        .map(|matched| matched.declaration.clone())
+        .collect()
+}
+
+fn ordered_matches(declarations: &[MatchedDeclaration]) -> Vec<&MatchedDeclaration> {
     let mut ordered: Vec<_> = declarations.iter().collect();
     ordered.sort_by_key(|declaration| declaration.rank());
-    let candidates = ordered
+    ordered
+}
+
+fn matched_candidates(declarations: &[MatchedDeclaration]) -> Vec<Cand> {
+    ordered_matches(declarations)
         .into_iter()
         .enumerate()
         .map(|(order, matched)| Cand {
             key: (
-                matched.declaration.important,
+                matched.importance(),
                 candidate_origin(matched),
                 (0, 0, 0),
                 order,
@@ -113,23 +177,22 @@ fn resolve_matched_style_impl(
             property: matched.declaration.property.clone(),
             value: matched.declaration.value.clone(),
         })
-        .collect();
-    let candidates = expand_quad_candidates(candidates, parent);
-    let style = if paragraph {
-        resolve_paragraph_style(candidates, parent)
-    } else {
-        inherit(pick_winners(candidates), parent)
-    };
-    mark_author_border(style, author_border)
+        .collect()
 }
 
 /// This monotonic remapping retains origin identity without changing the sorted
 /// cascade order: UA normal is 0 and UA important uses the ordinary cascade's
-/// sentinel; the other origins occupy the intervening ranks.
-fn candidate_origin(matched: &MatchedDeclaration) -> u8 {
-    let important = matched.declaration.important;
+/// sentinel; animation sits above normal author rules and transitions above that
+/// sentinel. Keeping transition distinct also preserves UA paragraph provenance.
+fn candidate_origin(matched: &MatchedDeclaration) -> u16 {
+    let important = matched.importance();
     if matched.origin == CascadeOrigin::UserAgent {
         origin_rank(important, 0)
+    } else if matches!(
+        matched.origin,
+        CascadeOrigin::Animation | CascadeOrigin::Transition
+    ) {
+        matched.origin.rank(important)
     } else {
         matched.origin.rank(important) + 1
     }
@@ -373,3 +436,6 @@ mod paragraph_origin_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod presented_origin_tests;

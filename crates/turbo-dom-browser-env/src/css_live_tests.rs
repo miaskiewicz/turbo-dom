@@ -1,5 +1,393 @@
 use super::*;
 
+#[cfg(feature = "host-internals")]
+fn with_presented_batch(html: &str, test: impl FnOnce(&mut v8::PinScope)) {
+    super::tests::init_v8();
+    let isolate = &mut super::tests::new_isolate();
+    isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    install_independent_html(scope, html);
+    run_engine_script(
+        scope,
+        "__tsNs.installAnimationHost({now:()=>1000,frame(){},task(){}});",
+    )
+    .unwrap();
+    let owner = crate::host_internals::enter_context_document(context).unwrap();
+    test(scope);
+    drop(owner);
+    reset();
+}
+
+#[cfg(feature = "host-internals")]
+fn presented_batch_fixture(depth: usize, count: usize) -> String {
+    let mut html = "<!doctype html><style>@keyframes probe{from{width:10px}to{width:20px}}.ancestor{display:block;font:16px/20px serif;color:rgb(1,2,3)}.target{display:block;animation:probe 1000ms linear both}</style>".to_owned();
+    for _ in 0..depth {
+        html.push_str("<div class=ancestor>");
+    }
+    for index in 0..count {
+        html.push_str(&format!("<div class=target id=target{index}></div>"));
+    }
+    for _ in 0..depth {
+        html.push_str("</div>");
+    }
+    html
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_shared_ancestors_require_only_one_underlying_cascade_each() {
+    use crate::host_internals as host;
+    let mut rows = Vec::new();
+    for (depth, count) in [(4, 1), (4, 8), (8, 1), (8, 16)] {
+        with_presented_batch(&presented_batch_fixture(depth, count), |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..count)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            let warm = host::sample_presented_effects(scope, document, &targets).unwrap();
+            assert_eq!(warm.targets.len(), count);
+            let before = super::cascade_runs();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let cascades = super::cascade_runs() - before;
+            assert_eq!(sample.targets.len(), count);
+            for target in &sample.targets {
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert_eq!(target.css_animation_names, ["probe"]);
+                assert!(transition.is_empty());
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == "width")
+                        .unwrap()
+                        .value,
+                    "10px"
+                );
+            }
+            eprintln!("public batch depth={depth} targets={count} fresh_cascades={cascades}");
+            rows.push((depth, count, cascades));
+        });
+    }
+    // Every selected root must still run fresh; shared ordinary ancestors
+    // (including HTML/BODY) need only one fresh underlying cascade.
+    assert!(
+        rows.iter()
+            .all(|(depth, count, cascades)| *cascades >= *count as u64
+                && *cascades <= (count + depth + 2) as u64),
+        "{rows:?}"
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_volatile_ancestors_keep_the_original_per_root_reuse_bound() {
+    use crate::host_internals as host;
+    let mut rows = Vec::new();
+    for (depth, count) in [(2, 1), (4, 1), (4, 4)] {
+        let html = presented_batch_fixture(depth, count)
+            .replace(
+                "@keyframes probe",
+                "@keyframes ancestor{from{opacity:.4}to{opacity:.8}}@keyframes probe",
+            )
+            .replace(
+                ".ancestor{display:block;",
+                ".ancestor{animation:ancestor 1000ms linear both;display:block;",
+            );
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..count)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            host::sample_presented_effects(scope, document, &targets).unwrap();
+            let before = super::cascade_runs();
+            let validations = super::effect_validations();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let cascades = super::cascade_runs() - before;
+            let visits = super::effect_validations() - validations;
+            assert_eq!(sample.targets.len(), depth + count);
+            for target in &sample.targets {
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert!(transition.is_empty());
+                let expected = if target.css_animation_names == ["probe"] {
+                    ("width", "10px")
+                } else {
+                    assert_eq!(target.css_animation_names, ["ancestor"]);
+                    ("opacity", "0.4")
+                };
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == expected.0)
+                        .unwrap()
+                        .value,
+                    expected.1
+                );
+            }
+            // A fresh map per selected root was the original behavior. Active
+            // ancestor roots are also discovered: their path depths are 3..D+2.
+            let original = count * (depth + 3) + depth * (depth + 5) / 2;
+            eprintln!("volatile ancestors depth={depth} leaves={count} cascades={cascades} original_bound={original} validation_visits={visits}");
+            rows.push((depth, count, cascades, original, visits));
+        });
+    }
+    assert!(
+        rows.iter()
+            .all(|(_, _, cascades, bound, visits)| *cascades <= *bound as u64
+                && *visits <= 2 * *bound as u64),
+        "{rows:?}"
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_inherited_context_reports_validation_work_with_exact_values() {
+    use crate::host_internals as host;
+    for depth in [2, 4, 8] {
+        let html =
+            presented_batch_fixture(depth, 4).replace("font:16px/20px serif;color:rgb(1,2,3)", "");
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..4)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            host::sample_presented_effects(scope, document, &targets).unwrap();
+            let before = super::cascade_runs();
+            let validations = super::effect_validations();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let cascades = super::cascade_runs() - before;
+            let visits = super::effect_validations() - validations;
+            assert_eq!(sample.targets.len(), 4);
+            for target in &sample.targets {
+                assert_eq!(target.css_animation_names, ["probe"]);
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert!(transition.is_empty());
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == "width")
+                        .unwrap()
+                        .value,
+                    "10px"
+                );
+            }
+            eprintln!("inherited context depth={depth} leaves=4 cascades={cascades} validation_visits={visits}");
+            // Three later siblings each import the single parent-dependency chain
+            // of D ordinary ancestors plus HTML/BODY, once within that read.
+            assert!(
+                visits <= 3 * (depth + 2) as u64,
+                "depth={depth} validation_visits={visits}"
+            );
+        });
+    }
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_observes_real_ancestor_mutation_between_selected_roots() {
+    use crate::host_internals as host;
+    with_presented_batch(&presented_batch_fixture(4, 2), |scope| {
+        let (root, targets) = host::with_tree(|tree| {
+            (
+                tree.root(),
+                ["#target0", "#target1"].map(|selector| tree.query_selector(selector).unwrap()),
+            )
+        })
+        .unwrap();
+        let document = host::wrap(scope, root);
+        host::sample_presented_effects(scope, document, &targets).unwrap();
+        // A trusted host-boundary witness performs a real native mutation, not a
+        // fabricated stamp. The public sampler must not reuse the old ancestor.
+        run_engine_script(scope,"globalThis.batchRefreshCalls=0;const originalBatchRefresh=__tsNs.refreshCssEffectInputs;__tsNs.refreshCssEffectInputs=function(...args){if(++batchRefreshCalls===2)document.querySelector('.ancestor').style.display='none';return Reflect.apply(originalBatchRefresh,this,args);};globalThis.restoreBatchRefresh=()=>{__tsNs.refreshCssEffectInputs=originalBatchRefresh;};").unwrap();
+        let sample = host::sample_presented_effects(scope, document, &targets);
+        run_engine_script(scope, "restoreBatchRefresh();").unwrap();
+        let sample = sample.unwrap();
+        let target = sample
+            .targets
+            .iter()
+            .find(|target| target.element == targets[1])
+            .unwrap();
+        let host::PresentedTargetState::Certified {
+            animation,
+            transition,
+        } = &target.presentation
+        else {
+            panic!("{sample:?}")
+        };
+        assert!(
+            animation.is_empty(),
+            "hidden later root kept stale contribution: {sample:?}"
+        );
+        assert!(transition.is_empty());
+    });
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_batch_selected_ancestor_order_preserves_each_current_css_hook() {
+    use crate::host_internals as host;
+    let html="<!doctype html><style>@keyframes outer{from{width:10px}to{width:20px}}@keyframes inner{from{width:30px}to{width:40px}}#parent{animation:outer 1000ms linear both}#child{animation:inner 1000ms linear both}</style><div id=parent><div id=child></div></div>";
+    with_presented_batch(html, |scope| {
+        let (root, [parent, child]) = host::with_tree(|tree| {
+            (
+                tree.root(),
+                ["#parent", "#child"].map(|selector| tree.query_selector(selector).unwrap()),
+            )
+        })
+        .unwrap();
+        let document = host::wrap(scope, root);
+        host::sample_presented_effects(scope, document, &[parent, child]).unwrap();
+        for order in [[child, parent], [parent, child]] {
+            let before = super::cascade_runs();
+            let sample = host::sample_presented_effects(scope, document, &order).unwrap();
+            assert!(
+                super::cascade_runs() - before >= 2,
+                "selected roots were not refreshed"
+            );
+            for (handle, name, width) in [(parent, "outer", "10px"), (child, "inner", "30px")] {
+                let target = sample
+                    .targets
+                    .iter()
+                    .find(|target| target.element == handle)
+                    .unwrap();
+                assert_eq!(target.css_animation_names, [name]);
+                let host::PresentedTargetState::Certified {
+                    animation,
+                    transition,
+                } = &target.presentation
+                else {
+                    panic!("{sample:?}")
+                };
+                assert_eq!(
+                    animation
+                        .iter()
+                        .find(|pair| pair.name == "width")
+                        .unwrap()
+                        .value,
+                    width
+                );
+                assert!(transition.is_empty());
+            }
+        }
+    });
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn inspection_batch_revalidates_native_cssom_live_media_and_parent_inputs() {
+    for (name, rule, mutation) in [
+        ("inline", "", "parent.style.fontSize='32px'"),
+        (
+            "selector",
+            "#parent.changed{font-size:32px}",
+            "parent.className='changed'",
+        ),
+        (
+            "cssom",
+            "",
+            "document.styleSheets[0].insertRule('#parent{font-size:32px}')",
+        ),
+        (
+            "live",
+            "#parent:has(input:invalid){font-size:32px}",
+            "control.setCustomValidity('invalid')",
+        ),
+        (
+            "media",
+            "@media(max-width:600px){#parent{font-size:32px}}",
+            "innerWidth=500",
+        ),
+        (
+            "parent",
+            "#other{font-size:32px}",
+            "document.getElementById('other').append(parent)",
+        ),
+    ] {
+        let html=format!("<!doctype html><style>{rule}</style><div id=parent><input id=control><div><span id=first></span><span id=second></span></div></div><div id=other></div>");
+        let code = format!(
+            r#"(()=>{{
+          innerWidth=1000;const ns=__cssTestNs,parent=document.getElementById('parent'),control=document.getElementById('control'),batch=ns.createCssEffectInputBatch();
+          const first=ns.refreshCssEffectInputs(document.getElementById('first'),batch),before=ns.computedStyleValue(first,'font-size');
+          {mutation};
+          const second=ns.refreshCssEffectInputs(document.getElementById('second'),batch);
+          return JSON.stringify([before,ns.computedStyleValue(second,'font-size')]);
+        }})()"#
+        );
+        assert_eq!(
+            run(&html, &code),
+            serde_json::json!(["16px", "32px"]),
+            "{name}"
+        );
+    }
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn inspection_batch_revalidates_font_probe_without_a_tree_mutation() {
+    use crate::host_internals as host;
+    with_presented_batch(
+        "<!doctype html><div><span id=first></span><span id=second></span></div>",
+        |scope| {
+            run_engine_script(scope,"globalThis.fontBatch=__tsNs.createCssEffectInputBatch();globalThis.beforeBatchFont=__tsNs.computedStyleValue(__tsNs.refreshCssEffectInputs(document.getElementById('first'),fontBatch),'font-size');").unwrap();
+            let before = host::with_tree(|tree| tree.version).unwrap();
+            assert!(set_computed_font_defaults(
+                scope.get_current_context(),
+                "serif",
+                32.0
+            ));
+            assert_eq!(host::with_tree(|tree| tree.version).unwrap(), before);
+            run_engine_script(scope,"globalThis.afterBatchFont=__tsNs.computedStyleValue(__tsNs.refreshCssEffectInputs(document.getElementById('second'),fontBatch),'font-size');").unwrap();
+            let global = scope.get_current_context().global(scope);
+            for (name, expected) in [("beforeBatchFont", "16px"), ("afterBatchFont", "32px")] {
+                let key = v8::String::new(scope, name).unwrap();
+                assert_eq!(
+                    global
+                        .get(scope, key.into())
+                        .unwrap()
+                        .to_rust_string_lossy(scope),
+                    expected
+                );
+            }
+        },
+    );
+}
+
 fn run(html: &str, code: &str) -> serde_json::Value {
     run_with_font_defaults(html, code, None)
 }
@@ -190,6 +578,71 @@ fn native_style_text_ignores_own_getters_and_preserves_sheet_identity_until_actu
         value,
         serde_json::json!({"reads":0,"retained":true,"first":".real","changed":true,"current":".updated","oldCount":2})
     );
+}
+
+#[test]
+fn private_sheet_state_reads_canonical_metadata_without_public_hooks() {
+    let value = run(
+        "<style id=s media=print>.real {color:red}</style>",
+        r#"(()=>{
+      const element=document.getElementById('s'),sheet=element.sheet;
+      const first=__cssTestHost.readSheetState(sheet);
+      element.setAttribute('media','screen and (min-width: 10px)');sheet.disabled=true;
+      let reads=0;
+      for(const [object,key] of [[element,'getAttribute'],[sheet,'cssRules'],[sheet,'disabled'],[sheet,'media']])Object.defineProperty(object,key,{configurable:true,get(){reads++;throw Error('public hook');}});
+      const savedMap=Map.prototype.get,savedPop=Array.prototype.pop,savedPush=Array.prototype.push;
+      Map.prototype.get=Array.prototype.pop=Array.prototype.push=function(){reads++;throw Error('prototype hook');};
+      let current;try{current=__cssTestHost.readSheetState(sheet);}finally{Map.prototype.get=savedMap;Array.prototype.pop=savedPop;Array.prototype.push=savedPush;}
+      let forged='';try{__cssTestHost.readSheetState({});}catch(error){forged=error.name;}
+      return JSON.stringify({first,current,reads,forged,publicMethod:typeof CSSStyleSheet.prototype.readSheetState});
+    })()"#,
+    );
+    assert_eq!(
+        value["first"],
+        serde_json::json!({"cacheable":true,"disabled":false,"media":"print"})
+    );
+    assert_eq!(
+        value["current"],
+        serde_json::json!({"cacheable":true,"disabled":true,"media":"screen and (min-width: 10px)"})
+    );
+    assert_eq!(value["reads"], 0);
+    assert_eq!(value["forged"], "TypeError");
+    assert_eq!(value["publicMethod"], "undefined");
+}
+
+#[test]
+fn private_sheet_state_excludes_import_graphs_until_the_import_is_removed() {
+    let value = run(
+        "<style id=s>@import url('child.css'); @media screen { .real {color:red} }</style>",
+        r#"(()=>{
+      const sheet=document.getElementById('s').sheet;
+      const before=__cssTestHost.readSheetState(sheet);
+      __cssTestHost.attachImport(sheet.cssRules[0],sheet,'https://sheet.test/cycle.css',undefined,true);
+      const cyclic=__cssTestHost.readSheetState(sheet);
+      const exportCycle=__cssTestHost.exportSheet(sheet).rules[0].styleSheet.cycle;
+      sheet.deleteRule(0);
+      return JSON.stringify({before,cyclic,after:__cssTestHost.readSheetState(sheet),exportCycle});
+    })()"#,
+    );
+    assert_eq!(value["before"]["cacheable"], false);
+    assert_eq!(value["cyclic"]["cacheable"], false);
+    assert_eq!(value["after"]["cacheable"], true);
+    assert_eq!(value["exportCycle"], true);
+}
+
+#[test]
+fn private_sheet_state_preserves_the_existing_export_rule_budget() {
+    let value = run(
+        "",
+        r#"(()=>{
+      const sheet=new CSSStyleSheet();sheet.replaceSync('.x{color:red}'.repeat(20001));
+      const state=__cssTestHost.readSheetState(sheet);
+      let refusal='';try{__cssTestHost.exportSheet(sheet);}catch(error){refusal=error.name;}
+      return JSON.stringify({state,refusal});
+    })()"#,
+    );
+    assert_eq!(value["state"]["cacheable"], false);
+    assert_eq!(value["refusal"], "RangeError");
 }
 
 #[test]
@@ -1862,5 +2315,143 @@ fn jsdom_media_mode_imports_follow_jsdom() {
     assert_eq!(
         value,
         serde_json::json!({"a":"rgb(0, 0, 2)","b":"rgb(0, 0, 2)","c":"rgb(0, 0, 0)","d":"rgb(0, 0, 0)","e":"rgb(0, 0, 2)","f":"rgb(0, 0, 0)"})
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn presented_selection_membership_scales_without_cubic_identity_work() {
+    use crate::host_internals as host;
+    let mut rows = Vec::new();
+    for (depth, count) in [
+        (4, 16),
+        (4, 32),
+        (4, 64),
+        (4, 128),
+        (4, 451),
+        (8, 16),
+        (12, 16),
+        (16, 16),
+    ] {
+        let html = presented_batch_fixture(depth, count)
+            .replace("animation:probe 1000ms linear both", "width:100px");
+        with_presented_batch(&html, |scope| {
+            let (root, targets) = host::with_tree(|tree| {
+                (
+                    tree.root(),
+                    (0..count)
+                        .map(|index| tree.query_selector(&format!("#target{index}")).unwrap())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap();
+            let document = host::wrap(scope, root);
+            let before = super::cascade_runs();
+            let validation_before = super::effect_validations();
+            let membership_before = super::presented_membership();
+            let started = std::time::Instant::now();
+            let sample = host::sample_presented_effects(scope, document, &targets).unwrap();
+            let elapsed = started.elapsed();
+            let cascades = super::cascade_runs() - before;
+            let validations = super::effect_validations() - validation_before;
+            let membership_after = super::presented_membership();
+            let membership = membership_after.0 - membership_before.0;
+            let probes = membership_after.1 - membership_before.1;
+            assert_eq!(
+                sample
+                    .targets
+                    .iter()
+                    .map(|target| target.element)
+                    .collect::<Vec<_>>(),
+                targets
+            );
+            assert!(sample.targets.iter().all(|target|matches!(&target.presentation,host::PresentedTargetState::Certified{animation,transition}if animation.is_empty()&&transition.is_empty())));
+            eprintln!("selection-scaling depth={depth} targets={count} cascades={cascades} validations={validations} identity_comparisons={membership} set_operations={probes} elapsed_us={}",elapsed.as_micros());
+            rows.push((depth, count, membership + probes));
+        });
+    }
+    assert!(
+        rows.iter()
+            .all(|(_, count, membership)| *membership <= (*count as u64).pow(2)),
+        "quadratic upper bound for explicit selection identity comparisons: {rows:?}"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn computed_font_shared_default_preferences_preserve_chrome159_initial_and_inherited_fonts() {
+    use sha2::{Digest, Sha256};
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/default-profile-159/CHROME159.json"
+    ))
+    .unwrap();
+    assert_eq!(fixture["browser"], "159.0.8154.6");
+    assert_eq!(
+        fixture["casesSha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!(
+                "../tests/fixtures/default-profile-159/cases.json"
+            ))
+        )
+    );
+    assert_eq!(
+        fixture["fixtureSha256"],
+        format!(
+            "{:x}",
+            Sha256::digest(include_bytes!(
+                "../tests/fixtures/default-profile-159/fixture.mjs"
+            ))
+        )
+    );
+    let actual = run("<!doctype html><body><div id=fi style='font-family:initial'></div><div id=fh style='font-family:inherit'></div><div id=si style='font-size:initial'></div><div id=sh style='font-size:inherit'></div><div id=ci style='color:initial'></div><div id=ch style='color:inherit'></div></body>", r#"JSON.stringify([
+        ['family-initial','fi','font-family'],['family-inherit','fh','font-family'],
+        ['size-initial','si','font-size'],['size-inherit','sh','font-size'],
+        ['color-initial','ci','color'],['color-inherit','ch','color']
+    ].map(([id,node,property])=>({id,value:getComputedStyle(document.getElementById(node)).getPropertyValue(property)})))"#);
+    for row in actual.as_array().unwrap() {
+        let expected = fixture["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["id"] == row["id"])
+            .unwrap();
+        let values = expected["initial"]["values"].as_object().unwrap();
+        assert_eq!(
+            row["value"],
+            *values.values().next().unwrap(),
+            "{}",
+            row["id"]
+        );
+    }
+}
+
+#[test]
+fn computed_font_shared_host_override_rejections_keep_the_original_native_context_slot() {
+    tests::init_v8();
+    let isolate = &mut crate::browser_env::tests::new_isolate();
+    v8::scope!(let scope, isolate);
+    let context = v8::Context::new(scope, Default::default());
+    let scope = &mut v8::ContextScope::new(scope, context);
+    assert!(set_computed_font_defaults(context, "monospace", 18.0));
+    for (family, size) in [
+        ("", 16.0),
+        ("\u{00a0}", 16.0),
+        ("serif", 0.0),
+        ("serif", f64::NAN),
+        ("serif", f64::INFINITY),
+    ] {
+        assert!(!set_computed_font_defaults(context, family, size));
+    }
+    install_with_html(scope, "<!doctype html><body><div id=x style='font-family:initial;font-size:inherit'></div></body>");
+    let source = v8::String::new(scope, "JSON.stringify((()=>{const style=getComputedStyle(document.getElementById('x'));return[style.fontFamily,style.fontSize,typeof globalThis.__computedFontContext]})())").unwrap();
+    let result = v8::Script::compile(scope, source, None)
+        .and_then(|script| script.run(scope))
+        .unwrap();
+    let result: serde_json::Value =
+        serde_json::from_str(&result.to_rust_string_lossy(scope)).unwrap();
+    assert_eq!(
+        result,
+        serde_json::json!(["monospace", "18px", "undefined"])
     );
 }

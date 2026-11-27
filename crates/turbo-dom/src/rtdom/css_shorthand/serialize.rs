@@ -620,6 +620,27 @@ fn ser_timeline_trigger(v: &Values<'_>) -> String {
         .join(", ")
 }
 
+pub(super) fn computed_value(grammar: &str, texts: &[&str]) -> String {
+    match grammar {
+        "background" => computed_background(&Values {
+            names: table::entry(grammar)
+                .expect("known canonical shorthand")
+                .longhands,
+            texts,
+        }),
+        "font" => font_for(
+            &Values {
+                names: table::entry(grammar)
+                    .expect("known canonical shorthand")
+                    .longhands,
+                texts,
+            },
+            true,
+        ),
+        _ => value(grammar, texts),
+    }
+}
+
 pub(super) fn value(grammar: &str, texts: &[&str]) -> String {
     let Some(entry) = table::entry(grammar) else {
         unreachable!("every table entry's grammar names a table entry (table::tests)");
@@ -936,6 +957,16 @@ fn non_normal(value: &str) -> &str {
 }
 
 fn font(v: &Values<'_>) -> String {
+    font_for(v, false)
+}
+fn computed_font_weight(value: &str, computed: bool) -> &str {
+    if computed && value == "400" {
+        "normal"
+    } else {
+        value
+    }
+}
+fn font_for(v: &Values<'_>, computed: bool) -> String {
     if !font_prefix_ok(v) {
         return String::new();
     }
@@ -954,7 +985,7 @@ fn font(v: &Values<'_>) -> String {
         }
     }
     let style = v.get("font-style");
-    let weight = v.get("font-weight");
+    let weight = computed_font_weight(v.get("font-weight"), computed);
     let size = v.get("font-size");
     let line_height = v.get("line-height");
     let family = v.get("font-family");
@@ -1051,18 +1082,52 @@ fn quoted_strings(text: &str) -> Vec<String> {
 
 // Each layer reads the same index of every column.
 #[allow(clippy::needless_range_loop)]
+const BACKGROUND_COMPONENTS: [&str; 8] = [
+    "background-image",
+    "background-position-x",
+    "background-position-y",
+    "background-size",
+    "background-repeat",
+    "background-attachment",
+    "background-origin",
+    "background-clip",
+];
+
+fn computed_background(v: &Values<'_>) -> String {
+    let columns = BACKGROUND_COMPONENTS.map(|name| layers(v.get(name)));
+    if columns.iter().any(|column| {
+        column.is_empty()
+            || column
+                .iter()
+                .any(|value| value.is_empty() || *value == INITIAL)
+    }) {
+        return String::new();
+    }
+    let count = columns[0].len();
+    (0..count)
+        .map(|index| {
+            let item = |column: usize| columns[column][index % columns[column].len()];
+            let position = format!("{} {} / {}", item(1), item(2), item(3));
+            joined(&[
+                if index + 1 == count {
+                    v.get("background-color")
+                } else {
+                    ""
+                },
+                item(0),
+                item(4),
+                item(5),
+                &position,
+                item(6),
+                item(7),
+            ])
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 fn background(v: &Values<'_>) -> String {
-    let names = [
-        "background-image",
-        "background-position-x",
-        "background-position-y",
-        "background-size",
-        "background-repeat",
-        "background-attachment",
-        "background-origin",
-        "background-clip",
-    ];
-    let columns = names.map(|name| layers(v.get(name)));
+    let columns = BACKGROUND_COMPONENTS.map(|name| layers(v.get(name)));
     // As many layers as the longest list; a shorter list leaves its value out of the later
     // layers, and an empty layer past the images is dropped.
     let count = columns.iter().map(Vec::len).max().unwrap_or(0);

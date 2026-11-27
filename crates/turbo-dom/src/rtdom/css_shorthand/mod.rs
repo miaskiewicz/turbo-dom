@@ -9,7 +9,9 @@
 //! directly are the embedder's: this module only reads them.
 mod block;
 mod components;
+mod computed;
 pub use components::LENGTH_UNITS;
+pub use computed::{computed_length, computed_length_expression, LengthContext, LengthError};
 mod grammar;
 mod longhand;
 mod math;
@@ -18,10 +20,11 @@ mod shape;
 mod table;
 
 pub use block::{
-    declarations, longhand_alias, DeclarationBlock, LonghandSpelling, LONGHAND_ALIASES,
+    declaration_ranges, declarations, longhand_alias, DeclarationBlock, LonghandSpelling,
+    LONGHAND_ALIASES,
 };
 use components::{components, has_substitution, substitution_text, CSS_WIDE};
-pub use longhand::{longhand_value, Spelled};
+pub use longhand::{longhand_value, longhand_value_css, Spelled};
 pub use table::{is_shorthand, longhands};
 
 /// One longhand a shorthand sets.
@@ -66,8 +69,16 @@ pub fn canonical(name: &str) -> Option<&'static str> {
 /// when the value is invalid for the shorthand (or `name` is not a shorthand).
 #[must_use]
 pub fn expand(name: &str, value: &str) -> Option<Vec<Longhand>> {
+    expand_trimmed(name, value.trim())
+}
+
+/// Strict CSS whitespace variant for the context-aware computed cascade.
+#[must_use]
+pub fn expand_css(name: &str, value: &str) -> Option<Vec<Longhand>> {
+    expand_trimmed(name, value.trim_matches([' ', '\t', '\n', '\r', '\x0c']))
+}
+fn expand_trimmed(name: &str, trimmed: &str) -> Option<Vec<Longhand>> {
     let entry = table::entry(name)?;
-    let trimmed = value.trim();
     if trimmed.is_empty() {
         return None;
     }
@@ -161,6 +172,16 @@ fn uniform_shorthand_value(values: &[Declaration<'_>], entry: &table::Entry) -> 
 /// when a longhand is missing, importance is mixed, or the values have no shorthand spelling.
 #[must_use]
 pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
+    shorthand_value_for(name, declarations, false)
+}
+/// Serialize a complete computed/used longhand set. Unlike declaration spelling,
+/// computed background keeps its full component order and repeats layer values;
+/// font omits numeric normal weight400. This never resolves missing/used values.
+#[must_use]
+pub fn computed_shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
+    shorthand_value_for(name, declarations, true)
+}
+fn shorthand_value_for(name: &str, declarations: &[Declaration<'_>], computed: bool) -> String {
     let Some(entry) = table::entry(name) else {
         return String::new();
     };
@@ -192,7 +213,11 @@ pub fn shorthand_value(name: &str, declarations: &[Declaration<'_>]) -> String {
         return String::new();
     }
     let texts: Vec<&str> = values.iter().map(|value| value.value).collect();
-    serialize::value(entry.grammar, &texts)
+    if computed {
+        serialize::computed_value(entry.grammar, &texts)
+    } else {
+        serialize::value(entry.grammar, &texts)
+    }
 }
 
 /// Shorthands that may represent `longhand`, in Chrome's preference order (most longhands

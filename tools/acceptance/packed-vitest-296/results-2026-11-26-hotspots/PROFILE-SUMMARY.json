@@ -1,0 +1,751 @@
+{
+  "legacy-native": {
+    "workerProfiles": 7,
+    "passingCases": 28,
+    "profiledTestMs": 159.15712299999993,
+    "sampledMs": {
+      "all": 1080.2500000000066,
+      "style": 1.5899999999999999
+    },
+    "disjointStyleMs": {
+      "legacy_cascade": 1.5899999999999999
+    },
+    "topStyleSelfMs": [
+      [
+        "cascade.mjs / buildIndex",
+        0.325
+      ],
+      [
+        "cascade.mjs / inheritFrom",
+        0.321
+      ],
+      [
+        "dom.mjs / visit",
+        0.315
+      ],
+      [
+        "cascade.mjs / getIndex",
+        0.315
+      ],
+      [
+        "cascade.mjs / resolveCascade",
+        0.314
+      ]
+    ],
+    "topStyleInclusiveMs": [
+      [
+        "cascade.mjs / resolveCascade",
+        1.5899999999999999
+      ],
+      [
+        "cascade.mjs / gcs",
+        1.5899999999999999
+      ],
+      [
+        "cascade.mjs / getIndex",
+        0.9550000000000001
+      ],
+      [
+        "cascade.mjs / buildIndex",
+        0.64
+      ],
+      [
+        "cascade.mjs / inheritFrom",
+        0.321
+      ]
+    ]
+  },
+  "legacy-wasm": {
+    "workerProfiles": 7,
+    "passingCases": 28,
+    "profiledTestMs": 162.9007929999999,
+    "sampledMs": {
+      "all": 1073.8590000000054,
+      "style": 1.89
+    },
+    "disjointStyleMs": {
+      "legacy_cascade": 1.579,
+      "other_style": 0.311
+    },
+    "topStyleSelfMs": [
+      [
+        "cascade.mjs / resolveCascade",
+        0.63
+      ],
+      [
+        "cascade.mjs / inheritFrom",
+        0.318
+      ],
+      [
+        "dom.mjs / visit",
+        0.316
+      ],
+      [
+        "cascade.mjs / getIndex",
+        0.315
+      ],
+      [
+        "cascade.mjs / gcs",
+        0.311
+      ]
+    ],
+    "topStyleInclusiveMs": [
+      [
+        "cascade.mjs / gcs",
+        1.89
+      ],
+      [
+        "cascade.mjs / resolveCascade",
+        1.579
+      ],
+      [
+        "cascade.mjs / getIndex",
+        0.631
+      ],
+      [
+        "cascade.mjs / inheritFrom",
+        0.318
+      ],
+      [
+        "cascade.mjs / buildIndex",
+        0.316
+      ]
+    ]
+  },
+  "rust-native": {
+    "workerProfiles": 7,
+    "passingCases": 28,
+    "profiledTestMs": 427.6204179999999,
+    "sampledMs": {
+      "all": 1392.6320000000087,
+      "style": 256.38299999999987
+    },
+    "disjointStyleMs": {
+      "backend_load": 14.847,
+      "encode_decode": 14.77,
+      "environment": 12.055,
+      "other_style": 44.311000000000014,
+      "capture_topology_state": 29.577000000000012,
+      "navigator_setup": 7.717999999999999,
+      "compile_prepare": 9.515,
+      "match_facts": 66.09799999999997,
+      "cascade_request": 55.60400000000002,
+      "result_projection": 0.9470000000000001,
+      "collect_style_sources": 0.9410000000000001
+    },
+    "topStyleSelfMs": [
+      [
+        "selectors.mjs / checkFactsArrayShape",
+        29.53800000000002
+      ],
+      [
+        "css-rust-wire.mjs / ownData",
+        29.213000000000015
+      ],
+      [
+        "css-gcs-factory.mjs / resolvedRow",
+        20.032
+      ],
+      [
+        " / dlopen",
+        13.126
+      ],
+      [
+        "css-rust-wire.mjs / encodeCssWire",
+        8.87
+      ],
+      [
+        "css-gcs-factory.mjs / replacement",
+        7.611999999999999
+      ],
+      [
+        "css-rust-wire.mjs / arrayData",
+        5.728000000000001
+      ],
+      [
+        "selectors.mjs / checkFactsArrayDependencies",
+        5.093
+      ],
+      [
+        "css-default-capture.mjs / guardInflation",
+        4.437
+      ],
+      [
+        "css-rust-wire.mjs / recordData",
+        4.435
+      ],
+      [
+        "css-rust-wire.mjs / decodeCssWire",
+        3.785
+      ],
+      [
+        "css-match-facts.mjs / uniqueRow",
+        3.766
+      ],
+      [
+        "css-rust-wire.mjs / field",
+        3.4629999999999996
+      ],
+      [
+        "css-shared-adapter.mjs / resolveRequest",
+        3.158
+      ],
+      [
+        "css-match-facts.mjs / collectFacts",
+        2.93
+      ],
+      [
+        "css-default-capture.mjs / selectorState",
+        2.886
+      ],
+      [
+        "css-match-facts.mjs / ordinaryRows",
+        2.8749999999999996
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collect",
+        2.8680000000000003
+      ],
+      [
+        "css-facts-navigator.mjs / put",
+        2.5580000000000003
+      ],
+      [
+        "selectors.mjs / compileCssSelectorProgram",
+        2.2439999999999998
+      ],
+      [
+        "css-default-capture.mjs / guardHelpers",
+        2.2159999999999997
+      ],
+      [
+        "css-gcs-factory.mjs / get",
+        2.214
+      ],
+      [
+        "css-shared-shadow-facts.mjs / queries",
+        2.205
+      ],
+      [
+        "css-default-capture.mjs / recordNode",
+        2.19
+      ],
+      [
+        "css-match-facts.mjs / makeScene",
+        1.911
+      ],
+      [
+        "css-default-capture.mjs / optionalScalar",
+        1.772
+      ],
+      [
+        "css-facts-navigator.mjs / array",
+        1.6560000000000001
+      ],
+      [
+        "selectors.mjs / scanTypeToken",
+        1.628
+      ]
+    ],
+    "topStyleInclusiveMs": [
+      [
+        "css-default.mjs / getComputedStyle",
+        256.38299999999987
+      ],
+      [
+        "css-shared-adapter.mjs / get",
+        235.77099999999987
+      ],
+      [
+        "css-gcs-factory.mjs / get",
+        235.45199999999988
+      ],
+      [
+        "css-shared-adapter.mjs / resolveRequest",
+        91.81399999999981
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collect",
+        66.09799999999997
+      ],
+      [
+        "css-match-facts.mjs / collect",
+        57.54499999999998
+      ],
+      [
+        "css-match-facts.mjs / collectFacts",
+        57.23199999999998
+      ],
+      [
+        "css-gcs-factory.mjs / resolvedRow",
+        55.60400000000002
+      ],
+      [
+        "css-rust-wire.mjs / encodeCssWire",
+        51.70900000000002
+      ],
+      [
+        "css-match-facts.mjs / ordinaryRows",
+        49.234000000000016
+      ],
+      [
+        "css-shared-adapter.mjs / captureSources",
+        47.532000000000004
+      ],
+      [
+        "css-rust-wire.mjs / ownData",
+        42.83900000000002
+      ],
+      [
+        "css-match-facts.mjs / answers",
+        40.035000000000025
+      ],
+      [
+        "css-rust-wire.mjs / field",
+        39.60100000000002
+      ],
+      [
+        "css-rust-wire.mjs / recordData",
+        39.58700000000002
+      ],
+      [
+        "css-shared-adapter.mjs / encodeRequest",
+        36.837000000000025
+      ],
+      [
+        "css-rust-wire.mjs / arrayData",
+        35.446000000000026
+      ],
+      [
+        "css-default-profile.mjs / captureSnapshot",
+        30.53000000000001
+      ],
+      [
+        "css-default-capture.mjs / capture",
+        29.577000000000012
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collectMetadata",
+        15.582000000000003
+      ],
+      [
+        "css-shared-shadow-facts.mjs / compileSharedShadowFacts",
+        15.582000000000003
+      ],
+      [
+        "css-artifact.mjs / resolve",
+        15.479
+      ],
+      [
+        "css-backend.mjs / resolve",
+        15.479
+      ],
+      [
+        "css-artifact.mjs / loadCssModule",
+        14.847
+      ],
+      [
+        "css-backend.mjs / load",
+        14.847
+      ],
+      [
+        "css-artifact.mjs / loadNative",
+        14.847
+      ],
+      [
+        "css-backend.mjs / native",
+        14.847
+      ],
+      [
+        "css-match-facts.mjs / compileItem",
+        13.654
+      ],
+      [
+        "css-match-facts.mjs / compileMetadata",
+        13.654
+      ],
+      [
+        "css-match-facts.mjs / compileCssPrimitiveMatchFacts",
+        13.654
+      ],
+      [
+        "css-default-profile.mjs / readContext",
+        12.055
+      ],
+      [
+        "css-gcs-factory.mjs / synchronize",
+        9.515
+      ],
+      [
+        "css-default-capture.mjs / visitRoot",
+        9.196
+      ],
+      [
+        "css-gcs-factory.mjs / replacement",
+        8.881
+      ],
+      [
+        "css-shared-adapter.mjs / captureNavigator",
+        8.626
+      ],
+      [
+        "css-default-profile.mjs / captureSelectorFacts",
+        8.626
+      ],
+      [
+        "css-default-capture.mjs / selectorInput",
+        8.389999999999999
+      ],
+      [
+        "css-default-capture.mjs / selectorFacts",
+        8.309
+      ],
+      [
+        "css-default-capture.mjs / visit",
+        8.248
+      ],
+      [
+        "css-facts-navigator.mjs / createCssFactsNavigator",
+        7.717999999999999
+      ],
+      [
+        "css-default-capture.mjs / selectorRow",
+        7.415
+      ],
+      [
+        "css-default-capture.mjs / recordNode",
+        6.966
+      ],
+      [
+        "css-facts-navigator.mjs / ",
+        6.768999999999999
+      ],
+      [
+        "css-facts-navigator.mjs / node",
+        6.768999999999999
+      ],
+      [
+        "css-facts-navigator.mjs / array",
+        6.768999999999999
+      ]
+    ]
+  },
+  "rust-wasm": {
+    "workerProfiles": 7,
+    "passingCases": 28,
+    "profiledTestMs": 735.5358759999999,
+    "sampledMs": {
+      "all": 1740.7390000000034,
+      "style": 540.9380000000004
+    },
+    "disjointStyleMs": {
+      "backend_load": 57.498000000000005,
+      "other_style": 60.53800000000005,
+      "environment": 28.421,
+      "capture_topology_state": 36.748000000000005,
+      "navigator_setup": 13.556000000000006,
+      "encode_decode": 14.974000000000004,
+      "compile_prepare": 106.5999999999998,
+      "match_facts": 77.21799999999998,
+      "cascade_request": 127.55599999999983,
+      "result_projection": 17.187000000000005,
+      "collect_style_sources": 0.642
+    },
+    "topStyleSelfMs": [
+      [
+        "css-rust-wire.mjs / ownData",
+        36.451
+      ],
+      [
+        " / Module",
+        34.23799999999999
+      ],
+      [
+        "selectors.mjs / checkFactsArrayShape",
+        32.47200000000001
+      ],
+      [
+        "03dc5452 / wasm-function[491]",
+        24.746000000000006
+      ],
+      [
+        " / js-to-wasm",
+        16.685000000000006
+      ],
+      [
+        "css-rust-wire.mjs / encodeCssWire",
+        11.494000000000003
+      ],
+      [
+        " / read",
+        10.222999999999999
+      ],
+      [
+        "03dc5452 / wasm-function[60]",
+        9.698000000000002
+      ],
+      [
+        "03dc5452 / wasm-function[3943]",
+        8.847
+      ],
+      [
+        "03dc5452 / wasm-function[19]",
+        7.945000000000001
+      ],
+      [
+        "turbo_dom_css.node.cjs / passStringToWasm0",
+        7.665999999999999
+      ],
+      [
+        "03dc5452 / wasm-function[3800]",
+        7.2330000000000005
+      ],
+      [
+        "selectors.mjs / checkFactsArrayDependencies",
+        7.1990000000000025
+      ],
+      [
+        "css-gcs-factory.mjs / get",
+        6.669000000000001
+      ],
+      [
+        " / Instance",
+        6.381000000000001
+      ],
+      [
+        "03dc5452 / wasm-function[3957]",
+        5.897
+      ],
+      [
+        "css-rust-wire.mjs / arrayData",
+        5.3690000000000015
+      ],
+      [
+        "03dc5452 / wasm-function[84]",
+        5.218999999999999
+      ],
+      [
+        "css-facts-navigator.mjs / put",
+        5.174
+      ],
+      [
+        "css-match-facts.mjs / ordinaryRows",
+        4.549
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collect",
+        4.447000000000001
+      ],
+      [
+        "css-rust-wire.mjs / field",
+        4.387
+      ],
+      [
+        "css-default-capture.mjs / guardInflation",
+        4.292000000000001
+      ],
+      [
+        "03dc5452 / wasm-function[50]",
+        4.24
+      ],
+      [
+        "css-rust-wire.mjs / decodeCssWire",
+        4.235
+      ],
+      [
+        "css-match-facts.mjs / uniqueRow",
+        4.143999999999999
+      ],
+      [
+        "03dc5452 / wasm-function[1776]",
+        3.8379999999999996
+      ],
+      [
+        "css-rust-wire.mjs / recordData",
+        3.826
+      ]
+    ],
+    "topStyleInclusiveMs": [
+      [
+        "css-default.mjs / getComputedStyle",
+        540.9380000000004
+      ],
+      [
+        "css-shared-adapter.mjs / get",
+        470.40499999999975
+      ],
+      [
+        "css-gcs-factory.mjs / get",
+        469.7559999999998
+      ],
+      [
+        "css-gcs-factory.mjs / resolvedRow",
+        127.55599999999983
+      ],
+      [
+        "css-gcs-factory.mjs / synchronize",
+        106.5999999999998
+      ],
+      [
+        "css-gcs-factory.mjs / replacement",
+        106.32199999999979
+      ],
+      [
+        "css-shared-adapter.mjs / resolveRequest",
+        105.66099999999985
+      ],
+      [
+        "03dc5452 / wasm-function[3976]",
+        80.99499999999993
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collect",
+        77.21799999999998
+      ],
+      [
+        "03dc5452 / wasm-function[3943]",
+        73.95099999999995
+      ],
+      [
+        "03dc5452 / wasm-function[115]",
+        72.37899999999999
+      ],
+      [
+        "css-match-facts.mjs / collect",
+        70.54100000000004
+      ],
+      [
+        "css-match-facts.mjs / collectFacts",
+        69.58000000000006
+      ],
+      [
+        "03dc5452 / wasm-function[19]",
+        65.104
+      ],
+      [
+        "03dc5452 / wasm-function[904]",
+        62.40900000000002
+      ],
+      [
+        "css-match-facts.mjs / ordinaryRows",
+        61.89200000000003
+      ],
+      [
+        "css-rust-wire.mjs / encodeCssWire",
+        61.52700000000007
+      ],
+      [
+        "css-shared-adapter.mjs / captureSources",
+        59.827
+      ],
+      [
+        "03dc5452 / wasm-function[133]",
+        58.05000000000003
+      ],
+      [
+        "css-artifact.mjs / resolve",
+        57.849
+      ],
+      [
+        "css-artifact.mjs / loadWasm",
+        57.498000000000005
+      ],
+      [
+        "css-backend.mjs / wasm",
+        57.498000000000005
+      ],
+      [
+        "css-backend.mjs / load",
+        57.498000000000005
+      ],
+      [
+        "css-backend.mjs / resolve",
+        57.498000000000005
+      ],
+      [
+        "css-artifact.mjs / loadCssModule",
+        54.306000000000004
+      ],
+      [
+        "css-match-facts.mjs / answers",
+        50.97000000000003
+      ],
+      [
+        "css-rust-wire.mjs / ownData",
+        50.03300000000003
+      ],
+      [
+        "css-rust-wire.mjs / field",
+        46.58300000000001
+      ],
+      [
+        "css-rust-wire.mjs / recordData",
+        46.281000000000006
+      ],
+      [
+        "css-shared-adapter.mjs / encodeRequest",
+        45.09500000000002
+      ],
+      [
+        "03dc5452 / wasm-function[236]",
+        44.73200000000001
+      ],
+      [
+        "css-rust-wire.mjs / arrayData",
+        41.800000000000004
+      ],
+      [
+        "03dc5452 / wasm-function[60]",
+        41.139000000000024
+      ],
+      [
+        "css-default-profile.mjs / captureSnapshot",
+        37.065000000000005
+      ],
+      [
+        "css-default-capture.mjs / capture",
+        36.748000000000005
+      ],
+      [
+        "03dc5452 / wasm-function[675]",
+        31.348999999999997
+      ],
+      [
+        "03dc5452 / wasm-function[491]",
+        29.429000000000002
+      ],
+      [
+        "css-default-profile.mjs / readContext",
+        28.421
+      ],
+      [
+        "03dc5452 / wasm-function[84]",
+        24.972000000000005
+      ],
+      [
+        "css-shared-adapter.mjs / finalizeResult",
+        20.72
+      ],
+      [
+        "css-shared-adapter.mjs / publicRow",
+        20.415
+      ],
+      [
+        "css-shared-adapter.mjs / call",
+        16.582000000000004
+      ],
+      [
+        "css-default-profile.mjs / invoke",
+        15.906
+      ],
+      [
+        "css-shared-shadow-facts.mjs / collectMetadata",
+        15.553000000000006
+      ],
+      [
+        "css-shared-shadow-facts.mjs / compileSharedShadowFacts",
+        15.553000000000006
+      ]
+    ]
+  }
+}

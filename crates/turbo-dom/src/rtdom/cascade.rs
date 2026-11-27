@@ -77,7 +77,7 @@ fn shorthand_of(prop: &str) -> Option<&'static str> {
 }
 
 /// Length properties whose bare `0` real browsers serialize as `0px`.
-const LENGTH_PROPS: &[&str] = &[
+pub(super) const LENGTH_PROPS: &[&str] = &[
     "width",
     "height",
     "min-width",
@@ -120,7 +120,7 @@ const BORDER_STYLES: &[&str] = &[
 ];
 
 /// Inheritable properties propagated down the flattened tree (curated set).
-const INHERITED: &[&str] = &[
+pub(super) const INHERITED: &[&str] = &[
     "color",
     "cursor",
     "direction",
@@ -219,67 +219,10 @@ fn expand_border_shorthand(map: &mut HashMap<String, String>, val: &str) {
     }
 }
 
-/// Strip a trailing `!important` (case-insensitive, surrounding whitespace) from a value.
-fn strip_important(v: &str) -> String {
-    let trimmed = v.trim_end();
-    let lower = trimmed.to_ascii_lowercase();
-    // match /\s*!\s*important\s*$/i — but the JS applied it after .trim() of the
-    // value; here we replicate `!<ws>important` at the (already trimmed) end.
-    if let Some(bang) = lower.rfind('!') {
-        let after = lower[bang + 1..].trim_start();
-        if after == "important" {
-            return trimmed[..bang].trim_end().to_string();
-        }
-    }
-    trimmed.to_string()
-}
-
 /// Parse a `prop:val;prop:val` declaration block into `map` (later wins).
 fn parse_decls(text: &str, map: &mut HashMap<String, String>) {
-    for decl in text.split(';') {
-        let Some(c) = decl.find(':') else { continue };
-        let name = decl[..c].trim().to_ascii_lowercase();
-        if name.is_empty() {
-            continue;
-        }
-        let raw = decl[c + 1..].trim();
-        let val = strip_important(raw);
-        set_prop(map, &name, &val);
-    }
-}
-
-/// Strip `/* … */` comments.
-fn strip_comments(css: &str) -> String {
-    let mut out = String::with_capacity(css.len());
-    let bytes = css.as_bytes();
-    let n = bytes.len();
-    let mut i = 0;
-    while i < n {
-        if i + 1 < n && bytes[i] == b'/' && bytes[i + 1] == b'*' {
-            i += 2;
-            while i + 1 < n && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
-                i += 1;
-            }
-            i += 2;
-        } else {
-            // push the char (handle UTF-8 boundaries via the str slice)
-            let ch_len = utf8_len(bytes[i]);
-            out.push_str(&css[i..(i + ch_len).min(n)]);
-            i += ch_len;
-        }
-    }
-    out
-}
-
-fn utf8_len(b: u8) -> usize {
-    if b < 0x80 {
-        1
-    } else if b < 0xE0 {
-        2
-    } else if b < 0xF0 {
-        3
-    } else {
-        4
+    for (name, value, _) in super::css_shorthand::declarations(text) {
+        set_prop(map, &name.to_ascii_lowercase(), &value);
     }
 }
 
@@ -343,71 +286,27 @@ fn style_source_hash(tree: &Tree, policy: &StylePolicy) -> u64 {
     hasher.finish()
 }
 
-/// Brace-depth scan: emit only depth-1 rules whose selector isn't an at-rule;
-/// the bodies of @media/@keyframes (nested braces) are skipped wholesale.
+/// Shared CSS Syntax, with the existing raw cascade's opaque grouping policy.
 fn parse_stylesheet(css: &str, start_order: u32, rules: &mut Vec<Rule>) -> u32 {
-    let css = strip_comments(css);
-    let bytes = css.as_bytes();
-    let n = bytes.len();
+    use super::computed_css::stylesheet::{legacy_sheet, SheetRule};
+    let css = super::query::legacy_css_source(css);
     let mut order = start_order;
-    let mut i = 0;
-    while i < n {
-        let j = scan_to_delimiter(bytes, i);
-        if j >= n {
-            break;
-        }
-        match bytes[j] {
-            b';' => {
-                order += 1;
-                i = j + 1;
-            }
-            b'}' => i = j + 1,
-            _ => i = parse_rule_block(&css, i, bytes, j, &mut order, rules),
+    for rule in legacy_sheet(&css) {
+        if let SheetRule::Style { selector, body } = rule {
+            // This adapter starts with a scalar source, and parser spans cannot split
+            // one scalar's UTF-16 pair. The richer computed API keeps original units.
+            let selector = String::from_utf16(selector.as_units()).expect("scalar legacy selector");
+            let body = String::from_utf16(body.as_units()).expect("scalar legacy declaration body");
+            // Only this legacy projection keeps its historical leading-separator
+            // recovery. The canonical rule tree/selector compiler stays strict.
+            let selector = selector
+                .trim_start_matches(|ch: char| ch == '}' || ch == ';' || ch.is_whitespace());
+            emit_rule_list(selector, &body, &mut order, rules);
+        } else {
+            order += 1;
         }
     }
     order
-}
-
-fn scan_to_delimiter(bytes: &[u8], start: usize) -> usize {
-    let mut j = start;
-    while j < bytes.len() && bytes[j] != b'{' && bytes[j] != b'}' && bytes[j] != b';' {
-        j += 1;
-    }
-    j
-}
-
-fn parse_rule_block(
-    css: &str,
-    sel_start: usize,
-    bytes: &[u8],
-    open: usize,
-    order: &mut u32,
-    rules: &mut Vec<Rule>,
-) -> usize {
-    let sel = css[sel_start..open].trim().to_string();
-    let k = skip_brace_block(bytes, open + 1);
-    if !sel.is_empty() && !sel.starts_with('@') {
-        let body = &css[open + 1..k.saturating_sub(1)];
-        emit_rule_list(&sel, body, order, rules);
-    } else {
-        *order += 1;
-    }
-    k
-}
-
-fn skip_brace_block(bytes: &[u8], start: usize) -> usize {
-    let n = bytes.len();
-    let mut depth = 1i32;
-    let mut k = start;
-    while k < n && depth > 0 {
-        match bytes[k] {
-            b'{' => depth += 1,
-            b'}' => depth -= 1,
-            _ => {}
-        }
-        k += 1;
-    }
-    k
 }
 
 fn emit_rule_list(sel: &str, body: &str, order: &mut u32, rules: &mut Vec<Rule>) {
@@ -1031,7 +930,7 @@ mod tests {
 
     #[test]
     fn strip_comments_and_multibyte() {
-        // CSS comment is stripped; a multibyte char survives (utf8_len path)
+        // CSS comments are ignored; multibyte selector text survives.
         let got = gcs_prop(
             "<style>/* note: \u{00e9}\u{4e2d} */ #x { color: red }</style><div id=x>hi</div>",
             "#x",
@@ -1183,16 +1082,23 @@ mod tests {
 
     #[test]
     fn important_stripped() {
-        // !important is stripped from the value (strip_important branch)
+        // The raw value excludes its declaration importance flag.
         let got = gcs_prop(
             "<div id=x style=\"color:red !important\">hi</div>",
             "#x",
             "color",
         );
         assert_eq!(got, "rgb(255, 0, 0)");
-        // direct helper coverage of the matched branch + the non-important passthrough
-        assert_eq!(strip_important("10px ! important"), "10px");
-        assert_eq!(strip_important("10px"), "10px");
+        for value in ["10px ! important", "10px"] {
+            assert_eq!(
+                gcs_prop(
+                    &format!("<div id=x style=\"width:{value}\"></div>"),
+                    "#x",
+                    "width"
+                ),
+                "10px"
+            );
+        }
     }
 
     #[test]
@@ -1208,19 +1114,13 @@ mod tests {
     }
 
     #[test]
-    fn utf8_len_three_and_four_byte() {
-        // direct helper: 1/2/3/4-byte lead bytes
-        assert_eq!(utf8_len(b'a'), 1);
-        assert_eq!(utf8_len(0xC3), 2); // é lead
-        assert_eq!(utf8_len(0xE4), 3); // 中 lead
-        assert_eq!(utf8_len(0xF0), 4); // 😀 lead
-                                       // and through strip_comments: a 4-byte emoji outside a comment survives
+    fn unicode_stylesheet_values_survive_comment_and_block_parsing() {
         let got = gcs_prop(
-            "<style>/* c */ #x{content:\"\u{1F600}\"; color:red}</style><div id=x>hi</div>",
+            "<style>/* c */ #x{--token:\"aé中😀\"; color:red}</style><div id=x>hi</div>",
             "#x",
-            "color",
+            "--token",
         );
-        assert_eq!(got, "rgb(255, 0, 0)");
+        assert_eq!(got, "\"aé中😀\"");
     }
 
     #[test]

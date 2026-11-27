@@ -29,22 +29,28 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    intra-workspace path dependency (turbo-dom-layout -> turbo-dom, turbo-dom-raster ->
    turbo-dom-layout, turbo-dom-browser-env -> turbo-dom), `Cargo.lock`, the README release
    line and `CHANGELOG.md`. `python3 scripts/check-versions.py` must pass. Rebuild both
-   WASM packages so their generated `pkg/package.json` and `pkg-web/package.json`
+   parser and lazy CSS WASM packages so generated `pkg/package.json`,
+   `pkg-web/package.json`, `pkg-css/package.json` and `pkg-css-web/package.json`
    versions match. `turbo-dom-v8` keeps its upstream-derived version unless the fork
    itself changes (then bump the patch in `crates/turbo-dom-v8/pins.json`, see its README).
 3. Use the CI toolchain (Rust 1.98.0 with Clippy, rustfmt, `wasm32-unknown-unknown`;
-   Rust 1.89 for the MSRV check) and install npm development dependencies. Point
+   Rust 1.89 for the MSRV check), Python 3.11 or newer for the artifact checker,
+   and install npm development dependencies. Point
    `RUSTY_V8_ARCHIVE` at a local prebuilt rusty_v8 150.4.0 static library for the V8 crates.
 4. Run the local gate (the CI jobs in `ci.yml` are the complete list):
 
    ```sh
-   npm run build
+   npm run build                  # parser-only build, unchanged default features
+   npm run build:css              # separate native-css / pkg-css / pkg-css-web
+   npm run check:css:host          # real native + Node WASM ABI; no fallback
    cargo test -p turbo-dom-parser --lib
    cargo test -p turbo-dom
    cargo test -p turbo-dom churn_alloc_gate -- --ignored --nocapture   # alone: process-global allocator
    cargo clippy -p turbo-dom -p turbo-dom-parser --all-targets -- -D warnings
    cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind -- -D warnings
    cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-runtime -- -D warnings
+   cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features napi-bind,css-backend -- -D warnings
+   cargo clippy -p turbo-dom-parser --all-targets --no-default-features --features wasm-bind,css-backend -- -D warnings
    cargo test -p turbo-dom-layout && cargo test -p turbo-dom-layout --features svg && cargo test -p turbo-dom-layout --features perf
    python3 scripts/check-baseline-red.py scripts/baseline-red/turbo-dom-layout-no-default-features.tsv -- -p turbo-dom-layout --no-default-features
    cargo test -p turbo-dom-raster
@@ -68,6 +74,23 @@ graph and consumer setup: [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md).
    `tools/release/mutation-audit-0.7.0.md`.
 6. Commit without bypassing the configured pre-commit coverage/conformance gate, push
    the release PR, and wait for every CI job to pass on that exact head revision.
+
+## 0.8.7 consumer preparation
+
+The candidate remains on `release/0.8.7` until its release PR is approved.
+Consumers pin one immutable producer revision for every DOM-family patch and
+refresh their Cargo lockfiles together. A successful build against one family
+member does not establish a coherent dependency graph.
+
+Review exhaustive `CascadeOrigin` matches for `Animation` and `Transition`,
+and prefer `Fragment::new` when constructing layout fragments. The new public
+`establishes_stacking_context` field must be supplied by struct literals.
+See the 0.8.7 changelog and its public API report for the full migration surface.
+
+The npm `domBackend` flag defaults to `'js'`. This candidate reports a setup error
+for `'rust'` because the Node browser-env host port is unavailable. Packed
+Rust CSS experiments in the README are explicitly identified by artifact and
+source revision; they do not change the release branch's default CSS resolver.
 
 ## Merge, tag and monitor
 
@@ -100,14 +123,17 @@ Pushing a `v*` tag is the publish trigger and requires explicit release authoriz
      turbo-dom-raster -> turbo-dom-browser-env. A version already on crates.io is
      skipped; each published crate is awaited in the index before the next starts, so
      the next one's packaged-consumer verification resolves it.
-4. **npm** (`NPM_TOKEN`, after crates) — bundles the ci job's napi artifacts into the
-   one scoped package (no per-platform subpackages). It fails unless all five addons are
-   there (linux x64 gnu/musl, linux arm64 gnu, darwin arm64, win32 x64) and no other
-   `.node` is in the package root. It builds no native addon: it runs only
-   `build:wasm:pkg` and `build:wasm:web`, never `prepublishOnly`, which would rebuild the
-   linux-x64 addon over the CI-built one. It reruns the glibc guard on the two linux-gnu
-   addons that ship, then runs `npm publish --ignore-scripts`. The job is skipped when that
-   version is already on npm.
+4. **npm** (`NPM_TOKEN`, after crates) — bundles the ci job's parser and lazy CSS
+   napi artifacts into one scoped package. It requires exactly five parser addons
+   in the package root and five matching `native-css/turbo-dom-css.<platform>.node`
+   addons (linux x64 gnu/musl, linux arm64 gnu, darwin arm64, win32 x64). Unexpected,
+   duplicate, missing or empty native artifacts fail before copying. It builds no
+   native addon: only `build:wasm:pkg`, `build:wasm:web`, `build:css:wasm:pkg` and
+   `build:css:wasm:web`, never `prepublishOnly`. `check:artifacts` then verifies the
+   complete native/WASM file set, all four WASM package versions and WASM headers,
+   and records exact byte sizes/SHA256s. The glibc guard covers parser and CSS GNU
+   addons. `npm publish --ignore-scripts` ships those reviewed files; the job is
+   skipped when that version already exists on npm.
 5. **napi-prebuilts** (`contents: write`, after ci + preflight; turbo-dom#479) — downloads
    the same `bindings-*` artifacts the ci job uploaded and attaches
    `turbo-dom-parser.<platform>.node` for `darwin-arm64`, `linux-x64-gnu`,
@@ -181,3 +207,63 @@ To retire the fork, switch turbo-dom-raster back to `rav1d` once upstream publis
 that has the #1497 fix and an unwinding C ABI (memorysafety/rav1d#1521). Keep the
 single-threaded `catch_unwind` decode in `src/avif.rs`. Then remove `crates/turbo-dom-rav1d`
 and its CI guard steps.
+
+## Lazy npm CSS payloads
+
+The plain `build`, `build:wasm:pkg` and `build:wasm:web` parser commands retain their
+existing feature sets and outputs. The package carries the layout engine's existing
+bundled-font attribution/license files and copied-code notices alongside the CSS
+binaries; font programs stay inside the payload rather than being duplicated as
+standalone package files. CSS uses an explicit optional `css-backend`
+feature with separate output names; it never overwrites parser `index.js`, types,
+`.node` or WASM files. Native builds preserve caller cache/jobs/flags and the
+existing napi-rs dynamic-CRT policy for musl. `./css-wasm` exposes the optional web
+initialization module without adding a runtime selection mode.
+
+`npm test`, `test:cov`, `test:vitest` and `test:jest` require real matching CSS
+payloads before their behavior suites. Optional backend absence can remain a
+runtime compatibility path for parser-only injection, but cannot make full
+integration/release tests silently exercise only the old partial cascade.
+`check:css:host -- --native-only` loads only native code and does not inspect or
+load WebAssembly. Manual `prepublishOnly` requires the complete release matrix;
+a host-only build cannot publish an incomplete package.
+
+For restricted local builds, provide explicit cached build tools:
+
+```sh
+export TURBO_DOM_WASM_BINDGEN=/path/to/cached/wasm-bindgen
+export TURBO_DOM_WASM_OPT=/path/to/cached/wasm-opt
+npm run build:css
+```
+
+These are build-tool paths, not runtime modes. Both must be present. This route
+runs locked **offline** Cargo, requires wasm-bindgen to match `Cargo.lock` exactly,
+then uses the reviewed wasm-opt117 with `-Oz` (`BINARYEN_CORES` defaults to1).
+It never invokes wasm-pack's installer or falls back to another/unoptimized
+payload. Node/web packages are assembled in scratch space and replace their prior
+working output only after every stage succeeds. With neither override, the
+existing wasm-pack build route remains available for CI. `plan --target <triple>`
+prints commands without invoking compilers/tools; its source path is a hint,
+while actual copy paths come from post-build locked Cargo metadata, including a
+Cargo-config-only `target-dir`.
+
+Lazy refers to loading: the existing single npm bundle now includes additional
+CSS bytes, so parser-only download size is **not** claimed unchanged. Measure the
+full multi-platform tarball separately. Actual cold-load/retained-byte metrics and
+independent parser startup comparisons remain integration gates; logical
+`retainedBytes` is a shared CSS-payload lower bound, not a heap/RSS measurement.
+
+### Shared CSS WASM assembly
+
+`npm run build:css` builds both raw generated CSS WASM targets and then runs
+`npm run assemble:css`. Individual `build:css:wasm:*` commands are intermediate
+builds; run assembly after both before packing. The assembler preserves existing
+`pkg-css`/`pkg-css-web` loader and exact declaration paths while sharing one
+byte-identical WASM file under `css-wasm`. It changes only each generated loader's
+leading type-reference comment, records original/output/body hashes, and rejects
+unreviewed imports/snippets, mismatched binary bytes or declaration drift.
+`check:artifacts` requires this assembly and the complete native matrix. Raw
+private `pkg-css*/turbo_dom_css_bg.wasm` paths are no longer distributed; the
+exported web initializer and explicit bytes/module injection remain supported.
+See `tools/release/npm-css-dedup-review-0.8.7.md` for measured host-only receipts
+and the separate, unimplemented optional-platform-package proposal.

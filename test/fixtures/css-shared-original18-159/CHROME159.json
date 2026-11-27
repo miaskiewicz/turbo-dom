@@ -1,0 +1,127 @@
+{
+  "browser": "159.0.8154.6",
+  "executableSha256": "605805a90bbf1ed37d35929c086a829a7b4e67d4324032e813853de61d0b7170",
+  "casesSha256": "958fafd11c16891215f122ffd0c6d48824e40453b8cc6bf891703da2cf846bd7",
+  "probeSha256": "1bf4d96befdd3a2826e28832dd27b63de6604c986832cfde429ec2829871de27",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "result": [
+    {
+      "id": "media-active",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "media-inactive",
+      "values": {
+        "color": "rgb(255, 0, 0)"
+      }
+    },
+    {
+      "id": "supports-valid",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "supports-invalid",
+      "values": {
+        "color": "rgb(255, 0, 0)"
+      }
+    },
+    {
+      "id": "layer-order",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "layer-important",
+      "values": {
+        "color": "rgb(255, 0, 0)"
+      }
+    },
+    {
+      "id": "custom-inherited-case",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "custom-cycle-fallback",
+      "values": {
+        "color": "rgb(0, 128, 0)"
+      }
+    },
+    {
+      "id": "explicit-inherit",
+      "values": {
+        "color": "rgb(0, 0, 255)",
+        "padding-left": "20px"
+      }
+    },
+    {
+      "id": "css-wide",
+      "values": {
+        "color": "rgb(0, 0, 0)",
+        "margin-left": "0px"
+      }
+    },
+    {
+      "id": "font-units",
+      "values": {
+        "font-size": "40px",
+        "width": "20px",
+        "margin-left": "40px"
+      }
+    },
+    {
+      "id": "absolute-units",
+      "values": {
+        "width": "96px",
+        "margin-left": "96px",
+        "padding-left": "16px"
+      }
+    },
+    {
+      "id": "calc-length",
+      "values": {
+        "margin-left": "22px"
+      }
+    },
+    {
+      "id": "important-vs-inline",
+      "values": {
+        "color": "rgb(255, 0, 0)"
+      }
+    },
+    {
+      "id": "focus-state",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "before-pseudo",
+      "values": {
+        "color": "rgb(255, 0, 0)",
+        "content": "\"x\""
+      }
+    },
+    {
+      "id": "scope-rule",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    },
+    {
+      "id": "container-rule",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      }
+    }
+  ]
+}

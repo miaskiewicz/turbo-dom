@@ -1,0 +1,111 @@
+--- a/src/runtime/css-construction-fields.mjs
++++ b/src/runtime/css-construction-fields.mjs
+@@ -1,6 +1,6 @@
+ // DOM inflation assigns these fields as own properties. Check for collisions
+ // on the current prototypes every time, even when the hierarchy is unchanged.
+-import { Element, SVGElement, MathMLElement, Node, CharacterData, Text, Comment,
++import { isNativeCssNode, Element, SVGElement, MathMLElement, Node, CharacterData, Text, Comment,
+   DocumentType, DocumentFragment, Document } from './dom.mjs';
+ import { EventTarget } from './events.mjs';
+
+@@ -73,3 +73,16 @@
+   }
+   return undefined;
+ }
++
++// A property-presence lookup cannot invoke accessors. First certify every
++// receiver on its lookup path so it cannot reach a Proxy's has trap either.
++function ordinaryElementChain(node) {
++  return parentOf(node) === Element.prototype && parentOf(Element.prototype) === Node.prototype &&
++    parentOf(Node.prototype) === EventTarget.prototype && parentOf(EventTarget.prototype) === nodeChain[2] &&
++    parentOf(nodeChain[2]) === null;
++}
++
++export function cssScalarStateFieldsAbsent(node) {
++  return isNativeCssNode(node) && ordinaryElementChain(node) &&
++    !('__checked' in node || '__selected' in node || '__ce' in node || '__ceIs' in node);
++}
+--- a/src/runtime/css-default-capture.mjs
++++ b/src/runtime/css-default-capture.mjs
+@@ -1,5 +1,5 @@
+ import { collectCopiedCssAttributes } from './css-copied-attributes.mjs';
+-import { cssConstructionFieldCollision } from './css-construction-fields.mjs';
++import { cssConstructionFieldCollision, cssScalarStateFieldsAbsent } from './css-construction-fields.mjs';
+ import { refreshCssSelectorInput, updateCssSelectorState } from './css-selector-input.mjs';
+ import { captureNativeCssSources } from './css-default-sources.mjs';
+ import { createCssFactsNavigator, readCssFactsLimits } from './css-facts-navigator.mjs';
+@@ -27,7 +27,6 @@
+ const descriptor = NativeObject.getOwnPropertyDescriptor;
+ const nativeCreate = NativeObject.create;
+ const ownNames = NativeObject.getOwnPropertyNames,
+-  objectEntries = NativeObject.entries,
+   objectFromEntries = NativeObject.fromEntries;
+ const isArray = NativeArray.isArray,
+   isInteger = Number.isInteger,
+@@ -143,15 +142,21 @@
+     if (!current) unsupported(`missing ${name}`);
+   }
+ }
+-function guardMethodTable(base,methods,reason){
+- for(const [name,method] of objectEntries(methods))if(!originalValue(base,name,method))unsupported(reason);
++const arrayMethodNames = ownNames(arrayMethods);
++const stringMethodNames = ownNames(stringMethods);
++const bufferMethodNames = ownNames(bufferMethods);
++function guardMethodTable(base, methods, names, reason) {
++  for (let index = 0; index < names.length; index++) {
++    const name = names[index];
++    if (!originalValue(base, name, methods[name])) unsupported(reason);
++  }
+ }
+ function guardHelpers() {
+   if (!originalValue(NativeArray.prototype, Symbol.iterator, arrayIterator)) unsupported('overridden array iterator');
+   for (const entry of builtinGuards) if (!sameDescriptor(descriptor(entry.owner,entry.name),entry.original)) unsupported('overridden collection helper');
+   if (!sameDescriptor(descriptor(NativeArray.prototype,'constructor'),arrayConstructor) || !sameDescriptor(descriptor(Array,Symbol.species),arraySpecies)) unsupported('overridden array constructor/species');
+-  guardMethodTable(NativeArray.prototype,arrayMethods,'overridden array helper');
+-  guardMethodTable(NativeString.prototype,stringMethods,'overridden string helper');
++  guardMethodTable(NativeArray.prototype,arrayMethods,arrayMethodNames,'overridden array helper');
++  guardMethodTable(NativeString.prototype,stringMethods,stringMethodNames,'overridden string helper');
+ }
+ function guardInflation(document) {
+   guardHelpers();
+@@ -188,7 +193,10 @@
+ function guardBuffer(state) {
+   if (!state.buffer) return;
+   if (!ancestor(state.buffer, Buffer.prototype)) unsupported('foreign buffer');
+-  for (const [name, method] of objectEntries(bufferMethods)) originalMethod(state.buffer, name, method);
++  for (let index = 0; index < bufferMethodNames.length; index++) {
++    const name = bufferMethodNames[index];
++    originalMethod(state.buffer, name, bufferMethods[name]);
++  }
+   // Original column provenance is checked through the private borrowed input.
+ }
+ function validateBufferNode(state, index) {
+@@ -479,6 +487,7 @@
+ }
+ const nativeStateGetters = nativeCreate(null);
+ for (const name of ['checked','selected','disabled','required','readOnly']) nativeStateGetters[name]=descriptor(Element.prototype,name).get;
++const stateGetterNames = ownNames(nativeStateGetters);
+ const nativeHasAttribute = Element.prototype.hasAttribute;
+ const nativeNodeTypeGetter=descriptor(Element.prototype,'nodeType').get;
+ function optionalScalar(node,name) {
+@@ -500,12 +509,18 @@
+   if(ownType){if(!hasOwn(ownType,'value')||ownType.value!==1)unsupported('changed native nodeType');}
+   else {const type=descriptor(Element.prototype,'nodeType');if(!type||!hasOwn(type,'get')||type.get!==nativeNodeTypeGetter)unsupported('changed native nodeType getter');}
+ }
++function guardScalarState(node) {
++  if (!cssScalarStateFieldsAbsent(node)) {
++    for (const name of ['__checked','__selected','__ce','__ceIs']) optionalScalar(node,name);
++  }
++}
+ function selectorState(node, previous = null) {
+   originalMethod(node,'hasAttribute',nativeHasAttribute);
+   guardNativeElementType(node);
+-  for(const name of ['__checked','__selected','__ce','__ceIs'])optionalScalar(node,name);
++  guardScalarState(node);
+   let result = previous ?? nativeCreate(null);
+-  for(const name of ownNames(nativeStateGetters)){
++  for (let index = 0; index < stateGetterNames.length; index++) {
++    const name = stateGetterNames[index];
+     // CSS uses the native control state, not an author/React IDL accessor.
+     const field=descriptor(Element.prototype,name);
+     if(!field||!hasOwn(field,'get')||field.get!==nativeStateGetters[name])unsupported(`changed native ${name} getter`);

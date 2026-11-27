@@ -1,0 +1,403 @@
+{
+  "scope": "Held Rust CSS candidate, selector shortcut only, 28 common Vitest tests, 7 ABBA blocks per comparison",
+  "previousRust": {
+    "summary": {
+      "wallPercent": -2.225957344044427,
+      "callbackPercent": -0.7205223341820277,
+      "wins": 4,
+      "winsOverHalfPercent": 4
+    },
+    "blocks": [
+      [
+        {
+          "build": "base",
+          "wallMs": 1602.5830000000005,
+          "testMs": 271.381379,
+          "reportSha256": "f4fd71b99f1fe04f5f76ef21e04e6a12b95edf0133361577bd841ce6851ceeba"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1637.5612500000007,
+          "testMs": 275.075418,
+          "reportSha256": "8d07e41030eabfd2576d6c76d0b8e9a7aacb969f1fd94243bd96042db97a50d3"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1811.4175829999986,
+          "testMs": 313.27199700000017,
+          "reportSha256": "08d7c1742779194de29903f7ab1288705255eaa5603ab167669dbd270d9b21cf"
+        },
+        {
+          "build": "base",
+          "wallMs": 1642.6485000000011,
+          "testMs": 274.54820900000004,
+          "reportSha256": "409d333e11babb3ca0566182ffe9b8debfd814b909f40daa5365481c16b8f9ce"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1626.8913749999992,
+          "testMs": 266.983748,
+          "reportSha256": "21c16715aff28215f61c50f5b0646133d61d0f7d4dbd34b59f0781e228f302e4"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1617.9282499999972,
+          "testMs": 272.99745999999993,
+          "reportSha256": "0e776627501381349b561b379bb8d25a2e486de8d5cae9688160db03371209b0"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1729.5922090000022,
+          "testMs": 317.878086,
+          "reportSha256": "031a982631a14bc44659fbb4dddbcef90bf756fb5c7d77c694c7ee3080d41804"
+        },
+        {
+          "build": "base",
+          "wallMs": 1716.673542000004,
+          "testMs": 282.891209,
+          "reportSha256": "672a49aa694989f1253af8554161b2210b739f0d328e7b8f62c253b47e93fc34"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1680.842792000003,
+          "testMs": 298.76937899999996,
+          "reportSha256": "12f90a8b1db46d7b4e264930f84fb12a37d8812a03df25865c769471b3cd384c"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1593.9050839999982,
+          "testMs": 264.2089179999999,
+          "reportSha256": "279389571c7c256e63e96c6265dd0a8f002d541832a5ef8a396cfbd4d72f6f2c"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1586.8753329999963,
+          "testMs": 273.4223769999999,
+          "reportSha256": "ec418a1b02c1ceb9c73807e4c839a8725db0231f77c6eaade71dd04ecf7eadea"
+        },
+        {
+          "build": "base",
+          "wallMs": 1599.466416999996,
+          "testMs": 267.847582,
+          "reportSha256": "a3b24234c4e2ac988dc3a8fe493a3d3df985e825587045cef45510d7ce91460e"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1672.1195420000004,
+          "testMs": 290.07587499999994,
+          "reportSha256": "7cf67dec136f9d98300d6e6ff056dc150fdeaa19cf4548253b489db5cfe838d1"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1671.9164579999997,
+          "testMs": 286.8682920000001,
+          "reportSha256": "318b03f4995434229c771a06ba9498775d02cd1b57e22b3a4732b53b8e25845d"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1672.8626249999943,
+          "testMs": 280.62358300000005,
+          "reportSha256": "ce5a3c78751effde15d31ee8aaa612839093909596906cc8c215198a1df0c308"
+        },
+        {
+          "build": "base",
+          "wallMs": 1655.7987090000024,
+          "testMs": 281.534581,
+          "reportSha256": "debb6d744d1997adbfe25a0180d1ba4bc3865455fe4b11591741074a67a5f74e"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1770.7773329999982,
+          "testMs": 302.994669,
+          "reportSha256": "936995c7f356b93b7efd96c155c37a251f5533c45f7466c2663c9e090d4bdd48"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1668.611208000002,
+          "testMs": 285.851709,
+          "reportSha256": "affb29125ca6b8e2710284ad22f5443ae791b358f6043f69c929fc481e04a9c3"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1616.0389579999974,
+          "testMs": 270.84445500000004,
+          "reportSha256": "6bb466503191f82a22252d624b18b7d99bb1143c663f58e336512cb02ae7c6dc"
+        },
+        {
+          "build": "base",
+          "wallMs": 1712.3749999999927,
+          "testMs": 290.697624,
+          "reportSha256": "b2eaa6a4c6cc948bdaefcd954d437902eb7d7aea5b3803446ecadcc16f14098e"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1805.1537919999973,
+          "testMs": 293.85866699999997,
+          "reportSha256": "22619b92f3eaedadd09457422040cbdb86f857c606701b553ef6356c45be5a47"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1623.1542079999927,
+          "testMs": 272.4635810000001,
+          "reportSha256": "cf5599522f3fb9b52d9fa4ce7d9300376b8edb9e4f7dadef69fc502613839959"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1629.8256249999977,
+          "testMs": 280.794541,
+          "reportSha256": "05688434cf9c221da3817c859a189c128ca3fa7ee43ef11d59ecbf0a09f25f6a"
+        },
+        {
+          "build": "base",
+          "wallMs": 1599.4912499999919,
+          "testMs": 272.4920820000001,
+          "reportSha256": "1c2219a5b1dc61d707c4278073cfa7d1f0137c9690402f44e77c688a968ad930"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1564.6224169999914,
+          "testMs": 266.6714590000001,
+          "reportSha256": "8cf9d653e5d2597a23c55d947fe63ec10ec996f18bdff76a2a675bfa36d4fc2f"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1559.0244170000078,
+          "testMs": 266.1880020000001,
+          "reportSha256": "e110c53dab28724f1666bfffb1b45eda6ef0d844c3997db18c67bbdf2cdfb860"
+        },
+        {
+          "build": "pseudo",
+          "wallMs": 1573.9667499999923,
+          "testMs": 267.3769600000001,
+          "reportSha256": "3203d6fe8d6b93c14a61087a9c01cd2d647b727a4158ed645863081690be4c8d"
+        },
+        {
+          "build": "base",
+          "wallMs": 1639.6955000000016,
+          "testMs": 270.50558099999995,
+          "reportSha256": "a70b8ede13e0b919c1a841bc7abdbbb65e6fd43f38da87a904a02752302fb410"
+        }
+      ]
+    ]
+  },
+  "legacyJs": {
+    "summary": {
+      "wallPercent": 10.694928334446274,
+      "callbackPercent": 83.7046010045924,
+      "wins": 0,
+      "winsOverHalfPercent": 0
+    },
+    "blocks": [
+      [
+        {
+          "build": "base",
+          "wallMs": 1445.7087089999995,
+          "testMs": 150.19462699999994,
+          "reportSha256": "5c4444d8498a38711dc0cb34924109dbb21d80bc89c847d66b0f0390df115707"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1546.9000420000002,
+          "testMs": 265.210917,
+          "reportSha256": "badc79fc3addec3522dd34398df89a564cf5f9382ef611e7c1203d99aff49045"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1620.8450420000008,
+          "testMs": 278.932958,
+          "reportSha256": "4829bf607529e3b1f1ead8ca2c98a8be228e1d791fe375edcd2b5682871ff092"
+        },
+        {
+          "build": "base",
+          "wallMs": 1430.1630409999998,
+          "testMs": 148.89641699999999,
+          "reportSha256": "15f30af87ece3e4c95b1c4e36b8d542b54c7f31d45de6a03dfac82a8011feeb1"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1425.912209,
+          "testMs": 147.99150000000003,
+          "reportSha256": "db9e1777c8d4ceeea458adf168cdc8becd1b0a811f6359b7f4435d9edc65990d"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1584.9102089999997,
+          "testMs": 273.19533199999995,
+          "reportSha256": "a8057a546ef3b126836f6d202870da04d6be9e6ffbdac0c3bd591f55e1358c49"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1585.8045000000002,
+          "testMs": 265.587166,
+          "reportSha256": "f70fe74048c8c98b3c9128f16f9e7c77f4cf203b2aabf44519793ff69a8138bb"
+        },
+        {
+          "build": "base",
+          "wallMs": 1491.524374999999,
+          "testMs": 154.32229200000006,
+          "reportSha256": "2e1f387058ea300aa7940cc73b7c38df00080a05671c26f239c65ee1a931eacd"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1482.3873330000006,
+          "testMs": 151.61979400000007,
+          "reportSha256": "25a1ac6bf54601298df1261f60dc363641d2ff80dc5b8ffe96e6fd03552cc387"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1609.6852919999983,
+          "testMs": 278.357212,
+          "reportSha256": "548448533e9fc48325e9d2ae671d147152058f5a0904273c344bb54e36b82a66"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1595.3073750000003,
+          "testMs": 272.423169,
+          "reportSha256": "d2390a5d633bda9f75b0ebd5b6637e3df3feab73f768c84e895ab238845e7fcd"
+        },
+        {
+          "build": "base",
+          "wallMs": 1416.788375,
+          "testMs": 148.19870699999998,
+          "reportSha256": "0ecda6f44d17775f111b2ddde329f9aba98cae93299fe57ed246cfd8d5224e63"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1420.1481249999997,
+          "testMs": 148.00599899999995,
+          "reportSha256": "54d5e97265f7026ae0254cf3084f4699ac4c3bb7f12bee1c538bd4d011985d67"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1595.0033750000002,
+          "testMs": 269.59566499999994,
+          "reportSha256": "1ac6ca589096a50fbfb19ed50522a34feed0016bb8ed0656acb8c6b764c5eb2a"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1616.050292,
+          "testMs": 283.115668,
+          "reportSha256": "87a5f72422b489c1d97ec6f0490cc060ae2d3dd334673c9ec65fee0a9489be06"
+        },
+        {
+          "build": "base",
+          "wallMs": 1472.175083000002,
+          "testMs": 152.565455,
+          "reportSha256": "059bf47bd97cb99969cf454d55e9d4e5b8fd8db84ec1f305d428cb87286b11de"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1420.8824999999997,
+          "testMs": 147.949541,
+          "reportSha256": "d20bb4dfb6192c07a996a8a6ce2221c2512bf0be95df9d875d53e70261146fc1"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1611.1019579999993,
+          "testMs": 271.792331,
+          "reportSha256": "7b6b0e840658aa15c8863b2ee8b81fa33d98a1c92c86699bf76df976322a2db5"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1582.1207920000015,
+          "testMs": 269.364834,
+          "reportSha256": "d1fe71912af6972d555848a3463353021095871232127c866e45192b2d638399"
+        },
+        {
+          "build": "base",
+          "wallMs": 1406.3648749999993,
+          "testMs": 145.46992199999997,
+          "reportSha256": "d242e1cc16c9d92df260f8f32915d351665dede13da83467ad51d05af9a2a893"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1449.8798749999987,
+          "testMs": 152.35741900000008,
+          "reportSha256": "0d462585790be8e2802bf0494a68a1ff10f31a36958c8ed9a39096bdaa615c35"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1633.2614580000009,
+          "testMs": 303.0544980000001,
+          "reportSha256": "96b15c275e503bd009ef8375b2dfc1583bc0f418bb4be5bcd1e508e8005a4af5"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1590.8281669999997,
+          "testMs": 274.81212200000004,
+          "reportSha256": "06d3955504e63b039897853d351373d04b5a1ba6e229d558a430078b4e91385b"
+        },
+        {
+          "build": "base",
+          "wallMs": 1409.7490409999955,
+          "testMs": 147.11524899999992,
+          "reportSha256": "3340e6faee054c974bc965483d73a7d06432b0fcb4f94918cbfbb94886d0c9f3"
+        }
+      ],
+      [
+        {
+          "build": "base",
+          "wallMs": 1425.8134999999966,
+          "testMs": 148.808873,
+          "reportSha256": "703c40eed7018062daf6ec32a6ec879104b47e00b1c24e72eb898e5d708f0836"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1578.8848330000037,
+          "testMs": 270.199084,
+          "reportSha256": "63561e5766b70f51781d431f2da9ebfc6fcf932950df5630fcebc921ba8da4ca"
+        },
+        {
+          "build": "selector",
+          "wallMs": 1578.3115419999958,
+          "testMs": 271.20974800000005,
+          "reportSha256": "464d86997c0b1e4bea173e0ea19fe57b3c2b3fad5d929f230221af21b1994485"
+        },
+        {
+          "build": "base",
+          "wallMs": 1426.3464160000003,
+          "testMs": 146.40245700000006,
+          "reportSha256": "a4d4128b28ed434746d3392aea06c0ee0d616ac7eaf4ae972ebf71d7cb43fad3"
+        }
+      ]
+    ]
+  },
+  "repeatedCapture": {
+    "wallMs": {
+      "medianPct": -5.199873926149823,
+      "wins": 7
+    },
+    "cpuMs": {
+      "medianPct": -4.062648597242024,
+      "wins": 6
+    }
+  },
+  "equivalence": {
+    "identicalCanonicalRequestsAndExactResultBytes": 110,
+    "napiMethods": {
+      "resolveMatchingV1": 110
+    }
+  }
+}

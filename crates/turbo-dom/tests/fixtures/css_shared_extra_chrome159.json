@@ -1,0 +1,270 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "8e2cab19bdcef6946c5c1d7e454b894639a77d9deef71112a9938742fe3f0763",
+  "results": [
+    {
+      "name": "contain-intrinsic-width",
+      "value": "auto none",
+      "supports": true,
+      "held": "auto none"
+    },
+    {
+      "name": "contain-intrinsic-width",
+      "value": "auto",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "contain-intrinsic-width",
+      "value": "-1px",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "scroll-timeline-name",
+      "value": "--",
+      "supports": true,
+      "held": "--"
+    },
+    {
+      "name": "scroll-timeline-name",
+      "value": "none,--a",
+      "supports": true,
+      "held": "none, --a"
+    },
+    {
+      "name": "scroll-timeline-axis",
+      "value": "block y",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "view-timeline-inset",
+      "value": "-10px auto",
+      "supports": true,
+      "held": "-10px auto"
+    },
+    {
+      "name": "view-timeline-inset",
+      "value": "auto auto auto",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "text-box-edge",
+      "value": "cap",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "text-box-edge",
+      "value": "cap alphabetic",
+      "supports": true,
+      "held": "cap alphabetic"
+    },
+    {
+      "name": "text-box-edge",
+      "value": "auto text",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "text-box-trim",
+      "value": "trim-start",
+      "supports": true,
+      "held": "trim-start"
+    },
+    {
+      "name": "text-box-trim",
+      "value": "auto",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "timeline-trigger-active-range-start",
+      "value": "normal",
+      "supports": true,
+      "held": "normal"
+    },
+    {
+      "name": "timeline-trigger-active-range-end",
+      "value": "normal",
+      "supports": true,
+      "held": "normal"
+    },
+    {
+      "name": "timeline-trigger-activation-range-start",
+      "value": "auto",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "timeline-trigger-activation-range-end",
+      "value": "auto",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "none",
+      "supports": true,
+      "held": "none"
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "--a",
+      "supports": true,
+      "held": "--a"
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "view(inline 10px auto)",
+      "supports": true,
+      "held": "view(inline 10px auto)"
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "view(garbage)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "scroll(root y)",
+      "supports": true,
+      "held": "scroll(root y)"
+    },
+    {
+      "name": "timeline-trigger-source",
+      "value": "scroll(root root)",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "font-language-override",
+      "value": "\"TRK\"",
+      "supports": true,
+      "held": "\"TRK\""
+    },
+    {
+      "name": "font-language-override",
+      "value": "\"long tag\"",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "font-size-adjust",
+      "value": "0.5",
+      "supports": true,
+      "held": "0.5"
+    },
+    {
+      "name": "font-size-adjust",
+      "value": "ex-height from-font",
+      "supports": true,
+      "held": "from-font"
+    },
+    {
+      "name": "font-size-adjust",
+      "value": "-1",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "font-feature-settings",
+      "value": "\"kern\" -1",
+      "supports": true,
+      "held": "\"kern\" -1"
+    },
+    {
+      "name": "font-variation-settings",
+      "value": "\"wght\"",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "font-variation-settings",
+      "value": "\"wght\" -20",
+      "supports": true,
+      "held": "\"wght\" -20"
+    },
+    {
+      "name": "quotes",
+      "value": "\"a\"",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "quotes",
+      "value": "\"a\" \"b\"",
+      "supports": true,
+      "held": "\"a\" \"b\""
+    },
+    {
+      "name": "transform",
+      "value": "scale(sign(-1px))",
+      "supports": true,
+      "held": "scale(calc(-1))"
+    },
+    {
+      "name": "transform",
+      "value": "scale(sign(0px))",
+      "supports": true,
+      "held": "scale(calc(0))"
+    },
+    {
+      "name": "transform",
+      "value": "scale(sign(red))",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "anchor-name",
+      "value": "--",
+      "supports": true,
+      "held": "--"
+    },
+    {
+      "name": "anchor-name",
+      "value": "none,--a",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": " red",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "animation-name",
+      "value": " foo",
+      "supports": true,
+      "held": " foo"
+    },
+    {
+      "name": "color",
+      "value": "red",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "animation-name",
+      "value": "foo",
+      "supports": true,
+      "held": "foo"
+    },
+    {
+      "name": "color",
+      "value": " red",
+      "supports": false,
+      "held": ""
+    },
+    {
+      "name": "animation-name",
+      "value": " foo",
+      "supports": true,
+      "held": " foo"
+    }
+  ]
+}

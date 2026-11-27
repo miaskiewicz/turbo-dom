@@ -1,6 +1,6 @@
 # turbo-dom
 
-Release **0.8.6**. turbo-dom is the shared browser-engine base of three projects:
+Release **0.8.7** (local unreleased candidate). turbo-dom is the shared browser-engine base of three projects:
 
 - **[turbo-test](https://github.com/miaskiewicz/turbo-test)**, a vitest-compatible test runner. It runs tests in V8 over this repository's DOM.
 - **[turbo-html2pdf](https://github.com/miaskiewicz/turbo-html2pdf)**, which renders HTML to PDF and uses this repository's layout engine.
@@ -17,20 +17,21 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## Packages in this release
+## Packages
 
-The DOM packages share version 0.8.6. The independently versioned V8 fork is
-150.4.2 and uses the official V8 150.4.0 archive; the AVIF decoder fork
-`turbo-dom-rav1d` is 1.1.0. After installing the published release, consumers can
-remove their pre-release `[patch.crates-io]` overrides.
+The DOM packages share version 0.8.7. Before registry publication, local
+consumers use `[patch.crates-io]` overrides for a verified release-branch
+revision. After publication, consumers can resolve 0.8.7 from the registry. The independently versioned V8 fork remains published at 150.4.2
+and uses the official V8 150.4.0 archive; the AVIF decoder fork `turbo-dom-rav1d`
+remains 1.1.0.
 
 | package | registry | version | what it is | used by |
 |---|---|---|---|---|
-| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.6 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
-| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.6 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
-| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.6 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
-| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.6 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
-| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.6 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
+| [`@miaskiewicz/turbo-dom`](https://www.npmjs.com/package/@miaskiewicz/turbo-dom) | npm | 0.8.7 | lazy JS DOM runtime + native html5ever parser (N-API, WASM fallback) | vitest / jest users |
+| [`turbo-dom`](crates/turbo-dom) | crates.io | 0.8.7 | pure-Rust DOM (`rtdom`), the one selector engine, CSSOM, partial cascade | all three consumers |
+| [`turbo-dom-layout`](crates/turbo-dom-layout) | crates.io | 0.8.7 | HTML/CSS layout (block / inline / flex / grid / table), fonts, images, CSSOM-View geometry | turbo-html2pdf, turbo-surf |
+| [`turbo-dom-raster`](crates/turbo-dom-raster) | crates.io | 0.8.7 | synthetic screenshots (PNG / SVG), canvas op-log replay, WebGL readback | turbo-surf |
+| [`turbo-dom-browser-env`](crates/turbo-dom-browser-env) | crates.io | 0.8.7 | the `rtdom` <-> V8 browser environment (window, document, CSSOM, forms, events) | turbo-test, turbo-surf |
 | [`turbo-dom-v8`](crates/turbo-dom-v8) | crates.io | 150.4.2 | turbo-dom's rusty_v8 fork, generated from the upstream crate plus reviewed patches | turbo-dom-browser-env, turbo-surf |
 
 The root `turbo-dom-parser` crate is `publish = false`. It ships inside the npm package.
@@ -90,6 +91,20 @@ env.document.querySelector('#app');     // nodes inflate lazily from the parse b
 env.reset();                            // fast per-file reset (reuses the parse buffer)
 ```
 
+### DOM backend selection
+
+Each environment accepts `domBackend`. The default, `'js'`,
+uses the existing npm DOM. The `'rust'` value is reserved for the Node integration
+of `turbo-dom-browser-env`. In this build it raises a setup error before creating
+a document. Parser selection is independent, so the JS DOM can still use the native
+Rust parser or WASM.
+
+| Entry point | Explicit JS configuration |
+| --- | --- |
+| npm runtime | `createEnvironment(html, { domBackend: 'js' })` |
+| Vitest config | `test.environmentOptions.turboDom.domBackend = 'js'` |
+| Jest config | `testEnvironmentOptions.turboDom.domBackend = 'js'` |
+
 **Just the parser:**
 
 ```js
@@ -112,10 +127,10 @@ parseBuffer, parseFragment })` or set it as `globalThis.__TURBO_DOM_PARSER__`. T
 
 ```toml
 [dependencies]
-turbo-dom = "0.8.6"
-turbo-dom-layout = "0.8.6"                 # bundled fonts on by default
-turbo-dom-raster = "0.8.6"
-turbo-dom-browser-env = "0.8.6"            # needs a V8 archive, see its README
+turbo-dom = "0.8.7"
+turbo-dom-layout = "0.8.7"                 # bundled fonts on by default
+turbo-dom-raster = "0.8.7"
+turbo-dom-browser-env = "0.8.7"            # needs a V8 archive, see its README
 ```
 
 ```rust
@@ -156,10 +171,18 @@ Each crate's README covers its API: [turbo-dom](crates/turbo-dom/README.md),
 | | `native-sdk-frame-read` | off | reads the interceptor's should-throw mode from the V8 frame, for native SDKs without the fork fix |
 | `turbo-dom-parser` (npm) | `napi-bind` / `wasm-bind` / `wasm-runtime` | `napi-bind` | the native addon, the WASM parser and the WASM DOM-runtime spike |
 
-`turbo-dom` declares no feature flags. `turbo-dom-v8` forwards upstream rusty_v8's
-features (for example `simdutf`).
+`turbo-dom` offers opt-in `computed-style-grammar` for the shared CSS property
+grammar used by the optional npm Rust CSS backend. Its DOM/parser defaults keep
+that dependency disabled. `turbo-dom-v8` forwards upstream rusty_v8's features
+(for example `simdutf`).
 
 ## Status
+
+- **0.8.7:** canonical animation sampling and recovery for native
+  embedders, shadow-inclusive document checkpoints, SVG paint and metric fixes,
+  and an optional shared Rust CSS engine. The npm DOM now includes corrected
+  history events, textarea defaults and selection, disabled/inert focus, nested
+  shadow focus and DOMRect branding. [Full release notes](CHANGELOG.md#087--2026-11-27).
 
 - **0.8.6:** the `parseBuffer` parser builds its flat buffer from an
   index-arena tree sink instead of a reference-counted tree, and gates
@@ -226,6 +249,161 @@ features (for example `simdutf`).
   `turbo-dom-layout`, and through it to turbo-html2pdf and turbo-surf.
 
 ## Benchmarks
+
+### Single-compound selector matching (2026-11-26)
+
+The held N-API CSS build with direct single-compound matching took 2.23% less
+wall time than the preceding Rust build in the packed Vitest suite (four of
+seven ABBA blocks faster). Repeated DOM capture used 4.06% less CPU. In a
+separate comparison with legacy JS the candidate took 10.69% more wall time;
+legacy JS won all seven blocks. All 110 observed style results matched the
+previous Rust build byte for byte.
+
+[Individual runs and capture measurements](tools/acceptance/packed-vitest-296/results-2026-11-26-selector/RESULT.json)
+
+### Packed N-API selector-answer reuse (2026-11-26)
+
+The held Rust CSS build retained selector answers on the prepared model for 97
+of 110 style reads. Request traffic fell from 1,857,987 to 370,456 bytes,
+including token arguments. All 110 style results matched byte for byte. Across
+seven ABBA blocks the combined capture and transport changes took 0.31% less
+wall time than the previous Rust build (four blocks faster). The candidate took
+10.71% more wall time than legacy JS, which won all seven blocks.
+
+[Artifact hashes, checks and timings](tools/acceptance/packed-vitest-296/results-2026-11-26-retained/BENCHMARK.json)
+
+### Packed N-API empty-child capture (2026-11-26)
+
+The Rust CSS validation build can skip copying an empty child array during DOM
+capture. The 28-test packed Vitest workload hit that case 657 times in 110 style
+reads. Median process wall time fell 0.45% across seven ABBA blocks, with four
+blocks faster. Summed test callback time rose 0.57%. A separate experiment that
+preclassified selector guard descriptors took 0.20% more wall time at the median.
+The integrated capture patch adds an intrinsic guard. That revision passed
+1,144 tests with 100% line coverage and 97.34% branch coverage. The timings
+above refer to the pilot before the final guard refinement.
+
+[Per-block timings and package file hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-empty-children/BENCHMARK.json)
+
+### Packed N-API after inheritance-chain assembly (2026-11-26)
+
+Across seven ABBA blocks, the packed Rust CSS candidate with the `aa69a733`
+adapter took 13.69% more wall time than the preserved legacy JavaScript
+CSS build at the median. Median process times were 1.537 s for Rust and
+1.396 s for legacy JS. Rust won 0 of seven blocks. Both packages passed
+the same 28 tests in every timed process. The Rust CSS preflight passed separately.
+
+[Raw timings, fixture and package hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-chain/LEGACY.json)
+
+### Rust CSS capture CPU (2026-11-26)
+
+On the packed N-API candidate, 100 repeated DOM captures used 14.1% less CPU
+than the previous Rust build at the median. 7 of seven ABBA blocks improved by over 0.5%.
+The fast path checks that an ordinary element has the original prototype chain
+and lacks four optional selector-state fields. Elements with any of those fields
+still go through the full descriptor checks on every capture.
+
+Before a final helper extraction, the 28-test Vitest benchmark took 4.43% more wall time
+than the previous Rust build and 14.12% more than legacy JavaScript
+at the median. System load varied substantially during the process timings.
+Separate unfiltered acceptance passed all 29 compatibility tests
+and the Rust CSS check on both N-API and WASM. The default switch is pending.
+
+A second seven-block run used the final packed N-API candidate throughout.
+For 100 captures it used 15.08% less CPU (7/7 blocks improved by over 0.5%).
+Across the 28 Vitest tests it took 1.14% less wall time than the previous
+Rust package and 9.71% more than legacy JS at the median.
+[Final-build rerun timings](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/RETRY.json)
+
+[Timings and package hashes](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/RESULT.json) · [Capture workload](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/capture.mjs) · [Candidate delta against the previous Rust package](tools/acceptance/packed-vitest-296/results-2026-11-26-capture/candidate.patch)
+
+### Packed Vitest after selector collection and encoding changes (2026-11-26)
+
+The packed Rust CSS candidate includes the matching changes from `8137bae4`.
+The previous Rust package includes the routed-request changes from `06a799d4`.
+The legacy package uses JavaScript for CSS. Each comparison ran five ABBA
+blocks with fresh single-worker Vitest processes on the same 28 tests. The
+time columns give medians across ten processes per package. The last column
+gives the median within-block change in process wall time.
+
+| Mode | Comparison package | Comparison (s) | Rust candidate (s) | Change |
+|---|---|---:|---:|---:|
+| N-API | Previous Rust | 1.737 | 1.714 | +0.29% |
+| N-API | Legacy JS | 1.502 | 1.688 | +12.04% |
+| WASM | Previous Rust | 1.909 | 1.914 | -0.26% |
+| WASM | Legacy JS | 1.518 | 1.951 | +28.59% |
+
+On N-API, isolated measurements across the 13 selector rebuilds showed 9.8%
+less time collecting unscoped matches and 12.0% less time encoding answers.
+Each stage improved in seven of seven comparisons. Separate packed acceptance
+runs passed all 29 compatibility tests and the Rust CSS check on each backend.
+The release keeps the existing CSS default.
+
+[Benchmark timings and package identities](tools/acceptance/packed-vitest-296/results-2026-11-26-matching/RESULT.json)
+
+### Packed Vitest before and after the Rust CSS switch (2026-11-26)
+
+The [packed consumer fixture](tools/acceptance/packed-vitest-296/README.md)
+runs the same 28 React, Testing Library and forms tests in each environment.
+Each measurement uses fresh Vitest processes, one worker, one warmup per
+environment and five rotated rounds. Times are total process wall times.
+Lower is faster.
+
+| Environment | Before median (s) | Before min–max (s) | After median (s) | After min–max (s) | Median change |
+|---|---:|---:|---:|---:|---:|
+| happy-dom | 1.774 | 1.740–1.807 | 1.909 | 1.873–1.923 | +7.6% |
+| jsdom | 2.806 | 2.728–2.966 | 2.961 | 2.908–3.189 | +5.5% |
+| turbo-dom (native) | 1.382 | 1.337–1.488 | 1.892 | 1.841–1.928 | +36.9% |
+| turbo-dom (WASM) | 1.392 | 1.368–1.402 | 2.191 | 2.143–2.228 | +57.4% |
+
+The turbo-dom baseline uses the legacy JavaScript CSS engine. The measured candidate
+used the shared Rust CSS engine by default and passed the public CSS regression
+and all 29 compatibility tests in both modes. The release branch retains the
+JavaScript CSS default. Both control environments were
+slower in the second window too. The measured changes compare the packed
+candidates end to end and include startup, parser and runtime costs.
+
+[Before results](tools/acceptance/packed-vitest-296/results-2026-11-26/RESULT.json)
+and [after results](tools/acceptance/packed-vitest-296/results-2026-11-26-after/RESULT.json)
+include per-process reports, machine and dependency versions, and artifact
+identities. See the [packed candidate receipt](tools/acceptance/packed-vitest-296/results-2026-11-26-after/PACKED-ACCEPTANCE.json)
+for the public Vitest results.
+
+### Matched Vitest rerun (2026-11-26)
+
+The [paired runner](tools/acceptance/packed-vitest-296/benchmark-paired.mjs)
+alternated the legacy package and the optimized Rust candidate in the same
+window, with the exact same fixtures and resolved dependencies. Each mode had
+five adjacent pairs and passed the same 28 tests in every timed process.
+
+| Mode | Legacy median (s) | Optimized Rust median (s) | Median paired change |
+|---|---:|---:|---:|
+| N-API | 1.767 | 2.024 | +20.9% |
+| WASM | 1.741 | 2.184 | +35.1% |
+
+The Rust candidate was slower in every pair. The paired change is the median
+of the five within-pair ratios. See the [matched receipt](tools/acceptance/packed-vitest-296/results-2026-11-26-matched/RESULT.json)
+for exact package manifests, all timings, and the two passing CSS preflight
+checks.
+
+### Rust CSS profiling and reuse pilot (2026-11-26)
+
+Vitest worker profiles attributed 256 ms of sampled time to Rust-backed
+`getComputedStyle` on N-API and 541 ms on WASM. Selector matching accounted
+for 66 and 77 ms, respectively. The cascade request, including transport,
+accounted for 56 and 128 ms. WASM also spent 107 ms on compile and preparation
+and 57 ms loading the CSS backend. These are sampled times across seven
+profiled test workers per mode.
+
+An unpublished prototype reused matching data for identical selector inputs.
+It passed the CSS preflight and all 28 timed tests. The five-pair median
+was 2.1% faster than the previous Rust candidate on N-API and 1.3% slower on
+WASM. Compared with the legacy JavaScript package, its five-pair medians
+were still 11.3% slower on N-API and 29.7% slower on WASM.
+
+See the [worker profile summary](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PROFILE-SUMMARY.json),
+[pilot versus legacy](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PILOT-VS-LEGACY.json),
+and [pilot versus the previous Rust build](tools/acceptance/packed-vitest-296/results-2026-11-26-hotspots/PILOT-VS-RUST.json).
 
 v0.8.2 re-measurement — darwin-arm64, Node 26.11, 2026-11-10. Higher is faster except
 the suite row (ms/file, lower is faster).

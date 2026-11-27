@@ -1,0 +1,54 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "b25c34e21a51117a00fcc2e0d235439ac6c3942687cdd233c61bf2a96e829452",
+  "results": [
+    {
+      "source": "",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "   ",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "/**/",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "screen and",
+      "matches": false,
+      "media": "not all",
+      "cssom": "not all"
+    },
+    {
+      "source": "screen and (width:)",
+      "matches": false,
+      "media": "screen and (width:)",
+      "cssom": "screen and (width:)"
+    },
+    {
+      "source": "screen, print and",
+      "matches": true,
+      "media": "screen, not all",
+      "cssom": "screen, not all"
+    },
+    {
+      "source": "print, screen and",
+      "matches": false,
+      "media": "print, not all",
+      "cssom": "print, not all"
+    },
+    {
+      "source": "screen and, print",
+      "matches": false,
+      "media": "not all, print",
+      "cssom": "not all, print"
+    }
+  ]
+}

@@ -99,6 +99,13 @@ export const MouseEvent = makeTyped('MouseEvent');
 export const PointerEvent = makeTyped('PointerEvent');
 export const KeyboardEvent = makeTyped('KeyboardEvent');
 export const InputEvent = makeTyped('InputEvent');
+export class PopStateEvent extends Event {
+  constructor(type, init = {}) {
+    super(type, init);
+    this.state = init.state ?? null;
+  }
+}
+
 export const FocusEvent = makeTyped('FocusEvent');
 export const CompositionEvent = makeTyped('CompositionEvent');
 export const WheelEvent = makeTyped('WheelEvent');

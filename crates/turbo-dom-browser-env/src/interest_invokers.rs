@@ -37,6 +37,17 @@ fn engaged(scope: &mut v8::PinScope) -> bool {
         .is_some_and(|flag| flag.0.get())
 }
 
+fn call_strict<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    node: v8::Local<'s, v8::Object>,
+    args: &[v8::Local<'s, v8::Value>],
+) -> Option<v8::Local<'s, v8::Value>> {
+    let context = node.get_creation_context(scope)?;
+    let function = context.get_slot::<InterestHook>()?.0.to_local(scope)?;
+    let receiver = v8::undefined(scope);
+    function.call(scope, receiver.into(), args)
+}
+
 fn call<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     node: v8::Local<'s, v8::Object>,
@@ -109,7 +120,7 @@ pub(super) fn attribute_changed<'s>(
 /// Whether [`selector`] can change `source`: an interest pseudo-class range (a property of
 /// the text, memoized by `selector_argument`).
 pub(super) fn applies(source: &str) -> bool {
-    if !source.to_ascii_lowercase().contains("interest-") {
+    if !source.contains('\\') && !source.to_ascii_lowercase().contains("interest-") {
         return false;
     }
     let mut input = cssparser::ParserInput::new(source);
@@ -168,33 +179,69 @@ fn pseudo_ranges<'i, 't>(
 /// Represent the private interest state as structural selectors within the anchor's root,
 /// exactly as `:popover-open` does.
 pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -> Option<String> {
+    selector_impl(scope, anchor, source, false)
+}
+
+pub(super) fn selector_strict(
+    scope: &mut v8::PinScope,
+    anchor: Handle,
+    source: &str,
+) -> Option<String> {
+    selector_impl(scope, anchor, source, true)
+}
+
+fn selector_impl(
+    scope: &mut v8::PinScope,
+    anchor: Handle,
+    source: &str,
+    strict: bool,
+) -> Option<String> {
     #[cfg(test)]
     SELECTOR_WORK.with(|work| work.transforms.set(work.transforms.get() + 1));
-    if !source.to_ascii_lowercase().contains("interest-") {
+    if !source.contains('\\') && !source.to_ascii_lowercase().contains("interest-") {
         return Some(source.to_owned());
     }
     let mut input = cssparser::ParserInput::new(source);
     let mut parser = cssparser::Parser::new(&mut input);
     let mut ranges = Vec::new();
-    if pseudo_ranges(&mut parser, &mut ranges).is_err() || ranges.is_empty() {
+    if pseudo_ranges(&mut parser, &mut ranges).is_err() {
+        return (!strict).then(|| source.to_owned());
+    }
+    if ranges.is_empty() {
         return Some(source.to_owned());
     }
-    let mut paths = |kind: &str| -> String {
+    if strict {
+        let context = scope.get_current_context();
+        context.get_slot::<InterestEngaged>()?;
+        context.get_slot::<InterestHook>()?.0.to_local(scope)?;
+    }
+    let mut paths = |kind: &str| -> Option<String> {
         let mut handles = Vec::new();
         if engaged(scope) {
             let node = wrap(scope, anchor);
             // invariant: engine-built name, far below V8's string length limit
             let name = v8::String::new(scope, kind).unwrap();
-            if let Some(list) = call(scope, node, &[name.into(), node.into()])
-                .and_then(|value| v8::Local::<v8::Array>::try_from(value).ok())
-            {
+            let args = [name.into(), node.into()];
+            let result = if strict {
+                call_strict(scope, node, &args)
+            } else {
+                call(scope, node, &args)
+            };
+            let list = result.and_then(|value| v8::Local::<v8::Array>::try_from(value).ok());
+            if strict && list.is_none() {
+                return None;
+            }
+            if let Some(list) = list {
                 for index in 0..list.length() {
-                    if let Some(handle) = list
+                    let handle = list
                         .get_index(scope, index)
                         .and_then(|value| v8::Local::<v8::Object>::try_from(value).ok())
                         .filter(|object| dom_id_of(scope, *object) == DOM_ID.with(|id| id.get()))
-                        .and_then(|object| handle_of(scope, object))
-                    {
+                        .and_then(|object| handle_of(scope, object));
+                    if strict && handle.is_none() {
+                        return None;
+                    }
+                    if let Some(handle) = handle {
                         handles.push(handle);
                     }
                 }
@@ -213,10 +260,10 @@ pub(super) fn selector(scope: &mut v8::PinScope, anchor: Handle, source: &str) -
                 format!(":is({})", paths.join(","))
             }
         })
-        .unwrap_or_else(|| ":not(*)".to_owned())
+        .or_else(|| (!strict).then(|| ":not(*)".to_owned()))
     };
-    let sources = paths("sources");
-    let targets = paths("targets");
+    let sources = paths("sources")?;
+    let targets = paths("targets")?;
     let mut result = String::new();
     let mut start = 0;
     for (from, to, pseudo) in ranges {
@@ -312,3 +359,118 @@ pub(super) fn install(scope: &mut v8::PinScope) {
 #[cfg(test)]
 #[path = "interest_invokers_tests.rs"]
 mod tests;
+
+#[cfg(all(test, feature = "host-internals"))]
+mod host_projection_tests {
+    use super::*;
+    use crate::host_internals::{prepare_selector, SelectorPreparationError};
+
+    #[test]
+    fn volatile_interest_projection_changes_without_a_revision_change() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(scope, "<!doctype html><button id=target></button>");
+        let _owner = DomScope::enter(context.get_slot::<DomContextId>().unwrap().0);
+        let (root, target) =
+            with_tree(|tree| (tree.root(), tree.query_selector("#target").unwrap())).unwrap();
+        let document = wrap(scope, root);
+        let source = v8::String::new(scope, "(()=>[document.getElementById('target')])").unwrap();
+        let callback = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let callback = v8::Local::<v8::Function>::try_from(callback).unwrap();
+        context.set_slot(std::rc::Rc::new(InterestHook(v8::Weak::new(
+            scope, callback,
+        ))));
+        for source in [":interest-source", ":is(:interest-s\\6furce)"] {
+            context.get_slot::<InterestEngaged>().unwrap().0.set(false);
+            let inactive = prepare_selector(scope, document, source).unwrap();
+            assert!(inactive.is_volatile());
+            assert!(!with_tree(|tree| tree.matches(target, inactive.match_selector())).unwrap());
+            context.get_slot::<InterestEngaged>().unwrap().0.set(true);
+            let active = prepare_selector(scope, document, source).unwrap();
+            assert!(active.is_volatile());
+            assert_eq!(inactive.stamp(), active.stamp());
+            assert!(with_tree(|tree| tree.matches(target, active.match_selector())).unwrap());
+        }
+        for source in [
+            "button[data-note='interest-source']",
+            "button:focus",
+            "button:invalid",
+        ] {
+            assert!(!prepare_selector(scope, document, source)
+                .unwrap()
+                .is_volatile());
+        }
+        reset();
+    }
+
+    #[test]
+    fn strict_interest_projection_does_not_certify_hook_failure_as_empty() {
+        crate::browser_env::tests::init_v8();
+        let isolate = &mut crate::browser_env::tests::new_isolate();
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        v8::scope!(let scope, isolate);
+        let context = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, context);
+        install_independent_html(
+            scope,
+            "<!doctype html><button interestfor=p></button><div id=p popover></div>",
+        );
+        let source = v8::String::new(scope, "document").unwrap();
+        let document = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap()
+            .to_object(scope)
+            .unwrap();
+        context.remove_slot::<InterestHook>();
+        assert_eq!(
+            prepare_selector(scope, document, ":interest-source").unwrap_err(),
+            SelectorPreparationError::Unavailable
+        );
+        context.get_slot::<InterestEngaged>().unwrap().0.set(true);
+        for body in ["()=>null", "()=>[{}]"] {
+            let source = v8::String::new(scope, &format!("({body})")).unwrap();
+            let callback = v8::Script::compile(scope, source, None)
+                .unwrap()
+                .run(scope)
+                .unwrap();
+            let callback = v8::Local::<v8::Function>::try_from(callback).unwrap();
+            context.set_slot(std::rc::Rc::new(InterestHook(v8::Weak::new(
+                scope, callback,
+            ))));
+            assert_eq!(
+                prepare_selector(scope, document, ":interest-source").unwrap_err(),
+                SelectorPreparationError::Unavailable
+            );
+        }
+        let source =
+            v8::String::new(scope, "(()=>{throw Error('interest classifier failure')})").unwrap();
+        let callback = v8::Script::compile(scope, source, None)
+            .unwrap()
+            .run(scope)
+            .unwrap();
+        let callback = v8::Local::<v8::Function>::try_from(callback).unwrap();
+        context.set_slot(std::rc::Rc::new(InterestHook(v8::Weak::new(
+            scope, callback,
+        ))));
+        v8::tc_scope!(let scope, scope);
+        assert_eq!(
+            prepare_selector(scope, document, ":interest-source").unwrap_err(),
+            SelectorPreparationError::Exception
+        );
+        assert!(scope
+            .exception()
+            .unwrap()
+            .to_rust_string_lossy(scope)
+            .contains("interest classifier failure"));
+        scope.reset();
+        reset();
+    }
+}

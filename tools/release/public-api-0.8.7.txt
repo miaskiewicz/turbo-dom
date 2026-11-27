@@ -1,0 +1,1638 @@
+# Public Rust API diff, v0.8.6 -> v0.8.7 candidate
+# Baseline 76e67f5554e28497a03b43b2ab6add73e67f1c0f
+# Candidate dd2771f66da8670e22d6136c0ec13027e6c1a0e3.
+# Later CI fixes preserve these public signatures and add private install bookkeeping.
+# cargo-public-api 0.52.0; rustc 1.101.0-nightly (1c3a65069 2026-11-02)
+# Host aarch64-apple-darwin; commands use cargo +nightly public-api -sss --color never.
+# Default features; layout svg,perf,serde,test-support; raster avif,jxl;
+# browser-env host-internals,test-support. Both revisions use identical toolchain.
+# Supplemental browser-env run sets RUSTDOCFLAGS=--document-hidden-items.
+# Supplemental computed-style-grammar is new; compare with candidate default API.
+# This textual audit omits auto-derived/blanket/auto-trait implementations.
+# Platform-only coretext/gpu-metal, simdutf and native SDK overlays are outside scope.
+# Source compatibility: new exhaustive CascadeOrigin variants Animation/Transition,
+# and the new public Fragment.establishes_stacking_context field affect exhaustive
+# matches and struct literals. Existing function signatures in the standard matrix
+# are retained. Other additions are shown below; consumers must review the host seam.
+
+## turbo-dom
+# Added 173, removed 0 public lines.
+--- v0.8.6/turbo-dom
++++ 0.8.7/turbo-dom
+@@ -126,7 +126,151 @@
+ pub fn turbo_dom::rtdom::color::canonicalize_color(&str, bool) -> core::option::Option<alloc::string::String>
+ pub fn turbo_dom::rtdom::color::is_color_prop(&str) -> bool
+ pub fn turbo_dom::rtdom::color::parse_color(&str) -> core::option::Option<turbo_dom::rtdom::color::Color>
++pub mod turbo_dom::rtdom::computed_css
++pub mod turbo_dom::rtdom::computed_css::cascade_order
++pub enum turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::Animation
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::Author
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::AuthorImportant
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::Transition
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::User
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::UserAgent
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::UserAgentImportant
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::UserImportant
++pub enum turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::Author
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::User
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::UserAgent
++impl turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub fn turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::level(self, bool) -> turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel
++pub fn turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::normal_order(self) -> u8
++pub struct turbo_dom::rtdom::computed_css::cascade_order::CascadeRank<'a>
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::encapsulation: u32
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::inline: bool
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::layer: &'a [usize]
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::level: turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::order: (usize, usize)
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::proximity: core::cmp::Reverse<usize>
++pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::specificity: (u32, u32, u32)
++pub fn turbo_dom::rtdom::computed_css::cascade_order::encapsulation_rank(u32, bool) -> u32
++pub mod turbo_dom::rtdom::computed_css::property_data
++pub struct turbo_dom::rtdom::computed_css::property_data::PropertyData
++pub turbo_dom::rtdom::computed_css::property_data::PropertyData::inherited: bool
++pub turbo_dom::rtdom::computed_css::property_data::PropertyData::initial: &'static str
++pub const turbo_dom::rtdom::computed_css::property_data::SOURCE_SHA256: &str
++pub fn turbo_dom::rtdom::computed_css::property_data::lookup(&str) -> core::option::Option<turbo_dom::rtdom::computed_css::property_data::PropertyData>
++pub fn turbo_dom::rtdom::computed_css::property_data::rows() -> &'static [(&'static str, &'static str, bool)]
++pub mod turbo_dom::rtdom::computed_css::stylesheet
++pub enum turbo_dom::rtdom::computed_css::stylesheet::GroupKind
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Container
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Layer
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Media
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Scope
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::StartingStyle
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Supports
++pub enum turbo_dom::rtdom::computed_css::stylesheet::GroupMode
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupMode::Opaque
++pub turbo_dom::rtdom::computed_css::stylesheet::GroupMode::Recursive
++pub enum turbo_dom::rtdom::computed_css::stylesheet::SheetError
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::GroupDepth
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::RuleCount
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::SourceUnits
++pub enum turbo_dom::rtdom::computed_css::stylesheet::SheetRule
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group::kind: turbo_dom::rtdom::computed_css::stylesheet::GroupKind
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group::prelude: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group::rules: alloc::vec::Vec<turbo_dom::rtdom::computed_css::stylesheet::SheetRule>
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Ignored
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Opaque
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Opaque::body: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Opaque::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Opaque::prelude: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Statement
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Statement::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Statement::prelude: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Style
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Style::body: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Style::selector: turbo_dom::rtdom::computed_css::CssText
++pub enum turbo_dom::rtdom::computed_css::stylesheet::UnknownRulePolicy
++pub turbo_dom::rtdom::computed_css::stylesheet::UnknownRulePolicy::Ignore
++pub turbo_dom::rtdom::computed_css::stylesheet::UnknownRulePolicy::PreserveOpaque
++pub struct turbo_dom::rtdom::computed_css::stylesheet::SheetLimits
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetLimits::group_depth: usize
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetLimits::rules: usize
++pub turbo_dom::rtdom::computed_css::stylesheet::SheetLimits::source_units: usize
++pub fn turbo_dom::rtdom::computed_css::stylesheet::parse_sheet(&[u16], turbo_dom::rtdom::computed_css::stylesheet::SheetLimits, turbo_dom::rtdom::computed_css::stylesheet::GroupMode) -> core::result::Result<alloc::vec::Vec<turbo_dom::rtdom::computed_css::stylesheet::SheetRule>, turbo_dom::rtdom::computed_css::stylesheet::SheetError>
++pub fn turbo_dom::rtdom::computed_css::stylesheet::parse_sheet_with_unknown_rules(&[u16], turbo_dom::rtdom::computed_css::stylesheet::SheetLimits, turbo_dom::rtdom::computed_css::stylesheet::GroupMode, turbo_dom::rtdom::computed_css::stylesheet::UnknownRulePolicy) -> core::result::Result<alloc::vec::Vec<turbo_dom::rtdom::computed_css::stylesheet::SheetRule>, turbo_dom::rtdom::computed_css::stylesheet::SheetError>
++pub enum turbo_dom::rtdom::computed_css::ComputedCssError
++pub turbo_dom::rtdom::computed_css::ComputedCssError::InvalidSyntax
++pub turbo_dom::rtdom::computed_css::ComputedCssError::NestingLimit
++pub turbo_dom::rtdom::computed_css::ComputedCssError::RequiresCascade
++pub turbo_dom::rtdom::computed_css::ComputedCssError::ResourceLimit
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::css_shorthand::LengthError
++pub fn turbo_dom::rtdom::css_shorthand::LengthError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++pub enum turbo_dom::rtdom::computed_css::CustomComputation
++pub turbo_dom::rtdom::computed_css::CustomComputation::Computed(turbo_dom::rtdom::computed_css::CustomProperties)
++pub turbo_dom::rtdom::computed_css::CustomComputation::RequiresCascade
++pub turbo_dom::rtdom::computed_css::CustomComputation::RequiresCascade::keyword: turbo_dom::rtdom::computed_css::RollbackKeyword
++pub turbo_dom::rtdom::computed_css::CustomComputation::RequiresCascade::property: alloc::string::String
++pub enum turbo_dom::rtdom::computed_css::RollbackKeyword
++pub turbo_dom::rtdom::computed_css::RollbackKeyword::Revert
++pub turbo_dom::rtdom::computed_css::RollbackKeyword::RevertLayer
++pub struct turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::ComputationLimits::max_nesting: usize
++pub turbo_dom::rtdom::computed_css::ComputationLimits::max_output_units: usize
++pub turbo_dom::rtdom::computed_css::ComputationLimits::max_total_units: usize
++pub struct turbo_dom::rtdom::computed_css::CssDeclaration
++pub turbo_dom::rtdom::computed_css::CssDeclaration::important: bool
++pub turbo_dom::rtdom::computed_css::CssDeclaration::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::CssDeclaration::value: turbo_dom::rtdom::computed_css::CssText
++impl turbo_dom::rtdom::computed_css::CssDeclaration
++pub fn turbo_dom::rtdom::computed_css::CssDeclaration::serialized(&self) -> turbo_dom::rtdom::computed_css::CssText
++pub struct turbo_dom::rtdom::computed_css::CssSource
++impl turbo_dom::rtdom::computed_css::CssSource
++pub fn turbo_dom::rtdom::computed_css::CssSource::new(&[u16]) -> Self
++pub fn turbo_dom::rtdom::computed_css::CssSource::raw_range(&self, core::ops::range::Range<usize>) -> core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::CssSource::scalar(&self) -> &str
++pub struct turbo_dom::rtdom::computed_css::CssText(_)
++impl turbo_dom::rtdom::computed_css::CssText
++pub fn turbo_dom::rtdom::computed_css::CssText::as_units(&self) -> &[u16]
++pub fn turbo_dom::rtdom::computed_css::CssText::from_units(alloc::vec::Vec<u16>) -> Self
++pub struct turbo_dom::rtdom::computed_css::CustomProperties
++impl turbo_dom::rtdom::computed_css::CustomProperties
++pub fn turbo_dom::rtdom::computed_css::CustomProperties::as_map(&self) -> &alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::CustomProperties::get(&self, &str) -> core::option::Option<&turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::CustomProperties::values(&self) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::check_component_limits(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<(), turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::compute_custom_properties(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::CustomProperties, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::compute_custom_properties_detailed(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::CustomComputation, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::declarations(&[u16]) -> alloc::vec::Vec<turbo_dom::rtdom::computed_css::CssDeclaration>
++pub fn turbo_dom::rtdom::computed_css::has_function_reference(&turbo_dom::rtdom::computed_css::CssText, &str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::has_variable_references(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::substitute(&turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::CustomProperties, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub fn turbo_dom::rtdom::computed_css::valid_custom_value_syntax(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_preferences
++pub enum turbo_dom::rtdom::computed_preferences::FontDefaultsPlatform
++pub turbo_dom::rtdom::computed_preferences::FontDefaultsPlatform::MacOs
++pub turbo_dom::rtdom::computed_preferences::FontDefaultsPlatform::Other
++pub enum turbo_dom::rtdom::computed_preferences::FontPreferenceError
++pub turbo_dom::rtdom::computed_preferences::FontPreferenceError::EmptyFamily
++pub turbo_dom::rtdom::computed_preferences::FontPreferenceError::InvalidSize
++pub struct turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'a>
++pub turbo_dom::rtdom::computed_preferences::ComputedFontPreferences::family: alloc::borrow::Cow<'a, str>
++pub turbo_dom::rtdom::computed_preferences::ComputedFontPreferences::size_px: f64
++impl turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'_>
++pub fn turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'_>::into_owned(self) -> turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'static>
++pub const turbo_dom::rtdom::computed_preferences::PREFERENCE_SOURCE_SHA256: &str
++pub fn turbo_dom::rtdom::computed_preferences::computed_font_preferences(alloc::borrow::Cow<'_, str>, f64) -> core::result::Result<turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'_>, turbo_dom::rtdom::computed_preferences::FontPreferenceError>
++pub fn turbo_dom::rtdom::computed_preferences::default_computed_font_preferences(turbo_dom::rtdom::computed_preferences::FontDefaultsPlatform) -> turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'static>
++pub fn turbo_dom::rtdom::computed_preferences::default_initial_color() -> &'static str
+ pub mod turbo_dom::rtdom::css_shorthand
++pub enum turbo_dom::rtdom::css_shorthand::LengthError
++pub turbo_dom::rtdom::css_shorthand::LengthError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::css_shorthand::LengthError::InvalidBasis(alloc::string::String)
++pub turbo_dom::rtdom::css_shorthand::LengthError::RequiresBasis(alloc::string::String)
++pub turbo_dom::rtdom::css_shorthand::LengthError::UnsupportedMath(alloc::string::String)
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::css_shorthand::LengthError
++pub fn turbo_dom::rtdom::css_shorthand::LengthError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
+ pub enum turbo_dom::rtdom::css_shorthand::Spelled
+ pub turbo_dom::rtdom::css_shorthand::Spelled::Invalid
+ pub turbo_dom::rtdom::css_shorthand::Spelled::Unchecked(alloc::string::String)
+@@ -148,6 +292,8 @@
+ pub fn turbo_dom::rtdom::css_shorthand::DeclarationBlock::property_value(&self, &str) -> alloc::string::String
+ pub fn turbo_dom::rtdom::css_shorthand::DeclarationBlock::remove_property(&mut self, &str) -> alloc::string::String
+ pub fn turbo_dom::rtdom::css_shorthand::DeclarationBlock::set_property(&mut self, &str, &str, &str, turbo_dom::rtdom::css_shorthand::LonghandSpelling<'_>) -> bool
++pub struct turbo_dom::rtdom::css_shorthand::LengthContext<'a>
++pub turbo_dom::rtdom::css_shorthand::LengthContext::unit_bases: &'a [(&'a str, f64)]
+ pub struct turbo_dom::rtdom::css_shorthand::Longhand
+ pub turbo_dom::rtdom::css_shorthand::Longhand::name: &'static str
+ pub turbo_dom::rtdom::css_shorthand::Longhand::pending: core::option::Option<turbo_dom::rtdom::css_shorthand::Pending>
+@@ -159,11 +305,17 @@
+ pub const turbo_dom::rtdom::css_shorthand::LONGHAND_ALIASES: &[(&str, &str)]
+ pub fn turbo_dom::rtdom::css_shorthand::block_text(&[turbo_dom::rtdom::css_shorthand::Declaration<'_>]) -> alloc::string::String
+ pub fn turbo_dom::rtdom::css_shorthand::canonical(&str) -> core::option::Option<&'static str>
++pub fn turbo_dom::rtdom::css_shorthand::computed_length(&str, &turbo_dom::rtdom::css_shorthand::LengthContext<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<f64>, turbo_dom::rtdom::css_shorthand::LengthError>
++pub fn turbo_dom::rtdom::css_shorthand::computed_length_expression(&str, &turbo_dom::rtdom::css_shorthand::LengthContext<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<alloc::string::String>, turbo_dom::rtdom::css_shorthand::LengthError>
++pub fn turbo_dom::rtdom::css_shorthand::computed_shorthand_value(&str, &[turbo_dom::rtdom::css_shorthand::Declaration<'_>]) -> alloc::string::String
++pub fn turbo_dom::rtdom::css_shorthand::declaration_ranges(&str) -> alloc::vec::Vec<(alloc::string::String, core::ops::range::Range<usize>, bool)>
+ pub fn turbo_dom::rtdom::css_shorthand::declarations(&str) -> alloc::vec::Vec<(alloc::string::String, alloc::string::String, bool)>
+ pub fn turbo_dom::rtdom::css_shorthand::expand(&str, &str) -> core::option::Option<alloc::vec::Vec<turbo_dom::rtdom::css_shorthand::Longhand>>
++pub fn turbo_dom::rtdom::css_shorthand::expand_css(&str, &str) -> core::option::Option<alloc::vec::Vec<turbo_dom::rtdom::css_shorthand::Longhand>>
+ pub fn turbo_dom::rtdom::css_shorthand::is_shorthand(&str) -> bool
+ pub fn turbo_dom::rtdom::css_shorthand::longhand_alias(&str) -> core::option::Option<&'static str>
+ pub fn turbo_dom::rtdom::css_shorthand::longhand_value(&str, &str) -> turbo_dom::rtdom::css_shorthand::Spelled
++pub fn turbo_dom::rtdom::css_shorthand::longhand_value_css(&str, &str) -> turbo_dom::rtdom::css_shorthand::Spelled
+ pub fn turbo_dom::rtdom::css_shorthand::longhands(&str) -> core::option::Option<&'static [&'static str]>
+ pub fn turbo_dom::rtdom::css_shorthand::shorthand_names() -> impl core::iter::traits::iterator::Iterator<Item = &'static str>
+ pub fn turbo_dom::rtdom::css_shorthand::shorthand_value(&str, &[turbo_dom::rtdom::css_shorthand::Declaration<'_>]) -> alloc::string::String
+@@ -171,6 +323,7 @@
+ pub type turbo_dom::rtdom::css_shorthand::LonghandSpelling<'a> = &'a dyn core::ops::function::Fn(&str, &str) -> core::option::Option<alloc::string::String>
+ pub mod turbo_dom::rtdom::css_values
+ pub fn turbo_dom::rtdom::css_values::css_number(f32) -> alloc::string::String
++pub fn turbo_dom::rtdom::css_values::font_settings(bool, bool, &mut cssparser::parser::Parser<'_, '_>) -> core::option::Option<alloc::string::String>
+ pub fn turbo_dom::rtdom::css_values::zoom_value(&str) -> core::option::Option<(alloc::string::String, f32)>
+ pub mod turbo_dom::rtdom::cssom
+ pub struct turbo_dom::rtdom::cssom::CssStyleRule
+@@ -361,11 +514,22 @@
+ impl core::error::Error for turbo_dom::rtdom::query::SelectorError
+ impl core::fmt::Display for turbo_dom::rtdom::query::SelectorError
+ pub fn turbo_dom::rtdom::query::SelectorError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++pub enum turbo_dom::rtdom::query::SubjectSeed<'a>
++pub turbo_dom::rtdom::query::SubjectSeed::Class(&'a str)
++pub turbo_dom::rtdom::query::SubjectSeed::Id(&'a str)
++pub turbo_dom::rtdom::query::SubjectSeed::Type(&'a str)
+ pub struct turbo_dom::rtdom::query::CascadeSelector
+ impl turbo_dom::rtdom::query::CascadeSelector
++pub fn turbo_dom::rtdom::query::CascadeSelector::certifies_structural_matching(&self) -> bool
++pub fn turbo_dom::rtdom::query::CascadeSelector::may_target_ordinary_type(&self, &str) -> bool
+ pub fn turbo_dom::rtdom::query::CascadeSelector::pseudo_element(&self) -> core::option::Option<&str>
++pub fn turbo_dom::rtdom::query::CascadeSelector::references_scope(&self) -> bool
++pub fn turbo_dom::rtdom::query::CascadeSelector::source_payload_bytes(&self) -> usize
+ pub fn turbo_dom::rtdom::query::CascadeSelector::specificity(&self) -> turbo_dom::rtdom::query::Specificity
++pub fn turbo_dom::rtdom::query::CascadeSelector::subject_seed(&self) -> core::option::Option<turbo_dom::rtdom::query::SubjectSeed<'_>>
+ pub fn turbo_dom::rtdom::query::CascadeSelector::text(&self) -> &str
++pub fn turbo_dom::rtdom::query::CascadeSelector::text_units(&self) -> alloc::borrow::Cow<'_, [u16]>
++pub fn turbo_dom::rtdom::query::CascadeSelector::with_implicit_scope_anchor(&self) -> Self
+ pub struct turbo_dom::rtdom::query::LiveNavigator<'t>(pub &'t turbo_dom::rtdom::tree::Tree)
+ impl turbo_dom::rtdom::query::Navigator for turbo_dom::rtdom::query::LiveNavigator<'_>
+ pub fn turbo_dom::rtdom::query::LiveNavigator<'_>::assigned_slot(&self, turbo_dom::rtdom::tree::Handle) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+@@ -428,6 +592,8 @@
+ pub fn turbo_dom::rtdom::query::LiveNavigator<'_>::type_position(&self, turbo_dom::rtdom::tree::Handle) -> (usize, usize)
+ pub fn turbo_dom::rtdom::query::match_for_cascade<N: turbo_dom::rtdom::query::Navigator + ?core::marker::Sized>(&N, turbo_dom::rtdom::tree::Handle, &turbo_dom::rtdom::query::CascadeSelector) -> bool
+ pub fn turbo_dom::rtdom::query::parse_for_cascade(&str) -> core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>
++pub fn turbo_dom::rtdom::query::parse_for_cascade_units(&[u16]) -> core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>
++pub fn turbo_dom::rtdom::query::parse_for_cascade_units_scoped(&[u16]) -> core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>
+ pub fn turbo_dom::rtdom::query::parse_for_supports(&str) -> core::result::Result<turbo_dom::rtdom::query::CascadeSelector, turbo_dom::rtdom::query::SelectorError>
+ pub type turbo_dom::rtdom::query::Specificity = (u32, u32, u32)
+ pub mod turbo_dom::rtdom::serialize
+@@ -524,6 +690,11 @@
+ pub turbo_dom::rtdom::tree::Siblings::Both
+ pub turbo_dom::rtdom::tree::Siblings::Forward
+ pub turbo_dom::rtdom::tree::Siblings::None
++pub enum turbo_dom::rtdom::tree::StorageCollectionOutcome
++pub turbo_dom::rtdom::tree::StorageCollectionOutcome::Compacted(turbo_dom::rtdom::tree::CollectionReport)
++pub turbo_dom::rtdom::tree::StorageCollectionOutcome::Unchanged(turbo_dom::rtdom::tree::CollectionReport)
++impl turbo_dom::rtdom::tree::StorageCollectionOutcome
++pub fn turbo_dom::rtdom::tree::StorageCollectionOutcome::report(self) -> turbo_dom::rtdom::tree::CollectionReport
+ pub struct turbo_dom::rtdom::tree::AttributeData
+ pub turbo_dom::rtdom::tree::AttributeData::local_name: smol_str::SmolStr
+ pub turbo_dom::rtdom::tree::AttributeData::namespace: core::option::Option<smol_str::SmolStr>
+@@ -714,6 +885,7 @@
+ pub fn turbo_dom::rtdom::tree::Tree::query_selector_units(&self, &[u16]) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::CollectionReport, turbo_dom::rtdom::tree::CollectionError>
++pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable_if_needed(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::StorageCollectionOutcome, turbo_dom::rtdom::tree::CollectionError>
+ pub fn turbo_dom::rtdom::tree::Tree::is_live(&self, turbo_dom::rtdom::tree::Handle) -> bool
+ pub fn turbo_dom::rtdom::tree::Tree::storage_stats(&self) -> turbo_dom::rtdom::tree::StorageStats
+ impl turbo_dom::rtdom::tree::Tree
+@@ -764,6 +936,9 @@
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_copy_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::set_custom_element_state(&mut self, turbo_dom::rtdom::tree::Handle, turbo_dom::rtdom::tree::CustomElementState) -> bool
++impl turbo_dom::rtdom::tree::Tree
++pub fn turbo_dom::rtdom::tree::Tree::document_checkpoint(&self) -> core::option::Option<turbo_dom::rtdom::DocumentCheckpoint>
++pub fn turbo_dom::rtdom::tree::Tree::document_unchanged_since(&self, turbo_dom::rtdom::DocumentCheckpoint) -> bool
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_element(&self) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_stack(&self) -> &[turbo_dom::rtdom::tree::Handle]
+@@ -792,6 +967,7 @@
+ pub turbo_dom::rtdom::Siblings::Both
+ pub turbo_dom::rtdom::Siblings::Forward
+ pub turbo_dom::rtdom::Siblings::None
++pub struct turbo_dom::rtdom::DocumentCheckpoint
+ pub struct turbo_dom::rtdom::Dom
+ pub turbo_dom::rtdom::Dom::tree: turbo_dom::rtdom::tree::Tree
+ impl turbo_dom::rtdom::events::Dom
+@@ -1003,6 +1179,7 @@
+ pub fn turbo_dom::rtdom::tree::Tree::query_selector_units(&self, &[u16]) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::CollectionReport, turbo_dom::rtdom::tree::CollectionError>
++pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable_if_needed(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::StorageCollectionOutcome, turbo_dom::rtdom::tree::CollectionError>
+ pub fn turbo_dom::rtdom::tree::Tree::is_live(&self, turbo_dom::rtdom::tree::Handle) -> bool
+ pub fn turbo_dom::rtdom::tree::Tree::storage_stats(&self) -> turbo_dom::rtdom::tree::StorageStats
+ impl turbo_dom::rtdom::tree::Tree
+@@ -1053,6 +1230,9 @@
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_copy_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::set_custom_element_state(&mut self, turbo_dom::rtdom::tree::Handle, turbo_dom::rtdom::tree::CustomElementState) -> bool
++impl turbo_dom::rtdom::tree::Tree
++pub fn turbo_dom::rtdom::tree::Tree::document_checkpoint(&self) -> core::option::Option<turbo_dom::rtdom::DocumentCheckpoint>
++pub fn turbo_dom::rtdom::tree::Tree::document_unchanged_since(&self, turbo_dom::rtdom::DocumentCheckpoint) -> bool
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_element(&self) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_stack(&self) -> &[turbo_dom::rtdom::tree::Handle]
+@@ -1276,6 +1456,7 @@
+ pub fn turbo_dom::rtdom::tree::Tree::query_selector_units(&self, &[u16]) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::CollectionReport, turbo_dom::rtdom::tree::CollectionError>
++pub fn turbo_dom::rtdom::tree::Tree::collect_unreachable_if_needed(&mut self, &[turbo_dom::rtdom::tree::Handle], turbo_dom::rtdom::tree::CollectionBudget) -> core::result::Result<turbo_dom::rtdom::tree::StorageCollectionOutcome, turbo_dom::rtdom::tree::CollectionError>
+ pub fn turbo_dom::rtdom::tree::Tree::is_live(&self, turbo_dom::rtdom::tree::Handle) -> bool
+ pub fn turbo_dom::rtdom::tree::Tree::storage_stats(&self) -> turbo_dom::rtdom::tree::StorageStats
+ impl turbo_dom::rtdom::tree::Tree
+@@ -1326,6 +1507,9 @@
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_copy_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::custom_element_state(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom::rtdom::tree::CustomElementState
+ pub fn turbo_dom::rtdom::tree::Tree::set_custom_element_state(&mut self, turbo_dom::rtdom::tree::Handle, turbo_dom::rtdom::tree::CustomElementState) -> bool
++impl turbo_dom::rtdom::tree::Tree
++pub fn turbo_dom::rtdom::tree::Tree::document_checkpoint(&self) -> core::option::Option<turbo_dom::rtdom::DocumentCheckpoint>
++pub fn turbo_dom::rtdom::tree::Tree::document_unchanged_since(&self, turbo_dom::rtdom::DocumentCheckpoint) -> bool
+ impl turbo_dom::rtdom::tree::Tree
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_element(&self) -> core::option::Option<turbo_dom::rtdom::tree::Handle>
+ pub fn turbo_dom::rtdom::tree::Tree::fullscreen_stack(&self) -> &[turbo_dom::rtdom::tree::Handle]
+
+## turbo-dom-parser
+# Added 0, removed 0 public lines.
+(no changes)
+
+## turbo-dom-layout
+# Added 38, removed 0 public lines.
+--- v0.8.6/turbo-dom-layout
++++ 0.8.7/turbo-dom-layout
+@@ -42,6 +42,7 @@
+ pub turbo_dom_layout::cssom_view::metrics::OffsetSize::height: i32
+ pub turbo_dom_layout::cssom_view::metrics::OffsetSize::width: i32
+ pub fn turbo_dom_layout::cssom_view::metrics::bounding_box(&[turbo_dom_layout::layout_snapshot::Rect]) -> turbo_dom_layout::layout_snapshot::Rect
++pub fn turbo_dom_layout::cssom_view::metrics::client_metrics(&turbo_dom_layout::layout_snapshot::LayoutSnapshot, turbo_dom_layout::layout_snapshot::SourceId) -> core::result::Result<turbo_dom_layout::cssom_view::metrics::ClientMetrics, alloc::string::String>
+ pub fn turbo_dom_layout::cssom_view::metrics::element_geometry(&turbo_dom_layout::layout_snapshot::LayoutSnapshot, turbo_dom_layout::layout_snapshot::SourceId) -> core::result::Result<turbo_dom_layout::cssom_view::metrics::ElementGeometry, alloc::string::String>
+ pub fn turbo_dom_layout::cssom_view::metrics::empty_geometry() -> turbo_dom_layout::cssom_view::metrics::ElementGeometry
+ pub fn turbo_dom_layout::cssom_view::metrics::offset_position(&turbo_dom_layout::layout_snapshot::LayoutSnapshot, &turbo_dom_layout::cssom_view::scroll::SourceStyles, turbo_dom_layout::layout_snapshot::SourceId) -> core::result::Result<turbo_dom_layout::cssom_view::metrics::OffsetPosition, alloc::string::String>
+@@ -403,6 +404,7 @@
+ pub turbo_dom_layout::layout::fragment::Fragment::children: alloc::vec::Vec<turbo_dom_layout::layout::fragment::Fragment>
+ pub turbo_dom_layout::layout::fragment::Fragment::clip: core::option::Option<turbo_dom_layout::layout::fragment::ClipRect>
+ pub turbo_dom_layout::layout::fragment::Fragment::content: turbo_dom_layout::layout::fragment::FragmentContent
++pub turbo_dom_layout::layout::fragment::Fragment::establishes_stacking_context: bool
+ pub turbo_dom_layout::layout::fragment::Fragment::height: f32
+ pub turbo_dom_layout::layout::fragment::Fragment::is_positioned: bool
+ pub turbo_dom_layout::layout::fragment::Fragment::node_id: turbo_dom_layout::layout::fragment::NodeId
+@@ -414,6 +416,7 @@
+ pub turbo_dom_layout::layout::fragment::Fragment::z_index: core::option::Option<i32>
+ impl turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::bottom(&self) -> f32
++pub fn turbo_dom_layout::layout::fragment::Fragment::creates_stacking_context(&self) -> bool
+ pub fn turbo_dom_layout::layout::fragment::Fragment::new(turbo_dom_layout::layout::fragment::NodeId, f32, f32, f32, f32, turbo_dom_layout::layout::fragment::FragmentContent) -> turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_order(&self) -> alloc::vec::Vec<usize>
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_z(&self) -> i32
+@@ -638,6 +641,14 @@
+ pub fn turbo_dom_layout::layout::inline::layout_runs(&[turbo_dom_layout::layout::inline::InlineRun], &turbo_dom_layout::FontRegistry, f32, turbo_dom_layout::Align, &mut turbo_dom_layout::error::Diagnostics) -> turbo_dom_layout::layout::inline::ParagraphLayout
+ pub type turbo_dom_layout::layout::inline::LineRegion<'a> = &'a dyn core::ops::function::Fn(f32) -> (f32, f32)
+ pub mod turbo_dom_layout::layout::multicol
++pub mod turbo_dom_layout::layout::paint
++pub struct turbo_dom_layout::layout::paint::PaintNode<'a>
++pub turbo_dom_layout::layout::paint::PaintNode::children: alloc::vec::Vec<turbo_dom_layout::layout::paint::PaintNode<'a>>
++pub turbo_dom_layout::layout::paint::PaintNode::clips: alloc::vec::Vec<&'a turbo_dom_layout::layout::fragment::Fragment>
++pub turbo_dom_layout::layout::paint::PaintNode::fragment: &'a turbo_dom_layout::layout::fragment::Fragment
++impl<'a> turbo_dom_layout::layout::paint::PaintNode<'a>
++pub fn turbo_dom_layout::layout::paint::PaintNode<'a>::new(&'a turbo_dom_layout::layout::fragment::Fragment) -> Self
++pub fn turbo_dom_layout::layout::paint::PaintNode<'a>::visit(&self, &mut impl core::ops::function::FnMut(&'a turbo_dom_layout::layout::fragment::Fragment))
+ pub mod turbo_dom_layout::layout::sticky
+ pub struct turbo_dom_layout::layout::sticky::StickyConstraint
+ pub turbo_dom_layout::layout::sticky::StickyConstraint::applied: [f32; 2]
+@@ -830,6 +841,7 @@
+ pub turbo_dom_layout::layout::Fragment::children: alloc::vec::Vec<turbo_dom_layout::layout::fragment::Fragment>
+ pub turbo_dom_layout::layout::Fragment::clip: core::option::Option<turbo_dom_layout::layout::fragment::ClipRect>
+ pub turbo_dom_layout::layout::Fragment::content: turbo_dom_layout::layout::fragment::FragmentContent
++pub turbo_dom_layout::layout::Fragment::establishes_stacking_context: bool
+ pub turbo_dom_layout::layout::Fragment::height: f32
+ pub turbo_dom_layout::layout::Fragment::is_positioned: bool
+ pub turbo_dom_layout::layout::Fragment::node_id: turbo_dom_layout::layout::fragment::NodeId
+@@ -841,6 +853,7 @@
+ pub turbo_dom_layout::layout::Fragment::z_index: core::option::Option<i32>
+ impl turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::bottom(&self) -> f32
++pub fn turbo_dom_layout::layout::fragment::Fragment::creates_stacking_context(&self) -> bool
+ pub fn turbo_dom_layout::layout::fragment::Fragment::new(turbo_dom_layout::layout::fragment::NodeId, f32, f32, f32, f32, turbo_dom_layout::layout::fragment::FragmentContent) -> turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_order(&self) -> alloc::vec::Vec<usize>
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_z(&self) -> i32
+@@ -924,6 +937,7 @@
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::list_marker_owner(&self, usize) -> core::option::Option<turbo_dom_layout::layout_snapshot::SourceId>
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::native_hit_transform(&self, usize) -> core::option::Option<[f64; 6]>
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::native_world_transform(&self, usize) -> core::option::Option<[f64; 6]>
++pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::paint_order(&self) -> &[usize]
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::source(&self, turbo_dom_layout::layout_snapshot::SourceId) -> core::option::Option<&turbo_dom_layout::layout_snapshot::SnapshotSource>
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::sources(&self) -> &[turbo_dom_layout::layout_snapshot::SnapshotSource]
+ pub fn turbo_dom_layout::layout_snapshot::LayoutSnapshot::sticky_constraint(&self, turbo_dom_layout::layout_snapshot::SourceId) -> core::option::Option<&(turbo_dom_layout::layout::fragment::NodeId, turbo_dom_layout::layout::sticky::StickyConstraint)>
+@@ -1087,6 +1101,7 @@
+ pub const turbo_dom_layout::live::MAX_TEXT_BYTES: usize
+ pub fn turbo_dom_layout::live::capture(&turbo_dom_layout::live::LiveTree<'_>) -> core::result::Result<turbo_dom_layout::live::LiveCapture, turbo_dom_layout::live::LiveError>
+ pub fn turbo_dom_layout::live::snapshot<T>(&turbo_dom_layout::live::LiveStyle<'_>, &turbo_dom_layout::live::LiveCapture, &turbo_dom_layout::live::LiveOptions, impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]) -> core::result::Result<T, alloc::string::String>, &turbo_dom_layout::layout_snapshot::SnapshotInputs<'_>, &mut turbo_dom_layout::error::Diagnostics) -> core::result::Result<(turbo_dom_layout::layout_snapshot::LayoutSnapshot, T), turbo_dom_layout::live::LiveError>
++pub fn turbo_dom_layout::live::snapshot_with_stacking_contexts<T>(&turbo_dom_layout::live::LiveStyle<'_>, &turbo_dom_layout::live::LiveCapture, &turbo_dom_layout::live::LiveOptions, &[turbo_dom_layout::layout_snapshot::SourceId], impl core::ops::function::FnOnce(&mut [turbo_dom_layout::StyledNode]) -> core::result::Result<T, alloc::string::String>, &turbo_dom_layout::layout_snapshot::SnapshotInputs<'_>, &mut turbo_dom_layout::error::Diagnostics) -> core::result::Result<(turbo_dom_layout::layout_snapshot::LayoutSnapshot, T), turbo_dom_layout::live::LiveError>
+ pub fn turbo_dom_layout::live::source_document(turbo_dom_layout::layout_snapshot::SourceId) -> u32
+ pub fn turbo_dom_layout::live::source_handle(turbo_dom_layout::layout_snapshot::SourceId) -> turbo_dom::rtdom::tree::Handle
+ pub fn turbo_dom_layout::live::source_id(u32, turbo_dom::rtdom::tree::Handle) -> turbo_dom_layout::layout_snapshot::SourceId
+@@ -1097,7 +1112,9 @@
+ pub fn turbo_dom_layout::perf::snapshot() -> alloc::collections::btree::map::BTreeMap<&'static str, u64>
+ pub mod turbo_dom_layout::style
+ pub enum turbo_dom_layout::style::CascadeOrigin
++pub turbo_dom_layout::style::CascadeOrigin::Animation
+ pub turbo_dom_layout::style::CascadeOrigin::Author
++pub turbo_dom_layout::style::CascadeOrigin::Transition
+ pub turbo_dom_layout::style::CascadeOrigin::User
+ pub turbo_dom_layout::style::CascadeOrigin::UserAgent
+ pub enum turbo_dom_layout::style::Roots<'a>
+@@ -1126,7 +1143,9 @@
+ pub fn turbo_dom_layout::ComputedStyle::from_pairs<I, K, V>(I) -> turbo_dom_layout::ComputedStyle where I: core::iter::traits::collect::IntoIterator<Item = (K, V)>, K: core::convert::Into<alloc::string::String>, V: core::convert::Into<alloc::string::String>
+ pub fn turbo_dom_layout::ComputedStyle::get(&self, &str) -> core::option::Option<&str>
+ pub fn turbo_dom_layout::ComputedStyle::has_no_relative_units(&self) -> bool
++pub fn turbo_dom_layout::ComputedStyle::has_stacking_context(&self) -> bool
+ pub fn turbo_dom_layout::ComputedStyle::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, &str)>
++pub fn turbo_dom_layout::ComputedStyle::with_stacking_context(self) -> Self
+ pub struct turbo_dom_layout::style::Declaration
+ pub turbo_dom_layout::style::Declaration::important: bool
+ pub turbo_dom_layout::style::Declaration::property: alloc::string::String
+@@ -1228,14 +1247,18 @@
+ pub fn turbo_dom_layout::TreeView<'t>::tag(&self, turbo_dom::rtdom::tree::Handle) -> turbo_dom_layout::tag::Tag
+ pub fn turbo_dom_layout::TreeView<'t>::text(&self, turbo_dom::rtdom::tree::Handle) -> alloc::borrow::Cow<'t, str>
+ pub fn turbo_dom_layout::TreeView<'t>::tree(&self) -> &'t turbo_dom::rtdom::tree::Tree
++pub const turbo_dom_layout::style::DOCUMENT_USER_AGENT_CSS: &str
+ pub const turbo_dom_layout::style::QUIRKS_LINE_HEIGHT: &str
+ pub const turbo_dom_layout::style::QUIRKY_CONTAINER: &str
+ pub fn turbo_dom_layout::style::build_cascade(&str, &str, turbo_dom_layout::style::TokenSet) -> turbo_dom_layout::Cascade
+ pub fn turbo_dom_layout::style::build_cascade_with_width(&str, &str, turbo_dom_layout::style::TokenSet, f32) -> turbo_dom_layout::Cascade
++pub fn turbo_dom_layout::style::cascade_matched_tokens(&[turbo_dom_layout::style::MatchedDeclaration]) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
++pub fn turbo_dom_layout::style::computed_document_user_agent_css() -> &'static str
+ pub fn turbo_dom_layout::style::document_root_font_px(&[turbo_dom_layout::StyledNode]) -> f32
+ pub fn turbo_dom_layout::style::ensure_default_display(&mut turbo_dom_layout::ComputedStyle, &str)
+ pub fn turbo_dom_layout::style::fullscreen_user_agent_css() -> &'static str
+ pub fn turbo_dom_layout::style::html_default_display(&str) -> core::option::Option<&'static str>
++pub fn turbo_dom_layout::style::ordered_matched_declarations(&[turbo_dom_layout::style::MatchedDeclaration]) -> alloc::vec::Vec<turbo_dom_layout::style::Declaration>
+ pub fn turbo_dom_layout::style::parse_declarations(&str) -> alloc::vec::Vec<turbo_dom_layout::style::Declaration>
+ pub fn turbo_dom_layout::style::parse_stylesheet(&str) -> turbo_dom_layout::style::Stylesheet
+ pub fn turbo_dom_layout::style::presentational_declarations(core::option::Option<&str>, &[turbo_dom_layout::tag::Attr]) -> alloc::vec::Vec<turbo_dom_layout::style::Declaration>
+@@ -1252,6 +1275,16 @@
+ pub enum turbo_dom_layout::svg::Oversize
+ pub turbo_dom_layout::svg::Oversize::Clamp
+ pub turbo_dom_layout::svg::Oversize::Reject
++pub enum turbo_dom_layout::svg::SvgResourceError
++pub turbo_dom_layout::svg::SvgResourceError::CustomPropertyBytes
++pub turbo_dom_layout::svg::SvgResourceError::CustomPropertyNesting
++pub turbo_dom_layout::svg::SvgResourceError::RasterBytes
++pub turbo_dom_layout::svg::SvgResourceError::RasterDimensions
++pub turbo_dom_layout::svg::SvgResourceError::ResourceDepth
++pub turbo_dom_layout::svg::SvgResourceError::UnsupportedCustomProperties
++impl core::error::Error for turbo_dom_layout::svg::SvgResourceError
++impl core::fmt::Display for turbo_dom_layout::svg::SvgResourceError
++pub fn turbo_dom_layout::svg::SvgResourceError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+ pub const turbo_dom_layout::svg::MAX_DEPTH: usize
+ pub const turbo_dom_layout::svg::MAX_DIM: u32
+ pub const turbo_dom_layout::svg::PDF_SVG_SCALE: f32
+@@ -1261,9 +1294,11 @@
+ pub fn turbo_dom_layout::svg::natural_size(&[u8]) -> core::option::Option<(f32, f32)>
+ pub fn turbo_dom_layout::svg::natural_sizing(&[u8]) -> core::option::Option<((f32, f32), core::option::Option<f32>)>
+ pub fn turbo_dom_layout::svg::parse(&[u8]) -> core::option::Option<usvg::tree::Tree>
++pub fn turbo_dom_layout::svg::parse_checked(&[u8]) -> core::result::Result<core::option::Option<usvg::tree::Tree>, turbo_dom_layout::svg::SvgResourceError>
+ pub fn turbo_dom_layout::svg::pixel_size((f32, f32), f32, turbo_dom_layout::svg::Oversize) -> core::option::Option<(u32, u32)>
+ pub fn turbo_dom_layout::svg::probe_svg(&[u8]) -> core::option::Option<turbo_dom_layout::image::Intrinsic>
+ pub fn turbo_dom_layout::svg::rasterize(&[u8], f32, turbo_dom_layout::svg::Oversize) -> core::option::Option<turbo_dom_layout::image::Rgba8Image>
++pub fn turbo_dom_layout::svg::rasterize_checked(&[u8], f32, turbo_dom_layout::svg::Oversize) -> core::result::Result<core::option::Option<turbo_dom_layout::image::Rgba8Image>, turbo_dom_layout::svg::SvgResourceError>
+ pub mod turbo_dom_layout::tag
+ pub enum turbo_dom_layout::tag::Tag
+ pub turbo_dom_layout::tag::Tag::Html(alloc::string::String)
+@@ -1399,9 +1434,11 @@
+ pub fn turbo_dom_layout::FontFace::scale(&self, f32) -> f32
+ pub fn turbo_dom_layout::FontFace::shape(&self, &str) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
+ pub fn turbo_dom_layout::FontFace::shape_in(&self, &str, bool) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
++pub fn turbo_dom_layout::FontFace::unicode_range(&self) -> impl core::iter::traits::iterator::Iterator<Item = &core::ops::range::RangeInclusive<u32>>
+ pub fn turbo_dom_layout::FontFace::units_per_em(&self) -> u16
+ pub fn turbo_dom_layout::FontFace::weight(&self) -> u16
+ pub fn turbo_dom_layout::FontFace::with_family(&self, impl core::convert::Into<alloc::string::String>) -> turbo_dom_layout::FontFace
++pub fn turbo_dom_layout::FontFace::with_unicode_range(self, impl core::convert::Into<alloc::vec::Vec<core::ops::range::RangeInclusive<u32>>>) -> turbo_dom_layout::FontFace
+ impl turbo_dom_layout::FontFace
+ pub fn turbo_dom_layout::FontFace::blink_advances(&self, &[turbo_dom_layout::text::ShapedGlyph], f32, f32) -> alloc::vec::Vec<f64>
+ impl turbo_dom_layout::FontFace
+@@ -1459,6 +1496,7 @@
+ pub fn turbo_dom_layout::text::TextTransform::from_computed(core::option::Option<&str>, core::option::Option<&str>) -> Self
+ pub fn turbo_dom_layout::text::blink_font_size(f32) -> f32
+ pub fn turbo_dom_layout::text::layout_text(&str, &turbo_dom_layout::FontFace, &turbo_dom_layout::TextStyle, f32) -> alloc::vec::Vec<turbo_dom_layout::LineBox>
++pub fn turbo_dom_layout::text::parse_unicode_range(&str) -> core::option::Option<alloc::vec::Vec<core::ops::range::RangeInclusive<u32>>>
+ pub macro turbo_dom_layout::hot!
+ pub enum turbo_dom_layout::Align
+ pub turbo_dom_layout::Align::Center
+@@ -1620,7 +1658,9 @@
+ pub fn turbo_dom_layout::ComputedStyle::from_pairs<I, K, V>(I) -> turbo_dom_layout::ComputedStyle where I: core::iter::traits::collect::IntoIterator<Item = (K, V)>, K: core::convert::Into<alloc::string::String>, V: core::convert::Into<alloc::string::String>
+ pub fn turbo_dom_layout::ComputedStyle::get(&self, &str) -> core::option::Option<&str>
+ pub fn turbo_dom_layout::ComputedStyle::has_no_relative_units(&self) -> bool
++pub fn turbo_dom_layout::ComputedStyle::has_stacking_context(&self) -> bool
+ pub fn turbo_dom_layout::ComputedStyle::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, &str)>
++pub fn turbo_dom_layout::ComputedStyle::with_stacking_context(self) -> Self
+ pub struct turbo_dom_layout::CornerRadii
+ pub turbo_dom_layout::CornerRadii::h: f32
+ pub turbo_dom_layout::CornerRadii::v: f32
+@@ -1663,9 +1703,11 @@
+ pub fn turbo_dom_layout::FontFace::scale(&self, f32) -> f32
+ pub fn turbo_dom_layout::FontFace::shape(&self, &str) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
+ pub fn turbo_dom_layout::FontFace::shape_in(&self, &str, bool) -> alloc::vec::Vec<turbo_dom_layout::text::ShapedGlyph>
++pub fn turbo_dom_layout::FontFace::unicode_range(&self) -> impl core::iter::traits::iterator::Iterator<Item = &core::ops::range::RangeInclusive<u32>>
+ pub fn turbo_dom_layout::FontFace::units_per_em(&self) -> u16
+ pub fn turbo_dom_layout::FontFace::weight(&self) -> u16
+ pub fn turbo_dom_layout::FontFace::with_family(&self, impl core::convert::Into<alloc::string::String>) -> turbo_dom_layout::FontFace
++pub fn turbo_dom_layout::FontFace::with_unicode_range(self, impl core::convert::Into<alloc::vec::Vec<core::ops::range::RangeInclusive<u32>>>) -> turbo_dom_layout::FontFace
+ impl turbo_dom_layout::FontFace
+ pub fn turbo_dom_layout::FontFace::blink_advances(&self, &[turbo_dom_layout::text::ShapedGlyph], f32, f32) -> alloc::vec::Vec<f64>
+ impl turbo_dom_layout::FontFace
+@@ -1696,6 +1738,7 @@
+ pub turbo_dom_layout::Fragment::children: alloc::vec::Vec<turbo_dom_layout::layout::fragment::Fragment>
+ pub turbo_dom_layout::Fragment::clip: core::option::Option<turbo_dom_layout::layout::fragment::ClipRect>
+ pub turbo_dom_layout::Fragment::content: turbo_dom_layout::layout::fragment::FragmentContent
++pub turbo_dom_layout::Fragment::establishes_stacking_context: bool
+ pub turbo_dom_layout::Fragment::height: f32
+ pub turbo_dom_layout::Fragment::is_positioned: bool
+ pub turbo_dom_layout::Fragment::node_id: turbo_dom_layout::layout::fragment::NodeId
+@@ -1707,6 +1750,7 @@
+ pub turbo_dom_layout::Fragment::z_index: core::option::Option<i32>
+ impl turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::bottom(&self) -> f32
++pub fn turbo_dom_layout::layout::fragment::Fragment::creates_stacking_context(&self) -> bool
+ pub fn turbo_dom_layout::layout::fragment::Fragment::new(turbo_dom_layout::layout::fragment::NodeId, f32, f32, f32, f32, turbo_dom_layout::layout::fragment::FragmentContent) -> turbo_dom_layout::layout::fragment::Fragment
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_order(&self) -> alloc::vec::Vec<usize>
+ pub fn turbo_dom_layout::layout::fragment::Fragment::paint_z(&self) -> i32
+
+## turbo-dom-raster
+# Added 0, removed 0 public lines.
+(no changes)
+
+## turbo-dom-browser-env
+# Added 4, removed 0 public lines.
+--- v0.8.6/turbo-dom-browser-env
++++ 0.8.7/turbo-dom-browser-env
+@@ -18,6 +18,8 @@
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++pub const turbo_dom_browser_env::browser_env::test_support::CACHED_OWN_BOX_CHROME159_JSON: &str
++pub const turbo_dom_browser_env::browser_env::test_support::CACHED_OWN_BOX_PROBE_JS: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_PROBE_JS: &str
+@@ -340,6 +342,8 @@
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++pub const turbo_dom_browser_env::test_support::CACHED_OWN_BOX_CHROME159_JSON: &str
++pub const turbo_dom_browser_env::test_support::CACHED_OWN_BOX_PROBE_JS: &str
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_PROBE_JS: &str
+
+## host-hidden
+# Added 118, removed 0 public lines.
+--- v0.8.6/host-hidden
++++ 0.8.7/host-hidden
+@@ -3,6 +3,7 @@
+ pub mod turbo_dom_browser_env::browser_env
+ pub mod turbo_dom_browser_env::browser_env::host_internals
+ pub use turbo_dom_browser_env::browser_env::host_internals::Handle
++pub use turbo_dom_browser_env::browser_env::host_internals::StorageCollectionOutcome
+ pub use turbo_dom_browser_env::browser_env::host_internals::StylePolicy
+ pub use turbo_dom_browser_env::browser_env::host_internals::Tree
+ pub use turbo_dom_browser_env::browser_env::host_internals::zoom_value
+@@ -13,6 +14,9 @@
+ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::Abort
+ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::InitializedByHost
+ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryReadyAction::RunRegisteredInitScripts
++pub enum turbo_dom_browser_env::browser_env::host_internals::CachedOwnBox
++pub turbo_dom_browser_env::browser_env::host_internals::CachedOwnBox::DisplayNone
++pub turbo_dom_browser_env::browser_env::host_internals::CachedOwnBox::Unknown
+ pub enum turbo_dom_browser_env::browser_env::host_internals::CssEffectKind
+ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectKind::Animation
+ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectKind::Script
+@@ -25,6 +29,25 @@
+ pub enum turbo_dom_browser_env::browser_env::host_internals::OpenSource
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenSource::Hyperlink
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenSource::Script
++pub enum turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState::Certified
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState::Certified::animation: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedProperty>
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState::Certified::transition: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedProperty>
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState::Unknown
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTargetState::Unknown::properties: alloc::vec::Vec<alloc::string::String>
++pub enum turbo_dom_browser_env::browser_env::host_internals::SelectorPreparationError
++pub turbo_dom_browser_env::browser_env::host_internals::SelectorPreparationError::Exception
++pub turbo_dom_browser_env::browser_env::host_internals::SelectorPreparationError::InvalidSelector
++pub turbo_dom_browser_env::browser_env::host_internals::SelectorPreparationError::Unavailable
++pub enum turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::ActiveJavaScript
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::CallbackUnavailable
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::CleanupFailed
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::ContextOwnership
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::ImplicitMicrotasks
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::IsolateUnavailable
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::StackUnavailable
++pub turbo_dom_browser_env::browser_env::host_internals::TerminationRecoveryError::StillTerminating
+ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryContextId(pub u64)
+ pub struct turbo_dom_browser_env::browser_env::host_internals::AuxiliaryHost
+ pub turbo_dom_browser_env::browser_env::host_internals::AuxiliaryHost::close: turbo_dom_browser_env::host_internals::CloseHost
+@@ -65,7 +88,10 @@
+ pub turbo_dom_browser_env::browser_env::host_internals::CssEffectSnapshot::unsupported: bool
+ impl turbo_dom_browser_env::host_internals::CssEffectSnapshot
+ pub fn turbo_dom_browser_env::host_internals::CssEffectSnapshot::allows_underlying_geometry(&self) -> bool
++pub struct turbo_dom_browser_env::browser_env::host_internals::DocumentCheckpoint
+ pub struct turbo_dom_browser_env::browser_env::host_internals::DocumentScope
++pub struct turbo_dom_browser_env::browser_env::host_internals::NativeStorageSweepReport
++pub turbo_dom_browser_env::browser_env::host_internals::NativeStorageSweepReport::documents: alloc::vec::Vec<(u64, turbo_dom::rtdom::tree::storage::StorageCollectionOutcome)>
+ pub struct turbo_dom_browser_env::browser_env::host_internals::OpenRequest
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::features: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::navigate: bool
+@@ -78,6 +104,27 @@
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::target: alloc::vec::Vec<u16>
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::target_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
+ pub turbo_dom_browser_env::browser_env::host_internals::OpenRequest::url: alloc::string::String
++pub struct turbo_dom_browser_env::browser_env::host_internals::PreparedSelector
++impl turbo_dom_browser_env::host_internals::PreparedSelector
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::is_volatile(&self) -> bool
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::match_selector(&self) -> &str
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::stamp(&self) -> turbo_dom_browser_env::host_internals::SelectorStateStamp
++pub struct turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::css_animations_enabled: bool
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::css_transitions_enabled: bool
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::document_id: u64
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::presentation_suppressed: bool
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::sample_time: core::option::Option<f64>
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedEffectsSnapshot::targets: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedTarget>
++pub struct turbo_dom_browser_env::browser_env::host_internals::PresentedProperty
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedProperty::name: alloc::string::String
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedProperty::value: alloc::string::String
++pub struct turbo_dom_browser_env::browser_env::host_internals::PresentedTarget
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTarget::css_animation_names: alloc::vec::Vec<alloc::string::String>
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTarget::effects: alloc::vec::Vec<turbo_dom_browser_env::host_internals::CssEffectLifecycle>
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTarget::element: turbo_dom::rtdom::tree::Handle
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTarget::establishes_stacking_context: bool
++pub turbo_dom_browser_env::browser_env::host_internals::PresentedTarget::presentation: turbo_dom_browser_env::host_internals::PresentedTargetState
+ pub struct turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot
+ pub turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot::css_text: alloc::string::String
+ pub turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot::kind: u32
+@@ -85,11 +132,15 @@
+ pub turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot::prelude: core::option::Option<alloc::string::String>
+ pub turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot::rules: core::option::Option<alloc::vec::Vec<turbo_dom_browser_env::css_snapshot::RuleSnapshot>>
+ pub turbo_dom_browser_env::browser_env::host_internals::RuleSnapshot::style_sheet: core::option::Option<turbo_dom_browser_env::css_snapshot::SheetSnapshot>
++pub struct turbo_dom_browser_env::browser_env::host_internals::SelectorStateStamp
+ pub struct turbo_dom_browser_env::browser_env::host_internals::SheetSnapshot
+ pub turbo_dom_browser_env::browser_env::host_internals::SheetSnapshot::cycle: bool
+ pub turbo_dom_browser_env::browser_env::host_internals::SheetSnapshot::disabled: bool
+ pub turbo_dom_browser_env::browser_env::host_internals::SheetSnapshot::media: alloc::string::String
+ pub turbo_dom_browser_env::browser_env::host_internals::SheetSnapshot::rules: alloc::vec::Vec<turbo_dom_browser_env::css_snapshot::RuleSnapshot>
++pub struct turbo_dom_browser_env::browser_env::host_internals::StyleRevisions
++pub turbo_dom_browser_env::browser_env::host_internals::StyleRevisions::cssom: u64
++pub turbo_dom_browser_env::browser_env::host_internals::StyleRevisions::live_state: u64
+ pub trait turbo_dom_browser_env::browser_env::host_internals::NamedMutationResult
+ pub fn turbo_dom_browser_env::browser_env::host_internals::NamedMutationResult::set_success(&mut self, bool)
+ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, ()>
+@@ -103,14 +154,17 @@
+ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_document_url(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_window_failed_access(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, v8::function::AccessType, v8::handle::Local<'_, v8::data::Value>)
+ pub fn turbo_dom_browser_env::browser_env::host_internals::auxiliary_window_template<'s>(&mut v8::scope::PinScope<'s, '_, ()>) -> v8::handle::Local<'s, v8::data::ObjectTemplate>
++pub fn turbo_dom_browser_env::browser_env::host_internals::cached_own_box(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> turbo_dom_browser_env::host_internals::CachedOwnBox
+ pub fn turbo_dom_browser_env::browser_env::host_internals::capture_auxiliary_window_exception(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::cascade_policy(&mut v8::scope::PinScope<'_, '_>) -> turbo_dom::rtdom::cascade::StylePolicy
++pub fn turbo_dom_browser_env::browser_env::host_internals::collect_native_storage_if_needed(&mut v8::scope::PinScope<'_, '_>, turbo_dom::rtdom::tree::storage::CollectionBudget, usize) -> core::result::Result<turbo_dom_browser_env::host_internals::NativeStorageSweepReport, turbo_dom::rtdom::tree::storage::CollectionError>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::commit_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::commit_isolated_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::create_auxiliary_window_context<'s>(&mut v8::scope::PinScope<'s, '_>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>) -> v8::handle::Local<'s, v8::data::Context>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::css_effect_lifecycle(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::CssEffectSnapshot>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::current_document_context<'s>(&mut v8::scope::PinScope<'s, '_>) -> core::option::Option<v8::handle::Local<'s, v8::data::Context>>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::current_document_id() -> u64
++pub fn turbo_dom_browser_env::browser_env::host_internals::document_checkpoint(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::DocumentCheckpoint>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::document_id_of(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> u64
+ pub fn turbo_dom_browser_env::browser_env::host_internals::enter_context_document(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<turbo_dom_browser_env::browser_env::host_internals::DocumentScope>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::enter_document_of(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> turbo_dom_browser_env::browser_env::host_internals::DocumentScope
+@@ -131,13 +185,18 @@
+ pub fn turbo_dom_browser_env::browser_env::host_internals::is_connected(&turbo_dom::rtdom::tree::Tree, turbo_dom::rtdom::tree::Handle) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::open_auxiliary_context<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::open_auxiliary_hyperlink<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Object>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++pub fn turbo_dom_browser_env::browser_env::host_internals::prepare_selector(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, &str) -> core::result::Result<turbo_dom_browser_env::host_internals::PreparedSelector, turbo_dom_browser_env::host_internals::SelectorPreparationError>
++pub fn turbo_dom_browser_env::browser_env::host_internals::recover_after_termination(&mut v8::scope::PinScope<'_, '_>) -> core::result::Result<(), turbo_dom_browser_env::host_internals::TerminationRecoveryError>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::retire_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::retire_context(v8::handle::Local<'_, v8::data::Context>)
+ pub fn turbo_dom_browser_env::browser_env::host_internals::run_auxiliary_init_scripts(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++pub fn turbo_dom_browser_env::browser_env::host_internals::sample_presented_effects(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, &[turbo_dom::rtdom::tree::Handle]) -> core::option::Option<turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot>
++pub fn turbo_dom_browser_env::browser_env::host_internals::selector_state_stamp(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::result::Result<turbo_dom_browser_env::host_internals::SelectorStateStamp, turbo_dom_browser_env::host_internals::SelectorPreparationError>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::set_animation_presentation(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::AnimationPresentation) -> bool
+ pub fn turbo_dom_browser_env::browser_env::host_internals::set_auxiliary_ready_host(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryReadyHost>)
+ pub fn turbo_dom_browser_env::browser_env::host_internals::set_hyperlink_activation_handler(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::HyperlinkActivationHandler>)
+ pub fn turbo_dom_browser_env::browser_env::host_internals::sever_auxiliary_opener(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++pub fn turbo_dom_browser_env::browser_env::host_internals::style_revisions() -> turbo_dom_browser_env::browser_env::host_internals::StyleRevisions
+ pub fn turbo_dom_browser_env::browser_env::host_internals::synchronize_auxiliary_window_origins(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>)
+ pub fn turbo_dom_browser_env::browser_env::host_internals::try_initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16]) -> core::result::Result<(), turbo_dom_browser_env::browser_env::SetupTerminated>
+ pub fn turbo_dom_browser_env::browser_env::host_internals::with_tree<R>(impl core::ops::function::FnOnce(&turbo_dom::rtdom::tree::Tree) -> R) -> core::option::Option<R>
+@@ -163,6 +222,8 @@
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++pub const turbo_dom_browser_env::browser_env::test_support::CACHED_OWN_BOX_CHROME159_JSON: &str
++pub const turbo_dom_browser_env::browser_env::test_support::CACHED_OWN_BOX_PROBE_JS: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::browser_env::test_support::COMPUTED_DEFAULTS_PROBE_JS: &str
+@@ -470,6 +531,7 @@
+ pub turbo_dom_browser_env::css_snapshot::SheetSnapshot::rules: alloc::vec::Vec<turbo_dom_browser_env::css_snapshot::RuleSnapshot>
+ pub mod turbo_dom_browser_env::host_internals
+ pub use turbo_dom_browser_env::host_internals::Handle
++pub use turbo_dom_browser_env::host_internals::StorageCollectionOutcome
+ pub use turbo_dom_browser_env::host_internals::StylePolicy
+ pub use turbo_dom_browser_env::host_internals::Tree
+ pub use turbo_dom_browser_env::host_internals::zoom_value
+@@ -480,6 +542,9 @@
+ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::Abort
+ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::InitializedByHost
+ pub turbo_dom_browser_env::host_internals::AuxiliaryReadyAction::RunRegisteredInitScripts
++pub enum turbo_dom_browser_env::host_internals::CachedOwnBox
++pub turbo_dom_browser_env::host_internals::CachedOwnBox::DisplayNone
++pub turbo_dom_browser_env::host_internals::CachedOwnBox::Unknown
+ pub enum turbo_dom_browser_env::host_internals::CssEffectKind
+ pub turbo_dom_browser_env::host_internals::CssEffectKind::Animation
+ pub turbo_dom_browser_env::host_internals::CssEffectKind::Script
+@@ -492,6 +557,25 @@
+ pub enum turbo_dom_browser_env::host_internals::OpenSource
+ pub turbo_dom_browser_env::host_internals::OpenSource::Hyperlink
+ pub turbo_dom_browser_env::host_internals::OpenSource::Script
++pub enum turbo_dom_browser_env::host_internals::PresentedTargetState
++pub turbo_dom_browser_env::host_internals::PresentedTargetState::Certified
++pub turbo_dom_browser_env::host_internals::PresentedTargetState::Certified::animation: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedProperty>
++pub turbo_dom_browser_env::host_internals::PresentedTargetState::Certified::transition: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedProperty>
++pub turbo_dom_browser_env::host_internals::PresentedTargetState::Unknown
++pub turbo_dom_browser_env::host_internals::PresentedTargetState::Unknown::properties: alloc::vec::Vec<alloc::string::String>
++pub enum turbo_dom_browser_env::host_internals::SelectorPreparationError
++pub turbo_dom_browser_env::host_internals::SelectorPreparationError::Exception
++pub turbo_dom_browser_env::host_internals::SelectorPreparationError::InvalidSelector
++pub turbo_dom_browser_env::host_internals::SelectorPreparationError::Unavailable
++pub enum turbo_dom_browser_env::host_internals::TerminationRecoveryError
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::ActiveJavaScript
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::CallbackUnavailable
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::CleanupFailed
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::ContextOwnership
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::ImplicitMicrotasks
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::IsolateUnavailable
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::StackUnavailable
++pub turbo_dom_browser_env::host_internals::TerminationRecoveryError::StillTerminating
+ pub struct turbo_dom_browser_env::host_internals::AuxiliaryContextId(pub u64)
+ pub struct turbo_dom_browser_env::host_internals::AuxiliaryHost
+ pub turbo_dom_browser_env::host_internals::AuxiliaryHost::close: turbo_dom_browser_env::host_internals::CloseHost
+@@ -532,7 +616,10 @@
+ pub turbo_dom_browser_env::host_internals::CssEffectSnapshot::unsupported: bool
+ impl turbo_dom_browser_env::host_internals::CssEffectSnapshot
+ pub fn turbo_dom_browser_env::host_internals::CssEffectSnapshot::allows_underlying_geometry(&self) -> bool
++pub struct turbo_dom_browser_env::host_internals::DocumentCheckpoint
+ pub struct turbo_dom_browser_env::host_internals::DocumentScope
++pub struct turbo_dom_browser_env::host_internals::NativeStorageSweepReport
++pub turbo_dom_browser_env::host_internals::NativeStorageSweepReport::documents: alloc::vec::Vec<(u64, turbo_dom::rtdom::tree::storage::StorageCollectionOutcome)>
+ pub struct turbo_dom_browser_env::host_internals::OpenRequest
+ pub turbo_dom_browser_env::host_internals::OpenRequest::features: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
+ pub turbo_dom_browser_env::host_internals::OpenRequest::navigate: bool
+@@ -545,6 +632,27 @@
+ pub turbo_dom_browser_env::host_internals::OpenRequest::target: alloc::vec::Vec<u16>
+ pub turbo_dom_browser_env::host_internals::OpenRequest::target_id: turbo_dom_browser_env::host_internals::AuxiliaryContextId
+ pub turbo_dom_browser_env::host_internals::OpenRequest::url: alloc::string::String
++pub struct turbo_dom_browser_env::host_internals::PreparedSelector
++impl turbo_dom_browser_env::host_internals::PreparedSelector
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::is_volatile(&self) -> bool
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::match_selector(&self) -> &str
++pub fn turbo_dom_browser_env::host_internals::PreparedSelector::stamp(&self) -> turbo_dom_browser_env::host_internals::SelectorStateStamp
++pub struct turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::css_animations_enabled: bool
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::css_transitions_enabled: bool
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::document_id: u64
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::presentation_suppressed: bool
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::sample_time: core::option::Option<f64>
++pub turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot::targets: alloc::vec::Vec<turbo_dom_browser_env::host_internals::PresentedTarget>
++pub struct turbo_dom_browser_env::host_internals::PresentedProperty
++pub turbo_dom_browser_env::host_internals::PresentedProperty::name: alloc::string::String
++pub turbo_dom_browser_env::host_internals::PresentedProperty::value: alloc::string::String
++pub struct turbo_dom_browser_env::host_internals::PresentedTarget
++pub turbo_dom_browser_env::host_internals::PresentedTarget::css_animation_names: alloc::vec::Vec<alloc::string::String>
++pub turbo_dom_browser_env::host_internals::PresentedTarget::effects: alloc::vec::Vec<turbo_dom_browser_env::host_internals::CssEffectLifecycle>
++pub turbo_dom_browser_env::host_internals::PresentedTarget::element: turbo_dom::rtdom::tree::Handle
++pub turbo_dom_browser_env::host_internals::PresentedTarget::establishes_stacking_context: bool
++pub turbo_dom_browser_env::host_internals::PresentedTarget::presentation: turbo_dom_browser_env::host_internals::PresentedTargetState
+ pub struct turbo_dom_browser_env::host_internals::RuleSnapshot
+ pub turbo_dom_browser_env::host_internals::RuleSnapshot::css_text: alloc::string::String
+ pub turbo_dom_browser_env::host_internals::RuleSnapshot::kind: u32
+@@ -552,11 +660,15 @@
+ pub turbo_dom_browser_env::host_internals::RuleSnapshot::prelude: core::option::Option<alloc::string::String>
+ pub turbo_dom_browser_env::host_internals::RuleSnapshot::rules: core::option::Option<alloc::vec::Vec<turbo_dom_browser_env::css_snapshot::RuleSnapshot>>
+ pub turbo_dom_browser_env::host_internals::RuleSnapshot::style_sheet: core::option::Option<turbo_dom_browser_env::css_snapshot::SheetSnapshot>
++pub struct turbo_dom_browser_env::host_internals::SelectorStateStamp
+ pub struct turbo_dom_browser_env::host_internals::SheetSnapshot
+ pub turbo_dom_browser_env::host_internals::SheetSnapshot::cycle: bool
+ pub turbo_dom_browser_env::host_internals::SheetSnapshot::disabled: bool
+ pub turbo_dom_browser_env::host_internals::SheetSnapshot::media: alloc::string::String
+ pub turbo_dom_browser_env::host_internals::SheetSnapshot::rules: alloc::vec::Vec<turbo_dom_browser_env::css_snapshot::RuleSnapshot>
++pub struct turbo_dom_browser_env::host_internals::StyleRevisions
++pub turbo_dom_browser_env::host_internals::StyleRevisions::cssom: u64
++pub turbo_dom_browser_env::host_internals::StyleRevisions::live_state: u64
+ pub trait turbo_dom_browser_env::host_internals::NamedMutationResult
+ pub fn turbo_dom_browser_env::host_internals::NamedMutationResult::set_success(&mut self, bool)
+ impl turbo_dom_browser_env::host_internals::NamedMutationResult for v8::function::ReturnValue<'_, ()>
+@@ -570,14 +682,17 @@
+ pub fn turbo_dom_browser_env::host_internals::auxiliary_document_url(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<alloc::string::String>
+ pub fn turbo_dom_browser_env::host_internals::auxiliary_window_failed_access(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, v8::function::AccessType, v8::handle::Local<'_, v8::data::Value>)
+ pub fn turbo_dom_browser_env::host_internals::auxiliary_window_template<'s>(&mut v8::scope::PinScope<'s, '_, ()>) -> v8::handle::Local<'s, v8::data::ObjectTemplate>
++pub fn turbo_dom_browser_env::host_internals::cached_own_box(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> turbo_dom_browser_env::host_internals::CachedOwnBox
+ pub fn turbo_dom_browser_env::host_internals::capture_auxiliary_window_exception(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
+ pub fn turbo_dom_browser_env::host_internals::cascade_policy(&mut v8::scope::PinScope<'_, '_>) -> turbo_dom::rtdom::cascade::StylePolicy
++pub fn turbo_dom_browser_env::host_internals::collect_native_storage_if_needed(&mut v8::scope::PinScope<'_, '_>, turbo_dom::rtdom::tree::storage::CollectionBudget, usize) -> core::result::Result<turbo_dom_browser_env::host_internals::NativeStorageSweepReport, turbo_dom::rtdom::tree::storage::CollectionError>
+ pub fn turbo_dom_browser_env::host_internals::commit_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
+ pub fn turbo_dom_browser_env::host_internals::commit_isolated_auxiliary_navigation(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>, v8::handle::Local<'_, v8::data::Context>, &str) -> bool
+ pub fn turbo_dom_browser_env::host_internals::create_auxiliary_window_context<'s>(&mut v8::scope::PinScope<'s, '_>, core::option::Option<v8::handle::Local<'s, v8::data::Context>>) -> v8::handle::Local<'s, v8::data::Context>
+ pub fn turbo_dom_browser_env::host_internals::css_effect_lifecycle(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::CssEffectSnapshot>
+ pub fn turbo_dom_browser_env::host_internals::current_document_context<'s>(&mut v8::scope::PinScope<'s, '_>) -> core::option::Option<v8::handle::Local<'s, v8::data::Context>>
+ pub fn turbo_dom_browser_env::host_internals::current_document_id() -> u64
++pub fn turbo_dom_browser_env::host_internals::document_checkpoint(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::option::Option<turbo_dom_browser_env::host_internals::DocumentCheckpoint>
+ pub fn turbo_dom_browser_env::host_internals::document_id_of(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> u64
+ pub fn turbo_dom_browser_env::host_internals::enter_context_document(v8::handle::Local<'_, v8::data::Context>) -> core::option::Option<turbo_dom_browser_env::browser_env::host_internals::DocumentScope>
+ pub fn turbo_dom_browser_env::host_internals::enter_document_of(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> turbo_dom_browser_env::browser_env::host_internals::DocumentScope
+@@ -598,13 +713,18 @@
+ pub fn turbo_dom_browser_env::host_internals::is_connected(&turbo_dom::rtdom::tree::Tree, turbo_dom::rtdom::tree::Handle) -> bool
+ pub fn turbo_dom_browser_env::host_internals::open_auxiliary_context<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Context>, &turbo_dom_browser_env::host_internals::OpenRequest) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
+ pub fn turbo_dom_browser_env::host_internals::open_auxiliary_hyperlink<'s>(&mut v8::scope::PinScope<'s, '_>, v8::handle::Local<'s, v8::data::Object>) -> core::option::Option<v8::handle::Local<'s, v8::data::Object>>
++pub fn turbo_dom_browser_env::host_internals::prepare_selector(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, &str) -> core::result::Result<turbo_dom_browser_env::host_internals::PreparedSelector, turbo_dom_browser_env::host_internals::SelectorPreparationError>
++pub fn turbo_dom_browser_env::host_internals::recover_after_termination(&mut v8::scope::PinScope<'_, '_>) -> core::result::Result<(), turbo_dom_browser_env::host_internals::TerminationRecoveryError>
+ pub fn turbo_dom_browser_env::host_internals::retire_auxiliary_context(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
+ pub fn turbo_dom_browser_env::host_internals::retire_context(v8::handle::Local<'_, v8::data::Context>)
+ pub fn turbo_dom_browser_env::host_internals::run_auxiliary_init_scripts(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++pub fn turbo_dom_browser_env::host_internals::sample_presented_effects(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>, &[turbo_dom::rtdom::tree::Handle]) -> core::option::Option<turbo_dom_browser_env::host_internals::PresentedEffectsSnapshot>
++pub fn turbo_dom_browser_env::host_internals::selector_state_stamp(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Object>) -> core::result::Result<turbo_dom_browser_env::host_internals::SelectorStateStamp, turbo_dom_browser_env::host_internals::SelectorPreparationError>
+ pub fn turbo_dom_browser_env::host_internals::set_animation_presentation(&mut v8::scope::PinScope<'_, '_>, turbo_dom_browser_env::browser_env::AnimationPresentation) -> bool
+ pub fn turbo_dom_browser_env::host_internals::set_auxiliary_ready_host(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::AuxiliaryReadyHost>)
+ pub fn turbo_dom_browser_env::host_internals::set_hyperlink_activation_handler(v8::handle::Local<'_, v8::data::Context>, core::option::Option<turbo_dom_browser_env::host_internals::HyperlinkActivationHandler>)
+ pub fn turbo_dom_browser_env::host_internals::sever_auxiliary_opener(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>) -> bool
++pub fn turbo_dom_browser_env::host_internals::style_revisions() -> turbo_dom_browser_env::browser_env::host_internals::StyleRevisions
+ pub fn turbo_dom_browser_env::host_internals::synchronize_auxiliary_window_origins(&mut v8::scope::PinScope<'_, '_>, v8::handle::Local<'_, v8::data::Context>)
+ pub fn turbo_dom_browser_env::host_internals::try_initialize_auxiliary_utf16_source_positions(&mut v8::scope::PinScope<'_, '_>, &[u16]) -> core::result::Result<(), turbo_dom_browser_env::browser_env::SetupTerminated>
+ pub fn turbo_dom_browser_env::host_internals::with_tree<R>(impl core::ops::function::FnOnce(&turbo_dom::rtdom::tree::Tree) -> R) -> core::option::Option<R>
+@@ -630,6 +750,8 @@
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::test_support::AUXILIARY_WINDOW_NAMES_PROBE_JS: &str
++pub const turbo_dom_browser_env::test_support::CACHED_OWN_BOX_CHROME159_JSON: &str
++pub const turbo_dom_browser_env::test_support::CACHED_OWN_BOX_PROBE_JS: &str
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_CASES_JSON: &[u8]
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_CHROME156_JSON: &str
+ pub const turbo_dom_browser_env::test_support::COMPUTED_DEFAULTS_PROBE_JS: &str
+
+## Optional computed-style-grammar feature, versus candidate default
+--- 0.8.7/default
++++ 0.8.7/computed-style-grammar
+@@ -127,6 +127,41 @@
+ pub fn turbo_dom::rtdom::color::is_color_prop(&str) -> bool
+ pub fn turbo_dom::rtdom::color::parse_color(&str) -> core::option::Option<turbo_dom::rtdom::color::Color>
+ pub mod turbo_dom::rtdom::computed_css
++pub mod turbo_dom::rtdom::computed_css::candidate_set
++pub struct turbo_dom::rtdom::computed_css::candidate_set::CandidateSet<'a>
++pub turbo_dom::rtdom::computed_css::candidate_set::CandidateSet::custom: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>>
++pub turbo_dom::rtdom::computed_css::candidate_set::CandidateSet::declared_text_decoration: alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>
++pub turbo_dom::rtdom::computed_css::candidate_set::CandidateSet::ordinary: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>>
++pub fn turbo_dom::rtdom::computed_css::candidate_set::collect_candidates(&turbo_dom::rtdom::computed_css::rule_matches::MatchedRules) -> turbo_dom::rtdom::computed_css::candidate_set::CandidateSet<'_>
++pub mod turbo_dom::rtdom::computed_css::candidates
++pub enum turbo_dom::rtdom::computed_css::candidates::Rollback<'a>
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Layer
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Layer::context: usize
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Layer::inline: bool
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Layer::normal: &'a [usize]
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Layer::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::candidates::Rollback::Origin(u8)
++impl<'a> turbo_dom::rtdom::computed_css::candidates::Rollback<'a>
++pub fn turbo_dom::rtdom::computed_css::candidates::Rollback<'a>::from_candidate(&turbo_dom::rtdom::computed_css::candidates::Candidate<'a>, turbo_dom::rtdom::computed_css::RollbackKeyword) -> Self
++pub struct turbo_dom::rtdom::computed_css::candidates::Candidate<'a>
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::important: bool
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::inline: bool
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::layer_context: usize
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::layer_rank: &'a turbo_dom::rtdom::computed_css::prepared::LayerRank
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::order: (usize, usize)
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::pending_source: core::option::Option<&'a str>
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::property: &'a str
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::proximity: usize
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::scope_depth: u32
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::specificity: (u32, u32, u32)
++pub turbo_dom::rtdom::computed_css::candidates::Candidate::value: &'a turbo_dom::rtdom::computed_css::CssText
++impl turbo_dom::rtdom::computed_css::candidates::Candidate<'_>
++pub fn turbo_dom::rtdom::computed_css::candidates::Candidate<'_>::rank(&self) -> turbo_dom::rtdom::computed_css::cascade_order::CascadeRank<'_>
++pub struct turbo_dom::rtdom::computed_css::candidates::Evaluation<T>
++pub turbo_dom::rtdom::computed_css::candidates::Evaluation::keyword: core::option::Option<turbo_dom::rtdom::computed_css::properties::WideKeyword>
++pub turbo_dom::rtdom::computed_css::candidates::Evaluation::value: T
++pub fn turbo_dom::rtdom::computed_css::candidates::select<'a, T, E, F>(&'a [turbo_dom::rtdom::computed_css::candidates::Candidate<'a>], &[turbo_dom::rtdom::computed_css::candidates::Rollback<'a>], F) -> core::result::Result<core::option::Option<(&'a turbo_dom::rtdom::computed_css::candidates::Candidate<'a>, T)>, E> where F: core::ops::function::FnMut(&turbo_dom::rtdom::computed_css::candidates::Candidate<'a>) -> core::result::Result<turbo_dom::rtdom::computed_css::candidates::Evaluation<T>, E>
+ pub mod turbo_dom::rtdom::computed_css::cascade_order
+ pub enum turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel
+ pub turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel::Animation
+@@ -153,6 +188,456 @@
+ pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::proximity: core::cmp::Reverse<usize>
+ pub turbo_dom::rtdom::computed_css::cascade_order::CascadeRank::specificity: (u32, u32, u32)
+ pub fn turbo_dom::rtdom::computed_css::cascade_order::encapsulation_rank(u32, bool) -> u32
++pub mod turbo_dom::rtdom::computed_css::computed_values
++pub enum turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::Font(turbo_dom::rtdom::computed_css::font_values::FontValueError)
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::InvalidFontContext(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::Length(turbo_dom::rtdom::css_shorthand::LengthError)
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::RequiresInitial(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::computed_values::ValueError::UnsupportedValue(alloc::string::String)
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::font_values::FontValueError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::computed_css::font_values::FontValueError) -> Self
++impl core::convert::From<turbo_dom::rtdom::css_shorthand::LengthError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::css_shorthand::LengthError) -> Self
++pub struct turbo_dom::rtdom::computed_css::computed_values::ComputedValues
++pub turbo_dom::rtdom::computed_css::computed_values::ComputedValues::font_size_px: f64
++pub turbo_dom::rtdom::computed_css::computed_values::ComputedValues::root_font_size_px: f64
++pub turbo_dom::rtdom::computed_css::computed_values::ComputedValues::values: alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>
++pub struct turbo_dom::rtdom::computed_css::computed_values::ValueContext<'a>
++pub turbo_dom::rtdom::computed_css::computed_values::ValueContext::font_size_unit_bases: &'a [(&'a str, f64)]
++pub turbo_dom::rtdom::computed_css::computed_values::ValueContext::initial: turbo_dom::rtdom::computed_css::properties::InitialContext<'a>
++pub turbo_dom::rtdom::computed_css::computed_values::ValueContext::is_root: bool
++pub turbo_dom::rtdom::computed_css::computed_values::ValueContext::unit_bases: &'a [(&'a str, f64)]
++pub struct turbo_dom::rtdom::computed_css::computed_values::ValueLimits
++pub turbo_dom::rtdom::computed_css::computed_values::ValueLimits::computation: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::computed_values::ValueLimits::retained_units: usize
++pub fn turbo_dom::rtdom::computed_css::computed_values::compute_values(core::option::Option<&turbo_dom::rtdom::computed_css::computed_values::ComputedValues>, &alloc::collections::btree::map::BTreeMap<alloc::string::String, core::option::Option<turbo_dom::rtdom::computed_css::CssText>>, &turbo_dom::rtdom::computed_css::computed_values::ValueContext<'_>, turbo_dom::rtdom::computed_css::computed_values::ValueLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::computed_values::ComputedValues, turbo_dom::rtdom::computed_css::computed_values::ValueError>
++pub mod turbo_dom::rtdom::computed_css::conditions
++pub enum turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::InvalidFeature(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::InvalidSyntax
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::Length(turbo_dom::rtdom::css_shorthand::LengthError)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::RequiresFeature(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::RequiresGrammar(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::RequiresSelector(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::UnsupportedValue(alloc::string::String)
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError
++pub fn turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError) -> Self
++impl core::convert::From<turbo_dom::rtdom::css_shorthand::LengthError> for turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError
++pub fn turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::from(turbo_dom::rtdom::css_shorthand::LengthError) -> Self
++pub enum turbo_dom::rtdom::computed_css::conditions::FeatureValue
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::Boolean(bool)
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::Ident(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::LengthPx(f64)
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::Number(f64)
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::Ratio(f64, f64)
++pub turbo_dom::rtdom::computed_css::conditions::FeatureValue::ResolutionDppx(f64)
++pub struct turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment<'a>
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment::features: &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::conditions::FeatureValue>
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment::length_context: &'a turbo_dom::rtdom::css_shorthand::LengthContext<'a>
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment::media_type: &'a str
++pub turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment::selector_support: &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, bool>
++pub fn turbo_dom::rtdom::computed_css::conditions::media_matches(&turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError>
++pub fn turbo_dom::rtdom::computed_css::conditions::supports_matches(&turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError>
++pub mod turbo_dom::rtdom::computed_css::container
++pub enum turbo_dom::rtdom::computed_css::container::ContainerError
++pub turbo_dom::rtdom::computed_css::container::ContainerError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::container::ContainerError::Condition(turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError)
++pub turbo_dom::rtdom::computed_css::container::ContainerError::InvalidMeasurement(u64)
++pub turbo_dom::rtdom::computed_css::container::ContainerError::InvalidSyntax
++pub turbo_dom::rtdom::computed_css::container::ContainerError::RequiresMeasurement(u64)
++pub turbo_dom::rtdom::computed_css::container::ContainerError::RequiresScrollState(u64)
++pub turbo_dom::rtdom::computed_css::container::ContainerError::RequiresStyleQuery(u64)
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++pub enum turbo_dom::rtdom::computed_css::container::InlineAxis
++pub turbo_dom::rtdom::computed_css::container::InlineAxis::Horizontal
++pub turbo_dom::rtdom::computed_css::container::InlineAxis::Vertical
++pub enum turbo_dom::rtdom::computed_css::container::SizeKind
++pub turbo_dom::rtdom::computed_css::container::SizeKind::InlineSize
++pub turbo_dom::rtdom::computed_css::container::SizeKind::Normal
++pub turbo_dom::rtdom::computed_css::container::SizeKind::Size
++pub struct turbo_dom::rtdom::computed_css::container::ContainerAncestor<'a>
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::id: u64
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::inline_axis: turbo_dom::rtdom::computed_css::container::InlineAxis
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::kind: turbo_dom::rtdom::computed_css::container::SizeKind
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::length_context: &'a turbo_dom::rtdom::css_shorthand::LengthContext<'a>
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::names: &'a [alloc::string::String]
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::scroll_state: bool
++pub turbo_dom::rtdom::computed_css::container::ContainerAncestor::size: core::option::Option<turbo_dom::rtdom::computed_css::container::ContentSize>
++pub struct turbo_dom::rtdom::computed_css::container::ContainerContext
++pub turbo_dom::rtdom::computed_css::container::ContainerContext::inline_axis: turbo_dom::rtdom::computed_css::container::InlineAxis
++pub turbo_dom::rtdom::computed_css::container::ContainerContext::kind: turbo_dom::rtdom::computed_css::container::SizeKind
++pub turbo_dom::rtdom::computed_css::container::ContainerContext::names: alloc::vec::Vec<alloc::string::String>
++pub turbo_dom::rtdom::computed_css::container::ContainerContext::scroll_state: bool
++pub struct turbo_dom::rtdom::computed_css::container::ContainerMatch
++pub turbo_dom::rtdom::computed_css::container::ContainerMatch::container: core::option::Option<u64>
++pub turbo_dom::rtdom::computed_css::container::ContainerMatch::matches: bool
++pub struct turbo_dom::rtdom::computed_css::container::ContentSize
++pub turbo_dom::rtdom::computed_css::container::ContentSize::height_px: f64
++pub turbo_dom::rtdom::computed_css::container::ContentSize::width_px: f64
++pub struct turbo_dom::rtdom::computed_css::container::PartialContentSize
++pub turbo_dom::rtdom::computed_css::container::PartialContentSize::height_px: core::option::Option<f64>
++pub turbo_dom::rtdom::computed_css::container::PartialContentSize::width_px: core::option::Option<f64>
++pub fn turbo_dom::rtdom::computed_css::container::container_matches(&turbo_dom::rtdom::computed_css::CssText, &[turbo_dom::rtdom::computed_css::container::ContainerAncestor<'_>], turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::container::ContainerMatch, turbo_dom::rtdom::computed_css::container::ContainerError>
++pub fn turbo_dom::rtdom::computed_css::container::container_matches_with_measurements(&turbo_dom::rtdom::computed_css::CssText, &[turbo_dom::rtdom::computed_css::container::ContainerAncestor<'_>], core::option::Option<&turbo_dom::rtdom::computed_css::container::ContainerMeasurements>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::container::ContainerMatch, turbo_dom::rtdom::computed_css::container::ContainerError>
++pub fn turbo_dom::rtdom::computed_css::container::container_names(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<alloc::vec::Vec<alloc::string::String>, turbo_dom::rtdom::computed_css::container::ContainerError>
++pub fn turbo_dom::rtdom::computed_css::container::parse_container_context(&turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::container::ContainerContext, turbo_dom::rtdom::computed_css::container::ContainerError>
++pub type turbo_dom::rtdom::computed_css::container::ContainerMeasurements = alloc::collections::btree::map::BTreeMap<u64, turbo_dom::rtdom::computed_css::container::PartialContentSize>
++pub mod turbo_dom::rtdom::computed_css::cssom_serialization
++pub enum turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError::ConflictingDerivedValue(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError::CustomPropertyInOrdinary(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError::Font(turbo_dom::rtdom::computed_css::font_values::FontValueError)
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError::NonScalarLonghand(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError::ResourceLimit
++pub enum turbo_dom::rtdom::computed_css::cssom_serialization::TextDecorationSerialization
++pub turbo_dom::rtdom::computed_css::cssom_serialization::TextDecorationSerialization::Computed
++pub turbo_dom::rtdom::computed_css::cssom_serialization::TextDecorationSerialization::Declared
++pub struct turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationContext<'a>
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationContext::declared_text_decoration: core::option::Option<turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>>
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationContext::font_size_px: core::option::Option<f64>
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationContext::text_decoration: turbo_dom::rtdom::computed_css::cssom_serialization::TextDecorationSerialization
++pub struct turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationLimits
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationLimits::computation: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationLimits::retained_units: usize
++pub struct turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>
++pub turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration::value: &'a turbo_dom::rtdom::computed_css::CssText
++impl<'a> core::convert::From<&'a turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration> for turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>
++pub fn turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>::from(&'a turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration) -> Self
++pub struct turbo_dom::rtdom::computed_css::cssom_serialization::SerializedCssom
++pub turbo_dom::rtdom::computed_css::cssom_serialization::SerializedCssom::public_keys: alloc::collections::btree::set::BTreeSet<alloc::string::String>
++pub turbo_dom::rtdom::computed_css::cssom_serialization::SerializedCssom::values: alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::cssom_serialization::serialize_cssom(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &alloc::collections::btree::set::BTreeSet<alloc::string::String>, turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::cssom_serialization::SerializedCssom, turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError>
++pub fn turbo_dom::rtdom::computed_css::cssom_serialization::serialize_cssom_with_context(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &alloc::collections::btree::set::BTreeSet<alloc::string::String>, &turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationContext<'_>, turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::cssom_serialization::SerializedCssom, turbo_dom::rtdom::computed_css::cssom_serialization::CssomSerializationError>
++pub mod turbo_dom::rtdom::computed_css::custom_cascade
++pub enum turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeError
++pub turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeError::UnknownRollbackProperty(alloc::string::String)
++pub struct turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits
++pub turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits::computation: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits::rollbacks: usize
++pub fn turbo_dom::rtdom::computed_css::custom_cascade::resolve_custom_candidates<'a>(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>>, turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::CustomProperties, turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeError>
++pub mod turbo_dom::rtdom::computed_css::declaration_model
++pub struct turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration
++pub turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration::declared_text_decoration: core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration::properties: alloc::vec::Vec<turbo_dom::rtdom::computed_css::declaration_model::PropertyTemplate>
++pub turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration::source_index: usize
++pub struct turbo_dom::rtdom::computed_css::declaration_model::PropertyTemplate
++pub turbo_dom::rtdom::computed_css::declaration_model::PropertyTemplate::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::declaration_model::PropertyTemplate::pending_shorthand: bool
++pub turbo_dom::rtdom::computed_css::declaration_model::PropertyTemplate::value: core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::declaration_model::compile_declarations(&[turbo_dom::rtdom::computed_css::CssDeclaration], turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<alloc::vec::Vec<turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration>, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_css::environment
++pub enum turbo_dom::rtdom::computed_css::environment::EnvironmentError
++pub turbo_dom::rtdom::computed_css::environment::EnvironmentError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::environment::EnvironmentError::InvalidInitialFontBasis
++pub turbo_dom::rtdom::computed_css::environment::EnvironmentError::InvalidViewportAxis(&'static str)
++pub enum turbo_dom::rtdom::computed_css::environment::ViewportAxis
++pub turbo_dom::rtdom::computed_css::environment::ViewportAxis::Known(f64)
++pub turbo_dom::rtdom::computed_css::environment::ViewportAxis::Unknown
++pub struct turbo_dom::rtdom::computed_css::environment::ComputedEnvironmentFacts
++pub turbo_dom::rtdom::computed_css::environment::ComputedEnvironmentFacts::features: alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::conditions::FeatureValue>
++pub turbo_dom::rtdom::computed_css::environment::ComputedEnvironmentFacts::media_unit_bases: alloc::vec::Vec<(alloc::string::String, f64)>
++pub turbo_dom::rtdom::computed_css::environment::ComputedEnvironmentFacts::value_unit_bases: alloc::vec::Vec<(alloc::string::String, f64)>
++pub struct turbo_dom::rtdom::computed_css::environment::ViewportFacts
++pub turbo_dom::rtdom::computed_css::environment::ViewportFacts::height: turbo_dom::rtdom::computed_css::environment::ViewportAxis
++pub turbo_dom::rtdom::computed_css::environment::ViewportFacts::width: turbo_dom::rtdom::computed_css::environment::ViewportAxis
++pub fn turbo_dom::rtdom::computed_css::environment::build_environment_facts(turbo_dom::rtdom::computed_css::environment::ViewportFacts, &turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::environment::ComputedEnvironmentFacts, turbo_dom::rtdom::computed_css::environment::EnvironmentError>
++pub mod turbo_dom::rtdom::computed_css::facts
++pub enum turbo_dom::rtdom::computed_css::facts::FactError
++pub turbo_dom::rtdom::computed_css::facts::FactError::DuplicateNode
++pub turbo_dom::rtdom::computed_css::facts::FactError::MissingAnswer
++pub turbo_dom::rtdom::computed_css::facts::FactError::OutsideDomain
++pub struct turbo_dom::rtdom::computed_css::facts::AnswerDomain(_)
++impl turbo_dom::rtdom::computed_css::facts::AnswerDomain
++pub fn turbo_dom::rtdom::computed_css::facts::AnswerDomain::new(alloc::vec::Vec<u32>) -> core::result::Result<alloc::rcs::arc::Arc<Self>, turbo_dom::rtdom::computed_css::facts::FactError>
++pub struct turbo_dom::rtdom::computed_css::facts::MechanicalAnswer
++impl turbo_dom::rtdom::computed_css::facts::MechanicalAnswer
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::matches(&self, u32) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::facts::FactError>
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::new(alloc::rcs::arc::Arc<turbo_dom::rtdom::computed_css::facts::AnswerDomain>, alloc::vec::Vec<u32>) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::facts::FactError>
++pub mod turbo_dom::rtdom::computed_css::font_values
++pub enum turbo_dom::rtdom::computed_css::font_values::FontValueError
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::InvalidFontSize
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::InvalidFontWeight
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::InvalidLineHeight
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::NonFiniteUsedLineHeight
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::RequiresFontSize
++pub turbo_dom::rtdom::computed_css::font_values::FontValueError::RequiresParentFontWeight
++impl core::convert::From<turbo_dom::rtdom::computed_css::font_values::FontValueError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::computed_css::font_values::FontValueError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::font_values::FontValueError
++pub fn turbo_dom::rtdom::computed_css::font_values::FontValueError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++pub const turbo_dom::rtdom::computed_css::font_values::MAX_CSS_FONT_SIZE_PX: f64
++pub fn turbo_dom::rtdom::computed_css::font_values::compute_font_weight(&turbo_dom::rtdom::computed_css::CssText, core::option::Option<&turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::font_values::FontValueError>
++pub fn turbo_dom::rtdom::computed_css::font_values::finalize_font_size_px(f64) -> core::result::Result<f64, turbo_dom::rtdom::computed_css::font_values::FontValueError>
++pub fn turbo_dom::rtdom::computed_css::font_values::font_used_pixels(f64, usize) -> core::result::Result<turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::font_values::FontValueError>
++pub fn turbo_dom::rtdom::computed_css::font_values::line_height_used(&turbo_dom::rtdom::computed_css::CssText, core::option::Option<f64>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::font_values::FontValueError>
++pub fn turbo_dom::rtdom::computed_css::font_values::unitless_line_height(&str) -> core::result::Result<core::option::Option<f32>, turbo_dom::rtdom::computed_css::font_values::FontValueError>
++pub mod turbo_dom::rtdom::computed_css::grammar
++pub use turbo_dom::rtdom::computed_css::grammar::Length
++pub use turbo_dom::rtdom::computed_css::grammar::LengthValue
++pub use turbo_dom::rtdom::computed_css::grammar::MediaCondition
++pub use turbo_dom::rtdom::computed_css::grammar::MediaFeature
++pub use turbo_dom::rtdom::computed_css::grammar::MediaFeatureComparison
++pub use turbo_dom::rtdom::computed_css::grammar::MediaFeatureId
++pub use turbo_dom::rtdom::computed_css::grammar::MediaFeatureName
++pub use turbo_dom::rtdom::computed_css::grammar::MediaFeatureValue
++pub use turbo_dom::rtdom::computed_css::grammar::MediaList
++pub use turbo_dom::rtdom::computed_css::grammar::MediaQuery
++pub use turbo_dom::rtdom::computed_css::grammar::MediaType
++pub use turbo_dom::rtdom::computed_css::grammar::Operator
++pub use turbo_dom::rtdom::computed_css::grammar::Qualifier
++pub use turbo_dom::rtdom::computed_css::grammar::QueryFeature
++pub use turbo_dom::rtdom::computed_css::grammar::Ratio
++pub use turbo_dom::rtdom::computed_css::grammar::Resolution
++pub use turbo_dom::rtdom::computed_css::grammar::SupportsCondition
++pub enum turbo_dom::rtdom::computed_css::grammar::ConditionError
++pub turbo_dom::rtdom::computed_css::grammar::ConditionError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::grammar::ConditionError::InvalidSyntax
++pub turbo_dom::rtdom::computed_css::grammar::ConditionError::NestingLimit
++pub turbo_dom::rtdom::computed_css::grammar::ConditionError::RequiresGrammar(alloc::string::String)
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::grammar::ConditionError
++pub fn turbo_dom::rtdom::computed_css::grammar::ConditionError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++pub enum turbo_dom::rtdom::computed_css::grammar::DeclarationAdmission
++pub turbo_dom::rtdom::computed_css::grammar::DeclarationAdmission::Invalid
++pub turbo_dom::rtdom::computed_css::grammar::DeclarationAdmission::RequiresGrammar(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::grammar::DeclarationAdmission::Valid(alloc::string::String)
++pub enum turbo_dom::rtdom::computed_css::grammar::GrammarLimitError
++pub turbo_dom::rtdom::computed_css::grammar::GrammarLimitError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::grammar::GrammarLimitError::NestingLimit
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::font_values::FontValueError
++pub fn turbo_dom::rtdom::computed_css::font_values::FontValueError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::grammar::ConditionError
++pub fn turbo_dom::rtdom::computed_css::grammar::ConditionError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::used_values::UsedValueError
++pub fn turbo_dom::rtdom::computed_css::used_values::UsedValueError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++pub const turbo_dom::rtdom::computed_css::grammar::BACKEND_MAX_COMPONENT_DEPTH: usize
++pub fn turbo_dom::rtdom::computed_css::grammar::check_grammar_limits(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<(), turbo_dom::rtdom::computed_css::grammar::GrammarLimitError>
++pub fn turbo_dom::rtdom::computed_css::grammar::computed_declaration_value(&str, &str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::grammar::DeclarationAdmission, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::declaration_value(&str, &str) -> core::option::Option<alloc::string::String>
++pub fn turbo_dom::rtdom::computed_css::grammar::declaration_value_checked(&str, &str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<alloc::string::String>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::is_scroll_keyword_property(&str) -> bool
++pub fn turbo_dom::rtdom::computed_css::grammar::is_supported_property(&str) -> bool
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_layer_names(&str) -> core::result::Result<alloc::vec::Vec<alloc::vec::Vec<alloc::string::String>>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_media_condition(&str) -> core::result::Result<lightningcss::media_query::MediaList<'_>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_media_condition_context(&str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<lightningcss::media_query::MediaList<'_>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_supports_condition(&str) -> core::result::Result<lightningcss::rules::supports::SupportsCondition<'_>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_supports_condition_context(&str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<lightningcss::rules::supports::SupportsCondition<'_>, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::parse_value_body<'i>(&cssparser::cow_rc_str::CowRcStr<'i>, &mut cssparser::parser::Parser<'i, '_>) -> core::result::Result<bool, cssparser::parser::ParseError<'i, ()>>
++pub fn turbo_dom::rtdom::computed_css::grammar::scroll_keyword_value(&str, &str) -> core::option::Option<alloc::string::String>
++pub fn turbo_dom::rtdom::computed_css::grammar::supports_condition_declaration(&str, &str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::supports_declaration(&str, &str, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::grammar::ConditionError>
++pub fn turbo_dom::rtdom::computed_css::grammar::zoom_declaration<'i>(&mut cssparser::parser::Parser<'i, '_>) -> core::result::Result<alloc::string::String, cssparser::parser::ParseError<'i, ()>>
++pub mod turbo_dom::rtdom::computed_css::inline_style
++pub struct turbo_dom::rtdom::computed_css::inline_style::InlineLimits
++pub turbo_dom::rtdom::computed_css::inline_style::InlineLimits::computation: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::inline_style::InlineLimits::declarations: usize
++pub turbo_dom::rtdom::computed_css::inline_style::InlineLimits::properties: usize
++pub struct turbo_dom::rtdom::computed_css::inline_style::InlineStyle
++impl turbo_dom::rtdom::computed_css::inline_style::InlineStyle
++pub fn turbo_dom::rtdom::computed_css::inline_style::InlineStyle::append<'a>(&'a self, &mut turbo_dom::rtdom::computed_css::candidate_set::CandidateSet<'a>, u32, usize)
++pub fn turbo_dom::rtdom::computed_css::inline_style::InlineStyle::compile(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::inline_style::InlineLimits) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_css::layers
++pub enum turbo_dom::rtdom::computed_css::layers::LayerError
++pub turbo_dom::rtdom::computed_css::layers::LayerError::EmptyName
++pub turbo_dom::rtdom::computed_css::layers::LayerError::InvalidParent
++pub turbo_dom::rtdom::computed_css::layers::LayerError::LayerCount
++pub struct turbo_dom::rtdom::computed_css::layers::LayerRegistry
++impl turbo_dom::rtdom::computed_css::layers::LayerRegistry
++pub fn turbo_dom::rtdom::computed_css::layers::LayerRegistry::anonymous(&mut self, core::option::Option<usize>) -> core::result::Result<usize, turbo_dom::rtdom::computed_css::layers::LayerError>
++pub fn turbo_dom::rtdom::computed_css::layers::LayerRegistry::named(&mut self, core::option::Option<usize>, &[alloc::string::String]) -> core::result::Result<usize, turbo_dom::rtdom::computed_css::layers::LayerError>
++pub fn turbo_dom::rtdom::computed_css::layers::LayerRegistry::new(usize) -> Self
++pub fn turbo_dom::rtdom::computed_css::layers::LayerRegistry::rank(&self, core::option::Option<usize>, bool) -> core::result::Result<alloc::vec::Vec<usize>, turbo_dom::rtdom::computed_css::layers::LayerError>
++pub mod turbo_dom::rtdom::computed_css::model
++pub enum turbo_dom::rtdom::computed_css::model::CompileError
++pub turbo_dom::rtdom::computed_css::model::CompileError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::model::CompileError::DeclarationCount
++pub turbo_dom::rtdom::computed_css::model::CompileError::DuplicateSource
++pub turbo_dom::rtdom::computed_css::model::CompileError::GroupDepth
++pub turbo_dom::rtdom::computed_css::model::CompileError::PropertyCount
++pub turbo_dom::rtdom::computed_css::model::CompileError::RuleCount
++pub turbo_dom::rtdom::computed_css::model::CompileError::SelectorCount
++pub turbo_dom::rtdom::computed_css::model::CompileError::SourceCount
++pub turbo_dom::rtdom::computed_css::model::CompileError::SourceUnits
++impl core::convert::From<turbo_dom::rtdom::computed_css::stylesheet::SheetError> for turbo_dom::rtdom::computed_css::model::CompileError
++pub fn turbo_dom::rtdom::computed_css::model::CompileError::from(turbo_dom::rtdom::computed_css::stylesheet::SheetError) -> Self
++pub enum turbo_dom::rtdom::computed_css::model::StyleEvent
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Descriptor
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Descriptor::body: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Descriptor::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Descriptor::prelude: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Enter(usize)
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Exit(usize)
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Rule(usize)
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Source(u32)
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Statement
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Statement::name: alloc::string::String
++pub turbo_dom::rtdom::computed_css::model::StyleEvent::Statement::prelude: turbo_dom::rtdom::computed_css::CssText
++pub struct turbo_dom::rtdom::computed_css::model::CompileLimits
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::declarations: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::group_depth: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::properties: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::rules: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::selectors: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::source_rule_preludes: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::source_units: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::sources: usize
++pub turbo_dom::rtdom::computed_css::model::CompileLimits::token_nesting: usize
++pub struct turbo_dom::rtdom::computed_css::model::CompiledData
++pub turbo_dom::rtdom::computed_css::model::CompiledData::events: alloc::vec::Vec<turbo_dom::rtdom::computed_css::model::StyleEvent>
++pub turbo_dom::rtdom::computed_css::model::CompiledData::groups: alloc::vec::Vec<turbo_dom::rtdom::computed_css::model::CompiledGroup>
++pub turbo_dom::rtdom::computed_css::model::CompiledData::rules: alloc::vec::Vec<turbo_dom::rtdom::computed_css::model::CompiledRule>
++pub turbo_dom::rtdom::computed_css::model::CompiledData::selectors: alloc::vec::Vec<turbo_dom::rtdom::computed_css::model::MatchSelector>
++pub struct turbo_dom::rtdom::computed_css::model::CompiledGroup
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::invalid_scope: bool
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::kind: turbo_dom::rtdom::computed_css::stylesheet::GroupKind
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::parent: core::option::Option<usize>
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::prelude: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::scope: core::option::Option<turbo_dom::rtdom::computed_css::scope_plan::ScopePrelude>
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::scope_end: core::option::Option<core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>>
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::scope_end_policy: core::option::Option<turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection>
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::scope_start: core::option::Option<core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>>
++pub turbo_dom::rtdom::computed_css::model::CompiledGroup::scope_start_policy: core::option::Option<turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection>
++pub struct turbo_dom::rtdom::computed_css::model::CompiledRule
++pub turbo_dom::rtdom::computed_css::model::CompiledRule::compiled_declarations: alloc::vec::Vec<turbo_dom::rtdom::computed_css::declaration_model::CompiledDeclaration>
++pub turbo_dom::rtdom::computed_css::model::CompiledRule::declarations: alloc::vec::Vec<turbo_dom::rtdom::computed_css::CssDeclaration>
++pub turbo_dom::rtdom::computed_css::model::CompiledRule::groups: alloc::vec::Vec<usize>
++pub turbo_dom::rtdom::computed_css::model::CompiledRule::selector_id: usize
++pub turbo_dom::rtdom::computed_css::model::CompiledRule::source_id: u32
++pub struct turbo_dom::rtdom::computed_css::model::CompiledStyles(_)
++impl turbo_dom::rtdom::computed_css::model::CompiledStyles
++pub fn turbo_dom::rtdom::computed_css::model::CompiledStyles::compile(&[turbo_dom::rtdom::computed_css::model::SheetSource], turbo_dom::rtdom::computed_css::model::CompileLimits) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::model::CompileError>
++pub fn turbo_dom::rtdom::computed_css::model::CompiledStyles::metadata(&self) -> &turbo_dom::rtdom::computed_css::model::CompiledData
++impl turbo_dom::rtdom::computed_css::model::CompiledStyles
++pub fn turbo_dom::rtdom::computed_css::model::CompiledStyles::prepare(&self, &[turbo_dom::rtdom::computed_css::prepared::SheetUse], &turbo_dom::rtdom::computed_css::prepared::PreparationEnvironment<'_, '_>, turbo_dom::rtdom::computed_css::prepared::PreparationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::prepared::PreparedStyles, turbo_dom::rtdom::computed_css::prepared::PreparationError>
++impl turbo_dom::rtdom::computed_css::model::CompiledStyles
++pub fn turbo_dom::rtdom::computed_css::model::CompiledStyles::retained_payload_bytes(&self) -> usize
++pub struct turbo_dom::rtdom::computed_css::model::MatchSelector
++pub turbo_dom::rtdom::computed_css::model::MatchSelector::compiled: core::result::Result<turbo_dom::rtdom::query::SelectorList, turbo_dom::rtdom::query::SelectorError>
++pub turbo_dom::rtdom::computed_css::model::MatchSelector::policy: turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection
++pub turbo_dom::rtdom::computed_css::model::MatchSelector::scoped: bool
++pub turbo_dom::rtdom::computed_css::model::MatchSelector::source: turbo_dom::rtdom::computed_css::CssText
++pub struct turbo_dom::rtdom::computed_css::model::SheetSource
++pub turbo_dom::rtdom::computed_css::model::SheetSource::id: u32
++pub turbo_dom::rtdom::computed_css::model::SheetSource::text: turbo_dom::rtdom::computed_css::CssText
++pub mod turbo_dom::rtdom::computed_css::ordinary
++pub enum turbo_dom::rtdom::computed_css::ordinary::OrdinaryError
++pub turbo_dom::rtdom::computed_css::ordinary::OrdinaryError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::ordinary::OrdinaryError::RequiresGrammar(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::ordinary::OrdinaryError::RequiresValueContext(alloc::string::String)
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::ordinary::OrdinaryError
++pub fn turbo_dom::rtdom::computed_css::ordinary::OrdinaryError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++pub fn turbo_dom::rtdom::computed_css::ordinary::computed_property_tokens(&str, core::option::Option<&str>, &turbo_dom::rtdom::computed_css::CssText, &turbo_dom::rtdom::computed_css::CustomProperties, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::CssText>, turbo_dom::rtdom::computed_css::ordinary::OrdinaryError>
++pub mod turbo_dom::rtdom::computed_css::payload
++pub mod turbo_dom::rtdom::computed_css::preferences
++pub enum turbo_dom::rtdom::computed_css::preferences::PreferenceBuildError
++pub turbo_dom::rtdom::computed_css::preferences::PreferenceBuildError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::preferences::PreferenceBuildError::Font(turbo_dom::rtdom::computed_preferences::FontPreferenceError)
++pub struct turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::color: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::computed_font_size: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::computed_font_size_px: f64
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::font_family: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::font_size_input: turbo_dom::rtdom::computed_css::CssText
++pub turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues::font_size_px: f64
++pub fn turbo_dom::rtdom::computed_css::preferences::initial_preference_values(&turbo_dom::rtdom::computed_preferences::ComputedFontPreferences<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::preferences::InitialPreferenceValues, turbo_dom::rtdom::computed_css::preferences::PreferenceBuildError>
++pub fn turbo_dom::rtdom::computed_css::preferences::renderer_initial_preferences(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &turbo_dom::rtdom::computed_css::properties::InitialContext<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<alloc::vec::Vec<(&'static str, turbo_dom::rtdom::computed_css::CssText)>, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_css::prepared
++pub enum turbo_dom::rtdom::computed_css::prepared::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::prepared::CascadeOrigin::Author
++pub turbo_dom::rtdom::computed_css::prepared::CascadeOrigin::User
++pub turbo_dom::rtdom::computed_css::prepared::CascadeOrigin::UserAgent
++impl turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub fn turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::level(self, bool) -> turbo_dom::rtdom::computed_css::cascade_order::CascadeLevel
++pub fn turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin::normal_order(self) -> u8
++pub enum turbo_dom::rtdom::computed_css::prepared::ContainerGeometryError
++pub turbo_dom::rtdom::computed_css::prepared::ContainerGeometryError::RequiresDefinition(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::prepared::ContainerGeometryError::RequiresLayoutDependency(alloc::string::String)
++pub enum turbo_dom::rtdom::computed_css::prepared::PreparationError
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::Condition(turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError)
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::Layer(turbo_dom::rtdom::computed_css::layers::LayerError)
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::RequiresStylePhase
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::RuleCount
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::UnknownSource(u32)
++pub turbo_dom::rtdom::computed_css::prepared::PreparationError::UseCount
++pub enum turbo_dom::rtdom::computed_css::prepared::StylePhase
++pub turbo_dom::rtdom::computed_css::prepared::StylePhase::Starting
++pub turbo_dom::rtdom::computed_css::prepared::StylePhase::Steady
++pub struct turbo_dom::rtdom::computed_css::prepared::ContainerGeometryPlan(_)
++impl turbo_dom::rtdom::computed_css::prepared::ContainerGeometryPlan
++pub fn turbo_dom::rtdom::computed_css::prepared::ContainerGeometryPlan::styles_for_measurement(&self) -> &turbo_dom::rtdom::computed_css::prepared::PreparedStyles
++pub struct turbo_dom::rtdom::computed_css::prepared::LayerRank
++pub turbo_dom::rtdom::computed_css::prepared::LayerRank::important: alloc::rcs::arc::Arc<[usize]>
++pub turbo_dom::rtdom::computed_css::prepared::LayerRank::normal: alloc::rcs::arc::Arc<[usize]>
++pub struct turbo_dom::rtdom::computed_css::prepared::PreparationEnvironment<'a, 'env>
++pub turbo_dom::rtdom::computed_css::prepared::PreparationEnvironment::conditions: &'a turbo_dom::rtdom::computed_css::conditions::ConditionEnvironment<'env>
++pub turbo_dom::rtdom::computed_css::prepared::PreparationEnvironment::style_phase: core::option::Option<turbo_dom::rtdom::computed_css::prepared::StylePhase>
++pub struct turbo_dom::rtdom::computed_css::prepared::PreparationLimits
++pub turbo_dom::rtdom::computed_css::prepared::PreparationLimits::computation: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::prepared::PreparationLimits::layers: usize
++pub turbo_dom::rtdom::computed_css::prepared::PreparationLimits::rules: usize
++pub turbo_dom::rtdom::computed_css::prepared::PreparationLimits::uses: usize
++pub struct turbo_dom::rtdom::computed_css::prepared::PreparedData
++pub turbo_dom::rtdom::computed_css::prepared::PreparedData::compiled: turbo_dom::rtdom::computed_css::model::CompiledStyles
++pub turbo_dom::rtdom::computed_css::prepared::PreparedData::rules: alloc::vec::Vec<turbo_dom::rtdom::computed_css::prepared::PreparedRule>
++pub struct turbo_dom::rtdom::computed_css::prepared::PreparedRule
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::implicit_scope_root: core::option::Option<u32>
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::layer: core::option::Option<usize>
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::layer_context: usize
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::layer_rank: turbo_dom::rtdom::computed_css::prepared::LayerRank
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::rule_id: usize
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::scope_depth: u32
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::tree_scope: u32
++pub turbo_dom::rtdom::computed_css::prepared::PreparedRule::use_id: usize
++pub struct turbo_dom::rtdom::computed_css::prepared::PreparedStyles(_, _)
++impl turbo_dom::rtdom::computed_css::prepared::PreparedStyles
++pub fn turbo_dom::rtdom::computed_css::prepared::PreparedStyles::container_geometry_plan(&self) -> core::result::Result<turbo_dom::rtdom::computed_css::prepared::ContainerGeometryPlan, turbo_dom::rtdom::computed_css::prepared::ContainerGeometryError>
++pub fn turbo_dom::rtdom::computed_css::prepared::PreparedStyles::is_geometry_only(&self) -> bool
++impl turbo_dom::rtdom::computed_css::prepared::PreparedStyles
++pub fn turbo_dom::rtdom::computed_css::prepared::PreparedStyles::metadata(&self) -> &turbo_dom::rtdom::computed_css::prepared::PreparedData
++impl turbo_dom::rtdom::computed_css::prepared::PreparedStyles
++pub fn turbo_dom::rtdom::computed_css::prepared::PreparedStyles::retained_payload_bytes(&self) -> usize
++pub struct turbo_dom::rtdom::computed_css::prepared::SheetUse
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::disabled: bool
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::implicit_scope_root: core::option::Option<u32>
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::media: core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::scope_depth: u32
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::source_id: u32
++pub turbo_dom::rtdom::computed_css::prepared::SheetUse::tree_scope: u32
++pub mod turbo_dom::rtdom::computed_css::properties
++pub enum turbo_dom::rtdom::computed_css::properties::WideKeyword
++pub turbo_dom::rtdom::computed_css::properties::WideKeyword::Inherit
++pub turbo_dom::rtdom::computed_css::properties::WideKeyword::Initial
++pub turbo_dom::rtdom::computed_css::properties::WideKeyword::Revert
++pub turbo_dom::rtdom::computed_css::properties::WideKeyword::RevertLayer
++pub turbo_dom::rtdom::computed_css::properties::WideKeyword::Unset
++pub struct turbo_dom::rtdom::computed_css::properties::InitialContext<'a>
++pub turbo_dom::rtdom::computed_css::properties::InitialContext::color: &'a str
++pub turbo_dom::rtdom::computed_css::properties::InitialContext::font_family: &'a str
++pub turbo_dom::rtdom::computed_css::properties::InitialContext::font_size: &'a str
++pub fn turbo_dom::rtdom::computed_css::properties::context_free_initial(&str) -> core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::properties::inherited(&str) -> bool
++pub fn turbo_dom::rtdom::computed_css::properties::initial(&str, &turbo_dom::rtdom::computed_css::properties::InitialContext<'_>) -> core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub fn turbo_dom::rtdom::computed_css::properties::length_property(&str) -> bool
++pub fn turbo_dom::rtdom::computed_css::properties::wide_keyword(&turbo_dom::rtdom::computed_css::CssText) -> core::option::Option<turbo_dom::rtdom::computed_css::properties::WideKeyword>
+ pub mod turbo_dom::rtdom::computed_css::property_data
+ pub struct turbo_dom::rtdom::computed_css::property_data::PropertyData
+ pub turbo_dom::rtdom::computed_css::property_data::PropertyData::inherited: bool
+@@ -160,6 +645,186 @@
+ pub const turbo_dom::rtdom::computed_css::property_data::SOURCE_SHA256: &str
+ pub fn turbo_dom::rtdom::computed_css::property_data::lookup(&str) -> core::option::Option<turbo_dom::rtdom::computed_css::property_data::PropertyData>
+ pub fn turbo_dom::rtdom::computed_css::property_data::rows() -> &'static [(&'static str, &'static str, bool)]
++pub mod turbo_dom::rtdom::computed_css::property_registry
++pub const turbo_dom::rtdom::computed_css::property_registry::REGISTRY_JSON: &str
++pub const turbo_dom::rtdom::computed_css::property_registry::SOURCE_SHA256: &str
++pub fn turbo_dom::rtdom::computed_css::property_registry::initial_single_value(&str) -> core::option::Option<&'static str>
++pub fn turbo_dom::rtdom::computed_css::property_registry::is_known(&str) -> bool
++pub fn turbo_dom::rtdom::computed_css::property_registry::keywords(&str) -> core::option::Option<&'static [&'static str]>
++pub fn turbo_dom::rtdom::computed_css::property_registry::names() -> &'static [&'static str]
++pub mod turbo_dom::rtdom::computed_css::resolve
++pub enum turbo_dom::rtdom::computed_css::resolve::ResolveError
++pub turbo_dom::rtdom::computed_css::resolve::ResolveError::Inline(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::resolve::ResolveError::Matching(turbo_dom::rtdom::computed_css::rule_matches::MatchError)
++pub turbo_dom::rtdom::computed_css::resolve::ResolveError::Selection(turbo_dom::rtdom::computed_css::selection::SelectionError)
++pub turbo_dom::rtdom::computed_css::resolve::ResolveError::Values(turbo_dom::rtdom::computed_css::computed_values::ValueError)
++pub struct turbo_dom::rtdom::computed_css::resolve::ComputedStyle
++pub turbo_dom::rtdom::computed_css::resolve::ComputedStyle::custom: turbo_dom::rtdom::computed_css::CustomProperties
++pub turbo_dom::rtdom::computed_css::resolve::ComputedStyle::declared_text_decoration: core::option::Option<turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration>
++pub turbo_dom::rtdom::computed_css::resolve::ComputedStyle::public_keys: alloc::collections::btree::set::BTreeSet<alloc::string::String>
++pub turbo_dom::rtdom::computed_css::resolve::ComputedStyle::values: turbo_dom::rtdom::computed_css::computed_values::ComputedValues
++pub struct turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration
++pub turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration::important: bool
++pub turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration::inline: bool
++pub turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration::order: (usize, usize)
++pub turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration::origin: turbo_dom::rtdom::computed_css::cascade_order::CascadeOrigin
++pub turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration::value: turbo_dom::rtdom::computed_css::CssText
++impl<'a> core::convert::From<&'a turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration> for turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>
++pub fn turbo_dom::rtdom::computed_css::cssom_serialization::SelectedTextDecoration<'a>::from(&'a turbo_dom::rtdom::computed_css::resolve::DeclaredTextDecoration) -> Self
++pub struct turbo_dom::rtdom::computed_css::resolve::ResolveLimits
++pub turbo_dom::rtdom::computed_css::resolve::ResolveLimits::custom: turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits
++pub turbo_dom::rtdom::computed_css::resolve::ResolveLimits::inline: turbo_dom::rtdom::computed_css::inline_style::InlineLimits
++pub turbo_dom::rtdom::computed_css::resolve::ResolveLimits::matching_decisions: usize
++pub turbo_dom::rtdom::computed_css::resolve::ResolveLimits::values: turbo_dom::rtdom::computed_css::computed_values::ValueLimits
++pub struct turbo_dom::rtdom::computed_css::resolve::TargetContext<'a>
++pub turbo_dom::rtdom::computed_css::resolve::TargetContext::scope_depth: u32
++pub turbo_dom::rtdom::computed_css::resolve::TargetContext::tree_scope: u32
++pub turbo_dom::rtdom::computed_css::resolve::TargetContext::values: turbo_dom::rtdom::computed_css::computed_values::ValueContext<'a>
++pub fn turbo_dom::rtdom::computed_css::resolve::compute_style(&turbo_dom::rtdom::computed_css::prepared::PreparedStyles, &turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'_>, core::option::Option<&turbo_dom::rtdom::computed_css::CssText>, core::option::Option<&turbo_dom::rtdom::computed_css::resolve::ComputedStyle>, &turbo_dom::rtdom::computed_css::resolve::TargetContext<'_>, turbo_dom::rtdom::computed_css::resolve::ResolveLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::resolve::ComputedStyle, turbo_dom::rtdom::computed_css::resolve::ResolveError>
++pub fn turbo_dom::rtdom::computed_css::resolve::compute_style_with_context_answers(&turbo_dom::rtdom::computed_css::prepared::PreparedStyles, &turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'_>, core::option::Option<&turbo_dom::rtdom::computed_css::CssText>, core::option::Option<&turbo_dom::rtdom::computed_css::resolve::ComputedStyle>, &turbo_dom::rtdom::computed_css::resolve::TargetContext<'_>, turbo_dom::rtdom::computed_css::resolve::ResolveLimits, turbo_dom::rtdom::computed_css::rule_matches::ContextAnswers<'_>) -> core::result::Result<turbo_dom::rtdom::computed_css::resolve::ComputedStyle, turbo_dom::rtdom::computed_css::resolve::ResolveError>
++pub mod turbo_dom::rtdom::computed_css::rule_matches
++pub enum turbo_dom::rtdom::computed_css::rule_matches::ImplicitRootPolicy
++pub turbo_dom::rtdom::computed_css::rule_matches::ImplicitRootPolicy::LegacyTarget
++pub turbo_dom::rtdom::computed_css::rule_matches::ImplicitRootPolicy::PerStylesheetUse
++pub enum turbo_dom::rtdom::computed_css::rule_matches::MatchError
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::Container(turbo_dom::rtdom::computed_css::container::ContainerError)
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::InvalidRouteFacts
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::InvalidSelectorAnswer
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::MissingImplicitRoot
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::MissingRouteFacts(u32)
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::MissingSelectorAnswer
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::RequiresContainer(usize)
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::ResourceLimit
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::Route(turbo_dom::rtdom::computed_css::shadow_routes::RouteError)
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::Scope(turbo_dom::rtdom::computed_css::target_scope::ScopeError)
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::UnsupportedScopedSlotted
++pub turbo_dom::rtdom::computed_css::rule_matches::MatchError::UnsupportedSelector(usize)
++pub struct turbo_dom::rtdom::computed_css::rule_matches::ContainerMatchContext<'a>
++pub turbo_dom::rtdom::computed_css::rule_matches::ContainerMatchContext::ancestors: &'a [turbo_dom::rtdom::computed_css::container::ContainerAncestor<'a>]
++pub turbo_dom::rtdom::computed_css::rule_matches::ContainerMatchContext::limits: turbo_dom::rtdom::computed_css::ComputationLimits
++pub turbo_dom::rtdom::computed_css::rule_matches::ContainerMatchContext::measurements: core::option::Option<&'a turbo_dom::rtdom::computed_css::container::ContainerMeasurements>
++pub struct turbo_dom::rtdom::computed_css::rule_matches::ContextAnswers<'a>
++pub turbo_dom::rtdom::computed_css::rule_matches::ContextAnswers::boundaries: &'a turbo_dom::rtdom::computed_css::target_scope::ContextBoundaryAnswers
++pub turbo_dom::rtdom::computed_css::rule_matches::ContextAnswers::selectors: &'a turbo_dom::rtdom::computed_css::rule_matches::ContextSelectorAnswers
++pub struct turbo_dom::rtdom::computed_css::rule_matches::MatchedRules
++impl turbo_dom::rtdom::computed_css::rule_matches::MatchedRules
++pub fn turbo_dom::rtdom::computed_css::rule_matches::MatchedRules::prepared(&self) -> &turbo_dom::rtdom::computed_css::prepared::PreparedStyles
++pub fn turbo_dom::rtdom::computed_css::rule_matches::MatchedRules::rules(&self) -> &[turbo_dom::rtdom::computed_css::rule_matches::RuleMatch]
++pub struct turbo_dom::rtdom::computed_css::rule_matches::RuleMatch
++impl turbo_dom::rtdom::computed_css::rule_matches::RuleMatch
++pub fn turbo_dom::rtdom::computed_css::rule_matches::RuleMatch::prepared_rule(&self) -> usize
++pub fn turbo_dom::rtdom::computed_css::rule_matches::RuleMatch::proximity(&self) -> usize
++pub fn turbo_dom::rtdom::computed_css::rule_matches::RuleMatch::specificity(&self) -> (u32, u32, u32)
++pub struct turbo_dom::rtdom::computed_css::rule_matches::SelectorAnswer
++impl turbo_dom::rtdom::computed_css::facts::MechanicalAnswer
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::matches(&self, u32) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::facts::FactError>
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::new(alloc::rcs::arc::Arc<turbo_dom::rtdom::computed_css::facts::AnswerDomain>, alloc::vec::Vec<u32>) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::facts::FactError>
++pub struct turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'a>
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::boundaries: &'a turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswers
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::containers: core::option::Option<turbo_dom::rtdom::computed_css::rule_matches::ContainerMatchContext<'a>>
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::implicit_scope_root: u32
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::path: &'a [u32]
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::pseudo: core::option::Option<&'a str>
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::routes: core::option::Option<&'a turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>>
++pub turbo_dom::rtdom::computed_css::rule_matches::TargetFacts::selectors: &'a turbo_dom::rtdom::computed_css::rule_matches::SelectorAnswers
++pub fn turbo_dom::rtdom::computed_css::rule_matches::matching_rules(&turbo_dom::rtdom::computed_css::prepared::PreparedStyles, &turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'_>, usize) -> core::result::Result<turbo_dom::rtdom::computed_css::rule_matches::MatchedRules, turbo_dom::rtdom::computed_css::rule_matches::MatchError>
++pub fn turbo_dom::rtdom::computed_css::rule_matches::matching_rules_with_context_answers(&turbo_dom::rtdom::computed_css::prepared::PreparedStyles, &turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'_>, turbo_dom::rtdom::computed_css::rule_matches::ContextAnswers<'_>, usize) -> core::result::Result<turbo_dom::rtdom::computed_css::rule_matches::MatchedRules, turbo_dom::rtdom::computed_css::rule_matches::MatchError>
++pub fn turbo_dom::rtdom::computed_css::rule_matches::matching_rules_with_implicit_policy(&turbo_dom::rtdom::computed_css::prepared::PreparedStyles, &turbo_dom::rtdom::computed_css::rule_matches::TargetFacts<'_>, usize, turbo_dom::rtdom::computed_css::rule_matches::ImplicitRootPolicy) -> core::result::Result<turbo_dom::rtdom::computed_css::rule_matches::MatchedRules, turbo_dom::rtdom::computed_css::rule_matches::MatchError>
++pub type turbo_dom::rtdom::computed_css::rule_matches::ContextSelectorAnswers = alloc::collections::btree::map::BTreeMap<(u32, usize, usize, core::option::Option<u32>), turbo_dom::rtdom::computed_css::facts::MechanicalAnswer>
++pub type turbo_dom::rtdom::computed_css::rule_matches::SelectorAnswers = alloc::collections::btree::map::BTreeMap<(usize, usize, core::option::Option<u32>), turbo_dom::rtdom::computed_css::facts::MechanicalAnswer>
++pub mod turbo_dom::rtdom::computed_css::scope_plan
++pub enum turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError::InvalidPath
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError::ResourceLimit
++impl core::convert::From<turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError> for turbo_dom::rtdom::computed_css::target_scope::ScopeError
++pub fn turbo_dom::rtdom::computed_css::target_scope::ScopeError::from(turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError) -> Self
++pub struct turbo_dom::rtdom::computed_css::scope_plan::ScopePrelude
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopePrelude::end: core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopePrelude::start: core::option::Option<turbo_dom::rtdom::computed_css::CssText>
++pub struct turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness::enclosing_root: usize
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness::limits: alloc::vec::Vec<usize>
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness::root: usize
++pub turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness::start_matches: bool
++pub fn turbo_dom::rtdom::computed_css::scope_plan::applicable_roots(usize, &[usize], &[turbo_dom::rtdom::computed_css::scope_plan::ScopeWitness], usize) -> core::result::Result<alloc::vec::Vec<(usize, usize)>, turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError>
++pub fn turbo_dom::rtdom::computed_css::scope_plan::parse_scope_prelude(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::scope_plan::ScopePrelude>, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_css::selection
++pub enum turbo_dom::rtdom::computed_css::selection::SelectionError
++pub turbo_dom::rtdom::computed_css::selection::SelectionError::Computation(turbo_dom::rtdom::computed_css::ordinary::OrdinaryError)
++pub turbo_dom::rtdom::computed_css::selection::SelectionError::Custom(turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeError)
++pub struct turbo_dom::rtdom::computed_css::selection::SelectedStyle
++pub turbo_dom::rtdom::computed_css::selection::SelectedStyle::custom: turbo_dom::rtdom::computed_css::CustomProperties
++pub turbo_dom::rtdom::computed_css::selection::SelectedStyle::ordinary: alloc::collections::btree::map::BTreeMap<alloc::string::String, core::option::Option<turbo_dom::rtdom::computed_css::CssText>>
++pub fn turbo_dom::rtdom::computed_css::selection::select_style<'a>(&alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>, &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>>, &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<turbo_dom::rtdom::computed_css::candidates::Candidate<'a>>>, turbo_dom::rtdom::computed_css::custom_cascade::CustomCascadeLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::selection::SelectedStyle, turbo_dom::rtdom::computed_css::selection::SelectionError>
++pub mod turbo_dom::rtdom::computed_css::selector_policy
++pub enum turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo
++pub turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo::After
++pub turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo::Before
++pub enum turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection::Invalid
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection::Items(alloc::vec::Vec<turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy>)
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection::Unchanged
++pub enum turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::Element
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::Generated
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::Generated::pseudo: turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::Slotted
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::Slotted::pseudo: core::option::Option<turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo>
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget::UnsupportedComposed
++pub struct turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy::host_reference: bool
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy::index: usize
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy::specificity: core::option::Option<(u32, u32, u32)>
++pub turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy::target: turbo_dom::rtdom::computed_css::selector_policy::SelectorTarget
++pub fn turbo_dom::rtdom::computed_css::selector_policy::inspect_selector_policy(&turbo_dom::rtdom::computed_css::CssText, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicyInspection, turbo_dom::rtdom::computed_css::ComputedCssError>
++pub mod turbo_dom::rtdom::computed_css::shadow_routes
++pub enum turbo_dom::rtdom::computed_css::shadow_routes::RouteError
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteError::InvalidContext
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteError::InvalidPath
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteError::MissingContext(u32)
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteError::ResourceLimit
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteError::UnsupportedComposed
++pub enum turbo_dom::rtdom::computed_css::shadow_routes::RouteKind
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteKind::AssignedSlot
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteKind::HostOf
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteKind::OwnTreeScope
++pub enum turbo_dom::rtdom::computed_css::shadow_routes::RoutePath<'a>
++pub turbo_dom::rtdom::computed_css::shadow_routes::RoutePath::HostBoundary([u32; 2])
++pub turbo_dom::rtdom::computed_css::shadow_routes::RoutePath::Physical(&'a [u32])
++impl turbo_dom::rtdom::computed_css::shadow_routes::RoutePath<'_>
++pub fn turbo_dom::rtdom::computed_css::shadow_routes::RoutePath<'_>::ids(&self) -> &[u32]
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::AssignedSlot<'a>
++pub turbo_dom::rtdom::computed_css::shadow_routes::AssignedSlot::path: &'a [u32]
++pub turbo_dom::rtdom::computed_css::shadow_routes::AssignedSlot::slot: u32
++pub turbo_dom::rtdom::computed_css::shadow_routes::AssignedSlot::tree_scope: u32
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot
++pub turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot::host: core::option::Option<u32>
++pub turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot::parent_tree_scope: core::option::Option<u32>
++pub turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot::root: u32
++pub turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot::tree_scope: u32
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute<'a>
++pub turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute::kind: turbo_dom::rtdom::computed_css::shadow_routes::RouteKind
++pub turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute::origin: u32
++pub turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute::path: turbo_dom::rtdom::computed_css::shadow_routes::RoutePath<'a>
++pub turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute::subject: u32
++pub turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute::tree_scope: u32
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::RouteBudget
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteBudget::contexts: usize
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteBudget::path_units: usize
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts<'a>
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::assigned_slot: core::option::Option<turbo_dom::rtdom::computed_css::shadow_routes::AssignedSlot<'a>>
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::context_roots: &'a [turbo_dom::rtdom::computed_css::shadow_routes::ContextRoot]
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::host_of: core::option::Option<u32>
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::own_path: &'a [u32]
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::own_tree_scope: u32
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::requested_pseudo: core::option::Option<turbo_dom::rtdom::computed_css::selector_policy::GeneratedPseudo>
++pub turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts::target: u32
++pub struct turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>
++impl<'a> turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>
++pub fn turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>::facts(&self) -> &turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts<'a>
++pub fn turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>::new(&turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts<'a>, &mut turbo_dom::rtdom::computed_css::shadow_routes::RouteBudget) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::shadow_routes::RouteError>
++pub fn turbo_dom::rtdom::computed_css::shadow_routes::selector_route<'a>(u32, &turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy, &turbo_dom::rtdom::computed_css::shadow_routes::ValidatedRouteFacts<'a>) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute<'a>>, turbo_dom::rtdom::computed_css::shadow_routes::RouteError>
++pub fn turbo_dom::rtdom::computed_css::shadow_routes::selector_route_checked<'a>(u32, &turbo_dom::rtdom::computed_css::selector_policy::SelectorPolicy, &turbo_dom::rtdom::computed_css::shadow_routes::RouteFacts<'a>, &mut turbo_dom::rtdom::computed_css::shadow_routes::RouteBudget) -> core::result::Result<core::option::Option<turbo_dom::rtdom::computed_css::shadow_routes::MatchRoute<'a>>, turbo_dom::rtdom::computed_css::shadow_routes::RouteError>
+ pub mod turbo_dom::rtdom::computed_css::stylesheet
+ pub enum turbo_dom::rtdom::computed_css::stylesheet::GroupKind
+ pub turbo_dom::rtdom::computed_css::stylesheet::GroupKind::Container
+@@ -175,6 +840,8 @@
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::GroupDepth
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::RuleCount
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetError::SourceUnits
++impl core::convert::From<turbo_dom::rtdom::computed_css::stylesheet::SheetError> for turbo_dom::rtdom::computed_css::model::CompileError
++pub fn turbo_dom::rtdom::computed_css::model::CompileError::from(turbo_dom::rtdom::computed_css::stylesheet::SheetError) -> Self
+ pub enum turbo_dom::rtdom::computed_css::stylesheet::SheetRule
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetRule::Group::kind: turbo_dom::rtdom::computed_css::stylesheet::GroupKind
+@@ -200,11 +867,85 @@
+ pub turbo_dom::rtdom::computed_css::stylesheet::SheetLimits::source_units: usize
+ pub fn turbo_dom::rtdom::computed_css::stylesheet::parse_sheet(&[u16], turbo_dom::rtdom::computed_css::stylesheet::SheetLimits, turbo_dom::rtdom::computed_css::stylesheet::GroupMode) -> core::result::Result<alloc::vec::Vec<turbo_dom::rtdom::computed_css::stylesheet::SheetRule>, turbo_dom::rtdom::computed_css::stylesheet::SheetError>
+ pub fn turbo_dom::rtdom::computed_css::stylesheet::parse_sheet_with_unknown_rules(&[u16], turbo_dom::rtdom::computed_css::stylesheet::SheetLimits, turbo_dom::rtdom::computed_css::stylesheet::GroupMode, turbo_dom::rtdom::computed_css::stylesheet::UnknownRulePolicy) -> core::result::Result<alloc::vec::Vec<turbo_dom::rtdom::computed_css::stylesheet::SheetRule>, turbo_dom::rtdom::computed_css::stylesheet::SheetError>
++pub mod turbo_dom::rtdom::computed_css::target_scope
++pub enum turbo_dom::rtdom::computed_css::target_scope::Boundary
++pub turbo_dom::rtdom::computed_css::target_scope::Boundary::End
++pub turbo_dom::rtdom::computed_css::target_scope::Boundary::Start
++pub enum turbo_dom::rtdom::computed_css::target_scope::ScopeError
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::InvalidAnswer
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::InvalidGroup
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::InvalidPath
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::MissingAnswer
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::MissingImplicitRoot
++pub turbo_dom::rtdom::computed_css::target_scope::ScopeError::ResourceLimit
++impl core::convert::From<turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError> for turbo_dom::rtdom::computed_css::target_scope::ScopeError
++pub fn turbo_dom::rtdom::computed_css::target_scope::ScopeError::from(turbo_dom::rtdom::computed_css::scope_plan::ScopeFactError) -> Self
++pub struct turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswer
++impl turbo_dom::rtdom::computed_css::facts::MechanicalAnswer
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::matches(&self, u32) -> core::result::Result<bool, turbo_dom::rtdom::computed_css::facts::FactError>
++pub fn turbo_dom::rtdom::computed_css::facts::MechanicalAnswer::new(alloc::rcs::arc::Arc<turbo_dom::rtdom::computed_css::facts::AnswerDomain>, alloc::vec::Vec<u32>) -> core::result::Result<Self, turbo_dom::rtdom::computed_css::facts::FactError>
++pub fn turbo_dom::rtdom::computed_css::target_scope::scope_roots(&[turbo_dom::rtdom::computed_css::model::CompiledGroup], &[usize], &[u32], u32, &turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswers, usize) -> core::result::Result<alloc::vec::Vec<usize>, turbo_dom::rtdom::computed_css::target_scope::ScopeError>
++pub fn turbo_dom::rtdom::computed_css::target_scope::scope_roots_with_budget(&[turbo_dom::rtdom::computed_css::model::CompiledGroup], &[usize], &[u32], u32, &turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswers, &mut usize) -> core::result::Result<alloc::vec::Vec<usize>, turbo_dom::rtdom::computed_css::target_scope::ScopeError>
++pub fn turbo_dom::rtdom::computed_css::target_scope::scope_roots_with_owner_budget(&[turbo_dom::rtdom::computed_css::model::CompiledGroup], &[usize], &[u32], core::option::Option<u32>, &turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswers, &mut usize) -> core::result::Result<alloc::vec::Vec<usize>, turbo_dom::rtdom::computed_css::target_scope::ScopeError>
++pub type turbo_dom::rtdom::computed_css::target_scope::BoundaryAnswers = alloc::collections::btree::map::BTreeMap<(usize, turbo_dom::rtdom::computed_css::target_scope::Boundary, u32), turbo_dom::rtdom::computed_css::facts::MechanicalAnswer>
++pub type turbo_dom::rtdom::computed_css::target_scope::ContextBoundaryAnswers = alloc::collections::btree::map::BTreeMap<(u32, usize, turbo_dom::rtdom::computed_css::target_scope::Boundary, u32), turbo_dom::rtdom::computed_css::facts::MechanicalAnswer>
++pub mod turbo_dom::rtdom::computed_css::used_values
++pub enum turbo_dom::rtdom::computed_css::used_values::Axis
++pub turbo_dom::rtdom::computed_css::used_values::Axis::Horizontal
++pub turbo_dom::rtdom::computed_css::used_values::Axis::Vertical
++pub enum turbo_dom::rtdom::computed_css::used_values::AxisMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::NoBox
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::NonAtomicInline
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::Pixels
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::Pixels::border: core::option::Option<f32>
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::Pixels::content: core::option::Option<f32>
++pub turbo_dom::rtdom::computed_css::used_values::AxisMeasurement::Unknown
++pub enum turbo_dom::rtdom::computed_css::used_values::BoxBasis
++pub turbo_dom::rtdom::computed_css::used_values::BoxBasis::Border
++pub turbo_dom::rtdom::computed_css::used_values::BoxBasis::Content
++pub enum turbo_dom::rtdom::computed_css::used_values::Projection
++pub turbo_dom::rtdom::computed_css::used_values::Projection::NeedsMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::Projection::NeedsMeasurement::axis: turbo_dom::rtdom::computed_css::used_values::Axis
++pub turbo_dom::rtdom::computed_css::used_values::Projection::NeedsMeasurement::basis: turbo_dom::rtdom::computed_css::used_values::BoxBasis
++pub turbo_dom::rtdom::computed_css::used_values::Projection::Unchanged
++pub turbo_dom::rtdom::computed_css::used_values::Projection::Value(turbo_dom::rtdom::computed_css::CssText)
++pub enum turbo_dom::rtdom::computed_css::used_values::UsedValueError
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::Computation(turbo_dom::rtdom::computed_css::ComputedCssError)
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::ForeignMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::InvalidMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::InvalidProperty(alloc::string::String)
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::UnsupportedNamespace
++pub turbo_dom::rtdom::computed_css::used_values::UsedValueError::UnsupportedPseudo
++impl core::convert::From<turbo_dom::rtdom::computed_css::grammar::GrammarLimitError> for turbo_dom::rtdom::computed_css::used_values::UsedValueError
++pub fn turbo_dom::rtdom::computed_css::used_values::UsedValueError::from(turbo_dom::rtdom::computed_css::grammar::GrammarLimitError) -> Self
++pub struct turbo_dom::rtdom::computed_css::used_values::UsedContext<'a>
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::measurement: core::option::Option<&'a turbo_dom::rtdom::computed_css::used_values::UsedMeasurement<'a>>
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::namespace: &'a [u16]
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::ordinary: &'a alloc::collections::btree::map::BTreeMap<alloc::string::String, turbo_dom::rtdom::computed_css::CssText>
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::pseudo: core::option::Option<&'a str>
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::public_keys: &'a alloc::collections::btree::set::BTreeSet<alloc::string::String>
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::target: u32
++pub turbo_dom::rtdom::computed_css::used_values::UsedContext::world: &'a [u16]
++pub struct turbo_dom::rtdom::computed_css::used_values::UsedMeasurement<'a>
++pub turbo_dom::rtdom::computed_css::used_values::UsedMeasurement::horizontal: turbo_dom::rtdom::computed_css::used_values::AxisMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::UsedMeasurement::target: u32
++pub turbo_dom::rtdom::computed_css::used_values::UsedMeasurement::vertical: turbo_dom::rtdom::computed_css::used_values::AxisMeasurement
++pub turbo_dom::rtdom::computed_css::used_values::UsedMeasurement::world: &'a [u16]
++pub fn turbo_dom::rtdom::computed_css::used_values::project_used_property(&str, &turbo_dom::rtdom::computed_css::used_values::UsedContext<'_>, turbo_dom::rtdom::computed_css::ComputationLimits) -> core::result::Result<turbo_dom::rtdom::computed_css::used_values::Projection, turbo_dom::rtdom::computed_css::used_values::UsedValueError>
++pub fn turbo_dom::rtdom::computed_css::used_values::property_axis(&str) -> core::option::Option<turbo_dom::rtdom::computed_css::used_values::Axis>
+ pub enum turbo_dom::rtdom::computed_css::ComputedCssError
+ pub turbo_dom::rtdom::computed_css::ComputedCssError::InvalidSyntax
+ pub turbo_dom::rtdom::computed_css::ComputedCssError::NestingLimit
+ pub turbo_dom::rtdom::computed_css::ComputedCssError::RequiresCascade
+ pub turbo_dom::rtdom::computed_css::ComputedCssError::ResourceLimit
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError
++pub fn turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::container::ContainerError
++pub fn turbo_dom::rtdom::computed_css::container::ContainerError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::computed_css::ordinary::OrdinaryError
++pub fn turbo_dom::rtdom::computed_css::ordinary::OrdinaryError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
+ impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::css_shorthand::LengthError
+ pub fn turbo_dom::rtdom::css_shorthand::LengthError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
+ pub enum turbo_dom::rtdom::computed_css::CustomComputation
+@@ -271,6 +1012,10 @@
+ pub turbo_dom::rtdom::css_shorthand::LengthError::UnsupportedMath(alloc::string::String)
+ impl core::convert::From<turbo_dom::rtdom::computed_css::ComputedCssError> for turbo_dom::rtdom::css_shorthand::LengthError
+ pub fn turbo_dom::rtdom::css_shorthand::LengthError::from(turbo_dom::rtdom::computed_css::ComputedCssError) -> Self
++impl core::convert::From<turbo_dom::rtdom::css_shorthand::LengthError> for turbo_dom::rtdom::computed_css::computed_values::ValueError
++pub fn turbo_dom::rtdom::computed_css::computed_values::ValueError::from(turbo_dom::rtdom::css_shorthand::LengthError) -> Self
++impl core::convert::From<turbo_dom::rtdom::css_shorthand::LengthError> for turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError
++pub fn turbo_dom::rtdom::computed_css::conditions::ConditionEvaluationError::from(turbo_dom::rtdom::css_shorthand::LengthError) -> Self
+ pub enum turbo_dom::rtdom::css_shorthand::Spelled
+ pub turbo_dom::rtdom::css_shorthand::Spelled::Invalid
+ pub turbo_dom::rtdom::css_shorthand::Spelled::Unchecked(alloc::string::String)

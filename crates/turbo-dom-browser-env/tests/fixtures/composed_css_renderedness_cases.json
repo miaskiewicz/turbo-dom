@@ -1,0 +1,242 @@
+[
+  {
+    "id": "open-host",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('open');animated(box.root,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "hide-host",
+        "script": "box.host.style.display='none'"
+      },
+      {
+        "id": "restore-host",
+        "script": "box.host.style.display='block'"
+      }
+    ]
+  },
+  {
+    "id": "closed-host",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed');animated(box.root,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "hide-host",
+        "script": "box.host.style.display='none'"
+      },
+      {
+        "id": "restore-host",
+        "script": "box.host.style.display='block'"
+      }
+    ]
+  },
+  {
+    "id": "nested-open-closed",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.outer=makeRoot('open');globalThis.inner=makeRoot('closed',outer.root);animated(inner.root,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "hide-outer",
+        "script": "outer.host.style.display='none'"
+      },
+      {
+        "id": "restore-outer",
+        "script": "outer.host.style.display='block'"
+      },
+      {
+        "id": "hide-inner",
+        "script": "inner.host.style.display='none'"
+      },
+      {
+        "id": "restore-inner",
+        "script": "inner.host.style.display='block'"
+      }
+    ]
+  },
+  {
+    "id": "assigned-closed-slot",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed');globalThis.slot=document.createElement('slot');slot.name='x';box.root.appendChild(slot);globalThis.target=animated(box.host,'target');target.slot='x';",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "hide-slot",
+        "script": "slot.style.display='none'"
+      },
+      {
+        "id": "restore-slot",
+        "script": "slot.style.display='contents'"
+      },
+      {
+        "id": "hide-host",
+        "script": "box.host.style.display='none'"
+      },
+      {
+        "id": "restore-host",
+        "script": "box.host.style.display='block'"
+      },
+      {
+        "id": "unassign",
+        "script": "target.slot='missing'"
+      },
+      {
+        "id": "reassign",
+        "script": "target.slot='x'"
+      }
+    ]
+  },
+  {
+    "id": "initially-unassigned-light",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed');globalThis.slot=document.createElement('slot');slot.name='x';box.root.appendChild(slot);globalThis.target=animated(box.host,'target');target.slot='missing';",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "assign",
+        "script": "target.slot='x'"
+      },
+      {
+        "id": "unassign",
+        "script": "target.slot='missing'"
+      }
+    ]
+  },
+  {
+    "id": "suppressed-fallback",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('open');globalThis.slot=document.createElement('slot');box.root.appendChild(slot);animated(slot,'fallback');globalThis.filler=document.createElement('b');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "suppress-fallback",
+        "script": "box.host.appendChild(filler)"
+      },
+      {
+        "id": "restore-fallback",
+        "script": "filler.remove()"
+      },
+      {
+        "id": "hide-slot",
+        "script": "slot.style.display='none'"
+      },
+      {
+        "id": "restore-slot",
+        "script": "slot.style.display='contents'"
+      }
+    ]
+  },
+  {
+    "id": "manual-closed-slot",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed',document.body,true);globalThis.slot=document.createElement('slot');box.root.appendChild(slot);globalThis.target=animated(box.host,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "assign",
+        "script": "slot.assign(target)"
+      },
+      {
+        "id": "unassign",
+        "script": "slot.assign()"
+      },
+      {
+        "id": "reassign",
+        "script": "slot.assign(target)"
+      },
+      {
+        "id": "hide-slot",
+        "script": "slot.style.display='none'"
+      },
+      {
+        "id": "restore-slot",
+        "script": "slot.style.display='contents'"
+      }
+    ]
+  },
+  {
+    "id": "presented-display-important",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed');animated(box.root,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "show-animation-over-none",
+        "script": "box.host.style.display='none';globalThis.displayMotion=box.host.animate([{display:'none'},{display:'block'}],{duration:1000,fill:'both'});displayMotion.pause();displayMotion.currentTime=500"
+      },
+      {
+        "id": "important-none",
+        "script": "box.host.style.setProperty('display','none','important')"
+      },
+      {
+        "id": "remove-important",
+        "script": "box.host.style.removeProperty('display')"
+      },
+      {
+        "id": "cancel-show",
+        "script": "displayMotion.cancel();box.host.style.display='none'"
+      },
+      {
+        "id": "restore",
+        "script": "box.host.style.display='block'"
+      }
+    ]
+  },
+  {
+    "id": "display-exit-transition",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed');box.host.style.cssText='display:block;transition:display 1000ms linear allow-discrete';animated(box.root,'target');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "exit-midpoint",
+        "script": "box.host.style.display='none';getComputedStyle(box.host).display;globalThis.exit=box.host.getAnimations().find(a=>a instanceof CSSTransition&&a.transitionProperty==='display');exit.pause();exit.currentTime=500"
+      },
+      {
+        "id": "exit-end",
+        "script": "exit.currentTime=1000"
+      },
+      {
+        "id": "restore",
+        "script": "box.host.style.display='block'"
+      }
+    ]
+  },
+  {
+    "id": "foreign-manual-assignment",
+    "setup": "globalThis.targets=[];globalThis.nodes={};\nfunction makeRoot(mode,parent=document.body,manual=false){const host=document.createElement('div');parent.appendChild(host);const root=host.attachShadow({mode,...(manual?{slotAssignment:'manual'}:{})});root.innerHTML='<style>@keyframes probe{from{opacity:.5}to{opacity:1}}.animated{animation:probe 1000ms linear both paused}</style>';return{host,root}}\nfunction animated(parent,id){const target=document.createElement('div');target.id=id;target.className='animated';parent.appendChild(target);const motion=target.animate([{opacity:.2},{opacity:.8}],{duration:1000,fill:'both'});motion.pause();motion.currentTime=500;targets.push(target);return target}\nglobalThis.box=makeRoot('closed',document.body,true);globalThis.slot=document.createElement('slot');box.root.appendChild(slot);globalThis.target=animated(box.host,'target');slot.assign(target);globalThis.foreignDoc=document.implementation.createHTMLDocument('other');globalThis.foreign=foreignDoc.createElement('i');",
+    "steps": [
+      {
+        "id": "initial",
+        "script": ""
+      },
+      {
+        "id": "foreign-node",
+        "script": "slot.assign(foreign);if(foreign.ownerDocument!==foreignDoc||slot.assignedNodes().length!==0)throw Error('foreign assignment adopted or distributed')"
+      },
+      {
+        "id": "restore-target",
+        "script": "slot.assign(target)"
+      }
+    ]
+  }
+]

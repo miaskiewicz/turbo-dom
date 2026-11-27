@@ -1,0 +1,19 @@
+--- a/src/runtime/css-default-capture.mjs
++++ b/src/runtime/css-default-capture.mjs
+@@ -520,6 +520,7 @@
+     for (const name of ['__checked','__selected','__ce','__ceIs']) optionalScalar(node,name);
+   }
+ }
++const interactionSelectors = { __proto__: null, hover: ':hover', active: ':active', 'focus-visible': ':focus-visible' };
+ function selectorState(node, previous = null) {
+   originalMethod(node,'hasAttribute',nativeHasAttribute);
+   guardNativeElementType(node);
+@@ -535,7 +536,7 @@
+   }
+   result = updateCssSelectorState(result, previous, 'customElementState', customElementState(node));
+   for (const name of ['hover','active','focus-visible'])
+-    result = updateCssSelectorState(result, previous, name, matchesSelector(node,`:${name}`));
++    result = updateCssSelectorState(result, previous, name, matchesSelector(node, typeof name === "string" ? interactionSelectors[name] ?? `:${name}` : `:${name}`));
+   return result;
+ }
+ function detachedFocus(focused,document,maximumDepth){

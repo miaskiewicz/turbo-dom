@@ -1,0 +1,188 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "343931f7ff2e89fc2ff1d904afeaf01c3d156a3d21a0f822ff4c4e9831fbbb25",
+  "results": [
+    {
+      "id": "statement-first",
+      "css": "@container(min-width:1000px){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "statement-first",
+      "css": "@container(min-width:1000px){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "block-first",
+      "css": "@container(min-width:1000px){@layer b{#unused{color:red}}}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b {\n  #unused { color: red; }\n}\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "block-first",
+      "css": "@container(min-width:1000px){@layer b{#unused{color:red}}}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b {\n  #unused { color: red; }\n}\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "nested-statement",
+      "css": "@container(min-width:1000px){@layer theme.b,theme.a;}@layer theme.a{#target{width:10px}}@layer theme.b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer theme.b, theme.a;\n}",
+        "@layer theme.a {\n  #target { width: 10px; }\n}",
+        "@layer theme.b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "nested-statement",
+      "css": "@container(min-width:1000px){@layer theme.b,theme.a;}@layer theme.a{#target{width:10px}}@layer theme.b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer theme.b, theme.a;\n}",
+        "@layer theme.a {\n  #target { width: 10px; }\n}",
+        "@layer theme.b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "container-declaration",
+      "css": "@container(min-width:1000px){@layer b,a;#target{height:30px}}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b, a;\n  #target { height: 30px; }\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "container-declaration",
+      "css": "@container(min-width:1000px){@layer b,a;#target{height:30px}}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "10px",
+      "targetHeight": "30px",
+      "rules": [
+        "@container (min-width: 1000px) {\n  @layer b, a;\n  #target { height: 30px; }\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "supports-false",
+      "css": "@supports(future:invalid){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "20px",
+      "targetHeight": "0px",
+      "rules": [
+        "@supports (future:invalid) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "supports-false",
+      "css": "@supports(future:invalid){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "20px",
+      "targetHeight": "0px",
+      "rules": [
+        "@supports (future:invalid) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "supports-true",
+      "css": "@supports(display:grid){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@supports (display:grid) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "supports-true",
+      "css": "@supports(display:grid){@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "10px",
+      "targetHeight": "0px",
+      "rules": [
+        "@supports (display:grid) {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "media-false",
+      "css": "@media print{@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 0,
+      "actualContainerWidth": 0,
+      "targetWidth": "20px",
+      "targetHeight": "0px",
+      "rules": [
+        "@media print {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    },
+    {
+      "id": "media-false",
+      "css": "@media print{@layer b,a;}@layer a{#target{width:10px}}@layer b{#target{width:20px}}",
+      "containerWidth": 2000,
+      "actualContainerWidth": 2000,
+      "targetWidth": "20px",
+      "targetHeight": "0px",
+      "rules": [
+        "@media print {\n  @layer b, a;\n}",
+        "@layer a {\n  #target { width: 10px; }\n}",
+        "@layer b {\n  #target { width: 20px; }\n}"
+      ]
+    }
+  ]
+}

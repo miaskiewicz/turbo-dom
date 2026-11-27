@@ -243,3 +243,6 @@ mod tests {
         assert_eq!(percentage("bogus", 0.5), 50.0);
     }
 }
+
+mod font_settings;
+pub use font_settings::font_settings;

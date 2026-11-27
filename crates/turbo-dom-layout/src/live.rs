@@ -36,6 +36,7 @@
 
 mod capture;
 mod style;
+mod svg_cssom;
 
 use std::collections::HashMap;
 
@@ -214,8 +215,38 @@ pub fn snapshot<T>(
     inputs: &SnapshotInputs,
     diagnostics: &mut Diagnostics,
 ) -> Result<(LayoutSnapshot, T), LiveError> {
+    snapshot_with_stacking_contexts(
+        style,
+        capture,
+        options,
+        &[],
+        post_cascade,
+        inputs,
+        diagnostics,
+    )
+}
+
+/// Lay out with per-element context evidence from the host's same canonical
+/// presentation sample. IDs must name elements in this exact composed capture;
+/// the caller preserves native owner/world identity and must not reenter guest JS.
+/// This metadata is not inherited and does not create CSS declarations.
+/// It is applied after the post-cascade hook so unit/zoom rewrites cannot erase it.
+///
+/// # Errors
+/// The ordinary snapshot errors, or a foreign/stale/non-element context source.
+pub fn snapshot_with_stacking_contexts<T>(
+    style: &LiveStyle,
+    capture: &LiveCapture,
+    options: &LiveOptions,
+    context_sources: &[SourceId],
+    post_cascade: impl FnOnce(&mut [StyledNode]) -> Result<T, String>,
+    inputs: &SnapshotInputs,
+    diagnostics: &mut Diagnostics,
+) -> Result<(LayoutSnapshot, T), LiveError> {
+    let contexts = validated_contexts(style, capture, context_sources)?;
     let mut styled = style::style(style, capture)?;
     let collected = post_cascade(&mut styled).map_err(LiveError::Embedder)?;
+    mark_contexts(&mut styled, capture.document, &contexts);
     let original: Vec<_> = capture
         .original_text
         .iter()
@@ -226,14 +257,70 @@ pub fn snapshot<T>(
         svg_viewports: &capture.svg_viewports,
         layout_scale: options.layout_scale,
     };
-    let snapshot = crate::layout_snapshot::snapshot_html_styled_tree_with_native_text(
+    let mut snapshot = crate::layout_snapshot::snapshot_html_styled_tree_with_native_text(
         &styled,
         &capture.identities,
         &options,
         inputs,
         diagnostics,
     )?;
+    snapshot.certify_svg_without_css_box(svg_cssom::classify(&style.tree, capture, &styled));
     Ok((snapshot, collected))
+}
+
+fn validated_contexts(
+    style: &LiveStyle,
+    capture: &LiveCapture,
+    sources: &[SourceId],
+) -> Result<std::collections::HashSet<SourceId>, LiveError> {
+    let contexts: std::collections::HashSet<_> = sources.iter().copied().collect();
+    if contexts.is_empty() {
+        return Ok(contexts);
+    }
+    if style.tree.document != capture.document || style.tree.tree.version != capture.tree_version {
+        return Err(invalid_context());
+    }
+    let identities: std::collections::HashSet<_> = capture
+        .identities
+        .iter()
+        .map(|identity| identity.id)
+        .collect();
+    for &source in &contexts {
+        if source_document(source) != capture.document
+            || !identities.contains(&source)
+            || style.tree.tree.node_type(source_handle(source))
+                != turbo_dom::rtdom::tree::NodeType::Element
+        {
+            return Err(invalid_context());
+        }
+    }
+    Ok(contexts)
+}
+
+fn invalid_context() -> LiveError {
+    LiveError::Embedder("native stacking context source does not match the live capture".into())
+}
+
+fn mark_contexts(
+    nodes: &mut [StyledNode],
+    document: u32,
+    contexts: &std::collections::HashSet<SourceId>,
+) {
+    if contexts.is_empty() {
+        return;
+    }
+    for node in nodes {
+        let StyledNode::Element(element) = node else {
+            continue;
+        };
+        if element
+            .source
+            .is_some_and(|handle| contexts.contains(&source_id(document, handle)))
+        {
+            element.style = element.style.clone().with_stacking_context();
+        }
+        mark_contexts(&mut element.children, document, contexts);
+    }
 }
 
 #[cfg(test)]

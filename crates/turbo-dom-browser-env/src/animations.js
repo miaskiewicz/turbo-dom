@@ -11,15 +11,17 @@
   'use strict';
   const Native = globalThis.__animationsNative; delete globalThis.__animationsNative;
   const g = globalThis, ns = __tsNs, make = ns.makeNativeFunction;
+  ns.admitEffectTransform=text=>Native('value','transform',text);
   const apply = Reflect.apply, construct = Reflect.construct, define = Object.defineProperty, create = Object.create;
   const ownKeys = Reflect.ownKeys, getOwnDescriptor = Object.getOwnPropertyDescriptor, setPrototype = Object.setPrototypeOf, getPrototype = Object.getPrototypeOf, sameValue = Object.is;
-  const ErrorType = TypeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
+  const ErrorType = TypeError, RangeErrorType = RangeError, Exception = __tsNs.DOMException, PromiseType = Promise, promiseThen = Promise.prototype.then;
   const EventType = g.Event, TargetType = g.EventTarget;
   const listen = g.EventTarget.prototype.addEventListener, unlisten = g.EventTarget.prototype.removeEventListener;
   const floor = Math.floor, round = Math.round, abs = Math.abs, min = Math.min, max = Math.max, sqrt = Math.sqrt;
   const sin = Math.sin, cos = Math.cos, tan = Math.tan, atan2 = Math.atan2, acos = Math.acos, PI = Math.PI;
   const isFinite = Number.isFinite, iteratorSymbol = Symbol.iterator;
   const realmDocument = g.document;
+  let trackTargetOwners = Native('targetTracking');
   const nodeTypeGetter = ns.domAccessor('nodeType', false, 'Node'), connectedGetter = ns.domAccessor('isConnected', false, 'Node');
   const ownerGetter = ns.domAccessor('ownerDocument', false, 'Node'), parentGetter = ns.domAccessor('parentElement', false, 'Node');
   const shadowMode = g.ShadowRoot && getOwnDescriptor(g.ShadowRoot.prototype, 'mode');
@@ -34,7 +36,7 @@
   // Set iteration through the captured %SetIteratorPrototype%.next: for-of would look up the
   // page-replaceable %IteratorPrototype%[@@iterator] (turbo-dom#199).
   const setIteratorNext = Object.getPrototypeOf(apply(setValues, new SetType(), [])).next;
-  const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
+  const list = () => { const out = [], it = apply(setValues, live, []); for (let step = apply(setIteratorNext, it, []); !step.done; step = apply(setIteratorNext, it, [])) define(out, out.length, { __proto__: null, value: step.value, writable: true, enumerable: true, configurable: true }); return out; };
   const intrinsic = ns.intrinsics, toPrecision = Number.prototype.toPrecision;
   const push = (array, value) => { intrinsic.push(array, value); return array; };
   const contains = (array, value) => { for (let index = 0; index < array.length; index++) if (array[index] === value) return true; return false; };
@@ -206,9 +208,11 @@
   const INTEGERS = { __proto__: null, 'z-index': 1, order: 1, orphans: 1, widows: 1, 'column-count': 1 };
   const NUMBERS = { __proto__: null, 'flex-grow': 1, 'flex-shrink': 1, 'font-weight': 1, 'line-height': 1, 'stroke-miterlimit': 1 };
   const COLORS = { __proto__: null, color: 1, 'background-color': 1, 'border-top-color': 1, 'border-right-color': 1, 'border-bottom-color': 1, 'border-left-color': 1, 'outline-color': 1, 'text-decoration-color': 1, 'column-rule-color': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'flood-color': 1, 'lighting-color': 1, 'stop-color': 1, 'text-emphasis-color': 1 };
+  ns.isEffectColor=property=>!!COLORS[property];
+  ns.admitEffectColor=(property,text)=>COLORS[property]?Native('value',property,text):null;
   const INHERITED = { __proto__: null, color: 1, visibility: 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'word-spacing': 1, 'text-indent': 1, 'caret-color': 1, 'accent-color': 1, fill: 1, stroke: 1, 'fill-opacity': 1, 'stroke-opacity': 1, orphans: 1, widows: 1, cursor: 1, 'pointer-events': 1 };
   const INITIAL = { __proto__: null, rotate: 'none', scale: 'none', translate: 'none', filter: 'none', opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'flood-opacity': '1', 'stop-opacity': '1', transform: 'none', color: 'rgb(0, 0, 0)', 'background-color': 'rgba(0, 0, 0, 0)', 'z-index': 'auto', visibility: 'visible', display: 'inline', 'flex-grow': '0', 'flex-shrink': '1', 'font-weight': '400', 'line-height': 'normal', 'letter-spacing': 'normal', 'word-spacing': '0px', 'text-indent': '0px', width: 'auto', height: 'auto', top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', 'outline-color': 'currentcolor', 'text-decoration-color': 'currentcolor', 'column-rule-color': 'currentcolor', 'caret-color': 'auto', 'accent-color': 'auto' };
-  const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap)$/, name);
+  const lengthProperty = name => intrinsic.test(/(width|height|margin|padding|gap|radius|letter-spacing|word-spacing|text-indent)/, name) || intrinsic.test(/size$/, name) || intrinsic.test(/^inset/, name) || intrinsic.test(/^(top|right|bottom|left|flex-basis|outline-offset|column-width|column-gap|stroke-dashoffset)$/, name);
   const initialValue = name => INITIAL[name] !== undefined ? INITIAL[name] : intrinsic.test(/^border-(top|right|bottom|left)-color$/, name) ? 'currentcolor' : intrinsic.test(/^(margin|padding)-/, name) ? '0px' : intrinsic.test(/-radius$/, name) ? '0px' : '';
 
   const LENGTH = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([a-z%]*)$/i;
@@ -219,11 +223,71 @@
     const match = intrinsic.exec(LENGTH, text);
     if (!match) return null;
     const value = +match[1], unit = intrinsic.toLowerCase(match[2]);
+    if (context.absoluteOnly && (unit === 'em' || unit === 'rem')) return null;
     if (unit === '') return value === 0 ? { kind: 'length', value: 0, unit: 'px' } : null;
     if (unit === 'em') return { kind: 'length', value: value * context.fontSize, unit: 'px' };
     if (unit === '%') return { kind: 'length', value, unit: '%' };
     const factor = LENGTH_PX_FACTORS[unit];
     return factor === undefined ? null : { kind: 'length', value: value * factor, unit: 'px' };
+  }
+  function propertyLengthValue(property, text, context) {
+    const length = parseLength(text, context);
+    if (length) return length;
+    const mixed = ns.animationLengthPercentage(text);
+    if (mixed) return { kind: 'length-percentage', px: mixed.px, percent: mixed.percent };
+    if (property === 'stroke-dashoffset') {
+      const value = parseNumber(text);
+      if (value !== null) return { kind: 'length', value, unit: 'px' };
+    }
+    return { kind: 'discrete', text };
+  }
+  function lengthPercentageValue(value) {
+    if (value.kind === 'length-percentage') return value;
+    if (value.kind !== 'length') return null;
+    return { kind: 'length-percentage', px: value.unit === 'px' ? value.value : 0, percent: value.unit === '%' ? value.value : 0 };
+  }
+  function mixLengthPercentage(from, to, progress) {
+    return { kind: 'length-percentage', px: from.px + (to.px - from.px) * progress, percent: from.percent + (to.percent - from.percent) * progress };
+  }
+  function serializeLengthPercentage(value) {
+    if (!value.percent) return format(value.px) + 'px';
+    if (!value.px) return format(value.percent) + '%';
+    return `calc(${format(value.percent)}% ${value.px < 0 ? '-' : '+'} ${format(abs(value.px))}px)`;
+  }
+  function lengthListValue(text, context) {
+    if (!text || intrinsic.test(/(^\s*,|,\s*,|,\s*$)/, text)) return { kind: 'discrete', text };
+    const tokens = intrinsic.split(text, /[\s,]+/), values = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const value = propertyLengthValue('stroke-dashoffset', tokens[i], context);
+      if (value.kind !== 'length' || !isFinite(value.value) || value.value < 0) return { kind: 'discrete', text };
+      push(values, value);
+    }
+    return { kind: 'length-list', values, sourceUnits: text.length };
+  }
+  function lengthListRepeatCount(left, right) {
+    let a = left.values.length, b = right.values.length;
+    const sourceUnits = left.sourceUnits + right.sourceUnits;
+    while (b) { const rest = a % b; a = b; b = rest; }
+    const factor = left.values.length / a;
+    // Repetition may otherwise expand coprime lists quadratically. Bound new work
+    // by the two original sources before multiplying or allocating the result.
+    return factor <= floor(sourceUnits / right.values.length) ? factor * right.values.length : null;
+  }
+  function lengthListsCompatible(left, right, count) {
+    for (let i = 0; i < count; i++)
+      if (left.values[i % left.values.length].unit !== right.values[i % right.values.length].unit) return false;
+    return true;
+  }
+  function interpolateLengthList(from, to, progress) {
+    const count = lengthListRepeatCount(from, to);
+    if (count === null) throw new RangeErrorType('Repeatable animation list exceeds its source-derived work budget');
+    if (!lengthListsCompatible(from, to, count)) throw new Exception('Mixed-unit animation lists are unsupported', 'NotSupportedError');
+    const values = [];
+    for (let i = 0; i < count; i++) {
+      const left = from.values[i % from.values.length], right = to.values[i % to.values.length];
+      push(values, { kind: 'length', value: max(0, left.value + (right.value - left.value) * progress), unit: left.unit });
+    }
+    return { kind: 'length-list', values, sourceUnits: from.sourceUnits + to.sourceUnits };
   }
   // Colors in sRGB with straight alpha: hex, rgb()/hsl()/hwb() and named keywords.
   function hsl(h, s, l) {
@@ -312,7 +376,12 @@
     const value = +match[1], unit = intrinsic.toLowerCase((match[2] || 'deg'));
     return unit === 'rad' ? value : unit === 'grad' ? value * PI / 200 : unit === 'turn' ? value * 2 * PI : value * PI / 180;
   }
-  function transformLength(token) { const length = parseLength(token, { fontSize: 16 }); return length && length.unit === 'px' ? length.value : null; }
+  function transformLength(token) { const length = parseLength(token, { fontSize: NaN, absoluteOnly: true }); return length && length.unit === 'px' ? length.value : null; }
+  function transformCoordinate(token) {
+    const value = propertyLengthValue('width', token, { fontSize: NaN, absoluteOnly: true });
+    const coordinate = lengthPercentageValue(value);
+    return coordinate && isFinite(coordinate.px) && isFinite(coordinate.percent) ? coordinate : null;
+  }
   function scaleValue(token) { if (intrinsic.test(/%$/, token)) { const number = parseNumber(intrinsic.slice(token, 0, -1)); return number === null ? null : number / 100; } return parseNumber(token); }
   function parseTransform(text) {
     const lower = intrinsic.trim(text);
@@ -332,23 +401,36 @@
     return list.length ? { kind: 'transform', list } : null;
   }
   const argCount = (args, a, b) => args.length >= a && args.length <= b;
-  const transformLengths = values => { const out = intrinsic.map(values, transformLength); return intrinsic.some(out, value => value === null) ? null : out; };
+  const transformLengths = values => { const out = intrinsic.map(values, transformCoordinate); return intrinsic.some(out, value => value === null) ? null : out; };
+  function translatePrimitive(values, three) {
+    const coordinates = intrinsic.map(values, value => typeof value === 'number' ? { px: value, percent: 0 } : value);
+    if (coordinates[2].percent) return null;
+    const fn = { type: 'translate', v: intrinsic.map(coordinates, value => value.px), three };
+    if (intrinsic.some(coordinates, value => value.percent !== 0)) fn.percent = intrinsic.map(coordinates, value => value.percent);
+    return fn;
+  }
   // translate*() primitives from their resolved lengths.
-  const translateXY = v => ({ type: 'translate', v: [v[0], v.length > 1 ? v[1] : 0, 0] });
-  const translateX = v => ({ type: 'translate', v: [v[0], 0, 0] });
-  const translateY = v => ({ type: 'translate', v: [0, v[0], 0] });
-  const translateZ = v => ({ type: 'translate', v: [0, 0, v[0]], three: true });
-  const translate3d = v => ({ type: 'translate', v, three: true });
+  const translateXY = v => translatePrimitive([v[0], v.length > 1 ? v[1] : 0, 0], false);
+  const translateX = v => translatePrimitive([v[0], 0, 0], false);
+  const translateY = v => translatePrimitive([0, v[0], 0], false);
+  const translateZ = v => translatePrimitive([0, 0, v[0]], true);
+  const translate3d = v => translatePrimitive(v, true);
   const lengthFunction = (a, b, build) => args => { let values; if (!argCount(args, a, b) || !(values = transformLengths(args))) return null; return build(values); };
   const scaleFunction = (a, b, build) => args => {
     const values = intrinsic.map(args, scaleValue); if (intrinsic.some(values, value => value === null)) return null;
     return argCount(args, a, b) ? build(values) : null;
   };
   const angleFunction = build => args => { const a = argCount(args, 1, 1) ? angle(args[0]) : null; return a === null ? null : build(a); };
+  function absoluteTranslateZ(args){if(args.length!==1)return null;const z=transformLength(args[0]);return z===null?null:translateZ([z]);}
+  function absoluteTranslate3d(args){
+    if(args.length!==3)return null;
+    const x=transformCoordinate(args[0]),y=transformCoordinate(args[1]),z=transformLength(args[2]);
+    return x&&y&&z!==null?translate3d([x,y,z]):null;
+  }
   const rotateZ = angleFunction(a => ({ type: 'rotate', v: [0, 0, 1, a] }));
   const TRANSFORM_FUNCTIONS = { __proto__: null,
     translate: lengthFunction(1, 2, translateXY), translatex: lengthFunction(1, 1, translateX), translatey: lengthFunction(1, 1, translateY),
-    translatez: lengthFunction(1, 1, translateZ), translate3d: lengthFunction(3, 3, translate3d),
+    translatez: absoluteTranslateZ, translate3d: absoluteTranslate3d,
     scale: scaleFunction(1, 2, values => ({ type: 'scale', v: [values[0], values.length > 1 ? values[1] : values[0], 1] })),
     scalex: scaleFunction(1, 1, values => ({ type: 'scale', v: [values[0], 1, 1] })),
     scaley: scaleFunction(1, 1, values => ({ type: 'scale', v: [1, values[0], 1] })),
@@ -380,6 +462,11 @@
     return out;
   }
   function functionMatrix(fn) {
+    if(symbolicTranslate(fn))throw new Exception('Reference-dependent transform matrix is unsupported','NotSupportedError');
+    return absoluteFunctionMatrix(fn);
+  }
+  function symbolicTranslate(fn){return !!fn.percent&&intrinsic.some(fn.percent,value=>value!==0);}
+  function absoluteFunctionMatrix(fn){
     const m = identity(), v = fn.v;
     switch (fn.type) {
       case 'translate': m[12] = v[0]; m[13] = v[1]; m[14] = v[2]; return m;
@@ -401,9 +488,32 @@
   const flat = m => m[2] === 0 && m[3] === 0 && m[6] === 0 && m[7] === 0 && m[8] === 0 && m[9] === 0 && m[10] === 1 && m[11] === 0 && m[14] === 0 && m[15] === 1;
   function serializeTransform(value) {
     if (!value.list.length) return 'none';
+    if (transformReferences(value)) return serializeSymbolicTransform(value.list);
     const m = listMatrix(value.list);
     if (flat(m)) return `matrix(${intrinsic.join(intrinsic.map([m[0], m[1], m[4], m[5], m[12], m[13]], format), ', ')})`;
     return `matrix3d(${intrinsic.join(intrinsic.map(m, format), ', ')})`;
+  }
+  const transformReferences = value => intrinsic.some(value.list, fn => !!fn.percent && intrinsic.some(fn.percent, part => part !== 0));
+  function serializeSymbolicTransform(list) {
+    return intrinsic.join(intrinsic.map(list, fn => {
+      if (fn.type === 'translate') {
+        if(intrinsic.some(fn.v,value=>!isFinite(value))||fn.percent&&intrinsic.some(fn.percent,value=>!isFinite(value)))throw new Exception('Non-finite symbolic transform is unsupported','NotSupportedError');
+        const values = intrinsic.map(fn.v, (px, index) => serializeLengthPercentage({ px, percent: fn.percent ? fn.percent[index] : 0 }));
+        return fn.three ? `translate3d(${intrinsic.join(values, ', ')})` : `translate(${values[0]}, ${values[1]})`;
+      }
+      if (fn.type === 'scale') return symbolicScale(fn);
+      return symbolicTransformPrimitive(fn);
+    }), ' ');
+  }
+  function symbolicTransformPrimitive(fn){
+    if(fn.type==='rotate')return fn.three?`rotate3d(${format(fn.v[0])}, ${format(fn.v[1])}, ${format(fn.v[2])}, ${format(fn.v[3])}rad)`:`rotate(${format(fn.v[3])}rad)`;
+    if(fn.type==='skew')return `skew(${format(fn.v[0])}rad, ${format(fn.v[1])}rad)`;
+    if(fn.type==='perspective')return `perspective(${fn.v[0]===Infinity?'none':format(fn.v[0])+'px'})`;
+    return serializeTransform({kind:'transform',list:[fn]});
+  }
+  function symbolicScale(fn){
+    if(fn.three)return `scale3d(${intrinsic.join(intrinsic.map(fn.v,format),', ')})`;
+    return fn.v[0]===fn.v[1]?`scale(${format(fn.v[0])})`:`scale(${format(fn.v[0])}, ${format(fn.v[1])})`;
   }
   // CSS Transforms 2 matrix decomposition, interpolation and recomposition.
   function decomposePerspective(m) {
@@ -504,16 +614,25 @@
     return { type: 'perspective', v: [inverse ? 1 / inverse : Infinity], three: true };
   }
   function interpolateFunction(a, b, p) {
+    if (a.type === 'translate') return interpolateTranslate(a,b,p);
+    return interpolateOtherFunction(a,b,p);
+  }
+  function interpolateTranslate(a,b,p){
+      const fn = { type: 'translate', v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
+      const left = a.percent || [0, 0, 0], right = b.percent || [0, 0, 0];
+      if (a.percent || b.percent) fn.percent = intrinsic.map(left, (value, i) => value + (right[i] - value) * p);
+      return fn;
+  }
+  function interpolateOtherFunction(a,b,p){
     if (interpolateAsMatrix(a, b, p)) return { type: 'matrix', m: interpolateMatrix(functionMatrix(a), functionMatrix(b), p), three: a.three || b.three };
     if (a.type === 'perspective') return interpolatePerspective(a, b, p);
     if (a.type === 'rotate') { const axis = sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2]) ? a.v : b.v; return { type: 'rotate', v: [axis[0], axis[1], axis[2], a.v[3] + (b.v[3] - a.v[3]) * p], three: a.three || b.three }; }
     return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + (b.v[i] - value) * p), three: a.three || b.three };
   }
   function interpolateTransform(from, to, p) {
-    let a = from.list, b = to.list;
+    if(referenceTransformMismatch(from,to))throw new Exception('Reference-dependent transform decomposition is unsupported','NotSupportedError');
+    let [a,b]=paddedTransformLists(from.list,to.list);
     if (!a.length && !b.length) return from;
-    if (!a.length) a = intrinsic.map(b, identityOf);
-    if (!b.length) b = intrinsic.map(a, identityOf);
     let prefix = 0;
     while (prefix < min(a.length, b.length) && a[prefix].type === b[prefix].type) prefix++;
     const out = [];
@@ -521,10 +640,22 @@
     if (prefix < max(a.length, b.length)) push(out, { type: 'matrix', m: interpolateMatrix(listMatrix(intrinsic.slice(a, prefix)), listMatrix(intrinsic.slice(b, prefix)), p) });
     return { kind: 'transform', list: out };
   }
+  function referenceTransformMismatch(from,to){return (transformReferences(from)||transformReferences(to))&&!symbolicTransformCompatible(from,to);}
+  function paddedTransformLists(a,b){if(!a.length)a=intrinsic.map(b,identityOf);if(!b.length)b=intrinsic.map(a,identityOf);return [a,b];}
   function accumulateFunction(a, b) {
+    if(a.type==='translate')return accumulateTranslate(a,b);
+    return accumulateOtherFunction(a,b);
+  }
+  function accumulateTranslate(a,b){
+      const fn={type:'translate',v:intrinsic.map(a.v,(value,i)=>value+b.v[i]),three:a.three||b.three};
+      const left=a.percent||[0,0,0],right=b.percent||[0,0,0];
+      if(a.percent||b.percent)fn.percent=intrinsic.map(left,(value,i)=>value+right[i]);
+      return fn;
+  }
+  function accumulateOtherFunction(a,b){
     if (a.type === 'scale') return { type: 'scale', v: intrinsic.map(a.v, (value, i) => value + b.v[i] - 1), three: a.three || b.three };
     if (a.type === 'rotate') return sameAxis(a.v, b.v) ? { type: 'rotate', v: [a.v[0], a.v[1], a.v[2], a.v[3] + b.v[3]], three: a.three || b.three } : null;
-    if (a.type === 'translate' || a.type === 'skew') return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + b.v[i]), three: a.three || b.three };
+    if (a.type === 'skew') return { type: a.type, v: intrinsic.map(a.v, (value, i) => value + b.v[i]), three: a.three || b.three };
     return null;
   }
 
@@ -543,35 +674,44 @@
     if (property === 'line-height') { const length = parseLength(text, context); if (length && length.unit === 'px') return length; }
     return { kind: 'discrete', text };
   }
-  // Typed value for a property's text; anything else animates discretely.
-  function parseValue(property, text, context) {
-    if (text === null || text === undefined) return null;
-    text = intrinsic.trim(string(text));
+  function typedPropertyValue(property, text, context) {
     if (property === 'transform') return parseTransform(text) || { kind: 'discrete', text };
     if (COLORS[property]) return parseColor(text, context) || { kind: 'discrete', text };
     if (UNIT_NUMBERS[property] || INTEGERS[property] || NUMBERS[property]) return numericValue(property, text, context);
-    if (lengthProperty(property)) return parseLength(text, context) || { kind: 'discrete', text };
+    if (lengthProperty(property)) return propertyLengthValue(property, text, context);
     return { kind: 'discrete', text };
+  }
+  // Unregistered custom tokens always interpolate discretely, regardless of their name.
+  function parseValue(property, text, context) {
+    if (text === null || text === undefined) return null;
+    text = intrinsic.trim(string(text));
+    if (intrinsic.slice(property, 0, 2) === '--') return { kind: 'discrete', text };
+    if (property === 'stroke-dasharray') return lengthListValue(text, context);
+    return typedPropertyValue(property, text, context);
+  }
+  function serializeNumber(property, number) {
+    if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
+    if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
+    if (property === 'font-weight') number = min(max(number, 1), 1000);
+    if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
+    return format(number);
   }
   function serializeValue(property, value) {
     switch (value.kind) {
-      case 'number': {
-        let number = value.value;
-        if (UNIT_NUMBERS[property]) number = min(max(number, 0), 1);
-        if (INTEGERS[property]) number = number < 0 ? -round(-number) : round(number);
-        if (property === 'font-weight') number = min(max(number, 1), 1000);
-        if ((property === 'flex-grow' || property === 'flex-shrink') && number < 0) number = 0;
-        return format(number);
-      }
+      case 'number': return serializeNumber(property, value.value);
       case 'length': return format(value.value) + value.unit;
+      case 'length-percentage': return serializeLengthPercentage(value);
+      case 'length-list': return intrinsic.join(intrinsic.map(value.values, item => serializeValue(property, item)), ', ');
       case 'color': return serializeColor(value);
       case 'transform': return serializeTransform(value);
     }
     return value.text;
   }
   function interpolateTyped(from, to, p) {
+    if (lengthPercentageValue(from) && lengthPercentageValue(to))
+      return mixLengthPercentage(lengthPercentageValue(from), lengthPercentageValue(to), p);
+    if (from.kind === 'length-list') return interpolateLengthList(from, to, p);
     if (from.kind === 'number') return { kind: 'number', value: from.value + (to.value - from.value) * p };
-    if (from.kind === 'length') return { kind: 'length', value: from.value + (to.value - from.value) * p, unit: from.unit };
     if (from.kind === 'transform') return interpolateTransform(from, to, p);
     // Premultiplied sRGB interpolation.
     const alpha = from.a + (to.a - from.a) * p;
@@ -592,7 +732,7 @@
     return null;
   }
   function interpolate(property, from, to, p) {
-    if (from.kind === to.kind && from.kind !== 'discrete' && (from.kind !== 'length' || from.unit === to.unit)) return interpolateTyped(from, to, p);
+    if (typedPairCompatible(from, to)) return interpolateTyped(from, to, p);
     if (property === 'visibility') return interpolateVisibility(property, from, to, p);
     if (property === 'display') {
       const value = interpolateDisplay(property, from, to, p);
@@ -600,10 +740,21 @@
     }
     return p < 0.5 ? from : to;
   }
+  function typedPairCompatible(from, to) {
+    if (lengthPercentageValue(from) && lengthPercentageValue(to)) return true;
+    return from.kind === to.kind && from.kind !== 'discrete';
+  }
+  function composedLengthPercentage(underlying, value, operation) {
+    if (operation === 'replace' || !underlying) return null;
+    const left = lengthPercentageValue(underlying), right = lengthPercentageValue(value);
+    if (!left || !right) return null;
+    return { kind: 'length-percentage', px: left.px + right.px, percent: left.percent + right.percent };
+  }
   function compose(property, underlying, value, operation) {
+    const symbolic = composedLengthPercentage(underlying, value, operation);
+    if (symbolic) return symbolic;
     if (operation === 'replace' || !underlying || underlying.kind !== value.kind || value.kind === 'discrete') return value;
     if (value.kind === 'number') return { kind: 'number', value: underlying.value + value.value };
-    if (value.kind === 'length') return underlying.unit === value.unit ? { kind: 'length', value: underlying.value + value.value, unit: value.unit } : value;
     if (value.kind === 'color') return { kind: 'color', r: min(underlying.r + value.r, 255), g: min(underlying.g + value.g, 255), b: min(underlying.b + value.b, 255), a: min(underlying.a + value.a, 1) };
     if (value.kind === 'transform') return composeTransform(underlying, value, operation);
     return value;
@@ -1103,6 +1254,7 @@
     const find = (entries) => { for (let at = 0; at < entries.length; at++) if (entries[at] === animation) return at; return -1; };
     if (from) { const entries = targets.get(from); if (entries) { const at = find(entries); if (at >= 0) { for (let i = at; i + 1 < entries.length; i++) entries[i] = entries[i + 1]; entries.length--; } } }
     if (to) { let entries = targets.get(to); if (!entries) targets.set(to, entries = []); if (find(entries) < 0) push(entries, animation); }
+    if (trackTargetOwners) Native('target', animation, to, realmDocument);
     // The targets' computed styles change with their animations (turbo-test#125: drop reuse).
     if (ns.invalidateAnimatedStyles) ns.invalidateAnimatedStyles(from, to);
   }
@@ -1242,6 +1394,27 @@
   // Whether any animation targets `element`: its computed style follows the timeline, so
   // getComputedStyle never reuses it (turbo-test#125).
   ns.hasAnimations = function (element) { const entries = targets.get(element); return !!(entries && entries.length); };
+  function ownCustomFramesActive(element){
+      const indexed=targets.get(element)||[];
+      for(let i=0;i<indexed.length;i++){
+        const record=animations.get(indexed[i]),effect=record.effect&&effects.get(record.effect);
+        if(effect&&intrinsic.some(effect.frames.order,name=>intrinsic.slice(name,0,2)==='--')&&effectStackEntry(indexed[i],element,null))return true;
+      }
+      return false;
+  }
+  function ownCssCustomDeclared(element,namesText){
+      const names=cssAnimationNames(namesText||'');
+      for(let i=0;i<names.length;i++){
+        const rule=names[i]!==null&&keyframesRule(names[i],element);
+        if(rule)for(let j=0;j<rule.length;j++)if(intrinsic.some(rule[j].values,pair=>intrinsic.slice(pair[0],0,2)==='--'))return true;
+      }
+    return false;
+  }
+  ns.effectOwnCustomUncertain=function(element,namesText){
+    if(!animationPresentationOn)return false;
+    if(ownCustomFramesActive(element))return true;
+    return cssAnimationsOn&&ownCssCustomDeclared(element,namesText);
+  };
   // `transform` resolves to the matrix the declared function list computes to (Chrome 156:
   // matrix(...) for a 2D list, matrix3d(...) for any 3D function; `none` for an empty list).
   // Percentage translates resolve against the border box (width for X, height for Y) from
@@ -1259,6 +1432,10 @@
     if (typeof text !== 'string') return null;
     if (intrinsic.test(/^\s*$/, text)) return text;
     if (intrinsic.test(/^\s*none\s*$/i, text)) return 'none';
+    // Resolve context-independent lists before asking the host for a used box.
+    const absolute = parseResolvedTransform(text, NaN, null, null, true);
+    const resolved = absolute === null ? null : resolvedTransformText(absolute);
+    if (resolved !== null) return resolved;
     const box = layoutBox(element);
     // turbo-dom#373: the layout reports the used font size as `box[4]` (the fifth entry,
     // added for em resolution in #353); prefer it, so an element with an inherited
@@ -1270,14 +1447,17 @@
     const borderW = boxMetric(box, 0);
     const borderH = boxMetric(box, 1);
     const list = parseResolvedTransform(text, em, borderW, borderH);
-    if (list === null) return null;
+    return list === null ? null : resolvedTransformText(list);
+  };
+  function resolvedTransformText(list) {
     if (!list.length) return 'none';
     const matrix = listMatrix(list);
+    for (let i = 0; i < matrix.length; i++) if (!isFinite(matrix[i])) return null;
     // Blink's matrix serialization snaps components under ~1e-6 to zero, so trig-driven
     // neighbours of a right angle (`rotateX(90deg) rotateY(45deg)`) do not leak as `6e-17`.
     for (let i = 0; i < 16; i++) if (abs(matrix[i]) < 1e-6) matrix[i] = 0;
     return serializeTransformMatrix(matrix, list);
-  };
+  }
   function serializeTransformMatrix(m, list) {
     let three = false;
     for (let i = 0; i < list.length; i++) if (list[i].three) { three = true; break; }
@@ -1287,7 +1467,7 @@
   // Parse a transform text into primitives whose `v` is already resolved to px / radians /
   // numbers. Returns null if a percentage translate has no containing-block measure or any
   // token is unparseable; `[]` for `none`.
-  function parseResolvedTransform(text, em, borderW, borderH) {
+  function parseResolvedTransform(text, em, borderW, borderH, absoluteOnly) {
     const trimmed = intrinsic.trim(text);
     if (intrinsic.test(/^none$/i, trimmed)) return [];
     const pattern = /\s*([a-zA-Z0-9]+)\(([^()]*)\)\s*/y;
@@ -1300,7 +1480,7 @@
       at = pattern.lastIndex;
       const name = intrinsic.toLowerCase(match[1]);
       const args = intrinsic.map(intrinsic.split(match[2], ','), part => intrinsic.trim(part));
-      const fn = resolvedFunction(name, args, em, borderW, borderH);
+      const fn = resolvedFunction(name, args, em, borderW, borderH, absoluteOnly);
       if (!fn) return null;
       push(list, fn);
     }
@@ -1315,14 +1495,13 @@
     translatez: { min: 1, max: 1, bases: () => [0], build: translateZ },
     translate3d: { min: 3, max: 3, bases: (w, h) => [w, h, 0], build: translate3d },
   };
-  function resolvedFunction(name, args, em, borderW, borderH) {
+  function resolvedFunction(name, args, em, borderW, borderH, absoluteOnly) {
     const count = (a, b) => args.length >= a && args.length <= b;
     const resolveLen = (token, base) => {
-      const parsed = parseLength(token, { fontSize: em });
+      const parsed = parseLength(token, { fontSize: em, absoluteOnly });
       if (!parsed) return null;
-      if (parsed.unit === 'px') return parsed.value;
-      if (parsed.unit === '%') return base === null ? null : parsed.value / 100 * base;
-      return null;
+      const value = parsed.unit === 'px' ? parsed.value : parsed.unit === '%' && base !== null ? parsed.value / 100 * base : null;
+      return value !== null && isFinite(value) ? value : null;
     };
     const lengths = (bases) => {
       const out = [];
@@ -1340,9 +1519,9 @@
     if (!count(translate.min, translate.max) || !(v = lengths(translate.bases(borderW, borderH)))) return null;
     return translate.build(v);
   }
-  ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay) {
+  ns.animatedStyle = function (element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (suppressStyle) return null;
-    cssUpdate(element, read, inherited, snapshots, ownDisplay);
+    cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant);
     if (!animationPresentationOn) return null;
     const stack = effectStack(element, null);
     return stack ? stackResult(stack, read, inherited) : null;
@@ -1484,7 +1663,11 @@
     for (let i = 0; i < effect.keyframes.length; i++) {
       const frame = effect.keyframes[i], object = { offset: frame.offset, easing: frame.easing, composite: frame.composite };
       const values = keyframeOrder(frame);
-      for (let j = 0; j < values.length; j++) object[values[j].idl] = values[j].text;
+      for (let j = 0; j < values.length; j++) {
+        // CSS models omit custom tokens here; script-created keyframes expose them.
+        if (effect.css && !effect.css.frames && intrinsic.slice(values[j].css, 0, 2) === '--') continue;
+        object[values[j].idl] = values[j].text;
+      }
       object.computedOffset = frame.computed;
       push(out, object);
     }
@@ -1679,7 +1862,9 @@
     const effect = record.effect ? effects.get(record.effect) : null;
     if (!effect || !effect.target || effect.pseudo !== null) throw new Exception(`${prefix}Animation not associated with a styled element`, 'NoModificationAllowedError');
     const element = effect.target;
-    if (!rendered(element)) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
+    const rendering=rendered(element);
+    if(rendering===null)throw new Exception(`${prefix}Cannot prove target renderedness.`, 'NotSupportedError');
+    if (!rendering) throw new Exception(`${prefix}Target element is not rendered.`, 'InvalidStateError');
     const stack = commitStylesStack(record, effect, this);
     if (!stack.length) return;
     sortBy(stack, entry => entry.record.seq);
@@ -1770,24 +1955,24 @@
   reorder(AnimationTimelineDelegate.prototype, ['currentTime', 'duration']);
   reorder(PlaybackDelegate.prototype, ['currentTime', 'timelineTime']);
 
+  function renderedPath(element,snapshots,own){
+    const path=Native('renderingPath',element);
+    if(!path)return null;
+    setPrototype(path,null);
+    let visible=path[1]&&own!=='none';
+    for(let index=own?4:3;visible&&index<path.length;index++)if(ns.computedDisplay(path[index],snapshots)==='none')visible=false;
+    return Native('renderingPathCurrent',element,path)?visible:null;
+  }
   function rendered(element) {
     if (!apply(connectedGetter, element, [])) return false;
-    // One snapshot map for the walk: each ancestor resolves once (turbo-test perf parity).
-    const snapshots = ns.computedSnapshots();
-    for (let node = element; node && nodeType(node) === 1; node = apply(parentGetter, node, [])) { suppressStyle = true; try { if (ns.computedDisplay(node, snapshots) === 'none') return false; } finally { suppressStyle = false; } }
-    return true;
+    const snapshots=ns.computedSnapshots(),outer=suppressStyle;
+    suppressStyle=true;
+    try{return renderedPath(element,snapshots,null);}finally{suppressStyle=outer;}
   }
-  // `rendered` from inside the element's own style resolution (turbo-test#227): its own display
-  // comes from the resolution in progress (`own`), and the ancestors from that resolution's
-  // snapshot map, which inheritance has usually filled already. Ancestors resolve with their
-  // animations and their own CSS updates, as any other read of them. Without a usable own
-  // display, the standalone walk above.
   function renderedFrom(element, snapshots, own) {
     if (!snapshots || !own) return rendered(element);
-    if (own === 'none') return false;
     if (!apply(connectedGetter, element, [])) return false;
-    for (let node = apply(parentGetter, element, []); node && nodeType(node) === 1; node = apply(parentGetter, node, [])) if (ns.computedDisplay(node, snapshots) === 'none') return false;
-    return true;
+    return renderedPath(element,snapshots,own);
   }
   function baseStyle(element) {
     suppressStyle = true;
@@ -1864,7 +2049,7 @@
   // The elements whose CSS update is running: a style read the update causes for the same
   // element does not update it again; other elements (ancestors resolved for `rendered`) update
   // as on any read, so each records its before-change style.
-  const cssBusy = store();
+  let cssBusy = store();
   let cssGeneration = 0, cssKeyframes = null;
   // A comma-separated computed list; commas inside functions do not split.
   function splitList(text) {
@@ -1879,6 +2064,13 @@
     }
     return push(out, intrinsic.trim(intrinsic.slice(text, start)));
   }
+  function cssAnimationNames(text) {
+    const names = Native('animationNames', text || 'none');
+    if (names === null) throw new Exception('cannot prove native CSS animation-name values', 'NotSupportedError');
+    setPrototype(names, null);
+    return names;
+  }
+  ns.cssKeyframeName = text => Native('keyframeName', text);
   const pickList = (values, i, fallback) => values.length ? values[i % values.length] : fallback;
   function milliseconds(text) {
     const match = intrinsic.exec(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(m?s)$/i, text);
@@ -1887,11 +2079,12 @@
   const toUpper = String.prototype.toUpperCase;
   // A CSS property name as its IDL attribute (margin-left -> marginLeft).
   function idlName(css) {
+    if (intrinsic.slice(css, 0, 2) === '--') return css;
     let out = '';
     for (let i = 0; i < css.length; i++) out += css[i] === '-' && i > 0 && i + 1 < css.length ? apply(toUpper, css[++i], []) : css[i];
     return out;
   }
-  function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { animations: [], transitions: create(null), values: create(null) }); return state; }
+  function cssState(element) { let state = cssStates.get(element); if (!state) cssStates.set(element, state = { __proto__: null, animations: [], transitions: create(null), values: create(null) }); return state; }
   function cssCreate(constructor, element, keyframes, timing, css) {
     setPrototype(css, null);
     const effect = construct(function () {}, [], KeyframeEffect);
@@ -1925,7 +2118,7 @@
     }
     return out;
   }
-  const cssCancel = animation => { const record = animations.get(animation); mutate(animation, record, () => cancel(animation, record)); };
+  const cssCancel = animation => { const record = animations.get(animation); cancel(animation, record); track(animation); };
   // ---- CSS animation and transition events (turbo-dom#313) --------------------------------
   // Blink's CSSAnimations event delegates: each CSS animation remembers the phase (and the
   // iteration) it was last sampled in. A frame's update, and a cancel, compare them with the
@@ -2085,7 +2278,7 @@
     return cssKeyframeInput(rule, pickList(lists['timing-function'], i, 'ease'), boundaryValue);
   }
   function cssAnimation(element, name, rule, lists, i, underlying) {
-    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, index: i, rangeSet: [false, false] });
+    const animation = cssCreate(CSSAnimation, element, cssFrames(element, rule, lists, i, underlying), cssTiming(lists, i), { kind: CSS_ANIMATION, owner: element, name, rule, index: i, rangeSet: [false, false] });
     cssRange(animations.get(animation), lists, i);
     if (pickList(lists['play-state'], i, 'running') === 'paused') pause(animation, animations.get(animation), '');
     return animation;
@@ -2095,6 +2288,7 @@
   function cssRefresh(element, animation, rule, lists, i, underlying) {
     const record = animations.get(animation), effect = record.effect && effects.get(record.effect);
     if (!effect || !effect.css) return;
+    record.css.rule = rule;
     const timed = cssRefreshTiming(effect, cssTiming(lists, i));
     const framed = !effect.css.frames && cssRefreshFrames(effect, cssFrames(element, rule, lists, i, underlying));
     if (timed || framed) ownerTouched(effect);
@@ -2147,7 +2341,7 @@
     return null;
   }
   function cssAnimations(element, read, underlying, hidden) {
-    const state = cssState(element), names = splitList(read('animation-name'));
+    const state = cssState(element), names = cssAnimationNames(read('animation-name'));
     const lists = {};
     const fields = ['duration', 'delay', 'iteration-count', 'direction', 'fill-mode', 'timing-function', 'play-state', 'range-start', 'range-end'];
     for (let i = 0; i < fields.length; i++) lists[fields[i]] = splitList(read('animation-' + fields[i]));
@@ -2155,7 +2349,7 @@
     // No CSS animation runs on an element that is not rendered (itself or an ancestor display:none).
     for (let i = 0; i < names.length && !hidden; i++) {
       const name = names[i];
-      if (name === 'none') continue;
+      if (name === null) continue;
       const rule = keyframesRule(name, element);
       if (!rule) continue;
       let entry = ownedAnimation(state, name, kept);
@@ -2216,25 +2410,74 @@
     }
     const properties = transitionedFor(read('transition-property'));
     const context = { fontSize: fontSize(read), currentColor: () => parseColor(underlying('color'), { currentColor: () => null }) };
-    const durations = splitList(read('transition-duration')), delays = splitList(read('transition-delay')), easings = splitList(read('transition-timing-function'));
+    const lists = transitionLists(read);
     // The transitions one style change starts share a generation (ordered by property name).
     const seen = create(null), generation = cssGeneration + 1;
     for (const property in properties) {
-      const i = properties[property];
       seen[property] = true;
-      const value = cssComputed(property, underlying(property), context), before = state.values[property];
-      state.values[property] = value;
-      const duration = milliseconds(pickList(durations, i, '0s')), delay = milliseconds(pickList(delays, i, '0s'));
-      if (before === undefined || before === value || max(duration, 0) + delay <= 0) continue;
-      if (state.transitions[property]) cssCancel(state.transitions[property]);
-      const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
-      from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
-      to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
-      const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(easings, i, 'ease') };
-      state.transitions[property] = cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
+      cssTransitionProperty(element, property, properties[property], { state, read, underlying, context, lists, generation });
     }
     for (const property in state.values) if (!seen[property]) delete state.values[property];
     cssDropTransitions(state, seen);
+  }
+  function transitionLists(read) {
+    return { durations: splitList(read('transition-duration')), delays: splitList(read('transition-delay')),
+      easings: splitList(read('transition-timing-function')), behaviors: splitList(read('transition-behavior')) };
+  }
+  function cssTransitionProperty(element, property, index, update) {
+    const { state, read, underlying, context, lists, generation } = update;
+    const value = cssComputed(property, underlying(property), context), previous = state.values[property];
+    state.values[property] = value;
+    const duration = milliseconds(pickList(lists.durations, index, '0s')), delay = milliseconds(pickList(lists.delays, index, '0s'));
+    if (previous === undefined || previous === value || max(duration, 0) + delay <= 0) return;
+    const before=cssTransitionStartValue(element,property,previous,context,state.transitions[property]);
+    if (state.transitions[property]) cssCancel(state.transitions[property]);
+    const behavior = intrinsic.toLowerCase(pickList(lists.behaviors, index, 'normal'));
+    if (behavior !== 'allow-discrete' && transitionPair(property, before, value, context, read) === false) return;
+    const timing = { __proto__: null, duration, delay, fill: 'backwards', easing: pickList(lists.easings, index, 'ease') };
+    state.transitions[property] = startCssTransition(element, property, before, value, underlying, timing, generation);
+  }
+  function cssTransitionStartValue(element,property,previous,context,animation){
+    if(!animation)return previous;
+    const entry=effectStackEntry(animation,element,null);
+    if(!entry)return previous;
+    const frames=entry.effect.frames.byProperty[property];
+    if(!frames)return previous;
+    return serializeValue(property,effectValue(entry,frames,property,parseValue(property,previous,context),context));
+  }
+  function startCssTransition(element, property, before, value, underlying, timing, generation) {
+    const idl = idlName(property), from = { __proto__: null, offset: 0, easing: 'linear', composite: 'auto' }, to = { __proto__: null, offset: 1, easing: 'linear', composite: 'auto' };
+    from[idl] = COLORS[property] ? cssColor(before, underlying) : before;
+    to[idl] = COLORS[property] ? cssColor(value, underlying) : value;
+    return cssCreate(CSSTransition, element, [from, to], timing, { kind: CSS_TRANSITION, owner: element, property, generation: cssGeneration = generation });
+  }
+  // Only a proven discrete pair is suppressed under normal behavior. A parser
+  // limitation remains a real candidate for strict presented-value admission.
+  function transitionPair(property, before, after, context, read) {
+    if (property === 'visibility') return before === 'visible' || after === 'visible';
+    if (property === 'display') return false;
+    const from = parseValue(property, before, context), to = parseValue(property, after, context);
+    if (!from || !to) return null;
+    if (transitionTypedPair(from, to)) return true;
+    return transitionSizeKeyword(property, from, to, read);
+  }
+  function transitionTypedPair(from, to) {
+    return lengthPercentageValue(from) && lengthPercentageValue(to) || from.kind === to.kind && from.kind !== 'discrete';
+  }
+  function transitionNoMaximum(property, keyword) {
+    return keyword === 'none' && intrinsic.test(/^max-(?:width|height|inline-size|block-size)$/, property);
+  }
+  function transitionSizeKeyword(property, from, to, read) {
+    const keyword = from.kind === 'discrete' ? from : to;
+    const number = from.kind === 'discrete' ? to : from;
+    if (keyword.kind !== 'discrete' || !lengthPercentageValue(number)) return null;
+    if (transitionNoMaximum(property, keyword.text)) return false;
+    if (keyword.text !== 'auto' || !intrinsicSizeProperty(property)) return null;
+    return read('interpolate-size') === 'numeric-only' ? false : null;
+  }
+  function intrinsicSizeProperty(property) {
+    return contains(['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+      'inline-size', 'block-size', 'min-inline-size', 'min-block-size', 'max-inline-size', 'max-block-size', 'flex-basis'], property);
   }
   // A transition whose property is no longer transitioned (or, without `kept`, every one) is
   // dropped; a running one is cancelled.
@@ -2253,14 +2496,14 @@
   // unchanged, an update would keep every animation and start no transition, so it is skipped:
   // the update runs once per style change, not once per computed-style read (a running
   // animation recomputes the style on every read).
-  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end'];
+  const CSS_INPUTS = ['animation-name', 'animation-duration', 'animation-delay', 'animation-iteration-count', 'animation-direction', 'animation-fill-mode', 'animation-timing-function', 'animation-play-state', 'transition-property', 'transition-duration', 'transition-delay', 'transition-timing-function', 'display', 'animation-range-start', 'animation-range-end', 'transition-behavior', 'interpolate-size'];
   let cssUpdates = store();
   function cssInputs(element, read, underlying) {
     const out = [];
     for (let i = 0; i < CSS_INPUTS.length; i++) push(out, read(CSS_INPUTS[i]));
-    const names = splitList(out[0]);
-    for (let i = 0; i < names.length; i++) push(out, names[i] !== "none" && !!keyframesRule(names[i], element));
-    const properties = transitionedFor(out[8]);
+    const names = cssAnimationNames(read('animation-name'));
+    for (let i = 0; i < names.length; i++) push(out, names[i] !== null && !!keyframesRule(names[i], element));
+    const properties = transitionedFor(read('transition-property'));
     for (const property in properties) { push(out, property); push(out, underlying(property)); }
     return out;
   }
@@ -2269,30 +2512,110 @@
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   }
-  function cssUpdateUnderlying(read, inherited) {
-    return property => { const text = read(property); if (text !== '') return text; if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
+  function cssUpdateUnderlying(read, inherited, displayBase) {
+    return property => { const text = read(property); if (text !== '') return text; if (property === 'display' && displayBase) return displayBase(); if (INHERITED[property]) { const value = inherited(property); if (value) return value; } return initialValue(property); };
   }
-  function cssUpdateBody(element, read, inherited, snapshots, ownDisplay) {
-    const underlying = cssUpdateUnderlying(read, inherited);
+  function cssInputsCached(last,stamp,inputs){return !!stamp&&!!last&&sameList(last.stamp,stamp)&&sameList(last.inputs,inputs);}
+  function renderingEffect(animation){
+    const record=animations.get(animation),effect=record&&record.effect&&effects.get(record.effect);
+    if(!effect)return true;
+    for(let i=0;i<effect.frames.order.length;i++){
+      const name=effect.frames.order[i];
+      if(name==='display'||intrinsic.slice(name,0,2)==='--')return true;
+    }
+    return false;
+  }
+  function pathRenderingEffects(path){
+    for(let i=3;i<path.length;i++){
+      const indexed=targets.get(path[i]);
+      if(indexed)for(let j=0;j<indexed.length;j++)if(renderingEffect(indexed[j]))return true;
+    }
+    return false;
+  }
+  function ordinaryRenderingModel(element,model){
+    return model!==null&&model===ns.cssEffectModelStamp(element)&&Native('ordinaryRenderingPath',element);
+  }
+  function renderingEffectsAbsent(element,snapshots,model){
+    if(!ns.cssEffectOwnerInputs(snapshots,realmDocument))return false;
+    if(!ordinaryRenderingModel(element,model))return false;
+    const path=Native('renderingPath',element);
+    if(!path||!path[1]||path[2]!==realmDocument)return false;
+    setPrototype(path,null);
+    if(pathRenderingEffects(path))return false;
+    return Native('renderingPathCurrent',element,path)&&ns.cssEffectOwnerInputs(snapshots,realmDocument);
+  }
+  function cssUpdateCached(last, stamp, inputs, rendering) {
+    return cssInputsCached(last,stamp,inputs)&&last.hidden===rendering.hidden&&last.base===rendering.base;
+  }
+  function cssRenderingModel(element,model){return model!==null&&model===ns.cssEffectModelStamp(element)?model:null;}
+  function cssUpdateRecord(element,stamp,inputs,rendering,model){
+    return {stamp:stamp&&ns.computedStyleStamp(element),inputs,hidden:rendering.hidden,base:rendering.base,model:model===null?null:ns.cssEffectModelStamp(element)};
+  }
+  function cssUpdateBody(element, read, inherited, snapshots, ownDisplay, displayImportant) {
+    let own;
+    const displayBase = () => { if (own === undefined) own = ownDisplay ? ownDisplay() : read('display'); return own; };
+    const underlying = cssUpdateUnderlying(read, inherited, displayBase);
     const stamp = ns.computedStyleStamp ? ns.computedStyleStamp(element) : null, inputs = cssInputs(element, read, underlying), last = cssUpdates.get(element);
-    if (stamp && last && sameList(last.stamp, stamp) && sameList(last.inputs, inputs)) return;
+    if(cssInputsCached(last,stamp,inputs)&&renderingEffectsAbsent(element,snapshots,last.model))return;
+    const model=ns.cssEffectModelStamp(element);
+    // Underlying inputs can stay unchanged while presented display reaches an exit.
+    const rendering = transitionRendering(element, read, snapshots, displayBase(), displayImportant);
+    if (rendering === null) { if (inspectingEffects) inspectionUnavailable = true; return; }
+    const modelStable=cssRenderingModel(element,model);
+    if (cssUpdateCached(last, stamp, inputs, rendering)) { last.model=modelStable; return; }
     if (ns.noteCssUpdatePass) ns.noteCssUpdatePass();
-    cssRun(element, read, underlying, read('display') === 'none' || !renderedFrom(element, snapshots, ownDisplay ? ownDisplay() : ''));
+    cssRun(element, read, underlying, rendering.hidden);
+    cssState(element).display = rendering.base;
     // Stamped after the update: the invalidation its own animations cause is not a new input.
-    cssUpdates.set(element, { stamp: stamp && ns.computedStyleStamp(element), inputs });
+    cssUpdates.set(element,cssUpdateRecord(element,stamp,inputs,rendering,modelStable));
   }
-  function cssUpdate(element, read, inherited, snapshots, ownDisplay) {
+  function transitionDisplayResolved(value) {
+    if (!value || !intrinsic.test(/^[a-z-]+(?: [a-z-]+)*$/, value)) return false;
+    if (contains(['inherit', 'initial', 'unset', 'revert', 'revert-layer'], value)) return false;
+    return Native('value', 'display', value) !== null;
+  }
+  // Only scalar display is composed while synchronizing rendering state. This
+  // reuses canonical private frames/easing; no transform/size/base-style reads.
+  function transitionPresentedDisplay(element, base, important) {
+    const entries = presentedEntries(element);
+    const stack = important ? intrinsic.filter(entries, entry => entry.record.css && entry.record.css.kind === CSS_TRANSITION) : entries;
+    if (!stack.length) return base;
+    const value = stackValue(stack, 'display', { kind: 'discrete', text: base }, {});
+    const display = serializeValue('display', value);
+    return transitionDisplayResolved(display) ? display : null;
+  }
+  function transitionRendering(element, read, snapshots, base, displayImportant) {
+    if (!transitionDisplayResolved(base)) return null;
+    let own = base === 'none' ? transitionPresentedDisplay(element, base, displayImportant) : base;
+    if (own === null) return null;
+    if (own === 'none' && transitionCanExit(element, read)) own = cssState(element).display;
+    const visible=renderedFrom(element,snapshots,own);
+    return visible===null?null:{base,hidden:!visible};
+  }
+  function transitionCanExit(element, read) {
+    if (!cssTransitionsOn) return false;
+    const state = cssState(element), before = state.display;
+    if (state.hidden !== false || !transitionDisplayResolved(before) || before === 'none') return false;
+    const properties = transitionedFor(read('transition-property')), index = properties.display;
+    if (index === undefined) return false;
+    const lists = transitionLists(read);
+    if (intrinsic.toLowerCase(pickList(lists.behaviors, index, 'normal')) !== 'allow-discrete') return false;
+    const duration = milliseconds(pickList(lists.durations, index, '0s')), delay = milliseconds(pickList(lists.delays, index, '0s'));
+    return max(duration, 0) + delay > 0;
+  }
+  function cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (!cssAnyOn || cssBusy.get(element)) return;
     const declared = read('animation-name') || read('transition-property');
     if (!declared && !cssStates.has(element)) return;
     cssBusy.set(element, true);
-    try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay); }
+    try { cssUpdateBody(element, read, inherited, snapshots, ownDisplay, displayImportant); }
     finally { cssBusy.set(element, false); }
   }
-  // Private native-geometry seam. Never compose/interpolate an effect here: resolving
-  // a percentage transform can call native layout, whose capture is asking this question.
+  // Private native-geometry seam. Never compose transforms/sizes here: their
+  // reference boxes can call native layout, whose capture is asking this question.
+  // Canonical synchronization may read scalar display alone to retain an exit box.
   // CSS synchronization is canonical and bounded to the target and its style dependencies.
-  let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false;
+  let inspectingEffects = false, inspectionUnavailable = false, inspectionTarget = null, inspectionNames = null, inspectionUnsupported = false, inspectionRenderingUncertain = false;
   const stringifyEffects = JSON.stringify;
   // Promise resolution observes `animation.then`. Reject hostile promise/prototype
   // shapes before canonical CSS synchronization could resolve a ready promise. Inspect
@@ -2333,6 +2656,7 @@
   // V8 may materialize new native builtin methods while deserializing a startup
   // snapshot. Rust calls this only at trusted rehydration, before any guest runs.
   ns.rehydrateCssEffectTrust = function () {
+    trackTargetOwners = Native('targetTracking');
     delete ns.rehydrateCssEffectTrust;
     // Never forgive a modified original property if an embedder tries to attach
     // after page code. Only newly materialized keys on original builtin objects
@@ -2350,14 +2674,31 @@
     for (let i = 0; i < promiseShapes.length; i++) if (!safePromiseShape(null, promiseShapes[i])) return;
     captureBuiltinShapes();
   };
+  function assignmentUndefinedStackHook(shape) {
+    const captured = builtinGlobals.Error;
+    if (!captured || shape.object !== captured.value || shape.descriptors.prepareStackTrace) return false;
+    const descriptor = getOwnDescriptor(shape.object, 'prepareStackTrace');
+    if (!descriptor || !getOwnDescriptor(descriptor, 'value')) return false;
+    return descriptor.value === undefined && descriptor.writable === true &&
+      descriptor.enumerable === true && descriptor.configurable === true;
+  }
+  function sameBuiltinShapeKeys(shape, keys) {
+    const ignoredStackHook = assignmentUndefinedStackHook(shape);
+    if (keys.length !== shape.keys.length + (ignoredStackHook ? 1 : 0)) return false;
+    let expected = 0;
+    for (let index = 0; index < keys.length; index++) {
+      const key = keys[index];
+      if (ignoredStackHook && key === 'prepareStackTrace') continue;
+      if (key !== shape.keys[expected++] || !samePrivateDescriptor(getOwnDescriptor(shape.object, key), shape.descriptors[key])) return false;
+    }
+    return true;
+  }
   function safeBuiltinShapes() {
     for (let i = 0; i < builtinNames.length; i++)
       if (!samePrivateDescriptor(getOwnDescriptor(g, builtinNames[i]), builtinGlobals[builtinNames[i]])) return false;
     for (let i = 0; i < builtinShapes.length; i++) {
-      const shape = builtinShapes[i], keys = ownKeys(shape.object);
-      if (keys.length !== shape.keys.length || getPrototype(shape.object) !== shape.prototype) return false;
-      for (let j = 0; j < keys.length; j++)
-        if (keys[j] !== shape.keys[j] || !samePrivateDescriptor(getOwnDescriptor(shape.object, keys[j]), shape.descriptors[keys[j]])) return false;
+      const shape = builtinShapes[i];
+      if (getPrototype(shape.object) !== shape.prototype || !sameBuiltinShapeKeys(shape, ownKeys(shape.object))) return false;
     }
     return true;
   }
@@ -2401,16 +2742,16 @@
     }
     return true;
   }
-  ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay) {
+  ns.syncCssEffectInputs = function (element, read, inherited, snapshots, ownDisplay, displayImportant) {
     if (cssBusy.get(element) || suppressStyle || !safeOwnedAnimationPromises(element)) { inspectionUnavailable = true; return; }
     if (element === inspectionTarget) {
-      inspectionNames = splitList(read('animation-name') || 'none');
+      inspectionNames = cssAnimationNames(read('animation-name'));
       const composition = splitList(read('animation-composition') || 'replace');
       for (let i = 0; i < composition.length; i++) if (composition[i] !== 'replace') inspectionUnsupported = true;
       const timeline = read('animation-timeline');
       if (timeline && timeline !== 'auto') inspectionUnsupported = true;
     }
-    cssUpdate(element, read, inherited, snapshots, ownDisplay);
+    cssUpdate(element, read, inherited, snapshots, ownDisplay, displayImportant);
   };
   function effectInspectionEntry(animation, element, owned) {
     const record = animations.get(animation), effect = record.effect ? effects.get(record.effect) : null;
@@ -2439,6 +2780,350 @@
       (entry.fill === 'none' || entry.fill === 'auto') && record.rate > 0;
     return entry;
   }
+  function presentedTargets(candidates) {
+    const out = [], seen = new WeakSetType();
+    setPrototype(out, null);
+    const add = element => {
+      if (!element || nodeType(element) !== 1 || apply(ownerGetter, element, []) !== realmDocument) return;
+      if (apply(weakSetHas, seen, [element])) return;
+      apply(weakSetAdd, seen, [element]); push(out, element);
+    };
+    for (let i = 0; i < candidates.length; i++) add(candidates[i]);
+    const active = list();
+    for (let i = 0; i < active.length; i++) {
+      const record = animations.get(active[i]), effect = record.effect && effects.get(record.effect);
+      if (effect) add(effect.target);
+    }
+    return out;
+  }
+  function presentedEntries(element) {
+    const indexed = targets.get(element), entries = [];
+    if (!indexed) return entries;
+    const ordered = byComposite(intrinsic.map(indexed, animation => animation));
+    for (let i = 0; i < ordered.length; i++) {
+      const entry = effectStackEntry(ordered[i], element, null);
+      if (entry) push(entries, entry);
+    }
+    return entries;
+  }
+  function presentedText(property, text, context) {
+    // Legacy scalar value adapters cannot certify repaired DOM-string payloads.
+    if (intrinsic.indexOf(text, '\ufffd') >= 0) return null;
+    if (intrinsic.test(/(?:var|env)\(|currentcolor|(?:[\d.])(?:em|rem|ex|ch|lh|rlh|vw|vh|vmin|vmax)\b/i, text)) return null;
+    const value = parseValue(property, text, context);
+    if (!value) return null;
+    if (value.kind !== 'discrete') return value;
+    if (intrinsic.slice(property, 0, 2) === '--') return value;
+    if (property === 'display' || property === 'visibility') return value;
+    return null;
+  }
+  function presentedFrameCompatible(left, right) {
+    if (referenceTransformPair(left,right))
+      return symbolicTransformCompatible(left, right);
+    if (lengthPercentageValue(left) && lengthPercentageValue(right)) return true;
+    if (left.kind !== right.kind) return false;
+    if (left.kind === 'length') return left.unit === right.unit;
+    if (left.kind === 'length-list') {
+      const count = lengthListRepeatCount(left, right);
+      return count !== null && lengthListsCompatible(left, right, count);
+    }
+    return true;
+  }
+  function referenceTransformPair(left,right){return left.kind==='transform'&&right.kind==='transform'&&(transformReferences(left)||transformReferences(right));}
+  function symbolicTransformCompatible(left, right) {
+    if (!left.list.length || !right.list.length) return true;
+    if (left.list.length !== right.list.length) return false;
+    for (let i = 0; i < left.list.length; i++) if (left.list[i].type !== right.list[i].type) return false;
+    return true;
+  }
+  function presentedFrameValuesSupported(frames, property, context) {
+    let previous = null;
+    for (let i = 0; i < frames.length; i++) {
+      const value = presentedText(property, frames[i].text, context);
+      if (!value) return false;
+      if (previous && !presentedFrameCompatible(previous, value)) return false;
+      previous = value;
+    }
+    return true;
+  }
+  function presentedNeedsBase(entry, frames) {
+    if (frames[0].offset !== 0 || frames[frames.length - 1].offset !== 1) return true;
+    if (entry.effect.composite !== 'replace') return true;
+    return intrinsic.some(frames, frame => frame.composite !== 'auto' && frame.composite !== 'replace');
+  }
+  function presentedBaseSupported(property, read, context, last) {
+    if (presentedContextProperty(property)) return false;
+    const base = presentedText(property, read(property) || initialValue(property), context);
+    if(property==='transform'&&base&&transformReferences(base))return false;
+    return !!base && presentedFrameCompatible(last, base);
+  }
+  function presentedRawBoundary(rule, property, context) {
+    const result = { found: false, start: false, end: false, valid: true };
+    for (let i = 0; i < rule.length; i++) {
+      const offsets = keyframeOffsets(rule[i].selector), values = rule[i].values;
+      for (let j = 0; j < values.length; j++) {
+        if (values[j][0] !== property) continue;
+        result.found = true;
+        if (!presentedText(property, values[j][1], context)) result.valid = false;
+        if (contains(offsets, 0)) result.start = true;
+        if (contains(offsets, 1)) result.end = true;
+      }
+    }
+    return result;
+  }
+  function presentedCssRule(entry) {
+    if (!entry.effect.css) return null;
+    if (entry.effect.css.frames) return null;
+    return entry.record.css.rule || null;
+  }
+  const presentedNeedsRawBounds = property => INHERITED[property] || intrinsic.slice(property, 0, 2) === '--';
+  function presentedRawCssSupported(entry, property, context) {
+    const css = entry.record.css;
+    if (!css || css.kind !== CSS_ANIMATION) return true;
+    const rule = presentedCssRule(entry);
+    if (!rule) return false;
+    const raw = presentedRawBoundary(rule, property, context);
+    if (!raw.found || !raw.valid) return false;
+    if (!presentedNeedsRawBounds(property)) return true;
+    return raw.start && raw.end;
+  }
+  function presentedFramesSupported(entry, property, read, context, changingContext) {
+    const frames = entry.effect.frames.byProperty[property];
+    if (!frames) return true;
+    if (!presentedRawCssSupported(entry, property, context)) return false;
+    if (!presentedFrameValuesSupported(frames, property, context)) return false;
+    if (!presentedNeedsBase(entry, frames)) return true;
+    if(presentedReferenceFrames(property,frames,context))return false;
+    const css = entry.record.css;
+    if (changingContext || (css && css.kind === CSS_TRANSITION)) return false;
+    const last = presentedText(property, frames[frames.length - 1].text, context);
+    return presentedBaseSupported(property, read, context, last);
+  }
+  function presentedReferenceFrames(property,frames,context){return property==='transform'&&intrinsic.some(frames,frame=>{const value=presentedText(property,frame.text,context);return value&&transformReferences(value);});}
+  function presentedRawPropertyPresent(entry, property, text) {
+    if (Native('nonAnimatable', property)) return true;
+    if (Native('property', idlName(property)) !== property) return false;
+    if (entry.effect.frames.byProperty[property]) return true;
+    let expanded = false, complete = true;
+    expand(property, text, name => { expanded = true; if (!entry.effect.frames.byProperty[name]) complete = false; });
+    return expanded && complete;
+  }
+  function presentedRulePropertiesPresent(rule, entry) {
+    for (let i = 0; i < rule.length; i++) {
+      const values = rule[i].values;
+      for (let j = 0; j < values.length; j++)
+        if (!presentedRawPropertyPresent(entry, values[j][0], values[j][1])) return false;
+    }
+    return true;
+  }
+  function presentedCssModelComplete(entry) {
+    const css = entry.record.css;
+    if (!css || css.kind !== CSS_ANIMATION) return true;
+    if (entry.effect.css && entry.effect.css.frames) return true;
+    if (!css.rule) return false;
+    return presentedRulePropertiesPresent(css.rule, entry);
+  }
+  function presentedStackSupported(stack, read, changingContext) {
+    const context = { fontSize: fontSize(read), currentColor: () => null };
+    for (let i = 0; i < stack.length; i++) if (!presentedCssModelComplete(stack[i])) return false;
+    const properties = stackResultProperties(stack);
+    for (let i = 0; i < properties.length; i++) {
+      for (let j = 0; j < stack.length; j++)
+        if (!presentedFramesSupported(stack[j], properties[i], read, context, changingContext)) return false;
+    }
+    return true;
+  }
+  function presentedPairs(stack, read) {
+    const out = []; setPrototype(out, null);
+    if (!stack.length) return out;
+    const pairs = stackResult(stack, read, () => '');
+    for (let i = 0; i < pairs.length; i++) {
+      const property = create(null); property.name = pairs[i][0]; property.value = pairs[i][1];
+      out[out.length] = property;
+    }
+    return out;
+  }
+  function presentedCssSuppressionSupported(element, state) {
+    if (!state || state.hidden !== true || state.animations.length || inspectionRenderingUncertain) return false;
+    if (typeof ns.effectRenderingScopeSupported !== 'function' || !ns.effectRenderingScopeSupported(element)) return false;
+    return Native('ordinaryRenderingPath', element);
+  }
+  function presentedMissingDefinitionsSupported(element, names, owned) {
+    if (typeof ns.effectRenderingScopeSupported !== 'function' || !ns.effectRenderingScopeSupported(element)) return false;
+    if (!Native('ordinaryRenderingPath', element)) return false;
+    const unmatched = intrinsic.map(owned, entry => entry.name);
+    for (let i = 0; i < names.length; i++) {
+      const at = intrinsic.indexOf(unmatched, names[i]);
+      if (at >= 0) unmatched[at] = null;
+      else if (keyframesRule(names[i], element)) return false;
+    }
+    return !intrinsic.some(unmatched, name => name !== null);
+  }
+  function presentedMissingCssNames(element, names) {
+    if (!cssAnimationsOn) return false;
+    const state = cssStates.get(element), owned = state ? state.animations : [];
+    if (names.length === owned.length) return false;
+    // Canonical CSS synchronization removes animations from display-suppressed
+    // elements while computed animation-name deliberately retains its declaration.
+    return !presentedCssSuppressionSupported(element, state) && !presentedMissingDefinitionsSupported(element, names, owned);
+  }
+  function presentedTimelineSupported(read) {
+    const timeline = read('animation-timeline');
+    if (timeline && timeline !== 'auto') return false;
+    const composition = splitList(read('animation-composition') || 'replace');
+    return !intrinsic.some(composition, value => value !== 'replace');
+  }
+  function presentedSourceProperties(entries) {
+    const properties = stackResultProperties(entries);
+    for (let i = 0; i < entries.length; i++) {
+      const css = entries[i].record.css, rule = css && css.rule;
+      if (!rule) continue;
+      for (let j = 0; j < rule.length; j++) {
+        const values = rule[j].values;
+        for (let k = 0; k < values.length; k++) if (!contains(properties, values[k][0])) push(properties, values[k][0]);
+      }
+    }
+    return properties;
+  }
+  function presentedCustomPropertiesSupported(element, entries) {
+    const properties = presentedSourceProperties(entries);
+    if (!intrinsic.some(properties, property => intrinsic.slice(property, 0, 2) === '--')) return true;
+    if (typeof ns.effectHasPropertyRules !== 'function') return false;
+    return !ns.effectHasPropertyRules(element);
+  }
+  function presentedState(element, snapshot, entries, changingContext, names) {
+    const read = property => ns.computedStyleValue(snapshot, property), result = create(null);
+    if(!ns.effectTransformSupported(snapshot)){result.status='unknown';result.properties=presentedSourceProperties(entries);if(!contains(result.properties,'transform'))push(result.properties,'transform');setPrototype(result.properties,null);return result;}
+    if (!presentedTimelineSupported(read) || presentedMissingCssNames(element, names) ||
+        !presentedCustomPropertiesSupported(element, entries) || !ns.effectColorsSupported(snapshot, presentedSourceProperties(entries)) || !presentedStackSupported(entries, read, changingContext)) {
+      result.status = 'unknown'; result.properties = presentedSourceProperties(entries); setPrototype(result.properties, null);
+      return result;
+    }
+    const animation = [], transition = [];
+    for (let i = 0; i < entries.length; i++) {
+      const css = entries[i].record.css;
+      push(css && css.kind === CSS_TRANSITION ? transition : animation, entries[i]);
+    }
+    result.status = 'certified';
+    result.animation = presentedPairs(animation, read);
+    result.transition = presentedPairs(transition, read);
+    return result;
+  }
+  function presentedTargetData(element, snapshot, changingContext) {
+    const data = create(null), indexed = targets.get(element) || [], entries = [];
+    setPrototype(entries, null);
+    for (let i = 0; i < indexed.length; i++) entries[entries.length] = effectInspectionEntry(indexed[i], element, !!animations.get(indexed[i]).css);
+    data.effects = entries;
+    data.css_animation_names = intrinsic.filter(cssAnimationNames(ns.computedStyleValue(snapshot, 'animation-name')), name => name !== null);
+    setPrototype(data.css_animation_names, null);
+    data.presentation = presentedState(element, snapshot, animationPresentationOn ? presentedEntries(element) : [], changingContext, data.css_animation_names);
+    data.establishes_stacking_context = animationPresentationOn &&
+      intrinsic.some(indexed, animation => presentedEffectContext(animation, element));
+    return data;
+  }
+  function establishesContextProperty(property) {
+    return contains(['opacity', 'transform', 'translate', 'rotate', 'scale', 'filter',
+      'backdrop-filter', 'perspective', 'clip-path', 'mask', 'mask-image',
+      'mix-blend-mode', 'isolation', 'contain'], property);
+  }
+  function presentedEffectContext(animation, element) {
+    const record = contextEffectRecord(animation, element);
+    if (!record) return false;
+    const effect = effects.get(record.effect), css = record.css;
+    if (!intrinsic.some(effect.frames.order, establishesContextProperty)) return false;
+    if (css && css.kind === CSS_ANIMATION && cssKindOn(css.kind) && ownsContextAnimation(animation, element)) return true;
+    // Creation switches do not cancel an already indexed/script-controlled
+    // effect. Its context follows the same canonical relevance as presentation.
+    return relevant(record);
+  }
+  function contextEffectRecord(animation, element) {
+    const record = animations.get(animation);
+    if (!record || !record.effect || record.replace === 'removed') return null;
+    const effect = effects.get(record.effect);
+    return effect.target === element && effect.pseudo === null ? record : null;
+  }
+  function ownsContextAnimation(animation, element) {
+    const state = cssStates.get(element);
+    return !!state && intrinsic.some(state.animations, entry => entry.animation === animation);
+  }
+  function presentedContextProperty(property) {
+    return !!INHERITED[property] || intrinsic.test(/^(?:font|stroke|fill)(?:-|$)/, property) || property === 'zoom' || intrinsic.slice(property, 0, 2) === '--';
+  }
+  function presentedChangingContext(selected) {
+    if (!animationPresentationOn) return false;
+    let contributingTargets = 0;
+    for (let i = 0; i < selected.length; i++) {
+      const entries = presentedEntries(selected[i]);
+      if (entries.length) contributingTargets++;
+      if (contributingTargets > 1) return true;
+      const properties = presentedSourceProperties(entries);
+      if (intrinsic.some(properties, presentedContextProperty)) return true;
+    }
+    return false;
+  }
+  function presentedRenderingUncertain(selected) {
+    if (!animationPresentationOn) return false;
+    for (let i = 0; i < selected.length; i++) {
+      const properties = presentedSourceProperties(presentedEntries(selected[i]));
+      if (intrinsic.some(properties, property => property === 'display' || intrinsic.slice(property, 0, 2) === '--')) return true;
+    }
+    return false;
+  }
+  const notePresentedMembership=g.__notePresentedMembership;delete g.__notePresentedMembership;
+  function appendPresentedTargets(selected, seen, expanded) {
+    for (let index = 0; index < expanded.length; index++) {
+      if(notePresentedMembership)notePresentedMembership(0,1);
+      if (apply(weakSetHas, seen, [expanded[index]])) continue;
+      apply(weakSetAdd, seen, [expanded[index]]); push(selected, expanded[index]);
+    }
+  }
+  function preparePresentedTargets(selected,ownershipStamp) {
+    const snapshots = [], batch = ns.createCssEffectInputBatch(false,ownershipStamp), seen = new WeakSetType();
+    for (let i = 0; i < selected.length; i++) apply(weakSetAdd, seen, [selected[i]]);
+    if(notePresentedMembership)notePresentedMembership(0,selected.length);
+    for (let i = 0; i < selected.length; i++) {
+      const element = selected[i];
+      if (cssBusy.get(element)) return null;
+      inspectionTarget = element; inspectionNames = null; inspectionUnsupported = false;
+      const snapshot = ns.refreshCssEffectInputs(element, batch);
+      if (!snapshot || inspectionUnavailable) return null;
+      push(snapshots, snapshot);
+      appendPresentedTargets(selected, seen, presentedTargets([]));
+    }
+    return snapshots;
+  }
+  function presentedRows(selected,ownershipStamp) {
+    const snapshots = preparePresentedTargets(selected,ownershipStamp);
+    if (!snapshots) return null;
+    inspectionRenderingUncertain = presentedRenderingUncertain(selected);
+    const changingContext = presentedChangingContext(selected), rows = []; setPrototype(rows, null);
+    for (let i = 0; i < selected.length; i++) {
+      const row = [selected[i], apply(stringifyEffects, null, [presentedTargetData(selected[i], snapshots[i], changingContext)])];
+      setPrototype(row, null); rows[rows.length] = row;
+    }
+    return rows;
+  }
+  function ownedBatchStamp(document,verified){return verified===true?ns.cssEffectOwnershipStamp(document):null;}
+  function presentationClockValid(time){return !host||(time!==null&&isFinite(time));}
+  ns.samplePresentedEffects = function (document, candidates, ownershipVerified) {
+    if (document !== realmDocument) return null;
+    if (inspectingEffects || suppressStyle) return null;
+    const ownershipStamp=ownedBatchStamp(document,ownershipVerified);
+    const selected = presentedTargets(candidates);
+    if (selected.length && !safeInspectionPrototypes()) return null;
+    const time = clock();
+    if (!presentationClockValid(time)) return null;
+    inspectionClock = time; inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
+    try {
+      const rows = presentedRows(selected,ownershipStamp);
+      if (!rows) return null;
+      const metadata = create(null), result = create(null);
+      metadata.sample_time = time; metadata.css_animations_enabled = cssAnimationsOn;
+      metadata.css_transitions_enabled = cssTransitionsOn; metadata.presentation_suppressed = !animationPresentationOn;
+      result.metadata = apply(stringifyEffects, null, [metadata]); result.targets = rows;
+      return result;
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; inspectionRenderingUncertain = false; }
+  };
   ns.inspectElementCssEffects = function (element) {
     if (inspectingEffects || suppressStyle || cssBusy.get(element) || !safeInspectionPrototypes()) return null;
     if (nodeType(element) !== 1 || (apply(ownerGetter, element, []) || realmDocument) !== realmDocument) return null;
@@ -2458,7 +3143,7 @@
         entries[entries.length] = effectInspectionEntry(indexed[i], element, false);
       const names = []; setPrototype(names, null);
       if (!inspectionNames) return null;
-      for (let i = 0; i < inspectionNames.length; i++) if (inspectionNames[i] !== 'none') names[names.length] = inspectionNames[i];
+      for (let i = 0; i < inspectionNames.length; i++) if (inspectionNames[i] !== null) names[names.length] = inspectionNames[i];
       result.unsupported = inspectionUnsupported;
       result.animation_names = names;
       result.sample_time = inspectionClock;
@@ -2467,26 +3152,31 @@
       result.css_transitions_enabled = cssTransitionsOn;
       result.presentation_suppressed = !animationPresentationOn;
       return apply(stringifyEffects, null, [result]);
-    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; }
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionTarget = null; inspectionNames = null; inspectionClock = null; inspectionRenderingUncertain = false; }
   };
   // The switched-on kinds' update (set_css_animations / set_css_transitions).
   function cssRun(element, read, underlying, hidden) {
+    cssState(element).hidden = hidden;
     if (cssAnimationsOn) cssAnimations(element, read, underlying, hidden);
     if (cssTransitionsOn) cssTransitions(element, read, underlying, hidden);
   }
   // getAnimations() flushes style: every element of the tree resolves its style once.
+  function cssFlushVisit(node, batch) {
+    for (let child = apply(firstChild, node, []); child; child = apply(nextSibling, child, [])) {
+      if (nodeType(child) !== 1) continue;
+      if (!ns.refreshCssLifecycleInputs(child, batch)) throw new ErrorType('CSS effect discovery is unavailable during another style read');
+      cssFlushVisit(child, batch);
+    }
+  }
   function cssFlush(node) {
     if (!computedStyle) return;
-    cssKeyframes = null;
-    const visit = parent => {
-      for (let child = apply(firstChild, parent, []); child; child = apply(nextSibling, child, [])) {
-        if (nodeType(child) !== 1) continue;
-        apply(computedStyle, g, [child]).opacity;
-        visit(child);
-      }
-    };
-    visit(node);
-    cssKeyframes = null;
+    if (inspectingEffects || suppressStyle) throw new ErrorType('CSS effect discovery is unavailable during another style read');
+    const outerClock = inspectionClock, outerUnavailable = inspectionUnavailable;
+    inspectingEffects = true; inspectionUnavailable = false; cssKeyframes = null;
+    try {
+      inspectionClock = outerClock === null ? clock() : outerClock;
+      cssFlushVisit(node, ns.createCssEffectInputBatch(true));
+    } finally { cssKeyframes = null; inspectingEffects = false; inspectionClock = outerClock; inspectionUnavailable = outerUnavailable; }
   }
   const cssClass = record => record.css ? record.css.kind : SCRIPT;
   // https://drafts.csswg.org/css-transitions-2/#animation-composite-order and its css-animations-2
@@ -2684,4 +3374,12 @@
       task(callback) { apply(timer, g, [callback, 0]); },
     };
   }
+  const recoverComputedInspection = ns.recoverComputedInspection;
+  g.__captureTerminationRecovery = function () {
+    inspectingEffects = false; inspectionUnavailable = false; inspectionTarget = null;
+    inspectionNames = null; inspectionUnsupported = false; inspectionRenderingUncertain = false;
+    inspectionClock = null; cssKeyframes = null; suppressStyle = false;
+    cssBusy = store(); cssUpdates = store();
+    recoverComputedInspection();
+  };
 })();

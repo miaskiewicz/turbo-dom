@@ -1,0 +1,118 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "af131b54d2d85f1000eff97ddc8dee7bfa1cb8e6a1582d1db09372a5703d1668",
+  "result": [
+    {
+      "kind": "css",
+      "action": -500,
+      "hit": "cover",
+      "opacity": "1",
+      "state": "paused",
+      "time": -500
+    },
+    {
+      "kind": "css",
+      "action": 500,
+      "hit": "cover",
+      "opacity": "1",
+      "state": "paused",
+      "time": 500
+    },
+    {
+      "kind": "css",
+      "action": 1500,
+      "hit": "cover",
+      "opacity": "0.75",
+      "state": "paused",
+      "time": 1500
+    },
+    {
+      "kind": "css",
+      "action": 2500,
+      "hit": "cover",
+      "opacity": "1",
+      "state": "paused",
+      "time": 2500
+    },
+    {
+      "kind": "css",
+      "action": "finish",
+      "hit": "cover",
+      "opacity": "1",
+      "state": "finished",
+      "time": 2000
+    },
+    {
+      "kind": "css",
+      "action": "cancel",
+      "hit": "cover",
+      "opacity": "1",
+      "state": "idle",
+      "time": null
+    },
+    {
+      "kind": "css",
+      "action": "idle",
+      "hit": "cover",
+      "opacity": "1",
+      "state": "idle",
+      "time": null
+    },
+    {
+      "kind": "waapi",
+      "action": -500,
+      "hit": "cover",
+      "opacity": "1",
+      "state": "paused",
+      "time": -500
+    },
+    {
+      "kind": "waapi",
+      "action": 500,
+      "hit": "cover",
+      "opacity": "1",
+      "state": "paused",
+      "time": 500
+    },
+    {
+      "kind": "waapi",
+      "action": 1500,
+      "hit": "cover",
+      "opacity": "0.75",
+      "state": "paused",
+      "time": 1500
+    },
+    {
+      "kind": "waapi",
+      "action": 2500,
+      "hit": "inner",
+      "opacity": "1",
+      "state": "paused",
+      "time": 2500
+    },
+    {
+      "kind": "waapi",
+      "action": "finish",
+      "hit": "inner",
+      "opacity": "1",
+      "state": "finished",
+      "time": 2000
+    },
+    {
+      "kind": "waapi",
+      "action": "cancel",
+      "hit": "inner",
+      "opacity": "1",
+      "state": "idle",
+      "time": null
+    },
+    {
+      "kind": "waapi",
+      "action": "idle",
+      "hit": "inner",
+      "opacity": "1",
+      "state": "idle",
+      "time": null
+    }
+  ]
+}

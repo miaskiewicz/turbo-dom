@@ -33,6 +33,10 @@
 use resvg::tiny_skia;
 use resvg::usvg;
 
+mod custom_paint;
+mod resources;
+pub use resources::SvgResourceError;
+
 use crate::image::{ColorSpace, Intrinsic, Payload, RasterImage, Rgba8Image};
 
 /// The PDF pipeline's oversampling factor: SVGs rasterize at this multiple of their
@@ -100,14 +104,31 @@ const SVG_NS: &str = "http://www.w3.org/2000/svg";
 /// a gzip (`svgz`) stream is not inflated.
 #[must_use]
 pub fn parse(bytes: &[u8]) -> Option<usvg::Tree> {
-    // `Options::default()` ships an empty `fontdb`; we deliberately never call
-    // `load_system_fonts`, so the parse depends only on the input bytes. (The same
-    // parse `usvg::Tree::from_data` runs on XML text, with the root checked first.)
-    // roxmltree's tokenizer recurses per element too, so the XML parse runs on the
-    // SVG stack as well.
+    parse_checked(bytes).ok().flatten()
+}
+
+/// Parse as [`parse`], distinguishing embedded-raster resource admission failures.
+/// Invalid XML and ordinary unsupported/malformed images retain `Ok(None)` or
+/// missing-image behavior. Resource admission never invokes a raster decoder.
+pub fn parse_checked(bytes: &[u8]) -> Result<Option<usvg::Tree>, SvgResourceError> {
     on_svg_stack(|| {
-        let document = parse_xml(bytes)?;
-        usvg::Tree::from_xmltree(&document, &image_options()).ok()
+        let Some(document) = parse_xml(bytes) else {
+            return Ok(None);
+        };
+        let prepared = custom_paint::prepare(&document)?;
+        let rewritten = prepared.as_deref().map(|source| {
+            parse_xml(source.as_bytes()).expect("escaped edits preserve validated SVG XML")
+        });
+        let document = rewritten.as_ref().unwrap_or(&document);
+        let failure = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let tree = usvg::Tree::from_xmltree(document, &image_options(failure.clone())).ok();
+        if let Some(error) = *failure.lock().expect("SVG resolver failure lock") {
+            return Err(error);
+        }
+        if let Some(tree) = &tree {
+            resources::audit(tree)?;
+        }
+        Ok(tree)
     })
 }
 
@@ -149,10 +170,20 @@ fn run<T, F: FnOnce() -> T>(job: &std::sync::Mutex<Option<F>>) -> Option<T> {
 /// fetches a subresource — file, http or any other scheme — for an SVG image, so a
 /// non-`data:` `href` resolves to nothing by construction: usvg's default string
 /// resolver (which reads the filesystem) is never installed.
-fn image_options() -> usvg::Options<'static> {
+fn image_options(
+    failure: std::sync::Arc<std::sync::Mutex<Option<SvgResourceError>>>,
+) -> usvg::Options<'static> {
     usvg::Options {
         image_href_resolver: usvg::ImageHrefResolver {
-            resolve_data: Box::new(resolve_data_image),
+            resolve_data: Box::new(move |mime, data, options| {
+                match resolve_data_image(mime, data, options) {
+                    Ok(image) => image,
+                    Err(error) => {
+                        *failure.lock().expect("SVG resolver failure lock") = Some(error);
+                        None
+                    }
+                }
+            }),
             resolve_string: Box::new(|_, _| None),
         },
         ..usvg::Options::default()
@@ -166,15 +197,37 @@ fn resolve_data_image(
     mime: &str,
     data: std::sync::Arc<Vec<u8>>,
     options: &usvg::Options,
-) -> Option<usvg::ImageKind> {
-    // usvg treats image/svg+xml, and text/plain that is not a PNG or JPEG, as SVG.
-    let raster = [&b"\x89PNG"[..], b"\xFF\xD8", b"GIF8", b"RIFF"]
-        .iter()
-        .any(|magic| data.starts_with(magic));
-    if !raster || mime == "image/svg+xml" {
-        parse_xml(&data)?;
+) -> Result<Option<usvg::ImageKind>, SvgResourceError> {
+    // Reuse the shared byte classifier and usvg's signature-based resolver: MIME
+    // aliases such as img/png do not change the embedded image's actual format.
+    let raster = matches!(
+        crate::image::sniff(&data),
+        Some(
+            crate::image::Format::Png
+                | crate::image::Format::Jpeg
+                | crate::image::Format::Gif
+                | crate::image::Format::WebP
+        )
+    );
+    if raster && mime != "image/svg+xml" {
+        if resources::raster_bytes(&data)?.is_none() {
+            return Ok(None);
+        }
+        return Ok(usvg::ImageHrefResolver::default_data_resolver()(
+            "text/plain",
+            data,
+            options,
+        ));
     }
-    usvg::ImageHrefResolver::default_data_resolver()(mime, data, options)
+    // Every possible nested SVG still passes the root and depth checks first.
+    let Some(document) = parse_xml(&data) else {
+        return Ok(None);
+    };
+    let prepared = custom_paint::prepare(&document)?;
+    let data = prepared.map_or(data, |source| std::sync::Arc::new(source.into_bytes()));
+    Ok(usvg::ImageHrefResolver::default_data_resolver()(
+        mime, data, options,
+    ))
 }
 
 /// The XML document of an SVG image: UTF-8 XML (DTDs allowed, as usvg parses) whose
@@ -387,14 +440,29 @@ fn bounded_axis(len: f32, scale: f32) -> Option<u32> {
 /// rejected by `oversize`.
 #[must_use]
 pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Image> {
-    let tree = parse(bytes)?;
-    let (width, height) = pixel_size(css_size(&tree), scale, oversize)?;
+    rasterize_checked(bytes, scale, oversize).ok().flatten()
+}
+
+/// Rasterize as [`rasterize`], preserving a typed embedded-raster budget failure.
+pub fn rasterize_checked(
+    bytes: &[u8],
+    scale: f32,
+    oversize: Oversize,
+) -> Result<Option<Rgba8Image>, SvgResourceError> {
+    let Some(tree) = parse_checked(bytes)? else {
+        return Ok(None);
+    };
+    Ok(rasterize_tree(&tree, scale, oversize))
+}
+
+fn rasterize_tree(tree: &usvg::Tree, scale: f32, oversize: Oversize) -> Option<Rgba8Image> {
+    let (width, height) = pixel_size(css_size(tree), scale, oversize)?;
     let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
     // Scale the unit SVG up to the oversampled buffer, so the transform (and thus
     // the output) depends only on `scale` and the input. A clamped axis scales the
     // whole image down into the clamped raster instead (Chrome draws all of it into
     // the box; turbo-dom#198).
-    let (css_w, css_h) = css_size(&tree);
+    let (css_w, css_h) = css_size(tree);
     let fit = |px: u32, css: f32| {
         if (css * scale).ceil() > MAX_DIM as f32 {
             px as f32 / css
@@ -403,7 +471,7 @@ pub fn rasterize(bytes: &[u8], scale: f32, oversize: Oversize) -> Option<Rgba8Im
         }
     };
     let transform = tiny_skia::Transform::from_scale(fit(width, css_w), fit(height, css_h));
-    on_svg_stack(|| resvg::render(&tree, transform, &mut pixmap.as_mut()));
+    on_svg_stack(|| resvg::render(tree, transform, &mut pixmap.as_mut()));
     let mut rgba = Vec::with_capacity((width as usize) * (height as usize) * 4);
     for px in pixmap.pixels() {
         // `demultiply` recovers straight (non-premultiplied) colour.

@@ -6,6 +6,7 @@ mod blink_advance;
 #[cfg(feature = "bundled-fonts")]
 mod bundled;
 mod font;
+mod unicode_range;
 pub(crate) use font::guessed_rtl;
 mod inline;
 mod platform_fallback;
@@ -20,3 +21,4 @@ pub use font::{
 pub use inline::{layout_text, Align, LineBox, TextStyle, WhiteSpace};
 pub use registry::{FontRegistry, SystemFontPolicy};
 pub use transform::{CaseLocale, CaseTransform, TextTransform};
+pub use unicode_range::parse_unicode_range;

@@ -16,6 +16,8 @@ export type ParserMode = 'wasm' | 'native' | 'auto';
 export type CustomElementState = 'undefined' | 'failed' | 'uncustomized' | 'precustomized' | 'custom';
 
 export interface EnvironmentOptions {
+  /** Per-environment DOM runtime. Defaults to js. The rust option requires a future Node browser-env binding. */
+  domBackend?: 'js' | 'rust';
   /** Parser selection, applied process-wide before the first parse. */
   parser?: ParserMode;
   /** The document URL (default `http://localhost/`). */

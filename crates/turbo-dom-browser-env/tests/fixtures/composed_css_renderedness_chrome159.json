@@ -1,0 +1,607 @@
+{
+  "browser": "159.0.8154.6",
+  "casesSha256": "217cd122e5b69ed72b587974cb983860782b02d0f58e83530864589d8dff50fc",
+  "htmlSha256": "44d0383fc4202fc1a4b78ef519c3bf9ac313b81aa76d4e62b14c4050ba8a30e3",
+  "probeSha256": "6fedf0bd4f0e1ca9656a93e6ea062eb114d76acfc8dfc13e622abba74bd6e95a",
+  "rows": [
+    {
+      "id": "open-host",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "closed-host",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nested-open-closed",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-outer",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-outer",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-inner",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-inner",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assigned-closed-slot",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-slot",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-slot",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-host",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "unassign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "reassign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "initially-unassigned-light",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "assign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "unassign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "suppressed-fallback",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "fallback",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "suppress-fallback",
+          "targets": [
+            {
+              "id": "fallback",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-fallback",
+          "targets": [
+            {
+              "id": "fallback",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-slot",
+          "targets": [
+            {
+              "id": "fallback",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-slot",
+          "targets": [
+            {
+              "id": "fallback",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "manual-closed-slot",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "assign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "unassign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "reassign",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide-slot",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-slot",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "presented-display-important",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "show-animation-over-none",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "important-none",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "remove-important",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cancel-show",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "display-exit-transition",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "exit-midpoint",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "exit-end",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foreign-manual-assignment",
+      "steps": [
+        {
+          "id": "initial",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "foreign-node",
+          "targets": [
+            {
+              "id": "target",
+              "css": 0,
+              "waapi": 1,
+              "cssNames": []
+            }
+          ]
+        },
+        {
+          "id": "restore-target",
+          "targets": [
+            {
+              "id": "target",
+              "css": 1,
+              "waapi": 1,
+              "cssNames": [
+                "probe"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

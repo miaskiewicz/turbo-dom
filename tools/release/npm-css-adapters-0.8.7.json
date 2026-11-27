@@ -1,0 +1,116 @@
+{
+  "scope": "additive JS CSS adapter checkpoint; published GCS default unchanged; #296 remains open",
+  "base": "e659fb00",
+  "toolchain": "Rust1.98.0, ONE own-target compiler job",
+  "validation": {
+    "freshPlainNativeAndNodeWebWasmParserBuild": true,
+    "tests": 884,
+    "passed": 884,
+    "failed": 0,
+    "skipped": 0,
+    "runtimeCoverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.63
+    },
+    "originalFloorsUnchanged": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.3
+    },
+    "jsComplexityMax": 9,
+    "jsComplexityPassed": true,
+    "diffCheckPassed": true
+  },
+  "performance": {
+    "ownABBA": {
+      "baseline": {
+        "injectionNs": 14773.32,
+        "rtlNs": 216242.22666666665
+      },
+      "candidate": {
+        "injectionNs": 14740,
+        "rtlNs": 221751.66666666666
+      }
+    },
+    "allRunsGcsUntouched": true,
+    "childReversedPairs": {
+      "processes": 12,
+      "baseline300AppendUs": 14.91,
+      "unarmedUs": 15.597,
+      "otherDocTrackedUs": 15.257,
+      "armedUs": 241.28
+    },
+    "unarmedObservationAllocationsAndTraps": 0,
+    "sheetHeapBytes": {
+      "baseline": 104,
+      "candidate": 104
+    },
+    "claims": "No zero-cost or speedup claim; near-baseline repeated unarmed controls, explicit armed cost.",
+    "historicalEvidence": {
+      "original52x": {
+        "summaryPreserved": true,
+        "rawPerRunJsonPreserved": false,
+        "reason": "The harness reused its JSON path during the final rerun. Original summary log and frozen source manifests survive; lost raw samples were not reconstructed.",
+        "summaryLog": "js-checkpoint-performance.log",
+        "baseline300AppendNs": 21136.68,
+        "candidate300AppendNs": 1108286.68
+      },
+      "independentFrozenSourceReplay": {
+        "record": "JS-CHECKPOINT-FROZEN-RED-REPLAY.json",
+        "medians": {
+          "baseline": {
+            "injectionNs": 14490,
+            "rtlNs": 220720.56
+          },
+          "candidate": {
+            "injectionNs": 694301.68,
+            "rtlNs": 205169.44
+          }
+        },
+        "allSamplesPreserved": true,
+        "sourceHashVerifiedAgainstOriginalFrozenManifest": {
+          "src/runtime/dom.mjs": "c0c1ff849cd9298fb32f9eae8613fb47349edbab19e92151f2e7061d7b942bca",
+          "src/runtime/cssom.mjs": "74f04915ea52c13ca86aef50eb83f655625352395f7526e0d33f00dc0810c774",
+          "src/runtime/cssom-state.mjs": "ea388382e20db4edaa23a27cb7fae587c49b48ad6a724030ca66b5931d78208c"
+        },
+        "label": "Independent replay, not the original raw samples."
+      },
+      "later10xPartialOptimization": "Separate child raw receipts retained; rejected and not landed.",
+      "harnessFix": "Explicit unique output path with exclusive creation prevents overwriting previous receipts."
+    }
+  },
+  "cacheProof": "Actual Rust class red-to-blue after pre-arm plain cssText edit despite unchanged document stamp; exact fingerprint every read, two compilations/preparations/resolves across four reads; unchanged warm reads add zero Rust calls. No default/runtime cutover claimed.",
+  "files": {
+    "scripts/css-selector-program-chrome-control.mjs": "b26a5c0b46435d689a479e0910efb59eb9af3a24d232193a4dc90bc79db8f23b",
+    "src/runtime/css-artifact.mjs": "7d21cbf22c2bad400ada42b128e830367d954b7985078256ad96b7189340da27",
+    "src/runtime/css-backend.mjs": "4216cd8bcb8f50de0d96e5d3ec8525a6c0b5143be7eab560acb5cbcea30c5b5b",
+    "src/runtime/css-computed-proxy.mjs": "686d2d8df35bbe6a60af6214fbd2dee127298c5f2ffaf4916f2ca09158375552",
+    "src/runtime/css-invalidation.mjs": "f6dace27b08fe9c315729ca059686ff9a5a2796fe4597d9900bf6baf3b08ff2c",
+    "src/runtime/css-match-facts.mjs": "3704710968254b12095586148c6a8d120367ce4b1646a709eded23282c0c30e8",
+    "src/runtime/css-sources.mjs": "7d0a0c7387a16fce221e559c4b3e1331ac9e1a64d36b3aec2c34819eeb3927ce",
+    "src/runtime/cssom-state.mjs": "ebebb7e8dadb28e61830a4c717643310536b0da7bc83c581f62d7f753c7c9d2f",
+    "src/runtime/cssom.mjs": "0396961f1315e19c334385e1fdecbbab356beb97524eaa6a4454528ecd0f4bd6",
+    "src/runtime/dom.mjs": "ec3877703c62c75026a33c2360bcdd5bf640590df383b31385bf4d8547b97afe",
+    "src/runtime/parser.mjs": "f9d742cdae9234aa692cc213a17a2e579f334c859de064c477746222ce740b38",
+    "src/runtime/selectors.mjs": "683cb795306d4aab9296c18c0bcbbe6ad0c8a56dbc054dd58798ef2f54ebc49f",
+    "test/css-artifact.test.mjs": "74678a08df7abc94043c4af31cd00578d9a9198ab1f8b63967ef3873c16862e4",
+    "test/css-backend.test.mjs": "28aa4ef8597a56cd691f12a27943b3154dddc85bd3507ef868fb2032608667e3",
+    "test/css-computed-proxy.test.mjs": "2fb4182e1a6455a7c3edeb545862093315aa0a20ca69e7992c36f923c655c378",
+    "test/css-focus-state.test.mjs": "aa19ce9cc597b36a2d6567561b8fb52587d24797485dde14a65c816f710b79ab",
+    "test/css-invalidation-initialization.test.mjs": "babf8f8eb937b27ceaafd149eab1c0a13a9c5737590d926de415a21f9d8cbfbd",
+    "test/css-invalidation-rtl.test.mjs": "79abaa772365c6f3d1083486fedc9270e0b5e5da59641ad375b07592199e666f",
+    "test/css-invalidation.test.mjs": "b7dd5c0456efd57c4bda09fe44cf526e762c2be6418ddf65119f234d200d4f58",
+    "test/css-match-facts.test.mjs": "f815e953f6e46f4428151c5567a941134ea59e12301d5c96e4fb6c5d6b9909e9",
+    "test/css-selector-program.test.mjs": "61207b8e2cd797e107c6319b7b5a126fd7907f9099caff92a9e37dc7e7cf6e39",
+    "test/css-sources.test.mjs": "1f9a76072c29cb18396a052b73cbf38421f10cb7e850b64e073918e57ffd7161",
+    "test/cssom-capability.test.mjs": "18f1e27636617c35e34af5df2d620e3b0cb1b3b443c3f2cf084c21cf3718dcc9",
+    "test/cssom-document-modes.test.mjs": "2b3e31795934d8036434ced87ad1e366810c85af4f7f331f54ee88a16256b6ed",
+    "test/cssom-invalidation.test.mjs": "bfed5e3aa1669c7455262cdd7818800fa9e2908045546c954cb89fb76c8d2279",
+    "test/cssom-lifecycle.test.mjs": "ebdb6afb6b58aaede8eb6b4a59da18bb1ef326b803755d6cad3452e56da36873",
+    "test/fixtures/css-selector-program-cases.json": "48fc3d152529e8aae900a112ea3aef99f55fda59f0a6f0fcdd49a49c52d69a4c",
+    "test/fixtures/css-selector-program-probe.mjs": "a6c4fa6e238add250d08a514de70e431ec894547a8cac7fceda8c75e4d659619",
+    "test/fixtures/css_selector_program_chrome159.json": "406aa3bfa6769277179010b295af77872e9c1408290bdaac552ae3893aa097c9",
+    "tools/release/npm-css-adapters-0.8.7.md": "fee85ea38cb067e1f27784e5d51b8375852056f2f303c5fe58648f6928ded30d"
+  }
+}

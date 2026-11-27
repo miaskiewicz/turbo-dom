@@ -177,7 +177,7 @@ const NAMING_FUNCTIONS: &[&str] = &[
 
 /// A math function Chrome simplified to one term (its text spells `calc(...)`): that term's
 /// unit and value.
-fn math_value(comp: &Comp) -> Option<(String, f64)> {
+pub(super) fn math_value(comp: &Comp) -> Option<(String, f64)> {
     if !comp.is_math() || !comp.text.starts_with("calc(") {
         return None;
     }
@@ -754,6 +754,7 @@ fn rgb_hsl_valid(name: &str, inner: &[Comp]) -> bool {
     }
     if commas > 0 {
         rgb_hsl_legacy_comma_valid(inner, commas)
+            && (!name.starts_with("rgb") || rgb_legacy_channel_types_match(inner))
     } else {
         rgb_hsl_modern_space_valid(inner)
     }
@@ -787,6 +788,24 @@ fn rgb_hsl_legacy_comma_valid(inner: &[Comp], commas: usize) -> bool {
             .iter()
             .enumerate()
             .all(|(index, comp)| (comp.kind == Kind::Comma) == (index % 2 == 1))
+}
+
+// Legacy RGB channels share one number/percentage grammar. Alpha is deliberately
+// excluded, and modern space syntax may mix the two. Reuse canonical math type
+// inference so a percentage-valued calc cannot evade the comma-form constraint.
+fn rgb_legacy_channel_types_match(inner: &[Comp]) -> bool {
+    let mut channel_type = None;
+    for comp in inner.iter().step_by(2).take(3) {
+        let current = calc_type(std::slice::from_ref(comp));
+        if !matches!(current, Some(CalcType::Number | CalcType::Percent)) {
+            continue;
+        }
+        if channel_type.is_some() && channel_type != current {
+            return false;
+        }
+        channel_type = current;
+    }
+    true
 }
 
 /// Modern space syntax: three space-separated channels, optionally `/ <alpha>`.
@@ -1423,6 +1442,11 @@ impl Comp {
             Kind::Hash(value) => hex_color(value),
             Kind::Ident(_) => {
                 let name = self.ident()?;
+                // A decoded CSS identifier's non-ASCII whitespace is part of its
+                // name, not padding the legacy color utility may trim away.
+                if name.chars().any(char::is_whitespace) {
+                    return None;
+                }
                 (SYSTEM_COLORS.contains(&name.as_str())
                     || canonicalize_color(&name, true).is_some())
                 .then_some(name)
@@ -1460,7 +1484,7 @@ impl Comp {
     }
     pub(super) fn dashed_ident(&self) -> Option<String> {
         match &self.kind {
-            Kind::Ident(name) if name.starts_with("--") && name.len() > 2 => Some(name.clone()),
+            Kind::Ident(name) if name.starts_with("--") => Some(name.clone()),
             _ => None,
         }
     }
@@ -1471,7 +1495,7 @@ impl Comp {
     }
 }
 
-fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
+pub(super) fn visit(comps: &[Comp], callback: &mut dyn FnMut(&Comp)) {
     for comp in comps {
         callback(comp);
         if let Kind::Function(_) = comp.kind {

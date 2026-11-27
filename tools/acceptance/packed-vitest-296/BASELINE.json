@@ -1,0 +1,259 @@
+{
+  "status": "Step4 PENDING default switch",
+  "baseline": {
+    "commit": "0fa17f575df68a1f9869bc7d1c4e061d35391e68",
+    "tarballSha256": "0dbee9c246dd9121cdee768807ab44b1f94d5528dc224d56606f5226667066cf",
+    "parserSha256": "f6e8ba0eca1ce5ac298b662404e748311ea66bbb5f495538e0a29238b0e94d32",
+    "scope": "local pack ignore-scripts; copied actual plain parser; default remains legacy; no publication"
+  },
+  "versions": {
+    "vitest": "4.1.11",
+    "happy-dom": "20.14.5",
+    "jsdom": "29.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7"
+  },
+  "tests": {
+    "common": {
+      "turbo-native": {
+        "passed": 29,
+        "failed": 0
+      },
+      "turbo-wasm": {
+        "passed": 29,
+        "failed": 0
+      },
+      "jsdom": {
+        "passed": 29,
+        "failed": 0
+      },
+      "happy-dom": {
+        "passed": 28,
+        "failed": 1,
+        "difference": "wrapping label first control: getByLabelText Street differs; assertion unchanged"
+      }
+    },
+    "strictCss": "expected legacy default RED, assertions unchanged, no private hook"
+  },
+  "sources": {
+    "tools/acceptance/packed-vitest-296/mode-audit.mjs": "99cab4e305785e74df0d73f2cf09a61d2fb84c69f831e0d7fa429dcd9fb8bd8d",
+    "tools/acceptance/packed-vitest-296/css-acceptance.test.mjs": "21ffbab7e3ce46a0c8b9d8d74955da154e642b538a362036724271c05c62e635",
+    "tools/acceptance/packed-vitest-296/vitest.config.mjs": "a73e672c61912e0eb9425fb2f2aae0e0670c258cc138d0df056cc191f7b5068a",
+    "tools/acceptance/packed-vitest-296/shared/dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+    "tools/acceptance/packed-vitest-296/shared/inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+    "tools/acceptance/packed-vitest-296/shared/buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+    "tools/acceptance/packed-vitest-296/shared/setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c",
+    "tools/acceptance/packed-vitest-296/shared/bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+    "tools/acceptance/packed-vitest-296/shared/reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+    "tools/acceptance/packed-vitest-296/shared/forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+    "tools/acceptance/packed-vitest-296/shared/buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd"
+  },
+  "resolvedExport": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs",
+  "audit": "Seven copied test bodies and setup unchanged; only unused source-relative vitest config omitted. No env pragmas, parser/GCS overrides or product source imports. mode-audit uses public turbo-dom/runtime getParser only. Tarball actual name @miaskiewicz/turbo-dom, consumer local alias turbo-dom exercises exact same exports. Local directory extraction is real npm-install shape, dependency links read-only individually. No install/network/Rust/publication.",
+  "strictCssObservations": {
+    "turbo-native": {
+      "color": "",
+      "width": ""
+    },
+    "turbo-wasm": {
+      "color": "",
+      "width": ""
+    },
+    "happy-dom": {
+      "color": "",
+      "width": ""
+    },
+    "jsdom": {
+      "color": "rgb(0, 0, 0)",
+      "width": "auto"
+    }
+  },
+  "actualModeAudits": [
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "wasm",
+      "parserKeys": [
+        "parse",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    },
+    {
+      "requested": "native",
+      "parserKeys": [
+        "parse",
+        "parseRaw",
+        "parseBuffer",
+        "parseFragment"
+      ],
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/turbo-dom-parser.darwin-arm64.node"
+      ],
+      "environment": "file:///Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-packed-vitest-296/.evidence/step4/consumer/node_modules/turbo-dom/src/environment/vitest.mjs"
+    }
+  ]
+}

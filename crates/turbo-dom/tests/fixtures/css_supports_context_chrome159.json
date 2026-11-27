@@ -1,0 +1,76 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "03e78248aabf0057ea5f0ebf50a5f3f3790622c4142fd840ac4b0e62afb8dd1e",
+  "results": [
+    {
+      "name": "color",
+      "value": "red !important",
+      "supports": false,
+      "condition": true,
+      "held": ""
+    },
+    {
+      "name": "color",
+      "value": "var(--x) !important",
+      "supports": true,
+      "condition": true,
+      "held": "var(--x)"
+    },
+    {
+      "name": "color",
+      "value": "red; color:blue",
+      "supports": false,
+      "condition": false,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "",
+      "supports": false,
+      "condition": true,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "red",
+      "supports": true,
+      "condition": true,
+      "held": "red"
+    },
+    {
+      "name": "--",
+      "value": "red",
+      "supports": false,
+      "condition": false,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "var()",
+      "supports": false,
+      "condition": false,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "red !important",
+      "supports": false,
+      "condition": true,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "red;blue",
+      "supports": false,
+      "condition": false,
+      "held": ""
+    },
+    {
+      "name": "--x",
+      "value": "var(--a, if(red))",
+      "supports": false,
+      "condition": false,
+      "held": ""
+    }
+  ]
+}

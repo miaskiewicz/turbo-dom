@@ -1860,6 +1860,68 @@ mod tests {
     }
 
     #[test]
+    fn empty_multicol_pass_has_no_flow_or_column_rule_height() {
+        let fonts = crate::test_support::fixture_fonts();
+        let images = crate::layout::ImageCtx {
+            resolver: &crate::NoImages,
+            body_height: None,
+        };
+        let mut diagnostics = crate::Diagnostics::default();
+        let mut ctx = Ctx {
+            fonts: &fonts,
+            images: &images,
+            diags: &mut diagnostics,
+            abs_cb_x: 0.0,
+            abs_cb_y: 0.0,
+            abs_cb_w: 200.0,
+            abs_cb_h: 0.0,
+            abs_cb_h_known: false,
+            cb_h: 0.0,
+            cb_h_known: false,
+            quirks_parent: None,
+            root_w: 200.0,
+            root_h: 0.0,
+            icb_h: 0.0,
+            abs_cb_icb: true,
+            live_geometry: false,
+            used_metrics: None,
+            html_font_metrics: false,
+            html_font_scale: None,
+            original_units: None,
+            native_transforms: None,
+            text_capture: None,
+            floats: Vec::new(),
+            table_rows: None,
+            dropped_end_margins: std::collections::HashSet::new(),
+            sticky_pending: Vec::new(),
+            sticky: super::super::sticky::StickyState::recording(false),
+            writing: super::super::writing::WritingMode::default(),
+        };
+        let container = container(&[
+            ("column-count", "2"),
+            ("column-gap", "0"),
+            ("column-rule", "1px solid red"),
+        ]);
+        let style = container.resolved(ResolveCtx {
+            parent_font_size: 16.0,
+            cb_width: 200.0,
+        });
+        let (fragments, height) =
+            layout_multicol(&container, &[], 0.0, 0.0, 200.0, &style, &mut ctx);
+        assert!(fragments.is_empty());
+        assert_eq!(height, 0.0);
+        let child = super::super::boxgen::anonymous_box(
+            super::super::fragment::NodeId(1),
+            cs(&[("height", "12px"), ("background", "red")]),
+            super::super::boxgen::BoxKind::Block(Vec::new()),
+        );
+        let (fragments, height) =
+            layout_multicol(&container, &[child], 0.0, 0.0, 200.0, &style, &mut ctx);
+        assert!(!fragments.is_empty());
+        assert_eq!(height, 6.0);
+    }
+
+    #[test]
     fn column_rule_fragments_emits_one_per_gap_with_declared_width() {
         // Three columns, non-zero gap, a solid 2px rule centered in each gap.
         let c = container(&[

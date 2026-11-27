@@ -12,6 +12,12 @@ surface with **no JavaScript DOM implementation**:
   instructions, XPath (fragment and shadow-root contexts included), CSS animations and
   transitions in `getAnimations()`, the CSSOM grouping / condition rule interfaces
   (`CSSContainerRule`, `CSSMediaRule`, `CSSLayerBlockRule`, …).
+- `DOMParser.parseFromString` for HTML and all four XML MIME types, with inert
+  native documents, UTF-16 preservation and Trusted Types enforcement;
+- same-document `history.pushState` / `replaceState` on the standalone default
+  window, with cloned state and synchronized Location fields. Back/forward traversal
+  uses the host's captured task scheduler; reloading requires a navigation host.
+  Embedders that supply navigation objects retain their own History and Location.
 - a `getComputedStyle` cascade that orders rules by Selectors 4 specificity, cascade
   layer and `@scope` proximity, and applies the rules nested in `@media`, `@supports`,
   `@layer` and `@scope` (`@container` / `@starting-style` children never apply);
@@ -48,7 +54,7 @@ turbo-dom-browser-env = "0.8"                       # embedders: features = ["ho
 turbo-dom-browser-env = { version = "0.8", features = ["test-support"] }
 ```
 
-MSRV 1.91. v0.8.6 requires `turbo-dom-v8` `~150.4.2`, which downloads the prebuilt rusty_v8
+MSRV 1.91. The v0.8.7 candidate requires `turbo-dom-v8` `~150.4.2`, which downloads the prebuilt rusty_v8
 150.4.0 static library unless `RUSTY_V8_ARCHIVE` points at one. A dependency graph holds
 exactly one turbo-dom-v8 (`links = "rusty_v8"`).
 
@@ -133,12 +139,61 @@ Also in the crate:
   - `current_document_id`, `document_id_of`, `is_browsing_context`,
     `current_document_context`, `retire_context`;
   - `interface_record`, `cascade_policy`;
+  - `prepare_selector(scope, native_root, source)`: match-only canonical form,
+    popover, dialog, interest and view-transition state projection for native
+    stylesheet matchers. Retain authored specificity and scope metadata; never
+    rank the projected structural predicate. `SelectorPreparationError` distinguishes
+    invalid syntax, unavailable owner/state and pending exceptions. The genuine
+    root's creation realm is entered under explicit microtask checkpoints, without
+    guest getters or layout. `PreparedSelector::stamp` / `selector_state_stamp`
+    record capture provenance, not a standalone cache permission: fresh capture,
+    owner/composition and all host invalidation guards remain required. Connected
+    checkpoint reuse may separately justify detached-storage equivalence; local
+    or disconnected scopes still require full native-version validation.
+    `PreparedSelector::is_volatile()` marks interest/view-transition state, which
+    has no invalidation epoch and must be prepared afresh for each read. Stamp or
+    checkpoint equality cannot justify cached targets/geometry for these selectors;
+    a fresh complete projection-equality proof still needs every other host guard;
+  - `cached_own_box(scope, element)` and `CachedOwnBox`: cache-only own
+    `display:none` admission for visual bounding/client rectangles;
+  - `document_checkpoint(scope, native_document)` and opaque `DocumentCheckpoint`:
+    conservative connected native-input identity for host solved-layout cache reuse;
   - `css_effect_lifecycle(scope, element)` and `CssEffectSnapshot`: trusted per-element
     CSS/Web Animations lifecycle inspection for native geometry (see below);
   - re-exports of `Tree`, `Handle`, `StylePolicy`, `zoom_value` and the snapshot types.
 - `test_support` has 98 constants named after their files (for example
   `KEY_ORDER_PROBE_JS`), plus `FILES` and `frame_read_should_throw`. The files ship in
   the package; consumers reference the constants and never copy the files.
+
+**Cache-only visual rectangles (#549).** `cached_own_box(scope, element)` returns
+`CachedOwnBox::DisplayNone` only when a valid private computed-style snapshot
+proves invariant own `display:none`. `Unknown` retains the embedder's normal
+geometry path and errors. Cold/stale entries, animation, uncertain CSS groups,
+foreign or detached ownership, shadow trees, `display:contents` and ancestor-only
+hiding do not grant a proof. Capability metadata considers potentially applicable
+declarations even inside currently inactive media/supports branches. The probe
+does not evaluate media, recompute style, inspect animation lifecycle, call layout
+providers or access guest getters. Use explicit microtask checkpoints for the
+isolate and any attached context queue, and consume the result synchronously
+without guest reentry. It permits empty bounding/client rectangles only, never
+substitutes for used-size, client, offset, scroll or viewport metrics. The public
+offline capture example and validation receipt are documented in
+[`cached-own-box-0.8.7.md`](../../tools/release/cached-own-box-0.8.7.md).
+
+**Connected-document checkpoints (#552).** `document_checkpoint(scope, native_document)`
+returns an opaque `Some` token only for the exact native document and its live creation
+realm under explicit microtask checkpoints. Compare fresh tokens to recognize audited
+unrelated detached construction. `None` (including uncertain native shadow ownership, inert/retired
+owners and unaccounted native versions) keeps ordinary full-version handling. Connected
+attribute/text/child/form/custom-state mutations, global invalidation and storage
+collection invalidate the token conservatively. Open and closed shadow trees use
+native shadow-inclusive ownership; slot/name/light-DOM changes invalidate as connected
+mutations. Detached construction remains unrelated even when a connected shadow root
+exists. Malformed or nonreciprocal native shadow mappings never supply proof. It reads no guest properties, cascade,
+resources or layout. The host must retain every CSSOM, live-state, composition,
+resource, viewport and query-admission check. `Tree.version` remains the broad storage
+revision: recapture normally and check that full version before every live layout;
+a checkpoint never grants permission to read an outdated `LiveCapture`.
 
 **Native geometry and animations (#507).** With `host-internals`,
 `css_effect_lifecycle(scope, element)` enters the wrapper's creation realm and native

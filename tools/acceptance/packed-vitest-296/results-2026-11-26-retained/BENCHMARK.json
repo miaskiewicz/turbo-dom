@@ -1,0 +1,83 @@
+{
+  "nativeTarball": "e7384e63f2e6935649e3d35503d6a3b38d3a7b130c1106a43bedea1364245729",
+  "nativeAddon": "493ccd5a53a94cec083cc9f71df130b16a2674d263735860ae552968607dd7ff",
+  "previousHeldTarball": "ab957dc31a4033fe851675c8785500966c67169e92cca49031e5fbcff02ca0b4",
+  "legacyTarball": "0dbee9c246dd9121cdee768807ab44b1f94d5528dc224d56606f5226667066cf",
+  "scope": "Local Darwin arm64 release-profile artifact; default cutover held. Fresh processes with 28 common real packed React/DOM tests, identical fixtures and dependencies. Each group compares the arithmetic mean of its two B vs two A runs. Reported percentage is median of seven block ratios. Callback times are summed across tests per process.",
+  "tests": [
+    {
+      "mode": "native",
+      "passed": 1,
+      "receipts": 1,
+      "reportSha256": "08d6dbdf42179901196a4907cb4fa118771198a9a4c6a49e84a5e51138aead9a",
+      "suite": "strict",
+      "tests": 1
+    },
+    {
+      "mode": "native",
+      "passed": 29,
+      "receipts": 7,
+      "reportSha256": "14142b5212b657e60bd91a1d833133ce5204ebc40dc4769aa427478e2796418f",
+      "suite": "compat",
+      "tests": 29
+    },
+    {
+      "mode": "wasm",
+      "passed": 1,
+      "receipts": 1,
+      "reportSha256": "b4d95ab909e0278da9679470a92ab250ebd210819e5d24fa6cc3af4b31002fda",
+      "suite": "strict",
+      "tests": 1
+    },
+    {
+      "mode": "wasm",
+      "passed": 29,
+      "receipts": 7,
+      "reportSha256": "72d26e168b09f280e3a9ee892376b03010041c9fca5563820ea8bab09c25b110",
+      "suite": "compat",
+      "tests": 29
+    }
+  ],
+  "comparisons": {
+    "prior": {
+      "wallMedianMs": {
+        "base": 1688.74,
+        "retained": 1680.7
+      },
+      "wallPercent": -0.30755130533217656,
+      "callbackPercent": -3.072217782779074,
+      "wins": 4,
+      "winsOverHalfPercent": 3,
+      "blocks": [
+        5.248544543096556,
+        2.9099984336417695,
+        -2.054679726218256,
+        1.3250618520941115,
+        -2.7425039175386523,
+        -0.30755130533217656,
+        -9.883802737850711
+      ],
+      "rawReceipt": ".evidence/retained-final-pack/abba-prior/RESULT.json"
+    },
+    "legacy": {
+      "wallMedianMs": {
+        "base": 1572.51,
+        "retained": 1735.91
+      },
+      "wallPercent": 10.712583322085223,
+      "callbackPercent": 83.10879991520825,
+      "wins": 0,
+      "winsOverHalfPercent": 0,
+      "blocks": [
+        10.712583322085223,
+        11.110275967819327,
+        8.416464490729014,
+        9.463609628227232,
+        10.262667846202955,
+        11.38545622708893,
+        10.852696883006164
+      ],
+      "rawReceipt": ".evidence/retained-final-pack/abba-legacy/RESULT.json"
+    }
+  }
+}

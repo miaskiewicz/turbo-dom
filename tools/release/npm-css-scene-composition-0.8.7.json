@@ -1,0 +1,54 @@
+{
+  "base": "12e5629ff7aa65ed97523d2d7541bf7575843f8b",
+  "scope": "Private composed Scene protocol; no default adapter wiring",
+  "sources": {
+    "src/runtime/css-shared-scene.mjs": "1603be8385c7b91704b1cf8b5b1fe1a604b8af03fb152ddaff05e39e4f3b16bf",
+    "src/runtime/css-shared-composition.mjs": "e323412294d9006b77b0499445f4d48524a23a699223ef36efbc94d231ab8ace",
+    "test/css-shared-scene.test.mjs": "b5d2374aadb7d0471650b3134c90c72d9e40fa2b164ab2bf18338b9a8c38c49c",
+    "test/css-shared-composition.test.mjs": "18ef7bbabb0c9bccabcc29e3cbe07edede1c030d599df8560ef8501325177bed"
+  },
+  "gates": {
+    "node": {
+      "passed": 999,
+      "skipped": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.55
+    },
+    "vitest": 29,
+    "jest": 2,
+    "complexityLimit": 9
+  },
+  "actualComponents": {
+    "native": "9e3288d7924a9fecfb35c605eb57ecdca94656b3b8cc36cdc2e79b9a56d33709",
+    "nodeWasmAndWeb": "2e70c697ffd9b9ef07fff3dd104f3d7faebfeca1bb65e32bf4b902da6e577680",
+    "requestedSource": 6,
+    "contentWidth": 123,
+    "contentHeight": 20
+  },
+  "limitations": [
+    "Actual component uses genuine private captured snapshot but deliberate computed Scene inputs, not full cascade/GCS proof.",
+    "Multi-root composition requires explicit internal policy. Missing policy preserves refusal.",
+    "Uncertain text or multiple assignment order requires complete trusted producer metadata; no public slot guessing.",
+    "Excluded requested sources refuse; no fabricated zero/no-box.",
+    "Existing single-root provider behavior preserved.",
+    "No new production DOM capture, native wrapper, environment builder, or default switch."
+  ],
+  "requiredParserBuild": {
+    "command": "RUSTUP_TOOLCHAIN=1.98.0 CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=<exclusive production-target> bash scripts/agent/build-napi.sh",
+    "exitCode": 0,
+    "releaseSeconds": 10.54,
+    "beforeAfterRootCargoAndIndexHashes": "identical"
+  },
+  "chromeComponent": {
+    "browserVersion": "159.0.8154.6",
+    "fixtureSha256": "bfb398e61a32034d446e7e80749d0155ff5eb7cb19c76b027d74e736bd17d6e9",
+    "rect": {
+      "x": 0,
+      "y": 20,
+      "width": 123,
+      "height": 20
+    },
+    "sameAsAllThreeSceneComponents": true
+  }
+}

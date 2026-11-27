@@ -172,3 +172,41 @@ fn native_setter_guard_preserves_materialized_termination() {
     catch.reset();
     reset();
 }
+
+#[test]
+fn document_state_stays_at_one_address_across_owner_switches() {
+    tests::init_v8();
+    let isolate = &mut tests::new_isolate();
+    let mut stable = true;
+    {
+        v8::scope!(let scope, isolate);
+        let main = v8::Context::new(scope, Default::default());
+        let child = v8::Context::new(scope, Default::default());
+        let scope = &mut v8::ContextScope::new(scope, main);
+        install_with_html(scope, "<body id=main>main");
+        let main_id = DOM_ID.with(std::cell::Cell::get);
+        let address = with_dom_state(main_id, |state| std::ptr::from_ref(state) as usize).unwrap();
+        let child_id = {
+            let child_scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(child_scope, "<body id=child>child");
+            child.get_slot::<DomContextId>().unwrap().0
+        };
+        for _ in 0..16 {
+            {
+                let _owner = DomScope::enter(child_id);
+                stable &= with_dom_state(main_id, |state| std::ptr::from_ref(state) as usize)
+                    == Some(address);
+                stable &= with_tree(|tree| tree.get_element_by_id("child").is_some()) == Some(true);
+            }
+            stable &= with_dom_state(main_id, |state| std::ptr::from_ref(state) as usize)
+                == Some(address);
+            stable &= with_tree(|tree| tree.get_element_by_id("main").is_some()) == Some(true);
+        }
+        reset();
+    }
+    clear_interface_records(isolate);
+    assert!(
+        stable,
+        "parking a document must move its owner pointer, not its entire state"
+    );
+}

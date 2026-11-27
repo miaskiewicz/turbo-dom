@@ -1,0 +1,9 @@
+# Optional Root CSS context-answer transport
+
+Based on `be833152b3a259601da398911dbe9a40353d8cdf`. Additive `Request.contextAnswers` carries selector/scope rows with required treeScope keys. Missing/null keeps the unchanged legacy path; present requires both nested vectors and empty legacy vectors. Mixed/partial/unknown/duplicate/missing-domain cases remain explicit errors. Context mode never retries or merges legacy answers.
+
+Domains and every answer row/match vector use the existing cumulative quotas. Known declared contexts are accepted even when their sheet uses are inactive/disabled; active-rule projection is not a provenance registry. Existing per-target canonical route validation remains authoritative, and Core consumes only exact prepared-binding context keys. No inferred document/zero context, mutable registry or DOM mirror was added. Existing output/metadata/parent/pseudo fields and resource limits remain unchanged.
+
+Validation: seven focused contracts, full Root CSS69/69, strict native(default napi+css) all-targets and actual wasm32 wasm-bind+css lib, fmt and CC9 pass. Root tests cover legacy byte-equivalence, shared-source context isolation, START/END lookup, inactive/disabled sheets, exact/one-short quotas and typed failures. Full Node980/0 passes100% lines/functions and97.73% branches; Vitest29/Jest2 pass. Actual older immutable native9e328 correctly rejects the new field while its legacy control passes; this RED is distinct from current Rust GREEN.
+
+Required warm build-napi.sh actually passed (Rust1.98/offline/one job,4.77s); generated API, Root source/Cargo and DTO hashes stayed unchanged. Source/log hashes are in JSON. Normal hook runs on commit. No new CSS payload was linked: source-matched native/WASM DTO endpoint probes remain a separate gate, and no such actual-artifact success is claimed here. Core scoped-host semantics6a61 remain an independent increment. No default runtime, Scene or complete #296 claim.

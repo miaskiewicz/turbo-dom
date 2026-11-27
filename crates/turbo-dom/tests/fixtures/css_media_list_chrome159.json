@@ -1,0 +1,126 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "01a3ddfa6c5aab22d442b46a24877a82ee2f266ae7ae1c8b0278f4198a3df970",
+  "results": [
+    {
+      "source": "",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "   ",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "/**/",
+      "matches": true,
+      "media": "",
+      "cssom": ""
+    },
+    {
+      "source": "print and, screen",
+      "matches": true,
+      "media": "not all, screen",
+      "cssom": "not all, screen"
+    },
+    {
+      "source": "screen and, print",
+      "matches": false,
+      "media": "not all, print",
+      "cssom": "not all, print"
+    },
+    {
+      "source": "print, screen and",
+      "matches": false,
+      "media": "print, not all",
+      "cssom": "print, not all"
+    },
+    {
+      "source": "screen, print and",
+      "matches": true,
+      "media": "screen, not all",
+      "cssom": "screen, not all"
+    },
+    {
+      "source": ",screen",
+      "matches": true,
+      "media": "not all, screen",
+      "cssom": "not all, screen"
+    },
+    {
+      "source": "print,",
+      "matches": false,
+      "media": "print, not all",
+      "cssom": "print, not all"
+    },
+    {
+      "source": ",",
+      "matches": false,
+      "media": "not all, not all",
+      "cssom": "not all, not all"
+    },
+    {
+      "source": "screen,,print",
+      "matches": true,
+      "media": "screen, not all, print",
+      "cssom": "screen, not all, print"
+    },
+    {
+      "source": "print and/*x*/, screen",
+      "matches": true,
+      "media": "not all, screen",
+      "cssom": "not all, screen"
+    },
+    {
+      "source": "print, (future(1,2))",
+      "matches": false,
+      "media": "print, (future(1,2))",
+      "cssom": "print, (future(1,2))"
+    },
+    {
+      "source": "not (future(1,2)), screen",
+      "matches": true,
+      "media": "not (future(1,2)), screen",
+      "cssom": "not (future(1,2)), screen"
+    },
+    {
+      "source": "future\\,screen, print",
+      "matches": false,
+      "media": "future\\,screen, print",
+      "cssom": "future\\,screen, print"
+    },
+    {
+      "source": "not futuretype",
+      "matches": true,
+      "media": "not futuretype",
+      "cssom": "not futuretype"
+    },
+    {
+      "source": "not (future-feature:1)",
+      "matches": false,
+      "media": "not (future-feature:1)",
+      "cssom": "not (future-feature:1)"
+    },
+    {
+      "source": "not (future(foo)), print",
+      "matches": false,
+      "media": "not (future(foo)), print",
+      "cssom": "not (future(foo)), print"
+    },
+    {
+      "source": "screen and (width:), screen",
+      "matches": true,
+      "media": "screen and (width:), screen",
+      "cssom": "screen and (width:), screen"
+    },
+    {
+      "source": "print, screen and (width:)",
+      "matches": false,
+      "media": "print, screen and (width:)",
+      "cssom": "print, screen and (width:)"
+    }
+  ]
+}

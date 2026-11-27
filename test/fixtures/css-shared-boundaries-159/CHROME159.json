@@ -1,0 +1,81 @@
+{
+  "browser": "159.0.8154.6",
+  "identity": {
+    "protocolVersion": "1.3",
+    "product": "HeadlessChrome/159.0.8154.6",
+    "revision": "@98a2592026af8d673b9fa83b626ac68bdf4ae78a",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/159.0.8154.6 Safari/537.36",
+    "jsVersion": "15.9.128.1"
+  },
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "casesSha256": "e23abe4541e2249b478e104e8a7ac69e4fafeef74ce01e9cffa9767b7234c9d5",
+  "probeSha256": "b34dff1e1803f5908637509748636d08d20802ba9cde4ec2938d916cde4af275",
+  "results": [
+    {
+      "id": "scope-end-inside",
+      "values": {
+        "color": "rgb(255, 0, 0)"
+      },
+      "authored": ""
+    },
+    {
+      "id": "scope-end-outside",
+      "values": {
+        "color": "rgb(0, 0, 255)"
+      },
+      "authored": ""
+    },
+    {
+      "id": "own-none",
+      "values": {
+        "width": "50%"
+      },
+      "authored": "display: none; width: 50%;"
+    },
+    {
+      "id": "ancestor-none",
+      "values": {
+        "width": "50%"
+      },
+      "authored": "display: block; width: 50%;"
+    },
+    {
+      "id": "ordinary-inline",
+      "values": {
+        "width": "50%"
+      },
+      "authored": "width: 50%;"
+    },
+    {
+      "id": "content-height",
+      "values": {
+        "height": "100px"
+      },
+      "authored": "height: 50%; padding: 10px; border: 2px solid;"
+    },
+    {
+      "id": "border-height",
+      "values": {
+        "height": "100px"
+      },
+      "authored": "height: 50%; box-sizing: border-box; padding: 10px; border: 2px solid;"
+    },
+    {
+      "id": "max-width",
+      "values": {
+        "width": "100px"
+      },
+      "authored": "width: 90%; max-width: 100px;"
+    },
+    {
+      "id": "min-width",
+      "values": {
+        "width": "100px"
+      },
+      "authored": "width: 5%; min-width: 100px;"
+    }
+  ]
+}

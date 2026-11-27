@@ -43,7 +43,7 @@ manual_midpoint = "allow"
 
 [package]
 name = "turbo-dom-parser"
-version = "0.8.6"
+version = "0.8.7"
 edition = "2021"
 description = "html5ever-backed native parser for turbo-dom (Layer 1)"
 # Ships to npm only (napi/wasm addon); never published to crates.io.
@@ -68,6 +68,11 @@ wasm-bindgen = { version = "0.2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }
 
+# Loaded only by the separate lazy CSS payload; the default parser stays independent.
+turbo_dom_core = { package = "turbo-dom", path = "crates/turbo-dom", version = "0.8.7", optional = true }
+turbo_dom_layout = { package = "turbo-dom-layout", path = "crates/turbo-dom-layout", version = "0.8.7", optional = true }
+serde_json = { version = "1", optional = true }
+
 [dev-dependencies]
 # The Chrome 156 control fixture (src/core/conformance_tests.rs).
 serde_json = "1"
@@ -81,6 +86,8 @@ napi-bind = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
 wasm-bind = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 # Phase-1 boundary spike: Rust DOM runtime over the SoA, exported to JS via wasm-bindgen.
 wasm-runtime = ["dep:wasm-bindgen"]
+# Explicit feature for native-css / pkg-css only, never enabled by parser defaults.
+css-backend = ["dep:turbo_dom_core", "turbo_dom_core/computed-style-grammar", "dep:turbo_dom_layout", "dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
 
 # Same clippy pedantic gate as the turbo-dom crate (crates/turbo-dom/Cargo.toml). The
 # allowed lints are intentional for a parser/marshaling layer that bridges f64 and integer

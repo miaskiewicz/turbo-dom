@@ -1,0 +1,96 @@
+{
+  "version": "159.0.8154.6",
+  "sourceSha256": "9d2f734bb47397d0022c50b34c0cf7e2ede1bc4f8488336383c68d503756f612",
+  "results": [
+    {
+      "id": "fresh",
+      "declarations": {},
+      "parent": null,
+      "computed": {
+        "container-name": "none",
+        "container-type": "normal",
+        "writing-mode": "horizontal-tb"
+      }
+    },
+    {
+      "id": "parent",
+      "declarations": {
+        "container-name": "outer",
+        "container-type": "size",
+        "writing-mode": "vertical-rl"
+      },
+      "parent": null,
+      "computed": {
+        "container-name": "outer",
+        "container-type": "size",
+        "writing-mode": "vertical-rl"
+      }
+    },
+    {
+      "id": "absent",
+      "declarations": {},
+      "parent": "parent",
+      "computed": {
+        "container-name": "none",
+        "container-type": "normal",
+        "writing-mode": "vertical-rl"
+      }
+    },
+    {
+      "id": "initial",
+      "declarations": {
+        "container-name": "initial",
+        "container-type": "initial",
+        "writing-mode": "initial"
+      },
+      "parent": "parent",
+      "computed": {
+        "container-name": "none",
+        "container-type": "normal",
+        "writing-mode": "horizontal-tb"
+      }
+    },
+    {
+      "id": "unset",
+      "declarations": {
+        "container-name": "unset",
+        "container-type": "unset",
+        "writing-mode": "unset"
+      },
+      "parent": "parent",
+      "computed": {
+        "container-name": "none",
+        "container-type": "normal",
+        "writing-mode": "vertical-rl"
+      }
+    },
+    {
+      "id": "inherit",
+      "declarations": {
+        "container-name": "inherit",
+        "container-type": "inherit",
+        "writing-mode": "inherit"
+      },
+      "parent": "parent",
+      "computed": {
+        "container-name": "outer",
+        "container-type": "size",
+        "writing-mode": "vertical-rl"
+      }
+    },
+    {
+      "id": "explicit",
+      "declarations": {
+        "container-name": "inner",
+        "container-type": "inline-size",
+        "writing-mode": "horizontal-tb"
+      },
+      "parent": "parent",
+      "computed": {
+        "container-name": "inner",
+        "container-type": "inline-size",
+        "writing-mode": "horizontal-tb"
+      }
+    }
+  ]
+}

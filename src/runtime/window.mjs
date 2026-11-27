@@ -10,6 +10,7 @@ import {
   FileReader, makeCanvasStub,
   makeLocation, makeHistory,
 } from './stubs.mjs';
+import { DOMRect, DOMRectReadOnly } from './dom-rect.mjs';
 import { makeGetComputedStyle } from './cascade.mjs';
 import { makeCustomElements, constructCustomElement } from './custom-elements.mjs';
 import { CSSStyleSheet } from './cssom.mjs';
@@ -19,7 +20,7 @@ import {
 } from './dom.mjs';
 import {
   EventTarget,
-  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
+  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent, PopStateEvent,
   CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent,
 } from './events.mjs';
 
@@ -202,10 +203,20 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   // Per-env lazy globals: ONLY those that capture document/url/windowProxy.
   // Everything env-independent lives in the module-level SHARED_LAZY (built once,
   // not re-allocated per test file) — see below. None constructed until touched.
+  function queueNavigationEvent(event) {
+    (globalThis.setTimeout || hostSetTimeout)(() => {
+      document.dispatchEvent(event);
+      const view = document.defaultView;
+      const listener = view['on' + event.type];
+      if (typeof listener === 'function') listener.call(view, event);
+    }, 0);
+  }
   const lazy = {
     origin: () => new URL(url).origin,
     // subsystem grouping: history co-materializes with (and shares) location
-    location: () => makeLocation(url),
+    location: () => makeLocation(url, (oldURL, newURL) => {
+      queueNavigationEvent(Object.assign(new Event('hashchange'), { oldURL, newURL }));
+    }, state => queueNavigationEvent(new PopStateEvent('popstate', { state }))),
     history: () => makeHistory(windowProxy.location),
     // per-env so matchMedia can evaluate queries against THIS window's viewport
     matchMedia: () => makeMatchMedia(windowProxy),
@@ -373,11 +384,12 @@ function makeXHR() {
 // instead of per createWindow() (per test file). createWindow's Proxy falls back
 // to this after its tiny per-env `base`. Nothing here captures document/url/window.
 const STATIC_BASE = {
+  DOMRect, DOMRectReadOnly,
   // DOM + event constructors (cheap class refs)
   Node, Element, Text, Comment, Document, DocumentFragment, DocumentType, EventTarget,
   ShadowRoot,
   Event, CustomEvent,
-  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent,
+  UIEvent, MouseEvent, PointerEvent, KeyboardEvent, InputEvent, FocusEvent, PopStateEvent,
   CompositionEvent, WheelEvent, TouchEvent, DragEvent, ProgressEvent, ClipboardEvent,
   DataTransfer,
   // every element is a plain Element → `el instanceof HTMLElement` is true.

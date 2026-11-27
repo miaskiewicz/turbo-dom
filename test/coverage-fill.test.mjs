@@ -447,7 +447,7 @@ test('Element synthetic geometry + honest scroll/pointer/animation stubs', () =>
   assert.ok(r.width > 0); assert.ok(r.height > 0);
   assert.equal(r.top, 0); assert.equal(r.left, 0);
   assert.equal(r.right - r.left, r.width); assert.equal(r.bottom - r.top, r.height);
-  assert.equal(r.toJSON(), r);
+  assert.notEqual(r.toJSON(), r);
   const rects = el.getClientRects(); // one rect when sized
   assert.equal(rects.length, 1);
   assert.equal(rects[0].width, r.width); assert.equal(rects[0].height, r.height);
@@ -554,10 +554,10 @@ test('document honest layout/command/write stubs', () => {
   assert.equal(document.close(), undefined);
 });
 
-test('zeroRect().toJSON returns the rect itself', () => {
+test('Element geometry serializes to a fresh snapshot', () => {
   const { document } = fresh();
   const rect = document.createElement('div').getBoundingClientRect();
-  assert.equal(rect.toJSON(), rect);
+  assert.notEqual(rect.toJSON(), rect);
 });
 
 // ====================================================================
@@ -1337,8 +1337,8 @@ test('selection range getters/setters + setRangeText + select()', () => {
   const { document } = fresh();
   const i = document.createElement('input');
   i.value = 'hello';
-  assert.equal(i.selectionStart, null);
-  assert.equal(i.selectionEnd, null);
+  assert.equal(i.selectionStart, 5);
+  assert.equal(i.selectionEnd, 5);
   assert.equal(i.selectionDirection, 'none');
   i.setSelectionRange(1, 3, 'forward');
   assert.equal(i.selectionStart, 1);

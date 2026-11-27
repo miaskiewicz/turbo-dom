@@ -52,6 +52,16 @@ class LockTests(unittest.TestCase):
                          ["Cargo.lock locks turbo-dom-v8 at ['150.4.1', '150.4.0'], expected 150.4.1"])
 
 
+class PathDependencyTests(unittest.TestCase):
+    def test_optional_root_aliases_and_workspace_path_versions_are_checked(self):
+        current = {"dependencies": {"turbo_dom_core": {
+            "package": "turbo-dom", "path": "crates/turbo-dom", "optional": True, "version": "0.8.7"}}}
+        self.assertEqual(cv.path_dependency_errors("Cargo.toml", current, "0.8.7"), [])
+        current["dependencies"]["turbo_dom_core"]["version"] = "0.8.6"
+        self.assertEqual(cv.path_dependency_errors("Cargo.toml", current, "0.8.7"),
+                         ["""Cargo.toml: path dependency turbo_dom_core needs version = "0.8.7" (has '0.8.6')"""])
+
+
 class SnippetTests(unittest.TestCase):
     def test_snippets_naming_the_release_pass(self):
         text = ('turbo-dom = "0.8"\nturbo-dom-layout = { version = "0.8.0", default-features = false }\n'

@@ -267,16 +267,25 @@ pub(super) fn jpeg_size_available(bytes: &[u8]) -> bool {
 /// A GIF's size point: the first image descriptor's position and size fields (separator
 /// plus 8 bytes), reached past the global colour table and every whole extension block.
 pub(super) fn gif_size_available(bytes: &[u8]) -> bool {
-    let Some(&flags) = bytes.get(10) else {
-        return false;
-    };
+    gif_frame_size(bytes).is_some()
+}
+
+/// First GIF frame dimensions, which can differ from the logical screen.
+pub(super) fn gif_frame_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    let &flags = bytes.get(10)?;
     let mut at = 13;
     if flags & 0x80 != 0 {
         at += 3 << ((flags & 7) + 1);
     }
     loop {
         match bytes.get(at) {
-            Some(0x2C) => return at + 9 <= bytes.len(),
+            Some(0x2C) => {
+                let frame = bytes.get(at + 5..at + 9)?;
+                return Some((
+                    u32::from(u16::from_le_bytes([frame[0], frame[1]])),
+                    u32::from(u16::from_le_bytes([frame[2], frame[3]])),
+                ));
+            }
             Some(0x21) => {
                 // Label, then data sub-blocks up to the zero-length terminator.
                 at += 2;
@@ -284,12 +293,12 @@ pub(super) fn gif_size_available(bytes: &[u8]) -> bool {
                     match bytes.get(at) {
                         Some(0) => break,
                         Some(&n) => at += 1 + usize::from(n),
-                        None => return false,
+                        None => return None,
                     }
                 }
                 at += 1;
             }
-            _ => return false,
+            _ => return None,
         }
     }
 }

@@ -661,3 +661,403 @@ fn canvas_host_restore_rejects_locked_logs_without_changing_prior_state() {
         r##"[["TypeError",true,"#ff0000",[12,34,56,255]],["TypeError",true,"#ff0000",[12,34,56,255]],["TypeError",true,"#ff0000",[12,34,56,255]]]"##
     );
 }
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn cached_own_box_requires_a_warmed_stable_own_none_snapshot() {
+    use crate::host_internals::{cached_own_box, CachedOwnBox};
+    with_page("<!doctype html><style id=s>/* payload */</style><script id=script type=application/json>payload</script><div id=hidden hidden></div><div id=contents style='display:contents'><span>shown</span></div><div style='display:none'><div id=child>hidden by ancestor</div></div>", |scope| {
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        for id in ["s","script","hidden"] {
+            let element=object(scope,&format!("document.getElementById('{id}')"));
+            assert_eq!(cached_own_box(scope,element),CachedOwnBox::Unknown);
+            eval(scope,&format!("getComputedStyle(document.getElementById('{id}')).position"));
+            assert_eq!(cached_own_box(scope,element),CachedOwnBox::DisplayNone,"{id}");
+        }
+        for id in ["contents","child"] {
+            let element=object(scope,&format!("document.getElementById('{id}')"));
+            eval(scope,&format!("getComputedStyle(document.getElementById('{id}')).position"));
+            assert_eq!(cached_own_box(scope,element),CachedOwnBox::Unknown,"{id}");
+        }
+    });
+}
+
+#[cfg(feature = "host-internals")]
+mod cached_box_contracts {
+    use super::{eval, json, object, with_page};
+    use crate::browser_env::{bind_method, crate_surface::engine_namespace};
+    use crate::host_internals::{cached_own_box, CachedOwnBox};
+    use std::cell::Cell;
+
+    thread_local! { static PROVIDER_CALLS: Cell<usize> = const { Cell::new(0) }; }
+    fn provider(
+        scope: &mut v8::PinScope,
+        _args: v8::FunctionCallbackArguments,
+        _rv: v8::ReturnValue,
+    ) {
+        PROVIDER_CALLS.with(|count| count.set(count.get() + 1));
+        let message = v8::String::new(scope, "geometry/media provider called").unwrap();
+        let error = v8::Exception::error(scope, message);
+        scope.throw_exception(error);
+    }
+    fn trap_providers(scope: &mut v8::PinScope) {
+        let namespace = engine_namespace(scope).unwrap();
+        for name in ["layoutUsedSize", "resolveTransform", "mediaTextMatches"] {
+            bind_method(scope, namespace, name, provider);
+        }
+        PROVIDER_CALLS.with(|count| count.set(0));
+    }
+    fn calls() -> usize {
+        PROVIDER_CALLS.with(Cell::get)
+    }
+    fn warm<'s>(scope: &mut v8::PinScope<'s, '_>, id: &str) -> v8::Local<'s, v8::Object> {
+        eval(
+            scope,
+            &format!("getComputedStyle(document.getElementById('{id}')).position"),
+        );
+        object(scope, &format!("document.getElementById('{id}')"))
+    }
+
+    #[test]
+    fn cached_own_box_never_calls_style_layout_media_or_guest_getters() {
+        with_page("<!doctype html><style>@media(min-width:1px){.other{display:block}}</style><style id=s>/* module */</style><style id=cold>/* cold */</style>", |scope| {
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let element=warm(scope,"s");
+            trap_providers(scope);
+            eval(scope,r#"globalThis.guestReads=0;const poison=()=>{guestReads++;throw new Error('guest getter')};Object.defineProperty(globalThis,'innerWidth',{get:poison,configurable:true});globalThis.getComputedStyle=poison;Object.defineProperty(CSSStyleDeclaration.prototype,'display',{get:poison,configurable:true});Object.defineProperty(Node.prototype,'parentNode',{get:poison,configurable:true});"#);
+            for _ in 0..20 { assert_eq!(cached_own_box(scope,element),CachedOwnBox::DisplayNone); }
+            let cold=object(scope,"document.getElementById('cold')");
+            assert_eq!(cached_own_box(scope,cold),CachedOwnBox::Unknown);
+            eval(scope,"document.getElementById('s').setAttribute('style','display:block')");
+            assert_eq!(cached_own_box(scope,element),CachedOwnBox::Unknown);
+            assert_eq!(calls(),0);
+            assert_eq!(json(scope,"guestReads"),"0");
+            let namespace=engine_namespace(scope).unwrap();
+            let name=v8::String::new(scope,"layoutUsedSize").unwrap();
+            let function=namespace.get(scope,name.into()).unwrap();
+            let function=v8::Local::<v8::Function>::try_from(function).unwrap();
+            v8::tc_scope!(let caught, scope);
+            assert!(function.call(caught,namespace.into(),&[element.into()]).is_none());
+            assert_eq!(calls(),1,"provider control must really throw");
+        });
+    }
+
+    #[test]
+    fn cached_own_box_refuses_potential_display_effect_and_unsupported_branches() {
+        let rules = [
+            "style{display:block}",
+            "style{display:contents}",
+            "style{display:inherit}",
+            "style{display:none!important}style{display:block}",
+            "@media(max-width:0px){style{display:block}}",
+            "@supports(not-a-property:invalid){style{display:block}}",
+            "@container(min-width:1px){style{display:block}}",
+            "@starting-style{style{display:block}}",
+            "style:hover{display:block}",
+            "style{all:initial}",
+            "style{animation:missing 1s}",
+            "style{transition:display 1s}",
+            "style{--box:none;display:var(--box)}",
+        ];
+        for rule in rules {
+            with_page(&format!("<!doctype html><style>{rule}</style><div style='container-type:inline-size;width:100px'><style id=s>/* module */</style></div>"),|scope|{
+                scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+                let element=warm(scope,"s");
+                assert_eq!(cached_own_box(scope,element),CachedOwnBox::Unknown,"{rule}");
+            });
+        }
+    }
+
+    #[test]
+    fn cached_own_box_refreshes_after_mutation_and_base_or_sibling_reuse() {
+        with_page("<!doctype html><style id=rules>.visible{display:block}</style><style id=a>/* a */</style><style id=b>/* b */</style>",|scope|{
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let a=warm(scope,"a");let b=warm(scope,"b");
+            assert_eq!(cached_own_box(scope,a),CachedOwnBox::DisplayNone);
+            assert_eq!(cached_own_box(scope,b),CachedOwnBox::DisplayNone);
+            eval(scope,"document.getElementById('a').className='visible'");
+            assert_eq!(cached_own_box(scope,a),CachedOwnBox::Unknown);
+            warm(scope,"a");assert_eq!(cached_own_box(scope,a),CachedOwnBox::Unknown);
+            warm(scope,"b");assert_eq!(cached_own_box(scope,b),CachedOwnBox::DisplayNone);
+            eval(scope,"document.getElementById('a').className='';document.getElementById('b').style.display='block'");
+            warm(scope,"a");assert_eq!(cached_own_box(scope,a),CachedOwnBox::DisplayNone);
+            warm(scope,"b");assert_eq!(cached_own_box(scope,b),CachedOwnBox::Unknown);
+            eval(scope,"document.getElementById('rules').sheet.insertRule('style{display:block!important}',0)");
+            assert_eq!(cached_own_box(scope,a),CachedOwnBox::Unknown);
+            warm(scope,"a");assert_eq!(cached_own_box(scope,a),CachedOwnBox::Unknown);
+            eval(scope,"document.getElementById('rules').sheet.deleteRule(0)");
+            warm(scope,"a");assert_eq!(cached_own_box(scope,a),CachedOwnBox::DisplayNone);
+        });
+    }
+
+    #[test]
+    fn cached_own_box_does_not_promote_a_swallowed_provider_failure() {
+        with_page("<!doctype html><style id=s>/* module */</style>", |scope| {
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            trap_providers(scope);
+            let element = warm(scope, "s");
+            assert!(
+                calls() > 0,
+                "ordinary computation reaches the throwing hook"
+            );
+            let before = calls();
+            assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+            assert_eq!(calls(), before);
+        });
+    }
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn cached_own_box_validates_brands_owner_activity_and_explicit_checkpoints() {
+    use crate::host_internals::{cached_own_box, CachedOwnBox};
+    with_page(
+        "<!doctype html><style id=s>/* module */</style><div id=host></div><svg id=svg></svg>",
+        |scope| {
+            let element = object(scope, "document.getElementById('s')");
+            eval(
+                scope,
+                "getComputedStyle(document.getElementById('s')).position",
+            );
+            assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            assert_eq!(cached_own_box(scope, element), CachedOwnBox::DisplayNone);
+            for source in ["({})","Object.create(Element.prototype)","document","document.createTextNode('x')","document.createElement('style')","document.getElementById('svg')","new DOMParser().parseFromString('<style>p{color:red}</style>','text/html').querySelector('style')"] {
+            let invalid=object(scope,source);assert_eq!(cached_own_box(scope,invalid),CachedOwnBox::Unknown,"{source}");
+        }
+            eval(scope,"document.getElementById('host').attachShadow({mode:'open'}).innerHTML='<style id=shadow>/* shadow */</style>';getComputedStyle(document.getElementById('s')).position");
+            assert_eq!(
+                cached_own_box(scope, element),
+                CachedOwnBox::Unknown,
+                "shadow composition is not admitted"
+            );
+        },
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn cached_own_box_enters_foreign_owner_and_refuses_retired_contexts() {
+    use crate::host_internals::{
+        cached_own_box, current_document_id, retire_context, CachedOwnBox,
+    };
+    with_page(
+        "<!doctype html><style id=main>/* main */</style>",
+        |scope| {
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let main_id = current_document_id();
+            let child = v8::Context::new(scope, Default::default());
+            let held = {
+                let scope = &mut v8::ContextScope::new(scope, child);
+                crate::browser_env::install_independent_html(
+                    scope,
+                    "<!doctype html><style id=child>/* child */</style>",
+                );
+                let element=object(scope,"getComputedStyle(document.getElementById('child')).position;document.getElementById('child')");
+                v8::Global::new(scope, element)
+            };
+            let _main = crate::host_internals::enter_context_document(scope.get_current_context());
+            let element = v8::Local::new(scope, &held);
+            assert_eq!(cached_own_box(scope, element), CachedOwnBox::DisplayNone);
+            assert_eq!(current_document_id(), main_id);
+            retire_context(child);
+            assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+            assert_eq!(current_document_id(), main_id);
+        },
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn cached_own_box_refuses_active_script_effects_and_dynamic_owner_media() {
+    use crate::host_internals::{cached_own_box, CachedOwnBox};
+    with_page("<!doctype html><style media='(max-width:0px)'>style{display:block}</style><style id=s>/* module */</style>",|scope|{
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        let element=object(scope,"getComputedStyle(document.getElementById('s')).position;document.getElementById('s')");
+        assert_eq!(cached_own_box(scope,element),CachedOwnBox::Unknown);
+    });
+    with_page("<!doctype html><style id=s>/* module */</style>", |scope| {
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        let element = object(
+            scope,
+            "getComputedStyle(document.getElementById('s')).position;document.getElementById('s')",
+        );
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::DisplayNone);
+        eval(scope,"globalThis.effect=document.getElementById('s').animate({display:['none','block']},{duration:1000,fill:'both'});getComputedStyle(document.getElementById('s')).position");
+        assert_eq!(cached_own_box(scope, element), CachedOwnBox::Unknown);
+    });
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn cached_own_box_proofs_agree_with_independent_chrome159_geometry() {
+    use crate::host_internals::{cached_own_box, CachedOwnBox};
+    use sha2::Digest;
+    let probe = include_str!("cached_own_box_probe.js");
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("cached_own_box_chrome159.json")).unwrap();
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", sha2::Sha256::digest(probe.as_bytes()))
+    );
+    for case in control["result"].as_array().unwrap() {
+        let html = format!(
+            "<!doctype html><style>{}</style><body>{}",
+            case["css"].as_str().unwrap(),
+            case["html"].as_str().unwrap()
+        );
+        with_page(&html, |scope| {
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let element=object(scope,"getComputedStyle(document.getElementById('subject')).position;document.getElementById('subject')");
+            let proven = cached_own_box(scope, element) == CachedOwnBox::DisplayNone;
+            assert_eq!(
+                proven,
+                case["eligible"].as_bool().unwrap(),
+                "{}",
+                case["name"]
+            );
+            if proven {
+                assert_eq!(case["display"], "none");
+                assert_eq!(case["width"], 0);
+                assert_eq!(case["height"], 0);
+                assert_eq!(case["clientRects"], 0);
+            }
+        });
+    }
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_preserves_detached_construction_and_rejects_connected_changes() {
+    use crate::host_internals::document_checkpoint;
+    with_page(
+        "<!doctype html><main><input id=control><div id=anchor>old</div></main>",
+        |scope| {
+            let document = object(scope, "document");
+            assert!(document_checkpoint(scope, document).is_none());
+            scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+            let saved = document_checkpoint(scope, document).unwrap();
+            eval(scope,"globalThis.anchor=document.getElementById('anchor');globalThis.control=document.getElementById('control')");
+            let version = with_tree(|tree| tree.version).unwrap();
+            eval(scope, "globalThis.held=[];for(let i=0;i<6;i++){const d=document.createElement('div'),input=document.createElement('input');d.className='MuiAutocomplete-inputRoot';d.style.width='100px';d.removeAttribute('hidden');d.textContent='detached';d.appendChild(input);d.appendChild(document.createElementNS('http://www.w3.org/2000/svg','svg'));input.defaultChecked=true;held.push(d)}");
+            assert_eq!(document_checkpoint(scope, document), Some(saved));
+            assert!(with_tree(|tree| tree.version).unwrap() > version);
+            for action in [
+                "anchor.style.width='360px'",
+                "anchor.textContent='new'",
+                "control.checked=true",
+                "anchor.appendChild(held[0])",
+                "held[0].remove()",
+            ] {
+                let before = document_checkpoint(scope, document).unwrap();
+                eval(scope, action);
+                assert_ne!(
+                    document_checkpoint(scope, document),
+                    Some(before),
+                    "{action}"
+                );
+            }
+            eval(scope,"Object.defineProperty(document,'ownerDocument',{get(){throw Error('guest getter')}});globalThis.getComputedStyle=()=>{throw Error('style')};globalThis.__layout=()=>{throw Error('layout')}");
+            assert!(document_checkpoint(scope, document).is_some());
+            for source in [
+                "({})",
+                "Object.create(Document.prototype)",
+                "document.createElement('div')",
+                "new DOMParser().parseFromString('<p>x</p>','text/html')",
+            ] {
+                let invalid = object(scope, source);
+                assert!(document_checkpoint(scope, invalid).is_none(), "{source}");
+            }
+            let before = document_checkpoint(scope, document).unwrap();
+            eval(scope, "anchor.attachShadow({mode:'open'})");
+            assert_ne!(document_checkpoint(scope, document), Some(before));
+            assert!(document_checkpoint(scope, document).is_some());
+        },
+    );
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_is_owned_by_exact_native_realm_and_refuses_retirement() {
+    use crate::host_internals::{current_document_id, document_checkpoint, retire_context};
+    with_page("<!doctype html><p>main</p>", |scope| {
+        scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        let main = object(scope, "document");
+        let saved = document_checkpoint(scope, main).unwrap();
+        let main_id = current_document_id();
+        let child = v8::Context::new(scope, Default::default());
+        let held = {
+            let scope = &mut v8::ContextScope::new(scope, child);
+            install_independent_html(scope, "<!doctype html><p>child</p>");
+            let document = object(scope, "document");
+            assert_ne!(document_checkpoint(scope, document), Some(saved));
+            v8::Global::new(scope, document)
+        };
+        let _main = crate::host_internals::enter_context_document(scope.get_current_context());
+        let document = v8::Local::new(scope, &held);
+        let child_saved = document_checkpoint(scope, document).unwrap();
+        assert_ne!(child_saved, saved);
+        assert_eq!(current_document_id(), main_id);
+        retire_context(child);
+        assert!(document_checkpoint(scope, document).is_none());
+        assert_eq!(current_document_id(), main_id);
+        assert_eq!(document_checkpoint(scope, main), Some(saved));
+    });
+}
+
+#[cfg(feature = "host-internals")]
+#[test]
+fn document_checkpoint_tracks_open_closed_nested_shadow_and_slot_mutations() {
+    use crate::host_internals::document_checkpoint;
+    for mode in ["open", "closed"] {
+        with_page(
+            "<!doctype html><section id=host><span id=light slot=one>light</span></section>",
+            |scope| {
+                scope.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+                let document = object(scope, "document");
+                eval(scope,&format!("globalThis.host=document.getElementById('host');globalThis.light=document.getElementById('light');globalThis.root=host.attachShadow({{mode:'{mode}'}});root.innerHTML='<slot name=one></slot><section id=nested></section>';globalThis.nested=root.querySelector('#nested').attachShadow({{mode:'closed'}});nested.innerHTML='<input id=check><b id=text>x</b>';globalThis.check=nested.querySelector('#check');globalThis.text=nested.querySelector('#text')"));
+                let saved = document_checkpoint(scope, document).unwrap();
+                let version = with_tree(|tree| tree.version).unwrap();
+                eval(scope,"globalThis.detached=[];for(let i=0;i<6;i++){const d=document.createElement('div');d.style.width='100px';d.textContent='unrelated';d.appendChild(document.createElementNS('http://www.w3.org/2000/svg','svg'));detached.push(d)}");
+                assert_eq!(document_checkpoint(scope, document), Some(saved), "{mode}");
+                assert!(with_tree(|tree| tree.version).unwrap() > version);
+                for action in [
+                    "text.textContent='new'",
+                    "text.style.width='20px'",
+                    "check.checked=true",
+                    "light.slot='two'",
+                    "root.querySelector('slot').name='two'",
+                    "nested.appendChild(detached[0])",
+                    "host.remove()",
+                ] {
+                    let before = document_checkpoint(scope, document).unwrap();
+                    eval(scope, action);
+                    assert_ne!(
+                        document_checkpoint(scope, document),
+                        Some(before),
+                        "{mode}: {action}"
+                    );
+                }
+                let saved = document_checkpoint(scope, document).unwrap();
+                eval(scope, "text.style.width='40px';check.checked=false");
+                assert_eq!(
+                    document_checkpoint(scope, document),
+                    Some(saved),
+                    "detached nested shadow changes"
+                );
+                eval(scope, "document.body.appendChild(host)");
+                assert_ne!(document_checkpoint(scope, document), Some(saved));
+                let saved = document_checkpoint(scope, document).unwrap();
+                eval(
+                    scope,
+                    "document.implementation.createHTMLDocument('other').adoptNode(host)",
+                );
+                assert_ne!(
+                    document_checkpoint(scope, document),
+                    Some(saved),
+                    "adoption removes connected shadow host"
+                );
+            },
+        );
+    }
+}

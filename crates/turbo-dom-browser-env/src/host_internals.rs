@@ -29,10 +29,33 @@ use crate::browser_env::{
     DOM_CONTEXTS, DOM_ID,
 };
 
+pub use super::storage_ownership::{collect_native_storage_if_needed, NativeStorageSweepReport};
+pub use turbo_dom_parser::rtdom::tree::StorageCollectionOutcome;
+
 #[path = "css_effect_lifecycle.rs"]
 mod css_effect_lifecycle;
 pub use css_effect_lifecycle::{
     css_effect_lifecycle, CssEffectKind, CssEffectLifecycle, CssEffectPhase, CssEffectSnapshot,
+};
+
+#[path = "presented_effects.rs"]
+mod presented_effects;
+pub use presented_effects::{
+    sample_presented_effects, PresentedEffectsSnapshot, PresentedProperty, PresentedTarget,
+    PresentedTargetState,
+};
+
+#[path = "cached_own_box.rs"]
+mod cached_own_box;
+pub use cached_own_box::{cached_own_box, CachedOwnBox};
+#[path = "document_checkpoint_host.rs"]
+mod document_checkpoint_host;
+pub use document_checkpoint_host::{document_checkpoint, DocumentCheckpoint};
+#[path = "selector_preparation.rs"]
+mod selector_preparation;
+pub use selector_preparation::{
+    prepare_selector, selector_state_stamp, PreparedSelector, SelectorPreparationError,
+    SelectorStateStamp,
 };
 
 pub use crate::browser_env::auxiliary_contexts::{
@@ -184,5 +207,28 @@ pub fn cascade_policy(scope: &mut v8::PinScope) -> StylePolicy {
     css_policy::cascade_policy(scope)
 }
 
+/// Thread-wide invalidation revisions used by the binding's native cascade.
+/// These conservatively include changes made in another document on the thread.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StyleRevisions {
+    /// Stylesheets, rules, declarations, adoption and animation-model changes.
+    pub cssom: u64,
+    /// Selector state that need not change the native tree's version.
+    pub live_state: u64,
+}
+
+/// Read cascade invalidation revisions without running guest JavaScript.
+/// Hosts must also key cached results by owner document, tree version and any
+/// relevant composition, viewport or presentation inputs.
+#[must_use]
+pub fn style_revisions() -> StyleRevisions {
+    let (cssom, live_state) = crate::browser_env::host_style_revisions();
+    StyleRevisions { cssom, live_state }
+}
+
 /// Typed result writer for native setter/definer callbacks over the selected V8 ABI.
 pub use crate::browser_env::mutation_result::NamedMutationResult;
+
+#[path = "termination_recovery.rs"]
+mod termination_recovery;
+pub use termination_recovery::{recover_after_termination, TerminationRecoveryError};

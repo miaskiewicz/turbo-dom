@@ -8,6 +8,7 @@ mod border_opacity;
 
 use std::fmt::Write;
 
+use turbo_dom_layout::layout::paint::PaintNode;
 use turbo_dom_layout::layout::value::{BorderEdges, BorderSide};
 use turbo_dom_layout::text::FontFace;
 use turbo_dom_layout::{
@@ -160,21 +161,75 @@ fn preblend_class(top: u32) -> [f32; 256] {
 }
 
 fn paint_fragment(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+    paint_scheduled(svg, &PaintNode::new(f), images);
+}
+
+fn paint_scheduled(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    if node.clips.iter().any(|ancestor| {
+        ancestor
+            .clip
+            .is_some_and(|clip| clip.width <= 0.0 || clip.height <= 0.0)
+            || ancestor
+                .overflow_clip
+                .is_some_and(|clip| clip.width <= 0.0 || clip.height <= 0.0)
+    }) {
+        return;
+    }
+    let mut count = 0;
+    for ancestor in &node.clips {
+        if let Some(clip) = ancestor.clip {
+            scope_clip(
+                svg,
+                (
+                    ancestor.x + clip.x,
+                    ancestor.y + clip.y,
+                    clip.width,
+                    clip.height,
+                ),
+                &clip.radii,
+            );
+            count += 1;
+        }
+        if let Some(clip) = ancestor.overflow_clip {
+            scope_clip(
+                svg,
+                crate::paint_png::overflow_region(ancestor, &clip),
+                &clip.radii,
+            );
+            count += 1;
+        }
+    }
+    paint_node(svg, node, images);
+    for _ in 0..count {
+        svg.push_str("</g>");
+    }
+}
+
+fn scope_clip(svg: &mut String, region: crate::rrect::Rect, radii: &BorderRadii) {
+    let id = svg.len();
+    let _ = write!(svg, "<clipPath id=\"scope{id}\">");
+    shape(svg, region, radii, "");
+    let _ = write!(svg, "</clipPath><g clip-path=\"url(#scope{id})\">");
+}
+
+fn paint_node(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     // CSS `opacity` (miaskiewicz/turbo-dom#206) is a group opacity over the box and
     // its subtree; `opacity: 0` paints nothing.
     if f.opacity < 1.0 {
         if f.opacity > 0.0 {
             let _ = write!(svg, "<g opacity=\"{}\">", f.opacity);
-            paint_opaque(svg, f, images);
+            paint_opaque(svg, node, images);
             svg.push_str("</g>");
         }
         return;
     }
-    paint_opaque(svg, f, images);
+    paint_opaque(svg, node, images);
 }
 
 /// [`paint_fragment`] for a box painted at full opacity.
-fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+fn paint_opaque(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     // A CSS `transform` wraps this box + subtree in a `<g transform>` (applied about
     // the box's absolute transform-origin), so the SVG viewer transforms them as a unit.
     let transformed = matches!(
@@ -197,8 +252,8 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
         );
     }
     match f.clip {
-        Some(clip) => paint_clipped(svg, f, clip, images),
-        None => paint_subtree(svg, f, images),
+        Some(clip) => paint_clipped_node(svg, node, clip, images),
+        None => paint_subtree_node(svg, node, images),
     }
     if transformed {
         svg.push_str("</g>");
@@ -208,7 +263,18 @@ fn paint_opaque(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
 /// Paint a fragment whose box has a `clip: rect()` (miaskiewicz/turbo-dom#52) inside a
 /// `<g clip-path>` of that region (in the box's own, possibly transformed, user space;
 /// the `clipPath` id is the document offset, unique); an empty region paints nothing.
+#[cfg(test)]
 fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl PaintInput) {
+    paint_clipped_node(svg, &PaintNode::new(f), clip, images);
+}
+
+fn paint_clipped_node(
+    svg: &mut String,
+    node: &PaintNode<'_>,
+    clip: ClipRect,
+    images: &impl PaintInput,
+) {
+    let f = node.fragment;
     if clip.width <= 0.0 || clip.height <= 0.0 {
         return;
     }
@@ -217,12 +283,17 @@ fn paint_clipped(svg: &mut String, f: &Fragment, clip: ClipRect, images: &impl P
     let region = (f.x + clip.x, f.y + clip.y, clip.width, clip.height);
     shape(svg, region, &clip.radii, "");
     let _ = write!(svg, "</clipPath><g clip-path=\"url(#clip{id})\">");
-    paint_subtree(svg, f, images);
+    paint_subtree_node(svg, node, images);
     svg.push_str("</g>");
 }
 
 /// Paint a fragment's own content, then its children in stacking order.
 fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+    paint_subtree_node(svg, &PaintNode::new(f), images);
+}
+
+fn paint_subtree_node(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     match &f.content {
         FragmentContent::Box {
             background,
@@ -269,7 +340,7 @@ fn paint_subtree(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
         FragmentContent::ColumnRule { style, color } => paint_column_rule(svg, f, *style, *color),
         FragmentContent::Marker(_) => {}
     }
-    paint_children(svg, f, images);
+    paint_children(svg, node, images);
 }
 
 /// Paint a multicol `column-rule` fragment (`FragmentContent::ColumnRule`;
@@ -582,7 +653,8 @@ fn paint_tile_texture(
 /// Paint `f`'s children in stacking order inside a `<g clip-path>` of its `overflow`
 /// region (miaskiewicz/turbo-dom#253) when it has one and they may paint past it (an empty
 /// region paints none of them).
-fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
+fn paint_children(svg: &mut String, node: &PaintNode<'_>, images: &impl PaintInput) {
+    let f = node.fragment;
     let clip = f.overflow_clip.filter(|c| {
         !f.children.is_empty()
             && (c.radii.is_rounded()
@@ -602,8 +674,8 @@ fn paint_children(svg: &mut String, f: &Fragment, images: &impl PaintInput) {
     }
     // Paint children back-to-front in CSS stacking order (§9.9), not raw DOM
     // order, so `position`/`z-index` boxes (menus, modals) layer correctly.
-    for &i in &f.paint_order() {
-        paint_fragment(svg, &f.children[i], images);
+    for child in &node.children {
+        paint_scheduled(svg, child, images);
     }
     if clip.is_some() {
         svg.push_str("</g>");
@@ -1139,6 +1211,91 @@ mod tests {
                 step_y: step.1,
             }),
         )
+    }
+
+    #[test]
+    fn empty_promoted_clips_skip_image_work_on_either_axis() {
+        #[derive(Default)]
+        struct Assets {
+            images: DecodedAssets,
+            reads: std::cell::Cell<usize>,
+        }
+        impl PaintInput for Assets {
+            fn images(&self) -> &DecodedAssets {
+                self.reads.set(self.reads.get() + 1);
+                &self.images
+            }
+        }
+        let child = image("hidden.png");
+        for overflow in [false, true] {
+            for (width, height) in [(0.0, 9.0), (9.0, 0.0), (-1.0, 9.0), (9.0, -1.0), (9.0, 9.0)] {
+                let mut ancestor = plain(0.0, 0.0, 9.0, 9.0, None);
+                if overflow {
+                    ancestor.overflow_clip = Some(turbo_dom_layout::OverflowClip {
+                        x: 0.0,
+                        y: 0.0,
+                        width,
+                        height,
+                        radii: BorderRadii::ZERO,
+                    });
+                } else {
+                    ancestor.clip = Some(ClipRect {
+                        x: 0.0,
+                        y: 0.0,
+                        width,
+                        height,
+                        radii: BorderRadii::ZERO,
+                    });
+                }
+                let mut node = PaintNode::new(&child);
+                node.clips.push(&ancestor);
+                let assets = Assets::default();
+                let mut svg = String::new();
+                paint_scheduled(&mut svg, &node, &assets);
+                assert_eq!(assets.reads.get(), usize::from(width > 0.0 && height > 0.0));
+            }
+        }
+    }
+
+    #[test]
+    fn scaled_svg_canvas_keeps_css_viewport_and_content_coordinates() {
+        let fragment = plain(1.0, 2.0, 3.0, 4.0, Some(RED));
+        for (pixels, scale, view) in [((101, 51), 2.0, "50.5 25.5"), ((13, 17), 0.5, "26 34")] {
+            let svg = paint_at_size(&fragment, (50, 25), pixels, WHITE, &HashMap::new(), scale);
+            assert!(svg.contains(&format!("viewBox=\"0 0 {view}\"")), "{svg}");
+            assert!(
+                svg.contains("x=\"1.00\" y=\"2.00\" width=\"3.00\" height=\"4.00\""),
+                "{svg}"
+            );
+        }
+    }
+
+    #[test]
+    fn promoted_svg_children_keep_nonzero_ancestor_clip_origins() {
+        let mut root = plain(0.0, 0.0, 80.0, 80.0, None);
+        let mut ancestor = plain(10.0, 20.0, 40.0, 40.0, None);
+        ancestor.clip = Some(ClipRect {
+            x: 3.0,
+            y: 4.0,
+            width: 10.0,
+            height: 12.0,
+            radii: BorderRadii::ZERO,
+        });
+        let mut child = plain(0.0, 0.0, 80.0, 80.0, Some(RED));
+        child.is_positioned = true;
+        child.z_index = Some(1);
+        ancestor.children.push(child);
+        root.children.push(ancestor);
+        let svg = paint(&root, 80, 80, WHITE, &HashMap::new());
+        let scope = svg
+            .split("<clipPath id=\"scope")
+            .nth(1)
+            .expect("promoted child clip");
+        let clip = scope.split("</clipPath>").next().unwrap();
+        assert!(
+            clip.contains("x=\"13.00\" y=\"24.00\" width=\"10.00\" height=\"12.00\""),
+            "{clip}"
+        );
     }
 
     #[test]
@@ -2208,6 +2365,10 @@ mod tests {
         paint_border(&mut svg, &f, &b);
         assert_eq!(svg.matches("<rect ").count(), 2, "{svg}");
         assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(
+            svg.contains("<rect x=\"21.00\" y=\"3.00\" width=\"1.00\" height=\"10.00\""),
+            "{svg}"
+        );
         assert!(svg.contains("L22.00 13.00 L2.00 13.00"), "{svg}");
     }
 

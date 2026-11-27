@@ -18,6 +18,18 @@ composed edges, cycles and budget failures leave storage unchanged. Collection
 emits no DOM mutation and preserves `Tree::version`. Diagnostic bytes are logical
 string payload, not allocator overhead or a complete process heap measurement.
 
+`Tree::collect_unreachable_if_needed` runs the same pin, graph and budget
+checks. It returns `Unchanged(report)` when the arena is already sparse and
+every live node is retained. In that case the tree keeps its backing storage,
+derived caches and document checkpoint. First-time materialization and positive
+reclamation return `Compacted(report)` and invalidate the checkpoint.
+`Tree::collect_unreachable` still compacts on every successful call.
+
+V8 embedders can opt in through `host_internals::collect_native_storage_if_needed`.
+Its per-document outcomes describe core storage. The host still reconciles
+document ownership and sweeps weak wrappers and scalar tables. Callers reusing
+layout must continue to check their other layout inputs on each read.
+
 Two adversarial source reviews preceded the release checks. The first identified
 post-copy admission, omitted namespace/pending-record payloads and an overwritten
 shadow-host link that could lose an explicitly pinned old root. The corrected

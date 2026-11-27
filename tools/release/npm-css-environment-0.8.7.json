@@ -1,0 +1,38 @@
+{
+  "base": "65f286a7a6c62da41a8308be36cd0b84f5fd0272",
+  "files": {
+    "crates/turbo-dom/src/rtdom/computed_css.rs": "5e7220a90162033f87b3a4bdd989274e4efeeed10477e6f19ec7631d4b6b0de1",
+    "crates/turbo-dom/src/rtdom/computed_css/environment.rs": "da2d75dda566f33078c27c2ffcf15f27cc379397ca9add5815bf21bb9b64c965",
+    "crates/turbo-dom/tests/computed_environment.rs": "0dc87106bbd716c033dcfe867358c8cf45c4e5e90d767d86aea96726c546e510",
+    "src/css_backend.rs": "a3c20e642a52b46ebeed33b7dbff43afed6e0c897d7b645ed4c3d921fe884fa3",
+    "src/css_preferences.rs": "48b87f9e0dd0267d3a2fc88f84f743a1e18dd46a797021fecdc5962631a57146"
+  },
+  "scope": "Explicit independent Known/Unknown physical viewport facts; optional Core builder and Root cssComputedEnvironmentV1; no default Window/capture wiring",
+  "gates": {
+    "focusedCore": 5,
+    "rootPreferences": 10,
+    "fullCorePassed": 883,
+    "fullCoreExistingIgnored": 9,
+    "fullRoot": 74,
+    "strict": "Core alltargets; actual napi-bind/css-backend Root alltargets; wasm-bind/css-backend wasm32 lib; all -Dwarnings",
+    "coreDefaultCoverage": "100%;14335/14335",
+    "coreGrammarCoverage": "100%;17772/17772",
+    "fmt": "pass",
+    "complexityLimit": 9,
+    "requiredParserBuildSeconds": 5.85,
+    "buildRootCargoIndexHashes": "unchanged"
+  },
+  "semantics": [
+    "Unknown axes omitted rather than zero/default.",
+    "Known axes validated finite nonnegative.",
+    "Both axes required for orientation/aspect-ratio/vmin/vmax.",
+    "Media em/rem from normalized initial preference; target em/rem stays computed-values owner.",
+    "Actual owned key/ident/unit strings charged under explicit caller computation limits.",
+    "No logical axes, hardware/media-type defaults, or font metric guesses."
+  ],
+  "limitations": [
+    "Source/Root test validation only; new endpoint actual NAPI/WASM artifacts not rebuilt in this atomic stage.",
+    "No JS default capture, Window viewport source or virtual viewport wiring.",
+    "Existing eager whole-row computed-value behavior remains."
+  ]
+}

@@ -1,0 +1,477 @@
+{
+  "browser": "Chrome/156.0.8078.80",
+  "v8": "15.6.75.27",
+  "casesSha256": "e03ab03450278312659758c2bbb9202ec910708a54d05218e0b77ff4f98bc08a",
+  "probeSha256": "2e41c218b8e0b8b41020f40d6694eece1b5b5de2595a64088bb2539a61b081aa",
+  "collectorSha256": "671661dee7acadfab3a3ef76ea9a97e1f2f3d99987c9d0cdf0ab8c42410c09ff",
+  "flags": [
+    "--headless=new",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    "--remote-debugging-pipe",
+    "--user-data-dir=<fresh-profile>",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-component-extensions-with-background-pages",
+    "about:blank"
+  ],
+  "errors": [],
+  "result": [
+    {
+      "id": "css-supports",
+      "result": {
+        "declarations": [
+          [
+            "anchor-name: --a",
+            true,
+            true,
+            true,
+            "--a"
+          ],
+          [
+            "anchor-name: --a, --b",
+            true,
+            true,
+            true,
+            "--a, --b"
+          ],
+          [
+            "anchor-name: none",
+            true,
+            true,
+            true,
+            "none"
+          ],
+          [
+            "anchor-name: a",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "anchor-name: --a --b",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "anchor-name: --a,",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "position-anchor: --a",
+            true,
+            true,
+            true,
+            "--a"
+          ],
+          [
+            "position-anchor: auto",
+            true,
+            true,
+            true,
+            "auto"
+          ],
+          [
+            "position-anchor: none",
+            true,
+            true,
+            true,
+            "none"
+          ],
+          [
+            "position-anchor: normal",
+            true,
+            true,
+            true,
+            "normal"
+          ],
+          [
+            "position-anchor: a",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "position-anchor: --a, --b",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "anchor-scope: --a, --b",
+            true,
+            true,
+            true,
+            "--a, --b"
+          ],
+          [
+            "anchor-scope: --a --b",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "timeline-scope: --t, --u",
+            true,
+            true,
+            true,
+            "--t, --u"
+          ],
+          [
+            "timeline-scope: --t --u",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "position-try-fallbacks: flip-block",
+            true,
+            true,
+            true,
+            "flip-block"
+          ],
+          [
+            "interpolate-size: allow-keywords",
+            true,
+            true,
+            true,
+            "allow-keywords"
+          ],
+          [
+            "field-sizing: content",
+            true,
+            true,
+            true,
+            "content"
+          ],
+          [
+            "text-box: trim-both cap alphabetic",
+            true,
+            true,
+            true,
+            "cap alphabetic"
+          ],
+          [
+            "reading-flow: flex-visual",
+            true,
+            true,
+            true,
+            "flex-visual"
+          ],
+          [
+            "corner-shape: squircle",
+            true,
+            true,
+            true,
+            "squircle"
+          ],
+          [
+            "dynamic-range-limit: standard",
+            true,
+            true,
+            true,
+            "standard"
+          ],
+          [
+            "width: calc(sibling-index() * 1px)",
+            true,
+            true,
+            true,
+            "calc(1px * sibling-index())"
+          ],
+          [
+            "width: calc(1px * sibling-count())",
+            true,
+            true,
+            true,
+            "calc(1px * sibling-count())"
+          ],
+          [
+            "order: sibling-index()",
+            true,
+            true,
+            true,
+            "sibling-index()"
+          ],
+          [
+            "z-index: calc(sibling-count() + 1)",
+            true,
+            true,
+            true,
+            "calc(1 + sibling-count())"
+          ],
+          [
+            "width: sibling-index()",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "width: calc(sibling-index(1) * 1px)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "opacity: calc(1 / sibling-count())",
+            true,
+            true,
+            true,
+            "calc(1 / sibling-count())"
+          ],
+          [
+            "color: if(style(--x: 1): red; else: blue)",
+            true,
+            true,
+            true,
+            "if(style(--x: 1): red; else: blue)"
+          ],
+          [
+            "color: if(media(width > 1px): red)",
+            true,
+            true,
+            true,
+            "if(media(width > 1px): red)"
+          ],
+          [
+            "width: if(supports(display: grid): 1px; else: 2px)",
+            true,
+            true,
+            true,
+            "if(supports(display: grid): 1px; else: 2px)"
+          ],
+          [
+            "color: if(red)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if()",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if(: red)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if(style(--x); red)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if(not (style(--x)) and media(print): red; or: blue)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if(not (style(--x)) and media(print): (red); else: blue;)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: if(else: red;)",
+            true,
+            true,
+            true,
+            "if(else: red;)"
+          ],
+          [
+            "color: if(else: red;;)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "margin: if(style(--x: 1): 1px)",
+            true,
+            true,
+            true,
+            "if(style(--x: 1): 1px)"
+          ],
+          [
+            "clip-path: shape(from 0 0, line to 1px 1px)",
+            true,
+            true,
+            true,
+            "shape(from 0px 0px, line to 1px 1px)"
+          ],
+          [
+            "clip-path: shape(evenodd from 10% 20%, hline by 5px, vline to 3em, curve to 1px 2px with 3px 4px, smooth by 1px 1px, arc to 10px 10px of 5px cw large rotate 10deg, close)",
+            true,
+            true,
+            true,
+            "shape(evenodd from 10% 20%, hline by 5px, vline to 3em, curve to 1px 2px with 3px 4px, smooth by 1px 1px, arc to 10px 10px of 5px cw large rotate 10deg, close)"
+          ],
+          [
+            "clip-path: shape(from 0 0, move to 1px 1px, line by 2px 2px, curve by 1px 1px with 0 0 / 2px 2px, smooth to 3px 3px with 1px 1px, close)",
+            true,
+            true,
+            true,
+            "shape(from 0px 0px, move to 1px 1px, line by 2px 2px, curve by 1px 1px with 0px 0px / 2px 2px, smooth to 3px 3px with 1px 1px, close)"
+          ],
+          [
+            "offset-path: shape(from 0 0, line to 1px 1px)",
+            true,
+            true,
+            true,
+            "shape(from 0px 0px, line to 1px 1px)"
+          ],
+          [
+            "clip-path: shape(line to 1px 1px)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "clip-path: shape(from 0 0)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "clip-path: shape(from 0 0, line 1px 1px)",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "clip-path: shape(from 0 0, close) border-box",
+            true,
+            true,
+            true,
+            "shape(from 0px 0px, close)"
+          ],
+          [
+            "scroll-marker-group: after",
+            true,
+            true,
+            true,
+            "after"
+          ],
+          [
+            "view-transition-class: a",
+            true,
+            true,
+            true,
+            "a"
+          ],
+          [
+            "text-wrap: pretty",
+            true,
+            true,
+            true,
+            "pretty"
+          ],
+          [
+            "color: contrast-color(red)",
+            true,
+            true,
+            true,
+            "contrast-color(red)"
+          ],
+          [
+            "font-size: 1rcap",
+            true,
+            true,
+            true,
+            "1rcap"
+          ],
+          [
+            "anchor-scope: all",
+            true,
+            true,
+            true,
+            "all"
+          ],
+          [
+            "overlay: auto",
+            true,
+            true,
+            true,
+            "auto"
+          ],
+          [
+            "timeline-scope: --t",
+            true,
+            true,
+            true,
+            "--t"
+          ],
+          [
+            "content-visibility: auto",
+            true,
+            true,
+            true,
+            "auto"
+          ],
+          [
+            "color: red !important",
+            true,
+            true,
+            false,
+            ""
+          ],
+          [
+            "colour: red",
+            false,
+            false,
+            false,
+            ""
+          ],
+          [
+            "color: bogus",
+            false,
+            false,
+            false,
+            ""
+          ]
+        ],
+        "forms": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          false,
+          false,
+          true,
+          true,
+          true,
+          false,
+          false
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "browser": "159.0.8154.6",
+  "probeSha256": "8fc7e57570860d00999d567342d768fd53b27b1ded15ed4dfaa7bc960a7fdba3",
+  "result": {
+    "absent": true,
+    "before": 150,
+    "after": 150,
+    "withGetter": 150,
+    "getterCalls": 0,
+    "sameStack": true,
+    "stackPrefix": "Error: stack-control",
+    "descriptor": {
+      "data": true,
+      "undefined": true,
+      "writable": true,
+      "enumerable": true,
+      "configurable": true
+    }
+  }
+}

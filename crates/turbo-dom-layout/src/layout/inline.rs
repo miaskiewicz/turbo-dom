@@ -3671,6 +3671,62 @@ pub fn layout_runs(
 mod tests {
     use super::*;
 
+    #[test]
+    fn transformed_expansion_retains_original_utf16_source_cells() {
+        use crate::live::testing::layout_with_fonts;
+        let html = "<p id=text style='text-transform:uppercase'>aßz</p>";
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let text = tree.children(tree.query_selector("#text").unwrap())[0];
+        let source = crate::live::source_id(crate::live::testing::DOCUMENT, text);
+        let cells = snapshot.text_cluster_boxes_for_source(source);
+        assert!(cells
+            .iter()
+            .any(|cell| cell.utf16_start == 1 && cell.utf16_end == 2));
+        assert!(cells
+            .iter()
+            .any(|cell| cell.utf16_start == 2 && cell.utf16_end == 3));
+        assert!(cells.iter().all(|cell| cell.utf16_end <= 3));
+        assert!(cells.iter().all(|cell| cell.rect.width.is_finite()));
+    }
+
+    #[test]
+    fn wrapped_rtl_collapsed_spaces_keep_distinct_source_affinities() {
+        use crate::live::testing::layout_with_fonts;
+        let html = "<div id=text style='direction:rtl;width:35px;font-size:16px;line-height:20px'>abc  def</div>";
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        let text = tree.children(tree.query_selector("#text").unwrap())[0];
+        let source = crate::live::source_id(crate::live::testing::DOCUMENT, text);
+        let cells = snapshot.text_cluster_boxes_for_source(source);
+        let first = cells
+            .iter()
+            .find(|cell| cell.utf16_start == 3 && cell.collapsed_whitespace)
+            .expect("first collapsed space");
+        let second = cells
+            .iter()
+            .find(|cell| cell.utf16_start == 4 && cell.collapsed_whitespace)
+            .expect("second collapsed space");
+        assert!(
+            second.rect.y > first.rect.y,
+            "extra collapsed source belongs to the wrapped line"
+        );
+        assert_eq!(second.rect.width, 0.0);
+        assert_eq!(second.paragraph_level, 1);
+    }
+
     fn collection_source_run(face: FontFace) -> SourceRun {
         SourceRun {
             run: GlyphRun {

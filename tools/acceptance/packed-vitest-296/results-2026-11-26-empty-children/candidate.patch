@@ -1,0 +1,80 @@
+--- a/src/runtime/css-default-capture.mjs
++++ b/src/runtime/css-default-capture.mjs
+@@ -41,7 +41,8 @@
+ const arrayMethods = objectFromEntries(
+   ['push', 'find', 'filter', 'map', 'some', 'slice', 'includes'].map((name) => [name, NativeArray.prototype[name]]),
+ );
+-const arrayIterator = NativeArray.prototype[Symbol.iterator];
++const iteratorSymbol = Symbol.iterator;
++const arrayIterator = NativeArray.prototype[iteratorSymbol];
+ const stringMethods = objectFromEntries(
+   ['charCodeAt', 'startsWith', 'split', 'slice', 'toLowerCase', 'toUpperCase', 'indexOf', 'includes'].map((name) => [name, NativeString.prototype[name]]),
+ );
+@@ -245,6 +246,11 @@
+     const property = descriptor(cache, `${child.index}`);
+     if (property && !hasOwn(property,'value')) unsupported('unknown inert cached node');
+   }
++}
++function copyPhysicalChildren(children, length) {
++  // Array.from observes an inherited iterator on its array-like input.
++  if (length === 0 && !descriptor(NativeObject.prototype, iteratorSymbol)) return [];
++  return NativeArray.from({ length }, (_, index) => data(children, `${index}`));
+ }
+ function physicalChildren(state, parent) {
+   const kids = data(parent, '__kids');
+@@ -252,7 +258,7 @@
+     plainArray(kids);
+     const length = data(kids, 'length');
+     if (length > state.limits.maxNodes - state.records.length) throw new CssDomSnapshotLimitError('maxNodes');
+-    return NativeArray.from({ length }, (_, index) => data(kids, `${index}`));
++    return copyPhysicalChildren(kids, length);
+   }
+   const index = data(parent, '__idx');
+   if (index < 0 || !state.buffer) return [];
+@@ -269,7 +275,7 @@
+   originalMethod(parent, '__children', nativeChildren);
+   const result = apply(nativeChildren, parent, []);
+   plainArray(result);
+-  return NativeArray.from({length:data(result,'length')}, (_, at)=>data(result, `${at}`));
++  return copyPhysicalChildren(result, data(result, 'length'));
+ }
+ function ownedAttributes(state, stored) {
+   plainArray(stored);
+--- a/test/css-default-capture-limits.test.mjs
++++ b/test/css-default-capture-limits.test.mjs
+@@ -221,3 +221,35 @@
+  capture.reset(document);
+  assert.notEqual(read(),changed);
+ });
++
++test('empty child copies preserve array-like iterator behavior and native helper refusal', () => {
++  const { document } = createEnvironment('<main id="target"></main>');
++  const target = document.querySelector('main'), child = document.createElement('i');
++  const capture = createDefaultCssCapture(), read = () => capture.capture(document, policy);
++  const initial = read().records.length;
++  target.appendChild(child);
++  assert.equal(read().records.length, initial + 1);
++  const children = Object.getOwnPropertyDescriptor(target, '__kids').value;
++  const original = Object.getOwnPropertyDescriptor(children, '0');
++  let hooks = 0;
++  Object.defineProperty(children, '0', { configurable: true, get() { hooks++; return child; } });
++  try { assert.throws(read, /unknown 0/); } finally { Object.defineProperty(children, '0', original); }
++  target.removeChild(child);
++  assert.equal(read().records.length, initial);
++  const originalFrom = Object.getOwnPropertyDescriptor(Array, 'from');
++  Object.defineProperty(Array, 'from', { configurable:true, get() { hooks++; return originalFrom.value; } });
++  try { assert.throws(read, /overridden collection helper/); } finally { Object.defineProperty(Array, 'from', originalFrom); }
++  assert.equal(hooks, 0);
++
++  const iterator = Symbol.iterator;
++  let observedEmpty = 0;
++  Object.defineProperty(Object.prototype, iterator, { configurable: true, get() {
++    if (Object.hasOwn(this, 'length') && this.length === 0) observedEmpty++;
++    return undefined;
++  }});
++  try { assert.equal(read().records.length, initial); } finally { delete Object.prototype[iterator]; }
++  assert.ok(observedEmpty > 0);
++  const originalSymbol = Object.getOwnPropertyDescriptor(globalThis, 'Symbol');
++  Object.defineProperty(globalThis, 'Symbol', { ...originalSymbol, value: { iterator: Symbol('other iterator') } });
++  try { assert.throws(read, /overridden array iterator/); } finally { Object.defineProperty(globalThis, 'Symbol', originalSymbol); }
++});

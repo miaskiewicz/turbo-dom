@@ -1,0 +1,235 @@
+{
+  "scope": "optional requested-property used-value projection; no npm default switch",
+  "base": "b6366aa8b1801cbbeb7035ed122943dee7f54dd4",
+  "source": {
+    "src/core.rs": "536b9c7290614b1160ee2c81719e7e65d03f7b0532bc406c73ce51104304d000",
+    "src/css_used.rs": "804eb899d9decb4b396a79e4cf80a15e0a0e63c693f406e0aaa03089a0db747b",
+    "src/css_scene.rs": "313762cd26372c71a8b919322e84cf959518d267bffa066b6a0642e61c4c074f",
+    "src/css_backend.rs": "1123ff3ec34858a2b74aa06856955a155dd0dd80a035de8502f99037f3a07d5c",
+    "src/css_resolve.rs": "5d00cdbda932ab88e81e2718757afc5b1e0526270f8fa746e8a87e80251a44cc",
+    "src/lib.rs": "fd10fcc81670569222406874edbcca1efb46a9904b41eb73c3e07ac246a4c98c",
+    "src/css_input.rs": "aea402ac406024121021ba194c6dd18781dcdb9e71aa243eae281837e57acb48",
+    "src/spike.rs": "4f908b7f36c1d2a318cae426fe1e2120f84a01ed56ea80171456311c328dc9f9",
+    "src/css_serialize.rs": "2e861d969c948a96128a2f01be3c5a02e62b8e8d155079b25af2aa1f0db45d30",
+    "crates/turbo-dom/src/rtdom/computed_css/cssom_serialization.rs": "d63494ae1b0723ba4242239511675fb6cf95accb685e9c9230481723b337e02c",
+    "crates/turbo-dom/src/rtdom/computed_css/scope_plan.rs": "40f64e3c8a05ace14b30a9152b6123554845dc6b8e698b2fa61eae69cb353095",
+    "crates/turbo-dom/src/rtdom/computed_css/cascade_order.rs": "418609ca55049d4d1429a89ba35147b0790259f59f42826304fcba6dd4ddd8d1",
+    "crates/turbo-dom/src/rtdom/computed_css/prepared.rs": "b06f668fa25f8c463a21ce035837710d9f0c78277dc1af31703cfb1b9882187f",
+    "crates/turbo-dom/src/rtdom/computed_css/variables.rs": "01c2b7ed0c4d3a4042b4a4f2cbcb6a11f942869375286f51f2d2ab65ec2c244f",
+    "crates/turbo-dom/src/rtdom/computed_css/font_values.rs": "54eab0cd5a36854dfd5a07b5b23b180670d0735a6d9c360012b0a2c594512754",
+    "crates/turbo-dom/src/rtdom/computed_css/ordinary.rs": "b4b71d7d53cad6791b0c62acfb486d1fe24a5bf8c898b4158234077fc4a95af1",
+    "crates/turbo-dom/src/rtdom/computed_css/used_values.rs": "2402761105467debbd2249eaba05fd9cad3143e5f5f31f699df1283f5d8ea555",
+    "crates/turbo-dom/src/rtdom/computed_css/inline_style.rs": "5a9f29d3b8b828c7358ac02543ec7378d5a9c527e49f1f17a2313f302a7c2e67",
+    "crates/turbo-dom/src/rtdom/computed_css/resolve.rs": "98de2265b6487be3c8b5839a90766946dce3dece388f60f22bb4477678a47eee",
+    "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "f11c82491d9ca423e2e8fd1df18736d0703017e50210b4bbd89bc7a1961c2b6f",
+    "crates/turbo-dom/src/rtdom/computed_css/properties.rs": "d586066cb7a2f2cb2100884736d03bcdb4c6cc1b6b2fea21441f94a729a6afaf",
+    "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "1908e375efbb3df39b2e1c25e48ed6e4ae5d82728e01181ec7604c3ade2a9687",
+    "crates/turbo-dom/src/rtdom/computed_css/custom_cascade.rs": "e41d2fd39caa7ad1aa99e6fad893739cd09e4a2455aa30301901e2301717643b",
+    "crates/turbo-dom/src/rtdom/computed_css/selector_policy.rs": "5a2e8b0b73b4dd13acd7a18437861bd0ff48a7c7cfb8ebf907faec68feb13dec",
+    "crates/turbo-dom/src/rtdom/computed_css/property_data.rs": "759f4a63618c7a03f5fb782a79268476a69a29a9936cac9874ec298c7a6c656e",
+    "crates/turbo-dom/src/rtdom/computed_css/facts.rs": "0df899ed15025f96404f1cca8407c567fe251d63c581a1b04aab0bd3c3d2a728",
+    "crates/turbo-dom/src/rtdom/computed_css/candidate_set.rs": "dcf3da2c09715d7d784489cf165454470c1fd17046aa4161d23cccfe0b83f872",
+    "crates/turbo-dom/src/rtdom/computed_css/declaration_model.rs": "d9fd6455f1fb66f5955a8b4707b57484a79c1d1a9d77d9c8469a37f5a9f59ace",
+    "crates/turbo-dom/src/rtdom/computed_css/selection.rs": "d506f38fdef4afa2160033cfb60b141568973f24ceb75f8b6cd29730adf26442",
+    "crates/turbo-dom/src/rtdom/computed_css/stylesheet.rs": "1adfc4d612f2d2a5fcb040f024966ea5b77b6c8ecb3f3fad3f507da953ef9369",
+    "crates/turbo-dom/src/rtdom/computed_css/layers.rs": "b9bdf455205988debbc81fe6cb070b17be11e49062183dd38250f3aa02d49105",
+    "crates/turbo-dom/src/rtdom/computed_css/candidates.rs": "d10138fb07cb1403380904ce1f6a37ecf14ea897c3ceb918201df376d964c22e",
+    "crates/turbo-dom/src/rtdom/computed_css/property_registry.rs": "dc2b367e382cf64281cac63b3a6140bb818203895d0cd08b472655f12d4466cb",
+    "crates/turbo-dom/src/rtdom/computed_css/computed_values.rs": "4e768a753ca272139ac6732912884b36906a8a487ccb181129a0acb165322aeb",
+    "crates/turbo-dom/src/rtdom/computed_css/shadow_routes.rs": "daee9dc36543f58dd138c1c0712854b96e0fe3a5834970fb3b4741cc8e0ee2df",
+    "crates/turbo-dom/src/rtdom/computed_css/conditions.rs": "615f5ef489743d8ec897e55aa9147d186795415b4003299c2d654f5b420ec68f",
+    "crates/turbo-dom/src/rtdom/computed_css/payload.rs": "598ede11487efa6d84da91aff3b44aeca0b33a84f1d78a7d4fe86e1b8d4237e6",
+    "crates/turbo-dom/src/rtdom/computed_css/model.rs": "4d541d35ea73e5d7563328dcc41f69a3f9d5c6f793698de25215bb4e578f7195",
+    "crates/turbo-dom/src/rtdom/computed_css/container.rs": "2e135d273f8ff5ad82849de5f7d9a3211e6972d3b26fd0febb3090b826065b5c",
+    "crates/turbo-dom/tests/computed_used_values.rs": "001b686fe2e1bcd90e37d19bdd4ebdf3cf71c5e0f70cba4dcfbfb31496ecc501"
+  },
+  "actualProof": {
+    "status": "final-exact-source-all-green",
+    "checks": [
+      {
+        "suite": "computed-used-inheritance",
+        "mode": "native",
+        "passed": 4,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa",
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original15",
+        "mode": "native",
+        "passed": 15,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa",
+        "counts": {
+          "compile": 15,
+          "prepare": 15,
+          "resolve": 15,
+          "finalize": 15,
+          "geometry": 0,
+          "usedScene": 0,
+          "property": 0
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original18",
+        "mode": "native",
+        "passed": 18,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa/turbo-dom-css.darwin-arm64.node",
+        "artifactSha256": "b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa",
+        "counts": {
+          "compile": 18,
+          "prepare": 18,
+          "resolve": 18,
+          "finalize": 18,
+          "geometry": 1
+        }
+      },
+      {
+        "suite": "computed-used-inheritance",
+        "mode": "node-wasm",
+        "passed": 4,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745",
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original15",
+        "mode": "node-wasm",
+        "passed": 15,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745",
+        "counts": {
+          "compile": 15,
+          "prepare": 15,
+          "resolve": 15,
+          "finalize": 15,
+          "geometry": 0,
+          "usedScene": 0,
+          "property": 0
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original18",
+        "mode": "node-wasm",
+        "passed": 18,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/node/turbo_dom_css.js",
+        "artifactSha256": "75319b8e05d9cc62bd1408957ee359d799f619d3c33f9e872441290be9b3c745",
+        "counts": {
+          "compile": 18,
+          "prepare": 18,
+          "resolve": 18,
+          "finalize": 18,
+          "geometry": 1
+        }
+      },
+      {
+        "suite": "computed-used-inheritance",
+        "mode": "web-wasm",
+        "passed": 4,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e",
+        "counts": {
+          "compile": 4,
+          "prepare": 4,
+          "resolve": 4,
+          "finalize": 4,
+          "geometry": 0,
+          "usedScene": 4,
+          "property": 4
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original15",
+        "mode": "web-wasm",
+        "passed": 15,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e",
+        "counts": {
+          "compile": 15,
+          "prepare": 15,
+          "resolve": 15,
+          "finalize": 15,
+          "geometry": 0,
+          "usedScene": 0,
+          "property": 0
+        }
+      },
+      {
+        "suite": "used-regression-refresh/original18",
+        "mode": "web-wasm",
+        "passed": 18,
+        "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b682140c9ee0b2e85845a9ac488c912031df7f4293179bf32399c95115e89ecb/web/turbo_dom_css.js",
+        "artifactSha256": "0a47a504ff601cb7b483fc1738eede21dc1a402ceb7fcf4aa1b2c174f670ee1e",
+        "counts": {
+          "compile": 18,
+          "prepare": 18,
+          "resolve": 18,
+          "finalize": 18,
+          "geometry": 1
+        }
+      }
+    ],
+    "hashes": {
+      ".evidence/issue-296/computed-used-inheritance/FINAL-native.json": "779427f355e51ba5f23870a74603e57c616ba32577ab61f5b434e11183c03787",
+      ".evidence/issue-296/used-regression-refresh/original15/FINAL-native.json": "d99e7bcb294221214d4636a0caf835a3f1280f93828e6934fbcbe545c9841a6d",
+      ".evidence/issue-296/used-regression-refresh/original18/FINAL-native.json": "48589bb7d79ad913dd4ded3d2576a082edffd428c73576d3a3ef98cd2bc5eb46",
+      ".evidence/issue-296/computed-used-inheritance/FINAL-node-wasm.json": "6177647bac7991d9643457b7fc594f3969688ff029d501ad10b81d2d849c02e6",
+      ".evidence/issue-296/used-regression-refresh/original15/FINAL-node-wasm.json": "bcd33e0c11d35b0767ecc905b967292312e2da91e178ebccdd3c8d6b168b0c01",
+      ".evidence/issue-296/used-regression-refresh/original18/FINAL-node-wasm.json": "c45a958b7b5d2c56fba4709fa100e3e74ab533ce67726d74058d23ac7cfb0ed0",
+      ".evidence/issue-296/computed-used-inheritance/FINAL-web-wasm.json": "3e31654bac9556bc0bf1da3104cf1d40dbb7324ecf27084fc6fc94598ff4e7ca",
+      ".evidence/issue-296/used-regression-refresh/original15/FINAL-web-wasm.json": "18c2cbcd375084f6e62662cf63792456c19e9c9304f57bdabc64a5f4651656b6",
+      ".evidence/issue-296/used-regression-refresh/original18/FINAL-web-wasm.json": "f44540f5b6ca9d92946731081f9f567c751654c189565313209ca6be1ccd30fe"
+    },
+    "priorEvidencePreserved": true
+  },
+  "actualProofSha256": "9f9680e93f74c0d0113e39e68834189b5d27dc0af321738446dc712fa1509dfa",
+  "coverage": {
+    "default": {
+      "covered": 14307,
+      "total": 14307,
+      "floor": 100
+    },
+    "computedStyleGrammar": {
+      "covered": 17526,
+      "total": 17526,
+      "floor": 100
+    }
+  },
+  "gates": {
+    "coreFocusedTests": 6,
+    "rootCssTests": 51,
+    "coreStrictAllTargets": "PASS",
+    "rootStrictAllTargets": "PASS",
+    "wasmStrict": "PASS",
+    "fmt": "PASS",
+    "complexityMax9": "PASS"
+  },
+  "nativeNoWebAssembly": {
+    "artifact": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-used-values-296/.evidence/issue-296/used-payload/b31d7f23fc20c308de36fa9f3e09ba2f0ebde1518cb45dcdfd8c15d3ac3698aa/turbo-dom-css.darwin-arm64.node",
+    "version": "0.8.7",
+    "projectCssomPropertyV1": "function",
+    "WebAssembly": "throwing getter",
+    "result": "loaded without WebAssembly access"
+  },
+  "remaining": [
+    "default runtime orchestration and compatibility validation",
+    "ownership/transport performance acceptance",
+    "separate proxy branch floor followup and dependency integration"
+  ]
+}

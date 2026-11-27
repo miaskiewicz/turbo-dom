@@ -191,10 +191,11 @@ fn xpath_snapshot_budgets_raise_not_supported_errors() {
             ),
             r#"["ok","NotSupportedError: XPath attributes exceed the node budget"]"#
         );
+        // Byte guards must demand the value; structural count(.) does not read it.
         assert_eq!(
             json(
                 scope,
-                "(() => { const big = 'x'.repeat(1024 * 1024); const text = document.createElement('p'); text.append(big); const attribute = document.createElement('p'); attribute.setAttribute('v', big); return [fail(text), fail(attribute), fail(document.createElement('p').appendChild(document.createTextNode(big.slice(256))))]; })()"
+                "(() => { const big = 'x'.repeat(1024 * 1024); const text = document.createElement('p'); text.append(big); const attribute = document.createElement('p'); attribute.setAttribute('v', big); return [fail(text, 'string(.)'), fail(attribute, 'string(@v)'), fail(document.createElement('p').appendChild(document.createTextNode(big.slice(256))), 'string(.)')]; })()"
             ),
             r#"["NotSupportedError: XPath text exceeds its byte budget","NotSupportedError: XPath attributes exceed the byte budget","ok"]"#
         );
@@ -280,5 +281,109 @@ mod frame_read {
             SEEN.with(|seen| seen.borrow().clone()),
             [(false, false), (true, true)]
         );
+    }
+}
+
+#[test]
+fn relative_xpath_does_not_consume_unrelated_module_values() {
+    for mode in ["script", "style", "attribute"] {
+        with_page("<!doctype html><main><div id=parent class=MuiPickersInputBase-root><input id=field><div class=MuiPickersSectionList-root></div></div></main>", |scope| {
+            let source=format!(r#"(()=>{{
+              const mode='{mode}',big='x'.repeat(1024*1024),field=document.getElementById('field');
+              if(mode==='attribute')document.body.setAttribute('data-module',big);
+              else{{const module=document.createElement(mode);if(mode==='script')module.type='application/json';module.textContent=mode==='style'?'/*'+big+'*/':big;document.head.appendChild(module);}}
+              const parent=document.evaluate('..',field,null,9).singleNodeValue;
+              const count=document.evaluate('count(.)',field,null,1).numberValue;
+              const expression='descendant-or-self::div[contains(@class,"MuiPickersSectionList-root")] | ancestor::*[contains(@class,"MuiPickersInputBase-root")][1]//div[contains(@class,"MuiPickersSectionList-root")]';
+              const date=document.evaluate(expression,field,null,7);
+              let error='none';try{{document.evaluate(mode==='attribute'?'string(/html/body/@data-module)':'string(//'+mode+'[last()])',field,null,2)}}catch(caught){{error=caught.name+': '+caught.message}}
+              return [parent.id,count,date.snapshotLength,error];
+            }})()"#);
+            let result=json(scope,&source);
+            let error=if mode=="attribute" {"XPath attributes exceed the byte budget"} else {"XPath text exceeds its byte budget"};
+            assert_eq!(result,format!(r#"["parent",1,1,"NotSupportedError: {error}"]"#));
+        });
+    }
+}
+
+#[test]
+fn xpath_demanded_values_keep_cumulative_limits_identity_and_owner_state() {
+    with_page("<!doctype html><body><p id=local></p>", |scope| {
+        let result = json(
+            scope,
+            r#"(()=>{
+          const foreign=document.implementation.createHTMLDocument('foreign');
+          foreign.body.innerHTML='<section id="parent" class="MuiPickersInputBase-root"><input id="field"><div class="MuiPickersSectionList-root"></div></section>';
+          const module=foreign.createElement('script');module.type='application/json';module.textContent='x'.repeat(1024*1024);foreign.head.append(module);
+          const field=foreign.getElementById('field'),parent=foreign.getElementById('parent');
+          const run=(source,type=9)=>document.evaluate(source,field,null,type,null);
+          const snapshot=run('ancestor::*[contains(@class,"MuiPickersInputBase-root")]',7);
+          const own=run('..').singleNodeValue===parent&&snapshot.snapshotItem(0).ownerDocument===foreign;
+          field.setAttribute('data-value','before');const scalar=run('string(@data-value)',2);
+          field.setAttribute('data-value','after');const fresh=run('string(@data-value)',2).stringValue;
+          parent.className='changed';const dirty=run('ancestor::*[contains(@class,"MuiPickersInputBase-root")]',7).snapshotLength;
+          field.setAttribute('large','a'.repeat(600000));const repeated=run('string-length(concat(@large,@large))',1).numberValue;
+          field.setAttribute('second','b'.repeat(600000));let error;try{run('concat(@large,@second)',2)}catch(caught){error=caught.name+': '+caught.message}
+          return [own,scalar.stringValue,fresh,dirty,snapshot.snapshotLength,repeated,error,run('count(.)',1).numberValue];
+        })()"#,
+        );
+        assert_eq!(
+            result,
+            r#"[true,"before","after",0,1,1200000,"NotSupportedError: XPath attributes exceed the byte budget",1]"#
+        );
+    });
+    with_page("<!doctype html><body><main id=target></main>", |scope| {
+        let result = json(
+            scope,
+            r#"(()=>{
+          const target=document.getElementById('target');
+          for(let i=0;i<2;i++){const script=document.createElement('script');script.type='application/json';script.textContent='x'.repeat(600000);target.append(script)}
+          let error;try{document.evaluate('string(.)',target,null,2)}catch(caught){error=caught.name+': '+caught.message}
+          return [document.evaluate('count(script)',target,null,1).numberValue,error,document.evaluate('..',target,null,9).singleNodeValue===document.body];
+        })()"#,
+        );
+        assert_eq!(
+            result,
+            r#"[2,"NotSupportedError: XPath text exceeds its byte budget",true]"#
+        );
+    });
+}
+
+#[test]
+fn relative_xpath_matches_independent_chrome159_value_admission_control() {
+    use sha2::Digest;
+    let probe = include_str!("xpath_value_admission_probe.js");
+    let control: serde_json::Value =
+        serde_json::from_str(include_str!("xpath_value_admission_chrome159.json")).unwrap();
+    assert_eq!(
+        control["probeSha256"],
+        format!("{:x}", sha2::Sha256::digest(probe.as_bytes()))
+    );
+    with_page("<!doctype html><body>", |scope| {
+        let value: serde_json::Value =
+            serde_json::from_str(&json(scope, probe.trim_end().trim_end_matches(';'))).unwrap();
+        assert_eq!(value, control["result"]);
+    });
+}
+
+#[test]
+fn xpath_topology_metadata_still_spends_the_original_byte_allowance() {
+    for attribute in [false, true] {
+        with_page("<!doctype html><body>", |scope| {
+            let source = format!(
+                r#"(()=>{{
+              const node=document.createElement({attribute}?'p':'x'.repeat(600000));
+              if({attribute})node.setAttribute('x'.repeat(600000),'');
+              document.body.append(node);
+              try{{document.evaluate('count(.)',node,null,1)}}catch(error){{return error.name+': '+error.message}}
+            }})()"#
+            );
+            let expected = if attribute {
+                r#""NotSupportedError: XPath attributes exceed the byte budget""#
+            } else {
+                r#""NotSupportedError: XPath text exceeds its byte budget""#
+            };
+            assert_eq!(json(scope, &source), expected);
+        });
     }
 }

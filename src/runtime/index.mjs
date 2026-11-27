@@ -11,8 +11,11 @@ import { createWindow } from './window.mjs';
 import { unpack } from './buffer.mjs';
 import { getParser, setParserMode } from './parser.mjs';
 
-export { Document } from './dom.mjs';
-export * from './dom.mjs';
+export {
+  ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, DOCUMENT_FRAGMENT_NODE,
+  Node, Text, Comment, DocumentType, Element, SVGElement, MathMLElement, DocumentFragment, ShadowRoot,
+  DOMParser, XMLSerializer, MutationObserver, Document, Event, CustomEvent, parseDocument,
+} from './dom.mjs';
 
 // Custom element state seam (public API): the state behind `:defined` (custom-elements.mjs),
 // for embedders that upgrade elements themselves — the JS twin of the Rust engine's
@@ -75,6 +78,10 @@ function promoteDeclarativeShadowRoots(document) {
 }
 
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
+  const { domBackend = 'js' } = options;
+  if (domBackend === 'rust') throw new Error('turbo-dom: domBackend "rust" requires a Node browser-env binding, which this build does not include');
+  if (domBackend !== 'js') throw new TypeError('turbo-dom: domBackend must be "js" or "rust"');
+
   // Optional parser selection: options.parser === 'wasm' | 'native' | 'auto'. Applied
   // before the first parse below; process-global (the parser binding is a singleton),
   // so the last mode set wins. Embedders wanting a fully node-free path inject a

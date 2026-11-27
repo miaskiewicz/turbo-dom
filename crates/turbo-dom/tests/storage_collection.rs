@@ -31,7 +31,9 @@ static ALLOCATOR: TrackedAlloc = TrackedAlloc;
 
 use std::fmt::Write;
 use turbo_dom::rtdom::serialize::serialize_outer;
-use turbo_dom::rtdom::tree::{CollectionBudget, CollectionError, Handle, Tree};
+use turbo_dom::rtdom::tree::{
+    CollectionBudget, CollectionError, Handle, StorageCollectionOutcome, Tree,
+};
 
 fn budget() -> CollectionBudget {
     CollectionBudget {
@@ -400,4 +402,124 @@ fn interned_payload_rejection_precedes_expensive_materialization() {
         allocated < 1_000_000,
         "rejected collection copied interned payloads: {allocated} allocated bytes"
     );
+}
+
+#[test]
+fn sparse_zero_reclaim_preserves_checkpoint_without_hiding_real_invalidations() {
+    let mut tree = Tree::parse("<main><span>content</span></main>");
+    let main = tree.query_selector("main").unwrap();
+    let initial = tree.document_checkpoint().unwrap();
+    let first = tree.collect_unreachable_if_needed(&[], budget()).unwrap();
+    assert!(matches!(first, StorageCollectionOutcome::Compacted(_)));
+    assert_eq!(first.report().reclaimed_nodes, 0);
+    assert!(!tree.document_unchanged_since(initial));
+
+    tree.set_attribute(main, "style", "width: 120px");
+    let saved = tree.document_checkpoint().unwrap();
+    let before = tree.storage_stats();
+    let version = tree.version;
+    let outcome = tree.collect_unreachable_if_needed(&[], budget()).unwrap();
+    assert!(
+        tree.document_unchanged_since(saved),
+        "fully retained sparse collection changed the connected checkpoint"
+    );
+    assert!(matches!(outcome, StorageCollectionOutcome::Unchanged(_)));
+    assert_eq!(outcome.report().before, before);
+    assert_eq!(outcome.report().after, before);
+    assert_eq!(outcome.report().reclaimed_nodes, 0);
+    assert_eq!(tree.version, version);
+    tree.invalidate_style(main, true);
+    assert!(!tree.document_unchanged_since(saved));
+    let next = tree.document_checkpoint().unwrap();
+    tree.collect_unreachable(&[], budget()).unwrap();
+    assert!(
+        !tree.document_unchanged_since(next),
+        "existing collector still replaces storage"
+    );
+}
+
+#[test]
+fn optional_collection_checks_graph_and_payload_budget_before_skipping() {
+    let mut tree = Tree::parse("<main id='p'/>");
+    let stale = tree.create_element("detached");
+    tree.collect_unreachable(&[], budget()).unwrap();
+    let saved = tree.document_checkpoint().unwrap();
+    assert_eq!(
+        tree.collect_unreachable_if_needed(&[stale], budget()),
+        Err(CollectionError::InvalidPin)
+    );
+    for limited in [
+        CollectionBudget {
+            max_nodes: 0,
+            ..budget()
+        },
+        CollectionBudget {
+            max_edges: 0,
+            ..budget()
+        },
+        CollectionBudget {
+            max_payload_bytes: 0,
+            ..budget()
+        },
+    ] {
+        assert_eq!(
+            tree.collect_unreachable_if_needed(&[], limited),
+            Err(CollectionError::BudgetExceeded)
+        );
+        assert!(tree.document_unchanged_since(saved));
+    }
+}
+
+#[test]
+fn optional_collection_retains_pinned_shadow_and_pending_mutation_until_reclamation() {
+    let mut tree = Tree::parse("<main><p id=x></p></main>");
+    let p = tree.query_selector("p").unwrap();
+    let shadow = tree.attach_shadow(p);
+    let child = tree.create_text_node("shadow text");
+    tree.append_child(shadow, child);
+    let attr = tree.attribute_node(p, None, "id").unwrap();
+    tree.collect_unreachable(&[], budget()).unwrap();
+    tree.start_recording();
+    remove(&mut tree, p);
+    let saved = tree.document_checkpoint().unwrap();
+    assert!(matches!(
+        tree.collect_unreachable_if_needed(&[], budget()).unwrap(),
+        StorageCollectionOutcome::Unchanged(_)
+    ));
+    let records = tree.take_mutation_events();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].record.removed(), &[p]);
+    assert!(matches!(
+        tree.collect_unreachable_if_needed(&[child], budget())
+            .unwrap(),
+        StorageCollectionOutcome::Unchanged(_)
+    ));
+    assert_eq!(tree.attribute_owner(attr), Some(p));
+    assert_eq!(tree.shadow_host(shadow), Some(p));
+    assert!(tree.document_unchanged_since(saved));
+    let outcome = tree.collect_unreachable_if_needed(&[], budget()).unwrap();
+    assert!(matches!(outcome, StorageCollectionOutcome::Compacted(_)));
+    assert_eq!(outcome.report().reclaimed_nodes, 4);
+    assert!(!tree.document_unchanged_since(saved));
+    assert!(!tree.is_live(p));
+    assert!(!tree.is_live(child));
+}
+
+#[test]
+fn optional_reclamation_invalidates_when_removing_the_detached_fullscreen_top() {
+    let mut tree = Tree::parse("<main><p></p></main>");
+    let main = tree.query_selector("main").unwrap();
+    let child = tree.query_selector("p").unwrap();
+    tree.collect_unreachable(&[], budget()).unwrap();
+    let detached = tree.create_element("div");
+    assert!(tree.set_fullscreen_stack(&[child, detached]));
+    let saved = tree.document_checkpoint().unwrap();
+    assert!(!tree.is_fullscreen_ancestor(main));
+    assert!(!tree.matches(main, ":-webkit-full-screen-ancestor"));
+    let outcome = tree.collect_unreachable_if_needed(&[], budget()).unwrap();
+    assert!(matches!(outcome, StorageCollectionOutcome::Compacted(_)));
+    assert_eq!(outcome.report().reclaimed_nodes, 1);
+    assert!(tree.is_fullscreen_ancestor(main));
+    assert!(tree.matches(main, ":-webkit-full-screen-ancestor"));
+    assert!(!tree.document_unchanged_since(saved));
 }

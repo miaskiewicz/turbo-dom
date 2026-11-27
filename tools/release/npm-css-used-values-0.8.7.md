@@ -1,0 +1,11 @@
+# Requested-property used values — v0.8.7
+
+The optional shared CSS backend keeps computed inheritance separate from used-size presentation. Core `project_used_property` and native/WASM `projectCssomPropertyV1` request actual content/border metrics for only a selected public width or height. Their caller supplies explicit limits and exact world/target identity. Unknown measurements remain requests; genuine no-box/non-atomic-inline facts preserve computed serialization; genuine zero remains zero. Authored declarations and computed inheritance are unchanged.
+
+The optional `serializeCssomV1` metadata lists only present public used-value keys, classified in Rust. Existing requests omit that metadata and retain their previous output. JavaScript needs no CSS property table. Ordinary unrelated/color reads need no layout. Provider exceptions belong to the caller and must propagate; this endpoint performs no layout itself.
+
+Actual Chrome159 controls prove percentage inheritance of 400px/200px and computed em inheritance of 200px/200px. Exact rebuilt native b31d and optimized WASM b682 payloads pass 18 original cases, 15 API cases and four inheritance cases in native, NodeWASM and browser ESM: 111 checks total. Authored values stay unchanged. The inheritance controls call canonical Scene once per first width, zero times for color and repeated width. Both WASM modes use no native fallback; native loads with WebAssembly inaccessible. Earlier payloads and failing baseline receipts remain preserved.
+
+Both unchanged Core floors pass: default 14,307/14,307 and optional grammar 17,526/17,526. Six focused Core tests and 51 Root tests, strict Core/Root/native/WASM, formatting and CC9 pass. A public weighted-nesting input refuses before recursive backend admission; no unsafe recursion, resource-budget increase, coverage exclusion or floor change is used. Source hashes before/after artifact builds match.
+
+This is an additive optional API increment. The npm default is unchanged and #296 remains open. Runtime orchestration, compatibility/ownership validation and measured performance acceptance remain separate gates; the companion optional proxy increment is not part of this Rust commit.

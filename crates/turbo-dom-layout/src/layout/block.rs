@@ -2874,7 +2874,7 @@ fn layout_content(
                 (suppress_first, keep_last, quirky),
             )
         }
-        BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs.font_size, ctx),
+        BoxKind::Flex(kids) => super::flex::layout_flex(lb, kids, cx, cy, cw, bs, ctx),
         BoxKind::Grid(kids) => super::flex::layout_grid(lb, kids, cx, cy, cw, bs.font_size, ctx),
         BoxKind::Table(kids) if super::table::is_wrapper(lb) => {
             super::table::layout_wrapper(kids, cx, cy, cw, bs.font_size, ctx)
@@ -2963,6 +2963,7 @@ fn transformed_image(image: Fragment, bs: &BoxStyle) -> Fragment {
     };
     let mut image = image;
     (image.z_index, image.is_positioned) = (None, false);
+    image.establishes_stacking_context = false;
     outer.children.push(image);
     outer
 }
@@ -3364,8 +3365,11 @@ fn layout_box_sized_impl(
         content,
         break_meta: break_meta_of(bs),
         children,
-        z_index: bs.z_index,
+        z_index: (bs.position != Position::Static)
+            .then_some(bs.z_index)
+            .flatten(),
         is_positioned: bs.position != Position::Static,
+        establishes_stacking_context: super::paint::style_context(&lb.style, bs.position),
         clip: super::value::clip_region(&lb.style, bbw, bbh, 1.0),
         overflow_clip,
         opacity: bs.opacity,
@@ -3891,8 +3895,11 @@ fn viewport_fragment(
         content_kind(lb, style, width, height),
     );
     fragment.break_meta = break_meta_of(style);
-    fragment.z_index = style.z_index;
+    fragment.z_index = (style.position != Position::Static)
+        .then_some(style.z_index)
+        .flatten();
     fragment.is_positioned = style.position != Position::Static;
+    fragment.establishes_stacking_context = super::paint::style_context(&lb.style, style.position);
     fragment.opacity = style.opacity;
     fragment
 }
@@ -3931,8 +3938,11 @@ fn image_fragment(lb: &LayoutBox, bx: f32, by: f32, sized: &SizedImage, bs: &Box
         content: FragmentContent::Image(sized.placement.clone()),
         break_meta: break_meta_of(bs),
         children: Vec::new(),
-        z_index: bs.z_index,
+        z_index: (bs.position != Position::Static)
+            .then_some(bs.z_index)
+            .flatten(),
         is_positioned: bs.position != Position::Static,
+        establishes_stacking_context: super::paint::style_context(&lb.style, bs.position),
         clip: super::value::clip_region(&lb.style, sized.width, sized.height, 1.0),
         overflow_clip: None,
         opacity: bs.opacity,
@@ -4202,6 +4212,71 @@ mod tests {
             children: vec![],
             source: None,
         })
+    }
+
+    #[test]
+    fn anonymous_break_preserves_inline_membership_boundaries() {
+        use crate::layout::boxgen::InlineItem;
+        use crate::NodeId;
+        let style = ComputedStyle::default();
+        let items = [
+            InlineItem::Boundary {
+                node_id: NodeId(1),
+                style: style.clone(),
+                start: true,
+            },
+            InlineItem::Text {
+                node_id: NodeId(2),
+                style: style.clone(),
+                text: "before".into(),
+            },
+            InlineItem::LineBreak,
+            InlineItem::Text {
+                node_id: NodeId(3),
+                style: style.clone(),
+                text: "after".into(),
+            },
+            InlineItem::Boundary {
+                node_id: NodeId(1),
+                style: style.clone(),
+                start: false,
+            },
+            InlineItem::Text {
+                node_id: NodeId(4),
+                style,
+                text: "outside".into(),
+            },
+        ];
+        let members = super::inline_members(&items, NodeId(1));
+        assert_eq!(
+            members,
+            [NodeId(1), NodeId(2), NodeId(3)].into_iter().collect()
+        );
+    }
+
+    #[test]
+    fn fontless_breaks_do_not_manufacture_sticky_fragments() {
+        use crate::live::testing::{id, layout_with_fonts};
+        use crate::text::FontRegistry;
+        let html = "<div style='width:100px;line-height:20px'><span id=sticky style='position:sticky;top:0'><br><br></span></div>";
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &FontRegistry::default(),
+        );
+        assert!(snapshot.sticky_constraint(id(&tree, "#sticky")).is_none());
+        let (tree, snapshot, _) = layout_with_fonts(
+            html,
+            "",
+            (200.0, 200.0),
+            Some(1.0),
+            |_| {},
+            &crate::test_support::fixture_fonts(),
+        );
+        assert!(snapshot.sticky_constraint(id(&tree, "#sticky")).is_some());
     }
 
     #[test]

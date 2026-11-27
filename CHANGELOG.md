@@ -5,6 +5,144 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [0.8.7] — 2026-11-27
+
+Rust source compatibility requires attention in layout consumers. Exhaustive
+matches on `style::CascadeOrigin` must handle the new `Animation` and
+`Transition` variants. Code constructing `Fragment` with a struct literal
+must supply `establishes_stacking_context`; the existing `Fragment::new`
+constructor initializes it. This release adds public APIs for computed CSS,
+document checkpoints, collection outcomes and host presentation integration.
+The npm default DOM and CSS engines remain JavaScript.
+
+### npm, Jest and Vitest
+
+- Added the per-environment `domBackend` option to `createEnvironment` and the
+  Jest and Vitest adapters. The default is `'js'`. Selecting `'rust'` raises a
+  setup error because this build has no Node binding for the full Rust browser
+  environment. HTML parser selection remains independent.
+- Geometry reads return branded `DOMRect` instances, and both `DOMRect` and
+  `DOMRectReadOnly` are available as globals. Location hash changes and
+  `pushState` / `replaceState` update the document URL. History traversal delivers
+  `popstate` with the destination state before the corresponding `hashchange`.
+  (#571, #572)
+- Removing focused content clears focus. Disabled controls and inert subtrees
+  reject focus. Controls inside a disabled fieldset’s first legend can still
+  receive focus.
+  `document.activeElement` and `ShadowRoot.activeElement` report the focused
+  element visible from each root, including nested closed roots. Textarea
+  selection tracks the caret. Its `defaultValue` follows child text, preserves
+  a dirty live value, and supplies the value restored by form reset. (#573–#575)
+
+### Shared CSS engine and packaging
+
+- Added a bounded, immutable Rust computed-style engine and separate native
+  N-API, Node WASM and web WASM CSS payloads. They share stylesheet and selector
+  syntax, preserve UTF-16 declaration tokens, and resolve custom properties
+  with explicit computation limits. The npm adapter projects computed values,
+  shorthands and requested used metrics through CSSOM. The default npm
+  `getComputedStyle()` still uses the JavaScript cascade. (#296)
+- The shared CSS adapter carries document font preferences, viewport and
+  resource policy, shadow-tree identities, slot and host relationships, and
+  nested `@scope` boundaries and proximity. It keeps matching answers scoped
+  to the tree and validates inputs before reusing prepared models.
+- Repeated style reads reuse verified selector answers, window environments
+  and captured routes. Inheritance-chain requests encode compact targets,
+  and single-compound selectors take a direct matching path. In the packed
+  Vitest benchmark the latest measured N-API candidate took 2.23% less median
+  wall time than the previous Rust build and 10.69% more than legacy JS in
+  a separate comparison. [Benchmarks and package identities](README.md#single-compound-selector-matching-2026-11-26)
+
+### Native DOM and browser environment
+
+- Added shadow-inclusive document checkpoints for host caches. Detached DOM
+  construction can preserve a checkpoint while connected mutations invalidate
+  it. Hosts can also read cascade revisions and raw stylesheet snapshots,
+  and prepare selector state for matching form validity and other live
+  pseudo-classes. (#552, #554)
+- Added opt-in `Tree::collect_unreachable_if_needed` and
+  `collect_native_storage_if_needed`. When an already-materialized sparse tree
+  retains every live node, collection preserves its backing storage and
+  checkpoint. First materialization and positive reclamation still compact;
+  host collection still reconciles owners and enforces pin and budget rules.
+  [Native storage collection](docs/native-storage-collection.md)
+- Repeated document queries can reuse bounded candidate indexes. The browser
+  binding also retains document state by owner and claims mutation batches
+  without repeatedly swapping documents. Scheduled callbacks now resolve their
+  scheduler from the owning V8 context. (#540)
+- Added a host API to sample CSS animations, Web Animations and transitions at
+  one document timeline instant for the native cascade. Samples expose current
+  ordered CSS animation names and stacking-context information. Uncertified
+  effects remain distinguishable, and ownership is isolated across V8 isolates.
+  (#555)
+- Transitions now check property eligibility, interpolate length-percentage
+  expressions, freeze custom-property color and transform endpoints, and
+  retarget from the presented value. SVG stroke dash lists and offsets sample
+  through the same engine. Sampling also tolerates an own, undefined
+  `Error.prepareStackTrace` data property. (#563, #564, #568–#570)
+- Animation discovery avoids used-size reads for lifecycle inspection and
+  resolves context-independent transforms without layout. Effect discovery
+  follows composed renderedness across shadow boundaries. Sampling bounds
+  target-membership work and reuses validated ancestor inputs while preserving
+  checks for volatile styles. (#576–#579)
+- Hosts can recover interrupted inspection state across registered contexts
+  after execution terminates, including partially bootstrapped frames.
+  Recovery requires explicit microtask handling. Reinstallation of an already
+  attached window follows the full install lifecycle even when snapshot
+  installation is enabled. (#567)
+
+### Native layout, text and paint
+
+- Font selection honors `@font-face unicode-range`. Text under `display:none`
+  no longer consumes the layout glyph allowance. (#539)
+- SVG painting resolves custom-property fills and fallbacks and renders bounded
+  embedded raster images, including MIME aliases. Paint and hit testing share
+  stacking-context order.
+- Added client and scroll metric support for proven zero-sized inner SVG
+  CSS boxes. Scroll measurements preserve local extents under singular
+  transforms such as `scale(0)`. (#560, #561)
+
+- **Absolute flex checkbox geometry (#546):** positioned percentage children
+  use the flex container's finalized padding box. Center-aligned checkbox inputs
+  retain their solved height instead of collapsing to zero. Normal-flow size
+  constraints and percentage definiteness remain on the existing solve path;
+  48 independent Chromium 159 controls cover both public layout pipelines.
+
+- **Scroll and hit-clip ownership (#550, #551):** containment on HTML or BODY
+  retains BODY's independent scrollport. Hit testing applies viewport overflow
+  at the viewport boundary and preserves containing-block ownership when fixed
+  or absolute descendants escape intermediate clips. Genuine contained clips
+  and existing unsupported-capability errors remain enforced.
+
+- **Cached own-box proof (#549):** host embedders can inspect an already-valid,
+  invariant own `display:none` cache entry before requesting visual rectangles.
+  The host-only probe computes no style or layout and returns `Unknown` for cold,
+  stale, animated or uncertain entries. Existing geometry and metric APIs retain
+  their normal behavior.
+
+### Native queries and host integration
+
+- **XPath value admission (#548):** relative queries no longer spend their byte allowance
+  on unrelated script, style or module values. The private native adapter admits
+  values only when XPath consumes them, once per node, with the same cumulative
+  byte limit and owner/version guards. Topology and evaluation bounds are unchanged.
+
+- **Live sibling selector ranks (#547):** repeated `nth-child` and `nth-of-type`
+  checks share lazy, tree-version-owned sibling ranks instead of rebuilding and
+  filtering sibling vectors per element. Mutation invalidation, exact namespace
+  and UTF-16 element identity, and live filtered/state matching are preserved.
+  Custom/composed navigators retain their existing rank semantics.
+
+- **Native test-window adapters (#542, #543):** `DOMParser.parseFromString`
+  now parses HTML and XML through the native inert-document APIs and enforces
+  Trusted Types. The default standalone window now has History with cloned state,
+  same-origin URL validation, synchronized Location fields and queued same-document
+  traversal. Navigation-capable embedders keep their own objects. New regressions
+  include independent Chromium 159 controls and the existing XML, Trusted Types
+  and inert-document view-transition controls.
+
+[Full release branch diff](https://github.com/miaskiewicz/turbo-dom/compare/v0.8.6...release/0.8.7)
+
 ## [0.8.6] — 2026-11-20
 
 Breaking changes: none. The public Rust API is unchanged from 0.8.5 in every crate,

@@ -1,0 +1,181 @@
+{
+  "issue": 296,
+  "stage": "separate lazy CSS native/WASM artifact component, no npm default switch",
+  "base": "94ea778e3d78503f6c1b54bb193999c687bf396e",
+  "toolchain": "1.98.0",
+  "jobs": 1,
+  "source": {
+    "Cargo.toml": "ab2e7017aaab868686a5c2ccad29a553e29c5c128cc6e64b03b429d4b3cc681f",
+    "Cargo.lock": "c26bb087f6f35a72e2db9fa7844477a9a4629b2fdd37be8dbffa753ebca83938",
+    "src/lib.rs": "3762b7ab226ff7abec345b647d7bec5813d119997419cc086d8647c42a5ef8a6",
+    "src/css_backend.rs": "6987fbc2e74b0eeffcdc99ab41d92c665b91eff779a643e7a5f440902782dbdd",
+    "src/css_resolve.rs": "5d00cdbda932ab88e81e2718757afc5b1e0526270f8fa746e8a87e80251a44cc",
+    "src/css_scene.rs": "313762cd26372c71a8b919322e84cf959518d267bffa066b6a0642e61c4c074f",
+    "crates/turbo-dom-layout/src/style/mod.rs": "61f41b753d28b899655fd5c1c4eef257cbe767fb2b4a5416f26802ca882ac172"
+  },
+  "artifacts": {
+    "turbo-dom-css.darwin-arm64.node": {
+      "bytes": 19941376,
+      "sha256": "c808daf506c0ac1a380dded2d8a20aa9eac2ab73c9f7ecb735d79a90120d9787"
+    },
+    "pkg-css/turbo_dom_css.js": {
+      "bytes": 14026,
+      "sha256": "660f13f64e4931bac42c4ead7e9b99dc5499ceb070b2de1cd69f2ea2b137b96e"
+    },
+    "pkg-css/turbo_dom_css_bg.wasm": {
+      "bytes": 15867677,
+      "sha256": "5c4af4da0bd4c14315fc82d98b6422e2b1355a6a1f035404fcc66a33640fa33b"
+    },
+    "pkg-css-web/turbo_dom_css.js": {
+      "bytes": 16930,
+      "sha256": "41cf169d07c974b8361f45db1fd3495438766e9d825036c0ec209d31246d487b"
+    },
+    "pkg-css-web/turbo_dom_css_bg.wasm": {
+      "bytes": 15867677,
+      "sha256": "5c4af4da0bd4c14315fc82d98b6422e2b1355a6a1f035404fcc66a33640fa33b"
+    }
+  },
+  "probes": {
+    "NATIVE-PROBE": {
+      "mode": "native",
+      "node": "v26.11.0",
+      "module": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-artifact-296/.evidence/payload/turbo-dom-css.darwin-arm64.node",
+      "sha256": "c808daf506c0ac1a380dded2d8a20aa9eac2ab73c9f7ecb735d79a90120d9787",
+      "loadMs": 1.9313749999999992,
+      "sourceSha256": "e4f6c5ed1f4d81740ab42c48ec913817b025d1d8fcbbffcac7d30b553f76f6af",
+      "values": {
+        "color": "rgb(0, 0, 255)",
+        "width": "32px",
+        "backgroundPositionX": "0%",
+        "declaredTextDecoration": "underline dotted red"
+      },
+      "nativeModules": [
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-artifact-296/.evidence/payload/turbo-dom-css.darwin-arm64.node"
+      ],
+      "disposed": [
+        0,
+        0
+      ],
+      "noWebAssembly": true
+    },
+    "NODE-WASM-PROBE": {
+      "mode": "wasm",
+      "node": "v26.11.0",
+      "module": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-artifact-296/.evidence/payload/pkg-css/turbo_dom_css.js",
+      "sha256": "660f13f64e4931bac42c4ead7e9b99dc5499ceb070b2de1cd69f2ea2b137b96e",
+      "loadMs": 8.778292,
+      "sourceSha256": "e4f6c5ed1f4d81740ab42c48ec913817b025d1d8fcbbffcac7d30b553f76f6af",
+      "values": {
+        "color": "rgb(0, 0, 255)",
+        "width": "32px",
+        "backgroundPositionX": "0%",
+        "declaredTextDecoration": "underline dotted red"
+      },
+      "nativeModules": [],
+      "disposed": [
+        0,
+        0
+      ],
+      "noWebAssembly": false
+    },
+    "NODE-WASM-NO-CRYPTO-PROBE": {
+      "mode": "wasm",
+      "node": "v26.11.0",
+      "module": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-css-artifact-296/.evidence/payload/pkg-css/turbo_dom_css.js",
+      "sha256": "660f13f64e4931bac42c4ead7e9b99dc5499ceb070b2de1cd69f2ea2b137b96e",
+      "loadMs": 8.256999999999998,
+      "sourceSha256": "e4f6c5ed1f4d81740ab42c48ec913817b025d1d8fcbbffcac7d30b553f76f6af",
+      "values": {
+        "color": "rgb(0, 0, 255)",
+        "width": "32px",
+        "backgroundPositionX": "0%",
+        "declaredTextDecoration": "underline dotted red"
+      },
+      "nativeModules": [],
+      "disposed": [
+        0,
+        0
+      ],
+      "noCrypto": true,
+      "noWebAssembly": false
+    },
+    "WEB-WASM-PROBE": {
+      "abi": 1,
+      "version": "0.8.7",
+      "loadMs": 27.799999997019768,
+      "values": {
+        "color": "rgb(0, 0, 255)",
+        "width": "32px",
+        "backgroundPositionX": "0%"
+      },
+      "oracle": {
+        "color": "rgb(0, 0, 255)",
+        "width": "32px",
+        "backgroundPositionX": "0%",
+        "computedTextDecoration": "underline dotted rgb(255, 0, 0)"
+      },
+      "declaredTextDecoration": "underline dotted red",
+      "publicKeys": [
+        "background-attachment",
+        "background-clip",
+        "background-color",
+        "background-image",
+        "background-origin",
+        "background-position-x",
+        "background-position-y",
+        "background-repeat",
+        "background-size",
+        "color",
+        "text-decoration-color",
+        "text-decoration-line",
+        "text-decoration-style",
+        "text-decoration-thickness",
+        "width"
+      ],
+      "disposed": [
+        0,
+        0
+      ],
+      "browser": "159.0.8154.6",
+      "sourceSha256": "e4f6c5ed1f4d81740ab42c48ec913817b025d1d8fcbbffcac7d30b553f76f6af",
+      "wasmSha256": "5c4af4da0bd4c14315fc82d98b6422e2b1355a6a1f035404fcc66a33640fa33b"
+    }
+  },
+  "checks": {
+    "nativeClassSceneTests": 39,
+    "strictNativeAllTargetsClippy": true,
+    "wasm32Check": true,
+    "CC9": true,
+    "plainNativeAndWasmParserRebuilt": true,
+    "npm": {
+      "passed": 884,
+      "failed": 0,
+      "skipped": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.63
+    }
+  },
+  "logs": {
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-fixed-gates/0.log": "d2b0b2e23ad12bff1bcc3a62f67529c73a2b5ac38ce28949a7a61ac72b5e2729",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-fixed-gates/1.log": "6bad42c07af659e6d0af965779f4b29cc9db8e796a9459d5777cc001c49cc959",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-fixed-gates/2.log": "46cb87898ebe7f3d972cd21072e6ab3d01b1a9f90a6a08ccefc27350c4c76abe",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-native-build.log": "f40ff56a95cf591d17bc50e322ab648d92f4692a1203a9b41932f13d7ff01ff1",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-wasm-build.log": "d2b0c01734ef796280cceeb824f9b60ff25f0317d93f8e2842f9b2311dc8c0ec",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-plain-parser-build.log": "561726412a53eb16aa6cea93633c3f3648a0bd6f071ee5dcd637ccf6197cef00",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-plain-wasm-build.log": "79e2d863bf12ce54e88a774231a17ca2d5f59adb1f06c261d55a068eca9175fe",
+    "/Users/grzegorz/github-flux/turbo-dom/.worktrees/npm-cascade-296/.evidence/issue-296/css-artifact-js-full-coverage.log": "791b99ab4913d781a32aa21ea59a74a907be875f2045102148bc07509ee963dd"
+  },
+  "limitations": [
+    "Core default/optional100% coverage floor remains red on earlier source; not remeasured for this combined artifact source.",
+    "Original18 certified DOM adapter results are separate Buffer branch evidence; these committed probes verify artifact endpoints only.",
+    "CSSOM15 compatibility, Buffer-source floors/provenance integration and production performance remain blockers.",
+    "Packaging distribution automation is separate pending work; no publish/tag/default cutover.",
+    "Node endpoint proofs here run Node26.11.0, not an actual Node18 executable. Cold-load numbers are single lower-bound component observations."
+  ],
+  "toolingNotes": [
+    "wasm-pack local no-install attempted installation and failed EPERM on unrecognized platform; existing cached wasm-bindgen0.2.122 and wasm-opt -Oz were used directly.",
+    "BINARYEN_CORES=1; node/web unoptimized bytes were explicitly equal before copying optimized byte-identical WASM.",
+    "First probe assumed retainedBytes getter; actual supported native method form was used in corrected probe."
+  ]
+}

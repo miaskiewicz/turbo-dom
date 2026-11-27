@@ -573,7 +573,9 @@ mod storage;
 
 #[path = "tree_access.rs"]
 mod tree_access;
-pub use storage::{CollectionBudget, CollectionError, CollectionReport, StorageStats};
+pub use storage::{
+    CollectionBudget, CollectionError, CollectionReport, StorageCollectionOutcome, StorageStats,
+};
 pub use tree_access::{LocalAttributes, ParseOptions};
 
 pub struct Tree {
@@ -602,6 +604,7 @@ pub struct Tree {
     shadow_root_of_host: FxHashMap<Handle, Handle>,
     host_of_shadow_root: FxHashMap<Handle, Handle>,
     pub version: u64,
+    pub(super) checkpoint: super::document_checkpoint::CheckpointState,
     /// `version` without the `style` attribute changes: everything a selector or another
     /// element's cascade reads moves it, except an element's inline style, which selectors
     /// see only through attribute selectors naming `style` (embedders check for those).
@@ -630,6 +633,7 @@ pub struct Tree {
     global_style_gen: u64,
     /// version-keyed query result cache (mirrors JS cachedQSA / Document.__version).
     pub(crate) qcache: RefCell<QueryCache>,
+    pub(crate) sibling_ranks: RefCell<super::query::SiblingRanks>,
     /// selector-string → parsed selector-list cache. A `matches()` driven over an
     /// element loop re-parses the SAME selector per element; this memoizes the parse
     /// (shared `Rc` so a hit is a pointer bump). Version-independent — a parsed
@@ -712,6 +716,7 @@ fn next_version_base() -> u64 {
 #[derive(Default)]
 pub(crate) struct QueryCache {
     pub version: u64,
+    pub candidates: Option<std::rc::Rc<super::query::CandidateIndex>>,
     /// Shared so a cache hit is a pointer bump, not a Vec copy (repeated qSA is hot).
     pub map: FxHashMap<String, std::rc::Rc<[Handle]>>,
 }
@@ -726,6 +731,7 @@ impl Tree {
     /// A fresh tree viewing a parsed `SoA` buffer (no overlays yet).
     fn from_soa(buf: Soa, compat_mode: &'static str) -> Tree {
         let buf_len = buf.node_type.len() as u32;
+        let version = next_version_base();
         Tree {
             buf,
             source_positions: FxHashMap::default(),
@@ -744,7 +750,8 @@ impl Tree {
             text_ov: Overlay::new(buf_len),
             shadow_root_of_host: FxHashMap::default(),
             host_of_shadow_root: FxHashMap::default(),
-            version: next_version_base(),
+            version,
+            checkpoint: super::document_checkpoint::CheckpointState::new(version),
             selector_version: 0,
             style_gens: FxHashMap::default(),
             child_gens: FxHashMap::default(),
@@ -752,6 +759,7 @@ impl Tree {
             style_filter: None,
             global_style_gen: 0,
             qcache: RefCell::new(QueryCache::default()),
+            sibling_ranks: RefCell::new(super::query::SiblingRanks::default()),
             parse_cache: RefCell::new(FxHashMap::default()),
             css_cache: RefCell::new(crate::rtdom::cascade::CssCache::default()),
             mutation_log: None,
@@ -1568,10 +1576,10 @@ impl Tree {
         self.global_style_gen = self.selector_version;
     }
 
-    /// A mutation no element's style can read: a node created detached (it reaches a tree
-    /// only through an insertion, which moves its own generation).
+    /// An unscoped mutation: retain broad selector/storage invalidation and conservatively
+    /// invalidate the connected-document checkpoint unless the caller proves detachment.
     fn bump_unscoped(&mut self) {
-        self.version += 1;
+        self.advance_version(true);
         self.selector_version += 1;
     }
 
@@ -1579,7 +1587,7 @@ impl Tree {
     /// parent's child-list generations move. A parentless node records nothing: it has no
     /// style until an insertion, which moves its generation.
     pub(crate) fn bump_node(&mut self, h: Handle) {
-        self.bump_unscoped();
+        self.bump_for_node(h);
         if let Some(parent) = self.parent(h) {
             self.style_gens.insert(h, self.selector_version);
             let forward = self.next_sibling_handle(h).is_some();
@@ -1589,7 +1597,7 @@ impl Tree {
 
     /// `child` inserted into or removed from `parent`; `forward`: it has (had) a next sibling.
     fn bump_child_list(&mut self, parent: Handle, child: Handle, forward: bool) {
-        self.bump_unscoped();
+        self.bump_for_node(parent);
         // Below a parentless node other than a document or shadow root nothing has a style
         // yet: inserting that node moves its generation.
         if self.parent(parent).is_some()
@@ -1678,7 +1686,7 @@ impl Tree {
     /// style generation; any other moves `h`'s.
     fn bump_attribute(&mut self, h: Handle, name: &str, styled: bool) {
         if name == "style" {
-            self.version += 1;
+            self.advance_version(!self.proven_detached(h));
         } else {
             self.bump_owner_attribute(h, name, styled);
         }
@@ -1690,6 +1698,7 @@ impl Tree {
     /// DOM change, so version-keyed caches stay).
     pub fn invalidate_style(&mut self, h: Handle, quiet: bool) {
         if quiet {
+            self.invalidate_document_checkpoint();
             self.selector_version += 1;
             self.style_gens.insert(h, self.selector_version);
             if let Some(parent) = self.parent(h) {
@@ -1751,7 +1760,7 @@ impl Tree {
         } else if styled {
             self.bump_node(h);
         } else {
-            self.bump_unscoped();
+            self.bump_for_node(h);
         }
         self.bump_form_change(h, name);
     }
@@ -1801,6 +1810,20 @@ impl Tree {
     /// Whether any element of the tree hosts a shadow root.
     pub fn has_shadow_roots(&self) -> bool {
         !self.shadow_root_of_host.is_empty()
+    }
+
+    /// Only native, reciprocal shadow ownership is checkpoint evidence. Low-level
+    /// unsupported attachments (including replacing a root) retain the fallback.
+    pub(super) fn checkpoint_shadow_graph_valid(&self) -> bool {
+        self.shadow_root_of_host.len() == self.host_of_shadow_root.len()
+            && self.shadow_root_of_host.iter().all(|(host, root)| {
+                self.is_live(*host)
+                    && self.node_type(*host) == NodeType::Element
+                    && self.is_live(*root)
+                    && self.node_type(*root) == NodeType::Fragment
+                    && self.parent(*root).is_none()
+                    && self.host_of_shadow_root.get(root) == Some(host)
+            })
     }
 
     fn record_event(
@@ -2282,7 +2305,7 @@ impl Tree {
         });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 
@@ -2293,7 +2316,7 @@ impl Tree {
         });
         self.children_ov.insert(h, ChildList::new());
         self.attrs_ov.insert(h, AttrList::new());
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 
@@ -2323,7 +2346,7 @@ impl Tree {
 
     pub fn create_text_node(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Text(data.into()));
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 
@@ -2331,7 +2354,7 @@ impl Tree {
     pub fn create_document_fragment(&mut self) -> Handle {
         let h = self.push_node(NewNode::Fragment(None));
         self.children_ov.insert(h, ChildList::new());
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 
@@ -2346,7 +2369,7 @@ impl Tree {
 
     pub fn create_comment(&mut self, data: &str) -> Handle {
         let h = self.push_node(NewNode::Comment(data.into()));
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 
@@ -2359,7 +2382,7 @@ impl Tree {
                 data: data.into(),
             },
         )));
-        self.bump_unscoped();
+        self.bump_detached();
         h
     }
 

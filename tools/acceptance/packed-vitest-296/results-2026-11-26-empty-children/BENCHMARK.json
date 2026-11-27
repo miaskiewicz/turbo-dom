@@ -1,0 +1,462 @@
+{
+  "basis": "Packed Rust CSS validation candidate with aa69a733 inheritance-chain changes",
+  "node": "v26.11.0",
+  "cpu": "Apple M5 Max",
+  "trials": {
+    "capture": {
+      "summary": {
+        "wallPercent": -0.45440639086762324,
+        "callbackPercent": 0.5712680148630467,
+        "wins": 4,
+        "winsOverHalfPercent": 3
+      },
+      "blocks": [
+        {
+          "wallRatio": 0.9209994263622497,
+          "callbackRatio": 0.9326628186232202,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1803.9773749999995,
+              "testMs": 298.92837399999996,
+              "reportSha256": "9a31d7b4b18c5ca4b9fd1b77cba26786e57dcf896e78411308de673870f29337"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1641.550416,
+              "testMs": 283.46583200000003,
+              "reportSha256": "a0fe49e9dc3cfdbbf87cefa0d11b0d4330d7ac97d2ef2f81b1724418f4fe3d74"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1777.141125,
+              "testMs": 299.75208599999996,
+              "reportSha256": "9d1f67c3dcc8406d05b031ff7d9ce79efa845219f68676219d9d7dde07d1fcfc"
+            },
+            {
+              "build": "base",
+              "wallMs": 1907.9592919999996,
+              "testMs": 326.3972060000001,
+              "reportSha256": "841a2b21c0d58fba515e82c3797f5ef1fce37463ab5f0dfde62c545107e11fed"
+            }
+          ]
+        },
+        {
+          "wallRatio": 0.979535019330379,
+          "callbackRatio": 0.9699717431218713,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1675.9817079999993,
+              "testMs": 287.55116200000003,
+              "reportSha256": "7bfe26c8feb13af8f23ad724bcbe0671709795bd1ed441eb690a245b3265415b"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1690.1765410000007,
+              "testMs": 291.03375400000004,
+              "reportSha256": "5f44cdaf97f32630660f09b2a01ececb5bbb796e78e49487b272ff870ecb2d2a"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1683.2354999999952,
+              "testMs": 279.595082,
+              "reportSha256": "3567837a71a7237ec88fcaf2f592dfd97e3b6e873cc11deee55e354129a632f5"
+            },
+            {
+              "build": "base",
+              "wallMs": 1767.9094999999943,
+              "testMs": 300.7431259999999,
+              "reportSha256": "3a054d6167f1b488c76364a8a609127b90f9bba198c5fc569b553fc66c05b185"
+            }
+          ]
+        },
+        {
+          "wallRatio": 0.9468281209015009,
+          "callbackRatio": 0.9559527600509684,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1879.7402920000022,
+              "testMs": 327.8356670000001,
+              "reportSha256": "4e1842248c20fd54f484a13fbf2e45c08061d94c03dbd98ad6503dde5310cb6e"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1691.1184159999975,
+              "testMs": 293.24662599999994,
+              "reportSha256": "a34350f7c3a907ab91d4d8cae44372a666f8aed2d78658b28dcba546e252db1f"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1717.3030419999996,
+              "testMs": 295.4978739999999,
+              "reportSha256": "ecfb1bf794d60f8d37f29584c9c6a21890e7cab07027516f2a2334d5231bf2c1"
+            },
+            {
+              "build": "base",
+              "wallMs": 1720.0909579999934,
+              "testMs": 288.036293,
+              "reportSha256": "8b5e084b99fd2455376f6454a9eb2987f7a10df7164a5af94066be424c3f38a9"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.1278271547573346,
+          "callbackRatio": 1.0519911000376319,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1652.7932909999945,
+              "testMs": 286.07321199999984,
+              "reportSha256": "e5bcd358962eec63015750fa1aef4e3b23f907649d5cc242fef62c77eae104b6"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1833.5087500000009,
+              "testMs": 299.275666,
+              "reportSha256": "6df0e7c52b58c83d72fd697b5eb597bce19b1c65204c1e12794721cc80b09b17"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1963.2854169999991,
+              "testMs": 317.314291,
+              "reportSha256": "6fe520d206e0ba740e55c2835428bc425a4a586278f2e76d7ff7dc0aab87197f"
+            },
+            {
+              "build": "base",
+              "wallMs": 1713.6748339999976,
+              "testMs": 300.0438730000001,
+              "reportSha256": "9ed736b605cdd1fbf823e84b0bc9950d6f5886eb10d326a0b22ff0e5ccdab0d9"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.0042303059369997,
+          "callbackRatio": 1.0057126801486305,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1718.0538329999981,
+              "testMs": 292.12158400000004,
+              "reportSha256": "4a0ab413064460fd9dc56c0492f27f06dd5344c5d8450d36400d118fda467e39"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1713.4175420000101,
+              "testMs": 284.105041,
+              "reportSha256": "3ff6d311b0da80d1b816ed86150c5719e83afa1b41747c228d0a0374067999fb"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1675.9315420000057,
+              "testMs": 293.13083400000005,
+              "reportSha256": "7fdc68ddea179fc413771f760fd9c43a0f6d002f3c8e1d20c1aec17a74182a5f"
+            },
+            {
+              "build": "base",
+              "wallMs": 1657.0176659999997,
+              "testMs": 281.835458,
+              "reportSha256": "d71fe5a9c91b3e8c362ff3c0392ed9ed95f939743007372195fe5b1e5646385a"
+            }
+          ]
+        },
+        {
+          "wallRatio": 0.9954559360913238,
+          "callbackRatio": 1.009851958723104,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1761.361917000002,
+              "testMs": 298.32366500000006,
+              "reportSha256": "5ae16ffb6388e4b1ca0e93165f9552cfa0647b8e9d469e0a220529fb82622416"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1676.057667000001,
+              "testMs": 294.07529,
+              "reportSha256": "5b0897c20b70eea5fd86dd7d095bd0ca15bee0d724ffd3b03c78016c4e73e23b"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1724.5976250000094,
+              "testMs": 292.9317059999999,
+              "reportSha256": "3a2895f6abe6dfa91e20381c6f8584ffa16efba191a86a437cbcece730fd0698"
+            },
+            {
+              "build": "base",
+              "wallMs": 1654.816709000006,
+              "testMs": 282.956582,
+              "reportSha256": "a5025b300a7179a31a8d7c2b33f7f2a06d35f7535f9676c4b7a7f832ef4ae335"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.0479818899946767,
+          "callbackRatio": 1.0270850055713847,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1705.6845829999947,
+              "testMs": 292.65878999999984,
+              "reportSha256": "6d0c0a9b45a2788baf3baa024f491e261ea6efa9af39dae351959ae5f5b1e68c"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1833.7335840000014,
+              "testMs": 320.317291,
+              "reportSha256": "78820242edf048c146ef7ac75dd85308099b6709726a4186211c3eed5552b078"
+            },
+            {
+              "build": "capture",
+              "wallMs": 1768.5204159999994,
+              "testMs": 288.74304400000005,
+              "reportSha256": "c913bb8e053ba11619d84d9b6e47a291c3861c40bfadad986035abf7c7986953"
+            },
+            {
+              "build": "base",
+              "wallMs": 1731.6400830000057,
+              "testMs": 300.340165,
+              "reportSha256": "1293e6223b92fbf25c0e255daac28f62d4a61c9de93ca456004a81d8828d86ac"
+            }
+          ]
+        }
+      ],
+      "files": {
+        "src/runtime/css-default-capture.mjs": [
+          "c5d1a342c7f8f0965a9267d57b1b4ff74f882ecb7a858f7d39ec2532b2125ed8",
+          "26ae0d5134a4515d7dbc18571304cb2149c1695b455b5fc5581de9cf2d86d8fb"
+        ]
+      }
+    },
+    "eligibility": {
+      "summary": {
+        "wallPercent": 0.1955919479567747,
+        "callbackPercent": 0.2492865471186212,
+        "wins": 3,
+        "winsOverHalfPercent": 1
+      },
+      "blocks": [
+        {
+          "wallRatio": 0.9721769498008086,
+          "callbackRatio": 0.9495097444888269,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1895.6808330000003,
+              "testMs": 328.856043,
+              "reportSha256": "8eed360664c70f9299fae8c159d18e027823a250800edf4899d949c50ae0b030"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1713.1311249999999,
+              "testMs": 284.47466700000007,
+              "reportSha256": "4958a6e9d11c2e01d72a7404766f1125f2d0d6863d674e7ebc90451bff53a152"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1899.2616249999992,
+              "testMs": 316.50478999999996,
+              "reportSha256": "fa41279008052f874b00d36baadb93f39866fefd1c5b73fe5df11faf2497d917"
+            },
+            {
+              "build": "base",
+              "wallMs": 1820.0961669999997,
+              "testMs": 304.08054399999986,
+              "reportSha256": "9e2e7fc2c34c381daa1626808708f99c4d3ba16ec0996d8eb952e2c770166ab7"
+            }
+          ]
+        },
+        {
+          "wallRatio": 0.9991338835504897,
+          "callbackRatio": 0.9957315557253008,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1674.9305410000015,
+              "testMs": 280.45121400000005,
+              "reportSha256": "9732eb90c751f1227ba3b09890080493e34826f1dc7b21551a75990408d1521c"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1677.8522080000002,
+              "testMs": 282.73171,
+              "reportSha256": "1a652568b53277789c28ba720c19949ed82cd043e7a5f496ef69e38b0ce23711"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1707.8541669999977,
+              "testMs": 288.896581,
+              "reportSha256": "6df8371a1e94f5c1e1fdebf58bd66b53a710134edf50612d375ccbba663c0eaa"
+            },
+            {
+              "build": "base",
+              "wallMs": 1713.710791999998,
+              "testMs": 293.62749999999994,
+              "reportSha256": "df8f2436241ea7561f6fe1f6e21b219330d1d20cdff0536e72737255b0780a2d"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.0144707939292936,
+          "callbackRatio": 1.0024928654711862,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1870.8154170000053,
+              "testMs": 314.6544149999999,
+              "reportSha256": "f5bff7242ca4f5ef9588a5b04f85f583f6e70f37291516b32e13eb163f296fb3"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1732.059540999995,
+              "testMs": 292.98357999999996,
+              "reportSha256": "291256b2462c660a9a0232c8c2ff0bb2fda2465b8ac1fb2b7378520b654b66ae"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 2534.118625000003,
+              "testMs": 388.869,
+              "reportSha256": "ad98c9698c782690011fd441676ed68cb8a55fd3058c653b9fced01a8eff8f10"
+            },
+            {
+              "build": "base",
+              "wallMs": 2334.508375000005,
+              "testMs": 365.50262499999997,
+              "reportSha256": "68ba607434c39fc4157829f40fc700d7aef7addf3ad32918d151834d124183a3"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.0401654014608213,
+          "callbackRatio": 1.1153425441316753,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1900.5092080000031,
+              "testMs": 316.944665,
+              "reportSha256": "7a7a645a9e27ff78988f0ad9dd4fa16a754d6ed2e49cbfa060552391c0b542a7"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1938.8870410000018,
+              "testMs": 351.747126,
+              "reportSha256": "3439b459712f2d4164dbc8edabbeee361c22e8c86ca63e59cb3cc94c2dbb8960"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1936.7596669999984,
+              "testMs": 333.76912300000004,
+              "reportSha256": "8842c58958826d43f53f6097e8781d15bd3081b70346ae72a5ca18edff350a46"
+            },
+            {
+              "build": "base",
+              "wallMs": 1825.4815839999937,
+              "testMs": 297.67929300000003,
+              "reportSha256": "2936b8e5c955f7120a449462e6c83c93c77d422c4f3b7ae170d3b15436365ffa"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.0019559194795677,
+          "callbackRatio": 1.0056501349368598,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1633.2850000000035,
+              "testMs": 272.9303319999999,
+              "reportSha256": "bb191a6b1fc0ad4ec515345fb0a72ed7ddca277594750aa54bf6084070d3e3f0"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1607.7267500000016,
+              "testMs": 271.58512600000006,
+              "reportSha256": "15a0d8eca78a08eace01311924fa27ce40b2c530af1afbe0af157e729e07fb30"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1663.3206659999996,
+              "testMs": 283.2088360000001,
+              "reportSha256": "3fb84e960a640c6e2a24b0174263124498467c4891c2cd835989c888f4488a03"
+            },
+            {
+              "build": "base",
+              "wallMs": 1631.3769999999931,
+              "testMs": 278.746581,
+              "reportSha256": "0f56080af632f700fc43c15649f4b0ef73ff625e574c855fc6250ed2d9200d21"
+            }
+          ]
+        },
+        {
+          "wallRatio": 1.1228126545036476,
+          "callbackRatio": 1.068474519702042,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1674.125125000006,
+              "testMs": 286.004999,
+              "reportSha256": "13fa805e8f4de17c09b93bafacf89f52d4ac37f0cd8fc6476cd54a160bb83823"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1932.8165000000008,
+              "testMs": 325.14579200000014,
+              "reportSha256": "7586acfe46e313ffeade27b5409ea93625f23902ed410d62e2231908d97d31ee"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1803.545041999998,
+              "testMs": 290.3705030000001,
+              "reportSha256": "48021e710a8ed3bfd98ffe86ac9173d0a2aab7739550d4671c7c2a9e94193a3b"
+            },
+            {
+              "build": "base",
+              "wallMs": 1653.5551669999986,
+              "testMs": 290.065168,
+              "reportSha256": "58d175a41e68119238a2484462c8fd8294e0e3edc3169d7a79c31d1157691581"
+            }
+          ]
+        },
+        {
+          "wallRatio": 0.9972171337381215,
+          "callbackRatio": 0.9902638723057176,
+          "runs": [
+            {
+              "build": "base",
+              "wallMs": 1654.012791000001,
+              "testMs": 279.007752,
+              "reportSha256": "c31848e87746ddde2d43119de47ff9fd8b6cf514ce6acc6177e3a8299432562e"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1651.6184580000117,
+              "testMs": 278.05641899999995,
+              "reportSha256": "5b7fc9d1c302732d6453abd92389cd1a9425362a08801e3cceed43d7d7e58788"
+            },
+            {
+              "build": "eligibility",
+              "wallMs": 1766.9172910000052,
+              "testMs": 294.0380430000001,
+              "reportSha256": "7564df5141c731c801a720ac175c7237af572fe2af680b5fc4eeea74c4daafb3"
+            },
+            {
+              "build": "base",
+              "wallMs": 1774.0628339999967,
+              "testMs": 298.71145800000005,
+              "reportSha256": "8ef48b7e1e8c3ee5ee437137c5ae2c5eb4cf260dfff9362e6842ce953a1da458"
+            }
+          ]
+        }
+      ],
+      "files": {
+        "src/runtime/css-matching-integrity.mjs": [
+          "b72c8713364f4f94a8017afa3368fb9cb7a7d5ef28fb6c6d507fe3d6dc2024a9",
+          "3ef41de8095484ceb93f4ab1c4596b34535a1a4fbc75af691bce7db0b020521e"
+        ]
+      }
+    }
+  },
+  "timedTests": 28,
+  "excluded": "getByLabelText: wrapping <label> labels only its FIRST control",
+  "tarballSha256": "ab957dc31a4033fe851675c8785500966c67169e92cca49031e5fbcff02ca0b4"
+}
