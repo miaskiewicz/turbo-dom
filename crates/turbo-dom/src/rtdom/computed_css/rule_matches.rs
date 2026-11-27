@@ -276,10 +276,8 @@ impl<'facts> MatchRead<'_, 'facts> {
     ) -> Result<Option<MatchRank>, MatchError> {
         // Unchanged policy proves absence of composed selector families. Its
         // native terminal pseudo cannot style a different requested subject.
-        let ordinary = matches!(
-            compiled.selectors[rule.selector_id].policy,
-            SelectorPolicyInspection::Unchanged
-        );
+        let ordinary =
+            compiled.selectors[rule.selector_id].policy == SelectorPolicyInspection::Unchanged;
         if (self.facts.routes.is_none() || ordinary)
             && selector.pseudo_element() != self.facts.pseudo
         {

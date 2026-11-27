@@ -184,6 +184,20 @@ fn ordinary_rules_use_only_original_own_tree_scope() {
     );
 }
 #[test]
+fn unrelated_terminal_pseudo_does_not_admit_or_block_ordinary_composed_subject() {
+    for pseudo in ["::selection", "::-webkit-scrollbar"] {
+        let prepared = model(&format!(".x{{color:red}}.x{pseudo}{{color:blue}}"), &[2]);
+        let input = route_facts(&[21, 20], 2);
+        let routes = validated(&input);
+        let answers = answers(&prepared, 21, None);
+        let boundaries = BTreeMap::new();
+        let matched =
+            matching_rules(&prepared, &facts(&routes, &answers, &boundaries), 128).unwrap();
+        assert_eq!(matched.rules().len(), 1, "{pseudo}");
+        assert_eq!(matched.rules()[0].prepared_rule(), 0, "{pseudo}");
+    }
+}
+#[test]
 fn host_sheet_uses_exact_original_host_and_canonical_specificity() {
     let prepared = model(":host(.active){color:red}", &[2]);
     let mut input = route_facts(&[11, 10], 1);

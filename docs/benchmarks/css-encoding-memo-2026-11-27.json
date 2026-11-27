@@ -146,5 +146,11 @@
     "packedPassed": 29,
     "rustSentinelPassed": 1
   },
-  "pending": "Core 100% coverage mapping followup remains separate; combined performance not measured yet."
+  "pending": "Combined performance not measured yet.",
+  "coreCoverage": {
+    "covered": 17860,
+    "coverable": 17860,
+    "percent": 100,
+    "qualification": "Equivalent enum equality removes a non-executable matches! pattern line from coverage mapping; ordinary composed pseudo inverse added. Native perf artifact predates this equivalent source change."
+  }
 }
