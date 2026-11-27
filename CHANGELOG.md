@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Reuse bounded successful native computed-style results only for exact retained
+  matching requests, after fresh validation; preserve callback, quota and disposal behavior.
+
+- Encode validated CSS wire values directly, avoiding a second copied object graph;
+  preserve descriptor snapshots, proxy error order and scalar serialization.
+
 - Added an experimental `cssBackend: 'rust'` opt-in for npm, Vitest and Jest,
   separate from `domBackend`. JavaScript remains the default CSS engine.
 - Reuse private selector inputs only after complete fresh capture and validation;

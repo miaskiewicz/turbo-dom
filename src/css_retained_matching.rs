@@ -11,6 +11,17 @@ use turbo_dom_core::rtdom::computed_css::shadow_routes::ContextRoot;
 // This cap applies to retention only. Larger default-adapter requests use the
 // ordinary complete transport with the caller's original limits.
 const MAX_MATCHING_BYTES: usize = 256 * 1024;
+const MAX_RESULT_BYTES: usize = 64 * 1024;
+
+struct CachedResult {
+    wire: Box<str>,
+    response: Box<str>,
+}
+impl CachedResult {
+    fn bytes(&self) -> usize {
+        self.wire.len() + self.response.len()
+    }
+}
 
 struct PayloadCounter {
     domains: BTreeSet<u32>,
@@ -69,6 +80,9 @@ pub(crate) struct MatchingSlot {
     facts: ValidatedMatching,
     token: String,
     payload_bytes: usize,
+    result: Mutex<Option<CachedResult>>,
+    #[cfg(test)]
+    cascade_calls: std::sync::atomic::AtomicUsize,
 }
 impl MatchingSlot {
     pub(crate) fn new(wire: &str, limits: &str) -> Result<Self, String> {
@@ -82,18 +96,69 @@ impl MatchingSlot {
         Ok(Self {
             facts,
             payload_bytes: bytes + token.len(),
+            result: Mutex::new(None),
+            #[cfg(test)]
+            cascade_calls: std::sync::atomic::AtomicUsize::new(0),
             token,
         })
+    }
+    #[cfg(test)]
+    pub(crate) fn cascade_calls(&self) -> usize {
+        self.cascade_calls
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
     pub(crate) fn token(&self) -> &str {
         &self.token
     }
     pub(crate) fn payload_bytes(&self) -> usize {
         self.payload_bytes
+            + self
+                .result
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .as_ref()
+                .map_or(0, CachedResult::bytes)
     }
     pub(crate) fn resolve(&self, prepared: &PreparedStyles, wire: &str) -> Result<String, String> {
         let input: ResolveInput = parse(wire)?;
         input.validate()?;
-        apply_matching(prepared, input, &self.facts)
+        // The owner and matching token were checked before entering this slot.
+        // Parsing and ABI/target validation still run on every public call.
+        if let Some(cached) = self
+            .result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            if cached.wire.as_ref() == wire {
+                return Ok(cached.response.to_string());
+            }
+        }
+        #[cfg(test)]
+        self.cascade_calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let response = apply_matching(prepared, input, &self.facts)?;
+        let available = MAX_RESULT_BYTES.min(MAX_MATCHING_BYTES.saturating_sub(self.payload_bytes));
+        // Boxed strings retain no caller spare capacity. A success too large
+        // for the independent result cap does not expand the matching cap.
+        let retained =
+            (wire.len().saturating_add(response.len()) <= available).then(|| CachedResult {
+                wire: wire.into(),
+                response: response.clone().into_boxed_str(),
+            });
+        *self
+            .result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = retained;
+        Ok(response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn matching_slot_remains_send_and_sync() {
+        fn check<T: Send + Sync>() {}
+        check::<super::MatchingSlot>();
     }
 }

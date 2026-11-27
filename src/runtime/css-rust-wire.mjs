@@ -2,6 +2,7 @@
 // guest objects. Proxy reflection can trap; its original error propagates.
 const parse = JSON.parse;
 const stringify = JSON.stringify;
+const scalarString = String;
 // Snapshot every own descriptor, including symbols, before recursing. A Proxy
 // may delete a key or change another value while its descriptors are read.
 const ownKeys = Reflect.ownKeys;
@@ -18,7 +19,6 @@ function descriptors(value) {
 }
 const keys = Object.keys;
 const create = Object.create;
-const setPrototypeOf = Object.setPrototypeOf;
 const isArray = Array.isArray;
 const finite = Number.isFinite;
 const apply = Reflect.apply;
@@ -35,31 +35,39 @@ function field(property, active) {
 	return ownData(property.value, active);
 }
 function arrayData(properties, active) {
-	const length = properties.length.value;
-	const names = keys(properties);
-	if (names.length !== length + 1) throw invalid();
-	const result = setPrototypeOf([], null);
-	for (let index = 0; index < length; index++) {
-		if (!own(properties, index)) throw invalid();
-		result[index] = field(properties[index], active);
-	}
-	return result;
+ const length = properties.length.value;
+ const names = keys(properties);
+ if (names.length !== length + 1) throw invalid();
+ let result = '[';
+ for (let index = 0; index < length; index++) {
+  if (!own(properties, index)) throw invalid();
+  const encoded = field(properties[index], active);
+  result += (index === 0 ? '' : ',') + encoded;
+ }
+ return result + ']';
 }
 function recordData(properties, active) {
-	const result = create(null);
-	const names = keys(properties);
-	for (let index = 0; index < names.length; index++) {
-		const name = names[index];
-		const property = properties[name];
-		if (!property.enumerable) continue;
-		result[name] = field(property, active);
-	}
-	return result;
+ let result = '{', separator = '';
+ const names = keys(properties);
+ for (let index = 0; index < names.length; index++) {
+  const name = names[index];
+  const property = properties[name];
+  if (!property.enumerable) continue;
+  const encoded = field(property, active);
+  result += separator + stringify(name) + ':' + encoded;
+  separator = ',';
+ }
+ return result + '}';
+}
+function scalarData(value) {
+	if (value === null) return "null";
+	if (typeof value === "boolean") return value ? "true" : "false";
+	if (typeof value === "string") return stringify(value);
+	if (typeof value === "number" && finite(value)) return scalarString(value);
 }
 function ownData(value, active) {
-	if (value === null || typeof value === "string" || typeof value === "boolean")
-		return value;
-	if (typeof value === "number" && finite(value)) return value;
+ const scalar = scalarData(value);
+ if (scalar !== undefined) return scalar;
 	if (typeof value !== "object") throw invalid();
 	if (apply(setHas, active, [value]))
 		throw new TypeError("turbo-dom: cyclic CSS wire DTO");
@@ -74,7 +82,7 @@ function ownData(value, active) {
 	}
 }
 export function encodeCssWire(value) {
-	return stringify(ownData(value, new SetConstructor()));
+	return ownData(value, new SetConstructor());
 }
 export function decodeCssWire(value) {
 	return parse(value);

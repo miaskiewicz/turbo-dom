@@ -1026,6 +1026,193 @@ mod tests {
             .contains("InvalidPath"));
     }
     #[test]
+    fn identical_retained_requests_need_one_native_cascade() {
+        let compiled = compiled(".x{color:red}");
+        let mut owner = prepared(&compiled);
+        let request = request(2, true);
+        let facts = json!({"domains":request["domains"],"selectorAnswers":request["selectorAnswers"],"scopeAnswers":[]});
+        let input =
+            json!({"abiVersion":1,"targets":request["targets"],"limits":limits()}).to_string();
+        let token = owner
+            .store_matching(&facts.to_string(), &limits().to_string())
+            .unwrap();
+        let first = owner.resolve_matching(&input, &token).unwrap();
+        assert_eq!(owner.resolve_matching(&input, &token).unwrap(), first);
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 1);
+    }
+    fn retained_fixture() -> (PreparedHandle, String, Value) {
+        let compiled = compiled(".x{color:red}");
+        let mut owner = prepared(&compiled);
+        let mut input = request(2, true);
+        input["contextRoots"] =
+            json!([{"treeScope":0,"root":1,"host":null,"parentTreeScope":null}]);
+        input["limits"]["routingContexts"] = json!(1);
+        let facts = json!({"domains":input["domains"],"selectorAnswers":input["selectorAnswers"],"scopeAnswers":[],"contextRoots":input["contextRoots"]});
+        let token = owner
+            .store_matching(&facts.to_string(), &input["limits"].to_string())
+            .unwrap();
+        (owner, token, input)
+    }
+    fn retained_input(input: &Value) -> String {
+        json!({"abiVersion":input["abiVersion"],"targets":input["targets"],"limits":input["limits"]}).to_string()
+    }
+    #[test]
+    fn retained_result_budget_errors_are_fresh_and_not_memoized() {
+        let (owner, token, input) = retained_fixture();
+        let wire = retained_input(&input);
+        owner.resolve_matching(&wire, &token).unwrap();
+        for name in [
+            "targets",
+            "answerRows",
+            "answerIds",
+            "pathNodes",
+            "routingContexts",
+            "inputUnits",
+            "retainedResultUnits",
+            "matchingDecisions",
+            "valueRetainedUnits",
+        ] {
+            let mut bad = input.clone();
+            bad["limits"][name] = json!(0);
+            let expected = owner.resolve_batch(&bad.to_string()).unwrap_err();
+            assert_eq!(
+                owner
+                    .resolve_matching(&retained_input(&bad), &token)
+                    .unwrap_err(),
+                expected,
+                "{name}"
+            );
+        }
+        for name in ["maxOutputUnits", "maxTotalUnits"] {
+            let mut bad = input.clone();
+            bad["limits"]["computation"][name] = json!(0);
+            let expected = owner.resolve_batch(&bad.to_string()).unwrap_err();
+            assert_eq!(
+                owner
+                    .resolve_matching(&retained_input(&bad), &token)
+                    .unwrap_err(),
+                expected,
+                "{name}"
+            );
+        }
+        let mut bad = input.clone();
+        bad["limits"]["answerRows"] = json!(0);
+        let before = owner.matching.as_ref().unwrap().cascade_calls();
+        for _ in 0..2 {
+            assert!(owner
+                .resolve_matching(&retained_input(&bad), &token)
+                .is_err());
+        }
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), before + 2);
+        let before = owner.matching.as_ref().unwrap().cascade_calls();
+        assert!(owner.resolve_matching("invalid-json", &token).is_err());
+        bad["abiVersion"] = json!(2);
+        assert!(owner
+            .resolve_matching(&retained_input(&bad), &token)
+            .unwrap_err()
+            .contains("AbiVersion"));
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), before);
+        assert_eq!(
+            owner.resolve_matching(&wire, &token).unwrap(),
+            owner.resolve_batch(&input.to_string()).unwrap()
+        );
+    }
+    #[test]
+    fn retained_result_exact_inputs_and_owner_lifetime_are_preserved() {
+        let (mut owner, token, mut input) = retained_fixture();
+        let base_bytes = owner.retained_bytes();
+        let first = owner
+            .resolve_matching(&retained_input(&input), &token)
+            .unwrap();
+        assert_eq!(
+            owner.retained_bytes() as usize,
+            base_bytes as usize + retained_input(&input).len() + first.len()
+        );
+        input["targets"][0]["inline"] = json!("color:blue".encode_utf16().collect::<Vec<_>>());
+        let second = owner
+            .resolve_matching(&retained_input(&input), &token)
+            .unwrap();
+        assert_ne!(first, second);
+        assert_eq!(second, owner.resolve_batch(&input.to_string()).unwrap());
+        assert_eq!(
+            owner
+                .resolve_matching(&retained_input(&input), &token)
+                .unwrap(),
+            second
+        );
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 2);
+        let (other, other_token, _) = retained_fixture();
+        assert!(other
+            .resolve_matching(&retained_input(&input), &token)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        assert!(owner
+            .resolve_matching(&retained_input(&input), &other_token)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        let empty = json!({"domains":[],"selectorAnswers":[],"scopeAnswers":[]});
+        owner
+            .store_matching(&empty.to_string(), &limits().to_string())
+            .unwrap();
+        assert!(owner.retained_bytes() < base_bytes + first.len() as f64);
+        assert!(owner
+            .resolve_matching(&retained_input(&input), &token)
+            .unwrap_err()
+            .contains("StaleMatching"));
+        owner.dispose();
+        assert_eq!(owner.retained_bytes(), 0.0);
+        assert!(owner
+            .resolve_matching(&retained_input(&input), &token)
+            .unwrap_err()
+            .contains("Disposed"));
+    }
+    #[test]
+    fn oversized_result_request_is_never_retained() {
+        let (owner, token, input) = retained_fixture();
+        let before = owner.retained_bytes();
+        let wire = " ".repeat(64 * 1024) + &retained_input(&input);
+        let first = owner.resolve_matching(&wire, &token).unwrap();
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 2);
+        assert_eq!(owner.retained_bytes(), before);
+    }
+    #[test]
+    fn oversized_result_response_is_never_retained() {
+        let (owner, token, mut input) = retained_fixture();
+        let before = owner.retained_bytes();
+        input["targets"][0]["inline"] = json!(("--blob:".to_owned() + &"x".repeat(20000))
+            .encode_utf16()
+            .collect::<Vec<_>>());
+        for name in ["inputUnits", "retainedResultUnits", "valueRetainedUnits"] {
+            input["limits"][name] = json!(60000);
+        }
+        input["limits"]["computation"]["maxOutputUnits"] = json!(60000);
+        input["limits"]["computation"]["maxTotalUnits"] = json!(120_000);
+        let wire = retained_input(&input);
+        let first = owner.resolve_matching(&wire, &token).unwrap();
+        assert!(first.len() > 64 * 1024);
+        assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 2);
+        assert_eq!(owner.retained_bytes(), before);
+    }
+    #[test]
+    fn retained_result_can_be_read_on_serial_scoped_threads() {
+        let (owner, token, input) = retained_fixture();
+        let wire = retained_input(&input);
+        std::thread::scope(|scope| {
+            let first = scope
+                .spawn(|| owner.resolve_matching(&wire, &token).unwrap())
+                .join()
+                .unwrap();
+            let second = scope
+                .spawn(|| owner.resolve_matching(&wire, &token).unwrap())
+                .join()
+                .unwrap();
+            assert_eq!(first, second);
+        });
+        assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 1);
+    }
+    #[test]
     fn retained_matching_requires_exact_owner_and_checks_each_read_budget() {
         let compiled = compiled(".x{color:red}");
         let mut owner = prepared(&compiled);
