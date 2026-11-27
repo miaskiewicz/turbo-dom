@@ -7,7 +7,7 @@
 // across the boundary — a buffer-backed read and an owned read are indistinguishable.
 
 import { DOMRect } from './dom-rect.mjs';
-import { getParser } from './parser.mjs';
+import { getParser, parseBufferForRuntime } from './parser.mjs';
 import { installCssTrackingArm, noteCssMutation, noteCssStateChange } from './css-invalidation.mjs';
 import {
   EventTarget, Event, CustomEvent,
@@ -260,8 +260,34 @@ function clearDisconnectedFocus(doc) {
   if (active && !active.isConnected) doc.__setActive(null, false);
 }
 
+// Original-storage certificates are lexical and read-only to CSS consumers.
+// Public internal fields remain compatible; foreign replacement is refused.
+const cssNativeArrays = new WeakSet(), cssNativeAttributes = new WeakSet();
+const cssOriginApply = Reflect.apply, cssOriginAdd = WeakSet.prototype.add, cssOriginHas = WeakSet.prototype.has;
+const cssOriginDescriptor = Object.getOwnPropertyDescriptor, cssOriginDefine = Object.defineProperty;
+function cssNativeArray(source) {
+  const result = [];
+  cssOriginApply(cssOriginAdd, cssNativeArrays, [result]);
+  if (source) for (let index=0;index<source.length;index++) cssOriginDefine(result,index,{value:source[index],writable:true,enumerable:true,configurable:true});
+  return result;
+}
+function cssNativeAttribute(row) { cssOriginApply(cssOriginAdd, cssNativeAttributes, [row]); return row; }
+function cssNativeAttrs(source) {
+  const result = cssNativeArray();
+  for (let index=0;index<source.length;index++) {
+    const row = source[index];
+    result.push(cssNativeAttribute({name:row.name,value:row.value,prefix:row.prefix ?? '',...(row.namespace === undefined ? {} : {namespace:row.namespace})}));
+  }
+  return result;
+}
+let cssNativeNodeBrand;
+export function isNativeCssNode(value) { return cssNativeNodeBrand(value); }
+export function isNativeCssArray(value) { return cssOriginApply(cssOriginHas, cssNativeArrays, [value]); }
+export function isNativeCssAttribute(value) { return cssOriginApply(cssOriginHas, cssNativeAttributes, [value]); }
 // ------------------------------------------------------------------ Node ----
 export class Node extends EventTarget {
+  #cssNative;
+  static { cssNativeNodeBrand = value => value !== null && (typeof value === 'object' || typeof value === 'function') && #cssNative in value; }
   static ELEMENT_NODE = ELEMENT_NODE;
   static TEXT_NODE = TEXT_NODE;
   static COMMENT_NODE = COMMENT_NODE;
@@ -282,7 +308,7 @@ export class Node extends EventTarget {
   // (COW promotion). A buffer-backed read and an owned read are indistinguishable.
   __children() {
     if (this.__kids) return this.__kids;
-    const kids = [];
+    const kids = cssNativeArray();
     const doc = this.ownerDocument;
     if (this.__idx >= 0 && doc && doc.__buf) {
       const buf = doc.__buf;
@@ -421,7 +447,7 @@ export class Node extends EventTarget {
     for (const n of nodes) assertNotAncestor(this, n);
     const doc = this.ownerDocument, added = nodes.map((n) => toNode(doc, n));
     if (observed(this)) { insertBatch(this, added, null, this.__children().slice()); return; }
-    this.__detachKids(); this.__kids = []; this.__touch(); for (const n of added) this.appendChild(n);
+    this.__detachKids(); this.__kids = cssNativeArray(); this.__touch(); for (const n of added) this.appendChild(n);
   }
   // bitmask: 1 DISCONNECTED, 2 PRECEDING, 4 FOLLOWING, 8 CONTAINS, 16 CONTAINED_BY
   compareDocumentPosition(other) {
@@ -454,7 +480,7 @@ export class Node extends EventTarget {
     if (ceScope(this.ownerDocument)) { withReactions(METHOD.setTextContent, this, [value]); return; }
     const removed = observed(this) ? this.__children().slice() : null;
     this.__detachKids();
-    this.__kids = [];
+    this.__kids = cssNativeArray();
     this.__touch();
     const text = valueToTextNode(this.ownerDocument, value);
     if (text !== null) { moQuiet++; try { this.appendChild(text); } finally { moQuiet--; } }
@@ -666,7 +692,7 @@ export class Element extends Node {
   // attrs inflate lazily: a buffer-backed element leaves __attrs undefined and
   // builds the array from the SoA only when an attribute is first touched (many
   // elements are inflated for traversal but never have attrs read).
-  __buildAttrs() { const doc = this.ownerDocument, buf = doc && doc.__buf; return (this.__attrIdx >= 0 && buf) ? buf.attrs(this.__attrIdx) : []; }
+  __buildAttrs() { const doc = this.ownerDocument, buf = doc && doc.__buf; return (this.__attrIdx >= 0 && buf) ? cssNativeAttrs(buf.attrs(this.__attrIdx)) : cssNativeArray(); }
   getAttribute(name) {
     if (!this.__ns) name = ('' + name).toLowerCase(); // HTML attr names are ASCII-lowercased (SVG/MathML keep case)
     const at = this.__attrs;
@@ -688,7 +714,7 @@ export class Element extends Node {
     const a = this.__attrs.find((x) => x.name === name);
     const old = a ? a.value : null;
     if (a) a.value = String(value);
-    else this.__attrs.push({ name, value: String(value), prefix: '' });
+    else this.__attrs.push(cssNativeAttribute({ name, value: String(value), prefix: '' }));
     resetNewlySelectable(this, name, old);
     notifyMutation(this, 'attributes', null, null, null, name, old);
   }
@@ -696,7 +722,7 @@ export class Element extends Node {
     if (!this.__ns) name = ('' + name).toLowerCase();
     if (this.__attrs === undefined) this.__attrs = this.__buildAttrs();
     const a = this.__attrs.find((x) => x.name === name);
-    this.__attrs = this.__attrs.filter((x) => x.name !== name);
+    this.__attrs = cssNativeArray(this.__attrs.filter((x) => x.name !== name));
     if (a) {
       resetNewlySelectable(this, name, a.value);
       notifyMutation(this, 'attributes', null, null, null, name, a.value);
@@ -1018,7 +1044,7 @@ export class Element extends Node {
   __clone(doc, deep) {
     const el = newElement(doc, this.localName, this.__ns);
     if (this.__prefix !== undefined) el.__prefix = this.__prefix;
-    el.__attrs = (this.__attrs ?? (this.__attrs = this.__buildAttrs())).map((a) => ({ ...a }));
+    el.__attrs = cssNativeAttrs(this.__attrs ?? (this.__attrs = this.__buildAttrs()));
     if (needsCeClone(this)) clonedElement(this, el);
     if (deep) cloneDeep(this, el, doc);
     return el;
@@ -1278,7 +1304,7 @@ export class DocumentFragment extends Node {
   append(...nodes) { parentAppend(this, nodes); }
   __clone(doc, deep) {
     const f = new DocumentFragment(doc);
-    if (deep) f.__kids = cloneKids(this, f, doc); // direct __kids build (see Element.__clone)
+    if (deep) f.__kids = cssNativeArray(cloneKids(this, f, doc)); // direct __kids build (see Element.__clone)
     return f;
   }
 }
@@ -1355,7 +1381,7 @@ function replaceAllWithMarkup(target, context, html) {
   const removed = observed(target) ? target.__children().slice() : null;
   target.__detachKids();
   for (let i = 0; i < kids.length; i++) kids[i].parentNode = target;
-  target.__kids = kids;
+  target.__kids = cssNativeArray(kids);
   target.__touch();
   if (removed !== null && (kids.length !== 0 || removed.length !== 0)) notifyMutation(target, 'childList', kids.slice(), removed, null, null, null, null);
 }
@@ -1446,7 +1472,7 @@ function inflateBufferElement(doc, buf, idx) {
 }
 function inflateNestedElement(doc, raw) {
   const node = newElement(doc, raw.name, raw.namespace || '');
-  node.__attrs = raw.attrs.map((a) => ({ name: a.name, value: a.value, prefix: a.prefix || '' }));
+  node.__attrs = cssNativeAttrs(raw.attrs);
   // the fragment parser reads `is` at creation, like the initial parse (custom-elements.mjs)
   if (node.__ns === '' && raw.attrs.length !== 0) parsedIsAttribute(node);
   if (raw.name === 'template') {
@@ -1522,10 +1548,10 @@ function needsCeClone(el) {
   return el.__ns === '' && (el.__ce !== undefined || el.__ceIs !== undefined || el.__attrIdx >= 0 || el.localName.indexOf('-') !== -1);
 }
 function cloneDeep(source, el, doc) {
-  el.__kids = cloneKids(source, el, doc);
+  el.__kids = cssNativeArray(cloneKids(source, el, doc));
   if (source.__ns === '' && source.localName === 'template') {
     const content = el.content;
-    content.__kids = cloneKids(source.content, content, content.ownerDocument);
+    content.__kids = cssNativeArray(cloneKids(source.content, content, content.ownerDocument));
   }
 }
 function selectValue(el) {
@@ -1955,7 +1981,7 @@ class Range {
     const frag = this.__doc.createDocumentFragment();
     const nodes = parseMarkup(context, html, this.__doc);
     for (const n of nodes) n.parentNode = frag;
-    frag.__kids = nodes;
+    frag.__kids = cssNativeArray(nodes);
     return frag;
   }
   getBoundingClientRect() { return new DOMRect(); }
@@ -2478,7 +2504,7 @@ export class Document extends Node {
     super(null);
     this.ownerDocument = this;
     this.__buf = null;            // SoA buffer accessor
-    this.__cache = [];            // idx -> handle (identity memoization / nodeAt)
+    this.__cache = cssNativeArray();            // idx -> handle (identity memoization / nodeAt)
     this.__active = null;         // activeElement
     this.defaultView = null;      // set by environment (window)
     this.__mo = null;             // registered MutationObservers (lazy — most files never observe())
@@ -2505,7 +2531,7 @@ export class Document extends Node {
   // a document clone is a new document; its children are cloned into it
   __clone(_doc, deep) {
     const copy = new Document();
-    if (deep) copy.__kids = cloneKids(this, copy, copy);
+    if (deep) copy.__kids = cssNativeArray(cloneKids(this, copy, copy));
     return copy;
   }
 
@@ -2551,7 +2577,7 @@ export class Document extends Node {
       case DOCUMENT_FRAGMENT_NODE: node = new DocumentFragment(this); break;
       default: node = new Comment(this, ''); break;
     }
-    if (raw.nodeType !== TEXT_NODE && raw.nodeType !== COMMENT_NODE && raw.nodeType !== DOCUMENT_TYPE_NODE) node.__kids = inflateNestedKids(this, raw, node);
+    if (raw.nodeType !== TEXT_NODE && raw.nodeType !== COMMENT_NODE && raw.nodeType !== DOCUMENT_TYPE_NODE) node.__kids = cssNativeArray(inflateNestedKids(this, raw, node));
     return node;
   }
 
@@ -2560,7 +2586,7 @@ export class Document extends Node {
     this.__buf = new Buffer(soa);
     this.__idx = 0;          // node 0 is the document
     this.__kids = null;      // drop overlay
-    this.__cache = [];       // drop node cache
+    this.__cache = cssNativeArray();       // drop node cache
     this.__active = null;
     this.#cssTracked &= 1;
     this.__mo = [];          // drop observers
@@ -2793,7 +2819,7 @@ Object.assign(METHOD, {
 
 // Parse an HTML string into a fresh Document over the immutable SoA buffer.
 export function parseDocument(html) {
-  const soa = getParser().parseBuffer(String(html));
+  const soa = parseBufferForRuntime(String(html));
   const doc = new Document();
   doc.__load(soa);
   return doc;

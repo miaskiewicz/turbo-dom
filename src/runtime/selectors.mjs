@@ -1074,14 +1074,20 @@ function isEmpty(el) {
 }
 function isLink(el) {
   if (isHtml(el)) return (selectorName(el) === 'a' || selectorName(el) === 'area') && selectorHasAttribute(el, 'href');
-  return selectorNamespace(el) === SVG_NS && selectorName(el) === 'a' && selectorAttribute(el, 'href') !== null;
+  return selectorNamespace(el) === SVG_NS && selectorName(el) === 'a' && (
+    selectorHasAttribute(el, 'href') || (activeFacts && selectorHasAttribute(el, 'xlink:href'))
+  );
 }
 // :defined — the element's custom element state (custom-elements.mjs: the creation-time
 // state, upgrades and constructions), as the Rust engine's Tree::custom_element_state.
 // :lang(range): the nearest `lang` / `xml:lang` (basic prefix match, case-insensitive).
+function selectorLanguage(el) {
+  const xml = activeFacts && !isHtml(el) ? selectorAttribute(el, 'xml:lang') : null;
+  return xml ?? selectorAttribute(el, 'lang');
+}
 function langMatches(el, range) {
   for (let n = el; selectorPresent(n) && selectorType(n) === 1; n = selectorParent(n)) {
-    const v = selectorAttribute(n, 'lang');
+    const v = selectorLanguage(n);
     if (v === null) continue;
     const l = v.toLowerCase();
     return l === range || (l.length > range.length && l.startsWith(range) && l[range.length] === '-');

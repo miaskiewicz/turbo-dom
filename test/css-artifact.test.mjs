@@ -186,11 +186,13 @@ test('bare host imports without Node or WebAssembly and accepts preinitialized w
     import assert from 'node:assert/strict';
     const context = vm.createContext({ WebAssembly: undefined });
     const backend = new vm.SourceTextModule(fs.readFileSync('src/runtime/css-backend.mjs','utf8'), {context});
+    const parserOrigin = new vm.SourceTextModule(fs.readFileSync('src/runtime/parser-origin.mjs','utf8'), {context});
+    const nativeLoader = new vm.SourceTextModule(fs.readFileSync('src/runtime/css-native-loader.mjs','utf8'), {context});
     const parser = new vm.SourceTextModule(fs.readFileSync('src/runtime/parser.mjs','utf8'), {context, importModuleDynamically() { throw new Error('no Node modules'); }});
     const artifact = new vm.SourceTextModule(fs.readFileSync('src/runtime/css-artifact.mjs','utf8'), {
       context, importModuleDynamically() { throw new Error('no Node modules'); }
     });
-    await artifact.link(spec => spec === './parser.mjs' ? parser : backend);
+    await artifact.link(spec => spec === './parser.mjs' ? parser : spec === './parser-origin.mjs' ? parserOrigin : spec === './css-native-loader.mjs' ? nativeLoader : backend);
     await artifact.evaluate();
     const api = artifact.namespace;
     assert.equal(api.createCssArtifactResolver().resolve({mode:'auto',binding:null,revision:0}), null);
@@ -328,4 +330,15 @@ test('artifact UA source capability is optional, strictly validated and not invo
       }),
     (value) => value === error,
   );
+});
+
+test('resolution refusals preserve non-Error values and errors without a module name',()=>{
+ for(const failure of [undefined,null,{code:'MODULE_NOT_FOUND'}, {code:'MODULE_NOT_FOUND',message:''}]) {
+  const require=()=>{throw Error('must not load');};
+  require.resolve=()=>{throw failure;};
+  let caught=false,actual;
+  try{loadCssModule(require,'artifact');}catch(error){caught=true;actual=error;}
+  assert.equal(caught,true);assert.equal(actual,failure);
+ }
+ assert.equal(nativeCssSuffix('android','arm64'),'android-arm64');
 });

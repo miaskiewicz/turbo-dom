@@ -46,14 +46,15 @@ function arrayData(properties, active) {
 	return result;
 }
 function recordData(properties, active) {
+	const result = create(null);
 	const names = keys(properties);
 	for (let index = 0; index < names.length; index++) {
 		const name = names[index];
 		const property = properties[name];
-		if (property.enumerable) properties[name] = field(property, active);
-		else delete properties[name];
+		if (!property.enumerable) continue;
+		result[name] = field(property, active);
 	}
-	return properties;
+	return result;
 }
 function ownData(value, active) {
 	if (value === null || typeof value === "string" || typeof value === "boolean")

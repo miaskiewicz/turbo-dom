@@ -5,6 +5,18 @@ environment for vitest/jest. Format based on [Keep a Changelog](https://keepacha
 Early versions were released as lightweight tags / version-stamped commits (no per-release notes
 at the time); this file reconstructs them from history.
 
+## [Unreleased — v0.8.8]
+
+- Added an experimental `cssBackend: 'rust'` opt-in for npm, Vitest and Jest,
+  separate from `domBackend`. JavaScript remains the default CSS engine.
+- Reuse private selector inputs only after complete fresh capture and validation;
+  preserve owner, mutation, shadow, state and quota checks.
+- Explicit native Rust CSS environments can share one built-in N-API addon for
+  parsing and CSS. Already selected or injected parsers remain unchanged.
+- Ignore canonically invalid ordinary selector rules and nonmatching ordinary
+  terminal pseudo-elements when captured route facts are supplied. Preserve strict
+  errors for valid unsupported selectors and composed selector routes.
+
 ## [0.8.7] — 2026-11-27
 
 Rust source compatibility requires attention in layout consumers. Exhaustive

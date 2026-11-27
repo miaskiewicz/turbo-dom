@@ -20,8 +20,14 @@ import {
 export { cssSheetSnapshot } from './cssom-state.mjs';
 
 const observedToken = Symbol('observed document CSS store');
+const nativeRules = new WeakSet();
+const nativeRuleHas = WeakSet.prototype.has, nativeRuleAdd = WeakSet.prototype.add;
+const nativeRuleApply = Reflect.apply;
+export function hasNativeCssRuleBrand(value) { return nativeRuleApply(nativeRuleHas, nativeRules, [value]); }
+export function hasNativeCssSheetBrand(value) { return hasPlainSheetBrand(value); }
 export class CSSStyleRule {
   constructor(cssText, token = undefined) {
+    nativeRuleApply(nativeRuleAdd, nativeRules, [this]);
     const observed = token === observedToken;
     const rule = observed ? wrapCssRule(this) : this;
     rule.cssText = String(cssText);
@@ -42,7 +48,9 @@ const getPrototype = Object.getPrototypeOf;
 const createObject = Object.create;
 const cssString = String;
 function exposedInsertedRule(cssText) {
-  const rule = wrapCssRule(createObject(rulePrototype));
+  const target = createObject(rulePrototype);
+  nativeRuleApply(nativeRuleAdd, nativeRules, [target]);
+  const rule = wrapCssRule(target);
   rule.cssText = cssText;
   rule.type = 1;
   finishCssRuleConstruction(rule);
@@ -57,6 +65,7 @@ function insertedRule(value) {
       ownDescriptor(rulePrototype, 'cssText') || ownDescriptor(rulePrototype, 'type') ||
       ownDescriptor(objectPrototype, 'cssText') || ownDescriptor(objectPrototype, 'type')) return exposedInsertedRule(cssText);
   const target = createObject(rulePrototype);
+  nativeRuleApply(nativeRuleAdd, nativeRules, [target]);
   target.cssText = cssText;
   target.type = 1;
   return privateCssRule(target);

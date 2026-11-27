@@ -1,3 +1,5 @@
+import { nativeCssSuffix, loadCssModule, detectNativeMusl } from './css-native-loader.mjs';
+export { nativeCssSuffix, loadCssModule, detectNativeMusl } from './css-native-loader.mjs';
 // Optional CSS artifacts are independent of the minimal HTML parser binding.
 import { createCssBackendResolver, cssCapabilityDescriptor, cssOptionalAbsent } from './css-backend.mjs';
 
@@ -17,6 +19,8 @@ export function normalizeCssArtifact(binding) {
   const serializeCssomV1 = binding.serializeCssomV1;
   const projectCssomPropertyV1 = binding.projectCssomPropertyV1;
   const cssComputedPreferencesV1 = binding.cssComputedPreferencesV1;
+  const cssComputedEnvironmentV1 = binding.cssComputedEnvironmentV1;
+  const cssRuntimePolicyV1 = binding.cssRuntimePolicyV1;
   if (
     abi === undefined &&
     CompiledStylesV1 === undefined &&
@@ -26,6 +30,8 @@ export function normalizeCssArtifact(binding) {
       serializeCssomV1,
       projectCssomPropertyV1,
       cssComputedPreferencesV1,
+      cssComputedEnvironmentV1,
+      cssRuntimePolicyV1,
     ])
   )
     return null;
@@ -43,42 +49,18 @@ export function normalizeCssArtifact(binding) {
     serializeCssomV1,
     projectCssomPropertyV1,
     cssComputedPreferencesV1,
+    cssComputedEnvironmentV1,
+    cssRuntimePolicyV1,
   );
 }
 
-export function nativeCssSuffix(platform, arch, musl = false) {
-  if (platform === 'darwin') return `darwin-${arch}`;
-  if (platform === 'win32') return `win32-${arch}-msvc`;
-  if (platform === 'linux') return `linux-${arch}-${musl ? 'musl' : 'gnu'}`;
-  if (platform === 'android') return `android-${arch === 'arm' ? 'arm-eabi' : arch}`;
-  if (platform === 'freebsd') return `freebsd-${arch}`;
-  return null;
-}
+
 
 // Resolve only the exact requested artifact before initialization: nested missing
 // dependencies and every initialization exception remain the original exception.
-export function loadCssModule(require, spec) {
-  let path;
-  try {
-    path = require.resolve(spec);
-  } catch (error) {
-    if (error?.code === 'MODULE_NOT_FOUND' && error.message?.startsWith(`Cannot find module '${spec}'`)) return null;
-    throw error;
-  }
-  return require(path);
-}
 
-export function detectNativeMusl(require, process = globalThis.process) {
-  if (process?.report && typeof process.report.getReport === 'function') {
-    return !process.report.getReport().header.glibcVersionRuntime;
-  }
-  try {
-    const lddPath = require('child_process').execSync('which ldd').toString().trim();
-    return require('fs').readFileSync(lddPath, 'utf8').includes('musl');
-  } catch {
-    return true;
-  }
-}
+
+
 
 function nodeRequire() {
   return createParserRequire();
@@ -90,6 +72,7 @@ export function createCssArtifactResolver({
   arch = globalThis.process?.arch,
   isMusl = () => detectNativeMusl(require),
   preinitializedWasm,
+  beforeWasmLoad,
   hasWebAssembly = () => typeof WebAssembly !== 'undefined',
 } = {}) {
   const resolver = createCssBackendResolver({
@@ -102,7 +85,9 @@ export function createCssArtifactResolver({
     },
     loadWasm() {
       if (preinitializedWasm) return normalizeCssArtifact(preinitializedWasm);
-      if (!require || !hasWebAssembly()) return null;
+      if (!require) return null;
+      if(beforeWasmLoad!==undefined)beforeWasmLoad();
+      if (!hasWebAssembly()) return null;
       return normalizeCssArtifact(loadCssModule(require, '../../pkg-css/turbo_dom_css.js'));
     },
   });

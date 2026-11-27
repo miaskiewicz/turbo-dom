@@ -105,6 +105,32 @@ Rust parser or WASM.
 | Vitest config | `test.environmentOptions.turboDom.domBackend = 'js'` |
 | Jest config | `testEnvironmentOptions.turboDom.domBackend = 'js'` |
 
+### Experimental CSS backend selection (v0.8.8 development)
+
+The [2026-11-27 packed Vitest measurements](docs/benchmarks/css-opt-in-2026-11-27.json)
+compare selector reuse, shared-addon loading and their combination independently.
+The final direct comparison still measured a 12.1% median Rust wall-time gap to JS,
+with substantial machine-load noise. This is not a performance-parity claim or
+justification to change the default.
+
+`cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
+`domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the
+full Rust DOM integration described above. Missing or incompatible CSS artifacts
+produce an explicit error rather than silently changing the selected backend.
+
+| Entry point | Rust CSS opt-in |
+| --- | --- |
+| npm runtime | `createEnvironment(html, { cssBackend: 'rust' })` |
+| Vitest config | `test.environmentOptions.turboDom.cssBackend = 'rust'` |
+| Jest config | `testEnvironmentOptions.turboDom.cssBackend = 'rust'` |
+
+Repeated Rust CSS reads reuse selector inputs only after freshly capturing and
+validating the complete matching input. DOM, stylesheet, state, shadow-tree and
+owner changes retain their invalidation checks. With an unresolved explicitly
+native parser, Rust CSS can load one combined parser/CSS addon; existing parser
+selections and injected bindings are left intact. A combined addon initialization
+error can therefore surface during parsing instead of the first style read.
+
 **Just the parser:**
 
 ```js

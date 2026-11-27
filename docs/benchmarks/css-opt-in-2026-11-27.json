@@ -1,0 +1,226 @@
+{
+  "date": "2026-11-27",
+  "workload": "packed Vitest React/DOM common suite",
+  "testsPerRun": 29,
+  "blocks": 7,
+  "order": "ABBA",
+  "processesPerComparison": 30,
+  "baselinePublishedSource": "aade346fc2ee146bbbf5f8ff15c46d03d4d13521",
+  "allTestsPass": true,
+  "qualifications": [
+    "External contention observed; individual blocks vary substantially.",
+    "Independent comparisons use the same88c native artifact; direct final comparison includes the corrected b9 selector addon and final complexity refactors.",
+    "No default switch; within2percent JS target not met.",
+    "These experiments do not prove a loader-only speed gain."
+  ],
+  "independentComparisons": [
+    {
+      "candidate": "navigator-reuse",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -4.830737848559741,
+          "blockDeltasPct": [
+            2.0039005414035804,
+            5.38766500116985,
+            -3.608358080537255,
+            -11.145914889823471,
+            -5.245473346646678,
+            -9.825708571610658,
+            -4.830737848559741
+          ],
+          "wins": 5,
+          "leftMedian": 4391.001896001399,
+          "rightMedian": 4334.967353992397
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -19.720704317762937,
+          "blockDeltasPct": [
+            -16.015359420394436,
+            23.132869383837583,
+            -19.720704317762937,
+            -22.074698235625455,
+            -14.427412208535383,
+            -20.36712589989428,
+            -21.137053729596367
+          ],
+          "wins": 6,
+          "leftMedian": 941.918854,
+          "rightMedian": 811.9374955
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -3.579332883271702,
+          "blockDeltasPct": [
+            -2.8746083336799955,
+            -2.852522655993628,
+            -5.767079038983769,
+            -10.929724978894306,
+            -3.579332883271702,
+            -8.297640972695131,
+            -1.3140733803664317
+          ],
+          "wins": 7,
+          "leftMedian": 4914.217499999999,
+          "rightMedian": 4611.652
+        }
+      }
+    },
+    {
+      "candidate": "loader-only",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -0.16424410589639393,
+          "blockDeltasPct": [
+            -5.18504839338304,
+            4.473602886244432,
+            4.3007240847657835,
+            -0.16424410589639393,
+            -4.956743418363329,
+            -3.233308533905477,
+            32.18966115746129
+          ],
+          "wins": 4,
+          "leftMedian": 2629.8630209930707,
+          "rightMedian": 2708.4151874878444
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -1.8228870704292133,
+          "blockDeltasPct": [
+            -1.4003509636314915,
+            -2.2269151646649332,
+            1.6757564083297982,
+            -1.8228870704292133,
+            -11.013830872449903,
+            -4.941179783430705,
+            27.371330916727988
+          ],
+          "wins": 5,
+          "leftMedian": 612.9007100000001,
+          "rightMedian": 612.2337899999998
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 0.10844231157323136,
+          "blockDeltasPct": [
+            -4.348823960262194,
+            3.0240153020845817,
+            3.3578462459605163,
+            0.10844231157323136,
+            -5.509572966627562,
+            -2.6638492212262443,
+            23.897366725235347
+          ],
+          "wins": 3,
+          "leftMedian": 3138.7834999999977,
+          "rightMedian": 3196.079499999997
+        }
+      }
+    },
+    {
+      "candidate": "combined-loader",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -5.892578066617626,
+          "blockDeltasPct": [
+            -16.764495895629818,
+            -5.892578066617626,
+            5.1891843011175,
+            15.618398026118907,
+            -11.07359237232476,
+            7.8367395864036515,
+            -27.136253251854072
+          ],
+          "wins": 4,
+          "leftMedian": 2770.599437484634,
+          "rightMedian": 2727.7881460177014
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -21.79144718849274,
+          "blockDeltasPct": [
+            -28.55920133528619,
+            -18.27508765707435,
+            -12.443049025804608,
+            -11.228439391994382,
+            -24.38730895334039,
+            -21.79144718849274,
+            -39.76950241931475
+          ],
+          "wins": 7,
+          "leftMedian": 636.204124,
+          "rightMedian": 526.6513540000001
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -6.749169263819499,
+          "blockDeltasPct": [
+            -15.332625967579805,
+            -6.749169263819499,
+            3.8894503932652036,
+            7.487204619233734,
+            -7.4499874868268146,
+            0.7514786718624489,
+            -8.746636964864685
+          ],
+          "wins": 4,
+          "leftMedian": 3292.5225,
+          "rightMedian": 3214.9660000000017
+        }
+      }
+    }
+  ],
+  "directLegacyJsVsIntegratedRust": {
+    "wallMs": {
+      "matchedMedianDeltaPct": 12.069574035959052,
+      "blockDeltasPct": [
+        -16.778179488435107,
+        -18.500347451947675,
+        64.70277948105803,
+        11.003366679958804,
+        16.834632177195473,
+        39.77627086985305,
+        12.069574035959052
+      ],
+      "wins": 2,
+      "leftMedian": 2477.454645500984,
+      "rightMedian": 2701.0865834890865
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": 135.74920517887873,
+      "blockDeltasPct": [
+        88.93926278118916,
+        113.40427631403531,
+        311.80376509954107,
+        135.74920517887873,
+        142.5569039501896,
+        188.51726763374774,
+        132.39773899274581
+      ],
+      "wins": 0,
+      "leftMedian": 222.94853999999998,
+      "rightMedian": 519.1191025
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": 15.464065134159789,
+      "blockDeltasPct": [
+        -11.471792374811118,
+        5.549445284327925,
+        32.15793886298655,
+        15.464065134159789,
+        20.71800505505168,
+        42.90445254992632,
+        15.454517318674977
+      ],
+      "wins": 1,
+      "leftMedian": 2836.6800000000035,
+      "rightMedian": 3205.562499999998
+    }
+  },
+  "fixtureSha256": {
+    "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+    "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+    "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+    "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+    "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+    "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+    "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+    "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+  },
+  "runnerSha256": "5cd6b06de5aa5ebb5593a21e4cdc18110b8f94485b438e508b99656e766b6552"
+}

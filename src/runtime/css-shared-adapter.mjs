@@ -424,16 +424,23 @@ export function createSharedCssAdapter(options) {
 export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false) {
  return createAdapter(options, cacheMatching, useCapturedRoutes);
 }
+function capturedSources(capture, document, snapshot, context) {
+  if (capture !== undefined) return sharedInvoke(capture, undefined, [snapshot, context]);
+  return captureCssSources(document, {nodeId: snapshot.nodeId, scopeId: snapshot.nodeId});
+}
+
 function createAdapter({
 	selectBackend,
 	readContext,
 	captureSnapshot,
 	captureSelectorFacts,
+	captureSourceFacts,
 	profile,
 	limits,
 	measureScene,
 }, cacheMatching, useCapturedRoutes = false) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
+	if (captureSourceFacts !== undefined) required(captureSourceFacts, 'captureSourceFacts');
 	const callbacks = {
 		selectBackend,
 		readContext,
@@ -552,10 +559,7 @@ function createAdapter({
                 ? sharedInvoke(required(limits.contextualMatching, 'limits.contextualMatching'), limits, [{snapshot}])
                 : null;
             const routing = contextual ? createSharedRouting(snapshot, contextual.routing) : null;
-			const sources = captureCssSources(document, {
-				nodeId: snapshot.nodeId,
-				scopeId: snapshot.nodeId,
-			});
+			const sources = capturedSources(captureSourceFacts, document, snapshot, context);
 			const backend = selectedBackend;
 			const userAgentSource = profile.userAgentSource;
 			const ua =

@@ -1,3 +1,5 @@
+import {originalTextCodecValue} from './parser-origin.mjs';
+import { isCssHostProxy } from './css-host-identity.mjs';
 // Layer 3 — lazy `window`. A Proxy whose globals are factories that materialize
 // on first `get` and self-replace with the concrete value (one-time Proxy cost
 // per property). A test using only `document.querySelector` never constructs
@@ -12,6 +14,7 @@ import {
 } from './stubs.mjs';
 import { DOMRect, DOMRectReadOnly } from './dom-rect.mjs';
 import { makeGetComputedStyle } from './cascade.mjs';
+import { makeDefaultGetComputedStyle } from './css-default.mjs';
 import { makeCustomElements, constructCustomElement } from './custom-elements.mjs';
 import { CSSStyleSheet } from './cssom.mjs';
 import {
@@ -128,7 +131,6 @@ class MessageChannel {
 const SHARED_LAZY = {
   localStorage: () => new Storage(),
   sessionStorage: () => new Storage(),
-  getComputedStyle: () => makeGetComputedStyle(),
   IntersectionObserver: () => IntersectionObserver,
   ResizeObserver: () => ResizeObserver,
   // rAF: schedule via the LIVE setTimeout (so a render tier that swaps in a timer
@@ -175,7 +177,71 @@ function materializeLazy(t, k, lazy, touched) {
   return undefined;
 }
 
-export function createWindow(document, { url = 'http://localhost/' } = {}) {
+const cssWindowBases = new WeakMap(), cssInstalledWindows = new WeakMap(), cssInstalledTargets = new WeakMap(), cssCodecGetterOrigins = new WeakMap();
+const cssWindowApply=Reflect.apply, cssWindowGet=WeakMap.prototype.get, cssWindowSet=WeakMap.prototype.set, cssWindowDelete=WeakMap.prototype.delete;
+const cssWindowDescriptor=Object.getOwnPropertyDescriptor, cssWindowOwn=Object.hasOwn, cssWindowFinite=Number.isFinite;
+function nativeWindowAxis(base,name,fallback){
+  const value=cssWindowDescriptor(base,name);
+  if(value&&!cssWindowOwn(value,'value'))throw new TypeError(`CSS window ${name} accessor unavailable`);
+  const number=value?value.value:fallback;
+  if(typeof number!=='number'||!cssWindowFinite(number)||number<0)throw new TypeError(`CSS window ${name} unavailable`);
+  return number;
+}
+export function createNativeCssCodecGetter(document,window,name){
+  const record=cssWindowApply(cssWindowGet,cssWindowBases,[document]);
+  if(!record||record.window!==window||(name!=='TextEncoder'&&name!=='TextDecoder'))throw new TypeError('CSS foreign codec getter owner');
+  const get=()=>window[name];
+  cssWindowApply(cssWindowSet,cssCodecGetterOrigins,[get,{record,name}]);
+  return get;
+}
+export function bindNativeCssInstalledWindow(document,target,getters){
+  if(!cssWindowApply(cssWindowGet,cssWindowBases,[document]))throw new TypeError('CSS foreign window owner');
+  if(target===null||typeof target!=='object')throw new TypeError('CSS installed window target unavailable');
+  const records={};
+  for(const name of ['innerWidth','innerHeight','devicePixelRatio','TextEncoder','TextDecoder'])records[name]=getters[name];
+  const entry={document,target,getters:records,admitted:false,previous:cssWindowApply(cssWindowGet,cssInstalledTargets,[target])};
+  cssWindowApply(cssWindowSet,cssInstalledWindows,[document,entry]);
+  cssWindowApply(cssWindowSet,cssInstalledTargets,[target,entry]);
+}
+export function unbindNativeCssInstalledWindow(document,target){
+  const current=cssWindowApply(cssWindowGet,cssInstalledWindows,[document]);
+  if(current?.target===target){
+    cssWindowApply(cssWindowDelete,cssInstalledWindows,[document]);
+    if(cssWindowApply(cssWindowGet,cssInstalledTargets,[target])===current){
+      if(current.previous)cssWindowApply(cssWindowSet,cssInstalledTargets,[target,current.previous]);
+      else cssWindowApply(cssWindowDelete,cssInstalledTargets,[target]);
+    }
+  }
+}
+function originalBaseCodec(base,name){
+ const own=cssWindowDescriptor(base,name),value=own??cssWindowDescriptor(STATIC_BASE,name);
+ return !!value&&cssWindowOwn(value,'value')&&originalTextCodecValue(name,value.value);
+}
+export function nativeCssInstalledCodecSafe(name,field){
+  const entry=cssWindowApply(cssWindowGet,cssInstalledTargets,[globalThis]);
+  if(!entry||!field||cssWindowOwn(field,'value')||field.get!==entry.getters[name])return false;
+  const record=cssWindowApply(cssWindowGet,cssWindowBases,[entry.document]);
+  const origin=cssWindowApply(cssWindowGet,cssCodecGetterOrigins,[field.get]);
+  if(!origin||origin.record!==record||origin.name!==name)return false;
+  return originalBaseCodec(record.base,name);
+}
+function installedWindowAxis(document,base,name,fallback){
+  const installed=cssWindowApply(cssWindowGet,cssInstalledWindows,[document]);
+  if(!installed)return nativeWindowAxis(base,name,fallback);
+  if(!installed.admitted){if(isCssHostProxy(installed.target))throw new TypeError('CSS installed window proxy unavailable');installed.admitted=true;}
+  const field=cssWindowDescriptor(installed.target,name);
+  if(field&&cssWindowOwn(field,'value'))return nativeWindowAxis(installed.target,name,fallback);
+  if(!field||field.get!==installed.getters[name])throw new TypeError(`CSS installed window ${name} accessor unavailable`);
+  return nativeWindowAxis(base,name,fallback);
+}
+export function readNativeCssWindowContext(document){
+  const record=cssWindowApply(cssWindowGet,cssWindowBases,[document]);
+  if(!record)throw new TypeError('CSS native window context unavailable');
+  const base=record.base;
+  return{width:installedWindowAxis(document,base,'innerWidth',SHARED_LAZY.innerWidth()),height:installedWindowAxis(document,base,'innerHeight',SHARED_LAZY.innerHeight()),devicePixelRatio:installedWindowAxis(document,base,'devicePixelRatio',SHARED_LAZY.devicePixelRatio())};
+}
+export function createWindow(document, { url = 'http://localhost/', cssBackend = 'js' } = {}) {
+  if (cssBackend !== 'js' && cssBackend !== 'rust') throw new TypeError('turbo-dom: cssBackend must be "js" or "rust"');
   const touched = new Set();
   let windowProxy;
 
@@ -212,6 +278,7 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
     }, 0);
   }
   const lazy = {
+    getComputedStyle: () => cssBackend === 'rust' ? makeDefaultGetComputedStyle({requireBackend:true}) : makeGetComputedStyle(),
     origin: () => new URL(url).origin,
     // subsystem grouping: history co-materializes with (and shares) location
     location: () => makeLocation(url, (oldURL, newURL) => {
@@ -247,6 +314,7 @@ export function createWindow(document, { url = 'http://localhost/' } = {}) {
   });
 
   document.defaultView = windowProxy;
+  cssWindowApply(cssWindowSet,cssWindowBases,[document,{base,window:windowProxy}]);
 
   return {
     window: windowProxy,

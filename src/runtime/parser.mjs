@@ -1,3 +1,5 @@
+import { nativeCssSuffix, loadCssModule, detectNativeMusl } from './css-native-loader.mjs';
+import { captureParserOrigin, parserDecoderSafe, originalWasmAvailability } from './parser-origin.mjs';
 // Parser binding registry for the whole runtime (dom.mjs, index.mjs).
 //
 // Resolution order, lazily on the FIRST parse (getParser):
@@ -17,6 +19,48 @@
 let _createRequire;
 try { ({ createRequire: _createRequire } = await import('node:module')); } catch { /* bare V8: parser must be injected */ }
 
+// Provenance is recorded only around the unchanged built-in parser call. Injected
+// parse-only objects retain their API but cannot certify raw backing stores.
+const cssOrigins = new WeakMap(), cssBuiltins = new WeakMap();
+const cssApply = Reflect.apply, cssDescriptor = Object.getOwnPropertyDescriptor,cssOwn=Object.hasOwn;
+const cssGet = WeakMap.prototype.get, cssSet = WeakMap.prototype.set;
+let cssBuiltin = null;
+function rememberCssBuiltin(binding, cachedTextCodecs) {
+  let record = cssApply(cssGet, cssBuiltins, [binding]);
+  if (!record) {
+    const field = cssDescriptor(binding, 'parseBuffer');
+    if (field && cssOwn(field, 'value') && typeof field.value === 'function') {
+      record = {binding, fn:field.value, cachedTextCodecs};
+      cssApply(cssSet, cssBuiltins, [binding, record]);
+    }
+  }
+  cssBuiltin = record ?? null;
+  return binding;
+}
+function cssBuiltinCurrent(record) {
+  const field=cssDescriptor(record.binding,'parseBuffer');
+  return !!field&&cssOwn(field,'value')&&field.value===record.fn;
+}
+export function readParserCssOrigin(value) { return cssApply(cssGet, cssOrigins, [value]) ?? null; }
+function cssProducerTrusted(html,binding,fn,original){
+ return typeof html==='string'&&original?.binding===binding&&original.fn===fn&&original.cachedTextCodecs&&cssBuiltinCurrent(original)&&parserDecoderSafe({cachedTextCodecs:true});
+}
+function selectCombinedNative(preferCombinedNative) {
+  if (preferCombinedNative && !_parser && !globalThis.__TURBO_DOM_PARSER__ && resolveMode() === 'native') {
+    _parser = loadCombinedNative();
+  }
+}
+export function parseBufferForRuntime(html, preferCombinedNative = false) {
+  selectCombinedNative(preferCombinedNative);
+  const binding = getParser(), fn = binding.parseBuffer, original = cssBuiltin;
+  const trusted = cssProducerTrusted(html,binding,fn,original);
+  const result = cssApply(fn, binding, [html]);
+  if (trusted && cssBuiltinCurrent(original) && parserDecoderSafe({cachedTextCodecs:true})) {
+    const origin = captureParserOrigin(result, () => cssBuiltinCurrent(original));
+    if (origin) cssApply(cssSet, cssOrigins, [result, origin]);
+  }
+  return result;
+}
 let _parser = null;
 let _revision = 0;
 let _mode = null; // 'wasm' | 'native' | 'auto' | null (consult env/global)
@@ -30,16 +74,45 @@ function req(spec) {
   }
   return _createRequire(import.meta.url)(spec);
 }
-const loadNative = () => req('../../index.js');
-const loadWasm = () => req('../../pkg/turbo_dom_parser.js');
+function loadCssBuiltin(spec,wasm=false) {
+  const before=parserDecoderSafe()&&(!wasm||originalWasmAvailability()===true);
+  const binding=req(spec);
+  return rememberCssBuiltin(binding,before&&parserDecoderSafe()&&(!wasm||originalWasmAvailability()===true));
+}
+const cssDefine = Object.defineProperty;
+function parserFacade(binding) {
+  const facade = {};
+  const names = ['parse', 'parseRaw', 'parseBuffer', 'parseFragment'];
+  for (let index = 0; index < names.length; index++) {
+    const name = names[index];
+    const field = cssDescriptor(binding, name);
+    if (!field || !cssOwn(field, 'value') || typeof field.value !== 'function')
+      throw new TypeError(`turbo-dom: combined native parser missing ${name}`);
+    cssDefine(facade, name, {__proto__:null, value:field.value, writable:true, enumerable:true, configurable:true});
+  }
+  return facade;
+}
+function loadCombinedNative() {
+  const before = parserDecoderSafe(), require = createParserRequire();
+  if (!require) return null;
+  const host = require('node:process');
+  const suffix = nativeCssSuffix(host.platform, host.arch, host.platform === 'linux' && detectNativeMusl(require, host));
+  if (!suffix) return null;
+  const binding = loadCssModule(require, `../../native-css/turbo-dom-css.${suffix}.node`);
+  if (binding === null) return null;
+  return rememberCssBuiltin(parserFacade(binding), before && parserDecoderSafe());
+}
+const loadNative = () => loadCssBuiltin('../../index.js');
+const loadWasm = () => loadCssBuiltin('../../pkg/turbo_dom_parser.js',true);
 
 // Inject a ready parser binding ({parse, parseBuffer, parseFragment}). Pass null to
 // clear it (next getParser re-resolves). The node-free seam for embedders.
-export function setParser(binding) { _parser = binding || null; _revision++; }
+export function setParser(binding) { cssBuiltin = null; _parser = binding || null; _revision++; }
 
 // Force a parser mode: 'wasm' | 'native' | 'auto' (or null to consult env/global).
 // Resets the resolved parser so the next parse honors the new mode.
 export function setParserMode(mode) {
+  cssBuiltin = null;
   _revision++;
   _mode = mode || null;
   _parser = null;
@@ -57,7 +130,7 @@ function resolveMode() {
 // freely without caching it themselves.
 export function getParser() {
   if (_parser) return _parser;
-  if (globalThis.__TURBO_DOM_PARSER__) return (_parser = globalThis.__TURBO_DOM_PARSER__);
+  if (globalThis.__TURBO_DOM_PARSER__) { cssBuiltin = null; return (_parser = globalThis.__TURBO_DOM_PARSER__); }
   const mode = resolveMode();
   if (mode === 'wasm') return (_parser = loadWasm());
   if (mode === 'native') return (_parser = loadNative());

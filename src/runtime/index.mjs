@@ -9,7 +9,7 @@
 import { Document } from './dom.mjs';
 import { createWindow } from './window.mjs';
 import { unpack } from './buffer.mjs';
-import { getParser, setParserMode } from './parser.mjs';
+import { getParser, setParserMode, parseBufferForRuntime } from './parser.mjs';
 
 export {
   ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE, DOCUMENT_FRAGMENT_NODE,
@@ -38,7 +38,7 @@ export { setClock } from './window.mjs';
 const __parseCache = new Map();
 const __PARSE_CACHE_MAX = 64;
 let __parseCacheMRU; // last (most-recently-used) key — skip the LRU re-insert when unchanged
-function parseBufferCached(html) {
+function parseBufferCached(html, preferCombinedNative = false) {
   const hit = __parseCache.get(html);
   if (hit !== undefined) {
     // LRU bump: re-insert so this entry is most-recently-used (Map keeps order).
@@ -47,7 +47,7 @@ function parseBufferCached(html) {
     if (html !== __parseCacheMRU) { __parseCache.delete(html); __parseCache.set(html, hit); __parseCacheMRU = html; }
     return hit;
   }
-  let soa = getParser().parseBuffer(html);
+  let soa = parseBufferForRuntime(html, preferCombinedNative);
   // Unpack the packed blob into typed-array views ONCE here, not per Document in
   // every Buffer ctor — the views are read-only over the shared immutable buffer,
   // so all Documents backed by this cached soa reuse them (no re-unpack per file).
@@ -77,8 +77,13 @@ function promoteDeclarativeShadowRoots(document) {
   }
 }
 
+function validateCssBackend(backend) {
+  if (backend !== 'js' && backend !== 'rust') throw new TypeError('turbo-dom: cssBackend must be "js" or "rust"');
+}
+
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
-  const { domBackend = 'js' } = options;
+  const { domBackend = 'js', cssBackend = 'js' } = options;
+  validateCssBackend(cssBackend);
   if (domBackend === 'rust') throw new Error('turbo-dom: domBackend "rust" requires a Node browser-env binding, which this build does not include');
   if (domBackend !== 'js') throw new TypeError('turbo-dom: domBackend must be "js" or "rust"');
 
@@ -90,7 +95,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
 
   // Layer 1: native parse → immutable SoA buffer (typed arrays, one boundary copy).
   let currentHtml = String(html);
-  let soa = parseBufferCached(currentHtml);
+  let soa = parseBufferCached(currentHtml, cssBackend === 'rust');
 
   // Layer 2: Document over the buffer (nodes inflate lazily from the arrays).
   const document = new Document();
@@ -111,7 +116,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
     // Layer 5: arena-style reset. Re-point at the (re)parsed buffer, drop the
     // owned overlay + node cache + materialized globals. Class machinery stays warm.
     reset(nextHtml) {
-      if (nextHtml !== undefined) { currentHtml = String(nextHtml); soa = parseBufferCached(currentHtml); }
+      if (nextHtml !== undefined) { currentHtml = String(nextHtml); soa = parseBufferCached(currentHtml, cssBackend === 'rust'); }
       document.__load(soa);       // drops __cache + __kids overlay, keeps the buffer if reused
       maybePromote();
       win.resetGlobals();

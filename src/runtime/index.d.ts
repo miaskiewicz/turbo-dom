@@ -16,6 +16,8 @@ export type ParserMode = 'wasm' | 'native' | 'auto';
 export type CustomElementState = 'undefined' | 'failed' | 'uncustomized' | 'precustomized' | 'custom';
 
 export interface EnvironmentOptions {
+  /** Experimental local opt-in for the independent Rust CSS capability. Defaults to js. */
+  cssBackend?: 'js' | 'rust';
   /** Per-environment DOM runtime. Defaults to js. The rust option requires a future Node browser-env binding. */
   domBackend?: 'js' | 'rust';
   /** Parser selection, applied process-wide before the first parse. */

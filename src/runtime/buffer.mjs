@@ -1,3 +1,32 @@
+import { readParserCssOrigin } from './parser.mjs';
+import { normalizedParserOrigin, parserDecoderSafe } from './parser-origin.mjs';
+const cssNormalizedOrigins = new WeakMap();
+const cssApply = Reflect.apply, cssGet = WeakMap.prototype.get, cssSet = WeakMap.prototype.set;
+const cssDescriptor = Object.getOwnPropertyDescriptor, cssOwn = Object.hasOwn;
+function cssInputOrigin(soa){return cssApply(cssGet,cssNormalizedOrigins,[soa])??readParserCssOrigin(soa);}
+function cssDecodeOriginSafe(origin){
+ const field=cssDescriptor(origin,'decodeSafe');
+ return !!field&&cssOwn(field,'value')&&typeof field.value==='function'&&cssApply(field.value,origin,[])&&parserDecoderSafe({cachedTextCodecs:true});
+}
+function cssDecodeEntry(soa){
+ const origin=cssInputOrigin(soa);
+ if(!origin||!origin.valid()||!origin.matches())return null;
+ return cssDecodeOriginSafe(origin)?origin:null;
+}
+function cssBufferField(value,name,expected,reason){
+ const field=cssDescriptor(value,name);
+ if(!field||!cssOwn(field,'value')||field.value!==expected)cssBufferUnavailable(reason);
+}
+function cssReadInput(value,input){
+ if(!input||!input.valid()||!input.matches())cssBufferUnavailable('unknown or changed parser origin');
+ cssBufferField(value,'soa',input.soa,'replaced source');
+ cssBufferField(value,'length',input.length,'changed length');
+ return input;
+}
+let cssBufferReader;
+export class CssNativeBufferUnavailable extends Error { constructor(reason) { super(`turbo-dom: native CSS buffer ${reason}`); this.name = 'CssNativeBufferUnavailable'; } }
+function cssBufferUnavailable(reason) { throw new CssNativeBufferUnavailable(reason); }
+export function readNativeCssBuffer(buffer) { return cssBufferReader(buffer); }
 // SoA buffer accessor. Reads tree structure straight from the typed arrays the
 // native parser produced — no node objects allocated until something asks.
 
@@ -8,6 +37,7 @@ const NS_SHORT = ['', 'svg', 'math'];
 // Exported so the parse cache can unpack ONCE per HTML (the views are read-only
 // over the shared immutable buffer) instead of re-unpacking per Document.
 export function unpack(soa) {
+  const origin = cssDecodeEntry(soa);
   const u8 = soa.packed, ab = u8.buffer, base = u8.byteOffset, n = soa.n, m = soa.m;
   let off = base;
   const i32 = () => { const a = new Int32Array(ab, off, n); off += n * 4; return a; };
@@ -36,11 +66,16 @@ export function unpack(soa) {
   };
   const tagNames = table(meta[0]), attrNames = table(meta[1]), attrPrefixes = table(meta[2]),
     attrValues = table(meta[3]), strings = table(meta[4]);
-  return {
+  const result = {
     nodeType, ns, tagId, parent, firstChild, nextSib, textId, pubId, sysId,
     attrStart, attrCount, attrNameId, attrValueId, attrPrefixId,
     tagNames, attrNames, attrPrefixes, attrValues, strings,
   };
+  if (origin && cssDecodeOriginSafe(origin)) {
+    const normalized = normalizedParserOrigin(result, origin);
+    if (normalized) cssApply(cssSet, cssNormalizedOrigins, [result, normalized]);
+  }
+  return result;
 }
 // Decode the UTF-8 string blob. Prefer the platform TextDecoder (Node/browser);
 // fall back to a tiny inline UTF-8 decoder so turbo-dom loads in a bare V8 with no
@@ -65,9 +100,20 @@ export function utf8Decode(bytes) {
 const STR_DECODER = typeof TextDecoder !== 'undefined' ? new TextDecoder() : { decode: utf8Decode };
 
 export class Buffer {
+  #cssInput;
+  static {
+    cssBufferReader = value => {
+      if (value === null || typeof value !== 'object' || !(#cssInput in value)) cssBufferUnavailable('foreign receiver');
+      return cssReadInput(value,value.#cssInput);
+    };
+  }
   constructor(soa) {
+    const entry=cssInputOrigin(soa);
+    if(entry)entry.matches();
     this.soa = soa.packed ? unpack(soa) : soa;
     this.length = this.soa.nodeType.length;
+    const origin = readParserCssOrigin(this.soa);
+    this.#cssInput = cssApply(cssGet, cssNormalizedOrigins, [this.soa]) ?? (origin ? normalizedParserOrigin(this.soa, origin) : null);
   }
   nodeType(i) { return this.soa.nodeType[i]; }
   ns(i) { return NS_SHORT[this.soa.ns[i]] || ''; }

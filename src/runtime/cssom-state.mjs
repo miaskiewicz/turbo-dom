@@ -1,5 +1,9 @@
+import { isCssHostProxy } from './css-host-identity.mjs';
 // CSS store metadata only: no parsing, cascade policy or mirrored DOM.
 import { noteCssSourceChange } from './css-invalidation.mjs';
+import { hasNativeCssSheetBrand, hasNativeCssRuleBrand } from './cssom.mjs';
+import { isNativeCssNode } from './dom.mjs';
+import { createParserRequire } from './parser.mjs';
 
 function weakTable() {
   const map = new WeakMap();
@@ -524,4 +528,88 @@ export function cssSheetSnapshot(sheet) {
 
 export function isObservedCssSheet(sheet) {
   return !!sheets.get(sheet);
+}
+
+
+// Read-only admission for the shared CSS boundary. No stamp grants reuse here.
+const nativeApply = Reflect.apply;
+const nativeOwn = Object.hasOwn;
+const nativeDefine = Object.defineProperty;
+const nativeIsArray = Array.isArray;
+const nativeSafeInteger = Number.isSafeInteger;
+export class CssNativeSheetUnavailable extends Error {
+  constructor(reason) { super(`turbo-dom: native CSS sheet ${reason}`); this.name = 'CssNativeSheetUnavailable'; }
+}
+function nativeUnavailable(reason) { throw new CssNativeSheetUnavailable(reason); }
+function nativeData(value, name) {
+  const field = descriptorOf(value, name);
+  if (!field || !nativeOwn(field, 'value')) nativeUnavailable(`missing/accessor ${name}`);
+  return field.value;
+}
+function nativeTarget(sheet) {
+  const observed = sheets.get(sheet);
+  const target = observed ? observed.target : sheet;
+  if (!hasNativeCssSheetBrand(target)) nativeUnavailable('unknown sheet');
+  return target;
+}
+function nativeArray(value) {
+  const observed = arrays.get(value);
+  if (observed) return observed.target;
+  if (value === null || typeof value !== 'object') nativeUnavailable('unknown sequence');
+  if (isCssHostProxy(value)) nativeUnavailable('unknown sequence proxy');
+  if (!nativeIsArray(value)) nativeUnavailable('unknown sequence');
+  return value;
+}
+export class CssNativeSheetLimit extends Error {
+  constructor(limit) { super(`turbo-dom: native CSS sheet ${limit} limit exceeded`); this.name = 'CssNativeSheetLimit'; this.limit = limit; }
+}
+function nativeBudget(policy) {
+  const entries = nativeData(policy, 'maxEntries'), units = nativeData(policy, 'maxUnits');
+  if (!nativeSafeInteger(entries) || entries < 0 || !nativeSafeInteger(units) || units < 0)
+    throw new TypeError('invalid native CSS sheet copy policy');
+  return {entries, units};
+}
+function nativeCharge(budget, name, amount) {
+  if (amount > budget[name]) throw new CssNativeSheetLimit(name);
+  budget[name] -= amount;
+}
+function nativeUnits(value, budget) { nativeCharge(budget, 'units', value.length); return value; }
+function nativeSequence(value, read, budget) {
+  const target = nativeArray(value), length = nativeData(target, 'length'), result = [];
+  if (!integer(length) || length < 0 || length > 0xffffffff) nativeUnavailable('sequence length');
+  nativeCharge(budget, 'entries', length);
+  for (let index = 0; index < length; index++) {
+    const item = read(nativeData(target, index));
+    nativeDefine(result, index, {value:item, enumerable:true, configurable:true, writable:true});
+  }
+  return result;
+}
+function nativeRuleText(rule, budget) {
+  const observed = rules.get(rule);
+  const target = observed ? observed.target : rule;
+  if (!hasNativeCssRuleBrand(target)) nativeUnavailable('unknown rule');
+  const text = nativeData(target, 'cssText');
+  if (typeof text !== 'string') nativeUnavailable('non-string rule');
+  return nativeUnits(text, budget);
+}
+function nativeMedia(value, budget) {
+  if (typeof value === 'string') return nativeUnits(value, budget);
+  return nativeSequence(value, item => {
+    if (typeof item !== 'string') nativeUnavailable('non-string media');
+    return nativeUnits(item, budget);
+  }, budget);
+}
+export function readNativeCssSheetData(sheet, policy) {
+  const budget = nativeBudget(policy);
+  const target = nativeTarget(sheet);
+  const ownerNode = nativeData(target, 'ownerNode');
+  if (ownerNode !== null && !isNativeCssNode(ownerNode)) nativeUnavailable('unknown owner');
+  const disabled = nativeData(target, 'disabled');
+  if (typeof disabled !== 'boolean') nativeUnavailable('non-boolean disabled');
+  return {rules:nativeSequence(nativeData(target, 'cssRules'), rule => nativeRuleText(rule, budget), budget),
+    media:nativeMedia(nativeData(target, 'media'), budget), disabled, ownerNode};
+}
+export function readNativeCssSheetSequence(sequence, policy) {
+  const budget = nativeBudget(policy);
+  return nativeSequence(sequence, sheet => { nativeTarget(sheet); return sheet; }, budget);
 }

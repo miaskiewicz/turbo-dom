@@ -31,6 +31,20 @@ export const FAILED = 'failed';
 export const UNCUSTOMIZED = 'uncustomized';
 export const PRECUSTOMIZED = 'precustomized';
 export const CUSTOM = 'custom';
+import {isCssHostProxy} from './css-host-identity.mjs';
+const cssPrototypeSet=new WeakSet(),cssPrototypeAdd=WeakSet.prototype.add,cssPrototypeHas=WeakSet.prototype.has;
+const cssApply=Reflect.apply,cssPrototypeOf=Object.getPrototypeOf,cssDefine=Object.defineProperty;
+export function isNativeCssCustomPrototype(value){return cssApply(cssPrototypeHas,cssPrototypeSet,[value]);}
+function recordCssPrototype(value){
+  // CSS admission must not change custom-element registration on hosts lacking
+  // a proxy identity capability. Never reflect an unproved prototype there.
+  try{
+    const values=[];let current=value;
+    while(current!==null){if(isCssHostProxy(current))return;cssDefine(values,values.length,{value:current,enumerable:true,writable:true,configurable:true});current=cssPrototypeOf(current);}
+    for(let index=0;index<values.length;index++)cssApply(cssPrototypeAdd,cssPrototypeSet,[values[index]]);
+  }catch{}
+}
+
 const STATES = new Set([UNDEFINED, FAILED, UNCUSTOMIZED, PRECUSTOMIZED, CUSTOM]);
 
 // HTML's "valid custom element name" for the names the parser and createElement produce.
@@ -368,6 +382,7 @@ export function adoptedNode(node, oldDocument, newDocument) {
 
 function buildDefinition(reg, name, localName, ctor) {
   const proto = ctor.prototype;
+  recordCssPrototype(proto);
   const def = { registry: reg, name, localName, ctor, stack: [], observed: [] };
   for (const key of ['connectedCallback', 'disconnectedCallback', 'adoptedCallback', 'attributeChangedCallback']) {
     const fn = proto[key];

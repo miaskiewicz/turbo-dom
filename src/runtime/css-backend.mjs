@@ -11,6 +11,8 @@ function capability(binding) {
     serializeCssomV1,
     projectCssomPropertyV1,
     cssComputedPreferencesV1,
+    cssComputedEnvironmentV1,
+    cssRuntimePolicyV1,
   } = binding;
   if (
     cssAbiVersion === undefined &&
@@ -21,6 +23,8 @@ function capability(binding) {
       serializeCssomV1,
       projectCssomPropertyV1,
       cssComputedPreferencesV1,
+      cssComputedEnvironmentV1,
+      cssRuntimePolicyV1,
     ])
   )
     return null;
@@ -35,6 +39,8 @@ function capability(binding) {
     serializeCssomV1,
     projectCssomPropertyV1,
     cssComputedPreferencesV1,
+    cssComputedEnvironmentV1,
+    cssRuntimePolicyV1,
   );
 }
 
@@ -84,6 +90,8 @@ export function cssCapabilityDescriptor(
   serializeCssomV1,
   projectCssomPropertyV1,
   cssComputedPreferencesV1,
+  cssComputedEnvironmentV1,
+  cssRuntimePolicyV1,
 ) {
   const descriptor = { cssAbiVersion, CompiledStylesV1 };
   const operations = [
@@ -92,6 +100,8 @@ export function cssCapabilityDescriptor(
     ['serializeCssomV1', serializeCssomV1],
     ['projectCssomPropertyV1', projectCssomPropertyV1],
     ['cssComputedPreferencesV1', cssComputedPreferencesV1],
+    ['cssComputedEnvironmentV1', cssComputedEnvironmentV1],
+    ['cssRuntimePolicyV1', cssRuntimePolicyV1],
   ];
   for (let index = 0; index < operations.length; index++) {
     const operation = operations[index];
