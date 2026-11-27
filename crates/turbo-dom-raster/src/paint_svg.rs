@@ -1214,6 +1214,50 @@ mod tests {
     }
 
     #[test]
+    fn empty_promoted_clips_skip_image_work_on_either_axis() {
+        #[derive(Default)]
+        struct Assets {
+            images: DecodedAssets,
+            reads: std::cell::Cell<usize>,
+        }
+        impl PaintInput for Assets {
+            fn images(&self) -> &DecodedAssets {
+                self.reads.set(self.reads.get() + 1);
+                &self.images
+            }
+        }
+        let child = image("hidden.png");
+        for overflow in [false, true] {
+            for (width, height) in [(0.0, 9.0), (9.0, 0.0), (-1.0, 9.0), (9.0, -1.0), (9.0, 9.0)] {
+                let mut ancestor = plain(0.0, 0.0, 9.0, 9.0, None);
+                if overflow {
+                    ancestor.overflow_clip = Some(turbo_dom_layout::OverflowClip {
+                        x: 0.0,
+                        y: 0.0,
+                        width,
+                        height,
+                        radii: BorderRadii::ZERO,
+                    });
+                } else {
+                    ancestor.clip = Some(ClipRect {
+                        x: 0.0,
+                        y: 0.0,
+                        width,
+                        height,
+                        radii: BorderRadii::ZERO,
+                    });
+                }
+                let mut node = PaintNode::new(&child);
+                node.clips.push(&ancestor);
+                let assets = Assets::default();
+                let mut svg = String::new();
+                paint_scheduled(&mut svg, &node, &assets);
+                assert_eq!(assets.reads.get(), usize::from(width > 0.0 && height > 0.0));
+            }
+        }
+    }
+
+    #[test]
     fn scaled_svg_canvas_keeps_css_viewport_and_content_coordinates() {
         let fragment = plain(1.0, 2.0, 3.0, 4.0, Some(RED));
         for (pixels, scale, view) in [((101, 51), 2.0, "50.5 25.5"), ((13, 17), 0.5, "26 34")] {
