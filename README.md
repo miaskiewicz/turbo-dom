@@ -17,11 +17,11 @@ published crates and keep no copies.
 [docs/CONSOLIDATION.md](docs/CONSOLIDATION.md) has the architecture, the dependency graph
 and the publish order.
 
-## Packages in this candidate
+## Packages
 
-The 0.8.7 DOM packages are under local development; the published release is
-0.8.6. Local consumers need pre-release `[patch.crates-io]` overrides for this
-candidate. The independently versioned V8 fork remains published at 150.4.2
+The DOM packages share version 0.8.7. Before registry publication, local
+consumers use `[patch.crates-io]` overrides for a verified release-branch
+revision. After publication, consumers can resolve 0.8.7 from the registry. The independently versioned V8 fork remains published at 150.4.2
 and uses the official V8 150.4.0 archive; the AVIF decoder fork `turbo-dom-rav1d`
 remains 1.1.0.
 
@@ -178,11 +178,11 @@ that dependency disabled. `turbo-dom-v8` forwards upstream rusty_v8's features
 
 ## Status
 
-- **0.8.7 candidate:** canonical animation sampling and recovery for native
+- **0.8.7:** canonical animation sampling and recovery for native
   embedders, shadow-inclusive document checkpoints, SVG paint and metric fixes,
   and an optional shared Rust CSS engine. The npm DOM now includes corrected
   history events, textarea defaults and selection, disabled/inert focus, nested
-  shadow focus and DOMRect branding. [Full release notes](CHANGELOG.md#087--unreleased).
+  shadow focus and DOMRect branding. [Full release notes](CHANGELOG.md#087--2026-11-27).
 
 - **0.8.6:** the `parseBuffer` parser builds its flat buffer from an
   index-arena tree sink instead of a reference-counted tree, and gates

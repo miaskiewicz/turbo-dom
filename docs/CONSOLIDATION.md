@@ -1,4 +1,4 @@
-# turbo-dom consolidation (0.6.0; current candidate 0.8.7)
+# turbo-dom consolidation (0.6.0; current version 0.8.7)
 
 turbo-html2pdf, turbo-test and turbo-surf used to carry their own copies of the browser
 engine pieces they share: a rusty_v8 fork (`turbo-surf-v8`, vendored twice), turbo-test's
