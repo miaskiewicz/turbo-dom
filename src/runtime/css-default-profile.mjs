@@ -25,9 +25,10 @@ function required(value, label) {
 		throw new TypeError(`CSS default profile missing ${label}`);
 	return value;
 }
-function invoke(backend, name, input) {
-	const result = sharedDecode(
+function invoke(backend, name, input, decodeResult) {
+	const result = decodeResult(
 		sharedInvoke(required(backend[name], name), backend, [sharedEncode(input)]),
+        name,
 	);
 	if (result.abiVersion !== 1)
 		throw new TypeError(`CSS default profile ${name} ABI`);
@@ -65,6 +66,7 @@ export function createDefaultCssProfile({
 	capture,
 	readWindowContext,
 	resourcePolicy,
+  decodeResult = sharedDecode,
 }) {
 	required(readWindowContext, "readWindowContext");
 	required(capture?.capture, "capture.capture");
@@ -93,7 +95,7 @@ export function createDefaultCssProfile({
 		};
 		const key = sharedEncode([input, preferences.preferenceIdentity]);
 		if (key === environmentKeyForBackend) return cachedEnvironment;
-		const environment = invoke(backend, "cssComputedEnvironmentV1", input);
+		const environment = invoke(backend, "cssComputedEnvironmentV1", input, decodeResult);
 		if (
 			sharedEncode(preferences.preferenceIdentity) !==
 			sharedEncode(environment.preferenceIdentity)
@@ -110,7 +112,7 @@ export function createDefaultCssProfile({
 		const input = hostInput(facts, resourcePolicy.preferences(facts));
 		const key = sharedEncode(input);
 		if (key !== preferenceKey) {
-			preferences = invoke(backend, "cssComputedPreferencesV1", input);
+			preferences = invoke(backend, "cssComputedPreferencesV1", input, decodeResult);
 			preferenceKey = key;
 		}
 		const environment = readEnvironment(facts);

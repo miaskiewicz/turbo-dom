@@ -333,6 +333,8 @@ export function createSharedComputedStyle({
   resolveProperty,
   createFacts,
   encodeRequest = encode,
+  encodeCompileKey = encodeRequest,
+  encodePrepareKey = encodeRequest,
   resolveBatch = (prepared, request) => prepared.resolveBatch(encodeRequest(request)),
   encodeResultKey,
   decodeResponse = decode,
@@ -359,8 +361,8 @@ export function createSharedComputedStyle({
     // require scanning; an opaque document stamp never skips unknown CSS stores.
     const sources = captureSources(context.document, context);
     if (sources.status !== 'captured') throw new SharedCssCapabilityError('source capture unsupported');
-    const compileKey = encodeRequest(compileRequest(sources, context));
-    const prepareKey = encodeRequest(prepareRequest(sources, context));
+    const compileKey = encodeCompileKey(compileRequest(sources, context));
+    const prepareKey = encodePrepareKey(prepareRequest(sources, context));
     synchronize(state, backend, compileKey, prepareKey, createFacts, decodeResponse);
     const key = resultKey(pseudo, context.resultKey, encodeResultKey);
     let entry = presentationApply(weakGet, state.targets, [element]);

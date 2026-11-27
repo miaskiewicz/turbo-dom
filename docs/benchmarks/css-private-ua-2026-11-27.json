@@ -1,0 +1,208 @@
+{
+  "date": "2026-11-27",
+  "baseline": "5213663ee2155d9fa27b3e59c6bcebb2d270db15",
+  "defaultCssBackend": "js",
+  "method": "Two separate seven-ABBA packed Vitest comparisons; two warmups plus 28 measured fresh processes each; all29tests required per invocation. Deltas are medians of matched block ratios, not ratios of pooled medians.",
+  "qualification": "Improved versus accepted Rust in all seven blocks; still11.11% slower than published legacyJS and outside2% goal. The JS-comparison wall deltas span5.53% to19.27%; separate windows must not be subtracted. Earlier v13/v14 whole-request-freezing prototypes were rejected for alias bugs and are not included.",
+  "nativeCssSha256": "cf5a09a65c342a25f907216dbce57a49eb1ba01c287097906f5bf96ebaa5b1aa",
+  "candidateTarballSha256": "5ece2c7d6c7ad537c98867f92db500a9810e19a80ac58bd90e032b0d159917f9",
+  "sourceIdentity": {
+    "base": "5213663ee2155d9fa27b3e59c6bcebb2d270db15",
+    "files": {
+      "src/runtime/css-default.mjs": "bf47530653b85b4c62b6fbd7574ddeb6e769f2814417fa0745ec6805a0ceb02f",
+      "src/runtime/css-default-profile.mjs": "2f4f909e52708bc84d5f2c6d4172eab64cd91d53b1be5b95784dce76d0125730",
+      "src/runtime/css-gcs-factory.mjs": "5ab514189b12fc64ab440a7857441d767193e580ac533d7579140ddbf1546f6e",
+      "src/runtime/css-shared-adapter.mjs": "e61bab677f88000640654d6cc8847240ebc6d2d928550f308abd7226f0add9be",
+      "src/runtime/css-rust-wire.mjs": "54912c4077478054dac630d9966d87e0b1ed162344a2b4dab9705cf924d49747",
+      "test/css-default-model-keys.test.mjs": "a9639a88979e5fb102568cf8aff6fe5cc3bb2d9ebc6a1071616675bbe7c3aaac",
+      "test/css-owned-json-wire.test.mjs": "25c010132c9dd2c16ea9f75fd59340903eabbf0a85cb4ed7c76b7d9d58cb62db"
+    }
+  },
+  "comparisons": {
+    "acceptedRust": {
+      "left": "validated-fragment-v12",
+      "right": "private-json-fragments-v16",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -2.364575811558922,
+          "blockDeltasPct": [
+            -5.807953369175179,
+            -2.364575811558922,
+            -1.28689252081432,
+            -1.4434047534395256,
+            -3.960889889249053,
+            -3.622780616027732,
+            -0.3800095356718325
+          ],
+          "wins": 7,
+          "leftMedian": 1615.1540620194282,
+          "rightMedian": 1577.517979487311
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -13.641085003391673,
+          "blockDeltasPct": [
+            -14.907890372563404,
+            -13.7383860045166,
+            -13.641085003391673,
+            -12.967459994209761,
+            -15.221865764960828,
+            -13.208342480978242,
+            -13.409143602048267
+          ],
+          "wins": 7,
+          "leftMedian": 324.10702200000003,
+          "rightMedian": 279.9264595
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -3.8930802205180193,
+          "blockDeltasPct": [
+            -6.7421878950687075,
+            -3.8930802205180193,
+            -2.025484046872361,
+            -2.8197907707132486,
+            -4.9211648110698665,
+            -4.668908995421828,
+            -1.2660358123875892
+          ],
+          "wins": 7,
+          "leftMedian": 1898.5849999999991,
+          "rightMedian": 1833.8019999999992
+        }
+      },
+      "runnerSha256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+      "resultSha256": "06de04c6f0e6879adf75c1c49a5894e47f6c11faf77a08b984f56cf2a93eeed7",
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/private-json-fragments-v16-independent-11/RESULT.json",
+      "fixture": {
+        "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+        "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+        "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+        "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+        "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+        "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+        "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+        "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+      }
+    },
+    "legacyJs": {
+      "left": "release-js",
+      "right": "private-json-fragments-v16",
+      "blocks": 7,
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 11.106399593170323,
+          "blockDeltasPct": [
+            18.44596708029156,
+            8.86609991236642,
+            19.25889529350151,
+            5.526348051373331,
+            7.753725640762066,
+            19.273975604420833,
+            11.106399593170323
+          ],
+          "wins": 0,
+          "leftMedian": 1460.5886659992393,
+          "rightMedian": 1641.3359374855645
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 85.28620972275024,
+          "blockDeltasPct": [
+            96.18255314876387,
+            82.1500887412121,
+            95.03413585791627,
+            73.73819226059763,
+            77.70843185994916,
+            103.50691541024713,
+            85.28620972275024
+          ],
+          "wins": 0,
+          "leftMedian": 152.8715015,
+          "rightMedian": 286.01170850000005
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 14.494146699801579,
+          "blockDeltasPct": [
+            19.581020694150062,
+            12.095926241527021,
+            22.442646193412543,
+            9.35668779227219,
+            10.726318144074076,
+            22.12276031149849,
+            14.494146699801579
+          ],
+          "wins": 0,
+          "leftMedian": 1656.5735,
+          "rightMedian": 1914.9629999999997
+        }
+      },
+      "runnerSha256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+      "resultSha256": "b04909a2a07a17f04e0b3f0496bf689363196cf74b24db849c082cd17dc705a8",
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/legacy-js-vs-private-json-fragments-v16-11/RESULT.json",
+      "fixture": {
+        "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+        "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+        "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+        "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+        "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+        "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+        "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+        "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+      }
+    }
+  },
+  "diagnosticCounters": {
+    "baseline": {
+      "compile": 118,
+      "prepare": 118,
+      "captures": 118,
+      "sources": 118,
+      "descriptors": 645501
+    },
+    "candidate": {
+      "compile": 118,
+      "prepare": 118,
+      "captures": 118,
+      "sources": 118,
+      "descriptors": 131533
+    },
+    "completeDistinctWireEquality": true,
+    "instrumentation": "Separate diagnostic copies; sealed performance package has no counters."
+  },
+  "correctness": {
+    "COMMON": {
+      "pass": 29,
+      "fail": 0
+    },
+    "SENTINEL": {
+      "pass": 1,
+      "fail": 0
+    }
+  },
+  "candidateFullNode": {
+    "pass": 1233,
+    "fail": 0,
+    "skip": 0
+  },
+  "candidateCoverage": {
+    "lines": 100,
+    "functions": 100,
+    "branches": 97.36
+  },
+  "retention": {
+    "counts": [
+      18353,
+      36706,
+      55059,
+      55059,
+      55059,
+      55059,
+      55059,
+      55059
+    ],
+    "beforeHuge": 55059,
+    "afterHuge": 55059,
+    "afterReset": 0,
+    "bound": 65536
+  },
+  "boundary": "Only private JSON-decoded UA text with eligible own-data preferences can reuse an encoded fragment. Every other request field keeps full descriptor/cycle validation. Object-returning providers, malformed policy and exposed quota callbacks permanently decline optimization; original callbacks/errors remain. Total retained fragment budget65536UTF16units per document; reset/dispose clear cache. JavaScript remains default."
+}

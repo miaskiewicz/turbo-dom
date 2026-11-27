@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Reuse bounded encoded fragments for privately decoded user-agent CSS text.
+  Keep fresh captures and full validation of all other request fields, and preserve
+  custom-provider callbacks and errors. Packed Vitest used 2.36% less wall time
+  and 3.89% less CPU than the preceding Rust build in seven ABBA blocks. A separate
+  legacy JavaScript comparison remains 11.11% slower; JavaScript stays the default.
+  See [benchmark results](docs/benchmarks/css-private-ua-2026-11-27.json).
+
 - Reuse one bounded encoded array fragment after fresh descriptor, cycle and scalar
   validation; preserve mutation, callback and error behavior on every read.
 

@@ -421,8 +421,8 @@ export function createSharedCssAdapter(options) {
  return createAdapter(options, false);
 }
 // Only the public default adapter owns the native capture and JSON policy.
-export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false) {
- return createAdapter(options, cacheMatching, useCapturedRoutes);
+export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false, modelKeys) {
+ return createAdapter(options, cacheMatching, useCapturedRoutes, modelKeys);
 }
 function capturedSources(capture, document, snapshot, context) {
   if (capture !== undefined) return sharedInvoke(capture, undefined, [snapshot, context]);
@@ -438,7 +438,7 @@ function createAdapter({
 	profile,
 	limits,
 	measureScene,
-}, cacheMatching, useCapturedRoutes = false) {
+}, cacheMatching, useCapturedRoutes = false, modelKeys) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	if (captureSourceFacts !== undefined) required(captureSourceFacts, 'captureSourceFacts');
 	const callbacks = {
@@ -543,6 +543,8 @@ function createAdapter({
       return prepared.resolveMatchingV1(encodeTargetRequest(request, entry), slot.token);
     },
 		encodeRequest: sharedEncode,
+    encodeCompileKey: modelKeys?.compile,
+    encodePrepareKey: modelKeys?.prepare,
 		encodeResultKey: sharedEncode,
 		decodeResponse: decode,
 		selectBackend() {
@@ -693,11 +695,13 @@ function createAdapter({
 			}
 		},
 		reset(document) {
+      modelKeys?.reset();
 			active = null;
 			selectedBackend = null;
 			factory.reset(document);
 		},
 		dispose() {
+      modelKeys?.reset();
 			active = null;
 			selectedBackend = null;
 			factory.dispose();

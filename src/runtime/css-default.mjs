@@ -9,7 +9,8 @@ import {createDefaultCssProfile} from './css-default-profile.mjs';
 import {readNativeCssWindowContext,nativeCssInstalledCodecSafe} from './window.mjs';
 import {parserDecoderSafe,originalTextCodecDescriptor,originalWasmAvailability} from './parser-origin.mjs';
 import {createComputedStyleProxy} from './css-computed-proxy.mjs';
-import {sharedDecode,sharedInvoke} from './css-shared-codec.mjs';
+import {sharedInvoke} from './css-shared-codec.mjs';
+import {createOwnedJsonCssWire} from './css-rust-wire.mjs';
 const NativeWeakMap=WeakMap, apply=Reflect.apply, mapGet=WeakMap.prototype.get, mapSet=WeakMap.prototype.set;
 const descriptor=Object.getOwnPropertyDescriptor, hasOwn=Object.hasOwn;
 let artifactResolver;
@@ -28,14 +29,14 @@ function beforeWasmLoad(){
   if(!originalTextCodecDescriptor(name,field)&&!nativeCssInstalledCodecSafe(name,field))throw new CssDefaultUnavailable(`WASM ${name}`);
  }
 }
-function runtimePolicy(backend){
+function runtimePolicy(backend,codec){
  if(typeof backend.cssRuntimePolicyV1!=='function')throw new CssDefaultUnavailable('cssRuntimePolicyV1');
- const policy=sharedDecode(sharedInvoke(backend.cssRuntimePolicyV1,backend,[]));
+ const policy=codec.decode(sharedInvoke(backend.cssRuntimePolicyV1,backend,[]),'cssRuntimePolicyV1');
  if(policy.abiVersion!==1)throw new TypeError('turbo-dom: incompatible default CSS policy ABI');
  const adapter={};
  for(const name of ['compile','prepare','matching','contextualMatching','resolve','serialize','property','providerSnapshot']){
   if(!policy.adapter||!hasOwn(policy.adapter,name))throw new CssDefaultUnavailable(`policy.adapter.${name}`);
-  const value=policy.adapter[name];adapter[name]=()=>value;
+  const value=policy.adapter[name];codec.policyField(adapter,name);adapter[name]=()=>value;
  }
  return {preferences:()=>policy.preferences,environment:()=>policy.environment,snapshot:()=>policy.snapshot,selectorFacts:()=>policy.selectorFacts,adapter,scene:()=>policy.scene,composition:()=>policy.composition,fonts:policy.fonts};
 }
@@ -51,9 +52,9 @@ function documentAdapter(document,backend){
  let entry=apply(mapGet,documents,[document]);
  if(!entry||entry.backend!==backend){
   if(entry)entry.adapter.dispose();
-  const capture=createDefaultCssCapture(),resourcePolicy=runtimePolicy(backend);
-  const options=createDefaultCssProfile({backend,capture,readWindowContext,resourcePolicy});
-  entry={backend,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true)};
+  const capture=createDefaultCssCapture(),modelKeys=createOwnedJsonCssWire(),resourcePolicy=runtimePolicy(backend,modelKeys);
+  const options=createDefaultCssProfile({backend,capture,readWindowContext,resourcePolicy,decodeResult:modelKeys.decode});
+  entry={backend,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true,modelKeys)};
   apply(mapSet,documents,[document,entry]);
  }
  return entry;

@@ -31,16 +31,16 @@ const setDelete = Set.prototype.delete;
 function invalid() {
 	return new TypeError("turbo-dom: CSS wire requires scalar own-data DTOs");
 }
-function field(property, active) {
+function field(property, active, memo) {
 	if (!own(property, "value")) throw invalid();
-	return ownData(property.value, active);
+	return ownData(property.value, active, memo);
 }
-function rememberArray(properties, length, active) {
+function rememberArray(properties, length, active, memo) {
  const previous = priorArrayFragment;
  let tokens = previous?.length === length ? undefined : ({ __proto__: null });
  for (let index = 0; index < length; index++) {
   if (!own(properties, index)) throw invalid();
-  const encoded = field(properties[index], active);
+  const encoded = field(properties[index], active, memo);
   const token = '' + encoded;
   if (tokens === undefined && previous.tokens[index] !== token) {
    tokens = copyPrefix(previous.tokens, index);
@@ -62,27 +62,27 @@ function finishArray(previous, tokens, length) {
  priorArrayFragment = wire.length <= 65536 ? { length, tokens, wire } : undefined;
  return wire;
 }
-function arrayData(properties, active) {
+function arrayData(properties, active, memo) {
  const length = properties.length.value;
  const names = keys(properties);
  if (names.length !== length + 1) throw invalid();
- if (typeof length === 'number' && length >= 512 && length <= 16384) return rememberArray(properties, length, active);
+ if (typeof length === 'number' && length >= 512 && length <= 16384) return rememberArray(properties, length, active, memo);
  let result = '[';
  for (let index = 0; index < length; index++) {
   if (!own(properties, index)) throw invalid();
-  const encoded = field(properties[index], active);
+  const encoded = field(properties[index], active, memo);
   result += (index === 0 ? '' : ',') + encoded;
  }
  return result + ']';
 }
-function recordData(properties, active) {
+function recordData(properties, active, memo) {
  let result = '{', separator = '';
  const names = keys(properties);
  for (let index = 0; index < names.length; index++) {
   const name = names[index];
   const property = properties[name];
   if (!property.enumerable) continue;
-  const encoded = field(property, active);
+  const encoded = field(property, active, memo);
   result += separator + stringify(name) + ':' + encoded;
   separator = ',';
  }
@@ -94,7 +94,7 @@ function scalarData(value) {
 	if (typeof value === "string") return stringify(value);
 	if (typeof value === "number" && finite(value)) return scalarString(value);
 }
-function ownData(value, active) {
+function ownData(value, active, memo) {
  const scalar = scalarData(value);
  if (scalar !== undefined) return scalar;
 	if (typeof value !== "object") throw invalid();
@@ -102,10 +102,14 @@ function ownData(value, active) {
 		throw new TypeError("turbo-dom: cyclic CSS wire DTO");
 	apply(setAdd, active, [value]);
 	try {
-		const properties = descriptors(value);
-		return isArray(value)
-			? arrayData(properties, active)
-			: recordData(properties, active);
+		const cached = memo?.read(value);
+        if (cached !== undefined) return cached;
+        const properties = descriptors(value);
+        const wire = isArray(value)
+            ? arrayData(properties, active, memo)
+            : recordData(properties, active, memo);
+        memo?.remember(value, wire);
+        return wire;
 	} finally {
 		apply(setDelete, active, [value]);
 	}
@@ -115,4 +119,78 @@ export function encodeCssWire(value) {
 }
 export function decodeCssWire(value) {
 	return parse(value);
+}
+
+// Only the closed default profile passes this decoder the provider method name.
+// Eligible UA bytes are parsed here, checked before exposure, and retained by
+// weak identity. Every other DTO still takes the ordinary descriptor traversal.
+const NativeWeakMap = WeakMap, NativeWeakSet = WeakSet;
+const weakGet = WeakMap.prototype.get, weakSet = WeakMap.prototype.set;
+const ownedHas = WeakSet.prototype.has, ownedAdd = WeakSet.prototype.add;
+const freeze = Object.freeze, prototype = Object.getPrototypeOf, objectPrototype = Object.prototype;
+function jsonField(value, name) {
+ if (value === null || typeof value !== 'object') return undefined;
+ const field = descriptor(value, name);
+ return field === undefined ? undefined : field.value;
+}
+function unitArray(value) {
+ if (!isArray(value)) return false;
+ for (let index = 0; index < value.length; index++) {
+  const unit = value[index];
+  if (typeof unit !== 'number' || unit < 0 || unit > 65535 || unit % 1 !== 0) return false;
+ }
+ return true;
+}
+function initialFields(value) {
+ return unitArray(jsonField(value, 'color')) && unitArray(jsonField(value, 'fontFamily')) &&
+  unitArray(jsonField(value, 'fontSizeInput'));
+}
+function ownNames(value, names) {
+ if (value === null || typeof value !== 'object') return false;
+ for (let index = 0; index < names.length; index++) if (descriptor(value, names[index]) === undefined) return false;
+ return true;
+}
+function privatePolicy(value) {
+ return jsonField(value, 'abiVersion') === 1 &&
+  ownNames(value, ['preferences','environment','snapshot','selectorFacts','scene','composition','fonts']) &&
+  ownNames(jsonField(value, 'adapter'), ['compile','prepare','matching','contextualMatching','resolve','serialize','property','providerSnapshot']);
+}
+function privateUaText(value) {
+ if (jsonField(value, 'abiVersion') !== 1 || !unitArray(jsonField(value, 'preferenceIdentity'))) return undefined;
+ if (!initialFields(jsonField(value, 'initial'))) return undefined;
+ const source = jsonField(value, 'userAgentSource');
+ if (jsonField(source, 'abiVersion') !== 1 || !unitArray(jsonField(source, 'documentText'))) return undefined;
+ const text = jsonField(source, 'text');
+ return unitArray(text) ? text : undefined;
+}
+export function createOwnedJsonCssWire() {
+ const owned = new NativeWeakSet();
+ let fragments = new NativeWeakMap(), units = 0, eligible = true;
+ function decline() { eligible = false; fragments = new NativeWeakMap(); units = 0; }
+ const memo = {
+  read(value) { return eligible ? apply(weakGet, fragments, [value]) : undefined; },
+  remember(value, wire) {
+   if (!eligible || !apply(ownedHas, owned, [value]) || units + wire.length > 65536) return;
+   apply(weakSet, fragments, [value, wire]);
+   units += wire.length;
+  },
+ };
+ function encode(value) { return ownData(value, new SetConstructor(), memo); }
+ return {
+  decode(value, provider) {
+   if (typeof value !== 'string') { decline(); return value; }
+   const result = parse(value);
+   if (provider === 'cssRuntimePolicyV1' && !privatePolicy(result)) decline();
+   const text = eligible && provider === 'cssComputedPreferencesV1' ? privateUaText(result) : undefined;
+   if (text !== undefined) { freeze(text); apply(ownedAdd, owned, [text]); }
+   return result;
+  },
+  policyField(adapter, name) {
+   if (typeof name !== 'string') { decline(); return; }
+   if (prototype(adapter) !== objectPrototype || descriptor(objectPrototype, name) !== undefined) decline();
+  },
+  compile: encode,
+  prepare: encode,
+  reset() { fragments = new NativeWeakMap(); units = 0; },
+ };
 }
