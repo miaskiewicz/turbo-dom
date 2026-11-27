@@ -2365,6 +2365,10 @@ mod tests {
         paint_border(&mut svg, &f, &b);
         assert_eq!(svg.matches("<rect ").count(), 2, "{svg}");
         assert_eq!(svg.matches("<path ").count(), 1, "{svg}");
+        assert!(
+            svg.contains("<rect x=\"21.00\" y=\"3.00\" width=\"1.00\" height=\"10.00\""),
+            "{svg}"
+        );
         assert!(svg.contains("L22.00 13.00 L2.00 13.00"), "{svg}");
     }
 

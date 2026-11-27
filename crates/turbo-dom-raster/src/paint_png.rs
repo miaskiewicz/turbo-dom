@@ -1936,6 +1936,76 @@ mod tests {
         }
     }
 
+    #[test]
+    fn multiple_outer_shadows_keep_canvas_offsets_and_exclude_inset_layers() {
+        use crate::shadow_layers::{PaintContext, ShadowLayers};
+
+        let blue = Rgba {
+            r: 0,
+            g: 0,
+            b: 255,
+            a: 255,
+        };
+        let green = Rgba {
+            r: 0,
+            g: 255,
+            b: 0,
+            a: 255,
+        };
+        let shadow = |offset_x, offset_y, color, inset| BoxShadow {
+            offset_x,
+            offset_y,
+            blur: 0,
+            spread: 0,
+            color,
+            inset,
+        };
+        let root = plain(10.0, 12.0, 4.0, 3.0, None);
+        let images = DecodedAssets::new();
+        let layers = ShadowLayers::from([(
+            NodeId(0),
+            vec![
+                shadow(4, 1, blue, false),
+                shadow(1, 5, green, false),
+                shadow(6, 6, RED, true),
+                shadow(9, 9, Rgba { a: 0, ..RED }, false),
+            ],
+        )]);
+        let input = PaintContext {
+            images: &images,
+            layers: &layers,
+        };
+        let mut actual = Pixmap::new(30, 30).unwrap();
+        actual.fill(tiny_skia::Color::WHITE);
+        let mut expected = actual.clone();
+        fill_rect(
+            &mut expected,
+            14.0,
+            13.0,
+            4.0,
+            3.0,
+            blue,
+            Transform::identity(),
+        );
+        fill_rect(
+            &mut expected,
+            11.0,
+            17.0,
+            4.0,
+            3.0,
+            green,
+            Transform::identity(),
+        );
+        paint_outer_layers(
+            &mut actual,
+            &root,
+            &BorderRadii::ZERO,
+            &input,
+            Transform::identity(),
+        );
+        assert_eq!(actual.data(), expected.data());
+    }
+
     /// `f` with its box content's fields changed by `edit`.
     fn with_box(
         mut f: Fragment,
