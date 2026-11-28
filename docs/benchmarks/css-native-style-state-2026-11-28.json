@@ -1,0 +1,147 @@
+{
+  "date": "2026-11-28",
+  "baseCommit": "478b574e26165f468a43fedcb5cdfb98ad13e8aa",
+  "candidateArtifact": "f0b18af87b1c012760963d153e8f067f37cee8be15104a30f0b79ad5491bf945",
+  "decision": "Integrate explicit native-state result protocol for repeatable nativeCPU and transfer savings, with packedwall effectivelyflat. Defaultwire protocol andJSbackend unchanged.",
+  "api": {
+    "cssBackend": [
+      "js",
+      "rust"
+    ],
+    "cssResultProtocol": [
+      "wire-v1",
+      "native-state-v1"
+    ],
+    "default": "wire-v1",
+    "nativeStateRequires": "rust",
+    "missingRequiredCapability": "explicit error",
+    "unassociatedFullScene": "existing complete request route"
+  },
+  "native": {
+    "nsPerCorpus": {
+      "matchedMedianDeltaPct": -5.128271755411829,
+      "blockDeltasPct": [
+        -3.2351573898723895,
+        -4.570341615447293,
+        -6.071413432685291,
+        -5.230856329268385,
+        -4.923356815274116,
+        -5.128271755411829,
+        -5.562236562385959
+      ],
+      "wins": 7,
+      "baselineMedian": 10104862.71,
+      "candidateMedian": 9602021.875
+    },
+    "cpuUs": {
+      "matchedMedianDeltaPct": -5.124650139502807,
+      "blockDeltasPct": [
+        -3.359070692145749,
+        -4.557594747836468,
+        -6.089099346639914,
+        -5.238255649392631,
+        -4.851876166481639,
+        -5.124650139502807,
+        -5.532873752241274
+      ],
+      "wins": 7,
+      "baselineMedian": 1010656.0,
+      "candidateMedian": 960419.5
+    }
+  },
+  "packed": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.16600898438021705,
+      "blockDeltasPct": [
+        -0.22291200864740235,
+        1.2079692034147271,
+        -0.8183158194312368,
+        -0.16600898438021705,
+        -0.8321468710099422,
+        0.31726427929601453,
+        1.6409993467470185
+      ],
+      "wins": 4,
+      "leftMedian": 1478.9388124772813,
+      "rightMedian": 1478.0153959873132
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -1.381819296976472,
+      "blockDeltasPct": [
+        -1.381819296976472,
+        -0.5252072510391503,
+        -2.703128660013965,
+        -0.9553242039481047,
+        -2.7161718210708785,
+        -2.921114785059009,
+        0.6090995907268804
+      ],
+      "wins": 6,
+      "leftMedian": 267.27024900000004,
+      "rightMedian": 262.3839815
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -0.043119224216414676,
+      "blockDeltasPct": [
+        -0.043119224216414676,
+        1.0081521731152732,
+        -1.1229969774879445,
+        -0.06669925329868542,
+        -0.9267687862627105,
+        0.7375882828931424,
+        1.9336377690262196
+      ],
+      "wins": 4,
+      "leftMedian": 1718.4654999999975,
+      "rightMedian": 1718.084499999997
+    }
+  },
+  "method": {
+    "blocks": 7,
+    "order": "ABBA",
+    "nativeIterations": 100,
+    "packedTests": 29,
+    "quiet": "Otherexperimentjobs idle; V8Cargo paused after compilerchild completed"
+  },
+  "transfer": {
+    "baseline": {
+      "calls": 236,
+      "inputBytes": 283736,
+      "outputBytes": 163348
+    },
+    "candidate": {
+      "calls": 118,
+      "inputBytes": 206079,
+      "outputBytes": 12194
+    }
+  },
+  "gates": {
+    "nativeTests": 109,
+    "nativeFailures": 0,
+    "nativeCoverage": {
+      "core": "575/575",
+      "native_projection": "70/70",
+      "native_state": "43/43",
+      "native_state_cache": "57/57",
+      "total": "745/745",
+      "floor": 100
+    },
+    "nodeTests": 1246,
+    "nodeFailures": 0,
+    "nodeCoverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.35
+    },
+    "packed": 29,
+    "packedSentinel": 1,
+    "clippyAllTargetsWarnings": 0,
+    "fmt": "PASS",
+    "rustCCMax": 9,
+    "jsCCMax": 9,
+    "jsFiles": 56
+  },
+  "qualification": "Measured immutable f0 prototype; promotion preserves native production and changes explicit option plumbing/error admission only. Whole packed results effectively flat; no JS parity claim.",
+  "retention": "Existing logical payload cap shared/exclusive between wire or typed state:64KiB result within remaining256KiB matching; not a heap ceiling.",
+  "integrationOnlyDifference": "Trailing space removed from a test helper; no production/source semantic change. Normalcommit coverage hook reruns integrated tree."
+}

@@ -1,3 +1,4 @@
+import {captureStyleStatePolicy} from './css-native-style-state.mjs';
 // The explicit Rust CSS opt-in routes computed style through the shared capability.
 // Optional internal callers may retain the legacy fallback when it is absent.
 import {makeGetComputedStyle as makeLegacyComputedStyle} from './cascade.mjs';
@@ -29,16 +30,19 @@ function beforeWasmLoad(){
   if(!originalTextCodecDescriptor(name,field)&&!nativeCssInstalledCodecSafe(name,field))throw new CssDefaultUnavailable(`WASM ${name}`);
  }
 }
-function runtimePolicy(backend,codec){
+function runtimePolicy(backend,codec,nativeStateMode){
  if(typeof backend.cssRuntimePolicyV1!=='function')throw new CssDefaultUnavailable('cssRuntimePolicyV1');
- const policy=codec.decode(sharedInvoke(backend.cssRuntimePolicyV1,backend,[]),'cssRuntimePolicyV1');
+ const rawPolicy=sharedInvoke(backend.cssRuntimePolicyV1,backend,[]);
+ const statePolicy=nativeStateMode?captureStyleStatePolicy(rawPolicy):undefined;
+ const policy=codec.decode(rawPolicy,'cssRuntimePolicyV1');
  if(policy.abiVersion!==1)throw new TypeError('turbo-dom: incompatible default CSS policy ABI');
  const adapter={};
  for(const name of ['compile','prepare','matching','contextualMatching','resolve','serialize','property','providerSnapshot']){
   if(!policy.adapter||!hasOwn(policy.adapter,name))throw new CssDefaultUnavailable(`policy.adapter.${name}`);
   const value=policy.adapter[name];codec.policyField(adapter,name);adapter[name]=()=>value;
  }
- return {preferences:()=>policy.preferences,environment:()=>policy.environment,snapshot:()=>policy.snapshot,selectorFacts:()=>policy.selectorFacts,adapter,scene:()=>policy.scene,composition:()=>policy.composition,fonts:policy.fonts};
+ if(nativeStateMode&&statePolicy===undefined)throw new CssDefaultUnavailable('native-state-v1 fixed projection policy');
+ return {statePolicy,preferences:()=>policy.preferences,environment:()=>policy.environment,snapshot:()=>policy.snapshot,selectorFacts:()=>policy.selectorFacts,adapter,scene:()=>policy.scene,composition:()=>policy.composition,fonts:policy.fonts};
 }
 function hostPlatform(){
  const require=createParserRequire();
@@ -48,18 +52,18 @@ function hostPlatform(){
  return field.value==='darwin'?'macos':'other';
 }
 function readWindowContext(document){return{...readNativeCssWindowContext(document),hostPlatform:hostPlatform(),mediaType:'screen'};}
-function documentAdapter(document,backend){
+function documentAdapter(document,backend,nativeStateMode){
  let entry=apply(mapGet,documents,[document]);
- if(!entry||entry.backend!==backend){
+ if(!entry||entry.backend!==backend||entry.nativeStateMode!==nativeStateMode){
   if(entry)entry.adapter.dispose();
-  const capture=createDefaultCssCapture(),modelKeys=createOwnedJsonCssWire(),resourcePolicy=runtimePolicy(backend,modelKeys);
+  const capture=createDefaultCssCapture(),modelKeys=createOwnedJsonCssWire(),resourcePolicy=runtimePolicy(backend,modelKeys,nativeStateMode);
   const options=createDefaultCssProfile({backend,capture,readWindowContext,resourcePolicy,decodeResult:modelKeys.decode});
-  entry={backend,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true,modelKeys)};
+  entry={backend,nativeStateMode,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true,modelKeys,resourcePolicy.statePolicy)};
   apply(mapSet,documents,[document,entry]);
  }
  return entry;
 }
-export function makeDefaultGetComputedStyle({requireBackend=false}={}){
+export function makeDefaultGetComputedStyle({requireBackend=false,nativeStateMode=false}={}){
  const legacy=makeLegacyComputedStyle();
  return function getComputedStyle(element,pseudo){
   if(element===null)return createComputedStyleProxy({values:{},custom:{}},0);
@@ -67,7 +71,7 @@ export function makeDefaultGetComputedStyle({requireBackend=false}={}){
   const backend=artifactResolver.resolve(getParserSelection());
   if(backend===null){if(requireBackend)throw new CssDefaultUnavailable('Rust CSS artifact');return legacy(element,pseudo);}
   const document=nativeDocument(element);
-  const entry=documentAdapter(document,backend);
+  const entry=documentAdapter(document,backend,nativeStateMode);
   if(!nativeCssConnected(element,document,entry.maxDepth))return createComputedStyleProxy({values:{},custom:{}},0);
   return entry.adapter.get(element,pseudo);
  };

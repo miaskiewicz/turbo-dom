@@ -13,11 +13,16 @@ export interface ParserBinding {
 
 export type ParserMode = 'wasm' | 'native' | 'auto';
 
+/** Rust result transport; native-state-v1 opts into its distinct callback protocol. */
+export type CssResultProtocol = 'wire-v1' | 'native-state-v1';
+
 export type CustomElementState = 'undefined' | 'failed' | 'uncustomized' | 'precustomized' | 'custom';
 
 export interface EnvironmentOptions {
   /** Experimental local opt-in for the independent Rust CSS capability. Defaults to js. */
   cssBackend?: 'js' | 'rust';
+  /** Defaults to wire-v1. native-state-v1 requires cssBackend: rust and its native capability. */
+  cssResultProtocol?: CssResultProtocol;
   /** Per-environment DOM runtime. Defaults to js. The rust option requires a future Node browser-env binding. */
   domBackend?: 'js' | 'rust';
   /** Parser selection, applied process-wide before the first parse. */

@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Add explicit `cssResultProtocol: 'native-state-v1'` for Rust CSS. Retain typed
+  results in Rust and project computed-style snapshots without a full JSON result
+  round-trip. Preserve owner, quota, disposal and used-value behavior; unsupported
+  selected capabilities fail explicitly. `wire-v1` and JavaScript remain defaults.
+  Native replay CPU fell 5.12%; packed Vitest remained effectively flat. See the
+  [protocol contract](docs/native-css-result-protocol.md) and
+  [benchmark receipt](docs/benchmarks/css-native-style-state-2026-11-28.json).
+
 - Retain up to eight exact successful native CSS requests under the existing
   payload limits and fresh owner/token checks. The authentic native replay used
   11.55% less CPU; packed Vitest remained effectively flat. Errors and changed

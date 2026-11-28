@@ -191,7 +191,7 @@ struct Limits {
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ResultRow {
+pub(crate) struct ResultRow {
     id: u32,
     values: BTreeMap<String, Vec<u16>>,
     renderer_values: BTreeMap<String, Vec<u16>>,
@@ -210,7 +210,7 @@ struct DeclaredDecoration {
     inline: bool,
     order: (usize, usize),
 }
-fn origin_name(
+pub(crate) fn origin_name(
     origin: turbo_dom_core::rtdom::computed_css::prepared::CascadeOrigin,
 ) -> &'static str {
     use turbo_dom_core::rtdom::computed_css::prepared::CascadeOrigin;
@@ -798,7 +798,18 @@ fn style(
         },
     )
 }
+#[cfg(test)]
+thread_local! { static TRANSPORT_WORK: std::cell::Cell<(usize,usize)> = const { std::cell::Cell::new((0,0)) }; }
+#[cfg(test)]
+pub(crate) fn take_transport_work() -> (usize, usize) {
+    TRANSPORT_WORK.with(|count| count.replace((0, 0)))
+}
 fn result_row(id: u32, style: &ComputedStyle, extra: RendererDefaults) -> ResultRow {
+    #[cfg(test)]
+    TRANSPORT_WORK.with(|count| {
+        let (rows, wires) = count.get();
+        count.set((rows + 1, wires));
+    });
     let mut renderer_values: BTreeMap<_, _> = style
         .values
         .values
@@ -850,6 +861,9 @@ struct Batch<'a> {
     usage: Usage,
     styles: BTreeMap<u32, ComputedStyle>,
     output: Vec<ResultRow>,
+    native_order: Vec<u32>,
+    native_extra: BTreeMap<u32, RendererDefaults>,
+    retain_native: bool,
     answers: &'a AnswerMaps,
     contexts: &'a [ContextRoot],
     route_budget: RouteBudget,
@@ -877,7 +891,12 @@ impl Batch<'_> {
             },
             &mut self.usage,
         )?;
-        self.output.push(result_row(id, &computed, extra));
+        if self.retain_native {
+            self.native_order.push(id);
+            self.native_extra.insert(id, extra);
+        } else {
+            self.output.push(result_row(id, &computed, extra));
+        }
         self.styles.insert(id, computed);
         Ok(())
     }
@@ -968,6 +987,26 @@ fn apply_matching(
     input: ResolveInput,
     matching: &ValidatedMatching,
 ) -> Result<String, String> {
+    let batch = resolve_targets(prepared, input, matching, false)?;
+    encode_rows(prepared.is_geometry_only(), batch.output)
+}
+fn encode_rows(geometry_only: bool, rows: Vec<ResultRow>) -> Result<String, String> {
+    #[cfg(test)]
+    TRANSPORT_WORK.with(|count| {
+        let (rows, wires) = count.get();
+        count.set((rows, wires + 1));
+    });
+    serde_json::to_string(
+        &serde_json::json!({"abiVersion":1,"geometryOnly":geometry_only,"targets":rows}),
+    )
+    .map_err(|error| format!("CSSBackendTransport:{error}"))
+}
+fn resolve_targets<'a>(
+    prepared: &'a PreparedStyles,
+    input: ResolveInput,
+    matching: &'a ValidatedMatching,
+    retain_native: bool,
+) -> Result<Batch<'a>, String> {
     let limits = input.limits;
     if matching.rows > limits.answer_rows || matching.ids > limits.answer_ids {
         return Err(fail("ResourceLimit"));
@@ -982,6 +1021,9 @@ fn apply_matching(
         },
         styles: BTreeMap::new(),
         output: Vec::new(),
+        native_order: Vec::new(),
+        native_extra: BTreeMap::new(),
+        retain_native,
         answers: &matching.answers,
         contexts: &matching.contexts,
         route_budget: RouteBudget {
@@ -992,8 +1034,23 @@ fn apply_matching(
     for target in input.targets {
         batch.target(target)?;
     }
-    serde_json::to_string(&serde_json::json!({"abiVersion":1,"geometryOnly":prepared.is_geometry_only(),"targets":batch.output}))
-        .map_err(|error| format!("CSSBackendTransport:{error}"))
+    Ok(batch)
+}
+
+#[path = "css_native_state.rs"]
+pub(crate) mod native_state;
+fn apply_native_state(
+    prepared: &PreparedStyles,
+    input: ResolveInput,
+    matching: &ValidatedMatching,
+) -> Result<native_state::NativeStyleState, String> {
+    let batch = resolve_targets(prepared, input, matching, true)?;
+    Ok(native_state::NativeStyleState {
+        geometry_only: prepared.is_geometry_only(),
+        order: batch.native_order.into_boxed_slice(),
+        styles: batch.styles,
+        extras: batch.native_extra,
+    })
 }
 
 #[cfg(test)]

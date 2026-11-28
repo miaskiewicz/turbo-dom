@@ -333,6 +333,22 @@ impl PreparedHandle {
             .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
             .resolve(model, wire)
     }
+    #[cfg(any(feature = "napi-bind", test))]
+    fn resolve_style_state(
+        &self,
+        wire: &str,
+        token: &str,
+        projection: &str,
+    ) -> Result<String, String> {
+        let model = self.model()?;
+        let state = self
+            .matching
+            .as_ref()
+            .filter(|slot| slot.token() == token)
+            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
+            .resolve_state(model, wire)?;
+        crate::css_serialize::project_state(&state, projection)
+    }
     fn retained_bytes(&self) -> f64 {
         let bytes = self
             .model
@@ -567,6 +583,17 @@ mod native {
         pub fn resolve_container_geometry(&self, request: String) -> Result<String> {
             self.handle
                 .resolve_container_geometry(&request)
+                .map_err(error)
+        }
+        #[napi(js_name = "resolveStyleStateV1")]
+        pub fn resolve_style_state_v1(
+            &self,
+            wire: String,
+            token: String,
+            projection: String,
+        ) -> Result<String> {
+            self.handle
+                .resolve_style_state(&wire, &token, &projection)
                 .map_err(error)
         }
         #[napi(js_name = "retainedBytes")]
@@ -1464,3 +1491,7 @@ mod tests {
 #[cfg(test)]
 #[path = "css_retained_multi_tests.rs"]
 mod retained_multi_tests;
+
+#[cfg(test)]
+#[path = "css_native_state_tests.rs"]
+mod native_state_tests;

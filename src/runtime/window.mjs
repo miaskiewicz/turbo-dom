@@ -1,3 +1,4 @@
+import {validateCssResultProtocol} from './css-result-protocol.mjs';
 import {originalTextCodecValue} from './parser-origin.mjs';
 import { isCssHostProxy } from './css-host-identity.mjs';
 // Layer 3 — lazy `window`. A Proxy whose globals are factories that materialize
@@ -240,8 +241,9 @@ export function readNativeCssWindowContext(document){
   const base=record.base;
   return{width:installedWindowAxis(document,base,'innerWidth',SHARED_LAZY.innerWidth()),height:installedWindowAxis(document,base,'innerHeight',SHARED_LAZY.innerHeight()),devicePixelRatio:installedWindowAxis(document,base,'devicePixelRatio',SHARED_LAZY.devicePixelRatio())};
 }
-export function createWindow(document, { url = 'http://localhost/', cssBackend = 'js' } = {}) {
+export function createWindow(document, { url = 'http://localhost/', cssBackend = 'js', cssResultProtocol = 'wire-v1' } = {}) {
   if (cssBackend !== 'js' && cssBackend !== 'rust') throw new TypeError('turbo-dom: cssBackend must be "js" or "rust"');
+  const nativeStateMode=validateCssResultProtocol(cssBackend,cssResultProtocol);
   const touched = new Set();
   let windowProxy;
 
@@ -278,7 +280,7 @@ export function createWindow(document, { url = 'http://localhost/', cssBackend =
     }, 0);
   }
   const lazy = {
-    getComputedStyle: () => cssBackend === 'rust' ? makeDefaultGetComputedStyle({requireBackend:true}) : makeGetComputedStyle(),
+    getComputedStyle: () => cssBackend === 'js' ? makeGetComputedStyle() : makeDefaultGetComputedStyle({requireBackend:true,nativeStateMode}),
     origin: () => new URL(url).origin,
     // subsystem grouping: history co-materializes with (and shares) location
     location: () => makeLocation(url, (oldURL, newURL) => {

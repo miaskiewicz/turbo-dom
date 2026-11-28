@@ -1,3 +1,4 @@
+import {validateCssResultProtocol} from './css-result-protocol.mjs';
 // turbo-dom test runtime — assembles Layers 1–5 into a jsdom-like environment.
 //
 //   import { createEnvironment } from './src/runtime/index.mjs';
@@ -82,8 +83,9 @@ function validateCssBackend(backend) {
 }
 
 export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
-  const { domBackend = 'js', cssBackend = 'js' } = options;
+  const { domBackend = 'js', cssBackend = 'js', cssResultProtocol = 'wire-v1' } = options;
   validateCssBackend(cssBackend);
+  validateCssResultProtocol(cssBackend,cssResultProtocol);
   if (domBackend === 'rust') throw new Error('turbo-dom: domBackend "rust" requires a Node browser-env binding, which this build does not include');
   if (domBackend !== 'js') throw new TypeError('turbo-dom: domBackend must be "js" or "rust"');
 
@@ -95,7 +97,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
 
   // Layer 1: native parse → immutable SoA buffer (typed arrays, one boundary copy).
   let currentHtml = String(html);
-  let soa = parseBufferCached(currentHtml, cssBackend === 'rust');
+  let soa = parseBufferCached(currentHtml, cssBackend !== 'js');
 
   // Layer 2: Document over the buffer (nodes inflate lazily from the arrays).
   const document = new Document();
@@ -116,7 +118,7 @@ export function createEnvironment(html = '<!doctype html><html><head></head><bod
     // Layer 5: arena-style reset. Re-point at the (re)parsed buffer, drop the
     // owned overlay + node cache + materialized globals. Class machinery stays warm.
     reset(nextHtml) {
-      if (nextHtml !== undefined) { currentHtml = String(nextHtml); soa = parseBufferCached(currentHtml, cssBackend === 'rust'); }
+      if (nextHtml !== undefined) { currentHtml = String(nextHtml); soa = parseBufferCached(currentHtml, cssBackend !== 'js'); }
       document.__load(soa);       // drops __cache + __kids overlay, keeps the buffer if reused
       maybePromote();
       win.resetGlobals();

@@ -146,7 +146,8 @@ fn row(
     let marker = marker(target.declared_text_decoration, input)?;
     let values = ordinary(target.values, input)?;
     let public = provenance(target.public_keys, input)?;
-    let serialized = serialize_cssom_with_context(
+    projected_row(
+        target.id,
         &values,
         &public,
         &CssomSerializationContext {
@@ -159,6 +160,24 @@ fn row(
             }),
             font_size_px: target.font_size_px,
         },
+        limits,
+        retained,
+        include_used,
+    )
+}
+fn projected_row(
+    id: u32,
+    values: &BTreeMap<String, CssText>,
+    public: &BTreeSet<String>,
+    context: &CssomSerializationContext<'_>,
+    limits: Limits,
+    retained: &mut usize,
+    include_used: bool,
+) -> Result<Row, String> {
+    let serialized = serialize_cssom_with_context(
+        values,
+        public,
+        context,
         CssomSerializationLimits {
             retained_units: *retained,
             computation: limits.computation.into(),
@@ -170,7 +189,7 @@ fn row(
         .then(|| used_properties(&serialized, retained))
         .transpose()?;
     Ok(Row {
-        id: target.id,
+        id,
         values: serialized
             .values
             .into_iter()
@@ -225,6 +244,12 @@ pub(crate) fn serialize_batch(source: &str) -> Result<String, String> {
     serde_json::to_string(&serde_json::json!({"abiVersion":1,"targets":targets}))
         .map_err(|error| fail(&error.to_string()))
 }
+
+#[path = "css_native_projection.rs"]
+mod native_projection;
+#[cfg(test)]
+pub(crate) use native_projection::cssom_wire as state_cssom_wire;
+pub(crate) use native_projection::project_state;
 
 #[cfg(test)]
 mod tests {

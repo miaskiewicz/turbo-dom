@@ -1,11 +1,15 @@
 //! One native answer set per prepared model. Only the owning adapter can prove
 //! that current DOM, sheet and selector inputs still produce these answers.
 use super::{
-    apply_matching, fail, parse, Matching, PreparedStyles, ResolveInput, ValidatedMatching,
+    apply_matching, apply_native_state, fail, parse, Matching, PreparedStyles, ResolveInput,
+    ValidatedMatching,
 };
 use std::collections::{BTreeSet, VecDeque};
 use std::mem::size_of;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+#[path = "css_native_state_cache.rs"]
+mod state_cache;
+use state_cache::ResultCache;
 use turbo_dom_core::rtdom::computed_css::shadow_routes::ContextRoot;
 
 // This cap applies to retention only. Larger default-adapter requests use the
@@ -124,7 +128,7 @@ pub(crate) struct MatchingSlot {
     facts: ValidatedMatching,
     token: String,
     payload_bytes: usize,
-    result: Mutex<SuccessCache>,
+    result: Mutex<ResultCache>,
     #[cfg(test)]
     cascade_calls: std::sync::atomic::AtomicUsize,
     #[cfg(test)]
@@ -142,7 +146,7 @@ impl MatchingSlot {
         Ok(Self {
             facts,
             payload_bytes: bytes + token.len(),
-            result: Mutex::new(SuccessCache::default()),
+            result: Mutex::new(ResultCache::default()),
             #[cfg(test)]
             cascade_calls: std::sync::atomic::AtomicUsize::new(0),
             #[cfg(test)]
@@ -168,7 +172,7 @@ impl MatchingSlot {
                 .result
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .bytes
+                .bytes()
     }
     pub(crate) fn resolve(&self, prepared: &PreparedStyles, wire: &str) -> Result<String, String> {
         // The live owner and current token were checked before this slot.
@@ -178,7 +182,7 @@ impl MatchingSlot {
             .result
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(wire)
+            .wire(wire)
         {
             return Ok(response);
         }
@@ -202,8 +206,36 @@ impl MatchingSlot {
         self.result
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .retain(retained, available);
+            .retain_wire(retained, available);
         Ok(response)
+    }
+    pub(crate) fn resolve_state(
+        &self,
+        prepared: &PreparedStyles,
+        wire: &str,
+    ) -> Result<Arc<super::native_state::NativeStyleState>, String> {
+        if let Some(state) = self
+            .result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .state(wire)
+        {
+            return Ok(state);
+        }
+        #[cfg(test)]
+        self.parse_calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let input: ResolveInput = parse(wire)?;
+        input.validate()?;
+        #[cfg(test)]
+        self.cascade_calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let state = Arc::new(apply_native_state(prepared, input, &self.facts)?);
+        self.result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain_state(wire, Arc::clone(&state), self.payload_bytes);
+        Ok(state)
     }
 }
 

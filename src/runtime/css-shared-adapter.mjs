@@ -1,3 +1,4 @@
+import {createStyleStateSession} from './css-native-style-state.mjs';
 import { matchingIntrinsicsIntact } from './css-matching-integrity.mjs';
 import { readCssFactsNavigator } from './css-facts-navigator.mjs';
 import { createSharedRouting } from './css-shared-routing.mjs';
@@ -421,8 +422,8 @@ export function createSharedCssAdapter(options) {
  return createAdapter(options, false);
 }
 // Only the public default adapter owns the native capture and JSON policy.
-export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false, modelKeys) {
- return createAdapter(options, cacheMatching, useCapturedRoutes, modelKeys);
+export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy) {
+ return createAdapter(options, cacheMatching, useCapturedRoutes, modelKeys, statePolicy);
 }
 function capturedSources(capture, document, snapshot, context) {
   if (capture !== undefined) return sharedInvoke(capture, undefined, [snapshot, context]);
@@ -438,7 +439,7 @@ function createAdapter({
 	profile,
 	limits,
 	measureScene,
-}, cacheMatching, useCapturedRoutes = false, modelKeys) {
+}, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	if (captureSourceFacts !== undefined) required(captureSourceFacts, 'captureSourceFacts');
 	const callbacks = {
@@ -472,6 +473,8 @@ function createAdapter({
 	let selectedBackend = null;
 	const requestWires = new RequestWires();
  const retainedMatching = new RequestWires();
+ const stateSession = statePolicy === undefined ? null : createStyleStateSession(statePolicy);
+ const projectionRequest = result => stateSession ? stateSession.request(result) : result;
 	function fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching) {
 		const {mechanical} = matching;
 		const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
@@ -525,22 +528,29 @@ function createAdapter({
 			},
 		};
 	}
+  function resolveCompleteRequest(prepared, request, entry) {
+    stateSession?.requireMatching(request);
+    return prepared.resolveBatch(entry ? encodeMatchingRequest(request, entry) : sharedEncode(request));
+  }
 	const factory = createSharedComputedStyle({
     resolveBatch(prepared, request) {
       const entry = sharedInvoke(wireGet, requestWires, [request]);
-      if (!entry) return prepared.resolveBatch(sharedEncode(request));
+      if (!entry) return resolveCompleteRequest(prepared, request, entry);
       // Older native and WASM artifacts use the complete wire. A new prepared
       // model or a fresh exact matching entry must install its own answer set.
       if (!cacheOwn(entry.mechanical, 'contextRoots') ||
-          typeof prepared.storeMatchingV1 !== 'function' || typeof prepared.resolveMatchingV1 !== 'function')
-        return prepared.resolveBatch(encodeMatchingRequest(request, entry));
+          typeof prepared.storeMatchingV1 !== 'function' || typeof prepared.resolveMatchingV1 !== 'function') {
+        return resolveCompleteRequest(prepared, request, entry);
+      }
       let slot = sharedInvoke(wireGet, retainedMatching, [prepared]);
       if (!slot || slot.entry !== entry) {
         const token = prepared.storeMatchingV1(entry.wire, sharedEncode(request.limits));
         slot = { entry, token };
         sharedInvoke(wireSet, retainedMatching, [prepared, slot]);
       }
-      return prepared.resolveMatchingV1(encodeTargetRequest(request, entry), slot.token);
+      const wire = encodeTargetRequest(request, entry);
+      const projected = stateSession?.resolve(prepared, wire, slot.token, request);
+      return projected === undefined ? prepared.resolveMatchingV1(wire, slot.token) : projected;
     },
 		encodeRequest: sharedEncode,
     encodeCompileKey: modelKeys?.compile,
@@ -616,12 +626,12 @@ function createAdapter({
                 : { mechanical: collectSharedAnswers(facts.ordinary, snapshot, context.document, limits.matching), wire: undefined };
 			if (useCapturedRoutes && compactCapture(active, profile, pseudo, metadata)) {
 				const compact = capturedChainRequest(active, element, profile, limits, matching, requestWires);
-				if (compact) return compact;
+				if (compact) return projectionRequest(compact);
 			}
-			return fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching);
+			return projectionRequest(fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching));
 		},
 		finalizeResult(row, { backend }) {
-			return publicRow(row, backend, profile, limits);
+			return stateSession?.finalize(row) ?? publicRow(row, backend, profile, limits);
 		},
 		resolveProperty(name, base, { row, batch, providerContext, context }) {
 			const backend = selectBackend();

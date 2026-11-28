@@ -138,6 +138,15 @@ produce an explicit error rather than silently changing the selected backend.
 | Vitest config | `test.environmentOptions.turboDom.cssBackend = 'rust'` |
 | Jest config | `testEnvironmentOptions.turboDom.cssBackend = 'rust'` |
 
+Rust CSS also accepts the explicit `cssResultProtocol: 'native-state-v1'` option.
+It retains resolved styles natively and projects CSSOM without transferring the
+full result back through JavaScript. The default `wire-v1` protocol preserves the
+existing resolve/serialize callbacks. This is one Rust CSS engine with two result
+protocols, not another backend; see [the protocol and callback contract](docs/native-css-result-protocol.md).
+Missing native-state capabilities fail explicitly. The isolated native replay
+used 5.12% less CPU (7/7 ABBA wins); packed suite wall/CPU were effectively flat,
+so this does not establish Rust-versus-JavaScript performance parity.
+
 Repeated Rust CSS reads reuse selector inputs only after freshly capturing and
 validating the complete matching input. DOM, stylesheet, state, shadow-tree and
 owner changes retain their invalidation checks. With an unresolved explicitly
