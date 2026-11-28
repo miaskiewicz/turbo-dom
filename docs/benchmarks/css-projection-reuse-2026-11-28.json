@@ -1,0 +1,2350 @@
+{
+  "date": "2026-11-28",
+  "baseCommit": "35215e3dc2c015e49e0c9d3386d4770b562d8c04",
+  "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+  "sourceHashes": {
+    "src/css_native_state_cache.rs": "b2f17e6f4cbb338690b5022c200106a970db451d2750aa06295cc6bd1e34e959",
+    "src/css_native_projection.rs": "5664917d82545ffb0da350dabdfaed046b17668373b243184472f44c873cdd49",
+    "src/css_serialize.rs": "e37300d6c76afd1ea3537f579a35ac4c434c865a2a16bd54aa9ebc4bc0b3ec30",
+    "src/css_retained_matching.rs": "8d333932f9f8e6878fddbf81d3a354d2bfd5921db3182d6d032c150901c9dd32",
+    "src/css_backend.rs": "8a53f43322840a906b6e11488d9604942c04338b1bb0fd15f151cc6f91a49e57",
+    "src/css_native_state_tests.rs": "fa913e403031d7a986c5d1468f1b1d4b1d15a06c36e0e7faa4b0a0fc81393ef9"
+  },
+  "decision": "Retain exact native projection reuse: less native CPU and packedwall/CPU; defaults unchanged.",
+  "scope": "Rust CSS with cssResultProtocol native-state-v1. No new flag; the existing opt-in protocol owns this cache.",
+  "native": {
+    "cpuUs": {
+      "matchedMedianDeltaPct": -1.3216354943317743,
+      "blockDeltasPct": [
+        0.25692489572577415,
+        -8.281403608215465,
+        -0.7884613604733692,
+        -1.3216354943317743,
+        -1.5987296140648533,
+        -1.319752433046295,
+        -3.569237926060431
+      ],
+      "wins": 6,
+      "baselineMedian": 1041613.0,
+      "candidateMedian": 1026826.0
+    },
+    "nsPerCorpus": {
+      "matchedMedianDeltaPct": -1.332736921014821,
+      "blockDeltasPct": [
+        0.22687152831468715,
+        -9.295054947486092,
+        -0.7861326087974851,
+        -1.2496821254676216,
+        -1.6667748537794291,
+        -1.332736921014821,
+        -3.9792826651511626
+      ],
+      "wins": 6,
+      "baselineMedian": 10413076.46,
+      "candidateMedian": 10258086.455
+    }
+  },
+  "packed": {
+    "wallMs": {
+      "matchedMedianDeltaPct": -0.8720766300051364,
+      "blockDeltasPct": [
+        -1.0376577133812237,
+        0.24244799830757113,
+        -0.8676211557294145,
+        -0.18373276280754247,
+        -0.8720766300051364,
+        -7.669232920725843,
+        -1.3703767277438272
+      ],
+      "wins": 6,
+      "leftMedian": 1632.1689580217935,
+      "rightMedian": 1615.200187516166
+    },
+    "callbackMs": {
+      "matchedMedianDeltaPct": -0.10971056243140875,
+      "blockDeltasPct": [
+        1.244528451076632,
+        -0.10971056243140875,
+        -2.016989016507831,
+        0.35137860569345314,
+        -0.06426373634267346,
+        -5.287106009125797,
+        -2.265524860354551
+      ],
+      "wins": 5,
+      "leftMedian": 276.388689,
+      "rightMedian": 274.67458200000004
+    },
+    "childCpuMs": {
+      "matchedMedianDeltaPct": -1.20255919231812,
+      "blockDeltasPct": [
+        -0.6560787111843713,
+        0.3258193187213987,
+        -1.20255919231812,
+        -0.0016677294098488282,
+        -1.3633337399642453,
+        -8.373387325104996,
+        -1.4267302813516847
+      ],
+      "wins": 6,
+      "leftMedian": 1893.7404999999999,
+      "rightMedian": 1887.3729999999966
+    }
+  },
+  "nativeRows": [
+    {
+      "block": 0,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.5390625,
+        3.69384765625,
+        3.9755859375
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1053895417,
+          "nsPerCorpus": 10538954.17,
+          "cpuUserUs": 1051669,
+          "cpuSystemUs": 3434
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1055103,
+      "nsPerCorpus": 10538954.17
+    },
+    {
+      "block": 0,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.49560546875,
+        3.68212890625,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1088241791,
+          "nsPerCorpus": 10882417.91,
+          "cpuUserUs": 1084607,
+          "cpuSystemUs": 4726
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1089333,
+      "nsPerCorpus": 10882417.91
+    },
+    {
+      "block": 0,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.49560546875,
+        3.68212890625,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1038716959,
+          "nsPerCorpus": 10387169.59,
+          "cpuUserUs": 1035720,
+          "cpuSystemUs": 4371
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1040091,
+      "nsPerCorpus": 10387169.59
+    },
+    {
+      "block": 0,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.49560546875,
+        3.68212890625,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1068248792,
+          "nsPerCorpus": 10682487.92,
+          "cpuUserUs": 1064002,
+          "cpuSystemUs": 4862
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1068864,
+      "nsPerCorpus": 10682487.92
+    },
+    {
+      "block": 1,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.49560546875,
+        3.68212890625,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1045365542,
+          "nsPerCorpus": 10453655.42,
+          "cpuUserUs": 1040753,
+          "cpuSystemUs": 5415
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1046168,
+      "nsPerCorpus": 10453655.42
+    },
+    {
+      "block": 1,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.53564453125,
+        3.68701171875,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1033711958,
+          "nsPerCorpus": 10337119.58,
+          "cpuUserUs": 1029690,
+          "cpuSystemUs": 5100
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1034790,
+      "nsPerCorpus": 10337119.58
+    },
+    {
+      "block": 1,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.53564453125,
+        3.68701171875,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1036149000,
+          "nsPerCorpus": 10361490,
+          "cpuUserUs": 1030522,
+          "cpuSystemUs": 5859
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1036381,
+      "nsPerCorpus": 10361490
+    },
+    {
+      "block": 1,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.53564453125,
+        3.68701171875,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1236605917,
+          "nsPerCorpus": 12366059.17,
+          "cpuUserUs": 1199744,
+          "cpuSystemUs": 12268
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1212012,
+      "nsPerCorpus": 12366059.17
+    },
+    {
+      "block": 2,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.53564453125,
+        3.68701171875,
+        3.9697265625
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1032257333,
+          "nsPerCorpus": 10322573.33,
+          "cpuUserUs": 1028260,
+          "cpuSystemUs": 5028
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1033288,
+      "nsPerCorpus": 10322573.33
+    },
+    {
+      "block": 2,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.41259765625,
+        3.65869140625,
+        3.9580078125
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1019392333,
+          "nsPerCorpus": 10193923.33,
+          "cpuUserUs": 1015854,
+          "cpuSystemUs": 4516
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1020370,
+      "nsPerCorpus": 10193923.33
+    },
+    {
+      "block": 2,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.41259765625,
+        3.65869140625,
+        3.9580078125
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1015337209,
+          "nsPerCorpus": 10153372.09,
+          "cpuUserUs": 1011939,
+          "cpuSystemUs": 4364
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1016303,
+      "nsPerCorpus": 10153372.09
+    },
+    {
+      "block": 2,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.41259765625,
+        3.65869140625,
+        3.9580078125
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1018594625,
+          "nsPerCorpus": 10185946.25,
+          "cpuUserUs": 1015015,
+          "cpuSystemUs": 4556
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1019571,
+      "nsPerCorpus": 10185946.25
+    },
+    {
+      "block": 3,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.41259765625,
+        3.65869140625,
+        3.9580078125
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1032737875,
+          "nsPerCorpus": 10327378.75,
+          "cpuUserUs": 1028991,
+          "cpuSystemUs": 4600
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1033591,
+      "nsPerCorpus": 10327378.75
+    },
+    {
+      "block": 3,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.37939453125,
+        3.6474609375,
+        3.9521484375
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1013361375,
+          "nsPerCorpus": 10133613.75,
+          "cpuUserUs": 1010014,
+          "cpuSystemUs": 4238
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1014252,
+      "nsPerCorpus": 10133613.75
+    },
+    {
+      "block": 3,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.37939453125,
+        3.6474609375,
+        3.9521484375
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1028804416,
+          "nsPerCorpus": 10288044.16,
+          "cpuUserUs": 1023486,
+          "cpuSystemUs": 4691
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1028177,
+      "nsPerCorpus": 10288044.16
+    },
+    {
+      "block": 3,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.37939453125,
+        3.6474609375,
+        3.9521484375
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1035271459,
+          "nsPerCorpus": 10352714.59,
+          "cpuUserUs": 1031509,
+          "cpuSystemUs": 4684
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1036193,
+      "nsPerCorpus": 10352714.59
+    },
+    {
+      "block": 4,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.37939453125,
+        3.6474609375,
+        3.9521484375
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1041647292,
+          "nsPerCorpus": 10416472.92,
+          "cpuUserUs": 1036753,
+          "cpuSystemUs": 4663
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1041416,
+      "nsPerCorpus": 10416472.92
+    },
+    {
+      "block": 4,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.37939453125,
+        3.6474609375,
+        3.9521484375
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1013601208,
+          "nsPerCorpus": 10136012.08,
+          "cpuUserUs": 1010259,
+          "cpuSystemUs": 4439
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1014698,
+      "nsPerCorpus": 10136012.08
+    },
+    {
+      "block": 4,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.1884765625,
+        3.60302734375,
+        3.9345703125
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1026056458,
+          "nsPerCorpus": 10260564.58,
+          "cpuUserUs": 1022161,
+          "cpuSystemUs": 4928
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1027089,
+      "nsPerCorpus": 10260564.58
+    },
+    {
+      "block": 4,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.1884765625,
+        3.60302734375,
+        3.9345703125
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1032583125,
+          "nsPerCorpus": 10325831.25,
+          "cpuUserUs": 1027624,
+          "cpuSystemUs": 5920
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1033544,
+      "nsPerCorpus": 10325831.25
+    },
+    {
+      "block": 5,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.1884765625,
+        3.60302734375,
+        3.9345703125
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1030158459,
+          "nsPerCorpus": 10301584.59,
+          "cpuUserUs": 1026325,
+          "cpuSystemUs": 4678
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1031003,
+      "nsPerCorpus": 10301584.59
+    },
+    {
+      "block": 5,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.1884765625,
+        3.60302734375,
+        3.9345703125
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1021998209,
+          "nsPerCorpus": 10219982.09,
+          "cpuUserUs": 1018097,
+          "cpuSystemUs": 4894
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1022991,
+      "nsPerCorpus": 10219982.09
+    },
+    {
+      "block": 5,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.01318359375,
+        3.5595703125,
+        3.9169921875
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1021525583,
+          "nsPerCorpus": 10215255.83,
+          "cpuUserUs": 1017717,
+          "cpuSystemUs": 4749
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1022466,
+      "nsPerCorpus": 10215255.83
+    },
+    {
+      "block": 5,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.01318359375,
+        3.5595703125,
+        3.9169921875
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1040968000,
+          "nsPerCorpus": 10409680,
+          "cpuUserUs": 1035318,
+          "cpuSystemUs": 6492
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1041810,
+      "nsPerCorpus": 10409680
+    },
+    {
+      "block": 6,
+      "slot": 0,
+      "arm": "baseline",
+      "load": [
+        3.01318359375,
+        3.5595703125,
+        3.9169921875
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1043877416,
+          "nsPerCorpus": 10438774.16,
+          "cpuUserUs": 1039503,
+          "cpuSystemUs": 4757
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1044260,
+      "nsPerCorpus": 10438774.16
+    },
+    {
+      "block": 6,
+      "slot": 1,
+      "arm": "candidate",
+      "load": [
+        3.01318359375,
+        3.5595703125,
+        3.9169921875
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1029464917,
+          "nsPerCorpus": 10294649.17,
+          "cpuUserUs": 1025628,
+          "cpuSystemUs": 4141
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1029769,
+      "nsPerCorpus": 10294649.17
+    },
+    {
+      "block": 6,
+      "slot": 2,
+      "arm": "candidate",
+      "load": [
+        3.412109375,
+        3.6328125,
+        3.9404296875
+      ],
+      "result": {
+        "mode": "candidate",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/candidate.node",
+        "artifactSHA256": "7109c4107eb31c7977ae5f7158dc3d13930fca5b6c5bda1b49274d19c664db7c",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1025560833,
+          "nsPerCorpus": 10255608.33,
+          "cpuUserUs": 1021467,
+          "cpuSystemUs": 5096
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1026563,
+      "nsPerCorpus": 10255608.33
+    },
+    {
+      "block": 6,
+      "slot": 3,
+      "arm": "baseline",
+      "load": [
+        3.412109375,
+        3.6328125,
+        3.9404296875
+      ],
+      "result": {
+        "mode": "baseline",
+        "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/baseline.node",
+        "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+        "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+        "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+        "counts": {
+          "models": 6,
+          "prepared": 6,
+          "matching": 14,
+          "pairs": 118
+        },
+        "controls": {
+          "malformed": {
+            "name": "Error",
+            "message": "CSSBackendTransport:expected value at line 1 column 1"
+          },
+          "foreign": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "changedBudget": {
+            "name": "Error",
+            "message": "CSSBackendResolve:ResourceLimit"
+          },
+          "projectionBudget": {
+            "name": "Error",
+            "message": "CSSBackendSerialize:ResourceLimit"
+          },
+          "replacedToken": {
+            "name": "Error",
+            "message": "CSSBackendFacts:StaleMatching"
+          },
+          "disposed": {
+            "name": "Error",
+            "message": "CSSBackendDisposed:PreparedStylesV1"
+          }
+        },
+        "verified": {
+          "checksum": 363868,
+          "outputBytes": 331628
+        },
+        "measured": {
+          "iterations": 100,
+          "warmups": 2,
+          "elapsedNs": 1096312542,
+          "nsPerCorpus": 10963125.42,
+          "cpuUserUs": 1080343,
+          "cpuSystemUs": 7841
+        },
+        "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+      },
+      "cpuUs": 1088184,
+      "nsPerCorpus": 10963125.42
+    }
+  ],
+  "packedRows": [
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": -1,
+      "slot": 0,
+      "wallMs": 1585.4017910314724,
+      "childCpuMs": 1836.0819999999999,
+      "callbackMs": 265.022332,
+      "load": [
+        3.412109375,
+        3.6328125,
+        3.9404296875
+      ],
+      "reportSha256": "f44e53602b5ac1bf699113d20a24f09c83357cbebca309d77694d053a12923bc"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": -1,
+      "slot": 0,
+      "wallMs": 1602.0664579700679,
+      "childCpuMs": 1854.3780000000002,
+      "callbackMs": 274.200084,
+      "load": [
+        3.412109375,
+        3.6328125,
+        3.9404296875
+      ],
+      "reportSha256": "6ac202d514efbd27ba81afc572eba27b498c098b26bdaf9246b6575be92aadc8"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 0,
+      "slot": 0,
+      "wallMs": 1637.361666013021,
+      "childCpuMs": 1892.003,
+      "callbackMs": 269.81079000000005,
+      "load": [
+        3.298828125,
+        3.60546875,
+        3.9287109375
+      ],
+      "reportSha256": "08b6cdcc832482049948a42c6df23e1e87e6ab0842ed6a03c801d63a01d90475"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 0,
+      "slot": 1,
+      "wallMs": 1597.977333003655,
+      "childCpuMs": 1859.466,
+      "callbackMs": 275.26008600000006,
+      "load": [
+        3.298828125,
+        3.60546875,
+        3.9287109375
+      ],
+      "reportSha256": "67f8a630db58c331a246f1f6e9bdd8c873df98c9bd729c21d902153347a6680c"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 0,
+      "slot": 2,
+      "wallMs": 1584.207542007789,
+      "childCpuMs": 1839.8940000000007,
+      "callbackMs": 274.562501,
+      "load": [
+        3.298828125,
+        3.60546875,
+        3.9287109375
+      ],
+      "reportSha256": "f75868c2b91605bcd804182875a218825fb9fcfa257991077e115470d67fa78d"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 0,
+      "slot": 3,
+      "wallMs": 1578.1896249973215,
+      "childCpuMs": 1831.788,
+      "callbackMs": 273.253211,
+      "load": [
+        3.1142578125,
+        3.56201171875,
+        3.9111328125
+      ],
+      "reportSha256": "0138c44f8f840280ea177676bd316deff962c33d549cb3ddce80c2444af30f3a"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 1,
+      "slot": 0,
+      "wallMs": 1600.9292090311646,
+      "childCpuMs": 1866.3619999999992,
+      "callbackMs": 271.38466400000004,
+      "load": [
+        3.1142578125,
+        3.56201171875,
+        3.9111328125
+      ],
+      "reportSha256": "a15f82a140db979126055bd0676e07dcfedade33e0ca78ff001eee688828d452"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 1,
+      "slot": 1,
+      "wallMs": 1587.9236669861712,
+      "childCpuMs": 1849.5860000000014,
+      "callbackMs": 270.398376,
+      "load": [
+        3.1142578125,
+        3.56201171875,
+        3.9111328125
+      ],
+      "reportSha256": "0a463fbb845f503ee1b6ad4f90c1760de78b8e5090141d21b5faf607069d44b2"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 1,
+      "slot": 2,
+      "wallMs": 1606.3964170170948,
+      "childCpuMs": 1867.607,
+      "callbackMs": 273.7300399999999,
+      "load": [
+        3.10498046875,
+        3.55224609375,
+        3.90576171875
+      ],
+      "reportSha256": "1348fadde9ce3c810a42f2880589a29e3f298f678321fc0ef3d00314a7593ad1"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 1,
+      "slot": 3,
+      "wallMs": 1585.6650409987196,
+      "childCpuMs": 1838.7589999999987,
+      "callbackMs": 273.3413739999999,
+      "load": [
+        3.10498046875,
+        3.55224609375,
+        3.90576171875
+      ],
+      "reportSha256": "bd46dc0463c4910cc2e8513afe3e6949eefbeae0595fb33328d68a37b8974f80"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 2,
+      "slot": 0,
+      "wallMs": 1601.2792499968782,
+      "childCpuMs": 1867.8000000000013,
+      "callbackMs": 276.01608200000004,
+      "load": [
+        3.10498046875,
+        3.55224609375,
+        3.90576171875
+      ],
+      "reportSha256": "02900744c45c4810ae9a655bf00ee79e445ad565f6b3ccf1952761036714933d"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 2,
+      "slot": 1,
+      "wallMs": 1574.155249982141,
+      "childCpuMs": 1827.126999999999,
+      "callbackMs": 269.420751,
+      "load": [
+        3.01611328125,
+        3.5263671875,
+        3.89453125
+      ],
+      "reportSha256": "b2137f7d4ff6b3e45743645c3f12a36bcbf41566102ff984a8ac9ada0b01d761"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 2,
+      "slot": 2,
+      "wallMs": 1584.588750032708,
+      "childCpuMs": 1834.3189999999997,
+      "callbackMs": 272.207168,
+      "load": [
+        3.01611328125,
+        3.5263671875,
+        3.89453125
+      ],
+      "reportSha256": "022e3d084b1b24d0ff65e9b86903bd101e0fe47cf5479040e6256faaafa1fd31"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 2,
+      "slot": 3,
+      "wallMs": 1585.1105419569649,
+      "childCpuMs": 1838.2130000000022,
+      "callbackMs": 276.76129599999996,
+      "load": [
+        3.01611328125,
+        3.5263671875,
+        3.89453125
+      ],
+      "reportSha256": "3d527edd22f6965b52f10c1810ff34ebbbf68871b28733a96617f7dbd1a323e7"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 3,
+      "slot": 0,
+      "wallMs": 1670.2266249922104,
+      "childCpuMs": 1942.0749999999982,
+      "callbackMs": 280.7224559999999,
+      "load": [
+        3.0146484375,
+        3.517578125,
+        3.88916015625
+      ],
+      "reportSha256": "8e64594fd770636e71a9a168045d6d313fc4e9938577cc9efb9c8ad66d9d7d0e"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 3,
+      "slot": 1,
+      "wallMs": 1654.9904580460861,
+      "childCpuMs": 1928.5219999999993,
+      "callbackMs": 282.07108300000004,
+      "load": [
+        3.0146484375,
+        3.517578125,
+        3.88916015625
+      ],
+      "reportSha256": "b436364fa6f794c0f7ebab0bb4695c947009b80a726fefeb5cf6256722a0504f"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 3,
+      "slot": 2,
+      "wallMs": 1636.154375039041,
+      "childCpuMs": 1908.9669999999996,
+      "callbackMs": 276.54999999999995,
+      "load": [
+        3.0146484375,
+        3.517578125,
+        3.88916015625
+      ],
+      "reportSha256": "4daef43d9999fb1292e7f6c55a6bc8f095bb4e3d2cc1eecaabc07a5c735bbd75"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 3,
+      "slot": 3,
+      "wallMs": 1626.976250030566,
+      "childCpuMs": 1895.4779999999998,
+      "callbackMs": 275.942625,
+      "load": [
+        2.93310546875,
+        3.4921875,
+        3.8779296875
+      ],
+      "reportSha256": "dd194c4747b35a975a51f3a101f29ce7408c1f49a0c4da304915a07118fb7343"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 4,
+      "slot": 0,
+      "wallMs": 1616.367916984018,
+      "childCpuMs": 1888.7260000000028,
+      "callbackMs": 276.83529200000004,
+      "load": [
+        2.93310546875,
+        3.4921875,
+        3.8779296875
+      ],
+      "reportSha256": "6f95a7da68f2bdf23195b332f44a836793e758f47f000daa6e16fa69df1f909a"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 4,
+      "slot": 1,
+      "wallMs": 1624.003958015237,
+      "childCpuMs": 1904.411999999998,
+      "callbackMs": 276.02691400000003,
+      "load": [
+        2.93310546875,
+        3.4921875,
+        3.8779296875
+      ],
+      "reportSha256": "bf9e303023ea0751ebf60bce9e045330e40e1210c5e7d0f038f314c9e832099b"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 4,
+      "slot": 2,
+      "wallMs": 1633.3656249917112,
+      "childCpuMs": 1912.030000000004,
+      "callbackMs": 280.50470800000005,
+      "load": [
+        2.77783203125,
+        3.45068359375,
+        3.86083984375
+      ],
+      "reportSha256": "0779ab6f7d0caf82017cda06b72847d0cd99e6e749972781da9a8bd2462496aa"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 4,
+      "slot": 3,
+      "wallMs": 1669.658333004918,
+      "childCpuMs": 1980.4659999999963,
+      "callbackMs": 280.0542080000001,
+      "load": [
+        2.77783203125,
+        3.45068359375,
+        3.86083984375
+      ],
+      "reportSha256": "5b6233c1f10b96df1d2188d8efa767e1bb9cf93d83674402e2952073122e6e31"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 5,
+      "slot": 0,
+      "wallMs": 1750.9646660182625,
+      "childCpuMs": 2070.107000000001,
+      "callbackMs": 294.81046299999997,
+      "load": [
+        2.77783203125,
+        3.45068359375,
+        3.86083984375
+      ],
+      "reportSha256": "c515eb8391cb9a48a6c55e2ae775172489378dd13f56d246148f01ec3fa964e5"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 5,
+      "slot": 1,
+      "wallMs": 1645.819625002332,
+      "childCpuMs": 1941.9140000000007,
+      "callbackMs": 280.82149999999996,
+      "load": [
+        2.95556640625,
+        3.47607421875,
+        3.8671875
+      ],
+      "reportSha256": "b631c0a4c1dff2c473bdb48f1143908c2cfa10d1d4be31873cafdc5f132a28fd"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 5,
+      "slot": 2,
+      "wallMs": 1597.6058749947697,
+      "childCpuMs": 1870.3339999999953,
+      "callbackMs": 269.47012500000005,
+      "load": [
+        2.95556640625,
+        3.47607421875,
+        3.8671875
+      ],
+      "reportSha256": "31710d53e74e390bead91b43b72043503d22eb72c048690af3748ffa8d55c599"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 5,
+      "slot": 3,
+      "wallMs": 1761.8681659805588,
+      "childCpuMs": 2090.527000000004,
+      "callbackMs": 286.19979000000006,
+      "load": [
+        2.95556640625,
+        3.47607421875,
+        3.8671875
+      ],
+      "reportSha256": "8d36c3b43b24f365e7a7c9013ada7cf33fb7b4611cde6a24ae7ee70c2bf80be0"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 6,
+      "slot": 0,
+      "wallMs": 1686.9547920068726,
+      "childCpuMs": 1990.9219999999993,
+      "callbackMs": 291.20704000000006,
+      "load": [
+        2.798828125,
+        3.4345703125,
+        3.85009765625
+      ],
+      "reportSha256": "44de44ea116f0b528bb1ceb4f70652f444b4a094946fda35ff52f33d01e3057a"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 6,
+      "slot": 1,
+      "wallMs": 1648.7091250019148,
+      "childCpuMs": 1931.6029999999973,
+      "callbackMs": 274.7866630000001,
+      "load": [
+        2.798828125,
+        3.4345703125,
+        3.85009765625
+      ],
+      "reportSha256": "d47f8cb955df1cb810ec63c7e2c8b4575b2a594318ac0b17e17ab508c180ecf1"
+    },
+    {
+      "label": "v17-projection-reuse-candidate",
+      "block": 6,
+      "slot": 2,
+      "wallMs": 1630.9309579664841,
+      "childCpuMs": 1925.5030000000008,
+      "callbackMs": 274.360955,
+      "load": [
+        2.798828125,
+        3.4345703125,
+        3.85009765625
+      ],
+      "reportSha256": "38bbb4337c1eb6d3f33eb8f80e581e7010a3d1af7fe2d192845b9447e63fd7f0"
+    },
+    {
+      "label": "v17-projection-reuse-baseline",
+      "block": 6,
+      "slot": 3,
+      "wallMs": 1638.2531669805758,
+      "childCpuMs": 1922.0110000000013,
+      "callbackMs": 270.67004299999996,
+      "load": [
+        2.734375,
+        3.41064453125,
+        3.8388671875
+      ],
+      "reportSha256": "23bee75ddc89e06b019faf0f550c836da9de08fd00bed46cc2ef6f17763ff997"
+    }
+  ],
+  "operationCounts": {
+    "requests": 118,
+    "baselineProjectionMaterializations": 118,
+    "candidateProjectionMaterializations": 68,
+    "successfulProjectionReuses": 50,
+    "resolutionHits": 50,
+    "resolutionMisses": 68,
+    "baselinePeakLogicalPayloadBytes": 22038,
+    "candidatePeakLogicalPayloadBytes": 24778
+  },
+  "gates": {
+    "nativeTests": 129,
+    "failures": 0,
+    "parserLines": [
+      575,
+      575
+    ],
+    "checkedNativeLines": [
+      437,
+      437
+    ],
+    "packedTestsPerRun": 29,
+    "clippyWarnings": 0,
+    "complexityLimit": 9
+  },
+  "method": {
+    "blocks": 7,
+    "order": "ABBA",
+    "nativeIterations": 100,
+    "bothArms": "wire-v1 requests; native-state-v1 results"
+  },
+  "qualification": [
+    "Results are independent comparisons against accepted35215, not JavaScript parity.",
+    "Native replay excludes DOM capture/application; packed is installed29-test React/DOMsuite.",
+    "Shared desktop and unrelatedDBcontaineractivity remained; coordinated compilers paused, allblocksretained.",
+    "Peak logical payload excludes allocator/BTree overhead per existing accounting contract.",
+    "Cache hits preserve fresh owner/token and projection syntax/ABI checks; exact successful projection wire plus immutable state identity certifies reused result and quotas.",
+    "The cache uses only slack under the existing cap and does not evict typed states to fit a projection.",
+    "No source changes were needed after timing to obtain coverage."
+  ]
+}

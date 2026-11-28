@@ -138,6 +138,11 @@ uses the same installed package and 29 tests, with seven ABBA blocks per mode:
 
 Each mode was paired independently with JS; these separate windows do not rank
 the Rust protocols. All tests passed. The 2% wall-time target remains unmet.
+The [subsequent projection-reuse change](docs/benchmarks/css-projection-reuse-2026-11-28.json)
+reduced native replay CPU by 1.32% and packed wall time by 0.87% versus the preceding
+Rust build (six of seven ABBA wins each). It applies to the explicit native-state
+result protocol; the table above predates this change and is not a fresh JS
+comparison of it.
 The two optimized protocols cannot yet be combined. A competing compiler
 invalidated the initial opt-in timings; both were repeated, and all raw samples
 were retained. Desktop/VM activity remains a measurement limitation.

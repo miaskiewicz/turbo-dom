@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Projection {
+pub(crate) struct Projection {
     abi_version: u32,
     target_id: u32,
     text_decoration: DecorationPolicy,
@@ -81,7 +81,10 @@ fn minimal(state: &NativeStyleState, id: u32, values: Value, used: Vec<String>) 
         .collect();
     json!({"id":id,"values":values,"custom":custom,"usedProperties":used})
 }
-pub(crate) fn project_state(state: &NativeStyleState, wire: &str) -> Result<String, String> {
+pub(crate) fn validate_projection(
+    state: &NativeStyleState,
+    wire: &str,
+) -> Result<Projection, String> {
     if state.geometry_only {
         return Err(fail("StyleStateGeometryOnly"));
     }
@@ -93,7 +96,20 @@ pub(crate) fn project_state(state: &NativeStyleState, wire: &str) -> Result<Stri
     if !options.include_used_properties {
         return Err(fail("StyleStateUsedMetadata"));
     }
-    let row = projection_row(state, &options)?;
+    Ok(options)
+}
+#[cfg(test)]
+pub(crate) fn project_state(state: &NativeStyleState, wire: &str) -> Result<String, String> {
+    let options = validate_projection(state, wire)?;
+    project_validated_state(state, &options)
+}
+pub(crate) fn project_validated_state(
+    state: &NativeStyleState,
+    options: &Projection,
+) -> Result<String, String> {
+    #[cfg(test)]
+    PROJECTION_CALLS.with(|count| count.set(count.get() + 1));
+    let row = projection_row(state, options)?;
     let (values, used) = public_values(row);
     let targets = if used.is_empty() {
         json!([minimal(state, options.target_id, values, used)])
@@ -120,4 +136,11 @@ pub(crate) fn cssom_wire(state: &NativeStyleState, wire: &str) -> Result<String,
     let row = projection_row(state, &options)?;
     serde_json::to_string(&json!({"abiVersion":1,"targets":[row]}))
         .map_err(|e| fail(&e.to_string()))
+}
+
+#[cfg(test)]
+thread_local! { static PROJECTION_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(test)]
+pub(crate) fn take_projection_calls() -> usize {
+    PROJECTION_CALLS.with(|count| count.replace(0))
 }

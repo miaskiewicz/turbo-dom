@@ -47,6 +47,7 @@ fn verify_pair(owner: &PreparedHandle, call: &Value, token: &str) -> (usize, usi
 }
 #[test]
 fn authentic_118_pairs_skip_all_full_transport_rows_and_preserve_cssom_wire() {
+    crate::css_serialize::take_projection_calls();
     let mut count = 0;
     let mut misses = 0;
     let mut maximum = 0;
@@ -96,6 +97,12 @@ fn authentic_118_pairs_skip_all_full_transport_rows_and_preserve_cssom_wire() {
         }
     }
     assert_eq!(count, 118);
+    let projected = crate::css_serialize::take_projection_calls();
+    assert_eq!(projected, 68);
+    println!(
+        "PROJECTION_COUNTERS calls={count} projections={projected} cache_hits={}",
+        count - projected
+    );
     println!("STATE_COUNTERS calls={count} misses={misses} hits={} max_matching_and_state_payload={maximum} full_rows=0 full_wires=0",count-misses);
 }
 #[test]
@@ -484,4 +491,50 @@ fn typed_state_projection_protocol_rejects_incompatible_metadata_in_order() {
             .unwrap_err()
             .contains("StyleStateTargetMissing")
     );
+}
+
+#[test]
+fn exact_state_projection_reuses_success_and_checks_changed_options() {
+    let (_compiled, owner, token, call, _) = owner_fixture();
+    let wire = text(&call["args"][0]);
+    let projection = text(&call["projection"]);
+    crate::css_serialize::take_projection_calls();
+    let snapshot = owner.resolve_style_state(wire, &token, projection).unwrap();
+    assert_eq!(
+        owner.resolve_style_state(wire, &token, projection).unwrap(),
+        snapshot
+    );
+    assert_eq!(crate::css_serialize::take_projection_calls(), 1);
+    let bytes = owner.retained_bytes();
+    let mut changed: Value = serde_json::from_str(projection).unwrap();
+    changed["limits"]["inputUnits"] = json!(0);
+    let failure = owner
+        .resolve_style_state(wire, &token, &changed.to_string())
+        .unwrap_err();
+    assert!(failure.contains("ResourceLimit"));
+    assert_eq!(crate::css_serialize::take_projection_calls(), 1);
+    assert_eq!(owner.retained_bytes(), bytes);
+    assert_eq!(
+        owner.resolve_style_state(wire, &token, projection).unwrap(),
+        snapshot
+    );
+    assert_eq!(crate::css_serialize::take_projection_calls(), 0);
+    assert!(owner.resolve_style_state(wire, &token, "bad").is_err());
+    changed["abiVersion"] = json!(2);
+    assert!(owner
+        .resolve_style_state(wire, &token, &changed.to_string())
+        .unwrap_err()
+        .contains("AbiVersion"));
+    assert_eq!(crate::css_serialize::take_projection_calls(), 0);
+    let same = format!(" {projection}");
+    assert_eq!(
+        owner.resolve_style_state(wire, &token, &same).unwrap(),
+        snapshot
+    );
+    assert_eq!(crate::css_serialize::take_projection_calls(), 1);
+    assert_eq!(
+        owner.resolve_style_state(wire, &token, &same).unwrap(),
+        snapshot
+    );
+    assert_eq!(crate::css_serialize::take_projection_calls(), 0);
 }

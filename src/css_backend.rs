@@ -341,13 +341,13 @@ impl PreparedHandle {
         projection: &str,
     ) -> Result<String, String> {
         let model = self.model()?;
-        let state = self
+        let slot = self
             .matching
             .as_ref()
             .filter(|slot| slot.token() == token)
-            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
-            .resolve_state(model, wire)?;
-        crate::css_serialize::project_state(&state, projection)
+            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?;
+        let state = slot.resolve_state(model, wire)?;
+        slot.project_state(&state, projection)
     }
     #[cfg(any(feature = "napi-bind", test))]
     fn resolve_request_template(&self, wire: &str, token: &str) -> Result<String, String> {

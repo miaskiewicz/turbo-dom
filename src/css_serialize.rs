@@ -249,7 +249,11 @@ pub(crate) fn serialize_batch(source: &str) -> Result<String, String> {
 mod native_projection;
 #[cfg(test)]
 pub(crate) use native_projection::cssom_wire as state_cssom_wire;
+#[cfg(test)]
 pub(crate) use native_projection::project_state;
+#[cfg(test)]
+pub(crate) use native_projection::take_projection_calls;
+pub(crate) use native_projection::{project_validated_state, validate_projection};
 
 #[cfg(test)]
 mod tests {

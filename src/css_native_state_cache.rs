@@ -2,10 +2,20 @@ use super::{available_result_bytes, CachedResult, WireCache, MAX_RESULT_ENTRIES}
 use crate::css_resolve::native_state::NativeStyleState;
 use std::collections::VecDeque;
 use std::sync::Arc;
+struct ProjectionEntry {
+    wire: Box<str>,
+    response: Box<str>,
+}
+impl ProjectionEntry {
+    fn bytes(&self) -> usize {
+        self.wire.len().saturating_add(self.response.len())
+    }
+}
 struct StateEntry {
     wire: Box<str>,
     state: Arc<NativeStyleState>,
     bytes: usize,
+    projection: Option<ProjectionEntry>,
 }
 #[derive(Default)]
 pub(super) struct StateCache {
@@ -22,6 +32,42 @@ impl StateCache {
         let state = Arc::clone(&entry.state);
         self.entries.push_back(entry);
         Some(state)
+    }
+    fn projection(&self, state: &Arc<NativeStyleState>, wire: &str) -> Option<String> {
+        let entry = self
+            .entries
+            .iter()
+            .find(|entry| Arc::ptr_eq(&entry.state, state))?;
+        let projection = entry.projection.as_ref()?;
+        (projection.wire.as_ref() == wire).then(|| projection.response.to_string())
+    }
+    fn retain_projection(
+        &mut self,
+        state: &Arc<NativeStyleState>,
+        wire: &str,
+        response: &str,
+        available: usize,
+    ) {
+        let Some(entry) = self
+            .entries
+            .iter_mut()
+            .find(|entry| Arc::ptr_eq(&entry.state, state))
+        else {
+            return;
+        };
+        let old = entry.projection.as_ref().map_or(0, ProjectionEntry::bytes);
+        let bytes = wire.len().saturating_add(response.len());
+        let total = self.bytes.saturating_sub(old).saturating_add(bytes);
+        // Projection reuse must not evict successful typed requests to make room.
+        if total > available {
+            return;
+        }
+        entry.projection = Some(ProjectionEntry {
+            wire: wire.into(),
+            response: response.into(),
+        });
+        entry.bytes = entry.bytes.saturating_sub(old).saturating_add(bytes);
+        self.bytes = total;
     }
     fn remove(&mut self, index: usize) {
         if let Some(entry) = self.entries.remove(index) {
@@ -103,6 +149,29 @@ impl ResultCache {
             cache.cache.retain(entry, available);
         }
     }
+    pub(super) fn projection(&self, state: &Arc<NativeStyleState>, wire: &str) -> Option<String> {
+        match self {
+            Self::State(cache) => cache.projection(state, wire),
+            Self::Wire(_) => None,
+        }
+    }
+    pub(super) fn retain_projection(
+        &mut self,
+        state: &Arc<NativeStyleState>,
+        wire: &str,
+        response: &str,
+        matching_bytes: usize,
+    ) {
+        // A late projection cannot recreate retired state or switch cache modes.
+        if let Self::State(cache) = self {
+            cache.retain_projection(
+                state,
+                wire,
+                response,
+                available_result_bytes(matching_bytes),
+            );
+        }
+    }
     pub(super) fn retain_state(
         &mut self,
         wire: &str,
@@ -124,6 +193,7 @@ impl ResultCache {
                     wire: wire.into(),
                     state,
                     bytes,
+                    projection: None,
                 },
                 available,
             );
@@ -139,6 +209,7 @@ mod tests {
         StateEntry {
             wire: wire.into(),
             bytes,
+            projection: None,
             state: Arc::new(NativeStyleState {
                 geometry_only: false,
                 order: Box::new([]),
@@ -174,5 +245,52 @@ mod tests {
         assert!(cache.entries.is_empty());
         assert!(cache.get("old").is_none());
         assert_eq!(Arc::strong_count(&old), 1);
+    }
+    #[test]
+    fn projection_retention_shares_budget_and_does_not_evict_states() {
+        let mut cache = StateCache::default();
+        let first = entry("a", 10);
+        let state = Arc::clone(&first.state);
+        cache.retain(first, 24);
+        cache.retain(entry("b", 10), 24);
+        cache.retain_projection(&state, "p", "123", 24);
+        assert_eq!(cache.bytes, 24);
+        assert_eq!(cache.projection(&state, "p").as_deref(), Some("123"));
+        cache.retain_projection(&state, "q", "longer", 24);
+        assert_eq!(cache.bytes, 24);
+        assert_eq!(cache.entries.len(), 2);
+        assert!(cache.projection(&state, "q").is_none());
+        assert_eq!(cache.projection(&state, "p").as_deref(), Some("123"));
+        cache.retain_projection(&state, "q", "1", 24);
+        assert_eq!(cache.bytes, 22);
+        assert!(cache.projection(&state, "p").is_none());
+        assert_eq!(cache.projection(&state, "q").as_deref(), Some("1"));
+        cache.retain(entry("a", 10), 24);
+        assert_eq!(cache.bytes, 20);
+        cache.retain_projection(&state, "old", "x", 24);
+        assert_eq!(cache.bytes, 20);
+        assert!(cache.projection(&state, "old").is_none());
+    }
+    #[test]
+    fn late_projection_cannot_resurrect_state_after_wire_publication() {
+        use super::super::{CachedResult, ResultCache};
+        let state = entry("x", 10).state;
+        let mut cache = ResultCache::default();
+        cache.retain_state("x", Arc::clone(&state), 0);
+        cache.retain_projection(&state, "p", "v", 0);
+        assert_eq!(cache.projection(&state, "p").as_deref(), Some("v"));
+        cache.retain_wire(
+            Some(CachedResult {
+                template: None,
+                wire: "wire".into(),
+                response: "value".into(),
+            }),
+            64,
+        );
+        let bytes = cache.bytes();
+        cache.retain_projection(&state, "p", "v", 0);
+        assert_eq!(cache.bytes(), bytes);
+        assert!(cache.projection(&state, "p").is_none());
+        assert_eq!(cache.wire("wire").as_deref(), Some("value"));
     }
 }

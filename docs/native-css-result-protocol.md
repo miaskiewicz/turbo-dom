@@ -47,3 +47,24 @@ were repeated. Shared desktop/VM activity remains a limitation. JavaScript stays
 the default, and the 2% wall-time gap target remains unmet. See the
 [complete receipt](benchmarks/css-protocols-vs-js-2026-11-28.json) for every block,
 CPU/callback metrics, artifact identities and qualifications.
+
+## Exact projection reuse
+
+Each retained immutable state can keep one successful projection response, keyed
+by its exact projection wire. Every call still checks the prepared owner and
+matching token and performs projection syntax, ABI and metadata validation.
+An exact successful wire and the same immutable state certify the reused values
+and quota outcome; changed options or limits take the ordinary projection path.
+This also preserves the existing geometry-before-projection-error ordering.
+
+Projection keys and response bytes consume only free space in the existing
+shared result payload allowance. They do not evict typed results to fit. A late
+publication cannot resurrect a retired state or cache mode. JavaScript still
+receives a fresh declaration snapshot; current callbacks and errors remain
+observable.
+
+In the recorded 118-request replay, projection materializations fell from 118 to 68
+while resolution hits/misses stayed 50/68. Native CPU fell 1.32%; packed wall time
+fell 0.87% and CPU 1.20%, each with six wins across seven ABBA blocks. This is an
+independent comparison against the preceding Rust build, not a new JS parity
+measurement. See [the complete receipt](benchmarks/css-projection-reuse-2026-11-28.json).

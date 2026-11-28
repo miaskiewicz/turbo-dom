@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Reuse exact successful native-state CSS projections under the existing shared
+  cache limit, preserving owner/token checks and fresh projection validation.
+  The 118-request replay performed 68 projections instead of 118, with unchanged
+  style-resolution hits. Native CPU fell 1.32%; packed Vitest wall time fell 0.87%
+  and CPU 1.20% (six of seven ABBA blocks each). JavaScript and wire transport
+  remain defaults. See [the measured receipt](docs/benchmarks/css-projection-reuse-2026-11-28.json).
+
 - Record a fresh same-package comparison of all three supported Rust CSS modes
   against legacy JavaScript after integration. Seven ABBA blocks per mode passed
   all 29 tests; whole-suite wall gaps were 6.15% for wire transport, 8.51% for

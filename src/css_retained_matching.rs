@@ -264,6 +264,29 @@ impl MatchingSlot {
             cache_hit: false,
         })
     }
+    pub(crate) fn project_state(
+        &self,
+        state: &Arc<super::native_state::NativeStyleState>,
+        wire: &str,
+    ) -> Result<String, String> {
+        // Fresh syntax/ABI checks precede lookup; the complete exact options
+        // and immutable state identity certify prior successful budget checks.
+        let options = crate::css_serialize::validate_projection(state, wire)?;
+        if let Some(response) = self
+            .result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .projection(state, wire)
+        {
+            return Ok(response);
+        }
+        let response = crate::css_serialize::project_validated_state(state, &options)?;
+        self.result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain_projection(state, wire, &response, self.payload_bytes);
+        Ok(response)
+    }
     pub(crate) fn resolve_state(
         &self,
         prepared: &PreparedStyles,
