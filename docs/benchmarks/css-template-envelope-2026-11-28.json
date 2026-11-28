@@ -1,0 +1,235 @@
+{
+  "date": "2026-11-28",
+  "baseCommit": "35215e3dc2c015e49e0c9d3386d4770b562d8c04",
+  "candidateArtifactSHA256": "a28040d5a2e721663a935307ce52fa526dce66a1e536816ea8b8ba3c994dae50",
+  "baselineArtifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+  "change": "Serialize borrowed template response fields directly into a bounded initially reserved buffer, then validate UTF-8 through String::from_utf8. Preserve serde escaping/order/null, publication/error timing and every request owner/token/quota check.",
+  "decision": "Keep for repeatable isolated CPU and allocation savings and a modest native replay reduction, with packed wall time and CPU effectively flat; do not claim a whole-suite speedup.",
+  "allocation": {
+    "rows": [
+      {
+        "allBytesEqual": true,
+        "allocationCallsPerCorpus": 141,
+        "allocationRequestedBytesPerCorpus": 102337,
+        "elapsedNs": 41,
+        "envelopesPerIteration": 14,
+        "iterations": 0,
+        "mode": "value",
+        "nsPerCorpus": null,
+        "outputBytesPerCorpus": 25459
+      },
+      {
+        "allBytesEqual": true,
+        "allocationCallsPerCorpus": 71,
+        "allocationRequestedBytesPerCorpus": 69888,
+        "elapsedNs": 0,
+        "envelopesPerIteration": 14,
+        "iterations": 0,
+        "mode": "borrowed",
+        "nsPerCorpus": null,
+        "outputBytesPerCorpus": 25459
+      },
+      {
+        "allBytesEqual": true,
+        "allocationCallsPerCorpus": 14,
+        "allocationRequestedBytesPerCorpus": 30018,
+        "elapsedNs": 41,
+        "envelopesPerIteration": 14,
+        "iterations": 0,
+        "mode": "reserved",
+        "nsPerCorpus": null,
+        "outputBytesPerCorpus": 25459
+      }
+    ],
+    "binarySHA256": "4c70fe5e6c4732785e6e06f3f4ccfeabb9c329a8034d407faf1f72df915a24be",
+    "fixtureSHA256": "fca62a7d2506fbb5019931af7b64218a4ab4362199e1a79b37fad487b9900d0d",
+    "qualification": "Only allocation and byte-equivalence controls executed; iterations0. Requested allocation bytes count realloc requested sizes, not retained/peak memory. Same14 authentic installation envelope responses/tokens."
+  },
+  "performance": {
+    "native": {
+      "cpuUs": {
+        "matchedMedianDeltaPct": -1.5396684062767174,
+        "blockDeltasPct": [
+          -3.919752898652118,
+          -2.6651804689329706,
+          2.1893206932023235,
+          -1.6638088151239683,
+          -1.5396684062767174,
+          2.8189796914362297,
+          -0.18033135044546178
+        ],
+        "wins": 5,
+        "baselineMedian": 1173042.0,
+        "candidateMedian": 1160038.5
+      },
+      "nsPerCorpus": {
+        "matchedMedianDeltaPct": -1.5998315141882213,
+        "blockDeltasPct": [
+          -4.332957460745868,
+          -2.9251815326235886,
+          2.318634087112814,
+          -1.9185919956259623,
+          -1.5998315141882213,
+          2.7788171033956255,
+          -0.047442227637217727
+        ],
+        "wins": 5,
+        "baselineMedian": 11767092.295,
+        "candidateMedian": 11609955.83
+      }
+    },
+    "packed": {
+      "wallMs": {
+        "matchedMedianDeltaPct": 0.33597099344084835,
+        "blockDeltasPct": [
+          -0.6660235832063988,
+          1.6280727742196133,
+          0.33597099344084835,
+          1.1236604044802645,
+          -1.9616281546978143,
+          -1.6062908825221767,
+          1.422346010399611
+        ],
+        "wins": 3,
+        "leftMedian": 1675.3584374964703,
+        "rightMedian": 1673.9831455342937
+      },
+      "callbackMs": {
+        "matchedMedianDeltaPct": -0.5296240917996076,
+        "blockDeltasPct": [
+          1.8516392349628985,
+          -0.5296240917996076,
+          -2.437901457084779,
+          1.7774285992812278,
+          -3.5231260853539337,
+          -1.532195020397198,
+          1.0097345851542094
+        ],
+        "wins": 4,
+        "leftMedian": 287.2243124999999,
+        "rightMedian": 285.10654149999993
+      },
+      "childCpuMs": {
+        "matchedMedianDeltaPct": 0.17856425070201798,
+        "blockDeltasPct": [
+          -0.3307300319444706,
+          1.3836929355810934,
+          0.17856425070201798,
+          0.3164234445778735,
+          -1.917983318156391,
+          -2.0436696369493523,
+          1.0404723823087991
+        ],
+        "wins": 3,
+        "leftMedian": 1965.947499999999,
+        "rightMedian": 1959.5100000000004
+      }
+    },
+    "micro": {
+      "micro-value-borrowed": {
+        "cpuUs": {
+          "matchedMedianDeltaPct": -11.482109632501391,
+          "blockDeltasPct": [
+            -13.15181618722574,
+            -13.312775637614605,
+            -12.44773546489485,
+            -11.482109632501391,
+            -10.647120028574298,
+            -10.471998013354234,
+            -9.391243185124276
+          ],
+          "wins": 7
+        },
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -11.44598723145769,
+          "blockDeltasPct": [
+            -13.56741488146308,
+            -16.529712011273133,
+            -12.588359220900546,
+            -11.44598723145769,
+            -10.690293663296702,
+            -10.59961558389203,
+            -9.136532228536442
+          ],
+          "wins": 7
+        }
+      },
+      "micro-value-reserved": {
+        "cpuUs": {
+          "matchedMedianDeltaPct": -20.26630550425792,
+          "blockDeltasPct": [
+            -20.020708826437673,
+            -20.26630550425792,
+            -20.58471752593869,
+            -19.775459319413347,
+            -18.5406980348398,
+            -21.383842870371105,
+            -20.675448935098185
+          ],
+          "wins": 7
+        },
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -20.3976312408628,
+          "blockDeltasPct": [
+            -20.132805530689936,
+            -20.3976312408628,
+            -21.057617005047614,
+            -19.979330942692364,
+            -18.656648194918535,
+            -21.488120082840933,
+            -20.855372333045143
+          ],
+          "wins": 7
+        }
+      }
+    }
+  },
+  "method": {
+    "native": "Authentic 118-request corpus. Both arms use context-template-v1: 14 installations, 93 compact calls, 11 exact full-wire reuses. Seven ABBA blocks, 100 iterations per run and two warmups. Includes NAPI and JavaScript replay overhead.",
+    "packed": "The same installed-package 29-test suite, with both arms using context-template-v1 requests and wire-v1 results. Seven ABBA blocks.",
+    "micro": "The same 14 actual native-produced envelopes, with byte equivalence verified before timing. Seven ABBA blocks and 20,000 iterations per run. The timing binary uses the default System allocator with no counting wrapper; the separate counting binary is used only for allocation proof.",
+    "bytes": "Native corpus: 482,782 identical output bytes. Envelope-only corpus: 25,459 identical bytes across all variants."
+  },
+  "qualifications": [
+    "Comparison is against accepted native artifact 5a83, not JavaScript.",
+    "Only 14 installation envelopes change, so the isolated 20.27% CPU reduction does not imply an equivalent reduction across the whole corpus or suite.",
+    "Native five-of-seven wins and mixed packed blocks are reported without dropping outliers.",
+    "Requested allocation bytes include reallocation requests; this is not retained or peak process memory.",
+    "Initial capacity is a bounded hint, not a correctness cap. The serializer grows the buffer for large or heavily escaped inputs.",
+    "The default CSS backend and protocol remain unchanged.",
+    "Integration with other candidates requires separate combined validation."
+  ],
+  "gates": {
+    "nativeTests": 129,
+    "nativeFailures": 0,
+    "strictClippy": true,
+    "fmt": true,
+    "cc9": true,
+    "packedBaseline": 29,
+    "packedCandidate": 29,
+    "sourceReview": "approved",
+    "coverage": {
+      "nativeTemplate": {
+        "covered": 124,
+        "total": 124
+      },
+      "parserCore": {
+        "covered": 575,
+        "total": 575
+      },
+      "noExclusionsOrFloorChanges": true
+    }
+  },
+  "microArtifacts": {
+    "timingBinary": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/direct-envelope/v11/microbench-timing-bin",
+    "timingBinarySHA256": "92978f61a2b2f169dd72a2a5323eb8dd5705fde1a5f817b5dc74da9ae07e008d",
+    "timingSourceSHA256": "2a6c5ac75047b473dd447b9d8b49a4e388aaefbc4ee57ec44f3ab5af0758ee31",
+    "productionSnippetSHA256": "0f6967d2d00af19f869ef63f42014904f3af60f8b2ce9cf17ae19105076826d3",
+    "allocationOnlyBinary": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/direct-envelope/v11/microbench-bin",
+    "allocationOnlySHA256": "4c70fe5e6c4732785e6e06f3f4ccfeabb9c329a8034d407faf1f72df915a24be",
+    "allocationSourceSHA256": "570659f548e7ff8a96dceb3a50ca63c812dfa9f19a094b51366092b299267b69",
+    "runnerSHA256": "3810ee1e801974ffc0af77d904413bf8cc301458bb1dbad739e8b6b2339412c3",
+    "method": "Timing source contains no global_allocator, GlobalAlloc, COUNTS or counting layer. Default System allocator. Shared exact encode/InputEnvelope source and production helper copied without change; separate allocation proof preserved. No timing run yet."
+  },
+  "integrationQualification": "Independent performance was measured against commit35215 before projection reuse integration. Promotion onto810f12ac includes accepted projection reuse and receives fresh native controls and an optimized artifact. No combined timing claim."
+}

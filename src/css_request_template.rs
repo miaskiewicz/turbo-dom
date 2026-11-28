@@ -3,6 +3,34 @@ use super::{available_result_bytes, next_token, CachedResult, MatchingSlot, Prep
 use crate::css_resolve::{apply_matching, fail, parse, Context, ResolveInput, Target};
 
 const MAX_CONTEXTS: usize = 16;
+#[derive(serde::Serialize)]
+struct TemplateResponse<'a> {
+    response: &'a str,
+    #[serde(rename = "templateToken")]
+    template_token: Option<&'a str>,
+}
+fn encode_template_response(
+    response: &str,
+    template_token: Option<&str>,
+) -> Result<String, String> {
+    // This is only a bounded allocation hint; escaping still grows the buffer as needed.
+    let capacity = response
+        .len()
+        .saturating_add(response.len() / 4)
+        .saturating_add(template_token.map_or(0, str::len))
+        .saturating_add(64)
+        .min(64 * 1024);
+    let mut bytes = Vec::with_capacity(capacity);
+    serde_json::to_writer(
+        &mut bytes,
+        &TemplateResponse {
+            response,
+            template_token,
+        },
+    )
+    .map_err(|error| format!("CSSBackendTransport:{error}"))?;
+    String::from_utf8(bytes).map_err(|error| format!("CSSBackendTransport:{error}"))
+}
 pub(super) struct Template {
     token: String,
     contexts: std::sync::Arc<[Context]>,
@@ -69,8 +97,7 @@ impl MatchingSlot {
             .transpose()?
             .flatten();
         let response = resolved.response;
-        serde_json::to_string(&serde_json::json!({"response":response,"templateToken":token}))
-            .map_err(|error| format!("CSSBackendTransport:{error}"))
+        encode_template_response(&response, token.as_deref())
     }
     fn cached_contexts(wire: &str) -> Result<Option<Vec<Context>>, String> {
         // A successful exact full-wire cache hit has no retained typed input.
@@ -239,5 +266,43 @@ mod publication_tests {
         assert!(slot.result.lock().unwrap().state("state").is_none());
         slot.retain_template_response("late", "result", &token);
         assert!(slot.payload_bytes() <= 64 * 1024);
+    }
+}
+
+#[cfg(test)]
+mod response_serialization_tests {
+    use super::encode_template_response;
+
+    #[test]
+    fn borrowed_envelope_matches_value_bytes_for_all_escape_classes() {
+        let controls: String = (0..=31).map(char::from).collect();
+        let response = format!("{controls}\"\\ /é λ 🦀 \u{2028}\u{2029}");
+        for value in ["", "{}", "null", r"\uD800\uDC00\uDFFF", &response] {
+            for token in [None, Some(""), Some("template:1"), Some(response.as_str())] {
+                let expected = serde_json::to_string(
+                    &serde_json::json!({"response":value,"templateToken":token}),
+                )
+                .unwrap();
+                let actual = encode_template_response(value, token).unwrap();
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn reserve_hint_does_not_limit_control_escaping_or_large_responses() {
+        for response in ["\0".repeat(20_000), "é".repeat(40_000)] {
+            let expected = serde_json::to_string(
+                &serde_json::json!({"response":response,"templateToken":null}),
+            )
+            .unwrap();
+            assert_eq!(encode_template_response(&response, None).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn null_token_and_key_order_remain_explicit() {
+        let actual = encode_template_response("{}", None).unwrap();
+        assert_eq!(actual, r#"{"response":"{}","templateToken":null}"#);
     }
 }

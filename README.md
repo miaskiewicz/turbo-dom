@@ -143,6 +143,10 @@ reduced native replay CPU by 1.32% and packed wall time by 0.87% versus the prec
 Rust build (six of seven ABBA wins each). It applies to the explicit native-state
 result protocol; the table above predates this change and is not a fresh JS
 comparison of it.
+The [template-envelope refinement](docs/benchmarks/css-template-envelope-2026-11-28.json)
+cut isolated serialization CPU by 20.27% and full native replay CPU by 1.54%,
+with packed timing effectively flat. It uses the existing request-template opt-in;
+these independently measured gains must not be added to the projection results.
 The two optimized protocols cannot yet be combined. A competing compiler
 invalidated the initial opt-in timings; both were repeated, and all raw samples
 were retained. Desktop/VM activity remains a measurement limitation.

@@ -46,3 +46,20 @@ were repeated. Shared desktop/VM activity remains a limitation. JavaScript stays
 the default, and the 2% wall-time gap target remains unmet. See the
 [complete receipt](benchmarks/css-protocols-vs-js-2026-11-28.json) for every block,
 CPU/callback metrics, artifact identities and qualifications.
+
+## Envelope allocation improvement
+
+Template installation now serializes its response directly into a buffer with a
+bounded initial capacity hint. The buffer may grow for escaping or larger inputs;
+the hint is not a quota. Normal serde serialization and checked UTF-8 conversion
+preserve exact output bytes, field order, nulls and publication/error ordering.
+No new option is needed: this applies to `context-template-v1` installation.
+
+Across the 14 actual installation envelopes, allocations fell from 141 to 14.
+An isolated benchmark using the default System allocator measured 20.27% less
+serialization CPU, winning all seven ABBA blocks. The full native replay measured
+1.54% less CPU with five wins; packed wall time (+0.34%) and CPU (+0.18%) were
+effectively flat. Allocation counts were gathered separately from timing to avoid
+counting-allocator overhead. These independent results precede the coherent build
+with projection reuse; they are not additive or a new JS-parity claim. See
+[all results and identities](benchmarks/css-template-envelope-2026-11-28.json).

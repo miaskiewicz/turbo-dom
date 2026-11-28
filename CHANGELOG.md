@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Serialize native request-template envelopes directly into a bounded initially
+  reserved buffer, preserving exact JSON bytes and using checked UTF-8 conversion.
+  Across 14 real installation responses, allocations fell from 141 to 14 and
+  isolated serialization CPU fell 20.27% (seven of seven ABBA blocks). Native
+  replay CPU fell 1.54% (five wins); packed wall and CPU remained effectively flat.
+  The existing request-template opt-in and JS default are unchanged. See
+  [the benchmark receipt](docs/benchmarks/css-template-envelope-2026-11-28.json).
+
 - Reuse exact successful native-state CSS projections under the existing shared
   cache limit, preserving owner/token checks and fresh projection validation.
   The 118-request replay performed 68 projections instead of 118, with unchanged
