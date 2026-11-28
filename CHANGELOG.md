@@ -7,6 +7,14 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Add optional `cssRequestProtocol: 'context-template-v1'` under the existing Rust
+  CSS backend. Reuse bounded successful native contexts while retaining fresh
+  request validation, quotas, ownership and callback errors. Default wire transport
+  is unchanged; combining context templates with native-state results fails explicitly.
+  The independent packed suite improved 0.705% across seven ABBA blocks, with flat
+  CPU; native replay CPU did not improve. See the
+  [request protocol contract](docs/native-css-request-protocol.md).
+
 - Add explicit `cssResultProtocol: 'native-state-v1'` for Rust CSS. Retain typed
   results in Rust and project computed-style snapshots without a full JSON result
   round-trip. Preserve owner, quota, disposal and used-value behavior; unsupported

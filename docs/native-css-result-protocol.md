@@ -10,7 +10,7 @@ const env = createEnvironment(html, {
 });
 ```
 
-`cssResultProtocol` defaults to `wire-v1`. `native-state-v1` requires `cssBackend: 'rust'`; incompatible or unknown values throw. `installGlobals` forwards the option and environment reset preserves it. Select another protocol by creating another environment.
+`cssResultProtocol` defaults to `wire-v1`. `native-state-v1` requires `cssBackend: 'rust'`; incompatible or unknown values throw. `cssRequestProtocol` must remain `wire-v1` in this mode; selecting `context-template-v1` together with native-state results throws explicitly. `installGlobals` forwards the option and environment reset preserves it. Select another protocol by creating another environment.
 
 ## Callback contract
 

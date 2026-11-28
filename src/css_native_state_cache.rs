@@ -1,4 +1,4 @@
-use super::{available_result_bytes, CachedResult, SuccessCache, MAX_RESULT_ENTRIES};
+use super::{available_result_bytes, CachedResult, WireCache, MAX_RESULT_ENTRIES};
 use crate::css_resolve::native_state::NativeStyleState;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -47,25 +47,46 @@ impl StateCache {
     }
 }
 pub(super) enum ResultCache {
-    Wire(SuccessCache),
+    Wire(WireCache),
     State(StateCache),
 }
 impl Default for ResultCache {
     fn default() -> Self {
-        Self::Wire(SuccessCache::default())
+        Self::Wire(WireCache::default())
     }
 }
 impl ResultCache {
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::Wire(cache) => cache.bytes,
+            Self::Wire(cache) => cache.bytes(),
             Self::State(cache) => cache.bytes,
         }
     }
     pub(super) fn wire(&mut self, wire: &str) -> Option<String> {
         match self {
-            Self::Wire(cache) => cache.get(wire),
+            Self::Wire(cache) => cache.cache.get(wire),
             Self::State(_) => None,
+        }
+    }
+    pub(super) fn template_bytes(&self) -> usize {
+        match self {
+            Self::Wire(cache) => cache.template_bytes(),
+            Self::State(_) => 0,
+        }
+    }
+    pub(super) fn wire_cache_mut(&mut self) -> Option<&mut WireCache> {
+        match self {
+            Self::Wire(cache) => Some(cache),
+            Self::State(_) => None,
+        }
+    }
+    pub(super) fn ensure_wire(&mut self) -> &mut WireCache {
+        if !matches!(self, Self::Wire(_)) {
+            *self = Self::Wire(WireCache::default());
+        }
+        match self {
+            Self::Wire(cache) => cache,
+            Self::State(_) => unreachable!(),
         }
     }
     pub(super) fn state(&mut self, wire: &str) -> Option<Arc<NativeStyleState>> {
@@ -76,10 +97,10 @@ impl ResultCache {
     }
     pub(super) fn retain_wire(&mut self, entry: Option<CachedResult>, available: usize) {
         if !matches!(self, Self::Wire(_)) {
-            *self = Self::Wire(SuccessCache::default());
+            *self = Self::Wire(WireCache::default());
         }
         if let Self::Wire(cache) = self {
-            cache.retain(entry, available);
+            cache.cache.retain(entry, available);
         }
     }
     pub(super) fn retain_state(

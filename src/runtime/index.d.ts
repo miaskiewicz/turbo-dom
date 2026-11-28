@@ -15,6 +15,8 @@ export type ParserMode = 'wasm' | 'native' | 'auto';
 
 /** Rust result transport; native-state-v1 opts into its distinct callback protocol. */
 export type CssResultProtocol = 'wire-v1' | 'native-state-v1';
+/** Input transport; templates currently require Rust wire results. */
+export type CssRequestProtocol = 'wire-v1' | 'context-template-v1';
 
 export type CustomElementState = 'undefined' | 'failed' | 'uncustomized' | 'precustomized' | 'custom';
 
@@ -23,6 +25,8 @@ export interface EnvironmentOptions {
   cssBackend?: 'js' | 'rust';
   /** Defaults to wire-v1. native-state-v1 requires cssBackend: rust and its native capability. */
   cssResultProtocol?: CssResultProtocol;
+  /** Defaults to wire-v1. context-template-v1 requires Rust and wire-v1 results. */
+  cssRequestProtocol?: CssRequestProtocol;
   /** Per-environment DOM runtime. Defaults to js. The rust option requires a future Node browser-env binding. */
   domBackend?: 'js' | 'rust';
   /** Parser selection, applied process-wide before the first parse. */

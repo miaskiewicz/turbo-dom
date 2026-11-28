@@ -194,3 +194,93 @@ export function createOwnedJsonCssWire() {
   reset() { fragments = new NativeWeakMap(); units = 0; },
  };
 }
+
+// Experimental request-state transport records private encoded segments during
+// the original traversal. A warm read constructs only its compact wire.
+const defineWireField = Object.defineProperty;
+function appendWire(array, value) {
+ defineWireField(array, array.length, {value,enumerable:true,writable:true,configurable:true});
+}
+function appendSegment(state, value) {
+ state.segments[state.segmentCount++] = value;
+}
+function findContext(contexts, full) {
+ for (let index = 0; index < (contexts?.length ?? 0); index++) {
+  if (contexts[index] === full) return index;
+ }
+ return -1;
+}
+function contextWire(value, state) {
+ const full = ownData(value, state.active), index = state.contexts.length;
+ appendWire(state.contexts, full);
+ const reference = findContext(state.previous, full);
+ if (reference === -1) state.reusable = false;
+ appendWire(state.references, reference);
+ appendWire(state.selfReferences, findContext(state.contexts, full));
+ appendSegment(state, index);
+}
+function requestField(property, role, state) {
+ if (!own(property, 'value')) throw invalid();
+ if (role === 4) return contextWire(property.value, state);
+ requestData(property.value, role, state);
+}
+function requestRecord(properties, role, state) {
+ appendSegment(state, '{');
+ let separator = '';
+ const names = keys(properties);
+ for (let index = 0; index < names.length; index++) {
+  const name = names[index], property = properties[name];
+  if (!property.enumerable) continue;
+  const child = role === 1 && name === 'targets' ? 2 : role === 3 && name === 'context' ? 4 : 0;
+  appendSegment(state, separator + stringify(name) + ':');
+  requestField(property, child, state);
+  separator = ',';
+ }
+ appendSegment(state, '}');
+}
+function requestArray(properties, state) {
+ const length = properties.length.value;
+ if (keys(properties).length !== length + 1) throw invalid();
+ appendSegment(state, '[');
+ for (let index = 0; index < length; index++) {
+  if (!own(properties, index)) throw invalid();
+  if (index > 0) appendSegment(state, ',');
+  requestField(properties[index], 3, state);
+ }
+ appendSegment(state, ']');
+}
+function requestData(value, role, state) {
+ if (role === 0) return appendSegment(state, ownData(value, state.active));
+ const scalar = scalarData(value);
+ if (scalar !== undefined) return appendSegment(state, scalar);
+ if (typeof value !== 'object') throw invalid();
+ if (apply(setHas, state.active, [value])) throw new TypeError('turbo-dom: cyclic CSS wire DTO');
+ apply(setAdd, state.active, [value]);
+ try {
+  const properties = descriptors(value), array = isArray(value);
+  requestContainer(properties, role, state, array);
+ } finally { apply(setDelete, state.active, [value]); }
+}
+function requestContainer(properties, role, state, array) {
+ if (array) {
+  if (role === 2) return requestArray(properties, state);
+  return appendSegment(state, arrayData(properties, state.active));
+ }
+ if (role !== 2) return requestRecord(properties, role, state);
+ appendSegment(state, recordData(properties, state.active));
+}
+function renderWire(state, references) {
+ let wire = '';
+ for (let index = 0; index < state.segmentCount; index++) {
+  const segment = state.segments[index];
+  wire += typeof segment === 'string' ? segment : references ? scalarString(references[segment]) : state.contexts[segment];
+ }
+ return wire;
+}
+export function encodeCssRequestState(value, previous) {
+ const state = { __proto__: null, active:new SetConstructor(),contexts:[],references:[],selfReferences:[],segments:{__proto__:null},segmentCount:0,previous,reusable:previous!==undefined };
+ requestData(value, 1, state);
+ const compact = renderWire(state, state.reusable ? state.references : state.selfReferences);
+ let full;
+ return { __proto__:null, get full(){return full ??= renderWire(state);}, compact,contexts:state.contexts,reusable:state.reusable };
+}

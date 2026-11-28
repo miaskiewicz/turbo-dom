@@ -18,8 +18,8 @@ function installedGetter(document,window,name){
 function recordCssGetter(records,name,get){
  if(name==='innerWidth'||name==='innerHeight'||name==='devicePixelRatio'||name==='TextEncoder'||name==='TextDecoder')records[name]=get;
 }
-export function installGlobals(target, { html = DEFAULT_HTML, url, domBackend, cssBackend, cssResultProtocol } = {}) {
-  const env = createEnvironment(html, { url: url || undefined, domBackend, cssBackend, cssResultProtocol });
+export function installGlobals(target, { html = DEFAULT_HTML, url, domBackend, cssBackend, cssResultProtocol, cssRequestProtocol } = {}) {
+  const env = createEnvironment(html, { url: url || undefined, domBackend, cssBackend, cssResultProtocol, cssRequestProtocol });
   const { window } = env;
 
   const cssViewportGetters = {};

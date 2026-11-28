@@ -52,18 +52,18 @@ function hostPlatform(){
  return field.value==='darwin'?'macos':'other';
 }
 function readWindowContext(document){return{...readNativeCssWindowContext(document),hostPlatform:hostPlatform(),mediaType:'screen'};}
-function documentAdapter(document,backend,nativeStateMode){
+function documentAdapter(document,backend,nativeStateMode,requestState){
  let entry=apply(mapGet,documents,[document]);
- if(!entry||entry.backend!==backend||entry.nativeStateMode!==nativeStateMode){
+ if(!entry||entry.backend!==backend||entry.nativeStateMode!==nativeStateMode||entry.requestState!==requestState){
   if(entry)entry.adapter.dispose();
   const capture=createDefaultCssCapture(),modelKeys=createOwnedJsonCssWire(),resourcePolicy=runtimePolicy(backend,modelKeys,nativeStateMode);
   const options=createDefaultCssProfile({backend,capture,readWindowContext,resourcePolicy,decodeResult:modelKeys.decode});
-  entry={backend,nativeStateMode,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true,modelKeys,resourcePolicy.statePolicy)};
+  entry={backend,nativeStateMode,requestState,maxDepth:resourcePolicy.snapshot().maxDepth,adapter:createDefaultSharedCssAdapter(options,true,true,modelKeys,resourcePolicy.statePolicy,requestState)};
   apply(mapSet,documents,[document,entry]);
  }
  return entry;
 }
-export function makeDefaultGetComputedStyle({requireBackend=false,nativeStateMode=false}={}){
+export function makeDefaultGetComputedStyle({requireBackend=false,nativeStateMode=false,requestState=false}={}){
  const legacy=makeLegacyComputedStyle();
  return function getComputedStyle(element,pseudo){
   if(element===null)return createComputedStyleProxy({values:{},custom:{}},0);
@@ -71,7 +71,7 @@ export function makeDefaultGetComputedStyle({requireBackend=false,nativeStateMod
   const backend=artifactResolver.resolve(getParserSelection());
   if(backend===null){if(requireBackend)throw new CssDefaultUnavailable('Rust CSS artifact');return legacy(element,pseudo);}
   const document=nativeDocument(element);
-  const entry=documentAdapter(document,backend,nativeStateMode);
+  const entry=documentAdapter(document,backend,nativeStateMode,requestState);
   if(!nativeCssConnected(element,document,entry.maxDepth))return createComputedStyleProxy({values:{},custom:{}},0);
   return entry.adapter.get(element,pseudo);
  };

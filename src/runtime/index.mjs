@@ -1,3 +1,4 @@
+import {validateCssRequestProtocol} from './css-request-protocol.mjs';
 import {validateCssResultProtocol} from './css-result-protocol.mjs';
 // turbo-dom test runtime — assembles Layers 1–5 into a jsdom-like environment.
 //
@@ -82,10 +83,16 @@ function validateCssBackend(backend) {
   if (backend !== 'js' && backend !== 'rust') throw new TypeError('turbo-dom: cssBackend must be "js" or "rust"');
 }
 
-export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
-  const { domBackend = 'js', cssBackend = 'js', cssResultProtocol = 'wire-v1' } = options;
+function environmentBackendOptions(options) {
+  const { domBackend = 'js', cssBackend = 'js', cssResultProtocol = 'wire-v1', cssRequestProtocol = 'wire-v1' } = options;
   validateCssBackend(cssBackend);
   validateCssResultProtocol(cssBackend,cssResultProtocol);
+  validateCssRequestProtocol(cssBackend,cssRequestProtocol,cssResultProtocol);
+  return {domBackend,cssBackend};
+}
+
+export function createEnvironment(html = '<!doctype html><html><head></head><body></body></html>', options = {}) {
+  const {domBackend,cssBackend}=environmentBackendOptions(options);
   if (domBackend === 'rust') throw new Error('turbo-dom: domBackend "rust" requires a Node browser-env binding, which this build does not include');
   if (domBackend !== 'js') throw new TypeError('turbo-dom: domBackend must be "js" or "rust"');
 

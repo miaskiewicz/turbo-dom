@@ -1,3 +1,4 @@
+import {encodeCssRequestState} from './css-rust-wire.mjs';
 import {createStyleStateSession} from './css-native-style-state.mjs';
 import { matchingIntrinsicsIntact } from './css-matching-integrity.mjs';
 import { readCssFactsNavigator } from './css-facts-navigator.mjs';
@@ -404,7 +405,7 @@ function matchingEntry(facts, active, prepared, enabled, useCapturedRoutes) {
  facts.cachedMatching = entry;
  return entry;
 }
-function encodeTargetRequest(request, entry) {
+function targetRequest(request, entry) {
  const remainder = cacheCreate(null);
  const keys = sharedKeys(request);
  for (let index = 0; index < keys.length; index++) {
@@ -412,8 +413,9 @@ function encodeTargetRequest(request, entry) {
   if (!cacheOwn(entry.mechanical, key))
    sharedDefine(remainder, key, sharedDescriptor(request, key));
  }
- return sharedEncode(remainder);
+ return remainder;
 }
+function encodeTargetRequest(request, entry) { return sharedEncode(targetRequest(request, entry)); }
 function encodeMatchingRequest(request, entry) {
  return sharedApply('stringSlice', encodeTargetRequest(request, entry), 0, -1) + ',' + sharedApply('stringSlice', entry.wire, 1);
 }
@@ -422,8 +424,8 @@ export function createSharedCssAdapter(options) {
  return createAdapter(options, false);
 }
 // Only the public default adapter owns the native capture and JSON policy.
-export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy) {
- return createAdapter(options, cacheMatching, useCapturedRoutes, modelKeys, statePolicy);
+export function createDefaultSharedCssAdapter(options, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy, requestState = false) {
+ return createAdapter(options, cacheMatching, useCapturedRoutes, modelKeys, statePolicy, requestState);
 }
 function capturedSources(capture, document, snapshot, context) {
   if (capture !== undefined) return sharedInvoke(capture, undefined, [snapshot, context]);
@@ -439,7 +441,7 @@ function createAdapter({
 	profile,
 	limits,
 	measureScene,
-}, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy) {
+}, cacheMatching, useCapturedRoutes = false, modelKeys, statePolicy, requestState = false) {
 	if (captureSelectorFacts !== undefined) required(captureSelectorFacts, 'captureSelectorFacts');
 	if (captureSourceFacts !== undefined) required(captureSourceFacts, 'captureSourceFacts');
 	const callbacks = {
@@ -473,8 +475,13 @@ function createAdapter({
 	let selectedBackend = null;
 	const requestWires = new RequestWires();
  const retainedMatching = new RequestWires();
+ const retainedTemplates = new RequestWires();
  const stateSession = statePolicy === undefined ? null : createStyleStateSession(statePolicy);
- const projectionRequest = result => stateSession ? stateSession.request(result) : result;
+ const templateRequests = new RequestWires();
+ const projectionRequest = result => {
+  if(requestState)sharedInvoke(wireSet,templateRequests,[result.request,true]);
+  return stateSession ? stateSession.request(result) : result;
+ };
 	function fullStyleRequest(element, pseudo, context, metadata, prepared, snapshot, matching) {
 		const {mechanical} = matching;
 		const selected = targets(snapshot, pseudo, element, profile, active.routing, useCapturedRoutes);
@@ -528,10 +535,49 @@ function createAdapter({
 			},
 		};
 	}
+ function requestStateEntry(encoded, token, matching) {
+  if (token === null) return undefined;
+  let units = 0;
+  for (let index = 0; index < encoded.contexts.length; index++) units += encoded.contexts[index].length;
+  if (units > 32768) return undefined;
+  const full = encoded.full, compact = encoded.compact;
+  const keep = units + full.length + compact.length <= 32768;
+  return {matching, token, contexts:encoded.contexts, full:keep ? full : undefined, compact:keep ? compact : undefined};
+ }
+ function identicalContexts(previous, current) {
+  if (previous.length !== current.length) return false;
+  for (let index = 0; index < previous.length; index++) if (previous[index] !== current[index]) return false;
+  return true;
+ }
+ function reuseRequestState(prepared, encoded, owned, slot) {
+  if (owned.full !== undefined && owned.compact === encoded.compact && identicalContexts(owned.contexts, encoded.contexts))
+   return prepared.resolveMatchingV1(owned.full, slot.token);
+  return prepared.resolveTemplateV1(encoded.compact, slot.token, owned.token);
+ }
+ function resolveRequestState(prepared, request, entry, slot) {
+  if (typeof prepared.resolveRequestTemplateV1 !== 'function' || typeof prepared.resolveTemplateV1 !== 'function')
+   throw new TypeError('turbo-dom: context-template-v1 capability unavailable');
+  const previous = sharedInvoke(wireGet, retainedTemplates, [prepared]);
+  const owned = previous?.matching === slot.token ? previous : undefined;
+  const encoded = encodeCssRequestState(targetRequest(request, entry), owned?.contexts);
+  if (owned && encoded.reusable) return reuseRequestState(prepared, encoded, owned, slot);
+  const result = decode(prepared.resolveRequestTemplateV1(encoded.full, slot.token));
+  const next = requestStateEntry(encoded, result.templateToken, slot.token);
+  sharedInvoke(wireSet, retainedTemplates, [prepared, next]);
+  return result.response;
+ }
   function resolveCompleteRequest(prepared, request, entry) {
+    if(requestState && sharedInvoke(wireGet,templateRequests,[request]))throw new TypeError('turbo-dom: context-template-v1 requires retained matching capability');
     stateSession?.requireMatching(request);
     return prepared.resolveBatch(entry ? encodeMatchingRequest(request, entry) : sharedEncode(request));
   }
+ function resolveRetainedResult(prepared,request,entry,slot) {
+      if(requestState && sharedInvoke(wireGet,templateRequests,[request]))return resolveRequestState(prepared, request, entry, slot);
+      const wire = encodeTargetRequest(request, entry);
+      const projected = stateSession?.resolve(prepared, wire, slot.token, request);
+      return projected === undefined ? prepared.resolveMatchingV1(wire, slot.token) : projected;
+ }
+
 	const factory = createSharedComputedStyle({
     resolveBatch(prepared, request) {
       const entry = sharedInvoke(wireGet, requestWires, [request]);
@@ -548,9 +594,7 @@ function createAdapter({
         slot = { entry, token };
         sharedInvoke(wireSet, retainedMatching, [prepared, slot]);
       }
-      const wire = encodeTargetRequest(request, entry);
-      const projected = stateSession?.resolve(prepared, wire, slot.token, request);
-      return projected === undefined ? prepared.resolveMatchingV1(wire, slot.token) : projected;
+      return resolveRetainedResult(prepared,request,entry,slot);
     },
 		encodeRequest: sharedEncode,
     encodeCompileKey: modelKeys?.compile,

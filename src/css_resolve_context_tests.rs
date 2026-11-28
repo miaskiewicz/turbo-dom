@@ -260,3 +260,73 @@ fn inactive_and_disabled_uses_accept_known_context_answers_but_still_charge_unus
         );
     }
 }
+
+#[test]
+fn native_origin_names_and_legacy_duplicate_fact_errors_are_exact() {
+    assert_eq!(origin_name(CascadeOrigin::UserAgent), "user-agent");
+    assert_eq!(origin_name(CascadeOrigin::User), "user");
+    let mut duplicate = request();
+    duplicate["domains"] = json!([{"id":0,"nodeIds":[11]},{"id":0,"nodeIds":[11]}]);
+    assert_eq!(
+        resolve_batch(&model(), &duplicate.to_string()),
+        Err(fail("DuplicateDomain"))
+    );
+    duplicate = request();
+    duplicate.as_object_mut().unwrap().remove("contextAnswers");
+    duplicate["selectorAnswers"] = json!([
+        {"selectorId":0,"itemId":0,"rootId":null,"domainId":0,"matches":[11]},
+        {"selectorId":0,"itemId":0,"rootId":null,"domainId":0,"matches":[11]}]);
+    assert_eq!(
+        resolve_batch(&model(), &duplicate.to_string()),
+        Err(fail("DuplicateSelectorAnswer"))
+    );
+}
+#[test]
+fn legacy_scope_boundaries_charge_ids_and_reject_duplicate_boundary_keys() {
+    let domain = domains(vec![DomainRow {
+        id: 0,
+        node_ids: vec![11],
+    }])
+    .unwrap();
+    let rows = json!([
+        {"groupId":0,"boundary":"start","rootId":10,"domainId":0,"matches":[11]},
+        {"groupId":0,"boundary":"end","rootId":10,"domainId":0,"matches":[]}]);
+    let answers = boundary_answers(serde_json::from_value(rows.clone()).unwrap(), &domain).unwrap();
+    assert_eq!(answers.len(), 2);
+    let mut facts: Matching = serde_json::from_value(
+        json!({"domains":[{"id":0,"nodeIds":[11]}],"selectorAnswers":[],"scopeAnswers":rows}),
+    )
+    .unwrap();
+    let mut usage = Usage::default();
+    usage
+        .common(
+            &facts,
+            serde_json::from_value(request()["limits"].clone()).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(usage.ids, 2);
+    facts
+        .scope_answers
+        .push(serde_json::from_value(rows[0].clone()).unwrap());
+    assert!(
+        matches!(boundary_answers(facts.scope_answers, &domain), Err(error) if error == fail("DuplicateScopeAnswer"))
+    );
+}
+#[test]
+fn native_route_pseudo_and_missing_context_errors_keep_their_order() {
+    let mut input = request();
+    input["contextRoots"] = json!([]);
+    input.as_object_mut().unwrap().remove("contextAnswers");
+    assert_eq!(
+        resolve_batch(&model(), &input.to_string()),
+        Err(fail("MissingRouteContext"))
+    );
+    input = request();
+    input["targets"][0]["pseudo"] = json!("unsupported");
+    assert_eq!(
+        resolve_batch(&model(), &input.to_string()),
+        Err(fail("UnsupportedRoutePseudo"))
+    );
+    input["targets"][0]["pseudo"] = json!("after");
+    assert!(resolve_batch(&model(), &input.to_string()).is_ok());
+}

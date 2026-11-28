@@ -1,8 +1,8 @@
 //! One native answer set per prepared model. Only the owning adapter can prove
 //! that current DOM, sheet and selector inputs still produce these answers.
 use super::{
-    apply_matching, apply_native_state, fail, parse, Matching, PreparedStyles, ResolveInput,
-    ValidatedMatching,
+    apply_matching_receipt, apply_native_state, fail, parse, Context, Matching, PreparedStyles,
+    ResolveInput, ValidatedMatching,
 };
 use std::collections::{BTreeSet, VecDeque};
 use std::mem::size_of;
@@ -23,12 +23,13 @@ fn available_result_bytes(payload_bytes: usize) -> usize {
 }
 
 struct CachedResult {
+    template: Option<String>,
     wire: Box<str>,
     response: Box<str>,
 }
 impl CachedResult {
     fn bytes(&self) -> usize {
-        self.wire.len() + self.response.len()
+        self.wire.len() + self.response.len() + self.template.as_ref().map_or(0, String::len)
     }
 }
 
@@ -39,14 +40,23 @@ struct SuccessCache {
 }
 impl SuccessCache {
     fn get(&mut self, wire: &str) -> Option<String> {
-        let index = self
-            .entries
-            .iter()
-            .position(|entry| entry.wire.as_ref() == wire)?;
+        self.get_template(wire, None)
+    }
+    fn get_template(&mut self, wire: &str, template: Option<&str>) -> Option<String> {
+        let index = self.entries.iter().position(|entry| {
+            entry.wire.as_ref() == wire && entry.template.as_deref() == template
+        })?;
         let entry = self.entries.remove(index)?;
         let response = entry.response.to_string();
         self.entries.push_back(entry);
         Some(response)
+    }
+    fn retain_full(&mut self, available: usize) {
+        self.entries.retain(|entry| entry.template.is_none());
+        self.bytes = self.entries.iter().map(CachedResult::bytes).sum();
+        while self.bytes > available {
+            self.remove(0);
+        }
     }
     fn remove(&mut self, index: usize) {
         if let Some(entry) = self.entries.remove(index) {
@@ -59,7 +69,11 @@ impl SuccessCache {
             self.bytes = 0;
             return;
         };
-        if let Some(index) = self.entries.iter().position(|old| old.wire == entry.wire) {
+        if let Some(index) = self
+            .entries
+            .iter()
+            .position(|old| old.wire == entry.wire && old.template == entry.template)
+        {
             self.remove(index);
         }
         let bytes = entry.bytes();
@@ -124,6 +138,23 @@ fn next_token() -> Result<String, String> {
     *last = last.checked_add(1).ok_or_else(|| fail("TokenOverflow"))?;
     Ok(last.to_string())
 }
+#[path = "css_request_template.rs"]
+mod templates;
+
+#[derive(Default)]
+struct WireCache {
+    cache: SuccessCache,
+    template: Option<templates::Template>,
+}
+impl WireCache {
+    fn template_bytes(&self) -> usize {
+        self.template.as_ref().map_or(0, templates::Template::bytes)
+    }
+    fn bytes(&self) -> usize {
+        self.cache.bytes + self.template_bytes()
+    }
+}
+
 pub(crate) struct MatchingSlot {
     facts: ValidatedMatching,
     token: String,
@@ -133,6 +164,11 @@ pub(crate) struct MatchingSlot {
     cascade_calls: std::sync::atomic::AtomicUsize,
     #[cfg(test)]
     parse_calls: std::sync::atomic::AtomicUsize,
+}
+struct ResolvedRequest {
+    response: String,
+    contexts: Option<Vec<Context>>,
+    cache_hit: bool,
 }
 impl MatchingSlot {
     pub(crate) fn new(wire: &str, limits: &str) -> Result<Self, String> {
@@ -175,6 +211,15 @@ impl MatchingSlot {
                 .bytes()
     }
     pub(crate) fn resolve(&self, prepared: &PreparedStyles, wire: &str) -> Result<String, String> {
+        self.resolve_with_contexts(prepared, wire, false)
+            .map(|resolved| resolved.response)
+    }
+    fn resolve_with_contexts(
+        &self,
+        prepared: &PreparedStyles,
+        wire: &str,
+        retain_contexts: bool,
+    ) -> Result<ResolvedRequest, String> {
         // The live owner and current token were checked before this slot.
         // An exact wire retained only after successful validation and cascade
         // certifies these immutable prepared/matching facts and all budgets.
@@ -184,7 +229,11 @@ impl MatchingSlot {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .wire(wire)
         {
-            return Ok(response);
+            return Ok(ResolvedRequest {
+                response,
+                contexts: None,
+                cache_hit: true,
+            });
         }
         #[cfg(test)]
         self.parse_calls
@@ -194,20 +243,26 @@ impl MatchingSlot {
         #[cfg(test)]
         self.cascade_calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let response = apply_matching(prepared, input, &self.facts)?;
-        let available = available_result_bytes(self.payload_bytes);
-        // Boxed strings retain no caller spare capacity. A success too large
-        // for the independent result cap does not expand the matching cap.
-        let retained =
+        let (response, contexts) =
+            apply_matching_receipt(prepared, input, &self.facts, retain_contexts)?;
+        let mut retained = self
+            .result
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let available =
+            available_result_bytes(self.payload_bytes).saturating_sub(retained.template_bytes());
+        let entry =
             (wire.len().saturating_add(response.len()) <= available).then(|| CachedResult {
+                template: None,
                 wire: wire.into(),
                 response: response.clone().into_boxed_str(),
             });
-        self.result
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .retain_wire(retained, available);
-        Ok(response)
+        retained.retain_wire(entry, available);
+        Ok(ResolvedRequest {
+            response,
+            contexts,
+            cache_hit: false,
+        })
     }
     pub(crate) fn resolve_state(
         &self,
@@ -248,6 +303,7 @@ mod tests {
     }
     fn entry(wire: &str, response: &str) -> super::CachedResult {
         super::CachedResult {
+            template: None,
             wire: wire.into(),
             response: response.into(),
         }

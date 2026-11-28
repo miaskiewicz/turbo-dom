@@ -138,6 +138,8 @@ produce an explicit error rather than silently changing the selected backend.
 | Vitest config | `test.environmentOptions.turboDom.cssBackend = 'rust'` |
 | Jest config | `testEnvironmentOptions.turboDom.cssBackend = 'rust'` |
 
+Rust CSS can also use `cssRequestProtocol: 'context-template-v1'` to retain successful context data natively and reduce repeated request transport. It requires native support and `cssResultProtocol: 'wire-v1'`; combining it with native-state results fails explicitly. Defaults remain unchanged. See the [request protocol contract](docs/native-css-request-protocol.md).
+
 Rust CSS also accepts the explicit `cssResultProtocol: 'native-state-v1'` option.
 It retains resolved styles natively and projects CSSOM without transferring the
 full result back through JavaScript. The default `wire-v1` protocol preserves the

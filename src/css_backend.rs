@@ -349,6 +349,24 @@ impl PreparedHandle {
             .resolve_state(model, wire)?;
         crate::css_serialize::project_state(&state, projection)
     }
+    #[cfg(any(feature = "napi-bind", test))]
+    fn resolve_request_template(&self, wire: &str, token: &str) -> Result<String, String> {
+        let model = self.model()?;
+        self.matching
+            .as_ref()
+            .filter(|slot| slot.token() == token)
+            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
+            .resolve_request_template(model, wire)
+    }
+    #[cfg(any(feature = "napi-bind", test))]
+    fn resolve_template(&self, wire: &str, token: &str, template: &str) -> Result<String, String> {
+        let model = self.model()?;
+        self.matching
+            .as_ref()
+            .filter(|slot| slot.token() == token)
+            .ok_or_else(|| "CSSBackendFacts:StaleMatching".to_owned())?
+            .resolve_template(model, wire, template)
+    }
     fn retained_bytes(&self) -> f64 {
         let bytes = self
             .model
@@ -574,6 +592,23 @@ mod native {
         #[napi(js_name = "resolveMatchingV1")]
         pub fn resolve_matching_v1(&self, wire: String, token: String) -> Result<String> {
             self.handle.resolve_matching(&wire, &token).map_err(error)
+        }
+        #[napi(js_name = "resolveRequestTemplateV1")]
+        pub fn resolve_request_template_v1(&self, wire: String, token: String) -> Result<String> {
+            self.handle
+                .resolve_request_template(&wire, &token)
+                .map_err(error)
+        }
+        #[napi(js_name = "resolveTemplateV1")]
+        pub fn resolve_template_v1(
+            &self,
+            wire: String,
+            token: String,
+            template: String,
+        ) -> Result<String> {
+            self.handle
+                .resolve_template(&wire, &token, &template)
+                .map_err(error)
         }
         #[napi(js_name = "resolveBatch")]
         pub fn resolve_batch(&self, request: String) -> Result<String> {
@@ -1495,3 +1530,7 @@ mod retained_multi_tests;
 #[cfg(test)]
 #[path = "css_native_state_tests.rs"]
 mod native_state_tests;
+
+#[cfg(test)]
+#[path = "css_request_template_tests.rs"]
+mod request_template_tests;

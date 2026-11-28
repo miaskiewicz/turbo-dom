@@ -57,14 +57,14 @@ struct Matching {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ResolveInput {
+struct ResolveInput<C = Context> {
     abi_version: u32,
-    targets: Vec<Target>,
+    targets: Vec<Target<C>>,
     limits: Limits,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Target {
+struct Target<C = Context> {
     id: u32,
     subject_id: Option<u32>,
     parent_id: Option<u32>,
@@ -74,7 +74,7 @@ struct Target {
     scope_depth: u32,
     pseudo: Option<String>,
     inline: Option<Vec<u16>>,
-    context: Context,
+    context: C,
     host_of: Option<u32>,
     assigned_slot: Option<SlotRow>,
     container_ancestors: Option<Vec<ContainerRow>>,
@@ -161,7 +161,7 @@ struct ContextBoundaryRow {
     domain_id: u32,
     matches: Vec<u32>,
 }
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Context {
     initial_color: String,
@@ -695,7 +695,7 @@ fn style(
     limits: Limits,
     input: StyleInput<'_>,
     usage: &mut Usage,
-) -> Result<(ComputedStyle, RendererDefaults), String> {
+) -> Result<(ComputedStyle, RendererDefaults, Context), String> {
     let StyleInput {
         answers,
         contexts,
@@ -752,7 +752,7 @@ fn style(
             retained_units: limits.value_retained_units,
         },
     };
-    with_container_context(
+    let (computed, extra) = with_container_context(
         target.container_ancestors.as_deref(),
         computation,
         |containers| {
@@ -796,7 +796,8 @@ fn style(
             }
             Ok((computed, extra))
         },
-    )
+    )?;
+    Ok((computed, extra, target.context))
 }
 #[cfg(test)]
 thread_local! { static TRANSPORT_WORK: std::cell::Cell<(usize,usize)> = const { std::cell::Cell::new((0,0)) }; }
@@ -864,6 +865,7 @@ struct Batch<'a> {
     native_order: Vec<u32>,
     native_extra: BTreeMap<u32, RendererDefaults>,
     retain_native: bool,
+    retained_contexts: Option<Vec<Context>>,
     answers: &'a AnswerMaps,
     contexts: &'a [ContextRoot],
     route_budget: RouteBudget,
@@ -879,7 +881,7 @@ impl Batch<'_> {
             .parent_id
             .map(|id| self.styles.get(&id).ok_or_else(|| fail("MissingParent")))
             .transpose()?;
-        let (computed, extra) = style(
+        let (computed, extra, context) = style(
             target,
             self.prepared,
             parent,
@@ -898,6 +900,9 @@ impl Batch<'_> {
             self.output.push(result_row(id, &computed, extra));
         }
         self.styles.insert(id, computed);
+        if let Some(contexts) = &mut self.retained_contexts {
+            contexts.push(context);
+        }
         Ok(())
     }
 }
@@ -953,7 +958,7 @@ fn parse<T: serde::de::DeserializeOwned>(wire: &str) -> Result<T, String> {
 #[path = "css_retained_matching.rs"]
 pub(super) mod retained;
 
-impl ResolveInput {
+impl<C> ResolveInput<C> {
     fn validate(&self) -> Result<(), String> {
         if self.abi_version != 1 {
             return Err(fail("AbiVersion"));
@@ -987,8 +992,18 @@ fn apply_matching(
     input: ResolveInput,
     matching: &ValidatedMatching,
 ) -> Result<String, String> {
-    let batch = resolve_targets(prepared, input, matching, false)?;
+    let batch = resolve_targets(prepared, input, matching, false, false)?;
     encode_rows(prepared.is_geometry_only(), batch.output)
+}
+fn apply_matching_receipt(
+    prepared: &PreparedStyles,
+    input: ResolveInput,
+    matching: &ValidatedMatching,
+    retain_contexts: bool,
+) -> Result<(String, Option<Vec<Context>>), String> {
+    let batch = resolve_targets(prepared, input, matching, false, retain_contexts)?;
+    let response = encode_rows(prepared.is_geometry_only(), batch.output)?;
+    Ok((response, batch.retained_contexts))
 }
 fn encode_rows(geometry_only: bool, rows: Vec<ResultRow>) -> Result<String, String> {
     #[cfg(test)]
@@ -1006,6 +1021,7 @@ fn resolve_targets<'a>(
     input: ResolveInput,
     matching: &'a ValidatedMatching,
     retain_native: bool,
+    retain_contexts: bool,
 ) -> Result<Batch<'a>, String> {
     let limits = input.limits;
     if matching.rows > limits.answer_rows || matching.ids > limits.answer_ids {
@@ -1024,6 +1040,7 @@ fn resolve_targets<'a>(
         native_order: Vec::new(),
         native_extra: BTreeMap::new(),
         retain_native,
+        retained_contexts: (retain_contexts && input.targets.len() <= 16).then(Vec::new),
         answers: &matching.answers,
         contexts: &matching.contexts,
         route_budget: RouteBudget {
@@ -1044,7 +1061,7 @@ fn apply_native_state(
     input: ResolveInput,
     matching: &ValidatedMatching,
 ) -> Result<native_state::NativeStyleState, String> {
-    let batch = resolve_targets(prepared, input, matching, true)?;
+    let batch = resolve_targets(prepared, input, matching, true, false)?;
     Ok(native_state::NativeStyleState {
         geometry_only: prepared.is_geometry_only(),
         order: batch.native_order.into_boxed_slice(),
