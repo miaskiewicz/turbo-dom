@@ -1,0 +1,1572 @@
+{
+  "date": "2026-11-28",
+  "productionCommit": "b2eed4ed7bd2a4bb6c4d7c6afa7fb71d7e287298",
+  "artifactSHA256": "4471a11648079ec38bb340f958862431c6d8d4d13ce0397a2ffd080aaf52d848",
+  "evidenceDirectory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots",
+  "productionChanges": false,
+  "packedDone": {
+    "runs": 16,
+    "all29passed": true,
+    "packageUnchanged": true,
+    "qualification": "Process-lifetime V8 sampling includes startup and all fork workers; profiled runs are diagnostic not performance acceptance; native sampled attribution may be opaque."
+  },
+  "packedSummary": {
+    "wire": {
+      "plainRuns": 1,
+      "profileRuns": 3,
+      "plainMedian": {
+        "wallMs": 1646.249458019156,
+        "childCpuMs": 1934.5990000000004,
+        "callbackMs": 277.9653349999999
+      },
+      "profileMedian": {
+        "wallMs": 1898.6088329693303,
+        "childCpuMs": 2320.0080000000007,
+        "callbackMs": 310.10320900000005,
+        "sampledMs": 3067.9840000000077
+      },
+      "exclusiveSampleCategoryMedianMs": {
+        "(program)": 10.698,
+        "CSS capture/context/integrity": 44.74799999999999,
+        "CSS request/result/factory": 35.447,
+        "CSS wire validation/encoding/decoding": 26.826,
+        "GC": 41.15,
+        "Node internals/startup/IO": 601.152,
+        "React": 53.918,
+        "Vitest": 78.251,
+        "idle": 1804.3960000000077,
+        "other CSS JS": 16.777,
+        "other dependencies": 74.93300000000002,
+        "other turbo-dom JS": 28.851,
+        "selectors/matching facts": 33.009,
+        "test fixture/setup": 20.618000000000002,
+        "testing-library": 24.426,
+        "unattributed/other": 171.69799999999998
+      }
+    },
+    "js": {
+      "plainRuns": 1,
+      "profileRuns": 3,
+      "plainMedian": {
+        "wallMs": 1620.381125016138,
+        "childCpuMs": 1706.5919999999999,
+        "callbackMs": 150.103958
+      },
+      "profileMedian": {
+        "wallMs": 1768.253541958984,
+        "childCpuMs": 2116.275000000001,
+        "callbackMs": 162.56579299999999,
+        "sampledMs": 2785.126000000003
+      },
+      "exclusiveSampleCategoryMedianMs": {
+        "(program)": 7.460999999999999,
+        "CSS capture/context/integrity": 1.252,
+        "CSS request/result/factory": 0,
+        "GC": 33.445,
+        "Node internals/startup/IO": 591.585,
+        "React": 55.769999999999996,
+        "Vitest": 84.449,
+        "idle": 1674.9570000000028,
+        "other CSS JS": 4.983999999999999,
+        "other dependencies": 75.769,
+        "other turbo-dom JS": 25.485,
+        "selectors/matching facts": 9.431000000000001,
+        "test fixture/setup": 18.784999999999997,
+        "testing-library": 26.977,
+        "unattributed/other": 167.91700000000003
+      }
+    },
+    "state": {
+      "plainRuns": 1,
+      "profileRuns": 3,
+      "plainMedian": {
+        "wallMs": 1828.7969170487486,
+        "childCpuMs": 2166.8770000000004,
+        "callbackMs": 289.8480840000001
+      },
+      "profileMedian": {
+        "wallMs": 1937.4309169943444,
+        "childCpuMs": 2373.415999999998,
+        "callbackMs": 339.91770699999995,
+        "sampledMs": 3139.936000000004
+      },
+      "exclusiveSampleCategoryMedianMs": {
+        "(program)": 13.383999999999999,
+        "CSS capture/context/integrity": 51.77,
+        "CSS request/result/factory": 22.376999999999995,
+        "CSS wire validation/encoding/decoding": 26.454000000000004,
+        "GC": 40.922,
+        "Node internals/startup/IO": 599.5880000000001,
+        "React": 57.128,
+        "Vitest": 91.03999999999999,
+        "idle": 1853.8130000000037,
+        "other CSS JS": 33.374,
+        "other dependencies": 69.97300000000001,
+        "other turbo-dom JS": 31.170999999999996,
+        "selectors/matching facts": 36.066,
+        "test fixture/setup": 16.473,
+        "testing-library": 27.442,
+        "unattributed/other": 171.42499999999998
+      }
+    },
+    "template": {
+      "plainRuns": 1,
+      "profileRuns": 3,
+      "plainMedian": {
+        "wallMs": 1665.5695830122568,
+        "childCpuMs": 1985.0149999999999,
+        "callbackMs": 297.69100000000003
+      },
+      "profileMedian": {
+        "wallMs": 1821.3235000148416,
+        "childCpuMs": 2219.496,
+        "callbackMs": 311.563876,
+        "sampledMs": 2935.172000000003
+      },
+      "exclusiveSampleCategoryMedianMs": {
+        "(program)": 10.569999999999999,
+        "CSS capture/context/integrity": 47.25,
+        "CSS request/result/factory": 33.124,
+        "CSS wire validation/encoding/decoding": 32.555,
+        "GC": 37.398,
+        "Node internals/startup/IO": 562.609,
+        "React": 53.931,
+        "Vitest": 82.54500000000002,
+        "idle": 1730.8160000000032,
+        "other CSS JS": 13.473,
+        "other dependencies": 69.864,
+        "other turbo-dom JS": 27.472,
+        "selectors/matching facts": 33.455000000000005,
+        "test fixture/setup": 19.005000000000006,
+        "testing-library": 17.473000000000003,
+        "unattributed/other": 168.95200000000006
+      }
+    }
+  },
+  "packedRuns": [
+    {
+      "arm": "js",
+      "cliPid": 44067,
+      "profile": false,
+      "block": 0,
+      "wallMs": 1620.381125016138,
+      "childCpuMs": 1706.5919999999999,
+      "callbackMs": 150.103958,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/00-js-plain",
+      "command": [
+        "node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/00-js-plain/vitest.json"
+      ],
+      "load": [
+        4.8232421875,
+        6.5400390625,
+        7.14111328125
+      ],
+      "profileCount": 0
+    },
+    {
+      "arm": "wire",
+      "cliPid": 44125,
+      "profile": false,
+      "block": 0,
+      "wallMs": 1646.249458019156,
+      "childCpuMs": 1934.5990000000004,
+      "callbackMs": 277.9653349999999,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/01-wire-plain",
+      "command": [
+        "node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/01-wire-plain/vitest.json"
+      ],
+      "load": [
+        4.8232421875,
+        6.5400390625,
+        7.14111328125
+      ],
+      "profileCount": 0
+    },
+    {
+      "arm": "template",
+      "cliPid": 44154,
+      "profile": false,
+      "block": 0,
+      "wallMs": 1665.5695830122568,
+      "childCpuMs": 1985.0149999999999,
+      "callbackMs": 297.69100000000003,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/02-template-plain",
+      "command": [
+        "node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/02-template-plain/vitest.json"
+      ],
+      "load": [
+        4.7568359375,
+        6.49755859375,
+        7.12255859375
+      ],
+      "profileCount": 0
+    },
+    {
+      "arm": "state",
+      "cliPid": 44246,
+      "profile": false,
+      "block": 0,
+      "wallMs": 1828.7969170487486,
+      "childCpuMs": 2166.8770000000004,
+      "callbackMs": 289.8480840000001,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/03-state-plain",
+      "command": [
+        "node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/03-state-plain/vitest.json"
+      ],
+      "load": [
+        4.7568359375,
+        6.49755859375,
+        7.12255859375
+      ],
+      "profileCount": 0
+    },
+    {
+      "arm": "js",
+      "cliPid": 44346,
+      "profile": true,
+      "block": 0,
+      "wallMs": 1774.3280000286177,
+      "childCpuMs": 2116.275000000001,
+      "callbackMs": 162.56579299999999,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/04-js-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/04-js-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/04-js-profile/vitest.json"
+      ],
+      "load": [
+        4.7568359375,
+        6.49755859375,
+        7.12255859375
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "wire",
+      "cliPid": 44449,
+      "profile": true,
+      "block": 0,
+      "wallMs": 1933.5052910028026,
+      "childCpuMs": 2357.245999999999,
+      "callbackMs": 310.10320900000005,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/05-wire-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/05-wire-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/05-wire-profile/vitest.json"
+      ],
+      "load": [
+        5.09619140625,
+        6.5390625,
+        7.13330078125
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "template",
+      "cliPid": 44531,
+      "profile": true,
+      "block": 0,
+      "wallMs": 1884.8710000165738,
+      "childCpuMs": 2307.906000000001,
+      "callbackMs": 319.47791800000005,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/06-template-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/06-template-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/06-template-profile/vitest.json"
+      ],
+      "load": [
+        5.09619140625,
+        6.5390625,
+        7.13330078125
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "state",
+      "cliPid": 44592,
+      "profile": true,
+      "block": 0,
+      "wallMs": 1937.4309169943444,
+      "childCpuMs": 2373.415999999998,
+      "callbackMs": 339.91770699999995,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/07-state-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/07-state-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/07-state-profile/vitest.json"
+      ],
+      "load": [
+        4.84814453125,
+        6.46337890625,
+        7.10302734375
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "state",
+      "cliPid": 47200,
+      "profile": true,
+      "block": 1,
+      "wallMs": 2049.6107079670765,
+      "childCpuMs": 2545.155,
+      "callbackMs": 356.7553730000001,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/08-state-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/08-state-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/08-state-profile/vitest.json"
+      ],
+      "load": [
+        5.5234375,
+        6.41064453125,
+        7.0400390625
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "template",
+      "cliPid": 47281,
+      "profile": true,
+      "block": 1,
+      "wallMs": 1807.7517919591628,
+      "childCpuMs": 2207.12,
+      "callbackMs": 311.563876,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/09-template-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/09-template-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/09-template-profile/vitest.json"
+      ],
+      "load": [
+        5.5234375,
+        6.41064453125,
+        7.0400390625
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "wire",
+      "cliPid": 47324,
+      "profile": true,
+      "block": 1,
+      "wallMs": 1806.7724999855272,
+      "childCpuMs": 2189.8599999999997,
+      "callbackMs": 300.78195900000003,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/10-wire-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/10-wire-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/10-wire-profile/vitest.json"
+      ],
+      "load": [
+        5.3212890625,
+        6.35400390625,
+        7.01611328125
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "js",
+      "cliPid": 47358,
+      "profile": true,
+      "block": 1,
+      "wallMs": 1768.253541958984,
+      "childCpuMs": 2125.273000000001,
+      "callbackMs": 169.34533300000012,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/11-js-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/11-js-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/11-js-profile/vitest.json"
+      ],
+      "load": [
+        5.3212890625,
+        6.35400390625,
+        7.01611328125
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "js",
+      "cliPid": 47444,
+      "profile": true,
+      "block": 2,
+      "wallMs": 1721.4784169918858,
+      "childCpuMs": 2055.1079999999993,
+      "callbackMs": 161.85808200000002,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/12-js-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/12-js-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/12-js-profile/vitest.json"
+      ],
+      "load": [
+        5.3212890625,
+        6.35400390625,
+        7.01611328125
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "wire",
+      "cliPid": 47510,
+      "profile": true,
+      "block": 2,
+      "wallMs": 1898.6088329693303,
+      "childCpuMs": 2320.0080000000007,
+      "callbackMs": 319.854582,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/13-wire-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/13-wire-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/13-wire-profile/vitest.json"
+      ],
+      "load": [
+        5.21533203125,
+        6.314453125,
+        6.998046875
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "template",
+      "cliPid": 47570,
+      "profile": true,
+      "block": 2,
+      "wallMs": 1821.3235000148416,
+      "childCpuMs": 2219.496,
+      "callbackMs": 310.40383499999996,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/14-template-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/14-template-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/14-template-profile/vitest.json"
+      ],
+      "load": [
+        5.21533203125,
+        6.314453125,
+        6.998046875
+      ],
+      "profileCount": 8
+    },
+    {
+      "arm": "state",
+      "cliPid": 47654,
+      "profile": true,
+      "block": 2,
+      "wallMs": 1838.5123750194907,
+      "childCpuMs": 2248.5589999999984,
+      "callbackMs": 306.65099899999996,
+      "pass": 29,
+      "directory": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/15-state-profile",
+      "command": [
+        "node",
+        "--cpu-prof",
+        "--cpu-prof-interval=500",
+        "--cpu-prof-dir=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/15-state-profile",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-18/accepted-hotspots/15-state-profile/vitest.json"
+      ],
+      "load": [
+        5.11767578125,
+        6.27587890625,
+        6.98046875
+      ],
+      "profileCount": 8
+    }
+  ],
+  "hotspots": {
+    "qualification": "Three fresh profiled packed runs per mode, median weighted sample milliseconds. Inclusive paths overlap and must not be summed. Sampling does not give exact CPU duration.",
+    "modes": {
+      "js": {
+        "getComputedStyle [css-default.mjs:68]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "captureSources [css-shared-adapter.mjs:609]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "matchingEntry [css-shared-adapter.mjs:392]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "collectContextMatches [css-shared-adapter.mjs:382]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "compileSharedShadowFacts [css-shared-shadow-facts.mjs:70]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "ownData [css-rust-wire.mjs:97]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        },
+        "descriptors [css-rust-wire.mjs:10]": {
+          "samplesMs": [
+            0,
+            0,
+            0
+          ],
+          "medianMs": 0
+        }
+      },
+      "wire": {
+        "getComputedStyle [css-default.mjs:68]": {
+          "samplesMs": [
+            144.16400000000002,
+            144.48000000000002,
+            150.04600000000002
+          ],
+          "medianMs": 144.48000000000002
+        },
+        "captureSources [css-shared-adapter.mjs:609]": {
+          "samplesMs": [
+            43.159,
+            47.88899999999999,
+            39.568999999999996
+          ],
+          "medianMs": 43.159
+        },
+        "matchingEntry [css-shared-adapter.mjs:392]": {
+          "samplesMs": [
+            35.117000000000004,
+            34.664,
+            39.462999999999994
+          ],
+          "medianMs": 35.117000000000004
+        },
+        "collectContextMatches [css-shared-adapter.mjs:382]": {
+          "samplesMs": [
+            26.381,
+            27.435,
+            28.219
+          ],
+          "medianMs": 27.435
+        },
+        "compileSharedShadowFacts [css-shared-shadow-facts.mjs:70]": {
+          "samplesMs": [
+            12.532,
+            14.221,
+            15.091999999999999
+          ],
+          "medianMs": 14.221
+        },
+        "ownData [css-rust-wire.mjs:97]": {
+          "samplesMs": [
+            24.002,
+            24.330000000000002,
+            26.098
+          ],
+          "medianMs": 24.330000000000002
+        },
+        "descriptors [css-rust-wire.mjs:10]": {
+          "samplesMs": [
+            11.333000000000002,
+            11.887999999999998,
+            14.462
+          ],
+          "medianMs": 11.887999999999998
+        }
+      },
+      "template": {
+        "getComputedStyle [css-default.mjs:68]": {
+          "samplesMs": [
+            150.29999999999998,
+            148.867,
+            146.555
+          ],
+          "medianMs": 148.867
+        },
+        "captureSources [css-shared-adapter.mjs:609]": {
+          "samplesMs": [
+            42.751999999999995,
+            41.580999999999996,
+            43.86000000000001
+          ],
+          "medianMs": 42.751999999999995
+        },
+        "matchingEntry [css-shared-adapter.mjs:392]": {
+          "samplesMs": [
+            38.559,
+            36.639,
+            37.759
+          ],
+          "medianMs": 37.759
+        },
+        "collectContextMatches [css-shared-adapter.mjs:382]": {
+          "samplesMs": [
+            26.787999999999997,
+            26.987000000000002,
+            28.536
+          ],
+          "medianMs": 26.987000000000002
+        },
+        "compileSharedShadowFacts [css-shared-shadow-facts.mjs:70]": {
+          "samplesMs": [
+            14.269,
+            14.983,
+            14.579
+          ],
+          "medianMs": 14.579
+        },
+        "ownData [css-rust-wire.mjs:97]": {
+          "samplesMs": [
+            24.456000000000003,
+            27.534000000000002,
+            26.811
+          ],
+          "medianMs": 26.811
+        },
+        "descriptors [css-rust-wire.mjs:10]": {
+          "samplesMs": [
+            13.192,
+            15.05,
+            12.638999999999998
+          ],
+          "medianMs": 13.192
+        }
+      },
+      "state": {
+        "getComputedStyle [css-default.mjs:68]": {
+          "samplesMs": [
+            162.87600000000003,
+            169.184,
+            139.269
+          ],
+          "medianMs": 162.87600000000003
+        },
+        "captureSources [css-shared-adapter.mjs:609]": {
+          "samplesMs": [
+            44.766999999999996,
+            50.52,
+            46.984
+          ],
+          "medianMs": 46.984
+        },
+        "matchingEntry [css-shared-adapter.mjs:392]": {
+          "samplesMs": [
+            44.647,
+            42.949999999999996,
+            36.754999999999995
+          ],
+          "medianMs": 42.949999999999996
+        },
+        "collectContextMatches [css-shared-adapter.mjs:382]": {
+          "samplesMs": [
+            33.378,
+            32.267,
+            26.964000000000002
+          ],
+          "medianMs": 32.267
+        },
+        "compileSharedShadowFacts [css-shared-shadow-facts.mjs:70]": {
+          "samplesMs": [
+            17.602999999999998,
+            16.742,
+            14.372
+          ],
+          "medianMs": 16.742
+        },
+        "ownData [css-rust-wire.mjs:97]": {
+          "samplesMs": [
+            26.983999999999998,
+            24.565,
+            21.308
+          ],
+          "medianMs": 24.565
+        },
+        "descriptors [css-rust-wire.mjs:10]": {
+          "samplesMs": [
+            11.907,
+            9.415,
+            8.174
+          ],
+          "medianMs": 9.415
+        }
+      }
+    }
+  },
+  "nativeBoundaries": {
+    "qualification": "Private metadata-only wrappers around existing native calls; no extra native invocation. Timings include NAPI conversion and native work, exclude argument preparation and wrapper recording. Instrumented diagnostic only.",
+    "runs": [
+      {
+        "mode": "wire",
+        "pass": 29,
+        "methods": {
+          "cssRuntimePolicyV1": {
+            "calls": 6,
+            "nanos": 396209,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 13692,
+            "errors": 0
+          },
+          "cssComputedPreferencesV1": {
+            "calls": 6,
+            "nanos": 760292,
+            "inputUtf16Units": 1176,
+            "outputUtf16Units": 114426,
+            "errors": 0
+          },
+          "Compiled.constructor": {
+            "calls": 6,
+            "nanos": 4663375,
+            "inputUtf16Units": 102036,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Compiled.metadata": {
+            "calls": 6,
+            "nanos": 2774542,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 279738,
+            "errors": 0
+          },
+          "Compiled.prepare": {
+            "calls": 6,
+            "nanos": 177124,
+            "inputUtf16Units": 4578,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Prepared.metadata": {
+            "calls": 6,
+            "nanos": 266125,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 39696,
+            "errors": 0
+          },
+          "Prepared.storeMatchingV1": {
+            "calls": 14,
+            "nanos": 1214168,
+            "inputUtf16Units": 220138,
+            "outputUtf16Units": 14,
+            "errors": 0
+          },
+          "Prepared.resolveMatchingV1": {
+            "calls": 118,
+            "nanos": 9171922,
+            "inputUtf16Units": 177834,
+            "outputUtf16Units": 153140,
+            "errors": 0
+          },
+          "serializeCssomV1": {
+            "calls": 118,
+            "nanos": 1416130,
+            "inputUtf16Units": 105902,
+            "outputUtf16Units": 10208,
+            "errors": 0
+          }
+        }
+      },
+      {
+        "mode": "state",
+        "pass": 29,
+        "methods": {
+          "cssRuntimePolicyV1": {
+            "calls": 6,
+            "nanos": 370041,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 13692,
+            "errors": 0
+          },
+          "cssComputedPreferencesV1": {
+            "calls": 6,
+            "nanos": 722541,
+            "inputUtf16Units": 1176,
+            "outputUtf16Units": 114426,
+            "errors": 0
+          },
+          "Compiled.constructor": {
+            "calls": 6,
+            "nanos": 4500835,
+            "inputUtf16Units": 102036,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Compiled.metadata": {
+            "calls": 6,
+            "nanos": 2671625,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 279738,
+            "errors": 0
+          },
+          "Compiled.prepare": {
+            "calls": 6,
+            "nanos": 162959,
+            "inputUtf16Units": 4578,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Prepared.metadata": {
+            "calls": 6,
+            "nanos": 230125,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 39696,
+            "errors": 0
+          },
+          "Prepared.storeMatchingV1": {
+            "calls": 14,
+            "nanos": 1190876,
+            "inputUtf16Units": 220138,
+            "outputUtf16Units": 14,
+            "errors": 0
+          },
+          "Prepared.resolveStyleStateV1": {
+            "calls": 118,
+            "nanos": 7755747,
+            "inputUtf16Units": 206079,
+            "outputUtf16Units": 12194,
+            "errors": 0
+          }
+        }
+      },
+      {
+        "mode": "template",
+        "pass": 29,
+        "methods": {
+          "cssRuntimePolicyV1": {
+            "calls": 6,
+            "nanos": 487832,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 13692,
+            "errors": 0
+          },
+          "cssComputedPreferencesV1": {
+            "calls": 6,
+            "nanos": 714377,
+            "inputUtf16Units": 1176,
+            "outputUtf16Units": 114426,
+            "errors": 0
+          },
+          "Compiled.constructor": {
+            "calls": 6,
+            "nanos": 4627833,
+            "inputUtf16Units": 102036,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Compiled.metadata": {
+            "calls": 6,
+            "nanos": 2706249,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 279738,
+            "errors": 0
+          },
+          "Compiled.prepare": {
+            "calls": 6,
+            "nanos": 169500,
+            "inputUtf16Units": 4578,
+            "outputUtf16Units": 0,
+            "errors": 0
+          },
+          "Prepared.metadata": {
+            "calls": 6,
+            "nanos": 234334,
+            "inputUtf16Units": 0,
+            "outputUtf16Units": 39696,
+            "errors": 0
+          },
+          "Prepared.storeMatchingV1": {
+            "calls": 14,
+            "nanos": 1135083,
+            "inputUtf16Units": 220138,
+            "outputUtf16Units": 15,
+            "errors": 0
+          },
+          "Prepared.resolveRequestTemplateV1": {
+            "calls": 14,
+            "nanos": 2507958,
+            "inputUtf16Units": 23886,
+            "outputUtf16Units": 25451,
+            "errors": 0
+          },
+          "serializeCssomV1": {
+            "calls": 118,
+            "nanos": 1251259,
+            "inputUtf16Units": 105902,
+            "outputUtf16Units": 10208,
+            "errors": 0
+          },
+          "Prepared.resolveTemplateV1": {
+            "calls": 93,
+            "nanos": 5655333,
+            "inputUtf16Units": 86017,
+            "outputUtf16Units": 113564,
+            "errors": 0
+          },
+          "Prepared.resolveMatchingV1": {
+            "calls": 11,
+            "nanos": 32168,
+            "inputUtf16Units": 17710,
+            "outputUtf16Units": 16293,
+            "errors": 0
+          }
+        }
+      }
+    ]
+  },
+  "nativeSample": {
+    "mainThreadSamples": 4127,
+    "sumExclusive": 4127,
+    "negativeSelfNodes": [],
+    "uniqueAncestrySamples": {
+      "nativeAddonAncestor": 4116,
+      "resolve_style_state_v1": 1840,
+      "resolve_state": 1736,
+      "resolve_targets": 1676,
+      "compile": 1457,
+      "malloc": 1343,
+      "finish_style": 1152,
+      "serde_json": 1095,
+      "select_style": 592,
+      "free": 574,
+      "compute_values": 494,
+      "match_with_answers": 477,
+      "store_matching_v1": 173,
+      "scope_roots_with_answer_budget": 77,
+      "project_validated_state": 67,
+      "prepare": 34,
+      "napi_get_value_string": 26,
+      "validate_projection": 13,
+      "renderer_initial_preferences": 9,
+      "napi_create_string": 9
+    },
+    "exclusivePhaseSamples": {
+      "other native addon": 1294,
+      "other JSON parse/encode": 1066,
+      "declaration selection": 592,
+      "computed values": 494,
+      "rule matching": 477,
+      "other target resolution": 104,
+      "projection": 80,
+      "outside native addon": 11,
+      "renderer defaults": 9
+    },
+    "apiSamples": {
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__130___napi__resolve_style_state_v1": 1840,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__011___napi__new": 1183,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__016___napi__metadata": 759,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__125___napi__store_matching_v1": 173,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__116___napi__metadata": 60,
+      "other": 49,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__015___napi__dispose": 38,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__015___napi__prepare": 16,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__115___napi__dispose": 9
+    },
+    "apiPhases": {
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__130___napi__resolve_style_state_v1": {
+        "declaration selection": 592,
+        "computed values": 494,
+        "other target resolution": 104,
+        "rule matching": 477,
+        "renderer defaults": 9,
+        "other native addon": 36,
+        "other JSON parse/encode": 48,
+        "projection": 80
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__011___napi__new": {
+        "other native addon": 1102,
+        "other JSON parse/encode": 81
+      },
+      "other": {
+        "outside native addon": 11,
+        "other JSON parse/encode": 24,
+        "other native addon": 14
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__016___napi__metadata": {
+        "other JSON parse/encode": 750,
+        "other native addon": 9
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__116___napi__metadata": {
+        "other JSON parse/encode": 59,
+        "other native addon": 1
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__125___napi__store_matching_v1": {
+        "other JSON parse/encode": 99,
+        "other native addon": 74
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__015___napi__dispose": {
+        "other native addon": 38
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__015___napi__prepare": {
+        "other JSON parse/encode": 5,
+        "other native addon": 11
+      },
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__115___napi__dispose": {
+        "other native addon": 9
+      }
+    },
+    "allocatorSelfByApi": {
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__130___napi__resolve_style_state_v1": 479,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__011___napi__new": 377,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__016___napi__metadata": 284,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__116___napi__metadata": 18,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__125___napi__store_matching_v1": 8,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__CompiledStylesV1__015___napi__dispose": 27,
+      "_RNvNtNtNtCs2kip1lGtqzc_16turbo_dom_parser11css_backend6native39___napi_impl_helper__PreparedStylesV1__115___napi__dispose": 3,
+      "other": 19
+    },
+    "topSelf": [
+      [
+        "_xzm_xzone_malloc_tiny",
+        436
+      ],
+      [
+        "_xzm_free_main",
+        330
+      ],
+      [
+        "_RINvMsi_NtNtNtCs6KVRSXc8uZF_5alloc11collections5btree3mapINtB6_8BTreeMapTmjjINtNtCslWxY2MhVcag_4core6option6OptionmEENtNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css5facts16MechanicalAnswerE3getB18_EB1Z_",
+        207
+      ],
+      [
+        "<deduplicated_symbol>",
+        179
+      ],
+      [
+        "_platform_memmove",
+        172
+      ],
+      [
+        "_RNvMs_NtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_cssNtB4_9CssSource3new",
+        127
+      ],
+      [
+        "_platform_memcmp",
+        112
+      ],
+      [
+        "_RNvMsb_NtCs5ekvv386gSY_9cssparser6parserNtB5_6Parser38next_including_whitespace_and_comments",
+        106
+      ],
+      [
+        "_RNvNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css12rule_matches18match_with_answers",
+        106
+      ],
+      [
+        "_malloc_zone_malloc",
+        101
+      ],
+      [
+        "_free",
+        77
+      ],
+      [
+        "_RNvNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css12target_scope30scope_roots_with_answer_budget",
+        77
+      ],
+      [
+        "_RNvNtCs5ekvv386gSY_9cssparser9tokenizer10next_token",
+        59
+      ],
+      [
+        "_RNvNtCs5ekvv386gSY_9cssparser9tokenizer12consume_name",
+        55
+      ],
+      [
+        "_RNvMsi_NtNtNtCs6KVRSXc8uZF_5alloc11collections5btree3mapINtB5_8BTreeMapNtNtBb_6string6StringNtNtCslgAiANQ938q_10serde_json5value5ValueE6insertCs2kip1lGtqzc_16turbo_dom_parser",
+        54
+      ],
+      [
+        "_RNvMs_NtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css5factsNtB4_16MechanicalAnswer7matches",
+        53
+      ],
+      [
+        "_RNvMs3_NtCslgAiANQ938q_10serde_json2deINtB5_12DeserializerNtNtB7_4read7StrReadE13parse_integerCs2kip1lGtqzc_16turbo_dom_parser",
+        45
+      ],
+      [
+        "_xzm_free",
+        44
+      ],
+      [
+        "_RINvXNtNtCslgAiANQ938q_10serde_json5value3serNtB5_5ValueNtNtCsdYqngXc8k2s_10serde_core3ser9Serialize9serializeNtB3_10SerializerECs2kip1lGtqzc_16turbo_dom_parser",
+        43
+      ],
+      [
+        "_RINvNtCslWxY2MhVcag_4core3ptr9drop_glueNtNtCs5ekvv386gSY_9cssparser9tokenizer5TokenECschJ75SsIOPu_9turbo_dom",
+        39
+      ],
+      [
+        "_RNvMs5_NtCs6KVRSXc8uZF_5alloc7raw_vecNtB5_11RawVecInner11finish_growCschJ75SsIOPu_9turbo_dom",
+        38
+      ],
+      [
+        "_RINvYNtNtNtCslgAiANQ938q_10serde_json5value3ser10SerializerNtNtCsdYqngXc8k2s_10serde_core3ser10Serializer11collect_seqRINtNtCs6KVRSXc8uZF_5alloc3vec3VecNtB7_5ValueEECs2kip1lGtqzc_16turbo_dom_parser",
+        37
+      ],
+      [
+        "xzm_malloc_zone_malloc_type_realloc",
+        36
+      ],
+      [
+        "mach_absolute_time",
+        34
+      ],
+      [
+        "_RINvNvXs7_NtCslgAiANQ938q_10serde_json2deINtB8_9SeqAccesspENtNtCsdYqngXc8k2s_10serde_core2de9SeqAccess17next_element_seed16has_next_elementNtNtBa_4read7StrReadECs2kip1lGtqzc_16turbo_dom_parser",
+        34
+      ],
+      [
+        "_RNvNtCs5ekvv386gSY_9cssparser9tokenizer15consume_numeric",
+        31
+      ],
+      [
+        "_RNvNtNtNtNtNtCslWxY2MhVcag_4core3num3imp7flt2dec8strategy6dragon12format_exact",
+        30
+      ],
+      [
+        "_RNvNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom13css_shorthand7grammar6expand",
+        30
+      ],
+      [
+        "_RINvNtCslWxY2MhVcag_4core3ptr9drop_glueSNtNtCslgAiANQ938q_10serde_json5value5ValueECs2kip1lGtqzc_16turbo_dom_parser",
+        30
+      ],
+      [
+        "xzm_malloc_zone_size",
+        29
+      ],
+      [
+        "_RNvMs3_NtCslgAiANQ938q_10serde_json4readNtB5_9SliceRead14skip_to_escape",
+        28
+      ],
+      [
+        "_RNvNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css13shadow_routes32selector_route_with_scope_anchor",
+        27
+      ],
+      [
+        "_RNvMs6_NtCsfzSO8IJSptH_12lightningcss10propertiesNtB5_10PropertyId20from_name_and_prefix",
+        26
+      ],
+      [
+        "_RNvXNtNtCs6KVRSXc8uZF_5alloc3vec21spec_from_iter_nestedINtB4_3VecjEINtB2_18SpecFromIterNestedjINtNtNtNtCslWxY2MhVcag_4core4iter8adapters6filter6FilterINtNtB1z_6copied6CopiedINtNtNtB1D_5slice4iter4IterjEENCNvNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css12rule_matches12scope_groups0EE9from_iterB3p_",
+        25
+      ],
+      [
+        "_RINvNtCslgAiANQ938q_10serde_json3ser18format_escaped_strQINtNtCs6KVRSXc8uZF_5alloc3vec3VechENtB2_16CompactFormatterECs2kip1lGtqzc_16turbo_dom_parser",
+        25
+      ],
+      [
+        "_realloc",
+        24
+      ],
+      [
+        "DYLD-STUB$$free",
+        24
+      ],
+      [
+        "_RINvYNtNtNtCslgAiANQ938q_10serde_json5value3ser12SerializeMapNtNtCsdYqngXc8k2s_10serde_core3ser12SerializeMap15serialize_entryNtNtCs6KVRSXc8uZF_5alloc6string6StringNtB7_5ValueECs2kip1lGtqzc_16turbo_dom_parser",
+        24
+      ],
+      [
+        "_RINvNtCslWxY2MhVcag_4core3ptr9drop_glueNtNtCs5ekvv386gSY_9cssparser9tokenizer5TokenEBF_",
+        23
+      ],
+      [
+        "_RINvMsN_NtNtNtCs6KVRSXc8uZF_5alloc11collections5btree4nodeINtB6_6HandleINtB6_7NodeRefNtNtB6_6marker3MutNtNtBc_6string6StringNtNtCslgAiANQ938q_10serde_json5value5ValueNtB1n_4LeafENtB1n_4EdgeE16insert_recursingNtNtBc_5alloc6GlobalNCNvMs4_NtNtB8_3map5entryINtB3M_11VacantEntryB1D_B1Y_E12insert_entry0ECs2kip1lGtqzc_16turbo_dom_parser",
+        23
+      ],
+      [
+        "_RNvCs6rREvFdRhLb_7___rustc11___rdl_alloc",
+        22
+      ],
+      [
+        "_RNvMs2_NtNtNtCslWxY2MhVcag_4core3num3imp6bignumNtB5_8Big32x408mul_pow2",
+        21
+      ],
+      [
+        "_RINvXNtNtCslgAiANQ938q_10serde_json5value3serNtB5_5ValueNtNtCsdYqngXc8k2s_10serde_core3ser9Serialize9serializeQINtNtB7_3ser10SerializerQINtNtCs6KVRSXc8uZF_5alloc3vec3VechEEECs2kip1lGtqzc_16turbo_dom_parser",
+        21
+      ],
+      [
+        "_xzm_malloc",
+        20
+      ],
+      [
+        "_RINvMs_NtNtNtCs6KVRSXc8uZF_5alloc11collections5btree6searchINtNtB7_4node7NodeRefNtNtBY_6marker3MutTmjjINtNtCslWxY2MhVcag_4core6option6OptionmEENtNtNtNtCschJ75SsIOPu_9turbo_dom5rtdom12computed_css5facts16MechanicalAnswerNtB1i_14LeafOrInternalE11search_treeB1y_ECs2kip1lGtqzc_16turbo_dom_parser",
+        20
+      ]
+    ],
+    "qualification": "Main-thread sample counts, not invocation counts or elapsed milliseconds. Inclusive categories overlap. Exclusive phases are heuristic by symbol ancestry and include callees/allocations; optimized/inlined frames may be absent."
+  },
+  "nativeReplay": {
+    "command": [
+      "node",
+      "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/projection-reuse/native-replay.mjs",
+      "--mode",
+      "candidate",
+      "--addon",
+      "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/accepted-final/candidate.node",
+      "--iterations",
+      "2000",
+      "--warmups",
+      "2"
+    ],
+    "pid": 45806,
+    "replay": {
+      "mode": "candidate",
+      "artifactPath": "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-17/accepted-final/candidate.node",
+      "artifactSHA256": "4471a11648079ec38bb340f958862431c6d8d4d13ce0397a2ffd080aaf52d848",
+      "corpusSHA256": "19e878e8f6a218e9ea3ac37a764e7254b1b51e5e1913f89f3f6ae4cd58d47eb6",
+      "logicalOutputSHA256": "1b968d7b37ea08b53b75d5b8deba60f5f8adb37a1a8adeb2a3c6920b98e7e8ae",
+      "counts": {
+        "models": 6,
+        "prepared": 6,
+        "matching": 14,
+        "pairs": 118
+      },
+      "controls": {
+        "malformed": {
+          "name": "Error",
+          "message": "CSSBackendTransport:expected value at line 1 column 1"
+        },
+        "foreign": {
+          "name": "Error",
+          "message": "CSSBackendFacts:StaleMatching"
+        },
+        "changedBudget": {
+          "name": "Error",
+          "message": "CSSBackendResolve:ResourceLimit"
+        },
+        "projectionBudget": {
+          "name": "Error",
+          "message": "CSSBackendSerialize:ResourceLimit"
+        },
+        "replacedToken": {
+          "name": "Error",
+          "message": "CSSBackendFacts:StaleMatching"
+        },
+        "disposed": {
+          "name": "Error",
+          "message": "CSSBackendDisposed:PreparedStylesV1"
+        }
+      },
+      "verified": {
+        "checksum": 363868,
+        "outputBytes": 331628
+      },
+      "measured": {
+        "iterations": 2000,
+        "warmups": 2,
+        "elapsedNs": 27177909667,
+        "nsPerCorpus": 13588954.8335,
+        "cpuUserUs": 24687118,
+        "cpuSystemUs": 221162
+      },
+      "qualification": "Authentic six fresh native models, matching installs/replacements and118 requests per replay. Both baseline and candidate invoke the SAME native-state-v1 method and exact projection wires. Every exact response/error validated outside timing; only internal successful projection retention differs. Includes actual NAPI native retained-state/cache cost, compile/prepare/dispose; excludes JS capture/DTO encoding/application. No packed parity inference."
+    },
+    "samplingSeconds": 6,
+    "intervalMs": 1,
+    "qualification": "Native symbols from actual accepted optimized addon. Repeats six fresh models and 118 captured requests; compile/prepare/dispose included. Excludes JS DOM capture, request encoding and app work. This is sampled attribution, not packed speed or exact invocation counts."
+  },
+  "profileInvalidation": {
+    "run": "invalid-08-state-profile-missing-worker",
+    "reason": "All29tests passed but CPU profiles contain only six workers; inputs.test.jsx worker profile absent. Excluded from aggregation and rerun.",
+    "productionFailure": false
+  },
+  "boundaryCorrection": {
+    "reason": "First diagnostic used incorrect template method names and omitted runtime preference exports; no missing calls claimed as zero. Retain raw first run; repeat all modes with exact exports from src/css_backend.rs."
+  },
+  "profileFilesSHA256": {
+    "04-js-profile/CPU.20261128.145644.44346.0.001.cpuprofile": "9d28a2dfb51dee232adfaa744a54ecaddc35bfcb6cae2c3e42cd95686cb837a6",
+    "04-js-profile/CPU.20261128.145644.44350.0.001.cpuprofile": "a8fdb030db3f71546fc8e397350316842b666082eda4ae756df4fdb1c0c525b2",
+    "04-js-profile/CPU.20261128.145645.44370.0.001.cpuprofile": "a59deae05d9fd76892c029a7907f4e14e94c20e71046ce5150a109bea78d7130",
+    "04-js-profile/CPU.20261128.145645.44375.0.001.cpuprofile": "3d5406a1e3f7be22223941ec0773ac2a887fa5f0efe8686e51348997725670b2",
+    "04-js-profile/CPU.20261128.145645.44408.0.001.cpuprofile": "23e3c7b837093bb13240e2577c6701a47da26103a4af2d9d8999f8406f6fc0ca",
+    "04-js-profile/CPU.20261128.145645.44415.0.001.cpuprofile": "2dd7d4fb1a23d08f23a6d5c33724b3694f8ac6c6da36f2da9c20568b7e8f30e4",
+    "04-js-profile/CPU.20261128.145645.44418.0.001.cpuprofile": "74340d8efa4a0c8b51e0290b21e8b660346f14fffc8fa212ed0caf1b1fcc10b5",
+    "04-js-profile/CPU.20261128.145646.44425.0.001.cpuprofile": "b254f967f5bb1460cf0f874942cd7dd0d8313dcfd784d7625e8f14d06310a5d2",
+    "05-wire-profile/CPU.20261128.145646.44449.0.001.cpuprofile": "06866a29977181a6c5c1ead9c98e4e0e0bfdb0b410edeeb068800063b2aaaaf1",
+    "05-wire-profile/CPU.20261128.145646.44456.0.001.cpuprofile": "dbe45d982235dc295b9b16fe097ec79b35aa230c09f210a9c3334cf33f861dd1",
+    "05-wire-profile/CPU.20261128.145646.44463.0.001.cpuprofile": "1ef28e7983bf0b98301060b9eb8b2d1ad179864246dd49dd7162f187028ca71c",
+    "05-wire-profile/CPU.20261128.145647.44474.0.001.cpuprofile": "dcc54dd461a4a57e3d0aa628ca6ae5c3f84237d678016e67574f61def3343e7f",
+    "05-wire-profile/CPU.20261128.145647.44500.0.001.cpuprofile": "2ffd7e0d526612a89301609230e3aa1a8bbfc3735615f2750e98e449524c6a0b",
+    "05-wire-profile/CPU.20261128.145647.44503.0.001.cpuprofile": "a08ba2c68740fff2973ce39cf3a41682fdb69751f57eea40423f6f4bfb486b0f",
+    "05-wire-profile/CPU.20261128.145647.44508.0.001.cpuprofile": "42907128082028b0715b50f50f940dadcc9042c2c2c5d4b451c4dcb3b4dbe4b4",
+    "05-wire-profile/CPU.20261128.145648.44524.0.001.cpuprofile": "4c92a12a3678ca97e8207a71ba60a45b310566b4937cea08a7ca6f53832964bd",
+    "06-template-profile/CPU.20261128.145648.44531.0.001.cpuprofile": "a72eb2603ac4ad92693018f3dfcac07cb23df4bae61acb65c3efbd8383cc306f",
+    "06-template-profile/CPU.20261128.145648.44540.0.001.cpuprofile": "a1aa69a65c93352a4073093f9baf59ce6d34f58a707641ed4411ce0618c24217",
+    "06-template-profile/CPU.20261128.145648.44548.0.001.cpuprofile": "4410f8681313ecb66177abd9e943931e4f2a53ffe2ed85002ff3604882d1cf0e",
+    "06-template-profile/CPU.20261128.145649.44568.0.001.cpuprofile": "0138358a7f6d7b918bda00d88c37d2e6b71cf24a34ca5036b175bc70f7faa433",
+    "06-template-profile/CPU.20261128.145649.44574.0.001.cpuprofile": "a60d3d0f2d48ab06b87ba6fae3e2e22f17c406f395a38b02cca22639e56136bb",
+    "06-template-profile/CPU.20261128.145649.44583.0.001.cpuprofile": "486c3fda9e61609f5831a094d92e401ecd7aa421bbac194ef765d0d8992a48fc",
+    "06-template-profile/CPU.20261128.145649.44590.0.001.cpuprofile": "d98d434fa4aa5913b77b63d1f861a845f1ef7b54ed50bb3589975bc62045878e",
+    "06-template-profile/CPU.20261128.145649.44591.0.001.cpuprofile": "1c782cd8eab0319b3d9afc9f340ec5787e1aaa191f669c5ca0794753c1d29d46",
+    "07-state-profile/CPU.20261128.145650.44592.0.001.cpuprofile": "e3d50d6a1cf4feb6a8287e21ebc9df5efd5184fd281422a3f6b3e8035443a696",
+    "07-state-profile/CPU.20261128.145650.44614.0.001.cpuprofile": "5a667512a2a0c290eaca59400ecbb5a1d1d65b1ad4e9cbb27322dfb55fca4ec3",
+    "07-state-profile/CPU.20261128.145650.44623.0.001.cpuprofile": "ffaecba6fa633dfe053220e42c33538a106b964914e529baec83b75ca2e0f6eb",
+    "07-state-profile/CPU.20261128.145650.44626.0.001.cpuprofile": "aa42e071bf94d240fe8db3433346747998dac7556763591ebc340fe9a1bf62ac",
+    "07-state-profile/CPU.20261128.145651.44671.0.001.cpuprofile": "cf5fbe9698d1ae4dbb30da9268ca3983fdceb9725d5fbfbafec3b35908ccc46c",
+    "07-state-profile/CPU.20261128.145651.44680.0.001.cpuprofile": "30ed6a514a7b09e38dea8d9ff948bf415273b272dd14be39e7d0f8a16b64f091",
+    "07-state-profile/CPU.20261128.145651.44707.0.001.cpuprofile": "228cad642fa57833f7c7756d88d312be48337903b9fe72b9f9defa706309ca20",
+    "07-state-profile/CPU.20261128.145651.44716.0.001.cpuprofile": "4bb1e0099edf654cefcde30a7c6b60508840efef91c17254e2c21ea2c81a56fc",
+    "08-state-profile/CPU.20261128.145752.47200.0.001.cpuprofile": "128abaa88246ab1873f223e17adbfccd8540989f4d54be816f6256155c553d45",
+    "08-state-profile/CPU.20261128.145752.47204.0.001.cpuprofile": "e4fe31d776cf4cd1fe0c164596b56eb242e81f4243f40223c0a9fc2966a53492",
+    "08-state-profile/CPU.20261128.145753.47224.0.001.cpuprofile": "94696aaf33e13b46bf94c62725f268c9511df5003b273a49b3f79815e04ae364",
+    "08-state-profile/CPU.20261128.145753.47236.0.001.cpuprofile": "242eb7313abfb8312711ae035261f4ba11568ead16eda65554be7301b8792e0a",
+    "08-state-profile/CPU.20261128.145753.47256.0.001.cpuprofile": "3599e1c1a3ccec2d74dd6e67330ead684eb39d6c44f833f0a14f660de54dba44",
+    "08-state-profile/CPU.20261128.145754.47262.0.001.cpuprofile": "95c1e9ce1db07483af535f808a59924720cd7f0f0f35e6e4e16b270515802d29",
+    "08-state-profile/CPU.20261128.145754.47264.0.001.cpuprofile": "7b212738412c9397c6aae17fca2fe5419a94101f575632174af6d5ebbea9a2f9",
+    "08-state-profile/CPU.20261128.145754.47278.0.001.cpuprofile": "7d59d67467cd85dd532c1f5f7a423bc9d45354823f387378730c6c17ea328082",
+    "09-template-profile/CPU.20261128.145754.47281.0.001.cpuprofile": "24b88d86b2dab748f48c700fdc8c7b8a84e2d2629a85fe486b73e6b8b11036a4",
+    "09-template-profile/CPU.20261128.145754.47286.0.001.cpuprofile": "9ebac9f676b35b7993037af3d57de1db52bceafa69bc56952d4a527765067c16",
+    "09-template-profile/CPU.20261128.145755.47288.0.001.cpuprofile": "4ee13167a13cfd52c385938fe7d5416932a6348fec6848537efbc59b44273447",
+    "09-template-profile/CPU.20261128.145755.47300.0.001.cpuprofile": "80fda46b6fbdd4c34724b7553f6a095e37419909e5626d02d43342cff3898f92",
+    "09-template-profile/CPU.20261128.145755.47301.0.001.cpuprofile": "c2a8a5f0119628d83cf8a412dea81aad49f9afaf8483a0669f91d010aaab046b",
+    "09-template-profile/CPU.20261128.145755.47309.0.001.cpuprofile": "a158bf747232eae8355245905319b2543d4dcabfd51b9d2394d3d05b500acdd9",
+    "09-template-profile/CPU.20261128.145756.47311.0.001.cpuprofile": "84f05cad47d7d48eea04c39c000f35f1726d9f4c788748b6aa8393c857af5401",
+    "09-template-profile/CPU.20261128.145756.47323.0.001.cpuprofile": "3bdb8a1b4812b0c00c40f30f07b2fa464d0f1216ce82808165aba4fba480c961",
+    "10-wire-profile/CPU.20261128.145756.47324.0.001.cpuprofile": "68aa4f0fd95ea760f84692bf4fe1e1ee4fa0730cd491a81568c066fe0c7dd486",
+    "10-wire-profile/CPU.20261128.145756.47340.0.001.cpuprofile": "ddef5a640eb457c62e8d87f28abd961839bf9d57df0c08d621d48bb9ff6b734f",
+    "10-wire-profile/CPU.20261128.145757.47341.0.001.cpuprofile": "c47b24b965229d960574eb7694c7660781b9a4d9254ad427ca9ce24aa6480d41",
+    "10-wire-profile/CPU.20261128.145757.47343.0.001.cpuprofile": "6b4423cc552fe219f323dccfd783612ee3c8b77c9207dd7a9744d2a3715757a5",
+    "10-wire-profile/CPU.20261128.145757.47344.0.001.cpuprofile": "277ebf3ede1635a052c53ec61fd91f371406f701ffc0e165295358f6287073d6",
+    "10-wire-profile/CPU.20261128.145757.47353.0.001.cpuprofile": "c136470236dd5646a977ac31aebb38c054b8710556d03ef2afeb05a791376778",
+    "10-wire-profile/CPU.20261128.145757.47356.0.001.cpuprofile": "9b27f2057aa0697e7f799e96d655d43a5da68b7196794643c4425adfe66ab619",
+    "10-wire-profile/CPU.20261128.145758.47357.0.001.cpuprofile": "c4b8406debbf7bfa0a0bd0ebe4770ab52fb89b439e6bbc5ef9c16d8be3a7be4a",
+    "11-js-profile/CPU.20261128.145758.47358.0.001.cpuprofile": "d0205ba166a0355c67a4eb560371417f0ad94125d3b5a4a2d6ecc01434b13151",
+    "11-js-profile/CPU.20261128.145758.47359.0.001.cpuprofile": "43d307b5d16ce73f52e36f977fbd166822ccc8f2de933f15f5e8a0a76dcfa57d",
+    "11-js-profile/CPU.20261128.145758.47376.0.001.cpuprofile": "d28fcdb6a761519ca2ae583925de2a8e32b815acf55f7d3ea8a2b583fdb6143f",
+    "11-js-profile/CPU.20261128.145759.47390.0.001.cpuprofile": "7efabcacc5955d4add6de45ccdfd8248592d72679d4b1100a3d77c5208efebaf",
+    "11-js-profile/CPU.20261128.145759.47421.0.001.cpuprofile": "e0df289287f82c373c506653ba5c79f3b0ee0229bbcc94256696623e06527a6e",
+    "11-js-profile/CPU.20261128.145759.47431.0.001.cpuprofile": "b971f3f4e6c2b1a09a5e7f9267cce6e7f227d779134679d64d03845c4845e532",
+    "11-js-profile/CPU.20261128.145759.47441.0.001.cpuprofile": "8309c61bee14fb9e1ca098b2e28ca6baa8edfa5b45a7c8a3800b6089eda82910",
+    "11-js-profile/CPU.20261128.145759.47443.0.001.cpuprofile": "7e401113e875681b251c344a84f98f1b18676814a7564bc02ec7d5be7cb219b3",
+    "12-js-profile/CPU.20261128.145800.47444.0.001.cpuprofile": "c964f4abd1e3316707bca02f6423ce6790fc74b396a87711aff0fad61ab1b939",
+    "12-js-profile/CPU.20261128.145800.47445.0.001.cpuprofile": "694e7ed30b9645c6594afc30f1e5d5c3f9f2827577cfcfba76ac7f55051403b5",
+    "12-js-profile/CPU.20261128.145800.47450.0.001.cpuprofile": "a982ff950450c5650117caff00db636454348d5f39a97a3f126e338330b057ba",
+    "12-js-profile/CPU.20261128.145800.47454.0.001.cpuprofile": "9591dc6cd4678da428a39d5a01fedc0cfa7db6e42e891f81040b0ded6bc91578",
+    "12-js-profile/CPU.20261128.145800.47455.0.001.cpuprofile": "11405c5aa5523e35b17c663d63c19493ebe44bf7aa19083fcb404700a0788b65",
+    "12-js-profile/CPU.20261128.145801.47456.0.001.cpuprofile": "b7106dac8575d315df8af7696dd704a6f1a86166f7688a2c0bca486e92aacc44",
+    "12-js-profile/CPU.20261128.145801.47457.0.001.cpuprofile": "912b97de60b15e6218a1550e8902686d2dead000ff20ef65b4555ecee79ee1d4",
+    "12-js-profile/CPU.20261128.145801.47472.0.001.cpuprofile": "468ad84c848c78d22610de85dcd07522cfaea455ab86f482b325b52a4f54a71c",
+    "13-wire-profile/CPU.20261128.145801.47510.0.001.cpuprofile": "336c44253bb2d807412f01b829f312e6d7a0b2294271fe8d83cfb859457a96bd",
+    "13-wire-profile/CPU.20261128.145802.47515.0.001.cpuprofile": "d4939ba6b01195757d42d8eea41991462a8bb9bad0a973f416fcf79f1ed95dda",
+    "13-wire-profile/CPU.20261128.145802.47516.0.001.cpuprofile": "2d9c8a0958ffd3c74c3a66d6b34835577b3fd6be945f27254c8406718c547814",
+    "13-wire-profile/CPU.20261128.145802.47517.0.001.cpuprofile": "4544275056b094ee4c986e514edec06a815548a8611612fe4a8dd76ca1166a70",
+    "13-wire-profile/CPU.20261128.145802.47538.0.001.cpuprofile": "0c58edf0cf931d9a5e4515504168de68b12abc1c081f861bbcb37ec4048d3a02",
+    "13-wire-profile/CPU.20261128.145803.47563.0.001.cpuprofile": "efb79f6a12c5fdad7cecfa2d1b2c5c9383e84290597b615ecbc5b36081603ccd",
+    "13-wire-profile/CPU.20261128.145803.47566.0.001.cpuprofile": "6bb2b6d6e31b7f745f09aa04e573edddc0cfe5bcefc0c306a339c5be050256a7",
+    "13-wire-profile/CPU.20261128.145803.47568.0.001.cpuprofile": "71c625543c3ff84e5d10238546832265eb1d496e4a957e1602c23bf5e7f4fc84",
+    "14-template-profile/CPU.20261128.145803.47570.0.001.cpuprofile": "0bf23455f22f7a6b3ee2f7d019ff440ba0a0161cc1900f2a816186675604e228",
+    "14-template-profile/CPU.20261128.145803.47615.0.001.cpuprofile": "ca6c918bcb64b0bca5b376bae8e3cf9608bf4c89fb679d54d3038daafb4fbf6e",
+    "14-template-profile/CPU.20261128.145804.47620.0.001.cpuprofile": "2fe3755157e64600f2ab09287aa59a229f612c460335dc6a3d37651f6736d210",
+    "14-template-profile/CPU.20261128.145804.47621.0.001.cpuprofile": "79b4a31f334d0a3ee038f1eaebc3b4a0995dc5b55354879d694e8ff3d90a998a",
+    "14-template-profile/CPU.20261128.145804.47630.0.001.cpuprofile": "ea148482e64e3a0c8e0f7d23ed9da19282520466e00ba0556a8cd2ec130fb2bc",
+    "14-template-profile/CPU.20261128.145804.47651.0.001.cpuprofile": "e61ab3b650a12878efa47d381b567a4af1e4dfcf594ce27de443d368ec42ea63",
+    "14-template-profile/CPU.20261128.145805.47652.0.001.cpuprofile": "d082770f37f97aea213cd4ae97d73418574e8cea403fdbbcc37cd0b0c7db03a3",
+    "14-template-profile/CPU.20261128.145805.47653.0.001.cpuprofile": "7c0f99b9f7f80813b5d5cb62fe6fcb88d1fcdb5a1b9dd651581378f258df9883",
+    "15-state-profile/CPU.20261128.145805.47654.0.001.cpuprofile": "396c74dfe5a40eb37123a462dad0315fc853d4506e2746906643d3841049f184",
+    "15-state-profile/CPU.20261128.145805.47655.0.001.cpuprofile": "b0a07e63aa501a9ed1dd4917d13b75cb241448b1fdea5ac4558762bf338e3657",
+    "15-state-profile/CPU.20261128.145806.47656.0.001.cpuprofile": "79da20e73c14ae7e043a10a44ebe5ca89369118d17de1725271ed9145812069f",
+    "15-state-profile/CPU.20261128.145806.47657.0.001.cpuprofile": "aca4299d13ece0b866d9b357d8d621c534fa8141efaf73c960e4c586d870fc42",
+    "15-state-profile/CPU.20261128.145806.47666.0.001.cpuprofile": "6f93d2e6fa892ee311d17cafa00f10ae59ee4cad7d1da9522ce93b034b55197b",
+    "15-state-profile/CPU.20261128.145806.47667.0.001.cpuprofile": "1f4e07d307adea289b99d5465f273e9564adb6d88b60918560aa5f957b44c303",
+    "15-state-profile/CPU.20261128.145806.47671.0.001.cpuprofile": "1d4a53ab2489864828c3da7e716eb2bab71e4d8ef1746a9ef0a596a2f93820f8",
+    "15-state-profile/CPU.20261128.145807.47690.0.001.cpuprofile": "38997df336d434beb25b9ec704da05e3408718d23ce5652f7e2eb3ba7842005d"
+  },
+  "supportFilesSHA256": {
+    "BOUNDARIES-INCOMPLETE-TEMPLATE.json": "ee40a6f0de35f9590d26d46dd13bb7c07f5c3fb70a21ad4c988341d98d12affc",
+    "BOUNDARIES.json": "f99910799f63c00eff0f486a321f2e7e574db621d741e6b6ba2b4646c0bf886f",
+    "BOUNDARY-CORRECTION.json": "88a4daf4a1980ab075d0f4d4bc2e030437ee4aa7851bdb8354a9ffbd01e1e1a5",
+    "DONE.json": "2c569d1c5b75df19c9fb6248bcf2f95b2d4667461755da0a6739fe9364959856",
+    "HOTSPOT-COMPARISON.json": "dc14d93c0acbd9dc8c87fc6a8377c7c38a5be38d3529557f0ad3682eefb69c34",
+    "IDENTITY.json": "0c07ea796dc7f7f34d50e49fb49fa6c6db61fd25c5309ea026ab35b6b1bf321d",
+    "PROFILE-DETAIL.json": "09b8e4fc34ebe2eb80f48215c5d6f43a9ceb6cae1f3e9273e8f6619fb93ca9b9",
+    "PROFILE-INVALIDATION.json": "5b0b08150ed8032e320e19b718737ee00c18c7cd592349dba0850af6c903e2ca",
+    "RAW.json": "e700442b6f05ad37ec76d373280fdb07733269031ff886a948eac697cead93ec",
+    "SUMMARY.json": "b282dbe0f97572f4aa69e22327b582afb2836a431cbe1fb59127576eb465cd64",
+    "analyze-native.py": "7d79a127523fbdef99f93719517dae0bf39a4409a9c561bb139bfa33ecd6b735",
+    "analyze.py": "42b920242d03204c1e92aa9bcb8ef5988ea83b2c65bcdc0044121fdef22f4fe7",
+    "boundary.config.mjs": "d89aebb1dcc8674019e091d9907eb89fab1ca823ee37c73679c26aa9e427112d",
+    "native-boundary-hook-incomplete-template.mjs": "18f81d5c5e636278b622aa696bd0699f62eadeea59c0ed78a2a07cd228eb98ba",
+    "native-boundary-hook.mjs": "897e0e3fd35a05100c0a47087fdb852a917029fddfdc97d78c416acc120b02e2",
+    "native-sample.py": "288a4003e21953f4bf6a11cb492b833b4da82d286ccb251a12c7aef02c3bba93",
+    "run-boundary.py": "2bb88296a31a11c4099909e317465bd36d97c0c6adbf68292ea82aad4976d339",
+    "run-initial.py": "83e7a4435b971ed83de05796fc0c177fc617034fca9b4f30c789acfcaa1b3fcf",
+    "run.py": "28693439af08c1a2ce7e8937d99db8fc5fb44d84c37c6ae877026dfb4b297f60"
+  },
+  "sampleSHA256": "900da75f6170c6e50b04b0accf5b2192eabc6378033812ef9cdf4d2d72f315bd",
+  "qualification": "Diagnostic profiles and separately instrumented native boundaries, not new speed acceptance. Three complete packed profiles per mode. Sample time/categories overlap where noted. Native replay excludes JS capture/encoding and includes cold compile/metadata work."
+}

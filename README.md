@@ -154,6 +154,10 @@ with packed timing effectively flat. It uses the existing request-template opt-i
 these independently measured gains must not be added to the projection results.
 The two optimized protocols cannot yet be combined in the release. A local combined
 candidate showed no clear incremental CPU gain over `b2eed4ed` and remains unmerged.
+The [fresh hotspot profile](docs/benchmarks/css-hotspots-accepted-b2-2026-11-28.md)
+separates packed JavaScript capture/matching/encoding from native declaration,
+matching-map and metadata costs, and defines five next experiments with correctness
+controls. It does not establish another speed improvement.
 
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
 `domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the
