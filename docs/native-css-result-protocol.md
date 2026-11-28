@@ -36,17 +36,17 @@ Detailed counters, seven-block ABBA timings and gate results are recorded in [th
 
 ## Integrated comparison against JavaScript
 
-The committed `9576936a` package was measured against its own legacy JS mode in
-seven ABBA blocks per supported protocol, with all 29 tests passing every run.
-Context-template requests measured +8.51% whole-suite wall time and +11.90% child
-CPU; native-state results measured +8.59% wall time and +12.20% child CPU. Ordinary
-wire Rust measured +6.15% wall time and +9.46% child CPU. Each protocol used a
-separate comparison window; these figures do not establish a ranking between
-protocols. The initial opt-in comparisons encountered an unrelated compiler and
-were repeated. Shared desktop/VM activity remains a limitation. JavaScript stays
-the default, and the 2% wall-time gap target remains unmet. See the
-[complete receipt](benchmarks/css-protocols-vs-js-2026-11-28.json) for every block,
-CPU/callback metrics, artifact identities and qualifications.
+The fresh packed `b2eed4ed` package, including projection reuse and the refined
+template envelope, was compared with its own JavaScript mode in seven ABBA blocks
+per protocol. All 29 tests passed in every run. Ordinary wire Rust measured
++8.95% wall time and +12.38% child CPU; context-template requests +10.65% and
++14.71%; native-state results +7.61% and +11.06%. Large timing outliers are retained.
+Owned builds were paused, but shared desktop/VM activity remains a limitation.
+Separate windows do not rank protocols or establish a regression versus the
+[earlier package](benchmarks/css-protocols-vs-js-2026-11-28.json).
+JavaScript stays the default and the 2% wall-time target remains unmet. See the
+[fresh receipt](benchmarks/css-accepted-b2-vs-js-2026-11-28.json) for raw timings,
+artifact identities and the unmerged combined-protocol experiment.
 
 ## Exact projection reuse
 

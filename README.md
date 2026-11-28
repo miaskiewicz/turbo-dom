@@ -127,29 +127,33 @@ Rust 7.79% slower than legacy JS; its final JS run had a retained load outlier.
 These separate-window results do not establish performance parity or a stable
 whole-suite speedup. The CSS default remains JavaScript.
 
-The [post-integration comparison](docs/benchmarks/css-protocols-vs-js-2026-11-28.json)
-uses the same installed package and 29 tests, with seven ABBA blocks per mode:
+The [fresh post-integration comparison](docs/benchmarks/css-accepted-b2-vs-js-2026-11-28.json)
+measures commit `b2eed4ed`, including projection reuse and the refined template
+envelope, using the same installed package and 29 tests. Each mode used seven
+ABBA blocks against JavaScript:
 
 | Rust CSS mode | Whole-suite wall gap vs JS | Child CPU gap vs JS |
 | --- | --- | --- |
-| Default wire transport | +6.15% | +9.46% |
-| Context-template requests | +8.51% | +11.90% |
-| Native-state results | +8.59% | +12.20% |
+| Default wire transport | +8.95% | +12.38% |
+| Context-template requests | +10.65% | +14.71% |
+| Native-state results | +7.61% | +11.06% |
 
-Each mode was paired independently with JS; these separate windows do not rank
-the Rust protocols. All tests passed. The 2% wall-time target remains unmet.
-The [subsequent projection-reuse change](docs/benchmarks/css-projection-reuse-2026-11-28.json)
-reduced native replay CPU by 1.32% and packed wall time by 0.87% versus the preceding
-Rust build (six of seven ABBA wins each). It applies to the explicit native-state
-result protocol; the table above predates this change and is not a fresh JS
-comparison of it.
+All tests passed. Large timing outliers are retained in the receipt. Owned builds
+were paused, but shared desktop/VM activity remains a limitation. Separate windows
+do not rank protocols or establish a regression against the
+[earlier measurements](docs/benchmarks/css-protocols-vs-js-2026-11-28.json).
+The 2% wall-time target remains unmet; JavaScript stays the default.
+
+The [projection-reuse change](docs/benchmarks/css-projection-reuse-2026-11-28.json)
+independently reduced native replay CPU by 1.32% and packed wall time by 0.87%
+versus the preceding Rust build (six of seven ABBA wins each). It applies to the
+explicit native-state result protocol.
 The [template-envelope refinement](docs/benchmarks/css-template-envelope-2026-11-28.json)
 cut isolated serialization CPU by 20.27% and full native replay CPU by 1.54%,
 with packed timing effectively flat. It uses the existing request-template opt-in;
 these independently measured gains must not be added to the projection results.
-The two optimized protocols cannot yet be combined. A competing compiler
-invalidated the initial opt-in timings; both were repeated, and all raw samples
-were retained. Desktop/VM activity remains a measurement limitation.
+The two optimized protocols cannot yet be combined in the release. A local combined
+candidate showed no clear incremental CPU gain over `b2eed4ed` and remains unmerged.
 
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
 `domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the
