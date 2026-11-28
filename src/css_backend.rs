@@ -1053,14 +1053,14 @@ mod tests {
         assert_eq!(owner.resolve_matching(&spaced, &token).unwrap(), first);
         assert_eq!(slot.parse_calls(), 2);
         assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
-        assert_eq!(slot.parse_calls(), 3);
+        assert_eq!(slot.parse_calls(), 2);
         for _ in 0..2 {
             assert!(owner
                 .resolve_matching("invalid-json", &token)
                 .unwrap_err()
                 .contains("Transport"));
         }
-        assert_eq!(slot.parse_calls(), 5);
+        assert_eq!(slot.parse_calls(), 4);
         let mut bad = input;
         bad["abiVersion"] = json!(2);
         for _ in 0..2 {
@@ -1069,9 +1069,9 @@ mod tests {
                 .unwrap_err()
                 .contains("AbiVersion"));
         }
-        assert_eq!(slot.parse_calls(), 7);
+        assert_eq!(slot.parse_calls(), 6);
         assert_eq!(owner.resolve_matching(&wire, &token).unwrap(), first);
-        assert_eq!(slot.parse_calls(), 7);
+        assert_eq!(slot.parse_calls(), 6);
     }
     #[test]
     fn retained_validation_receipt_keeps_owner_checks_before_parsing() {
@@ -1113,7 +1113,7 @@ mod tests {
         assert_eq!(owner.matching.as_ref().unwrap().parse_calls(), 1);
         assert_eq!(owner.matching.as_ref().unwrap().cascade_calls(), 1);
     }
-    fn retained_fixture() -> (PreparedHandle, String, Value) {
+    pub(super) fn retained_fixture() -> (PreparedHandle, String, Value) {
         let compiled = compiled(".x{color:red}");
         let mut owner = prepared(&compiled);
         let mut input = request(2, true);
@@ -1126,7 +1126,7 @@ mod tests {
             .unwrap();
         (owner, token, input)
     }
-    fn retained_input(input: &Value) -> String {
+    pub(super) fn retained_input(input: &Value) -> String {
         json!({"abiVersion":input["abiVersion"],"targets":input["targets"],"limits":input["limits"]}).to_string()
     }
     #[test]
@@ -1460,3 +1460,7 @@ mod tests {
         assert_eq!(result["world"], json!([55296, 0, 57344]));
     }
 }
+
+#[cfg(test)]
+#[path = "css_retained_multi_tests.rs"]
+mod retained_multi_tests;

@@ -118,9 +118,14 @@ preserving validation and fallback behavior. Combined native-workload CPU fell
 7.99% (7/7 ABBA block wins). Packed Vitest measured 2.55% lower matched median wall
 time (5/7 wins); adding keywords to scope-root alone was effectively flat in the
 packed suite but reduced native-workload CPU by 2.00% (6/7 wins).
-The fresh direct comparison still measured Rust 11.69% slower than legacy JS
-(block range 6.41–16.24%). These separate-window results do not establish a stable
-whole-suite speedup or performance parity. The CSS default remains JavaScript.
+The [bounded native success-cache experiment](docs/benchmarks/css-exact-success-cache-2026-11-28.json)
+retains up to eight exact successful requests under the existing byte limits and
+owner/token checks. Authentic native-workload CPU fell 11.55% (7/7 ABBA wins),
+with 50 cache hits instead of 13. Packed Vitest was effectively flat: 0.36% lower
+matched median wall time (4/7 wins). A fresh same-package comparison measured
+Rust 7.79% slower than legacy JS; its final JS run had a retained load outlier.
+These separate-window results do not establish performance parity or a stable
+whole-suite speedup. The CSS default remains JavaScript.
 
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
 `domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the

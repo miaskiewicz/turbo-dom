@@ -1,0 +1,343 @@
+{
+  "date": "2026-11-28",
+  "baseCommit": "b753e27baf497c9b458009835d55a4c72a0aff4d",
+  "decision": "Keep bounded native cache for repeatable lower nativeCPU with packed suite effectivelyflat; JavaScript remainsdefault. Fusedv1/v1.1 remain unmerged experiments.",
+  "artifact": {
+    "baseCommit": "b753e27baf497c9b458009835d55a4c72a0aff4d",
+    "baselineSHA256": "a64fd9bfc66958f0b68de411d4eddfc46840c14a83191b0274ba8e5e4f3009af",
+    "candidateSHA256": "bff8b4d68482f4dc26bc5963c345d7bdc8021599e9eabc9ab751ab7fb08d7142",
+    "sourceFiles": {
+      "src/css_retained_matching.rs": "391b42a89f8ebfd42096cc87ed8634697d059843784c2aeaa7a6dfc9218eeb70",
+      "src/css_backend.rs": "919e9a1ca98aee5c28bdd3c7d272d773dab45406159d31846e4cb0447d724157",
+      "src/css_retained_multi_tests.rs": "a97e2209633bde2f9332c1a35572b19371967e007da9c01e2c5ab98e33ee65af"
+    },
+    "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "testOnlyCoverageFollowup": {
+      "previousSHA256": "bff8b4d68482f4dc26bc5963c345d7bdc8021599e9eabc9ab751ab7fb08d7142",
+      "finalSHA256": "bff8b4d68482f4dc26bc5963c345d7bdc8021599e9eabc9ab751ab7fb08d7142",
+      "binaryUnchanged": true
+    }
+  },
+  "contract": [
+    "At most8 exact successful full requests per live matching slot",
+    "Unchanged64KiB result payload cap within256KiB matching cap; owner/currenttoken checked beforelookup",
+    "Fresh JS captures and validation, changed limits/errors/disposal behavior retained; no error caching"
+  ],
+  "corpus": {
+    "evictions": 4,
+    "hits": 50,
+    "maxEntries": 8,
+    "maxResultBytes": 28244,
+    "misses": 68
+  },
+  "baselineCorpus": {
+    "hits": 13,
+    "misses": 105
+  },
+  "method": {
+    "blocks": 7,
+    "order": "ABBA",
+    "nativeIterationsPerProcess": 100,
+    "packedTestsPerRun": 29,
+    "quiet": "V8 paused after compiler exited; allother experimentjobs idle",
+    "directJs": "Sameinstalledcandidatepackage/fixtures, switch CSSbackend only"
+  },
+  "benchmarks": {
+    "native": {
+      "summary": {
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -11.772692852688193,
+          "blockDeltasPct": [
+            -6.79543839011677,
+            -11.772692852688193,
+            -6.586820589075759,
+            -11.910594729902858,
+            -11.995078109090162,
+            -11.056608335619133,
+            -13.140243244964134
+          ],
+          "wins": 7,
+          "baselineMedian": 12381574.585,
+          "candidateMedian": 11042167.71
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -11.545994984363606,
+          "blockDeltasPct": [
+            -7.026636276211362,
+            -11.740798863768697,
+            -6.9401815774728925,
+            -11.846164725373532,
+            -11.545994984363606,
+            -10.934087575846263,
+            -12.872932487049804
+          ],
+          "wins": 7,
+          "baselineMedian": 1237362.5,
+          "candidateMedian": 1102525.0
+        }
+      },
+      "receipt": ".evidence/css-perf-088/parity-program-14/native-replay/cap8-vs-current-v15/RESULT.json",
+      "sha256": "694c7b7cf88f24cc3612ebba7429df136e4c5eba17166056dfd1eea0a5e86d1a"
+    },
+    "packedVsRust": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -0.35527306328786423,
+          "blockDeltasPct": [
+            -0.571300303005351,
+            0.8414459382473982,
+            0.7288801079544438,
+            -0.9278381626990684,
+            2.05349658266476,
+            -2.112732186437294,
+            -0.35527306328786423
+          ],
+          "wins": 4,
+          "leftMedian": 1625.3460420120973,
+          "rightMedian": 1609.7841455193702
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 0.6937057733138019,
+          "blockDeltasPct": [
+            0.6937057733138019,
+            1.3079850953889194,
+            1.5285618742601148,
+            -1.7618318897825835,
+            1.184741556144564,
+            -4.2482396262741755,
+            -0.8275854888244782
+          ],
+          "wins": 3,
+          "leftMedian": 279.4734565,
+          "rightMedian": 275.5185635
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -0.349010948408468,
+          "blockDeltasPct": [
+            -0.349010948408468,
+            0.5612201483419454,
+            0.6442909047433387,
+            -1.358630933685867,
+            2.06292031742632,
+            -2.297101620045061,
+            -1.1382503844196368
+          ],
+          "wins": 4,
+          "leftMedian": 1905.6570000000002,
+          "rightMedian": 1887.5919999999974
+        }
+      },
+      "receipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/cap8-vs-current-v15/RESULT.json",
+      "sha256": "2dbca8a5ddc0ff13953d7ae78e4f053d261959bc815a7b4270badcb99cc4e533"
+    },
+    "packedVsJs": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 7.790600301891293,
+          "blockDeltasPct": [
+            8.66819801176586,
+            7.981161551239735,
+            13.610376931489721,
+            7.2865626179917875,
+            5.7271641321057665,
+            7.790600301891293,
+            -2.5296020917050854
+          ],
+          "wins": 1,
+          "leftMedian": 1490.5880829901434,
+          "rightMedian": 1617.8643334715161
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 77.57741526210313,
+          "blockDeltasPct": [
+            84.26499171335205,
+            77.57741526210313,
+            86.0489270978341,
+            75.03594771493295,
+            77.24756643778741,
+            74.90585148072431,
+            82.23614990008716
+          ],
+          "wins": 0,
+          "leftMedian": 153.89883350000005,
+          "rightMedian": 273.577353
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 10.44368137477072,
+          "blockDeltasPct": [
+            11.939277147478467,
+            11.81302046729964,
+            17.76532818177634,
+            10.44368137477072,
+            9.99954247468926,
+            10.426355759363592,
+            4.960036377780397
+          ],
+          "wins": 0,
+          "leftMedian": 1681.2964999999995,
+          "rightMedian": 1899.6674999999968
+        }
+      },
+      "receipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/cap8-vs-js-v15/RESULT.json",
+      "sha256": "657a81f53396a043cfe624ba731320fd8d9b59382fd7077e856e052fe00d7abd"
+    }
+  },
+  "validation": {
+    "nativeTests": {
+      "CORE": {
+        "pass": 91,
+        "fail": 0,
+        "ignored": 0
+      },
+      "INTEGRATIONS": {
+        "pass": 90,
+        "fail": 0,
+        "ignored": 0
+      },
+      "PARSER": {
+        "pass": 97,
+        "fail": 0,
+        "ignored": 0
+      },
+      "additionalNativeCoverageRun": {
+        "pass": 98,
+        "fail": 0,
+        "ignored": 0
+      }
+    },
+    "coreCoverage": {
+      "exitCode": 0,
+      "gates": [
+        {
+          "command": [
+            "cargo",
+            "+1.98.0",
+            "tarpaulin",
+            "--offline",
+            "--locked",
+            "--engine",
+            "llvm",
+            "-p",
+            "turbo-dom-parser",
+            "--include-files",
+            "src/core.rs",
+            "--timeout",
+            "600",
+            "--out",
+            "Json",
+            "--out",
+            "Stdout",
+            "--output-dir",
+            "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-15/exact-wire-lru/coverage/parser",
+            "--fail-under",
+            "100",
+            "--jobs",
+            "1"
+          ],
+          "exitCode": 0,
+          "seconds": 24.456125500029884,
+          "qualification": "Normative CI parser core100 floor"
+        },
+        {
+          "command": [
+            "cargo",
+            "+1.98.0",
+            "tarpaulin",
+            "--offline",
+            "--locked",
+            "--engine",
+            "llvm",
+            "-p",
+            "turbo-dom-parser",
+            "--no-default-features",
+            "--features",
+            "napi-bind,css-backend",
+            "--lib",
+            "--include-files",
+            "src/css_retained_matching.rs",
+            "src/css_retained_multi_tests.rs",
+            "--timeout",
+            "600",
+            "--out",
+            "Json",
+            "--out",
+            "Stdout",
+            "--output-dir",
+            "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-15/exact-wire-lru/coverage/native",
+            "--fail-under",
+            "100",
+            "--jobs",
+            "1"
+          ],
+          "exitCode": 0,
+          "seconds": 78.54138433304615,
+          "qualification": "Additional experiment-specific native changed-file100 coverage gate; not presented as an existing CI floor."
+        }
+      ],
+      "qualification": "Normative parser core100 and additional native changed-file100; core computed implementation unchanged from accepted b753."
+    },
+    "coverage": {
+      "parserCore": {
+        "covered": 575,
+        "total": 575,
+        "floor": 100
+      },
+      "cacheImplementation": {
+        "covered": 101,
+        "total": 101,
+        "floor": 100
+      },
+      "cacheTestHelpers": {
+        "covered": 8,
+        "total": 8,
+        "floor": 100
+      }
+    },
+    "node": {
+      "pass": 1237,
+      "fail": 0,
+      "skip": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.36
+    },
+    "packed": {
+      "baseline": {
+        "pass": 29,
+        "sentinel": 1
+      },
+      "candidate": {
+        "pass": 29,
+        "sentinel": 1
+      }
+    },
+    "finalStrictRecheck": [
+      {
+        "name": "CLIPPY",
+        "exitCode": 0,
+        "seconds": 0.9136198749765754
+      },
+      {
+        "name": "FMT-CHECK",
+        "exitCode": 0,
+        "seconds": 1.2892115829745308
+      },
+      {
+        "name": "COMPLEXITY",
+        "exitCode": 0,
+        "seconds": 0.00842525000916794
+      },
+      {
+        "name": "CANDIDATE-BUILD",
+        "exitCode": 0,
+        "seconds": 13.206142708018888
+      }
+    ]
+  },
+  "limitations": [
+    "Native replay excludes JS capture/encoding/app work; cannotinfer11.55%whole-suitegain",
+    "PackedvsRust\u22120.36%,4/7wins iseffectivelyflat",
+    "DirectJS median+7.79%wall not2%goal; finalJSrun1858mswithloadspike retained; noselectiveexclusion",
+    "Do not subtract olderdifferent-windowJSgap toclaimcausalwhole-suiteimprovement"
+  ]
+}

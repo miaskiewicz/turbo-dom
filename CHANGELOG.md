@@ -7,6 +7,12 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Retain up to eight exact successful native CSS requests under the existing
+  payload limits and fresh owner/token checks. The authentic native replay used
+  11.55% less CPU; packed Vitest remained effectively flat. Errors and changed
+  inputs still validate normally; JavaScript remains the default CSS backend.
+  See [benchmark results](docs/benchmarks/css-exact-success-cache-2026-11-28.json).
+
 - Reuse bounded encoded fragments for privately decoded user-agent CSS text.
   Keep fresh captures and full validation of all other request fields, and preserve
   custom-provider callbacks and errors. Packed Vitest used 2.36% less wall time

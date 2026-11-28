@@ -3,7 +3,7 @@
 use super::{
     apply_matching, fail, parse, Matching, PreparedStyles, ResolveInput, ValidatedMatching,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::mem::size_of;
 use std::sync::Mutex;
 use turbo_dom_core::rtdom::computed_css::shadow_routes::ContextRoot;
@@ -12,6 +12,11 @@ use turbo_dom_core::rtdom::computed_css::shadow_routes::ContextRoot;
 // ordinary complete transport with the caller's original limits.
 const MAX_MATCHING_BYTES: usize = 256 * 1024;
 const MAX_RESULT_BYTES: usize = 64 * 1024;
+const MAX_RESULT_ENTRIES: usize = 8;
+
+fn available_result_bytes(payload_bytes: usize) -> usize {
+    MAX_RESULT_BYTES.min(MAX_MATCHING_BYTES.saturating_sub(payload_bytes))
+}
 
 struct CachedResult {
     wire: Box<str>,
@@ -20,6 +25,45 @@ struct CachedResult {
 impl CachedResult {
     fn bytes(&self) -> usize {
         self.wire.len() + self.response.len()
+    }
+}
+
+#[derive(Default)]
+struct SuccessCache {
+    entries: VecDeque<CachedResult>,
+    bytes: usize,
+}
+impl SuccessCache {
+    fn get(&mut self, wire: &str) -> Option<String> {
+        let index = self
+            .entries
+            .iter()
+            .position(|entry| entry.wire.as_ref() == wire)?;
+        let entry = self.entries.remove(index)?;
+        let response = entry.response.to_string();
+        self.entries.push_back(entry);
+        Some(response)
+    }
+    fn remove(&mut self, index: usize) {
+        if let Some(entry) = self.entries.remove(index) {
+            self.bytes -= entry.bytes();
+        }
+    }
+    fn retain(&mut self, entry: Option<CachedResult>, available: usize) {
+        let Some(entry) = entry else {
+            self.entries.clear();
+            self.bytes = 0;
+            return;
+        };
+        if let Some(index) = self.entries.iter().position(|old| old.wire == entry.wire) {
+            self.remove(index);
+        }
+        let bytes = entry.bytes();
+        while self.entries.len() >= MAX_RESULT_ENTRIES || self.bytes + bytes > available {
+            self.remove(0);
+        }
+        self.bytes += bytes;
+        self.entries.push_back(entry);
     }
 }
 
@@ -80,7 +124,7 @@ pub(crate) struct MatchingSlot {
     facts: ValidatedMatching,
     token: String,
     payload_bytes: usize,
-    result: Mutex<Option<CachedResult>>,
+    result: Mutex<SuccessCache>,
     #[cfg(test)]
     cascade_calls: std::sync::atomic::AtomicUsize,
     #[cfg(test)]
@@ -98,7 +142,7 @@ impl MatchingSlot {
         Ok(Self {
             facts,
             payload_bytes: bytes + token.len(),
-            result: Mutex::new(None),
+            result: Mutex::new(SuccessCache::default()),
             #[cfg(test)]
             cascade_calls: std::sync::atomic::AtomicUsize::new(0),
             #[cfg(test)]
@@ -124,22 +168,19 @@ impl MatchingSlot {
                 .result
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .as_ref()
-                .map_or(0, CachedResult::bytes)
+                .bytes
     }
     pub(crate) fn resolve(&self, prepared: &PreparedStyles, wire: &str) -> Result<String, String> {
         // The live owner and current token were checked before this slot.
         // An exact wire retained only after successful validation and cascade
         // certifies these immutable prepared/matching facts and all budgets.
-        if let Some(cached) = self
+        if let Some(response) = self
             .result
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .as_ref()
+            .get(wire)
         {
-            if cached.wire.as_ref() == wire {
-                return Ok(cached.response.to_string());
-            }
+            return Ok(response);
         }
         #[cfg(test)]
         self.parse_calls
@@ -150,7 +191,7 @@ impl MatchingSlot {
         self.cascade_calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let response = apply_matching(prepared, input, &self.facts)?;
-        let available = MAX_RESULT_BYTES.min(MAX_MATCHING_BYTES.saturating_sub(self.payload_bytes));
+        let available = available_result_bytes(self.payload_bytes);
         // Boxed strings retain no caller spare capacity. A success too large
         // for the independent result cap does not expand the matching cap.
         let retained =
@@ -158,10 +199,10 @@ impl MatchingSlot {
                 wire: wire.into(),
                 response: response.clone().into_boxed_str(),
             });
-        *self
-            .result
+        self.result
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = retained;
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain(retained, available);
         Ok(response)
     }
 }
@@ -172,5 +213,66 @@ mod tests {
     fn matching_slot_remains_send_and_sync() {
         fn check<T: Send + Sync>() {}
         check::<super::MatchingSlot>();
+    }
+    fn entry(wire: &str, response: &str) -> super::CachedResult {
+        super::CachedResult {
+            wire: wire.into(),
+            response: response.into(),
+        }
+    }
+    #[test]
+    fn small_remaining_budget_and_duplicate_accounting_stay_bounded() {
+        use super::*;
+        assert_eq!(available_result_bytes(0), MAX_RESULT_BYTES);
+        assert_eq!(available_result_bytes(MAX_MATCHING_BYTES - 8), 8);
+        assert_eq!(available_result_bytes(MAX_MATCHING_BYTES), 0);
+        assert_eq!(available_result_bytes(usize::MAX), 0);
+        let mut cache = SuccessCache::default();
+        cache.retain(Some(entry("a", "aaa")), 8);
+        cache.retain(Some(entry("b", "bbb")), 8);
+        assert_eq!(cache.bytes, 8);
+        assert_eq!(cache.get("a").as_deref(), Some("aaa"));
+        cache.retain(Some(entry("c", "cccc")), 8);
+        assert_eq!(cache.bytes, 5);
+        assert_eq!(cache.entries.len(), 1);
+        assert_eq!(cache.get("b"), None);
+        cache.retain(Some(entry("c", "ccccc")), 8);
+        assert_eq!(cache.bytes, 6);
+        assert_eq!(cache.entries.len(), 1);
+        cache.retain(None, 0);
+        assert_eq!(cache.bytes, 0);
+        assert!(cache.entries.is_empty());
+    }
+    #[test]
+    fn entry_storage_capacity_does_not_expand_beyond_fixed_bound() {
+        use super::*;
+        let mut cache = SuccessCache::default();
+        for index in 0..64 {
+            let wire = index.to_string();
+            cache.retain(Some(entry(&wire, "ok")), MAX_RESULT_BYTES);
+            assert!(cache.entries.len() <= MAX_RESULT_ENTRIES);
+            assert!(cache.entries.capacity() <= MAX_RESULT_ENTRIES);
+            assert_eq!(cache.get(&wire).as_deref(), Some("ok"));
+            let sum: usize = cache.entries.iter().map(CachedResult::bytes).sum();
+            assert_eq!(cache.bytes, sum);
+        }
+    }
+    #[test]
+    fn retained_payload_counts_shared_scope_and_context_domains_once() {
+        use super::*;
+        let facts: Matching = serde_json::from_value(serde_json::json!({
+            "domains": [{"id":0,"nodeIds":[1,2,3]}, {"id":1,"nodeIds":[4,5]}, {"id":2,"nodeIds":[99,100]}],
+            "selectorAnswers": [{"selectorId":0,"itemId":0,"rootId":null,"domainId":0,"matches":[2]}],
+            "scopeAnswers": [{"groupId":0,"boundary":"start","rootId":1,"domainId":0,"matches":[2,3]}],
+            "contextAnswers": {
+                "selectorAnswers": [{"treeScope":1,"selectorId":1,"itemId":0,"rootId":null,"domainId":1,"matches":[4]}],
+                "scopeAnswers": [{"treeScope":1,"groupId":1,"boundary":"end","rootId":4,"domainId":1,"matches":[5]}]
+            },
+            "contextRoots": [{"treeScope":0,"root":1,"host":null,"parentTreeScope":null}, {"treeScope":1,"root":4,"host":2,"parentTreeScope":0}]
+        })).unwrap();
+        assert_eq!(
+            payload_bytes(&facts),
+            14 * size_of::<u32>() + 2 * size_of::<ContextRoot>()
+        );
     }
 }
