@@ -127,6 +127,21 @@ Rust 7.79% slower than legacy JS; its final JS run had a retained load outlier.
 These separate-window results do not establish performance parity or a stable
 whole-suite speedup. The CSS default remains JavaScript.
 
+The [post-integration comparison](docs/benchmarks/css-protocols-vs-js-2026-11-28.json)
+uses the same installed package and 29 tests, with seven ABBA blocks per mode:
+
+| Rust CSS mode | Whole-suite wall gap vs JS | Child CPU gap vs JS |
+| --- | --- | --- |
+| Default wire transport | +6.15% | +9.46% |
+| Context-template requests | +8.51% | +11.90% |
+| Native-state results | +8.59% | +12.20% |
+
+Each mode was paired independently with JS; these separate windows do not rank
+the Rust protocols. All tests passed. The 2% wall-time target remains unmet.
+The two optimized protocols cannot yet be combined. A competing compiler
+invalidated the initial opt-in timings; both were repeated, and all raw samples
+were retained. Desktop/VM activity remains a measurement limitation.
+
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
 `domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the
 full Rust DOM integration described above. Missing or incompatible CSS artifacts

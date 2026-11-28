@@ -31,4 +31,18 @@ Native wire results and native-style-state results occupy exclusive cache modes.
 
 ## Measured scope
 
-The independently tested v1.2 candidate reduced request transport from 177716 to 127504 bytes across the authentic 118-request corpus: 14 installations, 93 compact calls and 11 exact-full-wire reuses. Exact output bytes, errors and owner/lifetime controls matched. The packed 29-test suite was 0.705% faster in seven of seven ABBA blocks; packed CPU was effectively flat. Native replay CPU did not improve (+0.617% with dynamic compact assembly; +1.285% with predetermined compact wires). These are workload-specific results, not a claim of native CPU improvement or parity with JavaScript. An integrated release-build comparison against JavaScript is a separate follow-up.
+The independently tested v1.2 candidate reduced request transport from 177716 to 127504 bytes across the authentic 118-request corpus: 14 installations, 93 compact calls and 11 exact-full-wire reuses. Exact output bytes, errors and owner/lifetime controls matched. The packed 29-test suite was 0.705% faster in seven of seven ABBA blocks; packed CPU was effectively flat. Native replay CPU did not improve (+0.617% with dynamic compact assembly; +1.285% with predetermined compact wires). These are workload-specific results, not a claim of native CPU improvement or parity with JavaScript. The integrated release-build comparison against JavaScript is recorded below.
+
+## Integrated comparison against JavaScript
+
+The committed `9576936a` package was measured against its own legacy JS mode in
+seven ABBA blocks per supported protocol, with all 29 tests passing every run.
+Context-template requests measured +8.51% whole-suite wall time and +11.90% child
+CPU; native-state results measured +8.59% wall time and +12.20% child CPU. Ordinary
+wire Rust measured +6.15% wall time and +9.46% child CPU. Each protocol used a
+separate comparison window; these figures do not establish a ranking between
+protocols. The initial opt-in comparisons encountered an unrelated compiler and
+were repeated. Shared desktop/VM activity remains a limitation. JavaScript stays
+the default, and the 2% wall-time gap target remains unmet. See the
+[complete receipt](benchmarks/css-protocols-vs-js-2026-11-28.json) for every block,
+CPU/callback metrics, artifact identities and qualifications.

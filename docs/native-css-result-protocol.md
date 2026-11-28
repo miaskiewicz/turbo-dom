@@ -33,3 +33,17 @@ CSS declarations own JavaScript snapshots, with no native result handle. They re
 The isolated 118-request corpus and packed 29-test suite passed. Calls decreased from 236 to 118 and response bytes from 163,348 to 12,194 for this corpus; pages requiring used values can retain full responses. The native CPU replay improved; whole packed wall/CPU were effectively flat. This is not a global speed or browser-parity claim. JavaScript remains the default.
 
 Detailed counters, seven-block ABBA timings and gate results are recorded in [the benchmark receipt](benchmarks/css-native-style-state-2026-11-28.json). Native replay CPU fell 5.12% in all seven blocks; packed wall time was effectively flat (0.17% lower, four wins). Timings used the experimental selector for this protocol; the final public option wiring was separately validated with a fresh packed suite.
+
+## Integrated comparison against JavaScript
+
+The committed `9576936a` package was measured against its own legacy JS mode in
+seven ABBA blocks per supported protocol, with all 29 tests passing every run.
+Context-template requests measured +8.51% whole-suite wall time and +11.90% child
+CPU; native-state results measured +8.59% wall time and +12.20% child CPU. Ordinary
+wire Rust measured +6.15% wall time and +9.46% child CPU. Each protocol used a
+separate comparison window; these figures do not establish a ranking between
+protocols. The initial opt-in comparisons encountered an unrelated compiler and
+were repeated. Shared desktop/VM activity remains a limitation. JavaScript stays
+the default, and the 2% wall-time gap target remains unmet. See the
+[complete receipt](benchmarks/css-protocols-vs-js-2026-11-28.json) for every block,
+CPU/callback metrics, artifact identities and qualifications.

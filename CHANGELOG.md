@@ -7,6 +7,13 @@ at the time); this file reconstructs them from history.
 
 ## [Unreleased — v0.8.8]
 
+- Record a fresh same-package comparison of all three supported Rust CSS modes
+  against legacy JavaScript after integration. Seven ABBA blocks per mode passed
+  all 29 tests; whole-suite wall gaps were 6.15% for wire transport, 8.51% for
+  request templates and 8.59% for native-state results. Separate windows do not
+  establish a protocol ranking; the 2% target remains unmet and JS stays default.
+  See [the full benchmark receipt](docs/benchmarks/css-protocols-vs-js-2026-11-28.json).
+
 - Add optional `cssRequestProtocol: 'context-template-v1'` under the existing Rust
   CSS backend. Reuse bounded successful native contexts while retaining fresh
   request validation, quotas, ownership and callback errors. Default wire transport

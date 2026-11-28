@@ -1,0 +1,1503 @@
+{
+  "date": "2026-11-28",
+  "commit": "9576936a4a50d3d6e4f0c84c3979e90f4bcda1e4",
+  "artifactSHA256": "5a83daf94c5df70cb2d4f1a1cc7656ca6961970395c6e67593e185e1db68254d",
+  "tarballSHA256": "ce9fca3aab5dae0e102498ebc07ac8b81fd23946a5f1641d2b5d3c69ca081591",
+  "comparison": "Each supported Rust protocol against legacy JavaScript in the same installed package",
+  "method": {
+    "tests": 29,
+    "blocksPerComparison": 7,
+    "blockOrder": "ABBA",
+    "warmupsPerComparison": 2,
+    "freshProcesses": true,
+    "metrics": "Whole-process wall time, child CPU, summed test callback durations",
+    "packageAndFixtureHashesCheckedBeforeAndAfter": true
+  },
+  "comparisons": {
+    "wire": {
+      "requestProtocol": "wire-v1",
+      "resultProtocol": "wire-v1",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 6.152555261070569,
+          "blockDeltasPct": [
+            9.449402711020994,
+            13.448414676575982,
+            5.905609619191643,
+            -16.818462586776427,
+            10.7994038790846,
+            1.7838713544646057,
+            6.152555261070569
+          ],
+          "wins": 1,
+          "leftMedian": 1495.4606880201027,
+          "rightMedian": 1624.5923124952242
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 75.90183584237936,
+          "blockDeltasPct": [
+            85.60729425512204,
+            90.92270189574083,
+            75.653646725321,
+            39.39376980362583,
+            64.05382135487623,
+            75.90183584237936,
+            81.74521794878859
+          ],
+          "wins": 0,
+          "leftMedian": 152.13308400000003,
+          "rightMedian": 278.3333349999999
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 9.456238409942031,
+          "blockDeltasPct": [
+            13.00270821981313,
+            17.21164975231,
+            9.084083974682722,
+            -5.621022603965919,
+            17.09303548088279,
+            4.266916240266894,
+            9.456238409942031
+          ],
+          "wins": 1,
+          "leftMedian": 1697.0220000000013,
+          "rightMedian": 1899.9009999999998
+        }
+      },
+      "runs": [
+        {
+          "label": "v16-integrated-js",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1521.9992080237716,
+          "childCpuMs": 1674.365,
+          "callbackMs": 150.65041800000006,
+          "load": [
+            4.00439453125,
+            4.056640625,
+            3.9375
+          ],
+          "reportSha256": "c19a219648dc5bef1cf7acb2c391e040127b74e6fdf7b537718f667e1b7c7d13"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1647.083375020884,
+          "childCpuMs": 1930.0099999999995,
+          "callbackMs": 278.07379000000003,
+          "load": [
+            3.923828125,
+            4.0390625,
+            3.931640625
+          ],
+          "reportSha256": "23c2cd2515d1158981c0821963e41b421b0ada71b086b3beacd37c2f605367a2"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 0,
+          "wallMs": 1460.7931670034304,
+          "childCpuMs": 1648.0169999999998,
+          "callbackMs": 148.25083499999997,
+          "load": [
+            3.923828125,
+            4.0390625,
+            3.931640625
+          ],
+          "reportSha256": "c71c47c651bc4c3ddc84be1d6c9e701db9859f3d6e8fc0f395a9f187ab73ebe0"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 0,
+          "slot": 1,
+          "wallMs": 1595.1449999702163,
+          "childCpuMs": 1851.7180000000005,
+          "callbackMs": 274.263292,
+          "load": [
+            3.923828125,
+            4.0390625,
+            3.931640625
+          ],
+          "reportSha256": "1af862f9e61d024d0b5d1e635a1c1db2ec2efddc16e4b994510485e8dd1eddac"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 0,
+          "slot": 2,
+          "wallMs": 1621.7849590466358,
+          "childCpuMs": 1899.8509999999994,
+          "callbackMs": 277.353082,
+          "load": [
+            3.849609375,
+            4.021484375,
+            3.92578125
+          ],
+          "reportSha256": "f44aa614736361cfd32d671460facde21094c66622fbf87761b4cc88d15e2f13"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 3,
+          "wallMs": 1478.4005419933237,
+          "childCpuMs": 1671.8759999999995,
+          "callbackMs": 148.94458300000002,
+          "load": [
+            3.849609375,
+            4.021484375,
+            3.92578125
+          ],
+          "reportSha256": "894141cbf6ad0f6693341018e76d4b5ad7ffce0aab871bb1e9b67883cfaea8ce"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 0,
+          "wallMs": 1446.3952499791048,
+          "childCpuMs": 1638.3690000000013,
+          "callbackMs": 148.92970999999994,
+          "load": [
+            3.849609375,
+            4.021484375,
+            3.92578125
+          ],
+          "reportSha256": "72306ddcc492b036954250d52dbd4a0a67928437201157da981285daa909fa40"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 1,
+          "slot": 1,
+          "wallMs": 1653.5658749635331,
+          "childCpuMs": 1937.147,
+          "callbackMs": 283.87711900000005,
+          "load": [
+            3.701171875,
+            3.98779296875,
+            3.9140625
+          ],
+          "reportSha256": "6500c8d3bcd0760df753e5e13f9c4c3221459af17fa10916139be9b2f7303363"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 1,
+          "slot": 2,
+          "wallMs": 1624.8045829706825,
+          "childCpuMs": 1899.9510000000002,
+          "callbackMs": 279.3135879999999,
+          "load": [
+            3.701171875,
+            3.98779296875,
+            3.9140625
+          ],
+          "reportSha256": "5ea3e79ac1f9e2ad0f390925d5417507a489daa3596a57bf9d4721d147facbef"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 3,
+          "wallMs": 1443.3502500178292,
+          "childCpuMs": 1635.2800000000002,
+          "callbackMs": 146.05391500000005,
+          "load": [
+            3.701171875,
+            3.98779296875,
+            3.9140625
+          ],
+          "reportSha256": "295cc15698f9d7de729dd25f0136111dcbe35cf59395e91cf62accd6e49c2d26"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 0,
+          "wallMs": 1523.44116702443,
+          "childCpuMs": 1727.0379999999973,
+          "callbackMs": 152.52545800000001,
+          "load": [
+            3.96533203125,
+            4.03759765625,
+            3.93212890625
+          ],
+          "reportSha256": "1d212e104f6640b2b24671cbfb6a5a9185a3572402213af3372b078fb2b8368b"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 2,
+          "slot": 1,
+          "wallMs": 1616.2004159996286,
+          "childCpuMs": 1892.2570000000026,
+          "callbackMs": 274.723625,
+          "load": [
+            3.96533203125,
+            4.03759765625,
+            3.93212890625
+          ],
+          "reportSha256": "ad8c03307dc93c5c317a51c3165a874954bbb6bd14059e6ff5b76c7a1125589e"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 2,
+          "slot": 2,
+          "wallMs": 1583.3759999950416,
+          "childCpuMs": 1850.610999999998,
+          "callbackMs": 265.01699800000006,
+          "load": [
+            3.96533203125,
+            4.03759765625,
+            3.93212890625
+          ],
+          "reportSha256": "998ec0f7800af27b6beb62e4caec42c928ac4f4471f0c474ba8a8aca53596379"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 3,
+          "wallMs": 1497.717417019885,
+          "childCpuMs": 1704.139000000003,
+          "callbackMs": 154.75004299999992,
+          "load": [
+            3.96533203125,
+            4.03759765625,
+            3.93212890625
+          ],
+          "reportSha256": "837d31c065f91360f29bb3773c5b7158acac941e3e9bec846663601d1c273409"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 0,
+          "wallMs": 1474.4743750197813,
+          "childCpuMs": 1666.2789999999993,
+          "callbackMs": 151.74071000000004,
+          "load": [
+            3.8076171875,
+            4.00341796875,
+            3.92041015625
+          ],
+          "reportSha256": "22c5b35aff0ee0b8ea60927beb3dc27bbe515438a2a6dadd6a46fc4cc09f4626"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 3,
+          "slot": 1,
+          "wallMs": 1627.4206250091083,
+          "childCpuMs": 1894.9459999999983,
+          "callbackMs": 285.0847519999999,
+          "load": [
+            3.8076171875,
+            4.00341796875,
+            3.92041015625
+          ],
+          "reportSha256": "3b0b519eb1c4b8a314e5a216866130d310288240b721638a5721225b3e661c12"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 3,
+          "slot": 2,
+          "wallMs": 1592.5067079951987,
+          "childCpuMs": 1866.8159999999991,
+          "callbackMs": 272.91571100000004,
+          "load": [
+            3.8076171875,
+            4.00341796875,
+            3.92041015625
+          ],
+          "reportSha256": "752219635c6817e0182ff971081ea5ee8517e6be9e0e8801cb48a504216a9d3d"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 3,
+          "wallMs": 2396.489583014045,
+          "childCpuMs": 2319.5260000000017,
+          "callbackMs": 248.56445699999992,
+          "load": [
+            3.66259765625,
+            3.9697265625,
+            3.90869140625
+          ],
+          "reportSha256": "ed278fcb80b8b95056a2f18d401b7e466b3c78fbd0caf43274f45969813f15aa"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 0,
+          "wallMs": 2659.1490419814363,
+          "childCpuMs": 2434.4100000000017,
+          "callbackMs": 344.5629150000001,
+          "load": [
+            3.66259765625,
+            3.9697265625,
+            3.90869140625
+          ],
+          "reportSha256": "1e753ff17331dbbc5909c2ee9ae408b58c7050619f4abbe49761f7092a193d6e"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 4,
+          "slot": 1,
+          "wallMs": 2877.752833010163,
+          "childCpuMs": 2863.764999999998,
+          "callbackMs": 502.60087400000003,
+          "load": [
+            4.970703125,
+            4.23583984375,
+            4.0029296875
+          ],
+          "reportSha256": "102e579bae1a104188a6c54e7e26be21bca511e6dbfd5b04e37603350a0c95f0"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 4,
+          "slot": 2,
+          "wallMs": 2178.3970830147155,
+          "childCpuMs": 2548.9799999999996,
+          "callbackMs": 365.3389199999999,
+          "load": [
+            4.970703125,
+            4.23583984375,
+            4.0029296875
+          ],
+          "reportSha256": "5053d1caa4e253bfb8457e4d813cd5c23a11d90a59e29e7918a158ebbd4da76d"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 3,
+          "wallMs": 1904.187708045356,
+          "childCpuMs": 2188.191999999998,
+          "callbackMs": 184.49504100000004,
+          "load": [
+            5.29296875,
+            4.314453125,
+            4.03173828125
+          ],
+          "reportSha256": "625d79eb272c4d283a2cedf373f3e3e8af9cdec33f7381214d9f7d98d82543c7"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 0,
+          "wallMs": 1972.299583023414,
+          "childCpuMs": 2273.1210000000024,
+          "callbackMs": 185.893959,
+          "load": [
+            5.29296875,
+            4.314453125,
+            4.03173828125
+          ],
+          "reportSha256": "0866fba5463c2f360ec54d39c9b72876cc03e0464f2c2d122bdc47511cc3805d"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 5,
+          "slot": 1,
+          "wallMs": 1866.4862079895101,
+          "childCpuMs": 2194.3379999999993,
+          "callbackMs": 314.940751,
+          "load": [
+            5.02880859375,
+            4.27587890625,
+            4.01953125
+          ],
+          "reportSha256": "34463c9e7c154c0ace993d8ff8220ec8e4c41dfc3f5c9a6ff12b77d14362159c"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 5,
+          "slot": 2,
+          "wallMs": 1660.8374590286985,
+          "childCpuMs": 1937.7870000000019,
+          "callbackMs": 277.17458400000004,
+          "load": [
+            5.02880859375,
+            4.27587890625,
+            4.01953125
+          ],
+          "reportSha256": "727fbffa7396cbafc2544f469ca727dcb4fe6c49dcf6baddd5f9150eba6d5266"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 3,
+          "wallMs": 1493.2039590203203,
+          "childCpuMs": 1689.9049999999995,
+          "callbackMs": 150.722957,
+          "load": [
+            5.02880859375,
+            4.27587890625,
+            4.01953125
+          ],
+          "reportSha256": "b3448c4f997bbf3ed90f60d6113dc81896e8395fd11fcf0ada248c22e5339897"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 0,
+          "wallMs": 1455.346125003416,
+          "childCpuMs": 1636.1600000000021,
+          "callbackMs": 150.26946399999997,
+          "load": [
+            4.7060546875,
+            4.22119140625,
+            4.00146484375
+          ],
+          "reportSha256": "7be9ab896011efaeeb746e7d72b007fb816cdc623e8e4a0bf3588580bc445f18"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 6,
+          "slot": 1,
+          "wallMs": 1604.6724580228329,
+          "childCpuMs": 1868.1090000000004,
+          "callbackMs": 277.020544,
+          "load": [
+            4.7060546875,
+            4.22119140625,
+            4.00146484375
+          ],
+          "reportSha256": "59d4aef07333202fcbc73c53ddbbb25d15fcce4f938dbe59ff02cbd6e5655e22"
+        },
+        {
+          "label": "v16-integrated-wire",
+          "block": 6,
+          "slot": 2,
+          "wallMs": 1624.3800420197658,
+          "childCpuMs": 1900.6279999999992,
+          "callbackMs": 280.685498,
+          "load": [
+            4.7060546875,
+            4.22119140625,
+            4.00146484375
+          ],
+          "reportSha256": "2565367b61bf246805c9c9509e0a154baf4ab1fb28f1a312d27114e35a12e284"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 3,
+          "wallMs": 1586.5519170183688,
+          "childCpuMs": 1806.9849999999992,
+          "callbackMs": 156.59200300000003,
+          "load": [
+            4.7060546875,
+            4.22119140625,
+            4.00146484375
+          ],
+          "reportSha256": "d2731b112cb6a5c0c6ba418f57e72ccf4bbd2546a7830adaea4bec34bc684695"
+        }
+      ],
+      "runnerSHA256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+      "resultSHA256": "b23fbd4957682b13a766d31b34119a58fc5692f3c0f350375713738129a5800d",
+      "rawEvidence": ".evidence/css-perf-088/parity-program-07/current-opt-in/integrated-957-js-vs-wire",
+      "fixtureFiles": {
+        "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+        "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+        "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+        "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+        "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+        "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+        "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+        "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+      }
+    },
+    "template": {
+      "requestProtocol": "context-template-v1",
+      "resultProtocol": "wire-v1",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 8.510304731365759,
+          "blockDeltasPct": [
+            9.23700379358461,
+            12.412153179174211,
+            12.65431408952633,
+            5.703962705362908,
+            6.795647806508165,
+            7.2348739457706035,
+            8.510304731365759
+          ],
+          "wins": 0,
+          "leftMedian": 1441.720395523589,
+          "rightMedian": 1564.3964165064972
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 80.54620811013551,
+          "blockDeltasPct": [
+            82.57291864522034,
+            86.41010237833822,
+            90.68903513733038,
+            77.87664828567165,
+            79.98453617379494,
+            74.6460862833182,
+            80.54620811013551
+          ],
+          "wins": 0,
+          "leftMedian": 150.13185549999994,
+          "rightMedian": 270.0512105
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 11.895550092160212,
+          "blockDeltasPct": [
+            12.743901942827485,
+            15.724362421841898,
+            17.329124653513574,
+            9.012054968053285,
+            10.064888287215679,
+            10.710773011792817,
+            11.895550092160212
+          ],
+          "wins": 0,
+          "leftMedian": 1625.9384999999984,
+          "rightMedian": 1820.8254999999995
+        }
+      },
+      "runs": [
+        {
+          "label": "v16-integrated-js",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1437.369209015742,
+          "childCpuMs": 1622.293,
+          "callbackMs": 153.480795,
+          "load": [
+            3.88916015625,
+            4.271484375,
+            4.06005859375
+          ],
+          "reportSha256": "38a367cdfbf2319e2be25dd41d7e6c1fd8f6c904b547c4090f131db5eac6ac53"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1609.0960419969633,
+          "childCpuMs": 1878.6290000000001,
+          "callbackMs": 272.66287199999994,
+          "load": [
+            3.88916015625,
+            4.271484375,
+            4.06005859375
+          ],
+          "reportSha256": "5c4f7b52527c43b8833fd843485373f69e4ef6e50669c2c0784eea13677d4a64"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 0,
+          "wallMs": 1414.4761659554206,
+          "childCpuMs": 1593.8550000000002,
+          "callbackMs": 146.09862900000005,
+          "load": [
+            4.13818359375,
+            4.31640625,
+            4.0771484375
+          ],
+          "reportSha256": "6091c79b42a4dfeb3220608f271503011e20576bd0d00721e9150c13389b12b5"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 0,
+          "slot": 1,
+          "wallMs": 1551.2149999849498,
+          "childCpuMs": 1803.4469999999994,
+          "callbackMs": 269.86637700000006,
+          "load": [
+            4.13818359375,
+            4.31640625,
+            4.0771484375
+          ],
+          "reportSha256": "38a5305e928984b291f93902c8dfcb6cf00c92dde7eb2e7a11514ea74913bd87"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 0,
+          "slot": 2,
+          "wallMs": 1548.2482080115005,
+          "childCpuMs": 1798.759,
+          "callbackMs": 266.62216899999993,
+          "load": [
+            4.13818359375,
+            4.31640625,
+            4.0771484375
+          ],
+          "reportSha256": "ecda48ae596099451f40e72f063ff5ec9bded1972aadc5d85a3196a1aea8c8b8"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 3,
+          "wallMs": 1422.8986249654554,
+          "childCpuMs": 1601.1790000000003,
+          "callbackMs": 147.75028899999987,
+          "load": [
+            4.13818359375,
+            4.31640625,
+            4.0771484375
+          ],
+          "reportSha256": "f8964c16ceea5069c0c65bd0110185a10255c783ab9938ece55116e4d6648261"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 0,
+          "wallMs": 1412.0127919595689,
+          "childCpuMs": 1594.5300000000007,
+          "callbackMs": 145.89591600000006,
+          "load": [
+            3.966796875,
+            4.27783203125,
+            4.06494140625
+          ],
+          "reportSha256": "70146086253da300e9cb0778d48ebff3c6b72d15ef9024fef315dd8f130f937e"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 1,
+          "slot": 1,
+          "wallMs": 1568.297750025522,
+          "childCpuMs": 1825.7999999999988,
+          "callbackMs": 272.14862300000004,
+          "load": [
+            3.966796875,
+            4.27783203125,
+            4.06494140625
+          ],
+          "reportSha256": "4aed0e4f7e948cef70450e047f52a6f5ba86d4f7131a13e2bcc2a4c352ebd89a"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 1,
+          "slot": 2,
+          "wallMs": 1606.2452499754727,
+          "childCpuMs": 1858.0489999999998,
+          "callbackMs": 275.00649999999996,
+          "load": [
+            3.966796875,
+            4.27783203125,
+            4.06494140625
+          ],
+          "reportSha256": "91e376bffa34521992ccd3edbb582546fd5b0189b332ffb288b61af712e14f72"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 3,
+          "wallMs": 1412.0083749876358,
+          "childCpuMs": 1588.766000000001,
+          "callbackMs": 147.62633200000002,
+          "load": [
+            4.12939453125,
+            4.30615234375,
+            4.076171875
+          ],
+          "reportSha256": "d500c74548f885c6a54909e8154a04cbb615f5f738e5f1c15cc3ff8755f9cf19"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 0,
+          "wallMs": 1563.8012090348639,
+          "childCpuMs": 1769.0269999999994,
+          "callbackMs": 155.004795,
+          "load": [
+            4.12939453125,
+            4.30615234375,
+            4.076171875
+          ],
+          "reportSha256": "4f78eaf2a4259d727e6152b6fb7b1cd6e0dceba6a39cd883aec042b5929a6394"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 2,
+          "slot": 1,
+          "wallMs": 1749.9055420048535,
+          "childCpuMs": 2070.3120000000013,
+          "callbackMs": 284.62254100000007,
+          "load": [
+            4.12939453125,
+            4.30615234375,
+            4.076171875
+          ],
+          "reportSha256": "9a48b725614e9a603303ca1a9a896d8200f8e252dd39fbd2fdc9880a5b222baf"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 2,
+          "slot": 2,
+          "wallMs": 1655.8217080309987,
+          "childCpuMs": 1925.8909999999987,
+          "callbackMs": 294.526042,
+          "load": [
+            5.47998046875,
+            4.5830078125,
+            4.17529296875
+          ],
+          "reportSha256": "4e921dac93fddadfd7888c4ed770b72fe56cc0ca1a808524d4307ea5a8c6ed9b"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 3,
+          "wallMs": 1459.3650829629041,
+          "childCpuMs": 1636.9499999999991,
+          "callbackMs": 148.70883099999995,
+          "load": [
+            5.47998046875,
+            4.5830078125,
+            4.17529296875
+          ],
+          "reportSha256": "a2d0d96626d46ec05eaa2997d0d95b56aadaf64cca505f4bafbd3f8d4e2b14ba"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 0,
+          "wallMs": 1529.1362080024555,
+          "childCpuMs": 1728.7410000000011,
+          "callbackMs": 151.14779100000004,
+          "load": [
+            5.47998046875,
+            4.5830078125,
+            4.17529296875
+          ],
+          "reportSha256": "58ddc336bd422bea31df2fe54c4b7c4738fbc6aa5570d31ef2824f0c01bb4258"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 3,
+          "slot": 1,
+          "wallMs": 1572.7517500054091,
+          "childCpuMs": 1832.730999999999,
+          "callbackMs": 270.13383300000015,
+          "load": [
+            5.201171875,
+            4.5400390625,
+            4.162109375
+          ],
+          "reportSha256": "6a5be12a64ccfdf33c37b7d797b39d6de035e07e220f2dde67dc3693b5b11ab9"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 3,
+          "slot": 2,
+          "wallMs": 1542.1102920081466,
+          "childCpuMs": 1788.4140000000004,
+          "callbackMs": 264.9804160000001,
+          "load": [
+            5.201171875,
+            4.5400390625,
+            4.162109375
+          ],
+          "reportSha256": "e1ceae9407e4c3bf99d8b625fd10ff91c2d63d25da6a184db7fdbe81972f35a2"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 3,
+          "wallMs": 1417.6426660269499,
+          "childCpuMs": 1593.042999999999,
+          "callbackMs": 149.686666,
+          "load": [
+            5.201171875,
+            4.5400390625,
+            4.162109375
+          ],
+          "reportSha256": "b3f6d9546206ec148937a2d6780b575c8b294dbc163bfde99e79657fae6f3071"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 0,
+          "wallMs": 1483.40491700219,
+          "childCpuMs": 1673.9769999999999,
+          "callbackMs": 152.11508499999997,
+          "load": [
+            5.201171875,
+            4.5400390625,
+            4.162109375
+          ],
+          "reportSha256": "485bab89c4bf88a8da573b6634d27a0f321d8d1fb52da66ce686ab0a3d197628"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 4,
+          "slot": 1,
+          "wallMs": 1572.1984999836423,
+          "childCpuMs": 1834.5570000000002,
+          "callbackMs": 266.91433600000005,
+          "load": [
+            5.10498046875,
+            4.53076171875,
+            4.1611328125
+          ],
+          "reportSha256": "67110556174eb09b625c53cd3ab5f01515cab14753cca8587bf90c04963a9c37"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 4,
+          "slot": 2,
+          "wallMs": 1561.7696670233272,
+          "childCpuMs": 1809.4350000000006,
+          "callbackMs": 279.6563319999999,
+          "load": [
+            5.10498046875,
+            4.53076171875,
+            4.1611328125
+          ],
+          "reportSha256": "9449bdaee0859029ca5a8f7f2750242ebc8958552224cc779e354acdc9e345cb"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 3,
+          "wallMs": 1451.1417910107411,
+          "childCpuMs": 1636.7899999999995,
+          "callbackMs": 151.56137500000006,
+          "load": [
+            5.10498046875,
+            4.53076171875,
+            4.1611328125
+          ],
+          "reportSha256": "36db68c33463042bc0eb62268070d4e1d0b82af9f13da361b433345b0a9afeef"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 0,
+          "wallMs": 1433.6803330224939,
+          "childCpuMs": 1616.4680000000012,
+          "callbackMs": 150.57704499999988,
+          "load": [
+            4.77587890625,
+            4.4716796875,
+            4.142578125
+          ],
+          "reportSha256": "b1045976473b31e43dd7656a2e39744c79e1ddd8e7f6f0b40579d332d76e0eff"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 5,
+          "slot": 1,
+          "wallMs": 1546.969250019174,
+          "childCpuMs": 1795.126999999999,
+          "callbackMs": 265.633082,
+          "load": [
+            4.77587890625,
+            4.4716796875,
+            4.142578125
+          ],
+          "reportSha256": "007498ebf674a18e68c802b1eb8b1c512965f592d4f608d9380dcf64dd967204"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 5,
+          "slot": 2,
+          "wallMs": 1557.1861250209622,
+          "childCpuMs": 1815.8510000000003,
+          "callbackMs": 263.2224159999999,
+          "load": [
+            4.77587890625,
+            4.4716796875,
+            4.142578125
+          ],
+          "reportSha256": "17eb74e4385f3f422a8530484a74543630e53c6e0c1da4d1982903d43f3c67d8"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 3,
+          "wallMs": 1461.045291973278,
+          "childCpuMs": 1645.1639999999993,
+          "callbackMs": 152.23849999999996,
+          "load": [
+            4.47314453125,
+            4.41357421875,
+            4.1240234375
+          ],
+          "reportSha256": "d5e04033dd18e61d916fb3160f7c6b77a1d0521ee990c52e66196a2af13c8397"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 0,
+          "wallMs": 1422.3742500180379,
+          "childCpuMs": 1601.8940000000016,
+          "callbackMs": 148.15949900000007,
+          "load": [
+            4.47314453125,
+            4.41357421875,
+            4.1240234375
+          ],
+          "reportSha256": "0940277811950737edd4daa1a706ff6c961f56a0186c6d203a4b5d40628e9fb1"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 6,
+          "slot": 1,
+          "wallMs": 1549.5389580028132,
+          "childCpuMs": 1791.5659999999978,
+          "callbackMs": 269.96858799999995,
+          "load": [
+            4.47314453125,
+            4.41357421875,
+            4.1240234375
+          ],
+          "reportSha256": "376d827b610638bfcafc938ae33b86a497bf5c9ed1b2edf0f757b896e1acbbe6"
+        },
+        {
+          "label": "v16-integrated-template",
+          "block": 6,
+          "slot": 2,
+          "wallMs": 1567.0231659896672,
+          "childCpuMs": 1830.8320000000044,
+          "callbackMs": 270.46654599999994,
+          "load": [
+            4.47314453125,
+            4.41357421875,
+            4.1240234375
+          ],
+          "reportSha256": "a95e33671db232f6adb50f2a15e1267d1c3f947eae0311a92bff1cf333c46df2"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 3,
+          "wallMs": 1449.7604580246843,
+          "childCpuMs": 1635.4089999999956,
+          "callbackMs": 151.17391800000001,
+          "load": [
+            4.35498046875,
+            4.3896484375,
+            4.1171875
+          ],
+          "reportSha256": "60d6cf6ce3bad5bf782a20ec3709df1887ed1058926bd29f4ee141e20770136b"
+        }
+      ],
+      "runnerSHA256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+      "resultSHA256": "e608a97a0a928c2dbaa51607e16f454b57839b9712299d84c26497ebe71cac63",
+      "rawEvidence": ".evidence/css-perf-088/parity-program-07/current-opt-in/integrated-957-js-vs-template-quiet-retry",
+      "fixtureFiles": {
+        "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+        "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+        "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+        "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+        "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+        "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+        "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+        "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+      }
+    },
+    "state": {
+      "requestProtocol": "wire-v1",
+      "resultProtocol": "native-state-v1",
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 8.58638259160065,
+          "blockDeltasPct": [
+            9.412369280244025,
+            7.002399882537835,
+            8.58638259160065,
+            16.82916013016054,
+            8.026161201070114,
+            7.681646311276258,
+            8.985527175817843
+          ],
+          "wins": 0,
+          "leftMedian": 1462.2406669950578,
+          "rightMedian": 1603.1988749746233
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 77.65780853802842,
+          "blockDeltasPct": [
+            76.79631714583375,
+            76.93953626787213,
+            76.44922984572963,
+            89.5200072674188,
+            80.76467078546527,
+            78.38053984476126,
+            77.65780853802842
+          ],
+          "wins": 0,
+          "leftMedian": 150.28391349999998,
+          "rightMedian": 267.7121875
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 12.203689446669252,
+          "blockDeltasPct": [
+            12.203689446669252,
+            11.538729413230687,
+            12.59611529704696,
+            19.559047556876873,
+            11.606982824471324,
+            10.809058587312537,
+            12.476366023558349
+          ],
+          "wins": 0,
+          "leftMedian": 1649.0034999999996,
+          "rightMedian": 1863.3984999999998
+        }
+      },
+      "runs": [
+        {
+          "label": "v16-integrated-js",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1477.4075419991277,
+          "childCpuMs": 1661.427,
+          "callbackMs": 150.91558300000008,
+          "load": [
+            4.35498046875,
+            4.3896484375,
+            4.1171875
+          ],
+          "reportSha256": "f1e2931bef5e928253ce89fb11af1d3746c1265fe1b71ad541222db5c54c01bf"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": -1,
+          "slot": 0,
+          "wallMs": 1589.3929169978946,
+          "childCpuMs": 1841.878,
+          "callbackMs": 264.81554299999993,
+          "load": [
+            4.35498046875,
+            4.3896484375,
+            4.1171875
+          ],
+          "reportSha256": "43a0b519d77b1e0ed48e781eca6da5fa637ae4f9de1dc3efd1462666b5f8707c"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 0,
+          "wallMs": 1426.159208000172,
+          "childCpuMs": 1601.3709999999999,
+          "callbackMs": 149.10383300000007,
+          "load": [
+            4.486328125,
+            4.416015625,
+            4.1279296875
+          ],
+          "reportSha256": "0b88224b46d5b14b94dd01cd4a3730262030380aaa222f06419a37891d6907a7"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 0,
+          "slot": 1,
+          "wallMs": 1587.2804999817163,
+          "childCpuMs": 1836.4390000000003,
+          "callbackMs": 263.59304199999997,
+          "load": [
+            4.486328125,
+            4.416015625,
+            4.1279296875
+          ],
+          "reportSha256": "5586992e857c51dd19e009d31d62032d3dbee1d8f56aff6c6a467a772513dcfd"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 0,
+          "slot": 2,
+          "wallMs": 1560.9309999854304,
+          "childCpuMs": 1805.649,
+          "callbackMs": 261.702625,
+          "load": [
+            4.486328125,
+            4.416015625,
+            4.1279296875
+          ],
+          "reportSha256": "b9d4dd4769280e6d6dd76d143ead7fabd23544939c674e600d73dc0759de45fe"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 0,
+          "slot": 3,
+          "wallMs": 1451.222500007134,
+          "childCpuMs": 1644.5900000000001,
+          "callbackMs": 148.01529000000002,
+          "load": [
+            4.447265625,
+            4.40869140625,
+            4.126953125
+          ],
+          "reportSha256": "da359ee2f0b85f1e775766fd20686b3d0186add48059bfb33398ad5124697bc8"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 0,
+          "wallMs": 1578.1547079677694,
+          "childCpuMs": 1753.1559999999993,
+          "callbackMs": 156.54475200000007,
+          "load": [
+            4.447265625,
+            4.40869140625,
+            4.126953125
+          ],
+          "reportSha256": "a4f8504730ccc80c52a1d001414d26d8d4775d8aefd6389db5235624868d2dd7"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 1,
+          "slot": 1,
+          "wallMs": 1655.0912499660626,
+          "childCpuMs": 1938.7259999999994,
+          "callbackMs": 267.573706,
+          "load": [
+            4.447265625,
+            4.40869140625,
+            4.126953125
+          ],
+          "reportSha256": "cb5331dbf82bcb8011d78c4f4ae26aebb63e7d4b6ed1ef1b338e13b63022c697"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 1,
+          "slot": 2,
+          "wallMs": 1599.358832987491,
+          "childCpuMs": 1856.7730000000013,
+          "callbackMs": 275.970166,
+          "load": [
+            4.1708984375,
+            4.35205078125,
+            4.1083984375
+          ],
+          "reportSha256": "158f47ecdcb9fad4762f332fbde1038a5d77385b21f4eabb2904b19bd5545802"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 1,
+          "slot": 3,
+          "wallMs": 1463.319208996836,
+          "childCpuMs": 1649.6969999999988,
+          "callbackMs": 150.64711899999995,
+          "load": [
+            4.1708984375,
+            4.35205078125,
+            4.1083984375
+          ],
+          "reportSha256": "c531b201c4521f61ad01b740bf43a2fa237976ab37b56c08f76fe4c6bb613960"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 0,
+          "wallMs": 1457.4201669893228,
+          "childCpuMs": 1648.3100000000004,
+          "callbackMs": 148.02137499999995,
+          "load": [
+            4.1708984375,
+            4.35205078125,
+            4.1083984375
+          ],
+          "reportSha256": "574ed6ec03abf005a5fda6b5e8c0351363a32790d6ac0129fbde67947faeb949"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 2,
+          "slot": 1,
+          "wallMs": 1575.9965420002118,
+          "childCpuMs": 1839.4300000000014,
+          "callbackMs": 265.21700299999986,
+          "load": [
+            4.1708984375,
+            4.35205078125,
+            4.1083984375
+          ],
+          "reportSha256": "249dc447596b8696cf23eb54a6e701c550ac3cd778bc54357ddf40f295aa07d7"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 2,
+          "slot": 2,
+          "wallMs": 1647.3562920000404,
+          "childCpuMs": 1949.2480000000003,
+          "callbackMs": 264.64003900000006,
+          "load": [
+            4.07666015625,
+            4.32958984375,
+            4.1015625
+          ],
+          "reportSha256": "935e9624d02e96d48e30f29300cde34325c93e5eacb2e5b75960b0786cbb403d"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 2,
+          "slot": 3,
+          "wallMs": 1511.0485830227844,
+          "childCpuMs": 1716.528999999999,
+          "callbackMs": 152.26729299999994,
+          "load": [
+            4.07666015625,
+            4.32958984375,
+            4.1015625
+          ],
+          "reportSha256": "def53d364d87e152754cd6a26fb22eb99a86c25cfd941127dee85d96f523795a"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 0,
+          "wallMs": 1446.9761669752188,
+          "childCpuMs": 1632.8449999999996,
+          "callbackMs": 147.70754300000002,
+          "load": [
+            4.07666015625,
+            4.32958984375,
+            4.1015625
+          ],
+          "reportSha256": "77217269f0e50f233e35e2642717900da891840dd08dafdd86954d861c063239"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 3,
+          "slot": 1,
+          "wallMs": 1607.0389169617556,
+          "childCpuMs": 1870.023999999998,
+          "callbackMs": 265.0434589999999,
+          "load": [
+            3.830078125,
+            4.27392578125,
+            4.0830078125
+          ],
+          "reportSha256": "7fbfcaf9894f1bc744b561df01a9538e8b4eeb3b8f29b1cd43891e8253cd4566"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 3,
+          "slot": 2,
+          "wallMs": 1790.5146249686368,
+          "childCpuMs": 2049.387000000002,
+          "callbackMs": 296.135003,
+          "load": [
+            3.830078125,
+            4.27392578125,
+            4.0830078125
+          ],
+          "reportSha256": "f1bce42012616081755e6af1eb014cd2d4b3888080f872da077bf85bd041a016"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 3,
+          "slot": 3,
+          "wallMs": 1461.1621249932796,
+          "childCpuMs": 1645.377,
+          "callbackMs": 148.397586,
+          "load": [
+            3.830078125,
+            4.27392578125,
+            4.0830078125
+          ],
+          "reportSha256": "f18d8bf96c9c7803eff7b9cb58d3b96bd043714480469d02fac0d062fdcccc4c"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 0,
+          "wallMs": 1479.881416016724,
+          "childCpuMs": 1674.042,
+          "callbackMs": 152.143167,
+          "load": [
+            3.92333984375,
+            4.28564453125,
+            4.08837890625
+          ],
+          "reportSha256": "a965a78c87278cf584c2dfc8cfdea3f2b7c63da853197679a3e3cc571e11edc4"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 4,
+          "slot": 1,
+          "wallMs": 1643.6497080139816,
+          "childCpuMs": 1923.7840000000003,
+          "callbackMs": 285.11524800000007,
+          "load": [
+            3.92333984375,
+            4.28564453125,
+            4.08837890625
+          ],
+          "reportSha256": "88a7f98ab03b7afbf092a9a695a3f673a8d01659d74d7fbcfb0f478a018f75a0"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 4,
+          "slot": 2,
+          "wallMs": 1627.862582972739,
+          "childCpuMs": 1905.695999999999,
+          "callbackMs": 274.432378,
+          "load": [
+            3.92333984375,
+            4.28564453125,
+            4.08837890625
+          ],
+          "reportSha256": "55b6537ecbf9eec513b9ddbb32b6a53e9e07259102ecbe1e9da4b176f68c7897"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 4,
+          "slot": 3,
+          "wallMs": 1548.563040967565,
+          "childCpuMs": 1757.177000000003,
+          "callbackMs": 157.401626,
+          "load": [
+            3.76904296875,
+            4.24755859375,
+            4.07568359375
+          ],
+          "reportSha256": "885f3116130c1941e3bd083e95d33e480e2888fd4af55c2d171e5aa4a2721365"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 0,
+          "wallMs": 1486.2810000195168,
+          "childCpuMs": 1688.411999999996,
+          "callbackMs": 149.82950099999996,
+          "load": [
+            3.76904296875,
+            4.24755859375,
+            4.07568359375
+          ],
+          "reportSha256": "0185bce21a9e750e62879a044e17d57a5e4dec09da83cad0810a415589dd1e08"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 5,
+          "slot": 1,
+          "wallMs": 1572.1487909904681,
+          "childCpuMs": 1831.6089999999995,
+          "callbackMs": 267.850669,
+          "load": [
+            3.76904296875,
+            4.24755859375,
+            4.07568359375
+          ],
+          "reportSha256": "2b5dd1b1de10a8df8a24e02aa6fd6c9c8f23f49d0dcf77257fa0b8318a28abe5"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 5,
+          "slot": 2,
+          "wallMs": 1592.6404589554295,
+          "childCpuMs": 1851.6420000000028,
+          "callbackMs": 266.84537200000005,
+          "load": [
+            3.626953125,
+            4.2099609375,
+            4.0634765625
+          ],
+          "reportSha256": "a9eb7c73963b1a35a9dbece37c0f3611c148f99266322eba7848f432625eea1b"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 5,
+          "slot": 3,
+          "wallMs": 1452.7428339933977,
+          "childCpuMs": 1635.550000000001,
+          "callbackMs": 149.920708,
+          "load": [
+            3.626953125,
+            4.2099609375,
+            4.0634765625
+          ],
+          "reportSha256": "f8f4102297d7bb7176cd0465d30085b045d671c95611b29264e87cc6f04ebe66"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 0,
+          "wallMs": 1456.6515830229037,
+          "childCpuMs": 1643.995999999995,
+          "callbackMs": 150.81066400000003,
+          "load": [
+            3.626953125,
+            4.2099609375,
+            4.0634765625
+          ],
+          "reportSha256": "b373f9e02934dde0b2dd3004ce139005aedb10dedbcf9b4108ed1cdbeb17e2f5"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 6,
+          "slot": 1,
+          "wallMs": 1588.6822079773992,
+          "childCpuMs": 1848.8990000000065,
+          "callbackMs": 270.446498,
+          "load": [
+            3.626953125,
+            4.2099609375,
+            4.0634765625
+          ],
+          "reportSha256": "5a1f1cf87b2173b47892cf748c0993cfd4bbbf4191a5ecec666f0ff68ad50a4b"
+        },
+        {
+          "label": "v16-integrated-state",
+          "block": 6,
+          "slot": 2,
+          "wallMs": 1626.6009579994716,
+          "childCpuMs": 1894.7249999999976,
+          "callbackMs": 267.88641599999994,
+          "load": [
+            3.73681640625,
+            4.22265625,
+            4.06884765625
+          ],
+          "reportSha256": "e2579612ae19238b50dae9658346f8a3eb7a463dd321f6c6df40af8136ec570c"
+        },
+        {
+          "label": "v16-integrated-js",
+          "block": 6,
+          "slot": 3,
+          "wallMs": 1493.5412079794332,
+          "childCpuMs": 1684.369000000002,
+          "callbackMs": 152.20608399999992,
+          "load": [
+            3.73681640625,
+            4.22265625,
+            4.06884765625
+          ],
+          "reportSha256": "c7ee387556fbbc3e050c4b4b2e454e3fe68e071273739e89d67d7311e6b21655"
+        }
+      ],
+      "runnerSHA256": "edfc6fa55036d40bf1b69d0111fc64df0a32e83b1070d7e2c50cfb50759e0053",
+      "resultSHA256": "6ce6664194c781b19f910eca1fdc504563b9041bc9137bb7c68d230586cddd8e",
+      "rawEvidence": ".evidence/css-perf-088/parity-program-07/current-opt-in/integrated-957-js-vs-state-quiet-retry",
+      "fixtureFiles": {
+        "bucket37.test.jsx": "604c17dc727f4d574a0b192f9e97a7bf1e9404f3910f5744b2f7237da005f09c",
+        "buckets.test.jsx": "cb73207eb88a5c77bf3be92ac8f1d868ea6199dbf43d493819a6e35a3170a8cd",
+        "buckets2.test.jsx": "23b47e106e1c09a011de45fd8198ec539e8213059734a3bb086f38fee6513d5a",
+        "dom.test.jsx": "84f9891e51997bea538f41f2b1769e754944c812421a05e12ed323fd9fc8628e",
+        "forms.test.jsx": "acc38950d9bba42e45385686dce7860b1d17c8abed3d1fe378ea545ad307f2ca",
+        "inputs.test.jsx": "292d9942e32181d1208e8feaa24fa338f078500f11844f5c1d3b8519d6391126",
+        "reentrancy.test.jsx": "54729e0a07832f61684d04287926a68aca4036b4f0931e7aa5abf3be890b9a0d",
+        "setup.js": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+      }
+    }
+  },
+  "qualifications": [
+    "JavaScript remains the default. No mode reached the 2% whole-suite gap target.",
+    "The three comparisons use separate ABBA windows; do not rank protocols or sum their gains from these measurements.",
+    "Request-template plus native-state result combination is unsupported and was not measured.",
+    "A separate Cargo test started during the first opt-in comparisons. Both original opt-in results remain in local evidence but are excluded from the reported comparisons; both were rerun after the compiler ended. The ordinary-wire comparison completed before that compiler started.",
+    "The coordinated V8 container was paused. This is a shared desktop, not a dedicated benchmark host: ordinary desktop and intermittent VM activity remained; all blocks and load samples were retained.",
+    "Historical roughly 12% and current 8.51% gaps were measured in separate windows; this is progress in observed gaps, not an isolated causal estimate.",
+    "CPU and callback-time gaps remain larger than whole-suite wall-time gaps. Startup and other shared work dilute the latter."
+  ],
+  "gates": {
+    "nativeTests": 126,
+    "nativeFailures": 0,
+    "parserCoveredLines": 575,
+    "parserLines": 575,
+    "expandedNativeCoveredLines": 792,
+    "expandedNativeLines": 792,
+    "nodeTests": 1258,
+    "nodeFailures": 0,
+    "normalCommitHookCoverage": {
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.31
+    },
+    "packedTestsPerRun": 29,
+    "allMeasuredRunsPassed": true,
+    "defaultsUnchanged": true
+  }
+}
