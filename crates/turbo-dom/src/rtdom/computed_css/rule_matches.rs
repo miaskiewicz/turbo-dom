@@ -310,7 +310,7 @@ impl<'facts> MatchRead<'_, 'facts> {
         self.roots(
             (binding.tree_scope, rule.selector_id, item),
             path,
-            &roots,
+            roots.as_slice(),
             !groups.is_empty(),
             specificity,
         )

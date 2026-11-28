@@ -78,10 +78,51 @@ pub enum WideKeyword {
     RevertLayer,
 }
 
-/// Keyword recognition uses the shared CSS tokenizer, so escapes/comments and
-/// whitespace cannot create a separate string-based keyword policy.
+/// Whole plain ASCII identifiers use exact keyword comparison. Every other
+/// spelling retains shared CSS tokenization, including escapes and comments.
 #[must_use]
 pub fn wide_keyword(value: &CssText) -> Option<WideKeyword> {
+    if plain_ascii_identifier(value.as_units()) {
+        return ascii_keyword(value.as_units());
+    }
+    tokenized_keyword(value)
+}
+fn ascii_letter(unit: u16) -> bool {
+    (u16::from(b'a')..=u16::from(b'z')).contains(&(unit | 0x20))
+}
+fn ascii_equal(units: &[u16], word: &[u8]) -> bool {
+    units.len() == word.len()
+        && units
+            .iter()
+            .zip(word)
+            .all(|(unit, byte)| (unit | 0x20) == u16::from(*byte))
+}
+fn plain_ascii_identifier(units: &[u16]) -> bool {
+    let Some((first, rest)) = units.split_first() else {
+        return false;
+    };
+    ascii_letter(*first)
+        && rest
+            .iter()
+            .all(|unit| ascii_letter(*unit) || *unit == u16::from(b'-'))
+}
+fn ascii_keyword(units: &[u16]) -> Option<WideKeyword> {
+    for (word, keyword) in [
+        (b"initial".as_slice(), WideKeyword::Initial),
+        (b"inherit".as_slice(), WideKeyword::Inherit),
+        (b"unset".as_slice(), WideKeyword::Unset),
+        (b"revert".as_slice(), WideKeyword::Revert),
+        (b"revert-layer".as_slice(), WideKeyword::RevertLayer),
+    ] {
+        if ascii_equal(units, word) {
+            return Some(keyword);
+        }
+    }
+    None
+}
+fn tokenized_keyword(value: &CssText) -> Option<WideKeyword> {
+    #[cfg(test)]
+    KEYWORD_TOKENIZATIONS.with(|count| count.set(count.get() + 1));
     let source = super::CssSource::new(value.as_units());
     let mut parser_input = cssparser::ParserInput::new(source.scalar());
     let mut parser = cssparser::Parser::new(&mut parser_input);
@@ -126,3 +167,9 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+thread_local! { static KEYWORD_TOKENIZATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(test)]
+#[path = "keyword_ascii_tests.rs"]
+mod ascii_tests;

@@ -187,6 +187,27 @@ pub fn scope_roots_with_owner_budget(
         BoundaryAnswerSource::Legacy(answers),
         remaining,
     )
+    .map(ScopeRoots::into_vec)
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum ScopeRoots {
+    Single(usize),
+    Many(Vec<usize>),
+}
+impl ScopeRoots {
+    pub(crate) fn as_slice(&self) -> &[usize] {
+        match self {
+            Self::Single(root) => std::slice::from_ref(root),
+            Self::Many(roots) => roots.as_slice(),
+        }
+    }
+    fn into_vec(self) -> Vec<usize> {
+        match self {
+            Self::Single(root) => vec![root],
+            Self::Many(roots) => roots,
+        }
+    }
 }
 
 pub(crate) fn scope_roots_with_answer_budget(
@@ -196,7 +217,7 @@ pub(crate) fn scope_roots_with_answer_budget(
     owner: Option<u32>,
     answers: BoundaryAnswerSource<'_>,
     remaining: &mut usize,
-) -> Result<Vec<usize>, ScopeError> {
+) -> Result<ScopeRoots, ScopeError> {
     let maximum_decisions = *remaining;
     if path.is_empty() {
         return Err(ScopeError::InvalidPath);
@@ -209,18 +230,33 @@ pub(crate) fn scope_roots_with_answer_budget(
     {
         return Err(ScopeError::InvalidPath);
     }
-    let mut read = ScopeRead {
+    if scope_groups.is_empty() {
+        return Ok(ScopeRoots::Single(path.len() - 1));
+    }
+    let read = ScopeRead {
         path,
         answers,
         implicit_root,
         owner_known: owner.is_some(),
         remaining: maximum_decisions,
     };
+    scoped_roots_with_read(groups, scope_groups, read, remaining)
+}
+fn scoped_roots_with_read(
+    groups: &[CompiledGroup],
+    scope_groups: &[usize],
+    mut read: ScopeRead<'_>,
+    remaining: &mut usize,
+) -> Result<ScopeRoots, ScopeError> {
+    let maximum_decisions = read.remaining;
+    let path = read.path;
+    #[cfg(test)]
+    INITIAL_ROOT_VECTORS.with(|count| count.set(count.get() + 1));
     let mut parents = vec![path.len() - 1];
     for id in scope_groups {
         let group = groups.get(*id).ok_or(ScopeError::InvalidGroup)?;
         if group.invalid_scope {
-            return Ok(Vec::new());
+            return Ok(ScopeRoots::Many(Vec::new()));
         }
         let witnesses = read.witnesses(*id, group, &parents)?;
         parents = applicable_roots(path.len(), &parents, &witnesses, maximum_decisions)?
@@ -234,7 +270,7 @@ pub(crate) fn scope_roots_with_answer_budget(
         }
     }
     *remaining = read.remaining;
-    Ok(parents)
+    Ok(ScopeRoots::Many(parents))
 }
 
 #[cfg(test)]
@@ -370,11 +406,11 @@ mod tests {
                 &mut 64,
             )
         };
-        assert_eq!(read(7, &answers).unwrap(), vec![1]);
-        assert!(read(9, &answers).unwrap().is_empty());
+        assert_eq!(read(7, &answers).unwrap().as_slice(), &[1]);
+        assert!(read(9, &answers).unwrap().as_slice().is_empty());
         assert_eq!(read(8, &answers), Err(ScopeError::MissingAnswer));
         answers.insert((7, 0, Boundary::Start, 13), answer(&[]));
-        assert!(read(7, &answers).unwrap().is_empty());
+        assert!(read(7, &answers).unwrap().as_slice().is_empty());
         answers.insert(
             (7, 0, Boundary::Start, 13),
             BoundaryAnswer::new(
@@ -386,3 +422,9 @@ mod tests {
         assert_eq!(read(7, &answers), Err(ScopeError::MissingAnswer));
     }
 }
+
+#[cfg(test)]
+thread_local! { static INITIAL_ROOT_VECTORS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(test)]
+#[path = "unscoped_roots_tests.rs"]
+mod unscoped_tests;

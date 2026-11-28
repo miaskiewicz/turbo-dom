@@ -1,0 +1,541 @@
+{
+  "date": "2026-11-28",
+  "baseCommit": "008dc9c42c0187d82deb70af491f14f8b314e467",
+  "decision": "Keep both independent native changes for lower CPU with packed time flat to modestly lower. No default switch or JS-parity claim.",
+  "artifacts": {
+    "ascii-keyword": {
+      "baseCommit": "008dc9c42c0187d82deb70af491f14f8b314e467",
+      "baselineSHA256": "65169d323eb56b8eb90cbfd4f2126c1c12668c4a033dbbe317e923080874f2e1",
+      "candidateSHA256": "52228a1402ac5f2e6c4bb64354ffcc352fb6420e2b60ac5f5e9335fe21ce10d6",
+      "sourceFiles": {
+        "crates/turbo-dom/src/rtdom/computed_css/properties.rs": "d5ff95f43c2d5f18a8eff276df0f6127ebe14084ac0f05959c3ecbae63d6793d",
+        "crates/turbo-dom/src/rtdom/computed_css/keyword_ascii_tests.rs": "cd3025a4ac6ec1b3f9e71b4430926157fe82fa0a6f3c74a7fad25fbebf04b9b5"
+      },
+      "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)"
+    },
+    "unscoped-roots": {
+      "baseCommit": "008dc9c42c0187d82deb70af491f14f8b314e467",
+      "baselineSHA256": "65169d323eb56b8eb90cbfd4f2126c1c12668c4a033dbbe317e923080874f2e1",
+      "candidateSHA256": "9570afe071aeff1ad4709f072961dfbcccd6053f87e72420af1063bfa92e1f5c",
+      "sourceFiles": {
+        "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "53ab166f6a03c481d971d67d55bb22d7252e813e255f57c33a2ab4fdfe11e5ba",
+        "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "e3ca501802d4b48a91391d5d8dce0ebff551e8d565ac2e38eb3b526d8d81cabe",
+        "crates/turbo-dom/src/rtdom/computed_css/unscoped_roots_tests.rs": "3353365d2862a327bc3e3f8269a0b5ba7c01154608fcf3f7476ae91eed5abc35"
+      },
+      "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)"
+    },
+    "combined": {
+      "baseCommit": "008dc9c42c0187d82deb70af491f14f8b314e467",
+      "baselineSHA256": "65169d323eb56b8eb90cbfd4f2126c1c12668c4a033dbbe317e923080874f2e1",
+      "candidateSHA256": "a64fd9bfc66958f0b68de411d4eddfc46840c14a83191b0274ba8e5e4f3009af",
+      "sourceFiles": {
+        "crates/turbo-dom/src/rtdom/computed_css/properties.rs": "d5ff95f43c2d5f18a8eff276df0f6127ebe14084ac0f05959c3ecbae63d6793d",
+        "crates/turbo-dom/src/rtdom/computed_css/keyword_ascii_tests.rs": "cd3025a4ac6ec1b3f9e71b4430926157fe82fa0a6f3c74a7fad25fbebf04b9b5",
+        "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "53ab166f6a03c481d971d67d55bb22d7252e813e255f57c33a2ab4fdfe11e5ba",
+        "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "e3ca501802d4b48a91391d5d8dce0ebff551e8d565ac2e38eb3b526d8d81cabe",
+        "crates/turbo-dom/src/rtdom/computed_css/unscoped_roots_tests.rs": "3353365d2862a327bc3e3f8269a0b5ba7c01154608fcf3f7476ae91eed5abc35"
+      },
+      "toolchain": "rustc 1.98.0 (88d9e12ae 2026-08-18)"
+    }
+  },
+  "method": {
+    "blocks": 7,
+    "order": "ABBA",
+    "packedTestsPerRun": 29,
+    "packedWarmups": 2,
+    "nativeIterationsPerProcess": 100,
+    "nativeWarmups": 2,
+    "quiet": "Other experiment jobs idle; V8 Ninja paused after compiler child exited for combined comparisons.",
+    "qualification": "Native replay excludes JS capture/encoding and includes NAPI/lifecycle. Packed matched medians are noisy; do not subtract results from different windows. Legacy JS remains default. All source/package hashes and fixture identity checked by runners."
+  },
+  "benchmarks": {
+    "asciiNative": {
+      "summary": {
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -0.2428583617754998,
+          "blockDeltasPct": [
+            0.25807789534204595,
+            1.0549740452240108,
+            -1.2667768550011838,
+            -2.072495279518838,
+            -4.274229187325396,
+            -0.2428583617754998,
+            0.03497190682477669
+          ],
+          "wins": 4,
+          "baselineMedian": 13733936.875,
+          "candidateMedian": 13504714.58
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -1.1274476620146467,
+          "blockDeltasPct": [
+            -0.03922514565628532,
+            1.0537588773746887,
+            -1.1274476620146467,
+            -1.8771686522191966,
+            -2.390138757715632,
+            -0.4650008315826848,
+            -1.3538517570264252
+          ],
+          "wins": 6,
+          "baselineMedian": 1368835.0,
+          "candidateMedian": 1345142.5
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/ascii-independent-v15/RESULT.json",
+      "receiptSHA256": "887222f42a93454617c035ceab0118faab4631fb44b0fa278a93a4ed89597a6e"
+    },
+    "scopeNative": {
+      "summary": {
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -6.877451083832742,
+          "blockDeltasPct": [
+            -6.877451083832742,
+            -7.882028971812149,
+            -7.5677520229162525,
+            -2.2321208915710655,
+            -0.5105666678481668,
+            -8.94858033400493,
+            -3.4737937194315283
+          ],
+          "wins": 7,
+          "baselineMedian": 18597894.79,
+          "candidateMedian": 18182767.295
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -6.556244107217957,
+          "blockDeltasPct": [
+            -6.556244107217957,
+            -7.703003609270997,
+            -7.620448459527152,
+            -2.7144312794396996,
+            -3.3198904112874628,
+            -6.962140847450826,
+            -4.538027808413892
+          ],
+          "wins": 7,
+          "baselineMedian": 1831286.0,
+          "candidateMedian": 1781577.0
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/unscoped-independent-v15/RESULT.json",
+      "receiptSHA256": "e7531a65d3e1fe46988fdadce938753dcf12557af2e531165bbe42227be93d63"
+    },
+    "asciiPacked": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -1.4140350592090067,
+          "blockDeltasPct": [
+            1.5910257322731214,
+            -2.9430830052461388,
+            0.24449562725996632,
+            6.322368172488035,
+            -1.4140350592090067,
+            -4.386082329523678,
+            -8.76227840724133
+          ],
+          "wins": 4,
+          "leftMedian": 1617.443479015492,
+          "rightMedian": 1638.5227709833998
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -2.5318297887939933,
+          "blockDeltasPct": [
+            -1.1606308718923208,
+            -6.319416572204018,
+            -2.5318297887939933,
+            2.485022950450211,
+            -0.19104928956588108,
+            -4.81674734451667,
+            -9.664766701726101
+          ],
+          "wins": 6,
+          "leftMedian": 280.86729199999996,
+          "rightMedian": 276.36068850000004
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -1.681983658082531,
+          "blockDeltasPct": [
+            1.2529383974979602,
+            -3.130945101674343,
+            0.7867341504063985,
+            5.239773261965275,
+            -1.681983658082531,
+            -4.946126107226845,
+            -9.24222579120646
+          ],
+          "wins": 4,
+          "leftMedian": 1895.1889999999967,
+          "rightMedian": 1913.0185000000006
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/ascii-independent-v15/RESULT.json",
+      "receiptSHA256": "da406d6478ff40312f328696b1aca5b9f4b0481d640b96fcd3d8c321d4a7b03b"
+    },
+    "scopePacked": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -1.3637284238101288,
+          "blockDeltasPct": [
+            -1.3637284238101288,
+            8.862001356107797,
+            -11.346231462472778,
+            -4.872202723165686,
+            -1.329311919058096,
+            -3.0693590594441766,
+            -0.4856597739213653
+          ],
+          "wins": 6,
+          "leftMedian": 1883.1377909809817,
+          "rightMedian": 1817.659000022104
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -1.762491980675951,
+          "blockDeltasPct": [
+            1.9751285962001264,
+            5.751543897001521,
+            -10.18049518414591,
+            -1.762491980675951,
+            -2.5252080774940233,
+            -1.6828806026198628,
+            -1.8877222798987403
+          ],
+          "wins": 5,
+          "leftMedian": 318.1686450000001,
+          "rightMedian": 307.5962705
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -0.7646080183259962,
+          "blockDeltasPct": [
+            0.22163978097420323,
+            4.004983847042887,
+            -10.403215569594648,
+            -4.291202856053045,
+            -0.7646080183259962,
+            -3.7509856762818594,
+            -0.3180513182116429
+          ],
+          "wins": 5,
+          "leftMedian": 2214.5575,
+          "rightMedian": 2147.0009999999993
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/unscoped-independent-v15/RESULT.json",
+      "receiptSHA256": "d14f96c25ed22e57eabdd21cc536328711be8e53fc32abd02ed08edf7570a7be"
+    },
+    "combinedNative": {
+      "summary": {
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -8.03315682661988,
+          "blockDeltasPct": [
+            -5.2986665348988105,
+            -11.96424664515373,
+            -8.408356905913605,
+            -8.77954784401691,
+            -8.03315682661988,
+            -6.345821148690478,
+            -6.857826762656938
+          ],
+          "wins": 7,
+          "baselineMedian": 13363408.545,
+          "candidateMedian": 12360917.92
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -7.994273790063922,
+          "blockDeltasPct": [
+            -5.398436752632141,
+            -11.676170996643476,
+            -8.363194516346372,
+            -8.706168208143083,
+            -7.994273790063922,
+            -6.542112237202269,
+            -6.778101275458481
+          ],
+          "wins": 7,
+          "baselineMedian": 1335272.5,
+          "candidateMedian": 1235518.5
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/combined-vs-base-v15/RESULT.json",
+      "receiptSHA256": "91874fdc8b984d554843772cf768f39d350d42771121266c5f1a8c6bc7547cf1"
+    },
+    "combinedPacked": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": -2.5484040144543862,
+          "blockDeltasPct": [
+            0.1186650201690842,
+            -3.089773160849796,
+            -4.239060155158092,
+            1.9626560922042735,
+            -3.3619102390164413,
+            -2.5484040144543862,
+            -0.8074165063327476
+          ],
+          "wins": 5,
+          "leftMedian": 1620.432437513955,
+          "rightMedian": 1585.2629790024366
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -2.102359055845271,
+          "blockDeltasPct": [
+            -2.102359055845271,
+            -1.919876037303847,
+            -2.5249618046094158,
+            1.0718525124087996,
+            -3.367997277133805,
+            -2.14400579744054,
+            -0.3907569252583287
+          ],
+          "wins": 6,
+          "leftMedian": 276.9118950000001,
+          "rightMedian": 272.75931349999996
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": -2.9643997377394427,
+          "blockDeltasPct": [
+            -0.2646712016683539,
+            -3.4685768407627715,
+            -4.185110788726442,
+            2.5343763665516494,
+            -3.8607015877792805,
+            -2.9643997377394427,
+            -1.1210923113849969
+          ],
+          "wins": 6,
+          "leftMedian": 1903.7424999999994,
+          "rightMedian": 1848.2510000000002
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/combined-vs-base-v15/RESULT.json",
+      "receiptSHA256": "8eef57d9db208c1c36d814d0148e41b4d4302d7bde21ee81d840e7c3301e9a59"
+    },
+    "incrementalKeywordNative": {
+      "summary": {
+        "nsPerCorpus": {
+          "matchedMedianDeltaPct": -1.990548963283456,
+          "blockDeltasPct": [
+            -1.990548963283456,
+            -1.6966228962559171,
+            -1.0377164998746413,
+            -2.638087277138512,
+            -5.5860362413356786,
+            -6.3140600753012865,
+            1.0707859953399845
+          ],
+          "wins": 6,
+          "baselineMedian": 12695238.754999999,
+          "candidateMedian": 12487520.21
+        },
+        "cpuUs": {
+          "matchedMedianDeltaPct": -1.9967244383457983,
+          "blockDeltasPct": [
+            -1.9967244383457983,
+            -1.6380180205924244,
+            -1.152446834960985,
+            -2.345548612340931,
+            -4.039557587792519,
+            -5.92024937032638,
+            0.8837263516969118
+          ],
+          "wins": 6,
+          "baselineMedian": 1268964.5,
+          "candidateMedian": 1248172.0
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-14/native-replay/combined-vs-scope-v15/RESULT.json",
+      "receiptSHA256": "80dba033bc4f4a689d4b60c4a12682c38d8849d854795e2f51d85d27d0c51b15"
+    },
+    "incrementalKeywordPacked": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 0.3812865563225243,
+          "blockDeltasPct": [
+            -1.5541630713945542,
+            -1.2048014435492194,
+            -2.427075979755211,
+            5.210338067756126,
+            0.5633452558583052,
+            0.7200825498954844,
+            0.3812865563225243
+          ],
+          "wins": 3,
+          "leftMedian": 1607.3629794991575,
+          "rightMedian": 1605.3378130018245
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": -0.15731412644208742,
+          "blockDeltasPct": [
+            -1.7948120551943725,
+            0.757010175804762,
+            -2.1240817406244727,
+            4.956702874167207,
+            -0.49795708848515696,
+            2.160690729587933,
+            -0.15731412644208742
+          ],
+          "wins": 4,
+          "leftMedian": 276.17414400000007,
+          "rightMedian": 277.825333
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 0.05327080079726709,
+          "blockDeltasPct": [
+            -0.6603669917778276,
+            -0.8682180087541513,
+            -2.7230256180895807,
+            5.020569520938012,
+            0.05327080079726709,
+            0.8301708742454839,
+            0.5480418298695389
+          ],
+          "wins": 3,
+          "leftMedian": 1881.2575000000015,
+          "rightMedian": 1884.8464999999997
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/combined-vs-scope-v15/RESULT.json",
+      "receiptSHA256": "29d617779e736c13814025f2285e8be4e27c3fb3317e8402a618dd23c342e61b"
+    },
+    "legacyVsCombined": {
+      "summary": {
+        "wallMs": {
+          "matchedMedianDeltaPct": 11.691550620529023,
+          "blockDeltasPct": [
+            16.23685134116444,
+            9.870604297898456,
+            12.099817998379137,
+            6.413913203578181,
+            13.05785274236657,
+            11.691550620529023,
+            10.322865620646372
+          ],
+          "wins": 0,
+          "leftMedian": 1415.029208001215,
+          "rightMedian": 1576.1229165073019
+        },
+        "callbackMs": {
+          "matchedMedianDeltaPct": 80.04620086883311,
+          "blockDeltasPct": [
+            82.36274907521985,
+            76.60715780520093,
+            80.67874963257206,
+            73.68568019567844,
+            87.34781525911623,
+            79.9587603334272,
+            80.04620086883311
+          ],
+          "wins": 0,
+          "leftMedian": 150.19943999999998,
+          "rightMedian": 271.1622930000001
+        },
+        "childCpuMs": {
+          "matchedMedianDeltaPct": 15.303585397179997,
+          "blockDeltasPct": [
+            20.50172341268066,
+            13.497507561255762,
+            15.428258729074473,
+            10.635831572832277,
+            17.266180805378784,
+            15.303585397179997,
+            13.675954525507073
+          ],
+          "wins": 0,
+          "leftMedian": 1603.7005000000013,
+          "rightMedian": 1840.1780000000017
+        }
+      },
+      "rawReceipt": ".evidence/css-perf-088/parity-program-07/current-opt-in/legacy-vs-combined-v15/RESULT.json",
+      "receiptSHA256": "3f1d3e819fb3bd6843520167ced5f90051eff2a32f2cfe7ef01992a6b29e0c10"
+    }
+  },
+  "validation": {
+    "nativeTests": {
+      "CORE": {
+        "pass": 91,
+        "fail": 0,
+        "ignored": 0
+      },
+      "INTEGRATIONS": {
+        "pass": 90,
+        "fail": 0,
+        "ignored": 0
+      },
+      "PARSER": {
+        "pass": 88,
+        "fail": 0,
+        "ignored": 0
+      }
+    },
+    "coreCoverage": {
+      "command": [
+        "cargo",
+        "+1.98.0",
+        "tarpaulin",
+        "--offline",
+        "--locked",
+        "--engine",
+        "llvm",
+        "-p",
+        "turbo-dom",
+        "--features",
+        "computed-style-grammar",
+        "--include-files",
+        "crates/turbo-dom/src/*",
+        "--timeout",
+        "600",
+        "--out",
+        "Json",
+        "--out",
+        "Stdout",
+        "--output-dir",
+        "/Users/grzegorz/github-flux/turbo-dom/.worktrees/release-088-experiments/.evidence/css-perf-088/parity-program-15/combined/coverage/core-computed",
+        "--fail-under",
+        "100",
+        "--jobs",
+        "1"
+      ],
+      "exitCode": 0,
+      "seconds": 144.05865099997027,
+      "qualification": "Normative CI turbo-dom computed-style-grammar entire core100% floor; no exclusions added.",
+      "covered": 18045,
+      "total": 18045
+    },
+    "node": {
+      "pass": 1237,
+      "fail": 0,
+      "skip": 0,
+      "lines": 100,
+      "functions": 100,
+      "branches": 97.36
+    },
+    "packed": {
+      "baseline": {
+        "pass": 29,
+        "sentinel": 1
+      },
+      "candidate": {
+        "pass": 29,
+        "sentinel": 1
+      }
+    },
+    "strict": [
+      "Clippy all targets-Dwarnings",
+      "fmt",
+      "CC<=9"
+    ]
+  },
+  "sourceFiles": {
+    "crates/turbo-dom/src/rtdom/computed_css/properties.rs": "d5ff95f43c2d5f18a8eff276df0f6127ebe14084ac0f05959c3ecbae63d6793d",
+    "crates/turbo-dom/src/rtdom/computed_css/keyword_ascii_tests.rs": "cd3025a4ac6ec1b3f9e71b4430926157fe82fa0a6f3c74a7fad25fbebf04b9b5",
+    "crates/turbo-dom/src/rtdom/computed_css/target_scope.rs": "53ab166f6a03c481d971d67d55bb22d7252e813e255f57c33a2ab4fdfe11e5ba",
+    "crates/turbo-dom/src/rtdom/computed_css/rule_matches.rs": "e3ca501802d4b48a91391d5d8dce0ebff551e8d565ac2e38eb3b526d8d81cabe",
+    "crates/turbo-dom/src/rtdom/computed_css/unscoped_roots_tests.rs": "3353365d2862a327bc3e3f8269a0b5ba7c01154608fcf3f7476ae91eed5abc35"
+  },
+  "coverage": "100% core, 18045/18045 lines; no floor changes",
+  "nativeReplay": {
+    "exactResponseBytes": 482782,
+    "errorOwnerBudgetParity": true
+  },
+  "remainingGap": "Fresh direct legacy comparison: Rust 11.69% slower wall time (all seven blocks), outside 2% target. Prior 10.86% result is a different window, not a matched regression comparison."
+}

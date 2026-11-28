@@ -110,13 +110,17 @@ Rust parser or WASM.
 The [initial packed Vitest measurements](docs/benchmarks/css-opt-in-2026-11-27.json)
 compare selector reuse and shared-addon loading. Later experiments reduced
 [equality and native request overhead](docs/benchmarks/css-equality-native-hit-2026-11-27.json).
-The [latest native cascade experiment](docs/benchmarks/css-singleton-selection-2026-11-27.json)
-avoids sorting single-candidate declarations while preserving evaluation and errors.
-Two native-workload windows measured 0.53–1.51% lower CPU; packed Vitest was
-essentially flat to slightly faster (0.58% lower median wall time, 5/7 block wins).
-The direct comparison still measured Rust 10.86% slower than legacy JS
-(block range 7.61–13.09%). This is not a performance-parity claim or justification
-to change the default.
+The [singleton cascade experiment](docs/benchmarks/css-singleton-selection-2026-11-27.json)
+avoids sorting single-candidate declarations. The [latest keyword and scope-root
+experiments](docs/benchmarks/css-keyword-scope-roots-2026-11-28.json) avoid tokenizer
+setup for plain ASCII identifiers and heap allocation for unscoped roots, while
+preserving validation and fallback behavior. Combined native-workload CPU fell
+7.99% (7/7 ABBA block wins). Packed Vitest measured 2.55% lower matched median wall
+time (5/7 wins); adding keywords to scope-root alone was effectively flat in the
+packed suite but reduced native-workload CPU by 2.00% (6/7 wins).
+The fresh direct comparison still measured Rust 11.69% slower than legacy JS
+(block range 6.41–16.24%). These separate-window results do not establish a stable
+whole-suite speedup or performance parity. The CSS default remains JavaScript.
 
 `cssBackend: 'rust'` opts into the shared Rust computed-style engine while keeping
 `domBackend: 'js'`. The CSS default remains `'js'`; this is independent of the
